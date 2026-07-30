@@ -19,6 +19,9 @@ export function baseFileContent(folder: string): string {
 		'views:',
 		'  - type: product-backlog',
 		'    name: Backlog',
+		// Pre-wire the creation folder so the first "New Epic" cannot land
+		// outside the filter — the view reads this option via config.get.
+		`    newItemFolder: "${quoted}"`,
 		'',
 	].join('\n');
 }

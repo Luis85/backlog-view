@@ -23,10 +23,13 @@ describe('baseFileContent', () => {
 		expect(content).toContain('file.inFolder("Backlog")');
 		expect(content).toContain('file.ext == "md"');
 		expect(content).toContain('type: product-backlog');
+		// The creation folder is pre-wired so the first item lands inside the filter
+		expect(content).toContain('newItemFolder: "Backlog"');
 	});
 
 	it('escapes quotes and backslashes in the folder name', () => {
 		expect(baseFileContent('A"B')).toContain('file.inFolder("A\\"B")');
+		expect(baseFileContent('A"B')).toContain('newItemFolder: "A\\"B"');
 		expect(baseFileContent('A\\B')).toContain('file.inFolder("A\\\\B")');
 	});
 });
