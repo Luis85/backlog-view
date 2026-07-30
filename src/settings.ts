@@ -91,14 +91,16 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 			// fall back to the default level names
 		}
 	}
+	return [hierarchyGroup(levels), progressGroup(), newItemsGroup(), displayGroup()];
+}
+
+function hierarchyGroup(levels: string[]): BasesAllOptions {
 	const focusOptions: Record<string, string> = { '': 'All levels' };
 	for (const level of levels) focusOptions[level] = level;
-
-	return [
-		{
-			type: 'group',
-			displayName: 'Hierarchy',
-			items: [
+	return {
+		type: 'group',
+		displayName: 'Hierarchy',
+		items: [
 				{
 					type: 'property',
 					key: 'parentProperty',
@@ -143,59 +145,67 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 					displayName: 'Assign item type when moving',
 					default: true,
 				},
-			],
-		},
-		{
-			type: 'group',
-			displayName: 'Progress',
-			items: [
-				{
-					type: 'property',
-					key: 'stateProperty',
-					displayName: 'State property',
-					placeholder: 'status',
-					filter: notePropsOnly,
-				},
-				{
-					type: 'text',
-					key: 'doneValues',
-					displayName: 'States that count as done',
-					default: DEFAULT_DONE_VALUES.join(', '),
-					placeholder: DEFAULT_DONE_VALUES.join(', '),
-				},
-			],
-		},
-		{
-			type: 'group',
-			displayName: 'New items',
-			items: [
-				{
-					type: 'folder',
-					key: 'newItemFolder',
-					displayName: 'Folder for new items',
-					placeholder: 'Same folder as existing items',
-				},
-			],
-		},
-		{
-			type: 'group',
-			displayName: 'Display',
-			items: [
-				{
-					type: 'toggle',
-					key: 'showProperties',
-					displayName: 'Show visible properties on rows',
-					default: true,
-				},
-				{
-					type: 'toggle',
-					key: 'showCounts',
-					displayName: 'Show descendant counts',
-					default: true,
-				},
-			],
-		},
-	];
+		],
+	};
+}
+
+function progressGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Progress',
+		items: [
+			{
+				type: 'property',
+				key: 'stateProperty',
+				displayName: 'State property',
+				placeholder: 'status',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'doneValues',
+				displayName: 'States that count as done',
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
+		],
+	};
+}
+
+function newItemsGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'New items',
+		items: [
+			{
+				type: 'folder',
+				key: 'newItemFolder',
+				displayName: 'Folder for new items',
+				placeholder: 'Same folder as existing items',
+			},
+		],
+	};
+}
+
+function displayGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Display',
+		items: [
+			{
+				type: 'toggle',
+				key: 'showProperties',
+				displayName: 'Show visible properties on rows',
+				default: true,
+			},
+			{
+				type: 'toggle',
+				key: 'showCounts',
+				displayName: 'Show descendant counts',
+				default: true,
+			},
+		],
+	};
 }
 
 /** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */

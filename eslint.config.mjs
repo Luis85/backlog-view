@@ -17,6 +17,12 @@ export default defineConfig([
 			// Un-awaited promises around frontmatter writes silently reorder the vault;
 			// force every async call site to await or explicitly void.
 			'@typescript-eslint/no-floating-promises': 'error',
+			// Size and complexity budgets keep modules focused and reviewable.
+			'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
+			'max-lines-per-function': ['error', { max: 100, skipBlankLines: true, skipComments: true }],
+			complexity: ['error', 16],
+			'max-depth': ['error', 4],
+			'max-params': ['error', 5],
 		},
 	},
 ]);

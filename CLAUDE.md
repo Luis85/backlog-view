@@ -14,18 +14,29 @@ All three must pass before committing. CI runs the same three steps. Obsidian it
 cannot run here — the jsdom test harness below is the substitute; say so honestly when a
 change still needs a live-vault smoke test.
 
-## Architecture (one file per concern)
+## Architecture (one file per concern, 400-line max enforced by lint)
 
 | File | Responsibility | Testable |
 | --- | --- | --- |
 | `src/main.ts` | Registers the view via `registerBasesView` | — |
 | `src/settings.ts` | View options schema, config resolution, `configProblems` validation | node tests |
-| `src/model.ts` | Pure tree building: parent-link resolution, cycle breaking, sorting, levels, focus re-rooting, done rollups | node tests |
+| `src/model.ts` | Pure tree building: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
 | `src/ops.ts` | ALL frontmatter writes: drop plans, ranking, backfill, note creation | node tests |
-| `src/view.ts` | DOM rendering, drag & drop, keyboard, menus, toolbar | jsdom tests |
+| `src/dropTargets.ts` | Pure drop-target math (zones, no-op/cycle/stale-link rules) | node tests |
+| `src/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
+| `src/view.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
+| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering | jsdom tests |
+| `src/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
+| `src/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
+| `src/interactions/menu.ts` | Context menu | jsdom tests |
+| `src/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
+| `src/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
 | `src/modal.ts` | New-item prompt (+ folder suggest) | jsdom tests |
 
-Never write frontmatter outside `src/ops.ts` (`applyWrites` / `createBacklogItem`).
+Rules: never write frontmatter outside `src/ops.ts` (`applyWrites` / `createBacklogItem`),
+and every write path — including creation — goes through the `configProblems` gate.
+Modules reach view state only through `BacklogViewHost`; keep `host.ts` free of runtime
+code so imports stay cycle-free.
 
 ## Testing
 
@@ -48,8 +59,12 @@ Never write frontmatter outside `src/ops.ts` (`applyWrites` / `createBacklogItem
 
 - Config property ids are `note.`-prefixed (`note.parent`); frontmatter keys are not.
   `resolveSettings` strips the prefix.
-- `depth` is VISUAL (focus mode re-roots it); `semanticDepth` is the full-tree depth.
-  Level math must use `levelIndex`/`semanticDepth` (see `childLevelIndex`).
+- `depth` is VISUAL only (focus mode re-roots it). Level math must use
+  `effectiveLevelIndex`, which chains down the parent levels and carries unknown
+  custom types through the ladder (see `childLevelIndex`). Never derive levels
+  from depth.
+- The autoType cascade retypes only descendants whose type matches a configured
+  level; custom types outside the ladder are deliberate user data.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them

@@ -49,7 +49,19 @@ export function computeDropWrites(
 	settings: BacklogSettings,
 ): ItemWrite[] {
 	const { parent, siblings, insertIndex } = target;
+	const parentField = computeParentField(dragged, parent);
+	const parentChanged = parentField !== undefined;
+	const { typeField, cascade } = computeTypeChanges(dragged, parent, settings, parentChanged);
 
+	const order = computeInsertOrder(siblings, insertIndex);
+	if (order !== null) {
+		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
+	}
+	return [...renumberWrites(dragged, siblings, insertIndex, { parentField, typeField }), ...cascade];
+}
+
+/** The parent frontmatter update, or undefined when the parent is unchanged. */
+function computeParentField(dragged: BacklogItem, parent: BacklogItem | null): TFile | null | undefined {
 	const oldParentPath = dragged.parent?.file.path ?? null;
 	const newParentPath = parent?.file.path ?? null;
 	// An item whose parent link points outside the view renders as a root while the
@@ -57,67 +69,84 @@ export function computeDropWrites(
 	// otherwise it would re-nest as soon as the linked note enters the filter.
 	const staleRootLink = parent === null && dragged.parent === null && dragged.hasParentValue;
 	const parentChanged = oldParentPath !== newParentPath || staleRootLink;
-	const parentField: TFile | null | undefined = parentChanged ? (parent ? parent.file : null) : undefined;
+	return parentChanged ? (parent ? parent.file : null) : undefined;
+}
 
-	let typeField: string | undefined;
+/**
+ * With autoType, the dragged item is retyped for its new slot and explicitly
+ * typed descendants follow, so a subtree move cannot leave inconsistent
+ * hierarchy metadata. Untyped descendants need no write (their level is
+ * implied from the parent chain) and custom types outside the configured
+ * ladder are deliberate — both are left alone.
+ */
+function computeTypeChanges(
+	dragged: BacklogItem,
+	parent: BacklogItem | null,
+	settings: BacklogSettings,
+	parentChanged: boolean,
+): { typeField?: string; cascade: ItemWrite[] } {
 	const cascade: ItemWrite[] = [];
-	if (parentChanged && settings.autoType) {
-		const newBaseIdx = childLevelIndex(parent, settings.levels);
-		const implied = settings.levels[newBaseIdx];
-		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
-			typeField = implied;
-		}
-		// Retype explicitly typed descendants for their new position so a subtree
-		// move cannot leave inconsistent hierarchy metadata. Untyped descendants
-		// need no write — their level is implied from the parent chain.
-		const lastIdx = settings.levels.length - 1;
-		const walk = (node: BacklogItem) => {
-			for (const child of node.children) {
-				const target = settings.levels[Math.min(newBaseIdx + (child.depth - dragged.depth), lastIdx)];
-				if (child.typeName !== null && child.typeName.toLowerCase() !== target.toLowerCase()) {
-					cascade.push({ file: child.file, typeName: target });
-				}
-				walk(child);
-			}
-		};
-		walk(dragged);
+	if (!parentChanged || !settings.autoType) return { cascade };
+
+	const newBaseIdx = childLevelIndex(parent, settings.levels);
+	const implied = settings.levels[newBaseIdx];
+	let typeField: string | undefined;
+	if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
+		typeField = implied;
 	}
 
+	const lastIdx = settings.levels.length - 1;
+	const walk = (node: BacklogItem) => {
+		for (const child of node.children) {
+			if (child.typeName !== null && child.levelIndex !== -1) {
+				const targetLevel = settings.levels[Math.min(newBaseIdx + (child.depth - dragged.depth), lastIdx)];
+				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
+					cascade.push({ file: child.file, typeName: targetLevel });
+				}
+			}
+			walk(child);
+		}
+	};
+	walk(dragged);
+	return { typeField, cascade };
+}
+
+/** The order value for the insertion slot, or null when the group needs renumbering. */
+function computeInsertOrder(siblings: BacklogItem[], insertIndex: number): number | null {
 	const prev = insertIndex > 0 ? siblings[insertIndex - 1] : null;
 	const next = insertIndex < siblings.length ? siblings[insertIndex] : null;
-	const prevOrder = prev?.order ?? null;
-	const nextOrder = next?.order ?? null;
+	if (!prev && !next) return ORDER_SPACING;
+	if (prev && next) return orderBetween(prev.order, next.order);
+	if (prev) return prev.order !== null ? Math.floor(prev.order) + ORDER_SPACING : null;
+	return next !== null && next.order !== null ? roundOrder(Math.ceil(next.order) - ORDER_SPACING) : null;
+}
 
-	let order: number | null = null;
-	if (!prev && !next) {
-		order = ORDER_SPACING;
-	} else if (prev && next) {
-		if (prevOrder !== null && nextOrder !== null && nextOrder - prevOrder > MIN_GAP) {
-			order = roundOrder(prevOrder + (nextOrder - prevOrder) / 2);
-		}
-	} else if (prev && !next) {
-		if (prevOrder !== null) order = Math.floor(prevOrder) + ORDER_SPACING;
-	} else if (next && !prev) {
-		if (nextOrder !== null) order = roundOrder(Math.ceil(nextOrder) - ORDER_SPACING);
-	}
+/** Halfway between two ordered neighbors; null when a value is missing or the gap is spent. */
+function orderBetween(prevOrder: number | null, nextOrder: number | null): number | null {
+	if (prevOrder === null || nextOrder === null) return null;
+	if (nextOrder - prevOrder <= MIN_GAP) return null;
+	return roundOrder(prevOrder + (nextOrder - prevOrder) / 2);
+}
 
-	if (order !== null) {
-		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
-	}
-
-	// Renumber the whole sibling group, including the dragged item at its new position.
+/** Renumber the whole sibling group, including the dragged item at its new position. */
+function renumberWrites(
+	dragged: BacklogItem,
+	siblings: BacklogItem[],
+	insertIndex: number,
+	fields: { parentField: TFile | null | undefined; typeField: string | undefined },
+): ItemWrite[] {
 	const sequence = [...siblings];
 	sequence.splice(insertIndex, 0, dragged);
 	const writes: ItemWrite[] = [];
 	sequence.forEach((item, i) => {
 		const slot = (i + 1) * ORDER_SPACING;
 		if (item === dragged) {
-			writes.push({ file: item.file, parent: parentField, order: slot, typeName: typeField });
+			writes.push({ file: item.file, parent: fields.parentField, order: slot, typeName: fields.typeField });
 		} else if (item.order !== slot) {
 			writes.push({ file: item.file, order: slot });
 		}
 	});
-	return [...writes, ...cascade];
+	return writes;
 }
 
 /**

@@ -168,6 +168,23 @@ describe('buildModel', () => {
 		expect(displayType(child, settings)).toBe('PBI');
 	});
 
+	it('chains the ladder through unknown types without focus re-rooting', () => {
+		const vault = new FakeVault();
+		// Feature at the top; an unknown "Bugfix" occupies the PBI slot below it.
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature' } });
+		vault.addFile('Bugfix Item.md', { frontmatter: { type: 'Bugfix' }, parentLink: 'Feature' });
+		vault.addFile('Untyped.md', { parentLink: 'Bugfix Item' });
+
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const bugfix = model.roots[0].children[0];
+		const grandchild = bugfix.children[0];
+
+		expect(bugfix.effectiveLevelIndex).toBe(2);
+		// New or backfilled children of the Bugfix must be Tasks, not PBIs
+		expect(childLevelIndex(bugfix, settings.levels)).toBe(3);
+		expect(displayType(grandchild, settings)).toBe('Task');
+	});
+
 	it('clamps implied levels to the deepest configured level', () => {
 		const vault = new FakeVault();
 		vault.addFile('L0.md');
@@ -235,7 +252,7 @@ describe('buildModel with a focus level', () => {
 		expect(names(model.roots)).toEqual(['Implied Feature']);
 	});
 
-	it('keeps the semantic depth of unknown types when re-rooted', () => {
+	it('keeps the effective level of unknown types when re-rooted', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('Feat.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
@@ -244,10 +261,10 @@ describe('buildModel with a focus level', () => {
 
 		const bugfix = model.roots[0].children[0];
 		expect(bugfix.levelIndex).toBe(-1);
-		// Visually one level below the focused Feature, semantically still depth 2
+		// Visually one level below the focused Feature, but on the ladder it sits
+		// at the PBI slot, so its children imply Task (index 3), not PBI
 		expect(bugfix.depth).toBe(1);
-		expect(bugfix.semanticDepth).toBe(2);
-		// A child created under it must imply Task (index 3), not PBI
+		expect(bugfix.effectiveLevelIndex).toBe(2);
 		expect(childLevelIndex(bugfix, settings.levels)).toBe(3);
 	});
 

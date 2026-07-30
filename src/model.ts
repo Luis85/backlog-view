@@ -18,10 +18,15 @@ export interface BacklogItem {
 	children: BacklogItem[];
 	/** Visual depth in the rendered tree (0 for rendered roots, focused or not). */
 	depth: number;
-	/** Depth in the full hierarchy, independent of any focus level re-rooting. */
-	semanticDepth: number;
 	/** Index into settings.levels; -1 when typeName doesn't match any configured level. */
 	levelIndex: number;
+	/**
+	 * The ladder position this item occupies, chained down the parent levels.
+	 * Equals levelIndex for known types; for unknown or missing types it is one
+	 * below the parent's effective level. Children derive their level from this,
+	 * never from tree depth, so custom types and focus re-rooting can't skew it.
+	 */
+	effectiveLevelIndex: number;
 	/** True when the level was derived from the parent chain because typeName is missing. */
 	impliedType: boolean;
 	/** True when a parent value exists but doesn't resolve to an item in this view. */
@@ -47,6 +52,47 @@ export interface BacklogModel {
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
+	const { all, byPath } = createItems(app, entries, settings);
+	const roots = linkParents(all, byPath);
+	breakCycles(all, roots);
+	sortSiblingsDeep(roots);
+	let items = assignAll(roots, settings);
+
+	// A focus level re-roots the rendered tree at the topmost items of that level,
+	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
+	const focusIdx = settings.focusLevel
+		? settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase())
+		: -1;
+	if (focusIdx >= 0) {
+		const focusRoots = collectFocusRoots(roots, focusIdx);
+		items = assignVisualDepth(focusRoots);
+		return { roots: focusRoots, byPath, items, focused: true };
+	}
+	return { roots, byPath, items, focused: false };
+}
+
+/** The level name to show on an item's badge. */
+export function displayType(item: BacklogItem, settings: BacklogSettings): string {
+	if (item.levelIndex >= 0) return settings.levels[item.levelIndex];
+	return item.typeName ?? '';
+}
+
+/**
+ * Level index a child of `parent` should get: one below the parent's effective
+ * level, clamped to the deepest configured level. Top-level items get level 0.
+ */
+export function childLevelIndex(parent: BacklogItem | null, levels: string[]): number {
+	if (!parent) return 0;
+	return Math.min(parent.effectiveLevelIndex + 1, levels.length - 1);
+}
+
+// ------------------------------------------------------------- build phases
+
+function createItems(
+	app: App,
+	entries: BasesEntry[],
+	settings: BacklogSettings,
+): { all: BacklogItem[]; byPath: Map<string, BacklogItem> } {
 	const byPath = new Map<string, BacklogItem>();
 	const all: BacklogItem[] = [];
 	const doneValues = new Set(settings.doneValues.map((v) => v.toLowerCase()));
@@ -69,8 +115,8 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 			parent: null,
 			children: [],
 			depth: 0,
-			semanticDepth: 0,
 			levelIndex: 0,
+			effectiveLevelIndex: 0,
 			impliedType: false,
 			orphan: false,
 			focusRoot: false,
@@ -82,8 +128,11 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		byPath.set(file.path, item);
 		all.push(item);
 	}
+	return { all, byPath };
+}
 
-	// Link children to parents; anything unresolvable becomes a root.
+/** Attach children to parents; anything unresolvable becomes a root. */
+function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>): BacklogItem[] {
 	const roots: BacklogItem[] = [];
 	for (const item of all) {
 		const parent = item.parentPath ? byPath.get(item.parentPath) : undefined;
@@ -95,8 +144,11 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 			roots.push(item);
 		}
 	}
+	return roots;
+}
 
-	// Break parent cycles: any item not reachable from a root is part of a cycle.
+/** Any item not reachable from a root is part of a parent cycle — re-root it. */
+function breakCycles(all: BacklogItem[], roots: BacklogItem[]): void {
 	const visited = new Set<BacklogItem>();
 	const markSubtree = (start: BacklogItem) => {
 		const stack = [start];
@@ -120,71 +172,43 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		roots.push(item);
 		markSubtree(item);
 	}
-
-	// Sort siblings by order (missing order sorts last), then by title.
-	const cmp = (a: BacklogItem, b: BacklogItem): number => {
-		const ao = a.order ?? Number.POSITIVE_INFINITY;
-		const bo = b.order ?? Number.POSITIVE_INFINITY;
-		if (ao !== bo) return ao < bo ? -1 : 1;
-		return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
-	};
-	const sortDeep = (list: BacklogItem[]) => {
-		list.sort(cmp);
-		for (const item of list) sortDeep(item.children);
-	};
-	sortDeep(roots);
-
-	// Assign visual depth, semantic level, and rollup counts over the full tree.
-	const assignAll = (renderedRoots: BacklogItem[]): BacklogItem[] => {
-		const items: BacklogItem[] = [];
-		const assign = (item: BacklogItem, depth: number) => {
-			item.depth = depth;
-			item.semanticDepth = depth;
-			computeLevel(item, settings);
-			items.push(item);
-			let count = 0;
-			let done = 0;
-			for (const child of item.children) {
-				assign(child, depth + 1);
-				count += 1 + child.descendantCount;
-				done += (child.done ? 1 : 0) + child.doneDescendants;
-			}
-			item.descendantCount = count;
-			item.doneDescendants = done;
-		};
-		for (const root of renderedRoots) assign(root, 0);
-		return items;
-	};
-	let items = assignAll(roots);
-
-	// A focus level re-roots the rendered tree at the topmost items of that level,
-	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
-	const focusIdx = settings.focusLevel
-		? settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase())
-		: -1;
-	if (focusIdx >= 0) {
-		const focusRoots: BacklogItem[] = [];
-		const collect = (list: BacklogItem[]) => {
-			for (const item of list) {
-				if (item.levelIndex === focusIdx) {
-					item.focusRoot = true;
-					focusRoots.push(item);
-				} else {
-					collect(item.children);
-				}
-			}
-		};
-		collect(roots);
-		// Re-run the visual pass only: levels stay semantic because they derive from
-		// the type property and the (unchanged) parent chain, not from visual depth.
-		items = assignVisualDepth(focusRoots);
-		return { roots: focusRoots, byPath, items, focused: true };
-	}
-
-	return { roots, byPath, items, focused: false };
 }
 
-/** Focused rendering re-roots the tree visually; semanticDepth deliberately stays untouched. */
+/** Sort siblings by order (missing order sorts last), then by title. */
+function sortSiblingsDeep(list: BacklogItem[]): void {
+	list.sort(compareSiblings);
+	for (const item of list) sortSiblingsDeep(item.children);
+}
+
+function compareSiblings(a: BacklogItem, b: BacklogItem): number {
+	const ao = a.order ?? Number.POSITIVE_INFINITY;
+	const bo = b.order ?? Number.POSITIVE_INFINITY;
+	if (ao !== bo) return ao < bo ? -1 : 1;
+	return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+/** Assign visual depth, semantic level and rollup counts over the full tree. */
+function assignAll(renderedRoots: BacklogItem[], settings: BacklogSettings): BacklogItem[] {
+	const items: BacklogItem[] = [];
+	const assign = (item: BacklogItem, depth: number) => {
+		item.depth = depth;
+		computeLevel(item, settings);
+		items.push(item);
+		let count = 0;
+		let done = 0;
+		for (const child of item.children) {
+			assign(child, depth + 1);
+			count += 1 + child.descendantCount;
+			done += (child.done ? 1 : 0) + child.doneDescendants;
+		}
+		item.descendantCount = count;
+		item.doneDescendants = done;
+	};
+	for (const root of renderedRoots) assign(root, 0);
+	return items;
+}
+
+/** Focused rendering re-roots the tree visually; effective levels stay untouched. */
 function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 	const items: BacklogItem[] = [];
 	const assign = (item: BacklogItem, depth: number) => {
@@ -196,37 +220,42 @@ function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 	return items;
 }
 
-/** The level name to show on an item's badge. */
-export function displayType(item: BacklogItem, settings: BacklogSettings): string {
-	if (item.levelIndex >= 0) return settings.levels[item.levelIndex];
-	return item.typeName ?? '';
-}
-
-/**
- * Level index a child of `parent` should get: one below the parent's level,
- * clamped to the deepest configured level. Top-level items get level 0.
- */
-export function childLevelIndex(parent: BacklogItem | null, levels: string[]): number {
-	if (!parent) return 0;
-	// For unknown types, fall back to the full-tree depth — never the visual depth,
-	// which shifts when a focus level re-roots the rendered tree.
-	const parentIdx =
-		parent.levelIndex >= 0 ? parent.levelIndex : Math.min(parent.semanticDepth, levels.length - 1);
-	return Math.min(parentIdx + 1, levels.length - 1);
+/** The topmost items whose level matches the focus level; nested matches stay children. */
+function collectFocusRoots(roots: BacklogItem[], focusIdx: number): BacklogItem[] {
+	const focusRoots: BacklogItem[] = [];
+	const collect = (list: BacklogItem[]) => {
+		for (const item of list) {
+			if (item.levelIndex === focusIdx) {
+				item.focusRoot = true;
+				focusRoots.push(item);
+			} else {
+				collect(item.children);
+			}
+		}
+	};
+	collect(roots);
+	return focusRoots;
 }
 
 function computeLevel(item: BacklogItem, settings: BacklogSettings): void {
+	// The parent is processed first (pre-order), so its effective level is resolved.
+	const childSlot = childLevelIndex(item.parent, settings.levels);
 	if (item.typeName !== null) {
 		const name = item.typeName.toLowerCase();
-		item.levelIndex = settings.levels.findIndex((l) => l.toLowerCase() === name);
+		const idx = settings.levels.findIndex((l) => l.toLowerCase() === name);
+		item.levelIndex = idx;
+		// Unknown types occupy the slot below their parent so their children
+		// continue the ladder correctly (Feature > Bugfix > implied Task).
+		item.effectiveLevelIndex = idx >= 0 ? idx : childSlot;
 		item.impliedType = false;
 	} else {
-		// No type property: imply the level from the parent chain. The parent is
-		// processed first (pre-order), so its level is already resolved.
-		item.levelIndex = childLevelIndex(item.parent, settings.levels);
+		item.levelIndex = childSlot;
+		item.effectiveLevelIndex = childSlot;
 		item.impliedType = true;
 	}
 }
+
+// ----------------------------------------------------------- frontmatter IO
 
 function resolveParent(app: App, file: TFile, parentKey: string): { path: string | null; hasValue: boolean } {
 	const cache = app.metadataCache.getFileCache(file);

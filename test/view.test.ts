@@ -147,6 +147,18 @@ describe('rendering', () => {
 		expect(vault.writeLog).toHaveLength(0);
 		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
 	});
+
+	it('blocks item creation while the configuration is corrupt', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, { orderProperty: 'note.parent' });
+		const fileCount = vault.files.size;
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+		expect(vault.files.size).toBe(fileCount);
+		expect(vault.writeLog).toHaveLength(0);
+	});
 });
 
 describe('collapsing', () => {

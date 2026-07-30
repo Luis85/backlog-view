@@ -159,6 +159,23 @@ describe('computeDropWrites', () => {
 		}
 	});
 
+	it('cascade preserves custom types outside the configured ladder', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Bugfix Child.md', { frontmatter: { type: 'Bugfix' }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
+		const epicA = model.roots.find((r) => r.title === 'Epic A') as BacklogItem;
+
+		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, settings);
+
+		// Only the dragged epic is retyped; the deliberate Bugfix type stays.
+		expect(writes).toHaveLength(1);
+		expect(writes[0].file.path).toBe('Epic B.md');
+		expect(writes[0].typeName).toBe('Feature');
+	});
+
 	it('cascade skips untyped descendants and does not fire without autoType', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
