@@ -22,7 +22,9 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 		new Notice(`Fix the view options first: ${problems[0]}`);
 		return;
 	}
-	const hasItems = (host.model?.items.length ?? 0) > 0;
+	// Judge existence and infer folders from the FULL tree — a focused view with no
+	// matching rows still knows where the hidden items live.
+	const hasItems = (host.model?.realRoots.length ?? 0) > 0;
 	// In folder mode, children belong next to their parent's folder note.
 	const parentFolder =
 		host.settings.folderHierarchy && parentItem ? normalizeFolder(parentItem.file.parent?.path) : null;
@@ -98,10 +100,14 @@ function normalizeFolder(path: string | undefined): string {
 /** Without a configured folder, place new items where most existing items live. */
 function inferFolder(model: BacklogModel | null): string {
 	const counts = new Map<string, number>();
-	for (const item of model?.items ?? []) {
-		const path = item.file.parent?.path ?? '';
-		counts.set(path, (counts.get(path) ?? 0) + 1);
-	}
+	const visit = (items: BacklogItem[]) => {
+		for (const item of items) {
+			const path = item.file.parent?.path ?? '';
+			counts.set(path, (counts.get(path) ?? 0) + 1);
+			visit(item.children);
+		}
+	};
+	visit(model?.realRoots ?? []);
 	let best = '';
 	let bestCount = 0;
 	for (const [path, count] of counts) {

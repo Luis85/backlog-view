@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile } from 'obsidian';
+import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { BacklogItem, BacklogModel, childLevelIndex } from './model';
 import { BacklogSettings } from './settings';
 
@@ -208,13 +208,12 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 		path = filePath(`${base} ${i}`);
 	}
 
-	const file = await app.vault.create(path, '');
-	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-		fm[settings.typeKey] = spec.typeName;
-		if (spec.parent) fm[settings.parentKey] = wikilinkTo(app, spec.parent, file.path);
-		fm[settings.orderKey] = spec.order;
-	});
-	return file;
+	// One atomic write: a create-then-update pair could fail in between and leave
+	// a blank note without its hierarchy properties behind.
+	const fm: Record<string, unknown> = { [settings.typeKey]: spec.typeName };
+	if (spec.parent) fm[settings.parentKey] = wikilinkTo(app, spec.parent, path);
+	fm[settings.orderKey] = spec.order;
+	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 
 /**

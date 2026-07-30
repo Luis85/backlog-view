@@ -19,6 +19,19 @@ export function parsePropertyId(propertyId: BasesPropertyId): BasesProperty {
 	};
 }
 
+/**
+ * Deterministic stand-in for Obsidian's YAML serializer: one `key: <json>` line
+ * per entry. FakeVault.create parses this exact shape back into frontmatter.
+ */
+export function stringifyYaml(obj: unknown): string {
+	const record = obj as Record<string, unknown>;
+	return (
+		Object.entries(record)
+			.map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+			.join('\n') + '\n'
+	);
+}
+
 export function normalizePath(path: string): string {
 	return path
 		.replace(/\\/g, '/')

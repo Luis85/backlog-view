@@ -698,6 +698,24 @@ describe('creation flows', () => {
 		expect(vault.fm('Fresh Feature.md')['order']).toBe(210);
 	});
 
+	it('infers the folder from hidden items when a focused view is empty', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// Focused on Feature, nothing matches — but the full tree knows the folder
+		const { containerEl } = makeView(vault, { focusLevel: 'Feature' });
+		expect(containerEl.querySelector('.pbl-empty')).not.toBeNull();
+
+		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('prompt not opened');
+		// No folder question: the location is known
+		expect(modal.contentEl.querySelectorAll('input')).toHaveLength(1);
+		submitPrompt({ title: 'Fresh Feature' });
+		await flush();
+
+		expect(vault.fm('Backlog/Fresh Feature.md')['type']).toBe('Feature');
+	});
+
 	it('creates children beside the parent folder note in folder mode', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic X/Epic X.md', { frontmatter: { type: 'Epic', order: 10 } });

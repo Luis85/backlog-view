@@ -70,8 +70,9 @@ export class FakeVault {
 				if (this.files.has(path)) throw new Error(`File already exists: ${path}`);
 				const file = new TFile(path);
 				this.files.set(path, file);
-				this.frontmatter.set(path, {});
-				this.caches.set(path, {});
+				const fm = parseMockFrontmatter(content);
+				this.frontmatter.set(path, fm);
+				this.caches.set(path, Object.keys(fm).length > 0 ? { frontmatter: fm } : {});
 				this.contents.set(path, content);
 				return file;
 			},
@@ -121,6 +122,20 @@ export class FakeVault {
 	fm(path: string): Record<string, unknown> {
 		return this.frontmatter.get(path) ?? {};
 	}
+}
+
+/** Inverse of the mock stringifyYaml: `key: <json>` lines between --- markers. */
+function parseMockFrontmatter(content: string): Record<string, unknown> {
+	const fm: Record<string, unknown> = {};
+	if (!content.startsWith('---\n')) return fm;
+	const end = content.indexOf('\n---', 4);
+	if (end === -1) return fm;
+	for (const line of content.substring(4, end).split('\n')) {
+		const sep = line.indexOf(': ');
+		if (sep === -1) continue;
+		fm[line.substring(0, sep)] = JSON.parse(line.substring(sep + 2)) as unknown;
+	}
+	return fm;
 }
 
 /** In-memory BasesViewConfig double that records set() calls. */
