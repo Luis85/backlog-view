@@ -87,6 +87,12 @@ function handleNavigationKey(
 			evt.preventDefault();
 			host.openItem(current, evt);
 			break;
+		case 'ContextMenu':
+		case 'F10':
+			if (!current || (evt.key === 'F10' && !evt.shiftKey)) break;
+			evt.preventDefault();
+			host.showContextMenuFor(current);
+			break;
 	}
 }
 
@@ -95,11 +101,14 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 	evt.preventDefault();
 	const hasChildren = current.children.length > 0;
 	const collapsed = host.isCollapsed(current.file.path);
+	// While filtering, collapse state is overridden and mutating it would be
+	// invisible — navigation still works, state changes wait for a clear filter.
+	const filtering = host.filterText !== '';
 
 	if (evt.key === 'ArrowLeft') {
-		if (hasChildren && !collapsed) collapseKeepingSelection(host, current, true);
+		if (!filtering && hasChildren && !collapsed) collapseKeepingSelection(host, current, true);
 		else if (current.parent && !current.focusRoot) host.selectItem(current.parent);
-	} else if (hasChildren && collapsed) {
+	} else if (!filtering && hasChildren && collapsed) {
 		collapseKeepingSelection(host, current, false);
 	} else if (hasChildren) {
 		// Under a filter the first child may be hidden; jump to the first rendered one.

@@ -83,6 +83,10 @@ code so imports stay cycle-free.
 - Folder mode (`settings.folderHierarchy`): explicit links beat folder-note inference;
   parent-clearing writes `parent: ''` (`explicitRoot`) instead of deleting the key,
   because a deleted key re-infers on the next build. Files are never moved on disk.
+  `ItemWrite.removeParentKey` is the deliberate opposite: delete the key to hand the
+  item back to folder inference ("Use folder position", "Clear parent link").
+- `applyWrites` is serialized but not transactional: a mid-batch failure leaves the
+  earlier writes applied (orders self-correct on the next renumbering drop).
 - Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling
   group renumbers. Missing orders sort last, in Bases result order (`entryIndex`) —
   `data.data` arrives presorted by the user's Bases sort config, so never re-sort it.

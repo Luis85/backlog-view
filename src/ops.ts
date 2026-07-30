@@ -10,8 +10,13 @@ const MIN_GAP = 0.002;
 /** A pending frontmatter update for a single file. Fields left undefined are not touched. */
 export interface ItemWrite {
 	file: TFile;
-	/** New parent note, or null to clear the parent property (top-level item). */
+	/** New parent note, or null to make the item top-level (pinned in folder mode). */
 	parent?: TFile | null;
+	/**
+	 * Remove the parent property entirely — in folder mode this hands the item
+	 * back to folder-note inference instead of pinning it to the top level.
+	 */
+	removeParentKey?: boolean;
 	order?: number;
 	typeName?: string;
 }
@@ -28,7 +33,9 @@ export interface DropTarget {
 export async function applyWrites(app: App, settings: BacklogSettings, writes: ItemWrite[]): Promise<void> {
 	for (const write of writes) {
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
-			if (write.parent !== undefined) {
+			if (write.removeParentKey) {
+				delete fm[settings.parentKey];
+			} else if (write.parent !== undefined) {
 				if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
 				// In folder mode a deleted key would just re-infer the folder parent;
 				// an explicitly empty value pins the item to the top level instead.

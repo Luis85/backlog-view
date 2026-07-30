@@ -523,6 +523,44 @@ describe('context menu', () => {
 		expect('parent' in vault.fm('Orphan.md')).toBe(false);
 	});
 
+	it('offers "Use folder position" for overridden items in folder mode only', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Epics/Beta/Beta.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Epics/Alpha/Feat/Feat.md', { frontmatter: { type: 'Feature' }, parentLink: 'Beta' });
+		const { containerEl } = makeView(vault, { inferFolderHierarchy: true });
+
+		rowByTitle(containerEl, 'Feat').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Use folder position')?.click();
+		await flush();
+		expect('parent' in vault.fm('Epics/Alpha/Feat/Feat.md')).toBe(false);
+
+		// Outside folder mode the action does not exist
+		const flat = makeView(fixture());
+		rowByTitle(flat.containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Use folder position')).toBeUndefined();
+	});
+
+	it('opens the context menu from the keyboard', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown');
+
+		Menu.lastShown = null;
+		key(tree, 'ContextMenu');
+		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
+
+		Menu.lastShown = null;
+		key(tree, 'F10', { shiftKey: true });
+		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
+
+		// Plain F10 is not a menu shortcut
+		Menu.lastShown = null;
+		key(tree, 'F10');
+		expect(Menu.lastShown).toBeNull();
+	});
+
 	it('falls back to cycling the type when submenus are unsupported', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
@@ -898,6 +936,22 @@ describe('quick filter', () => {
 		input.focus();
 		setFilterText(containerEl, 'B');
 		expect(document.activeElement).toBe(input);
+	});
+
+	it('pauses collapse controls while filtering', () => {
+		const vault = fixture();
+		const { containerEl, config } = makeView(vault);
+
+		setFilterText(containerEl, 'B');
+		expect(containerEl.querySelector('.pbl-toolbar')?.classList.contains('pbl-filtering')).toBe(true);
+		const writesBefore = config.setCalls.length;
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(config.setCalls.length).toBe(writesBefore);
+
+		setFilterText(containerEl, '');
+		expect(containerEl.querySelector('.pbl-toolbar')?.classList.contains('pbl-filtering')).toBe(false);
 	});
 
 	it('jumps to the first visible child when expanding under a filter', () => {

@@ -37,6 +37,8 @@ export interface BacklogViewHost {
 	/** Open the item's note, honoring the mod key of the triggering event. */
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void;
 	openItemInNewTab(item: BacklogItem): void;
+	/** Open the row context menu at the item's row — the keyboard path (Menu key / Shift+F10). */
+	showContextMenuFor(item: BacklogItem): void;
 
 	render(): void;
 	/**

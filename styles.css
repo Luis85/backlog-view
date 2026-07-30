@@ -44,6 +44,13 @@
 	flex: 0 0 auto;
 }
 
+/* Collapse state is overridden while filtering — the controls pause with it */
+.pbl-toolbar.pbl-filtering [aria-label='Expand all'],
+.pbl-toolbar.pbl-filtering [aria-label='Collapse all'] {
+	opacity: 0.4;
+	pointer-events: none;
+}
+
 .pbl-toolbar-spacer {
 	flex: 1 1 auto;
 }

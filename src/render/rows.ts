@@ -96,6 +96,9 @@ function renderRowLead(
 		chevron.toggleClass('pbl-expanded', !state.collapsed);
 		chevron.addEventListener('click', (evt) => {
 			evt.stopPropagation();
+			// Collapse state is overridden while filtering; mutating it here
+			// would change nothing visibly until the filter clears.
+			if (host.filterText !== '') return;
 			host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 			host.persistCollapsedState();
 			host.render();

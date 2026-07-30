@@ -2,7 +2,8 @@ import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 import { DragDropController } from './interactions/dragDrop';
 import { handleTreeKeydown } from './interactions/keyboard';
-import { BacklogItem, BacklogModel, buildModel } from './model';
+import { buildItemMenu } from './interactions/menu';
+import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from './model';
 import { applyWrites, computeDropWrites, DropTarget, ItemWrite } from './ops';
 import { renderToolbar } from './render/toolbar';
 import { renderTree } from './render/rows';
@@ -185,6 +186,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		void this.app.workspace.getLeaf('tab').openFile(item.file);
 	}
 
+	showContextMenuFor(item: BacklogItem): void {
+		const childLevel = this.settings.levels[childLevelIndex(item, this.settings.levels)];
+		const menu = buildItemMenu(this, item, childLevel);
+		if (!menu) return;
+		const rect = this.rowElFor(item)?.getBoundingClientRect();
+		menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
+	}
+
 	private rowElFor(item: BacklogItem): HTMLElement | null {
 		const rows = this.treeEl.querySelectorAll<HTMLElement>('.pbl-row');
 		for (const row of Array.from(rows)) {
@@ -207,6 +216,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (!model) return;
 		this.dnd.onRenderStart();
 		this.viewEl.toggleClass('pbl-focused', model.focused);
+		// Collapse controls are inert while a filter overrides the collapse state.
+		this.toolbarEl.toggleClass('pbl-filtering', this.filterText.trim() !== '');
 
 		const scrollTop = this.treeEl.scrollTop;
 		this.treeEl.empty();

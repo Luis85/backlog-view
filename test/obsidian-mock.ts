@@ -175,6 +175,10 @@ export class Menu {
 		Menu.lastShown = this;
 		return this;
 	}
+	showAtPosition(_pos: unknown): this {
+		Menu.lastShown = this;
+		return this;
+	}
 	/** Find an item by its (exact) title. */
 	item(title: string): MenuItem | undefined {
 		return this.items.find((i) => i.titleText === title);

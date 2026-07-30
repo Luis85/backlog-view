@@ -4,11 +4,17 @@ import { BacklogItem, BacklogModel } from '../model';
 import { indent, moveToEdge, moveWithinSiblings, outdent } from './structure';
 import { promptCreateItem } from './create';
 
-/** Context menu for a backlog row. */
+/** Context menu for a backlog row (mouse path). */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childLevel: string): void {
 	evt.preventDefault();
+	const menu = buildItemMenu(host, item, childLevel);
+	menu?.showAtMouseEvent(evt);
+}
+
+/** Assemble the row menu; the caller decides where to show it. */
+export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLevel: string): Menu | null {
 	const model = host.model;
-	if (!model) return;
+	if (!model) return null;
 	const menu = new Menu();
 
 	menu.addItem((mi) =>
@@ -21,16 +27,7 @@ export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: Backl
 	menu.addSeparator();
 
 	addMoveSection(host, menu, item, model);
-	if (!item.parent && item.hasParentValue) {
-		// Top-level item whose parent property points outside the view (or was
-		// part of a cycle): offer an explicit way to drop the stale link.
-		menu.addItem((mi) =>
-			mi
-				.setTitle('Clear parent link')
-				.setIcon('unlink')
-				.onClick(() => void host.applySafely([{ file: item.file, parent: null }])),
-		);
-	}
+	addParentLinkSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi
@@ -40,7 +37,30 @@ export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: Backl
 	);
 
 	host.app.workspace.trigger('file-menu', menu, item.file, PRODUCT_BACKLOG_VIEW_TYPE);
-	menu.showAtMouseEvent(evt);
+	return menu;
+}
+
+function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	if (!item.parent && item.hasParentValue) {
+		// Top-level item whose parent property points outside the view (or was
+		// part of a cycle): remove the stale link. In folder mode the item then
+		// returns to its folder position instead of being pinned to the top.
+		menu.addItem((mi) =>
+			mi
+				.setTitle('Clear parent link')
+				.setIcon('unlink')
+				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
+		);
+	} else if (host.settings.folderHierarchy && (item.hasParentValue || item.explicitRoot)) {
+		// A link override or a top-level pin is hiding the folder position;
+		// removing the property hands the item back to folder-note inference.
+		menu.addItem((mi) =>
+			mi
+				.setTitle('Use folder position')
+				.setIcon('folder')
+				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
+		);
+	}
 }
 
 function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, model: BacklogModel): void {

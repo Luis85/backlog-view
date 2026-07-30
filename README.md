@@ -128,9 +128,12 @@ Rules to know:
 
 - An explicit `parent` link always overrides the folder structure, which is exactly what
   drag and drop writes — so re-parenting works as usual, but **files are not moved on
-  disk**. The folder tree and the parent links can diverge; the links win.
+  disk**. The folder tree and the parent links can diverge; the links win. Right-click →
+  **Use folder position** removes the override and returns the item to its folder parent.
 - Moving an item to the top level writes an empty `parent` property as a "pinned to top
-  level" marker (deleting it would just re-infer the folder parent).
+  level" marker (deleting it would just re-infer the folder parent). **Clear parent
+  link** on an orphaned item removes the property entirely, so in folder mode the item
+  returns to its folder position.
 - New child items are created in their parent note's folder.
 - If your domain folders also contain folder notes inside the filter, they become the
   top level — add a level name for them (e.g. `Domain, Epic, Feature, PBI, Task`).
@@ -161,6 +164,7 @@ shortcuts where sensible):
 | <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down among its siblings |
 | <kbd>Alt</kbd>+<kbd>←</kbd> | Outdent — make it a sibling of its parent |
 | <kbd>Alt</kbd>+<kbd>→</kbd> | Indent — nest it under the previous sibling |
+| <kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the context menu for the selected item |
 
 ### Ranking details
 
@@ -193,6 +197,11 @@ Notes:
   priority or modified date arranges your unranked items until you rank them.
 - **Group by** is ignored — the hierarchy is the grouping. The toolbar says so when a
   group-by is configured.
+- A Base **limit** truncates the result set, which can drop parents while keeping their
+  children — the children then appear as top-level items with an unlink icon. Prefer
+  filters over limits for backlogs.
+- Creating an item from a focused view's toolbar makes it top-level (parentless) at that
+  level; assign a parent afterwards by dragging it into place.
 - Items whose `parent` links to a note outside the current filter results are shown at the
   top level with an unlink icon. Dropping such an item at the top level clears the stale
   link.

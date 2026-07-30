@@ -353,6 +353,18 @@ describe('applyWrites', () => {
 		expect(vault.fm('Child.md')).toEqual({ order: 15, type: 'Feature' });
 	});
 
+	it('removeParentKey deletes the property even in folder mode', async () => {
+		const vault = new FakeVault();
+		const child = vault.addFile('Epic/Child.md', { frontmatter: { parent: '[[Elsewhere]]' } });
+
+		await applyWrites(vault.app, { ...settings, folderHierarchy: true }, [
+			{ file: child, removeParentKey: true },
+		]);
+
+		// Unlike parent: null, this reverts the item to folder-note inference
+		expect('parent' in vault.fm('Epic/Child.md')).toBe(false);
+	});
+
 	it('pins folder-mode top-level moves with an empty parent value', async () => {
 		const vault = new FakeVault();
 		const child = vault.addFile('Epic/Child.md', { frontmatter: { parent: '[[Epic]]' } });
