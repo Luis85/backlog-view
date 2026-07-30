@@ -13,5 +13,10 @@ export default defineConfig([
 			parser: tsparser,
 			parserOptions: { project: './tsconfig.json' },
 		},
+		rules: {
+			// Un-awaited promises around frontmatter writes silently reorder the vault;
+			// force every async call site to await or explicitly void.
+			'@typescript-eslint/no-floating-promises': 'error',
+		},
 	},
 ]);

@@ -1,0 +1,74 @@
+# Product Backlog — agent guide
+
+Obsidian plugin registering a custom **Bases view** (`product-backlog`): a drag-and-drop
+work-item tree (Epic → Feature → PBI → Task) over notes in a flat folder, driven by
+`parent`/`order`/`type` frontmatter. Requires Obsidian 1.10.2+ (Bases custom view API).
+
+## Definition of done
+
+```bash
+npm run check   # build (tsc + esbuild) + lint (eslint-plugin-obsidianmd) + tests (vitest)
+```
+
+All three must pass before committing. CI runs the same three steps. Obsidian itself
+cannot run here — the jsdom test harness below is the substitute; say so honestly when a
+change still needs a live-vault smoke test.
+
+## Architecture (one file per concern)
+
+| File | Responsibility | Testable |
+| --- | --- | --- |
+| `src/main.ts` | Registers the view via `registerBasesView` | — |
+| `src/settings.ts` | View options schema, config resolution, `configProblems` validation | node tests |
+| `src/model.ts` | Pure tree building: parent-link resolution, cycle breaking, sorting, levels, focus re-rooting, done rollups | node tests |
+| `src/ops.ts` | ALL frontmatter writes: drop plans, ranking, backfill, note creation | node tests |
+| `src/view.ts` | DOM rendering, drag & drop, keyboard, menus, toolbar | jsdom tests |
+| `src/modal.ts` | New-item prompt (+ folder suggest) | jsdom tests |
+
+Never write frontmatter outside `src/ops.ts` (`applyWrites` / `createBacklogItem`).
+
+## Testing
+
+- `test/obsidian-mock.ts` — runtime stand-in for the `obsidian` module (aliased in
+  `vitest.config.ts`). Extend it when new obsidian API surface is used; keep it minimal.
+- `test/dom-helpers.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
+  `addClass`, `setCssProps`, …) for jsdom files. Call `installObsidianDom()` at module top.
+- `test/helpers.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
+  recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
+  `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
+- View tests (`test/view.test.ts`) drive REAL interactions: dispatch `dragstart`/
+  `dragover`/`drop` (stub `getBoundingClientRect` for drop zones — jsdom returns zeros),
+  `keydown`, `click`, `contextmenu` (grab the menu via `Menu.lastShown`). Async writes
+  need `await flush()`.
+- Known harness limits: `FakeVault` caches are static — after a write, assert frontmatter
+  rather than re-rendering; `entry.getValue()` returns null, so property chips render
+  empty in tests.
+
+## Invariants that bite
+
+- Config property ids are `note.`-prefixed (`note.parent`); frontmatter keys are not.
+  `resolveSettings` strips the prefix.
+- `depth` is VISUAL (focus mode re-roots it); `semanticDepth` is the full-tree depth.
+  Level math must use `levelIndex`/`semanticDepth` (see `childLevelIndex`).
+- Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
+  `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
+- Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
+  at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
+- Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling
+  group renumbers. Missing orders sort last, alphabetically.
+- Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
+  user's link-format setting (markdown links are not parsed in frontmatter).
+- Writes go through `applySafely`: serialized (`applying` flag), blocked when
+  `configProblems` is non-empty.
+
+## Gotchas
+
+- `obsidian` npm typings may trail the app; feature-detect newer API (`setSubmenu`,
+  `isEmpty`) instead of hard-importing it.
+- Marketplace rules (enforced by `npm run lint` + review): sentence-case UI text, no
+  special characters in the manifest description, `setCssProps` over inline styles,
+  `normalizePath` on user paths, no global `app`.
+- Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
+  `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
+- The collapsed-item list persists in the `.base` file via `config.set('collapsedItems')`
+  — prune paths against `model.byPath` when persisting.

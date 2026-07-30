@@ -45,6 +45,40 @@ export function levelForDepth(levels: string[], depth: number): string {
 	return levels[Math.min(Math.max(depth, 0), levels.length - 1)];
 }
 
+/**
+ * Configuration mistakes that would corrupt writes (e.g. parent and order stored
+ * under the same frontmatter key). The view surfaces these instead of guessing.
+ */
+export function configProblems(settings: BacklogSettings): string[] {
+	const problems: string[] = [];
+	const keys = new Map<string, string[]>();
+	const add = (label: string, key: string) => {
+		if (!key) return;
+		const users = keys.get(key) ?? [];
+		users.push(label);
+		keys.set(key, users);
+	};
+	add('parent', settings.parentKey);
+	add('order', settings.orderKey);
+	add('type', settings.typeKey);
+	add('state', settings.stateKey);
+	for (const [key, users] of keys) {
+		if (users.length > 1) {
+			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
+		}
+	}
+	const seen = new Set<string>();
+	for (const level of settings.levels) {
+		const name = level.toLowerCase();
+		if (seen.has(name)) {
+			problems.push(`The level "${level}" is listed more than once.`);
+			break;
+		}
+		seen.add(name);
+	}
+	return problems;
+}
+
 const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
 
 /** Options shown in the Bases toolbar "view options" menu. */

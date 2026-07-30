@@ -21,7 +21,7 @@ import {
 	ItemWrite,
 	ORDER_SPACING,
 } from './ops';
-import { BacklogSettings, defaultSettings, resolveSettings } from './settings';
+import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from './settings';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
@@ -170,6 +170,13 @@ export class ProductBacklogView extends BasesView {
 		});
 
 		bar.createDiv({ cls: 'pbl-toolbar-spacer' });
+		const problems = configProblems(this.settings);
+		if (problems.length > 0) {
+			const warn = bar.createDiv({ cls: 'pbl-config-warning', attr: { 'aria-label': problems.join(' ') } });
+			setIcon(warn.createSpan({ cls: 'pbl-warning-icon' }), 'alert-triangle');
+			warn.createSpan({ text: 'Check view options' });
+			setTooltip(warn, problems.join(' '));
+		}
 		const count = model.items.length;
 		bar.createSpan({ cls: 'pbl-count-label', text: `${count} item${count === 1 ? '' : 's'}` });
 	}
@@ -881,6 +888,12 @@ export class ProductBacklogView extends BasesView {
 
 	private async applySafely(writes: ItemWrite[]): Promise<void> {
 		if (writes.length === 0) return;
+		const problems = configProblems(this.settings);
+		if (problems.length > 0) {
+			// Writing with e.g. parent and order on the same key would corrupt notes.
+			new Notice(`Fix the view options first: ${problems[0]}`);
+			return;
+		}
 		if (this.applying) {
 			new Notice('Still applying the previous change — try again in a moment.');
 			return;

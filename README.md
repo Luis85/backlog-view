@@ -166,19 +166,23 @@ repository URL once a release exists.
 npm install
 npm run dev    # watch mode
 npm run build  # typecheck + production build
-npm test       # unit tests (vitest)
+npm test       # unit + DOM interaction tests (vitest, jsdom)
 npm run lint   # eslint with the official eslint-plugin-obsidianmd rules
+npm run check  # all three in one shot — the pre-commit gate
 ```
 
 The entry point is `src/main.ts`; the view lives in `src/view.ts`, tree building in
 `src/model.ts`, and all frontmatter writes in `src/ops.ts`.
 
 The pure logic — tree building, drop planning, ranking, property backfill, note
-creation — is covered by unit tests in `test/`, which run against a small mock of the
-`obsidian` module (`test/obsidian-mock.ts`). Linting uses Obsidian's official
+creation — is covered by node unit tests, and the interaction layer (rendering, drag &
+drop, keyboard, menus) by jsdom tests that dispatch real DOM events against the actual
+view, all running against a small mock of the `obsidian` module (`test/obsidian-mock.ts`).
+Linting uses Obsidian's official
 [`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin) ruleset, which
 encodes the community directory review guidelines. CI builds, lints and tests every push
-and pull request.
+and pull request. `CLAUDE.md` documents the architecture, invariants and test harness for
+AI-assisted development.
 
 ## License
 

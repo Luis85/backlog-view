@@ -52,6 +52,28 @@
 	padding-right: var(--size-4-1);
 }
 
+.pbl-config-warning {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: rgb(var(--color-orange-rgb));
+	background-color: rgba(var(--color-orange-rgb), 0.12);
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-4-1);
+	cursor: help;
+}
+
+.pbl-warning-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-warning-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
 /* --------------------------------------------------------------------- tree */
 
 .pbl-tree {

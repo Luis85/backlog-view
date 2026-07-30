@@ -27,8 +27,23 @@ export class FakeVault {
 	caches = new Map<string, FakeCache>();
 	frontmatter = new Map<string, Record<string, unknown>>();
 	writeLog: { path: string; fm: Record<string, unknown> }[] = [];
+	/** Files opened through workspace.getLeaf().openFile(), with the leaf mode used. */
+	opened: { path: string; mode: unknown }[] = [];
+	/** Arguments of workspace.trigger() calls (hover-link, file-menu, …). */
+	triggers: unknown[][] = [];
 
 	readonly app = {
+		workspace: {
+			getLeaf: (mode: unknown) => ({
+				openFile: async (file: TFile) => {
+					this.opened.push({ path: file.path, mode });
+				},
+			}),
+			trigger: (...args: unknown[]) => {
+				this.triggers.push(args);
+			},
+		},
+		renderContext: {},
 		metadataCache: {
 			getFileCache: (file: TFile) => this.caches.get(file.path) ?? null,
 			getFirstLinkpathDest: (linkpath: string, _sourcePath: string) => {
@@ -89,5 +104,37 @@ export class FakeVault {
 
 	fm(path: string): Record<string, unknown> {
 		return this.frontmatter.get(path) ?? {};
+	}
+}
+
+/** In-memory BasesViewConfig double that records set() calls. */
+export class FakeViewConfig {
+	values: Record<string, unknown>;
+	setCalls: { key: string; value: unknown }[] = [];
+	/** Visible property order, as configured in the Bases properties menu. */
+	order: string[] = [];
+
+	constructor(values: Record<string, unknown> = {}) {
+		this.values = values;
+	}
+	get(key: string): unknown {
+		return this.values[key];
+	}
+	set(key: string, value: unknown): void {
+		this.values[key] = value;
+		this.setCalls.push({ key, value });
+	}
+	getAsPropertyId(key: string): string | null {
+		const v = this.values[key];
+		return typeof v === 'string' && v.includes('.') ? v : null;
+	}
+	getOrder(): string[] {
+		return [...this.order];
+	}
+	getDisplayName(propertyId: string): string {
+		return propertyId.substring(propertyId.indexOf('.') + 1);
+	}
+	getSort(): unknown[] {
+		return [];
 	}
 }

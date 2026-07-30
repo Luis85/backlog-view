@@ -11,6 +11,11 @@
    git push --follow-tags origin main
    ```
 
+   The repo's `.npmrc` sets `tag-version-prefix=""` so `npm version` creates the tag as
+   `0.1.1`, not `v0.1.1` — Obsidian requires the tag to exactly match the manifest
+   version. The release workflow refuses tags that don't match, as a second line of
+   defense.
+
 3. The tag push triggers the **Release** workflow, which builds the plugin and creates a
    GitHub release with `main.js`, `manifest.json` and `styles.css` attached as individual
    assets.
