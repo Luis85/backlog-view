@@ -149,12 +149,16 @@ Notes:
 
 ## Installation
 
-Until the plugin is listed in the community directory:
+Until the plugin is listed in the community directory (see `RELEASING.md` for the
+submission checklist):
 
 1. Download `main.js`, `manifest.json` and `styles.css` from the latest release
    (or build them yourself, see below).
 2. Copy them to `<your vault>/.obsidian/plugins/product-backlog-view/`.
 3. Reload Obsidian and enable **Product Backlog** under *Community plugins*.
+
+Alternatively, install via [BRAT](https://github.com/TfTHacker/obsidian42-brat) with the
+repository URL once a release exists.
 
 ## Development
 

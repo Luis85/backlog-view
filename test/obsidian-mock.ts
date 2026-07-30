@@ -24,6 +24,14 @@ export class TFolder {
 	name = '';
 }
 
+export function normalizePath(path: string): string {
+	return path
+		.replace(/\\/g, '/')
+		.split('/')
+		.filter((part) => part.length > 0)
+		.join('/');
+}
+
 export class TFile {
 	path: string;
 	basename: string;

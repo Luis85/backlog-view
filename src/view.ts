@@ -231,7 +231,7 @@ export class ProductBacklogView extends BasesView {
 		});
 		if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
 		if (item.done) row.addClass('pbl-done');
-		row.style.setProperty('--pbl-depth', String(item.depth));
+		row.setCssProps({ '--pbl-depth': String(item.depth) });
 		row.dataset.path = item.file.path;
 		row.draggable = true;
 
@@ -289,7 +289,9 @@ export class ProductBacklogView extends BasesView {
 			const progress = row.createDiv({ cls: 'pbl-progress' });
 			const ratio = item.doneDescendants / item.descendantCount;
 			const bar = progress.createDiv({ cls: 'pbl-progress-bar' });
-			bar.createDiv({ cls: 'pbl-progress-fill' }).style.width = `${Math.round(ratio * 100)}%`;
+			bar.createDiv({ cls: 'pbl-progress-fill' }).setCssProps({
+				'--pbl-progress': `${Math.round(ratio * 100)}%`,
+			});
 			progress.createSpan({
 				cls: 'pbl-progress-label',
 				text: `${item.doneDescendants}/${item.descendantCount}`,

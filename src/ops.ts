@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App, normalizePath, TFile } from 'obsidian';
 import { BacklogItem, BacklogModel, childLevelIndex } from './model';
 import { BacklogSettings } from './settings';
 
@@ -166,13 +166,15 @@ export interface NewItemSpec {
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
 export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
-	const folder = spec.folder.trim().replace(/^\/+|\/+$/g, '');
+	const trimmed = spec.folder.trim().replace(/^\/+|\/+$/g, '');
+	const folder = trimmed ? normalizePath(trimmed) : '';
 	await ensureFolder(app, folder);
 
 	const base = sanitizeTitle(spec.title);
-	let path = folder ? `${folder}/${base}.md` : `${base}.md`;
+	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
+	let path = filePath(base);
 	for (let i = 1; app.vault.getAbstractFileByPath(path) !== null; i++) {
-		path = folder ? `${folder}/${base} ${i}.md` : `${base} ${i}.md`;
+		path = filePath(`${base} ${i}`);
 	}
 
 	const file = await app.vault.create(path, '');
