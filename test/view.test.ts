@@ -154,6 +154,29 @@ describe('rendering', () => {
 		expect(containerEl.querySelector('.pbl-new-btn')?.textContent).toContain('New Feature');
 	});
 
+	it('shows a focus chip with a one-click way back to all levels', () => {
+		const vault = fixture();
+		const { containerEl, config } = makeView(vault, { focusLevel: 'Feature' });
+
+		const chip = containerEl.querySelector<HTMLElement>('.pbl-focus-chip');
+		expect(chip?.textContent).toContain('Focus: Feature');
+
+		chip?.querySelector<HTMLElement>('.pbl-focus-clear')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === '')).toBe(true);
+		// Without a focus level there is no chip
+		const plain = makeView(fixture());
+		expect(plain.containerEl.querySelector('.pbl-focus-chip')).toBeNull();
+	});
+
+	it('marks child groups with their parent depth for indent guides', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		const group = rowByTitle(containerEl, 'Feature B1').parentElement;
+		expect(group?.classList.contains('pbl-children')).toBe(true);
+		expect(group?.style.getPropertyValue('--pbl-depth')).toBe('0');
+	});
+
 	it('warns about corrupt configuration and blocks writes', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault, { orderProperty: 'note.parent' });
@@ -841,6 +864,33 @@ describe('quick filter', () => {
 		input.focus();
 		setFilterText(containerEl, 'B');
 		expect(document.activeElement).toBe(input);
+	});
+
+	it('shows a clear button while active and clears on click', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const box = containerEl.querySelector<HTMLElement>('.pbl-filter');
+
+		expect(box?.classList.contains('pbl-filter-active')).toBe(false);
+		setFilterText(containerEl, 'B1');
+		expect(box?.classList.contains('pbl-filter-active')).toBe(true);
+
+		containerEl.querySelector<HTMLElement>('.pbl-filter-clear')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(filterInput(containerEl).value).toBe('');
+		expect(box?.classList.contains('pbl-filter-active')).toBe(false);
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+	});
+
+	it('shows filtered counts as "x of N"', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const label = () => containerEl.querySelector<HTMLElement>('.pbl-count-label')?.textContent;
+
+		expect(label()).toBe('4 items');
+		setFilterText(containerEl, 'B1');
+		expect(label()).toBe('2 of 4');
+		setFilterText(containerEl, '');
+		expect(label()).toBe('4 items');
 	});
 });
 

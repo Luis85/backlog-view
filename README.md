@@ -95,9 +95,11 @@ the context menu keep working on the filtered rows.
 
 Like the separate Epics / Features / Stories backlogs in Azure DevOps, the **Focus level**
 option re-roots the tree at any level: pick *Feature* and every feature becomes a top-level
-row with its PBIs and tasks below it. Items keep their real parents — re-parenting by
-dropping *into* a row still works — but the top row of a focused view has no shared
-ranking, so reordering, indent/outdent and the top-level drop strip are disabled there.
+row with its PBIs and tasks below it. While focused, the toolbar shows a
+`Focus: Feature ✕` chip — one click returns to all levels. Items keep their real parents —
+re-parenting by dropping *into* a row still works — but the top row of a focused view has
+no shared ranking, so reordering, indent/outdent and the top-level drop strip are disabled
+there.
 
 ### Progress rollup
 
@@ -107,7 +109,9 @@ as done is configurable (`Done, Closed, Completed, Removed` by default, case-ins
 
 While dragging, hovering the middle of a collapsed row briefly expands it so you can drop
 deeper into the tree. Dropping an item onto its own descendant is prevented. Which items
-are collapsed is remembered per view in the `.base` file.
+are collapsed is remembered per view in the `.base` file. Indent guides connect each
+child group to its parent, and on touch devices the per-row **+** button is always
+visible with larger touch targets.
 
 ### Keyboard
 

@@ -199,6 +199,20 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.treeEl.empty();
 		renderTree(this, this.dnd, this.treeEl);
 		this.treeEl.scrollTop = scrollTop;
+		this.updateCountLabel(model);
+	}
+
+	/** The toolbar survives filter renders; keep its count in sync imperatively. */
+	private updateCountLabel(model: BacklogModel): void {
+		const label = this.toolbarEl.querySelector<HTMLElement>('.pbl-count-label');
+		if (!label) return;
+		const total = model.items.length;
+		if (this.filterText.trim() !== '') {
+			const visible = this.treeEl.querySelectorAll('.pbl-row').length;
+			label.setText(`${visible} of ${total}`);
+		} else {
+			label.setText(`${total} item${total === 1 ? '' : 's'}`);
+		}
 	}
 
 	// -------------------------------------------------------------------- writes

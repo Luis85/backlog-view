@@ -74,6 +74,8 @@ function renderItem(host: BacklogViewHost, dnd: DragDropController, containerEl:
 
 	if (hasChildren && !collapsed) {
 		const childrenEl = containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
+		// The indent guide of this group aligns under the parent's chevron column.
+		childrenEl.setCssProps({ '--pbl-depth': String(item.depth) });
 		for (const child of item.children) renderItem(host, dnd, childrenEl, child);
 	}
 }

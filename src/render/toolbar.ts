@@ -46,6 +46,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 
 	renderFilterBox(host, barEl);
+	renderFocusChip(host, barEl, model);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
 	const problems = configProblems(host.settings);
@@ -69,15 +70,48 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items' },
 	});
 	input.value = host.filterText;
-	input.addEventListener('input', () => host.setFilter(input.value));
+	const syncActive = () => filterEl.toggleClass('pbl-filter-active', input.value !== '');
+	const clear = () => {
+		input.value = '';
+		host.setFilter('');
+		syncActive();
+		input.focus();
+	};
+	syncActive();
+	input.addEventListener('input', () => {
+		host.setFilter(input.value);
+		syncActive();
+	});
 	input.addEventListener('keydown', (evt) => {
 		if (evt.key === 'Escape' && input.value !== '') {
 			evt.preventDefault();
 			evt.stopPropagation();
-			input.value = '';
-			host.setFilter('');
+			clear();
 		}
 	});
+	const clearBtn = filterEl.createDiv({
+		cls: 'pbl-filter-clear clickable-icon',
+		attr: { 'aria-label': 'Clear filter' },
+	});
+	setIcon(clearBtn, 'x');
+	setTooltip(clearBtn, 'Clear filter');
+	clearBtn.addEventListener('click', clear);
+}
+
+/** Visible cue (with an exit) that a focus level is narrowing the tree. */
+function renderFocusChip(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	if (!model.focused || !host.settings.focusLevel) return;
+	const chip = barEl.createDiv({ cls: 'pbl-focus-chip' });
+	setIcon(chip.createSpan({ cls: 'pbl-focus-chip-icon' }), 'filter');
+	chip.createSpan({ text: `Focus: ${newItemLevel(host.settings, model)}` });
+	const clear = chip.createDiv({
+		cls: 'pbl-focus-clear clickable-icon',
+		attr: { 'aria-label': 'Show all levels' },
+	});
+	setIcon(clear, 'x');
+	setTooltip(clear, 'Show all levels');
+	// Bases persists the change and refreshes the view with the full hierarchy.
+	clear.addEventListener('click', () => host.config.set('focusLevel', ''));
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI" for the item-count tooltip. */
