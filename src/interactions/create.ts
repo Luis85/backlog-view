@@ -36,6 +36,7 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 
 	new TitlePromptModal(host.app, {
 		heading: `New ${levelName}`,
+		detail: askFolder ? undefined : promptDetail(parentItem, inferredFolder),
 		askFolder,
 		onSubmit: ({ title, folder }) => {
 			void createFromPrompt(host, {
@@ -47,6 +48,12 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 			});
 		},
 	}).open();
+}
+
+/** Where the new item will land, e.g. `Under "Epic X" · in folder "Backlog"`. */
+function promptDetail(parentItem: BacklogItem | null, folder: string): string {
+	const where = folder ? `in folder "${folder}"` : 'in the vault root';
+	return parentItem ? `Under "${parentItem.title}" · ${where}` : `${where[0].toUpperCase()}${where.substring(1)}`;
 }
 
 interface CreateRequest {

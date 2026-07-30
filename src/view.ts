@@ -13,6 +13,9 @@ export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 
 const COLLAPSED_CONFIG_KEY = 'collapsedItems';
 
+/** Source of unique row ids for aria-activedescendant, shared across view instances. */
+let rowIdCounter = 0;
+
 /**
  * The Bases view: owns the durable state (settings, model, collapse set,
  * selection) and the write path. Rendering and interactions live in the
@@ -93,8 +96,26 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.renderTreeContent();
 	}
 
+	focusFilter(): void {
+		this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
+	}
+
+	/**
+	 * The filter can be cleared from outside the toolbar (Escape in the tree, the
+	 * no-match state); keep the input and its clear affordance in sync.
+	 */
+	private syncFilterUi(): void {
+		const input = this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input');
+		if (input && input.value !== this.filterText) input.value = this.filterText;
+		input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', this.filterText !== '');
+	}
+
 	isFilteredOut(item: BacklogItem): boolean {
 		return this.filterVisible !== null && !this.filterVisible.has(item.file.path);
+	}
+
+	isFiltering(): boolean {
+		return this.filterVisible !== null;
 	}
 
 	/** Matches stay visible together with all their ancestors and descendants. */
@@ -166,16 +187,37 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	selectItem(item: BacklogItem, scroll = true): void {
 		this.selectedPath = item.file.path;
-		this.treeEl.querySelectorAll('.pbl-selected').forEach((el) => {
-			el.classList.remove('pbl-selected');
-			el.setAttribute('aria-selected', 'false');
-		});
+		this.deselectRows();
 		const row = this.rowElFor(item);
+		this.syncActiveDescendant(row);
 		if (row) {
 			row.classList.add('pbl-selected');
 			row.setAttribute('aria-selected', 'true');
 			if (scroll) row.scrollIntoView({ block: 'nearest' });
 		}
+	}
+
+	clearSelection(): void {
+		this.selectedPath = null;
+		this.deselectRows();
+		this.syncActiveDescendant(null);
+	}
+
+	private deselectRows(): void {
+		this.treeEl.querySelectorAll('.pbl-selected').forEach((el) => {
+			el.classList.remove('pbl-selected');
+			el.setAttribute('aria-selected', 'false');
+		});
+	}
+
+	/** Focus stays on the tree element; this tells assistive tech which row is active. */
+	private syncActiveDescendant(row: HTMLElement | null): void {
+		if (!row) {
+			this.treeEl.removeAttribute('aria-activedescendant');
+			return;
+		}
+		if (!row.id) row.id = `pbl-row-${++rowIdCounter}`;
+		this.treeEl.setAttribute('aria-activedescendant', row.id);
 	}
 
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void {
@@ -184,6 +226,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	openItemInNewTab(item: BacklogItem): void {
 		void this.app.workspace.getLeaf('tab').openFile(item.file);
+	}
+
+	openItemToSide(item: BacklogItem): void {
+		void this.app.workspace.getLeaf('split').openFile(item.file);
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
@@ -212,17 +258,19 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	/** Re-render only the tree — used by the filter so the toolbar input keeps focus. */
 	private renderTreeContent(): void {
+		this.syncFilterUi();
 		const model = this.model;
 		if (!model) return;
 		this.dnd.onRenderStart();
 		this.viewEl.toggleClass('pbl-focused', model.focused);
-		// Collapse controls are inert while a filter overrides the collapse state.
-		this.toolbarEl.toggleClass('pbl-filtering', this.filterText.trim() !== '');
+		// Collapse controls and drag grips are inert while a filter is active.
+		this.viewEl.toggleClass('pbl-filtering', this.isFiltering());
 
 		const scrollTop = this.treeEl.scrollTop;
 		this.treeEl.empty();
 		renderTree(this, this.dnd, this.treeEl);
 		this.treeEl.scrollTop = scrollTop;
+		this.syncActiveDescendant(this.treeEl.querySelector<HTMLElement>('.pbl-selected'));
 		this.updateCountLabel(model);
 	}
 
@@ -231,7 +279,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const label = this.toolbarEl.querySelector<HTMLElement>('.pbl-count-label');
 		if (!label) return;
 		const total = model.items.length;
-		if (this.filterText.trim() !== '') {
+		if (this.isFiltering()) {
 			const visible = this.treeEl.querySelectorAll('.pbl-row').length;
 			label.setText(`${visible} of ${total}`);
 		} else {

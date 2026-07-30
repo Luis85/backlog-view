@@ -25,6 +25,7 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	const model = host.model;
 	if (!model || model.items.length === 0) return;
+	if (handleFilterKey(host, evt)) return;
 	const visible = visibleItems(host, model);
 	if (visible.length === 0) return;
 
@@ -38,6 +39,24 @@ export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): vo
 		return;
 	}
 	handleNavigationKey(host, visible, current, evt);
+}
+
+/** `/` jumps to the filter box; Escape backs out of the filter, then the selection. */
+function handleFilterKey(host: BacklogViewHost, evt: KeyboardEvent): boolean {
+	if (evt.key === '/' && !evt.altKey && !evt.ctrlKey && !evt.metaKey) {
+		evt.preventDefault();
+		host.focusFilter();
+		return true;
+	}
+	if (evt.key !== 'Escape') return false;
+	if (host.filterText !== '') {
+		evt.preventDefault();
+		host.setFilter('');
+	} else if (host.selectedPath !== null) {
+		evt.preventDefault();
+		host.clearSelection();
+	}
+	return true;
 }
 
 function handleStructureKey(host: BacklogViewHost, current: BacklogItem, evt: KeyboardEvent): void {
@@ -61,6 +80,30 @@ function handleStructureKey(host: BacklogViewHost, current: BacklogItem, evt: Ke
 	}
 }
 
+/** Arrow up/down and Home/End selection movement; true when the key was one of those. */
+function handleSelectionKey(
+	host: BacklogViewHost,
+	visible: BacklogItem[],
+	currentIdx: number,
+	evt: KeyboardEvent,
+): boolean {
+	switch (evt.key) {
+		case 'ArrowDown':
+			host.selectItem(currentIdx === -1 ? visible[0] : visible[Math.min(currentIdx + 1, visible.length - 1)]);
+			return true;
+		case 'ArrowUp':
+			host.selectItem(currentIdx === -1 ? visible[visible.length - 1] : visible[Math.max(currentIdx - 1, 0)]);
+			return true;
+		case 'Home':
+			host.selectItem(visible[0]);
+			return true;
+		case 'End':
+			host.selectItem(visible[visible.length - 1]);
+			return true;
+	}
+	return false;
+}
+
 function handleNavigationKey(
 	host: BacklogViewHost,
 	visible: BacklogItem[],
@@ -68,16 +111,11 @@ function handleNavigationKey(
 	evt: KeyboardEvent,
 ): void {
 	const currentIdx = current ? visible.indexOf(current) : -1;
-
+	if (handleSelectionKey(host, visible, currentIdx, evt)) {
+		evt.preventDefault();
+		return;
+	}
 	switch (evt.key) {
-		case 'ArrowDown':
-			evt.preventDefault();
-			host.selectItem(currentIdx === -1 ? visible[0] : visible[Math.min(currentIdx + 1, visible.length - 1)]);
-			break;
-		case 'ArrowUp':
-			evt.preventDefault();
-			host.selectItem(currentIdx === -1 ? visible[visible.length - 1] : visible[Math.max(currentIdx - 1, 0)]);
-			break;
 		case 'ArrowLeft':
 		case 'ArrowRight':
 			if (current) handleExpandCollapseKey(host, current, evt);
@@ -103,7 +141,7 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 	const collapsed = host.isCollapsed(current.file.path);
 	// While filtering, collapse state is overridden and mutating it would be
 	// invisible — navigation still works, state changes wait for a clear filter.
-	const filtering = host.filterText !== '';
+	const filtering = host.isFiltering();
 
 	if (evt.key === 'ArrowLeft') {
 		if (!filtering && hasChildren && !collapsed) collapseKeepingSelection(host, current, true);

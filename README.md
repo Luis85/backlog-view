@@ -84,7 +84,8 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Create any level at the top | Toolbar **New** button, or the **▾** menu next to it for other levels |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type |
-| Find items | Type in the toolbar filter — matches keep their ancestors and subtrees, Escape clears |
+| Open in a new tab or split | Middle-click, Ctrl/Cmd-click, or right-click → Open in new tab / Open to the right |
+| Find items | Type in the toolbar filter (or press <kbd>/</kbd> in the tree) — matches keep their ancestors and subtrees, Escape clears |
 | See counts per level | Hover the item count in the toolbar |
 
 While the filter is active the tree ignores collapsed state and drag and drop is
@@ -145,11 +146,13 @@ Set the **State property** (e.g. `status`) in the view options and parents show 
 progress bar with a done count (e.g. `3/7`), while done items dim out. Which values count
 as done is configurable (`Done, Closed, Completed, Removed` by default, case-insensitive).
 
-While dragging, hovering the middle of a collapsed row briefly expands it so you can drop
-deeper into the tree. Dropping an item onto its own descendant is prevented. Which items
-are collapsed is remembered per view in the `.base` file. Indent guides connect each
-child group to its parent, and on touch devices the per-row **+** button is always
-visible with larger touch targets.
+While dragging, hovering the middle of a collapsed row expands it after a moment (the
+chevron lights up while the timer runs) so you can drop deeper into the tree. Dropping an
+item onto its own descendant is prevented. Which items are collapsed is remembered per
+view in the `.base` file. Indent guides connect each child group to its parent, and on
+touch devices the per-row **+** button is always visible with larger touch targets.
+The tree is a real ARIA tree — screen readers announce level, position and expansion
+state — and the view honors reduced-motion and right-to-left settings.
 
 ### Keyboard
 
@@ -159,12 +162,15 @@ shortcuts where sensible):
 | Keys | Action |
 | --- | --- |
 | <kbd>↑</kbd> / <kbd>↓</kbd> | Select the previous / next visible item |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Jump to the first / last visible item |
 | <kbd>←</kbd> | Collapse the item, or jump to its parent |
 | <kbd>→</kbd> | Expand the item, or jump to its first child |
 | <kbd>Enter</kbd> | Open the selected item (Ctrl/Cmd for a new tab) |
 | <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down among its siblings |
 | <kbd>Alt</kbd>+<kbd>←</kbd> | Outdent — make it a sibling of its parent |
 | <kbd>Alt</kbd>+<kbd>→</kbd> | Indent — nest it under the previous sibling |
+| <kbd>/</kbd> | Jump to the filter box |
+| <kbd>Escape</kbd> | Clear the filter, then the selection |
 | <kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the context menu for the selected item |
 
 ### Ranking details

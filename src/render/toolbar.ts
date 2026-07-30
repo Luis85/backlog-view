@@ -17,7 +17,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	newBtn.createSpan({ text: `New ${newLevel}` });
 	newBtn.addEventListener('click', () => promptCreateItem(host, newLevel, null));
 
-	const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type', () => undefined);
+	const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
 	pickBtn.addClass('pbl-new-pick');
 	pickBtn.addEventListener('click', (evt) => {
 		const menu = new Menu();
@@ -30,20 +30,16 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
-	iconButton(barEl, 'sparkles', 'Assign missing type and order properties', () => {
+	iconButton(barEl, 'sparkles', 'Assign missing type and order properties').addEventListener('click', () => {
 		void runInit(host);
 	});
-	iconButton(barEl, 'chevrons-up-down', 'Expand all', () => {
+	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
 		for (const item of model.items) host.setCollapsed(item.file.path, false);
-		host.persistCollapsedState();
-		host.render();
 	});
-	iconButton(barEl, 'chevrons-down-up', 'Collapse all', () => {
+	collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
 		for (const item of model.items) {
 			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
 		}
-		host.persistCollapsedState();
-		host.render();
 	});
 
 	renderFilterBox(host, barEl);
@@ -76,23 +72,19 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	const filterEl = barEl.createDiv({ cls: 'pbl-filter' });
 	setIcon(filterEl.createSpan({ cls: 'pbl-filter-icon' }), 'search');
+	setTooltip(filterEl, 'Filter items — press / in the tree');
 	const input = filterEl.createEl('input', {
 		cls: 'pbl-filter-input',
 		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items' },
 	});
 	input.value = host.filterText;
-	const syncActive = () => filterEl.toggleClass('pbl-filter-active', input.value !== '');
+	// setFilter re-renders the tree and syncs this box's active state.
 	const clear = () => {
-		input.value = '';
 		host.setFilter('');
-		syncActive();
 		input.focus();
 	};
-	syncActive();
-	input.addEventListener('input', () => {
-		host.setFilter(input.value);
-		syncActive();
-	});
+	filterEl.toggleClass('pbl-filter-active', input.value !== '');
+	input.addEventListener('input', () => host.setFilter(input.value));
 	input.addEventListener('keydown', (evt) => {
 		if (evt.key === 'Escape' && input.value !== '') {
 			evt.preventDefault();
@@ -135,10 +127,26 @@ function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
 	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');
 }
 
-function iconButton(parent: HTMLElement, icon: string, label: string, onClick: () => void): HTMLElement {
+function iconButton(parent: HTMLElement, icon: string, label: string): HTMLElement {
 	const btn = parent.createDiv({ cls: 'clickable-icon pbl-icon-btn', attr: { 'aria-label': label } });
 	setIcon(btn, icon);
 	setTooltip(btn, label);
-	btn.addEventListener('click', onClick);
 	return btn;
+}
+
+/** Expand/collapse toolbar buttons — inert while a filter overrides collapse state. */
+function collapseButton(
+	host: BacklogViewHost,
+	parent: HTMLElement,
+	icon: string,
+	label: string,
+	mutate: () => void,
+): void {
+	const btn = iconButton(parent, icon, label);
+	btn.addClass('pbl-collapse-ctl');
+	btn.addEventListener('click', () => {
+		mutate();
+		host.persistCollapsedState();
+		host.render();
+	});
 }

@@ -25,8 +25,16 @@ export interface BacklogViewHost {
 
 	/** True when the quick filter hides this item; always false without a filter. */
 	isFilteredOut(item: BacklogItem): boolean;
-	/** Update the quick filter and re-render the tree (the toolbar keeps its state). */
+	/**
+	 * True while the quick filter is narrowing the tree. Collapse state, dragging
+	 * and their affordances pause on exactly this condition — not on the raw input
+	 * text, which may be whitespace that filters nothing.
+	 */
+	isFiltering(): boolean;
+	/** Update the quick filter, sync the toolbar input, and re-render the tree. */
 	setFilter(text: string): void;
+	/** Move keyboard focus into the toolbar filter input. */
+	focusFilter(): void;
 
 	isCollapsed(path: string): boolean;
 	/** Returns true when the state actually changed. */
@@ -34,9 +42,12 @@ export interface BacklogViewHost {
 	persistCollapsedState(): void;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
+	clearSelection(): void;
 	/** Open the item's note, honoring the mod key of the triggering event. */
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void;
 	openItemInNewTab(item: BacklogItem): void;
+	/** Open the item's note in a split pane next to the current one. */
+	openItemToSide(item: BacklogItem): void;
 	/** Open the row context menu at the item's row — the keyboard path (Menu key / Shift+F10). */
 	showContextMenuFor(item: BacklogItem): void;
 

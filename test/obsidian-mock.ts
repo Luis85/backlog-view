@@ -216,6 +216,10 @@ export class ButtonComponent {
 	setCta(): this {
 		return this;
 	}
+	setDisabled(disabled: boolean): this {
+		this.buttonEl.disabled = disabled;
+		return this;
+	}
 	onClick(cb: () => unknown): this {
 		this.buttonEl.addEventListener('click', cb);
 		return this;

@@ -7,11 +7,12 @@ import { TFolder } from './obsidian-mock';
 
 installObsidianDom();
 
-function openModal(options: { askFolder?: boolean } = {}) {
+function openModal(options: { askFolder?: boolean; detail?: string } = {}) {
 	const vault = new FakeVault();
 	const results: { title: string; folder?: string }[] = [];
 	const modal = new TitlePromptModal(vault.app as never, {
 		heading: 'New Epic',
+		detail: options.detail,
 		askFolder: options.askFolder,
 		onSubmit: (result) => results.push(result),
 	});
@@ -53,6 +54,24 @@ describe('TitlePromptModal', () => {
 		const { results, createBtn } = openModal();
 		createBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(results).toHaveLength(0);
+	});
+
+	it('enables Create only while a non-blank title is present', () => {
+		const { inputs, createBtn } = openModal();
+		expect(createBtn.disabled).toBe(true);
+		type(inputs[0], 'My Epic');
+		expect(createBtn.disabled).toBe(false);
+		type(inputs[0], '   ');
+		expect(createBtn.disabled).toBe(true);
+	});
+
+	it('shows the landing-spot detail line only when provided', () => {
+		const { modal } = openModal({ detail: 'Under "Epic X" · in folder "Backlog"' });
+		expect(modal.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe(
+			'Under "Epic X" · in folder "Backlog"',
+		);
+		const { modal: plain } = openModal();
+		expect(plain.contentEl.querySelector('.pbl-modal-detail')).toBeNull();
 	});
 });
 

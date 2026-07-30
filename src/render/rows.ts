@@ -17,10 +17,32 @@ export function renderTree(host: BacklogViewHost, dnd: DragDropController, treeE
 		renderEmptyState(host, treeEl);
 		return;
 	}
-	for (const root of model.roots) renderItem(host, dnd, treeEl, root);
-	if (host.filterText !== '' && treeEl.childElementCount === 0) {
-		treeEl.createDiv({ cls: 'pbl-empty-filter', text: 'No items match the filter.' });
+	renderForest(host, dnd, treeEl, model.roots);
+	if (host.isFiltering() && treeEl.childElementCount === 0) {
+		renderFilterEmptyState(host, treeEl);
 	}
+}
+
+/** Render a sibling group, skipping filtered-out items so aria positions stay true. */
+function renderForest(
+	host: BacklogViewHost,
+	dnd: DragDropController,
+	containerEl: HTMLElement,
+	siblings: BacklogItem[],
+): void {
+	const visible = siblings.filter((item) => !host.isFilteredOut(item));
+	visible.forEach((item, i) => renderItem(host, dnd, containerEl, item, { pos: i + 1, count: visible.length }));
+}
+
+function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const empty = treeEl.createDiv({ cls: 'pbl-empty-filter' });
+	setIcon(empty.createDiv({ cls: 'pbl-empty-filter-icon' }), 'search-x');
+	empty.createDiv({ text: `No items match "${host.filterText.trim()}".` });
+	const btn = empty.createEl('button', { text: 'Clear filter' });
+	btn.addEventListener('click', () => {
+		host.setFilter('');
+		host.focusFilter();
+	});
 }
 
 function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
@@ -45,8 +67,13 @@ function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	btn.addEventListener('click', () => promptCreateItem(host, topLevel, null));
 }
 
-function renderItem(host: BacklogViewHost, dnd: DragDropController, containerEl: HTMLElement, item: BacklogItem): void {
-	if (host.isFilteredOut(item)) return;
+function renderItem(
+	host: BacklogViewHost,
+	dnd: DragDropController,
+	containerEl: HTMLElement,
+	item: BacklogItem,
+	place: { pos: number; count: number },
+): void {
 	const hasChildren = item.children.length > 0;
 	const collapsed = host.isCollapsed(item.file.path);
 	const childLevel = host.settings.levels[childLevelIndex(item, host.settings.levels)];
@@ -57,6 +84,8 @@ function renderItem(host: BacklogViewHost, dnd: DragDropController, containerEl:
 		attr: {
 			role: 'treeitem',
 			'aria-level': String(item.depth + 1),
+			'aria-posinset': String(place.pos),
+			'aria-setsize': String(place.count),
 			'aria-selected': String(selected),
 		},
 	});
@@ -65,7 +94,7 @@ function renderItem(host: BacklogViewHost, dnd: DragDropController, containerEl:
 	row.setCssProps({ '--pbl-depth': String(item.depth) });
 	row.dataset.path = item.file.path;
 	// While filtering, visual neighbors are not real siblings — ranking by drag would mislead.
-	row.draggable = host.filterText === '';
+	row.draggable = !host.isFiltering();
 
 	renderRowLead(host, row, item, { hasChildren, collapsed });
 	renderRowTrailing(host, row, item, childLevel);
@@ -76,7 +105,7 @@ function renderItem(host: BacklogViewHost, dnd: DragDropController, containerEl:
 		const childrenEl = containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
 		// The indent guide of this group aligns under the parent's chevron column.
 		childrenEl.setCssProps({ '--pbl-depth': String(item.depth) });
-		for (const child of item.children) renderItem(host, dnd, childrenEl, child);
+		renderForest(host, dnd, childrenEl, item.children);
 	}
 }
 
@@ -87,7 +116,8 @@ function renderRowLead(
 	item: BacklogItem,
 	state: { hasChildren: boolean; collapsed: boolean },
 ): void {
-	const grip = row.createDiv({ cls: 'pbl-grip' });
+	// Purely a drag affordance — the row itself is the draggable element.
+	const grip = row.createDiv({ cls: 'pbl-grip', attr: { 'aria-hidden': 'true' } });
 	setIcon(grip, 'grip-vertical');
 
 	const chevron = row.createDiv({ cls: 'pbl-chevron' + (state.hasChildren ? '' : ' pbl-leaf') });
@@ -98,7 +128,7 @@ function renderRowLead(
 			evt.stopPropagation();
 			// Collapse state is overridden while filtering; mutating it here
 			// would change nothing visibly until the filter clears.
-			if (host.filterText !== '') return;
+			if (host.isFiltering()) return;
 			host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 			host.persistCollapsedState();
 			host.render();
@@ -110,6 +140,8 @@ function renderRowLead(
 	const title = row.createSpan({ cls: 'pbl-title' });
 	renderTitleText(host, title, item.title);
 	title.addEventListener('mouseover', (evt) => {
+		// Narrow panes truncate titles; surface the full text without a click.
+		if (title.scrollWidth > title.clientWidth) setTooltip(title, item.title);
 		host.app.workspace.trigger('hover-link', {
 			event: evt,
 			source: PRODUCT_BACKLOG_VIEW_TYPE,
@@ -160,11 +192,15 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 function renderRowTrailing(host: BacklogViewHost, row: HTMLElement, item: BacklogItem, childLevel: string): void {
 	const chips = row.createDiv({ cls: 'pbl-chips' });
 	if (host.settings.showChips) renderChips(host, chips, item);
-	chips.addEventListener('click', (evt) => evt.stopPropagation());
+	// Chips may render note links that must not also open the row's own note; the
+	// empty space around them stays part of the row's click target.
+	chips.addEventListener('click', (evt) => {
+		if (evt.target instanceof Element && evt.target.closest('.pbl-chip')) evt.stopPropagation();
+	});
 
 	if (host.settings.stateKey && item.descendantCount > 0) {
-		const progress = row.createDiv({ cls: 'pbl-progress' });
 		const ratio = item.doneDescendants / item.descendantCount;
+		const progress = row.createDiv({ cls: 'pbl-progress' + (ratio === 1 ? ' pbl-complete' : '') });
 		const bar = progress.createDiv({ cls: 'pbl-progress-bar' });
 		bar.createDiv({ cls: 'pbl-progress-fill' }).setCssProps({
 			'--pbl-progress': `${Math.round(ratio * 100)}%`,

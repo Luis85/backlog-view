@@ -113,12 +113,18 @@ describe('rendering', () => {
 
 		const epicRow = rowByTitle(containerEl, 'Epic A');
 		expect(epicRow.getAttribute('aria-level')).toBe('1');
+		expect(epicRow.getAttribute('aria-posinset')).toBe('1');
+		expect(epicRow.getAttribute('aria-setsize')).toBe('2');
 		expect(epicRow.style.getPropertyValue('--pbl-depth')).toBe('0');
 		expect(epicRow.querySelector('.pbl-badge')?.textContent).toBe('Epic');
 		expect(epicRow.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBe('crown');
+		// The grip is a pointer affordance only — the row itself is draggable
+		expect(epicRow.querySelector('.pbl-grip')?.getAttribute('aria-hidden')).toBe('true');
 
 		const featureRow = rowByTitle(containerEl, 'Feature B1');
 		expect(featureRow.getAttribute('aria-level')).toBe('2');
+		expect(featureRow.getAttribute('aria-posinset')).toBe('1');
+		expect(featureRow.getAttribute('aria-setsize')).toBe('2');
 		expect(featureRow.style.getPropertyValue('--pbl-depth')).toBe('1');
 		expect(featureRow.querySelector('.pbl-badge')?.textContent).toBe('Feature');
 
@@ -141,8 +147,19 @@ describe('rendering', () => {
 		const epicRow = rowByTitle(containerEl, 'Epic');
 		expect(epicRow.querySelector('.pbl-progress-label')?.textContent).toBe('1/2');
 		expect(epicRow.querySelector<HTMLElement>('.pbl-progress-fill')?.style.getPropertyValue('--pbl-progress')).toBe('50%');
+		expect(epicRow.querySelector('.pbl-progress')?.classList.contains('pbl-complete')).toBe(false);
 		expect(rowByTitle(containerEl, 'F1').classList.contains('pbl-done')).toBe(true);
 		expect(rowByTitle(containerEl, 'F2').classList.contains('pbl-done')).toBe(false);
+	});
+
+	it('marks a fully done rollup as complete', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, status: 'Done' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+
+		const progress = rowByTitle(containerEl, 'Epic').querySelector('.pbl-progress');
+		expect(progress?.classList.contains('pbl-complete')).toBe(true);
 	});
 
 	it('re-roots on the focus level and labels the New button accordingly', () => {
@@ -256,6 +273,47 @@ describe('opening and keyboard', () => {
 		await flush();
 
 		expect(vault.fm('Epic A.md')['order']).toBe(30);
+	});
+
+	it('jumps to the first and last visible item with Home and End', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'End');
+		expect(rowByTitle(containerEl, 'Feature B2').classList.contains('pbl-selected')).toBe(true);
+		key(tree, 'Home');
+		expect(rowByTitle(containerEl, 'Epic A').classList.contains('pbl-selected')).toBe(true);
+	});
+
+	it('clears the selection with Escape', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
+		key(tree, 'Escape');
+		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
+		expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
+	});
+
+	it('points aria-activedescendant at the selected row across renders', () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
+		key(tree, 'ArrowDown');
+		const row = rowByTitle(containerEl, 'Epic A');
+		expect(row.id).not.toBe('');
+		expect(tree.getAttribute('aria-activedescendant')).toBe(row.id);
+
+		// A re-render rebuilds the rows; the reference must follow the new element.
+		view.onDataUpdated();
+		const rerendered = rowByTitle(containerEl, 'Epic A');
+		expect(rerendered.classList.contains('pbl-selected')).toBe(true);
+		expect(tree.getAttribute('aria-activedescendant')).toBe(rerendered.id);
 	});
 });
 
@@ -407,12 +465,19 @@ describe('item creation', () => {
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('prompt not opened');
 		expect(modal.titleEl.textContent).toBe('New Feature');
+		// The prompt says where the item will land before anything is written
+		expect(modal.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe(
+			'Under "Epic A" · in folder "Backlog"',
+		);
 
 		const input = modal.contentEl.querySelector('input');
 		if (!input) throw new Error('title input missing');
+		const createBtn = modal.contentEl.querySelector('button');
+		expect(createBtn?.disabled).toBe(true);
 		input.value = 'Login flow';
 		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(createBtn?.disabled).toBe(false);
+		createBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 
 		// Created in the folder most items live in, ranked after its sibling
@@ -470,6 +535,24 @@ describe('property chips', () => {
 		// Rows without a value for the property get no chip
 		expect(rowByTitle(containerEl, 'Epic B').querySelector('.pbl-chip')).toBeNull();
 	});
+
+	it('keeps the empty space around chips part of the row click target', () => {
+		const vault = fixture();
+		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
+		const { containerEl, config, view } = makeView(vault);
+		config.order = ['note.points'];
+		view.onDataUpdated();
+
+		// A click on the chip itself must not open the note (it may hold links)…
+		const chipValue = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-chip-value');
+		chipValue?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(vault.opened).toEqual([]);
+
+		// …but the flexible area next to the chips is still the row.
+		const chips = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-chips');
+		chips?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(vault.opened).toEqual([{ path: 'Epic A.md', mode: false }]);
+	});
 });
 
 describe('context menu', () => {
@@ -491,6 +574,20 @@ describe('context menu', () => {
 		menu.item('Outdent')?.click();
 		await flush();
 		expect('parent' in vault.fm('Feature B1.md')).toBe(false);
+	});
+
+	it('opens the item in a new tab or split from the menu', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Open in new tab')?.click();
+		Menu.lastShown?.item('Open to the right')?.click();
+
+		expect(vault.opened).toEqual([
+			{ path: 'Epic A.md', mode: 'tab' },
+			{ path: 'Epic A.md', mode: 'split' },
+		]);
 	});
 
 	it('moves an item to the top of its siblings', async () => {
@@ -688,9 +785,32 @@ describe('drag state details', () => {
 		stubRect(to);
 		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
 		to.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 15 }));
+		// The pending expansion is signaled on the row while the timer runs
+		expect(to.classList.contains('pbl-hover-expanding')).toBe(true);
 		vi.advanceTimersByTime(700);
 
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+	});
+
+	it('drops the hover-expand cue when the drag moves off the row', () => {
+		vi.useFakeTimers();
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const to = rowByTitle(containerEl, 'Epic B');
+		stubRect(to);
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		to.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 15 }));
+		expect(to.classList.contains('pbl-hover-expanding')).toBe(true);
+
+		to.dispatchEvent(new MouseEvent('dragleave', { bubbles: true }));
+		expect(to.classList.contains('pbl-hover-expanding')).toBe(false);
+		vi.advanceTimersByTime(700);
+		// The cancelled timer must not expand the row anyway
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
 	});
 
 	it('clears the indicator when the drag leaves the row', () => {
@@ -773,12 +893,22 @@ describe('creation flows', () => {
 		const { containerEl, config } = makeView(vault);
 
 		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		// With the folder still a user choice there is no landing spot to announce
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')).toBeNull();
 		submitPrompt({ title: 'First Epic', folder: 'Backlog' });
 		await flush();
 
 		expect(config.values['newItemFolder']).toBe('Backlog');
 		expect(vault.folders.has('Backlog')).toBe(true);
 		expect(vault.fm('Backlog/First Epic.md')['type']).toBe('Epic');
+	});
+
+	it('describes the vault root as the landing spot for rootless backlogs', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe('In the vault root');
 	});
 
 	it('ranks top-level creations against the real roots in focus mode', async () => {
@@ -928,6 +1058,9 @@ describe('quick filter', () => {
 
 		setFilterText(containerEl, 'B1');
 		expect(titlesOf(containerEl)).toEqual(['Epic B', 'Feature B1']);
+		// aria positions describe the rendered set, not the full sibling group
+		expect(rowByTitle(containerEl, 'Epic B').getAttribute('aria-posinset')).toBe('1');
+		expect(rowByTitle(containerEl, 'Epic B').getAttribute('aria-setsize')).toBe('1');
 
 		setFilterText(containerEl, 'Epic B');
 		expect(titlesOf(containerEl)).toEqual(['Epic B', 'Feature B1', 'Feature B2']);
@@ -961,6 +1094,24 @@ describe('quick filter', () => {
 		expect(rowByTitle(containerEl, 'Epic A').draggable).toBe(true);
 	});
 
+	it('treats a whitespace-only filter as no filter', () => {
+		const vault = fixture();
+		const { containerEl, config } = makeView(vault);
+
+		setFilterText(containerEl, '   ');
+		// Nothing is narrowed, so nothing pauses: full tree, dragging, collapsing
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-filtering')).toBe(false);
+		expect(rowByTitle(containerEl, 'Epic A').draggable).toBe(true);
+		expect(containerEl.querySelector<HTMLElement>('.pbl-count-label')?.textContent).toBe('4 items');
+
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+		expect(config.values['collapsedItems']).toEqual(['Epic B.md']);
+	});
+
 	it('keeps keyboard navigation within the filtered rows', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
@@ -980,12 +1131,58 @@ describe('quick filter', () => {
 		const { containerEl } = makeView(vault);
 
 		setFilterText(containerEl, 'zzz');
-		expect(containerEl.querySelector('.pbl-empty-filter')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-empty-filter')?.textContent).toContain('No items match "zzz"');
 		expect(titlesOf(containerEl)).toEqual([]);
 
 		filterInput(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 		expect(filterInput(containerEl).value).toBe('');
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+	});
+
+	it('clears the filter from the no-match state button and refocuses the input', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		setFilterText(containerEl, 'zzz');
+		containerEl
+			.querySelector<HTMLElement>('.pbl-empty-filter button')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		// The toolbar input is synced and refocused for the next search
+		expect(filterInput(containerEl).value).toBe('');
+		expect(document.activeElement).toBe(filterInput(containerEl));
+	});
+
+	it('clears the filter with Escape from the tree, then the selection', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		setFilterText(containerEl, 'B1');
+		key(tree, 'ArrowDown'); // select Epic B within the filtered rows
+		key(tree, 'Escape');
+		expect(filterInput(containerEl).value).toBe('');
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		// The selection survives the filter clear; a second Escape drops it
+		expect(rowByTitle(containerEl, 'Epic B').classList.contains('pbl-selected')).toBe(true);
+		key(tree, 'Escape');
+		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
+		// With nothing left to back out of, Escape is inert
+		key(tree, 'Escape');
+		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
+	});
+
+	it('focuses the filter input from the tree with "/"', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		// A modified "/" may belong to an app hotkey — leave it alone
+		key(treeOf(containerEl), '/', { ctrlKey: true });
+		expect(document.activeElement).not.toBe(filterInput(containerEl));
+
+		key(treeOf(containerEl), '/');
+		expect(document.activeElement).toBe(filterInput(containerEl));
 	});
 
 	it('keeps the input focused while filtering re-renders the tree', () => {
@@ -1011,12 +1208,14 @@ describe('quick filter', () => {
 		expect(rowByTitle(containerEl, 'Feature B1').querySelector('.pbl-match')).toBeNull();
 	});
 
-	it('pauses collapse controls while filtering', () => {
+	it('pauses collapse controls and drag affordances while filtering', () => {
 		const vault = fixture();
 		const { containerEl, config } = makeView(vault);
+		// The CSS hooks that gray out the collapse controls and hide the grips
+		expect(containerEl.querySelectorAll('.pbl-collapse-ctl')).toHaveLength(2);
 
 		setFilterText(containerEl, 'B');
-		expect(containerEl.querySelector('.pbl-toolbar')?.classList.contains('pbl-filtering')).toBe(true);
+		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-filtering')).toBe(true);
 		const writesBefore = config.setCalls.length;
 		rowByTitle(containerEl, 'Epic B')
 			.querySelector<HTMLElement>('.pbl-chevron')
@@ -1024,7 +1223,7 @@ describe('quick filter', () => {
 		expect(config.setCalls.length).toBe(writesBefore);
 
 		setFilterText(containerEl, '');
-		expect(containerEl.querySelector('.pbl-toolbar')?.classList.contains('pbl-filtering')).toBe(false);
+		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-filtering')).toBe(false);
 	});
 
 	it('jumps to the first visible child when expanding under a filter', () => {
@@ -1134,5 +1333,33 @@ describe('view state details', () => {
 		view.onDataUpdated();
 
 		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-chip')).toBeNull();
+	});
+
+	it('tolerates filter calls before the first data render', () => {
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+
+		// No model and no rendered toolbar yet — nothing to sync, nothing to focus.
+		view.setFilter('x');
+		view.focusFilter();
+
+		expect(view.filterText).toBe('x');
+	});
+
+	it('surfaces the full text of truncated titles as a tooltip', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		const truncated = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title');
+		if (!truncated) throw new Error('title missing');
+		Object.defineProperty(truncated, 'scrollWidth', { value: 300 });
+		Object.defineProperty(truncated, 'clientWidth', { value: 100 });
+		truncated.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		expect(truncated.dataset.tooltip).toBe('Epic A');
+
+		// Titles that fit stay tooltip-free (jsdom reports zero widths for both)
+		const fitting = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-title');
+		fitting?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		expect(fitting?.dataset.tooltip).toBeUndefined();
 	});
 });
