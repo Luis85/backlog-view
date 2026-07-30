@@ -894,6 +894,34 @@ describe('quick filter', () => {
 	});
 });
 
+describe('grouping advisory', () => {
+	it('flags a configured group-by as having no effect', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		expect(containerEl.querySelector('.pbl-grouping-note')).toBeNull();
+
+		(view as unknown as { data: unknown }).data = {
+			data: vault.entries(),
+			groupedData: [{ hasKey: () => true, entries: [] }],
+		};
+		view.onDataUpdated();
+
+		expect(containerEl.querySelector('.pbl-grouping-note')?.textContent).toBe('Grouping ignored');
+	});
+
+	it('stays quiet for the implicit single ungrouped group', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		(view as unknown as { data: unknown }).data = {
+			data: vault.entries(),
+			groupedData: [{ hasKey: () => false, entries: [] }],
+		};
+		view.onDataUpdated();
+
+		expect(containerEl.querySelector('.pbl-grouping-note')).toBeNull();
+	});
+});
+
 describe('toolbar count breakdown', () => {
 	it('summarizes items per level in the count tooltip', () => {
 		const vault = fixture();

@@ -154,9 +154,11 @@ Open the view options in the Bases toolbar to configure:
 
 Notes:
 
-- Leave the Base's **sort** unconfigured — the view orders items by the tree structure
-  and the `order` property.
-- **Group by** is ignored; the hierarchy is the grouping.
+- The `order` property always wins for ranked siblings. Items **without** an `order`
+  sort last — in the order the Base's **sort** setting produces, so sorting by e.g.
+  priority or modified date arranges your unranked items until you rank them.
+- **Group by** is ignored — the hierarchy is the grouping. The toolbar says so when a
+  group-by is configured.
 - Items whose `parent` links to a note outside the current filter results are shown at the
   top level with an unlink icon. Dropping such an item at the top level clears the stale
   link.

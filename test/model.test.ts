@@ -45,8 +45,9 @@ describe('buildModel', () => {
 		expect(names(model.items)).toEqual(['Epic', 'Feature', 'Story']);
 	});
 
-	it('sorts siblings by order, placing unordered items last alphabetically', () => {
+	it('sorts unordered siblings last, preserving the Base result order', () => {
 		const vault = new FakeVault();
+		// Entry order stands in for the sort the user configured in the Bases toolbar
 		vault.addFile('Zeta.md');
 		vault.addFile('Beta.md');
 		vault.addFile('First.md', { frontmatter: { order: 5 } });
@@ -54,7 +55,8 @@ describe('buildModel', () => {
 
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		expect(names(model.roots)).toEqual(['First', 'Second', 'Beta', 'Zeta']);
+		// Ranked items ignore the result order; unranked ones keep it (Zeta before Beta)
+		expect(names(model.roots)).toEqual(['First', 'Second', 'Zeta', 'Beta']);
 		expect(model.roots[1].order).toBe(7.5);
 	});
 

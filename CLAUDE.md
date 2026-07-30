@@ -81,7 +81,8 @@ code so imports stay cycle-free.
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
   at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
 - Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling
-  group renumbers. Missing orders sort last, alphabetically.
+  group renumbers. Missing orders sort last, in Bases result order (`entryIndex`) —
+  `data.data` arrives presorted by the user's Bases sort config, so never re-sort it.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
 - Writes go through `applySafely`: serialized (`applying` flag), blocked when

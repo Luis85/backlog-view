@@ -10,6 +10,11 @@ export interface BacklogItem {
 	typeName: string | null;
 	/** Numeric rank among siblings; null when the property is missing. */
 	order: number | null;
+	/**
+	 * Position in the Bases query result, which arrives with the user's configured
+	 * sort applied — the tie-break and fallback ordering for unranked items.
+	 */
+	entryIndex: number;
 	/** Resolved vault path of the parent note, if the parent link resolves. */
 	parentPath: string | null;
 	/** True when the parent property holds any value at all. */
@@ -116,6 +121,7 @@ function createItems(
 			title: file.basename,
 			typeName: readString(fm?.[settings.typeKey]),
 			order: readNumber(fm?.[settings.orderKey]),
+			entryIndex: all.length,
 			parentPath: parentRef.path,
 			hasParentValue: parentRef.hasValue,
 			parent: null,
@@ -180,7 +186,11 @@ function breakCycles(all: BacklogItem[], roots: BacklogItem[]): void {
 	}
 }
 
-/** Sort siblings by order (missing order sorts last), then by title. */
+/**
+ * Sort siblings by order; items without an order sort last, in the sequence the
+ * Bases query delivered them — which honors the sort the user configured in the
+ * Bases toolbar (file name by default).
+ */
 function sortSiblingsDeep(list: BacklogItem[]): void {
 	list.sort(compareSiblings);
 	for (const item of list) sortSiblingsDeep(item.children);
@@ -190,7 +200,7 @@ function compareSiblings(a: BacklogItem, b: BacklogItem): number {
 	const ao = a.order ?? Number.POSITIVE_INFINITY;
 	const bo = b.order ?? Number.POSITIVE_INFINITY;
 	if (ao !== bo) return ao < bo ? -1 : 1;
-	return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+	return a.entryIndex - b.entryIndex;
 }
 
 /** Assign visual depth, semantic level and rollup counts over the full tree. */

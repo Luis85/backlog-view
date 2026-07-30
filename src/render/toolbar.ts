@@ -49,6 +49,12 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderFocusChip(host, barEl, model);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
+	if (host.groupingIgnored) {
+		const note = barEl.createDiv({ cls: 'pbl-grouping-note' });
+		setIcon(note.createSpan({ cls: 'pbl-grouping-note-icon' }), 'info');
+		note.createSpan({ text: 'Grouping ignored' });
+		setTooltip(note, 'The hierarchy is the grouping — the group by setting has no effect in this view.');
+	}
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
 		const warn = barEl.createDiv({ cls: 'pbl-config-warning', attr: { 'aria-label': problems.join(' ') } });

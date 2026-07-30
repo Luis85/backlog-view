@@ -20,6 +20,8 @@ export interface BacklogViewHost {
 	readonly selectedPath: string | null;
 	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
 	readonly filterText: string;
+	/** True when the Base has a group-by configured, which this view does not apply. */
+	readonly groupingIgnored: boolean;
 
 	/** True when the quick filter hides this item; always false without a filter. */
 	isFilteredOut(item: BacklogItem): boolean;

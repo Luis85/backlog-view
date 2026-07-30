@@ -31,6 +31,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	model: BacklogModel | null = null;
 	selectedPath: string | null = null;
 	filterText = '';
+	groupingIgnored = false;
 	private collapsedPaths = new Set<string>();
 	/** Paths visible under the active filter; null when no filter is set. */
 	private filterVisible: Set<string> | null = null;
@@ -66,9 +67,21 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	onDataUpdated(): void {
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
+		this.groupingIgnored = this.detectIgnoredGrouping();
 		this.restoreCollapsedState();
 		this.recomputeFilter();
 		this.render();
+	}
+
+	/** The hierarchy is this view's grouping; surface that a configured group-by has no effect. */
+	private detectIgnoredGrouping(): boolean {
+		try {
+			const groups = this.data?.groupedData;
+			if (!groups || groups.length === 0) return false;
+			return groups.length > 1 || groups[0].hasKey();
+		} catch {
+			return false;
+		}
 	}
 
 	// ------------------------------------------------------------- quick filter
