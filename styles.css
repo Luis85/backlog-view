@@ -1,0 +1,665 @@
+/* ========================================================================== */
+/* Product Backlog — Bases view                                               */
+/* ========================================================================== */
+
+.pbl-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ toolbar */
+
+.pbl-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-1);
+	row-gap: var(--size-4-1);
+	padding: var(--size-4-2) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex: 0 0 auto;
+}
+
+.pbl-new-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-btn-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-btn-icon .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.pbl-icon-btn {
+	flex: 0 0 auto;
+}
+
+/* Collapse state is overridden while filtering — the controls pause with it */
+.pbl-toolbar.pbl-filtering [aria-label='Expand all'],
+.pbl-toolbar.pbl-filtering [aria-label='Collapse all'] {
+	opacity: 0.4;
+	pointer-events: none;
+}
+
+.pbl-toolbar-spacer {
+	flex: 1 1 auto;
+}
+
+.pbl-toolbar-sep {
+	width: 1px;
+	height: 16px;
+	background-color: var(--background-modifier-border);
+	flex: 0 0 auto;
+}
+
+.pbl-filter {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-4-1);
+	margin-left: var(--size-4-1);
+}
+
+.pbl-filter:focus-within {
+	border-color: var(--interactive-accent);
+}
+
+.pbl-filter-icon {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.pbl-filter-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-filter-input {
+	border: none;
+	outline: none;
+	background: transparent;
+	box-shadow: none;
+	width: 130px;
+	height: 24px;
+	padding: 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.pbl-filter-input::placeholder {
+	color: var(--text-faint);
+}
+
+.pbl-filter-clear {
+	display: none;
+	flex: 0 0 auto;
+	padding: 0;
+}
+
+.pbl-filter.pbl-filter-active .pbl-filter-clear {
+	display: flex;
+}
+
+.pbl-filter-clear .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* Cue that a focus level is narrowing the tree, with a one-click way out */
+.pbl-focus-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--interactive-accent);
+	background-color: hsla(var(--interactive-accent-hsl), 0.12);
+	border-radius: var(--radius-l);
+	padding: 0 var(--size-2-1) 0 var(--size-4-1);
+	line-height: 1.9;
+	white-space: nowrap;
+}
+
+.pbl-focus-chip-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-focus-chip-icon .svg-icon {
+	width: 11px;
+	height: 11px;
+}
+
+.pbl-focus-clear {
+	padding: 0;
+}
+
+.pbl-focus-clear .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-empty-filter {
+	padding: var(--size-4-4);
+	text-align: center;
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-count-label {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	padding-right: var(--size-4-1);
+}
+
+.pbl-grouping-note {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	cursor: help;
+}
+
+.pbl-grouping-note-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-grouping-note-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-config-warning {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: rgb(var(--color-orange-rgb));
+	background-color: rgba(var(--color-orange-rgb), 0.12);
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-4-1);
+	cursor: help;
+}
+
+.pbl-warning-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-warning-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* --------------------------------------------------------------------- tree */
+
+.pbl-tree {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	padding: var(--size-4-2) var(--size-4-2) var(--size-4-4);
+}
+
+.pbl-row {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	min-height: 30px;
+	padding: var(--size-2-1) var(--size-4-1);
+	padding-left: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	user-select: none;
+}
+
+.pbl-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-row.pbl-selected {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+/* A move has been written and the view is waiting for the Bases refresh */
+.pbl-row.pbl-pending {
+	opacity: 0.45;
+	animation: pbl-pending-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes pbl-pending-pulse {
+	from {
+		opacity: 0.45;
+	}
+	to {
+		opacity: 0.7;
+	}
+}
+
+/* The matching part of a title while the quick filter is active */
+.pbl-match {
+	background-color: hsla(var(--interactive-accent-hsl), 0.25);
+	border-radius: 2px;
+}
+
+.pbl-tree:focus-visible {
+	outline: none;
+}
+
+.pbl-tree:focus-visible .pbl-row.pbl-selected {
+	background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+
+.pbl-grip {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+	cursor: grab;
+	flex: 0 0 auto;
+}
+
+.pbl-row:hover .pbl-grip {
+	opacity: 1;
+}
+
+.pbl-grip .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	flex: 0 0 auto;
+	transition: transform 100ms ease-in-out;
+}
+
+.pbl-chevron:not(.pbl-leaf):hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-chevron.pbl-expanded {
+	transform: rotate(90deg);
+}
+
+.pbl-chevron .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.pbl-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex: 0 1 auto;
+	min-width: 60px;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.pbl-row:hover .pbl-title {
+	color: var(--text-accent);
+}
+
+.pbl-orphan {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+	flex: 0 0 auto;
+}
+
+.pbl-orphan .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-count {
+	flex: 0 0 auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+	border-radius: var(--radius-l);
+	padding: 0 var(--size-4-1);
+	min-width: 20px;
+	text-align: center;
+}
+
+/* Done items dim out; the title gets a subtle strike-through. */
+.pbl-row.pbl-done .pbl-title {
+	color: var(--text-faint);
+	text-decoration: line-through;
+	text-decoration-color: var(--text-faint);
+}
+
+.pbl-row.pbl-done .pbl-badge {
+	opacity: 0.6;
+}
+
+/* Rollup progress on parent rows when a state property is configured */
+.pbl-progress {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex: 0 0 auto;
+}
+
+.pbl-progress-bar {
+	width: 48px;
+	height: 5px;
+	border-radius: 3px;
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.pbl-progress-fill {
+	width: var(--pbl-progress, 0%);
+	height: 100%;
+	border-radius: 3px;
+	background-color: rgb(var(--color-green-rgb));
+}
+
+.pbl-progress-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	min-width: 28px;
+	text-align: right;
+}
+
+.pbl-add {
+	flex: 0 0 auto;
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+.pbl-row:hover .pbl-add {
+	opacity: 1;
+}
+
+.pbl-add .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* ------------------------------------------------------------------- badges */
+
+.pbl-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-2-1);
+	flex: 0 0 auto;
+	/* A shared minimum keeps titles starting at an even column for the default level names */
+	min-width: 58px;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	line-height: 1.6;
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	border: 1px solid transparent;
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+	white-space: nowrap;
+}
+
+.pbl-badge-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-badge-icon .svg-icon {
+	width: 11px;
+	height: 11px;
+}
+
+.pbl-lvl-0 { --pbl-badge-rgb: var(--color-orange-rgb); }
+.pbl-lvl-1 { --pbl-badge-rgb: var(--color-purple-rgb); }
+.pbl-lvl-2 { --pbl-badge-rgb: var(--color-blue-rgb); }
+.pbl-lvl-3 { --pbl-badge-rgb: var(--color-yellow-rgb); }
+.pbl-lvl-4 { --pbl-badge-rgb: var(--color-green-rgb); }
+.pbl-lvl-5 { --pbl-badge-rgb: var(--color-cyan-rgb); }
+.pbl-lvl-6 { --pbl-badge-rgb: var(--color-pink-rgb); }
+.pbl-lvl-7 { --pbl-badge-rgb: var(--color-red-rgb); }
+
+.pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
+	color: rgb(var(--pbl-badge-rgb));
+	background-color: rgba(var(--pbl-badge-rgb), 0.14);
+}
+
+.pbl-badge.pbl-implied {
+	background-color: transparent;
+	border-color: rgba(var(--pbl-badge-rgb, 128, 128, 128), 0.4);
+	border-style: dashed;
+	opacity: 0.8;
+}
+
+/* -------------------------------------------------------------------- chips */
+
+.pbl-chips {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	margin-left: var(--size-4-2);
+	/* Overflowing chips fade out instead of clipping hard */
+	-webkit-mask-image: linear-gradient(90deg, black calc(100% - 16px), transparent);
+	mask-image: linear-gradient(90deg, black calc(100% - 16px), transparent);
+}
+
+.pbl-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	max-width: 220px;
+	overflow: hidden;
+	white-space: nowrap;
+	font-size: var(--font-ui-smaller);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-4-1);
+	line-height: 1.7;
+	flex: 0 0 auto;
+}
+
+.pbl-chip-label {
+	color: var(--text-faint);
+}
+
+.pbl-chip-value {
+	color: var(--text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pbl-chip-value p {
+	margin: 0;
+	display: inline;
+}
+
+/* Indent guides connect each child group to its parent's chevron column */
+.pbl-children {
+	position: relative;
+}
+
+.pbl-children::before {
+	content: '';
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	left: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px + 26px);
+	width: 1px;
+	background-color: var(--background-modifier-border);
+	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pbl-grip,
+	.pbl-add,
+	.pbl-chevron {
+		transition: none;
+	}
+
+	.pbl-row.pbl-pending {
+		animation: none;
+	}
+}
+
+/* Touch devices: no hover to reveal controls, and targets need to be larger */
+@media (hover: none) {
+	.pbl-grip {
+		display: none;
+	}
+
+	.pbl-add {
+		opacity: 1;
+	}
+
+	.pbl-row {
+		min-height: 40px;
+	}
+
+	.pbl-chevron {
+		width: 24px;
+		height: 24px;
+	}
+}
+
+/* ------------------------------------------------------------- drag & drop */
+
+.pbl-row.pbl-drag-source {
+	opacity: 0.35;
+}
+
+.pbl-row.pbl-drop-before::before,
+.pbl-row.pbl-drop-after::after {
+	content: '';
+	position: absolute;
+	left: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px);
+	right: var(--size-4-1);
+	height: 2px;
+	border-radius: 1px;
+	background-color: var(--interactive-accent);
+	pointer-events: none;
+	z-index: 10;
+}
+
+.pbl-row.pbl-drop-before::before {
+	top: -1px;
+}
+
+.pbl-row.pbl-drop-after::after {
+	bottom: -1px;
+}
+
+.pbl-row.pbl-drop-inside {
+	box-shadow: inset 0 0 0 2px var(--interactive-accent);
+	background-color: hsla(var(--interactive-accent-hsl), 0.1);
+}
+
+.pbl-root-drop {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-4-2);
+	margin: var(--size-4-2);
+	padding: var(--size-4-2);
+	border: 2px dashed var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	flex: 0 0 auto;
+}
+
+.pbl-view.pbl-dragging:not(.pbl-focused) .pbl-root-drop {
+	display: flex;
+}
+
+.pbl-new-pick {
+	margin-left: calc(var(--size-4-1) * -1);
+}
+
+.pbl-new-pick .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.pbl-root-drop.pbl-drop-hover {
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+	background-color: hsla(var(--interactive-accent-hsl), 0.1);
+}
+
+.pbl-root-drop-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-root-drop-icon .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* -------------------------------------------------------------- empty state */
+
+.pbl-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
+	text-align: center;
+}
+
+.pbl-empty-icon {
+	color: var(--text-faint);
+}
+
+.pbl-empty-icon .svg-icon {
+	width: 40px;
+	height: 40px;
+}
+
+.pbl-empty-title {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+}
+
+.pbl-empty-hint {
+	max-width: 420px;
+	font-size: var(--font-ui-small);
+	color: var(--text-faint);
+}
+
+.pbl-empty button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	margin-top: var(--size-4-2);
+}

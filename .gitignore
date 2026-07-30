@@ -1,0 +1,11 @@
+# build output
+main.js
+*.js.map
+
+# dependencies
+node_modules/
+
+# misc
+.DS_Store
+data.json
+coverage/
