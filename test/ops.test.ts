@@ -139,6 +139,48 @@ describe('computeDropWrites', () => {
 		expect(writes[0].order).toBe(ORDER_SPACING);
 	});
 
+	it('cascades position-consistent types through the moved subtree', () => {
+		const { get } = fixture();
+		const dragged = get('Epic B'); // has children Feature B1, Feature B2
+		const newParent = get('Epic A');
+
+		const writes = computeDropWrites(dragged, { parent: newParent, siblings: [], insertIndex: 0 }, settings);
+
+		expect(writes).toHaveLength(3);
+		expect(writes[0].file.path).toBe('Epic B.md');
+		expect(writes[0].typeName).toBe('Feature');
+		const childWrites = writes.slice(1);
+		expect(childWrites.map((w) => w.file.path).sort()).toEqual(['Feature B1.md', 'Feature B2.md']);
+		for (const w of childWrites) {
+			expect(w.typeName).toBe('PBI');
+			// Cascade writes touch only the type
+			expect(w.parent).toBeUndefined();
+			expect(w.order).toBeUndefined();
+		}
+	});
+
+	it('cascade skips untyped descendants and does not fire without autoType', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Untyped Child.md', { parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
+		const epicA = model.roots.find((r) => r.title === 'Epic A') as BacklogItem;
+
+		// Untyped child self-heals through implication — no cascade write for it
+		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, settings);
+		expect(writes).toHaveLength(1);
+
+		const writesOff = computeDropWrites(
+			dragged,
+			{ parent: epicA, siblings: [], insertIndex: 0 },
+			{ ...settings, autoType: false },
+		);
+		expect(writesOff).toHaveLength(1);
+		expect(writesOff[0].typeName).toBeUndefined();
+	});
+
 	it('does not rewrite the type when autoType is off or already correct', () => {
 		const { get } = fixture();
 		const noAuto = { ...settings, autoType: false };
@@ -241,6 +283,38 @@ describe('computeInitWrites', () => {
 		vault.addFile('Done.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		expect(computeInitWrites(model, settings)).toHaveLength(0);
+	});
+
+	it('does not write a type for items whose parent is outside the view', () => {
+		const vault = new FakeVault();
+		vault.addFile('Orphan.md', { parentLink: 'Missing' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		const writes = computeInitWrites(model, settings);
+
+		// The orphan's real level is unknowable: it gets an order, never a type.
+		expect(writes).toHaveLength(1);
+		expect(writes[0].order).toBe(ORDER_SPACING);
+		expect(writes[0].typeName).toBeUndefined();
+	});
+
+	it('assigns no orders to the synthetic top row of a focused view', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feat.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Story.md', { parentLink: 'Feat' });
+		const focusSettings = { ...settings, focusLevel: 'Feature' };
+		const model = buildModel(vault.app, vault.entries(), focusSettings);
+		expect(model.focused).toBe(true);
+
+		const writes = computeInitWrites(model, focusSettings);
+
+		// Feat has no order, but the focused top row spans different real parents —
+		// only its untyped child gets backfilled.
+		expect(writes).toHaveLength(1);
+		expect(writes[0].file.path).toBe('Story.md');
+		expect(writes[0].typeName).toBe('PBI');
+		expect(writes[0].order).toBe(ORDER_SPACING);
 	});
 });
 

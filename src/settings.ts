@@ -13,9 +13,16 @@ export interface BacklogSettings {
 	showChips: boolean;
 	showCounts: boolean;
 	newItemFolder: string;
+	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
+	focusLevel: string;
+	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
+	stateKey: string;
+	/** State values (case-insensitive) that count as done. */
+	doneValues: string[];
 }
 
 export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
+export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
 
 export function defaultSettings(): BacklogSettings {
 	return {
@@ -27,6 +34,9 @@ export function defaultSettings(): BacklogSettings {
 		showChips: true,
 		showCounts: true,
 		newItemFolder: '',
+		focusLevel: '',
+		stateKey: '',
+		doneValues: [...DEFAULT_DONE_VALUES],
 	};
 }
 
@@ -38,7 +48,18 @@ export function levelForDepth(levels: string[], depth: number): string {
 const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
 
 /** Options shown in the Bases toolbar "view options" menu. */
-export function getViewOptions(): BasesAllOptions[] {
+export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
+	let levels = [...DEFAULT_LEVELS];
+	if (config) {
+		try {
+			levels = resolveSettings(config).levels;
+		} catch (e) {
+			// fall back to the default level names
+		}
+	}
+	const focusOptions: Record<string, string> = { '': 'All levels' };
+	for (const level of levels) focusOptions[level] = level;
+
 	return [
 		{
 			type: 'group',
@@ -76,10 +97,37 @@ export function getViewOptions(): BasesAllOptions[] {
 					placeholder: DEFAULT_LEVELS.join(', '),
 				},
 				{
+					type: 'dropdown',
+					key: 'focusLevel',
+					displayName: 'Focus level',
+					default: '',
+					options: focusOptions,
+				},
+				{
 					type: 'toggle',
 					key: 'autoAssignType',
 					displayName: 'Assign item type when moving',
 					default: true,
+				},
+			],
+		},
+		{
+			type: 'group',
+			displayName: 'Progress',
+			items: [
+				{
+					type: 'property',
+					key: 'stateProperty',
+					displayName: 'State property',
+					placeholder: 'status',
+					filter: notePropsOnly,
+				},
+				{
+					type: 'text',
+					key: 'doneValues',
+					displayName: 'States that count as done',
+					default: DEFAULT_DONE_VALUES.join(', '),
+					placeholder: DEFAULT_DONE_VALUES.join(', '),
 				},
 			],
 		},
@@ -140,11 +188,14 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		const v = config.get(key);
 		return typeof v === 'boolean' ? v : def;
 	};
+	const list = (key: string): string[] =>
+		str(key)
+			.split(',')
+			.map((s) => s.trim())
+			.filter((s) => s.length > 0);
 
-	const levels = str('levels')
-		.split(',')
-		.map((s) => s.trim())
-		.filter((s) => s.length > 0);
+	const levels = list('levels');
+	const doneValues = list('doneValues');
 
 	return {
 		parentKey: propKey('parentProperty', fallback.parentKey),
@@ -155,5 +206,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
 		newItemFolder: str('newItemFolder').trim().replace(/^\/+|\/+$/g, ''),
+		focusLevel: str('focusLevel').trim(),
+		stateKey: propKey('stateProperty', fallback.stateKey),
+		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
 	};
 }

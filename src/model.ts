@@ -16,26 +16,38 @@ export interface BacklogItem {
 	hasParentValue: boolean;
 	parent: BacklogItem | null;
 	children: BacklogItem[];
+	/** Visual depth in the rendered tree (0 for rendered roots, focused or not). */
 	depth: number;
 	/** Index into settings.levels; -1 when typeName doesn't match any configured level. */
 	levelIndex: number;
-	/** True when the level was derived from tree depth because typeName is missing. */
+	/** True when the level was derived from the parent chain because typeName is missing. */
 	impliedType: boolean;
 	/** True when a parent value exists but doesn't resolve to an item in this view. */
 	orphan: boolean;
+	/** True when this item heads the rendered tree only because of the focus level. */
+	focusRoot: boolean;
 	descendantCount: number;
+	/** Raw value of the state property, if progress tracking is configured. */
+	stateValue: string | null;
+	/** True when the state value matches one of the configured done values. */
+	done: boolean;
+	/** Number of descendants counting as done. */
+	doneDescendants: number;
 }
 
 export interface BacklogModel {
 	roots: BacklogItem[];
 	byPath: Map<string, BacklogItem>;
-	/** All items in depth-first (visual) order. */
+	/** All rendered items in depth-first (visual) order. */
 	items: BacklogItem[];
+	/** True when a focus level restricts the rendered tree. */
+	focused: boolean;
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
 	const byPath = new Map<string, BacklogItem>();
 	const all: BacklogItem[] = [];
+	const doneValues = new Set(settings.doneValues.map((v) => v.toLowerCase()));
 
 	for (const entry of entries) {
 		const file = entry.file;
@@ -43,6 +55,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		if (!file || file.extension !== 'md' || byPath.has(file.path)) continue;
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
 		const parentRef = resolveParent(app, file, settings.parentKey);
+		const stateValue = settings.stateKey ? readString(fm?.[settings.stateKey]) : null;
 		const item: BacklogItem = {
 			file,
 			entry,
@@ -57,7 +70,11 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 			levelIndex: 0,
 			impliedType: false,
 			orphan: false,
+			focusRoot: false,
 			descendantCount: 0,
+			stateValue,
+			done: stateValue !== null && doneValues.has(stateValue.toLowerCase()),
+			doneDescendants: 0,
 		};
 		byPath.set(file.path, item);
 		all.push(item);
@@ -114,22 +131,64 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	};
 	sortDeep(roots);
 
-	// Assign depth, level and descendant counts in visual order.
+	// Assign visual depth, semantic level, and rollup counts over the full tree.
+	const assignAll = (renderedRoots: BacklogItem[]): BacklogItem[] => {
+		const items: BacklogItem[] = [];
+		const assign = (item: BacklogItem, depth: number) => {
+			item.depth = depth;
+			computeLevel(item, settings);
+			items.push(item);
+			let count = 0;
+			let done = 0;
+			for (const child of item.children) {
+				assign(child, depth + 1);
+				count += 1 + child.descendantCount;
+				done += (child.done ? 1 : 0) + child.doneDescendants;
+			}
+			item.descendantCount = count;
+			item.doneDescendants = done;
+		};
+		for (const root of renderedRoots) assign(root, 0);
+		return items;
+	};
+	let items = assignAll(roots);
+
+	// A focus level re-roots the rendered tree at the topmost items of that level,
+	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
+	const focusIdx = settings.focusLevel
+		? settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase())
+		: -1;
+	if (focusIdx >= 0) {
+		const focusRoots: BacklogItem[] = [];
+		const collect = (list: BacklogItem[]) => {
+			for (const item of list) {
+				if (item.levelIndex === focusIdx) {
+					item.focusRoot = true;
+					focusRoots.push(item);
+				} else {
+					collect(item.children);
+				}
+			}
+		};
+		collect(roots);
+		// Re-run the visual pass only: levels stay semantic because they derive from
+		// the type property and the (unchanged) parent chain, not from visual depth.
+		items = assignVisualDepth(focusRoots);
+		return { roots: focusRoots, byPath, items, focused: true };
+	}
+
+	return { roots, byPath, items, focused: false };
+}
+
+function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 	const items: BacklogItem[] = [];
 	const assign = (item: BacklogItem, depth: number) => {
 		item.depth = depth;
-		computeLevel(item, settings);
 		items.push(item);
-		let count = 0;
-		for (const child of item.children) {
-			assign(child, depth + 1);
-			count += 1 + child.descendantCount;
-		}
-		item.descendantCount = count;
+		for (const child of item.children) assign(child, depth + 1);
 	};
-	for (const root of roots) assign(root, 0);
-
-	return { roots, byPath, items };
+	for (const root of renderedRoots) assign(root, 0);
+	return items;
 }
 
 /** The level name to show on an item's badge. */
@@ -138,13 +197,25 @@ export function displayType(item: BacklogItem, settings: BacklogSettings): strin
 	return item.typeName ?? '';
 }
 
+/**
+ * Level index a child of `parent` should get: one below the parent's level,
+ * clamped to the deepest configured level. Top-level items get level 0.
+ */
+export function childLevelIndex(parent: BacklogItem | null, levels: string[]): number {
+	if (!parent) return 0;
+	const parentIdx = parent.levelIndex >= 0 ? parent.levelIndex : Math.min(parent.depth, levels.length - 1);
+	return Math.min(parentIdx + 1, levels.length - 1);
+}
+
 function computeLevel(item: BacklogItem, settings: BacklogSettings): void {
 	if (item.typeName !== null) {
 		const name = item.typeName.toLowerCase();
 		item.levelIndex = settings.levels.findIndex((l) => l.toLowerCase() === name);
 		item.impliedType = false;
 	} else {
-		item.levelIndex = Math.min(item.depth, settings.levels.length - 1);
+		// No type property: imply the level from the parent chain. The parent is
+		// processed first (pre-order), so its level is already resolved.
+		item.levelIndex = childLevelIndex(item.parent, settings.levels);
 		item.impliedType = true;
 	}
 }

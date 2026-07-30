@@ -1,6 +1,6 @@
 import { App, TFile } from 'obsidian';
-import { BacklogItem, BacklogModel } from './model';
-import { BacklogSettings, levelForDepth } from './settings';
+import { BacklogItem, BacklogModel, childLevelIndex } from './model';
+import { BacklogSettings } from './settings';
 
 /** Spacing between freshly assigned order values, leaving room to drop items in between. */
 export const ORDER_SPACING = 10;
@@ -60,12 +60,27 @@ export function computeDropWrites(
 	const parentField: TFile | null | undefined = parentChanged ? (parent ? parent.file : null) : undefined;
 
 	let typeField: string | undefined;
+	const cascade: ItemWrite[] = [];
 	if (parentChanged && settings.autoType) {
-		const newDepth = parent ? parent.depth + 1 : 0;
-		const implied = levelForDepth(settings.levels, newDepth);
+		const newBaseIdx = childLevelIndex(parent, settings.levels);
+		const implied = settings.levels[newBaseIdx];
 		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
 			typeField = implied;
 		}
+		// Retype explicitly typed descendants for their new position so a subtree
+		// move cannot leave inconsistent hierarchy metadata. Untyped descendants
+		// need no write — their level is implied from the parent chain.
+		const lastIdx = settings.levels.length - 1;
+		const walk = (node: BacklogItem) => {
+			for (const child of node.children) {
+				const target = settings.levels[Math.min(newBaseIdx + (child.depth - dragged.depth), lastIdx)];
+				if (child.typeName !== null && child.typeName.toLowerCase() !== target.toLowerCase()) {
+					cascade.push({ file: child.file, typeName: target });
+				}
+				walk(child);
+			}
+		};
+		walk(dragged);
 	}
 
 	const prev = insertIndex > 0 ? siblings[insertIndex - 1] : null;
@@ -87,7 +102,7 @@ export function computeDropWrites(
 	}
 
 	if (order !== null) {
-		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }];
+		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
 	}
 
 	// Renumber the whole sibling group, including the dragged item at its new position.
@@ -102,16 +117,18 @@ export function computeDropWrites(
 			writes.push({ file: item.file, order: slot });
 		}
 	});
-	return writes;
+	return [...writes, ...cascade];
 }
 
 /**
  * Fill in missing order and type properties across the whole tree without
- * touching values that already exist.
+ * touching values that already exist. In focus mode the top row of the tree
+ * is a synthetic grouping of items from different real parents, so no order
+ * values are assigned at that level.
  */
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
 	const writes: ItemWrite[] = [];
-	const visit = (siblings: BacklogItem[]) => {
+	const visit = (siblings: BacklogItem[], skipOrders: boolean) => {
 		let maxOrder = 0;
 		for (const item of siblings) {
 			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;
@@ -119,20 +136,23 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		for (const item of siblings) {
 			const write: ItemWrite = { file: item.file };
 			let needed = false;
-			if (item.order === null) {
+			if (item.order === null && !skipOrders) {
 				maxOrder = Math.floor(maxOrder) + ORDER_SPACING;
 				write.order = maxOrder;
 				needed = true;
 			}
-			if (item.typeName === null) {
-				write.typeName = levelForDepth(settings.levels, item.depth);
+			// An unresolved parent link means the item's real level is unknowable —
+			// don't write a type derived from its provisional top-level position.
+			const levelUnknown = item.parent === null && item.hasParentValue;
+			if (item.typeName === null && !levelUnknown) {
+				write.typeName = settings.levels[childLevelIndex(item.parent, settings.levels)];
 				needed = true;
 			}
 			if (needed) writes.push(write);
-			visit(item.children);
+			visit(item.children, false);
 		}
 	};
-	visit(model.roots);
+	visit(model.roots, model.focused);
 	return writes;
 }
 

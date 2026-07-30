@@ -11,7 +11,7 @@ import {
 	setTooltip,
 } from 'obsidian';
 import { TitlePromptModal } from './modal';
-import { BacklogItem, BacklogModel, buildModel, displayType } from './model';
+import { BacklogItem, BacklogModel, buildModel, childLevelIndex, displayType } from './model';
 import {
 	applyWrites,
 	computeDropWrites,
@@ -21,12 +21,14 @@ import {
 	ItemWrite,
 	ORDER_SPACING,
 } from './ops';
-import { BacklogSettings, defaultSettings, levelForDepth, resolveSettings } from './settings';
+import { BacklogSettings, defaultSettings, resolveSettings } from './settings';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 const BADGE_COLOR_COUNT = 8;
 const COLLAPSED_CONFIG_KEY = 'collapsedItems';
+/** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
+const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
 type DropZone = 'before' | 'after' | 'inside';
 
 export class ProductBacklogView extends BasesView {
@@ -115,6 +117,7 @@ export class ProductBacklogView extends BasesView {
 		const model = this.model;
 		if (!model) return;
 		this.activeDropRow = null;
+		this.viewEl.toggleClass('pbl-focused', model.focused);
 
 		this.renderToolbar(model);
 
@@ -132,11 +135,23 @@ export class ProductBacklogView extends BasesView {
 		const bar = this.toolbarEl;
 		bar.empty();
 
-		const topLevel = this.settings.levels[0];
+		const newLevel = this.newItemLevel(model);
 		const newBtn = bar.createEl('button', { cls: 'pbl-new-btn' });
 		setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
-		newBtn.createSpan({ text: `New ${topLevel}` });
-		newBtn.addEventListener('click', () => this.promptCreate(topLevel, null));
+		newBtn.createSpan({ text: `New ${newLevel}` });
+		newBtn.addEventListener('click', () => this.promptCreate(newLevel, null));
+
+		const pickBtn = this.iconButton(bar, 'chevron-down', 'New item of another type', () => undefined);
+		pickBtn.addClass('pbl-new-pick');
+		pickBtn.addEventListener('click', (evt) => {
+			const menu = new Menu();
+			for (const level of this.settings.levels) {
+				menu.addItem((mi) =>
+					mi.setTitle(`New ${level}`).setIcon('plus').onClick(() => this.promptCreate(level, null)),
+				);
+			}
+			menu.showAtMouseEvent(evt);
+		});
 
 		this.iconButton(bar, 'sparkles', 'Assign missing type and order properties', () => {
 			void this.runInit();
@@ -159,6 +174,17 @@ export class ProductBacklogView extends BasesView {
 		bar.createSpan({ cls: 'pbl-count-label', text: `${count} item${count === 1 ? '' : 's'}` });
 	}
 
+	/** Level for the toolbar's primary New button: the focus level when active, else the top level. */
+	private newItemLevel(model: BacklogModel): string {
+		if (model.focused && this.settings.focusLevel) {
+			const idx = this.settings.levels.findIndex(
+				(l) => l.toLowerCase() === this.settings.focusLevel.toLowerCase(),
+			);
+			if (idx >= 0) return this.settings.levels[idx];
+		}
+		return this.settings.levels[0];
+	}
+
 	private iconButton(parent: HTMLElement, icon: string, label: string, onClick: () => void): HTMLElement {
 		const btn = parent.createDiv({ cls: 'clickable-icon pbl-icon-btn', attr: { 'aria-label': label } });
 		setIcon(btn, icon);
@@ -168,13 +194,20 @@ export class ProductBacklogView extends BasesView {
 	}
 
 	private renderEmptyState(): void {
-		const topLevel = this.settings.levels[0];
+		const model = this.model;
+		const focused = model?.focused ?? false;
+		const topLevel = focused && model ? this.newItemLevel(model) : this.settings.levels[0];
 		const empty = this.treeEl.createDiv({ cls: 'pbl-empty' });
 		setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'list-tree');
-		empty.createDiv({ cls: 'pbl-empty-title', text: 'No backlog items' });
+		empty.createDiv({
+			cls: 'pbl-empty-title',
+			text: focused ? `No ${topLevel} items` : 'No backlog items',
+		});
 		empty.createDiv({
 			cls: 'pbl-empty-hint',
-			text: `Point this Base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`,
+			text: focused
+				? `Nothing at the "${topLevel}" level matches this view. Switch the focus level back to "All levels" in the view options, or create a ${topLevel}.`
+				: `Point this Base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`,
 		});
 		const btn = empty.createEl('button', { cls: 'mod-cta' });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
@@ -185,7 +218,7 @@ export class ProductBacklogView extends BasesView {
 	private renderItem(containerEl: HTMLElement, item: BacklogItem): void {
 		const hasChildren = item.children.length > 0;
 		const collapsed = this.collapsedPaths.has(item.file.path);
-		const childLevel = levelForDepth(this.settings.levels, item.depth + 1);
+		const childLevel = this.settings.levels[childLevelIndex(item, this.settings.levels)];
 
 		const selected = this.selectedPath === item.file.path;
 		const row = containerEl.createDiv({
@@ -197,6 +230,7 @@ export class ProductBacklogView extends BasesView {
 			},
 		});
 		if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
+		if (item.done) row.addClass('pbl-done');
 		row.style.setProperty('--pbl-depth', String(item.depth));
 		row.dataset.path = item.file.path;
 		row.draggable = true;
@@ -216,7 +250,11 @@ export class ProductBacklogView extends BasesView {
 
 		const badgeText = displayType(item, this.settings);
 		if (badgeText) {
-			const badge = row.createSpan({ cls: 'pbl-badge', text: badgeText });
+			const badge = row.createSpan({ cls: 'pbl-badge' });
+			if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
+				setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
+			}
+			badge.createSpan({ text: badgeText });
 			if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
 			else badge.addClass('pbl-lvl-unknown');
 			if (item.impliedType) {
@@ -247,7 +285,17 @@ export class ProductBacklogView extends BasesView {
 		if (this.settings.showChips) this.renderChips(chips, item);
 		chips.addEventListener('click', (evt) => evt.stopPropagation());
 
-		if (this.settings.showCounts && item.descendantCount > 0) {
+		if (this.settings.stateKey && item.descendantCount > 0) {
+			const progress = row.createDiv({ cls: 'pbl-progress' });
+			const ratio = item.doneDescendants / item.descendantCount;
+			const bar = progress.createDiv({ cls: 'pbl-progress-bar' });
+			bar.createDiv({ cls: 'pbl-progress-fill' }).style.width = `${Math.round(ratio * 100)}%`;
+			progress.createSpan({
+				cls: 'pbl-progress-label',
+				text: `${item.doneDescendants}/${item.descendantCount}`,
+			});
+			setTooltip(progress, `${item.doneDescendants} of ${item.descendantCount} items done`);
+		} else if (this.settings.showCounts && item.descendantCount > 0) {
 			row.createSpan({ cls: 'pbl-count', text: String(item.descendantCount) });
 		}
 
@@ -427,7 +475,7 @@ export class ProductBacklogView extends BasesView {
 					this.persistCollapsedState();
 					this.render();
 					this.selectItem(current);
-				} else if (current.parent) {
+				} else if (current.parent && !current.focusRoot) {
 					select(current.parent);
 				}
 				break;
@@ -470,39 +518,42 @@ export class ProductBacklogView extends BasesView {
 
 		const siblingList = item.parent ? item.parent.children : model.roots;
 		const idx = siblingList.indexOf(item);
-		if (idx > 0) {
-			menu.addItem((mi) =>
-				mi.setTitle('Move up').setIcon('arrow-up').onClick(() => this.moveWithinSiblings(item, -1)),
-			);
-			menu.addItem((mi) =>
-				mi
-					.setTitle(`Indent under "${siblingList[idx - 1].title}"`)
-					.setIcon('indent-increase')
-					.onClick(() => this.indent(item)),
-			);
-		}
-		if (idx >= 0 && idx < siblingList.length - 1) {
-			menu.addItem((mi) =>
-				mi.setTitle('Move down').setIcon('arrow-down').onClick(() => this.moveWithinSiblings(item, 1)),
-			);
-		}
-		if (idx > 0) {
-			menu.addItem((mi) =>
-				mi.setTitle('Move to top').setIcon('arrow-up-to-line').onClick(() => this.moveToEdge(item, 'top')),
-			);
-		}
-		if (idx >= 0 && idx < siblingList.length - 1) {
-			menu.addItem((mi) =>
-				mi
-					.setTitle('Move to bottom')
-					.setIcon('arrow-down-to-line')
-					.onClick(() => this.moveToEdge(item, 'bottom')),
-			);
-		}
-		if (item.parent) {
-			menu.addItem((mi) =>
-				mi.setTitle('Outdent').setIcon('indent-decrease').onClick(() => this.outdent(item)),
-			);
+		// The top row of a focused view has no shared sibling ranking to move within.
+		if (!item.focusRoot) {
+			if (idx > 0) {
+				menu.addItem((mi) =>
+					mi.setTitle('Move up').setIcon('arrow-up').onClick(() => this.moveWithinSiblings(item, -1)),
+				);
+				menu.addItem((mi) =>
+					mi
+						.setTitle(`Indent under "${siblingList[idx - 1].title}"`)
+						.setIcon('indent-increase')
+						.onClick(() => this.indent(item)),
+				);
+			}
+			if (idx >= 0 && idx < siblingList.length - 1) {
+				menu.addItem((mi) =>
+					mi.setTitle('Move down').setIcon('arrow-down').onClick(() => this.moveWithinSiblings(item, 1)),
+				);
+			}
+			if (idx > 0) {
+				menu.addItem((mi) =>
+					mi.setTitle('Move to top').setIcon('arrow-up-to-line').onClick(() => this.moveToEdge(item, 'top')),
+				);
+			}
+			if (idx >= 0 && idx < siblingList.length - 1) {
+				menu.addItem((mi) =>
+					mi
+						.setTitle('Move to bottom')
+						.setIcon('arrow-down-to-line')
+						.onClick(() => this.moveToEdge(item, 'bottom')),
+				);
+			}
+			if (item.parent) {
+				menu.addItem((mi) =>
+					mi.setTitle('Outdent').setIcon('indent-decrease').onClick(() => this.outdent(item)),
+				);
+			}
 		}
 		if (!item.parent && item.hasParentValue) {
 			// Top-level item whose parent property points outside the view (or was
@@ -667,6 +718,9 @@ export class ProductBacklogView extends BasesView {
 			siblings = item.children.filter((c) => c !== dragged);
 			insertIndex = siblings.length;
 		} else {
+			// The top row of a focused view groups items from different real parents;
+			// there is no shared sibling ranking to insert into.
+			if (item.focusRoot) return null;
 			parent = item.parent;
 			const fullList = parent ? parent.children : model.roots;
 			siblings = fullList.filter((c) => c !== dragged);
@@ -688,7 +742,7 @@ export class ProductBacklogView extends BasesView {
 
 	private rootDropTarget(dragged: BacklogItem): DropTarget | null {
 		const model = this.model;
-		if (!model) return null;
+		if (!model || model.focused) return null;
 		const siblings = model.roots.filter((r) => r !== dragged);
 		const alreadyLastRoot = dragged.parent === null && model.roots.indexOf(dragged) === model.roots.length - 1;
 		// The last root with a stale parent link still needs the drop target: the
@@ -768,7 +822,7 @@ export class ProductBacklogView extends BasesView {
 
 	private moveToEdge(item: BacklogItem, edge: 'top' | 'bottom'): void {
 		const model = this.model;
-		if (!model) return;
+		if (!model || item.focusRoot) return;
 		const fullList = item.parent ? item.parent.children : model.roots;
 		const idx = fullList.indexOf(item);
 		if (idx === -1 || idx === (edge === 'top' ? 0 : fullList.length - 1)) return;
@@ -779,7 +833,7 @@ export class ProductBacklogView extends BasesView {
 
 	private moveWithinSiblings(item: BacklogItem, delta: -1 | 1): void {
 		const model = this.model;
-		if (!model) return;
+		if (!model || item.focusRoot) return;
 		const fullList = item.parent ? item.parent.children : model.roots;
 		const idx = fullList.indexOf(item);
 		if (idx === -1) return;
@@ -792,7 +846,7 @@ export class ProductBacklogView extends BasesView {
 	private outdent(item: BacklogItem): void {
 		const model = this.model;
 		const parent = item.parent;
-		if (!model || !parent) return;
+		if (!model || !parent || item.focusRoot) return;
 		const grandparent = parent.parent;
 		const fullList = grandparent ? grandparent.children : model.roots;
 		const siblings = fullList.filter((s) => s !== item);
@@ -802,7 +856,7 @@ export class ProductBacklogView extends BasesView {
 
 	private indent(item: BacklogItem): void {
 		const model = this.model;
-		if (!model) return;
+		if (!model || item.focusRoot) return;
 		const fullList = item.parent ? item.parent.children : model.roots;
 		const idx = fullList.indexOf(item);
 		if (idx <= 0) return;

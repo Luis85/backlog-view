@@ -171,6 +171,46 @@
 	text-align: center;
 }
 
+/* Done items dim out; the title gets a subtle strike-through. */
+.pbl-row.pbl-done .pbl-title {
+	color: var(--text-faint);
+	text-decoration: line-through;
+	text-decoration-color: var(--text-faint);
+}
+
+.pbl-row.pbl-done .pbl-badge {
+	opacity: 0.6;
+}
+
+/* Rollup progress on parent rows when a state property is configured */
+.pbl-progress {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex: 0 0 auto;
+}
+
+.pbl-progress-bar {
+	width: 48px;
+	height: 5px;
+	border-radius: 3px;
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.pbl-progress-fill {
+	height: 100%;
+	border-radius: 3px;
+	background-color: rgb(var(--color-green-rgb));
+}
+
+.pbl-progress-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	min-width: 28px;
+	text-align: right;
+}
+
 .pbl-add {
 	flex: 0 0 auto;
 	opacity: 0;
@@ -188,6 +228,9 @@
 /* ------------------------------------------------------------------- badges */
 
 .pbl-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
 	flex: 0 0 auto;
 	font-size: var(--font-ui-smaller);
 	font-weight: var(--font-medium);
@@ -198,6 +241,16 @@
 	color: var(--text-muted);
 	background-color: var(--background-modifier-hover);
 	white-space: nowrap;
+}
+
+.pbl-badge-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-badge-icon .svg-icon {
+	width: 11px;
+	height: 11px;
 }
 
 .pbl-lvl-0 { --pbl-badge-rgb: var(--color-orange-rgb); }
@@ -310,8 +363,17 @@
 	flex: 0 0 auto;
 }
 
-.pbl-view.pbl-dragging .pbl-root-drop {
+.pbl-view.pbl-dragging:not(.pbl-focused) .pbl-root-drop {
 	display: flex;
+}
+
+.pbl-new-pick {
+	margin-left: calc(var(--size-4-1) * -1);
+}
+
+.pbl-new-pick .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
 }
 
 .pbl-root-drop.pbl-drop-hover {

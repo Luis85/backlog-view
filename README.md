@@ -26,9 +26,13 @@ Azure DevOps Boards.
   - **`type`** — the hierarchy level (`Epic`, `Feature`, `PBI`, `Task`, … configurable).
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
-  - Dragging an item writes its new `parent` and `order` (and, optionally, its new `type`).
+  - Dragging an item writes its new `parent` and `order` (and, optionally, its new `type` —
+    including consistent types for the explicitly-typed items of a moved subtree).
+  - Items without a `type` show a level implied from their parent's type (a child of a
+    Feature reads as a PBI, wherever that Feature sits).
   - The toolbar's ✨ **Assign missing properties** button backfills `type` and `order` for
-    notes that don't have them yet, without overwriting existing values.
+    notes that don't have them yet, without overwriting existing values — and never
+    guesses a type for items whose parent is outside the view.
 
 ## Requirements
 
@@ -71,8 +75,23 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
 | Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
 | Create a child item | Hover a row and click **+**, or use the context menu |
+| Create any level at the top | Toolbar **New** button, or the **▾** menu next to it for other levels |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type |
+
+### Focus on one backlog level
+
+Like the separate Epics / Features / Stories backlogs in Azure DevOps, the **Focus level**
+option re-roots the tree at any level: pick *Feature* and every feature becomes a top-level
+row with its PBIs and tasks below it. Items keep their real parents — re-parenting by
+dropping *into* a row still works — but the top row of a focused view has no shared
+ranking, so reordering, indent/outdent and the top-level drop strip are disabled there.
+
+### Progress rollup
+
+Set the **State property** (e.g. `status`) in the view options and parents show a
+progress bar with a done count (e.g. `3/7`), while done items dim out. Which values count
+as done is configurable (`Done, Closed, Completed, Removed` by default, case-insensitive).
 
 While dragging, hovering the middle of a collapsed row briefly expands it so you can drop
 deeper into the tree. Dropping an item onto its own descendant is prevented. Which items
@@ -108,11 +127,14 @@ Open the view options in the Bases toolbar to configure:
 | Parent property | `parent` | Note property that links to the parent item |
 | Order property | `order` | Numeric sibling rank |
 | Item type property | `type` | Hierarchy level of the item |
-| Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors |
-| Assign item type when moving | on | Rewrite `type` to match the level an item is dropped into |
+| Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors and icons |
+| Focus level | All levels | Re-root the tree at one level, like ADO's per-level backlogs |
+| Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
+| State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
+| States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
 | Folder for new items | *(inferred)* | Where the view creates new notes; defaults to the folder most items live in |
 | Show visible properties on rows | on | Render the Base's visible properties as chips |
-| Show descendant counts | on | Show the number of items below each parent |
+| Show descendant counts | on | Show the number of items below each parent (replaced by the progress rollup when a state property is set) |
 
 Notes:
 

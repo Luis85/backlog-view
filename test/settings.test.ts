@@ -81,11 +81,34 @@ describe('getViewOptions', () => {
 				'orderProperty',
 				'typeProperty',
 				'levels',
+				'focusLevel',
 				'autoAssignType',
+				'stateProperty',
+				'doneValues',
 				'newItemFolder',
 				'showProperties',
 				'showCounts',
 			]),
 		);
+	});
+
+	it('builds the focus dropdown from the configured levels', () => {
+		const flat = getViewOptions(fakeConfig({ levels: 'Theme, Story' })).flatMap((o) =>
+			'items' in o ? o.items : [o],
+		);
+		const focus = flat.find((o) => o.key === 'focusLevel') as { options: Record<string, string> };
+		expect(Object.keys(focus.options)).toEqual(['', 'Theme', 'Story']);
+	});
+});
+
+describe('resolveSettings progress options', () => {
+	it('parses done values and falls back to the defaults', () => {
+		const custom = resolveSettings(fakeConfig({ stateProperty: 'note.status', doneValues: 'Shipped, Won’t do' }));
+		expect(custom.stateKey).toBe('status');
+		expect(custom.doneValues).toEqual(['Shipped', 'Won’t do']);
+
+		const defaults = resolveSettings(fakeConfig());
+		expect(defaults.stateKey).toBe('');
+		expect(defaults.doneValues.length).toBeGreaterThan(0);
 	});
 });

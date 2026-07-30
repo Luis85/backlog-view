@@ -153,6 +153,21 @@ describe('buildModel', () => {
 		expect(untyped ? displayType(untyped, settings) : '').toBe('Feature');
 	});
 
+	it('implies child levels from the parent type, not the visual depth', () => {
+		const vault = new FakeVault();
+		// A Feature at the top level (no epic above it yet)
+		vault.addFile('Standalone Feature.md', { frontmatter: { type: 'Feature' } });
+		vault.addFile('Untyped Child.md', { parentLink: 'Standalone Feature' });
+
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const child = model.roots[0].children[0];
+
+		// Depth-based implication would wrongly say Feature (depth 1); the parent
+		// is a Feature, so the child must imply PBI.
+		expect(child.impliedType).toBe(true);
+		expect(displayType(child, settings)).toBe('PBI');
+	});
+
 	it('clamps implied levels to the deepest configured level', () => {
 		const vault = new FakeVault();
 		vault.addFile('L0.md');
@@ -168,5 +183,88 @@ describe('buildModel', () => {
 		expect(item.depth).toBe(4);
 		expect(item.levelIndex).toBe(settings.levels.length - 1);
 		expect(displayType(item, settings)).toBe('Task');
+	});
+});
+
+describe('buildModel with a focus level', () => {
+	function focusVault() {
+		const vault = new FakeVault();
+		vault.addFile('Epic 1.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feat 1a.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic 1' });
+		vault.addFile('Story 1a1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feat 1a' });
+		vault.addFile('Epic 2.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Feat 2a.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic 2' });
+		// A Feature already at the top level
+		vault.addFile('Loose Feature.md', { frontmatter: { type: 'Feature', order: 5 } });
+		return vault;
+	}
+
+	it('re-roots the tree at the topmost items of the focus level', () => {
+		const vault = focusVault();
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Feature' });
+
+		expect(model.focused).toBe(true);
+		expect(names(model.roots).sort()).toEqual(['Feat 1a', 'Feat 2a', 'Loose Feature']);
+		expect(model.roots.every((r) => r.focusRoot)).toBe(true);
+		// Visual depth resets; semantic level and children stay intact
+		const feat1a = model.roots.find((r) => r.title === 'Feat 1a');
+		expect(feat1a?.depth).toBe(0);
+		expect(feat1a?.levelIndex).toBe(1);
+		expect(names(feat1a?.children ?? [])).toEqual(['Story 1a1']);
+		expect(feat1a?.children[0].depth).toBe(1);
+		// The real parent pointer survives for correct move semantics
+		expect(feat1a?.parent?.title).toBe('Epic 1');
+	});
+
+	it('does not duplicate nested items of the same level', () => {
+		const vault = new FakeVault();
+		vault.addFile('Outer.md', { frontmatter: { type: 'Feature' } });
+		vault.addFile('Inner.md', { frontmatter: { type: 'Feature' }, parentLink: 'Outer' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Feature' });
+
+		expect(names(model.roots)).toEqual(['Outer']);
+		expect(model.items).toHaveLength(2);
+	});
+
+	it('includes untyped items whose implied level matches', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Implied Feature.md', { parentLink: 'Epic' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Feature' });
+
+		expect(names(model.roots)).toEqual(['Implied Feature']);
+	});
+
+	it('ignores a focus level that is not in the configured levels', () => {
+		const vault = focusVault();
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Sprint' });
+		expect(model.focused).toBe(false);
+		expect(names(model.roots)).toEqual(['Loose Feature', 'Epic 1', 'Epic 2']);
+	});
+});
+
+describe('buildModel progress rollup', () => {
+	it('counts done descendants using the configured state values, case-insensitively', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'In Progress' } });
+		vault.addFile('F1.md', { frontmatter: { status: 'done' }, parentLink: 'Epic' });
+		vault.addFile('F2.md', { frontmatter: { status: 'Open' }, parentLink: 'Epic' });
+		vault.addFile('S1.md', { frontmatter: { status: 'CLOSED' }, parentLink: 'F2' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, stateKey: 'status' });
+
+		const epic = model.roots[0];
+		expect(epic.done).toBe(false);
+		expect(epic.descendantCount).toBe(3);
+		expect(epic.doneDescendants).toBe(2);
+		const f2 = epic.children.find((c) => c.title === 'F2');
+		expect(f2?.doneDescendants).toBe(1);
+	});
+
+	it('tracks no state when the state property is unset', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { status: 'Done' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		expect(model.roots[0].stateValue).toBeNull();
+		expect(model.roots[0].done).toBe(false);
 	});
 });
