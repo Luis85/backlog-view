@@ -1,6 +1,7 @@
 import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
-import { BacklogItem, BacklogModel } from '../model';
+import { BacklogItem, BacklogModel, inferFolderParent } from '../model';
+import { computeTypeChanges, ItemWrite } from '../ops';
 import { indent, moveToEdge, moveWithinSiblings, outdent } from './structure';
 import { promptCreateItem } from './create';
 
@@ -49,7 +50,7 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Clear parent link')
 				.setIcon('unlink')
-				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
+				.onClick(() => void host.applySafely(removeParentWrites(host, item))),
 		);
 	} else if (host.settings.folderHierarchy && (item.hasParentValue || item.explicitRoot)) {
 		// A link override or a top-level pin is hiding the folder position;
@@ -58,9 +59,25 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Use folder position')
 				.setIcon('folder')
-				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
+				.onClick(() => void host.applySafely(removeParentWrites(host, item))),
 		);
 	}
+}
+
+/**
+ * Removing the parent property re-homes the item (folder position or top
+ * level); with autoType on it must retype like any other reparenting move.
+ */
+function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite[] {
+	const writes: ItemWrite[] = [{ file: item.file, removeParentKey: true }];
+	const model = host.model;
+	if (!host.settings.autoType || !model) return writes;
+
+	const landingParent = host.settings.folderHierarchy ? inferFolderParent(item, model.byPath) : null;
+	const { typeField, cascade } = computeTypeChanges(item, landingParent, host.settings, true);
+	if (typeField !== undefined) writes[0].typeName = typeField;
+	writes.push(...cascade);
+	return writes;
 }
 
 function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, model: BacklogModel): void {

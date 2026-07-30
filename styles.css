@@ -55,6 +55,13 @@
 	flex: 1 1 auto;
 }
 
+.pbl-toolbar-sep {
+	width: 1px;
+	height: 16px;
+	background-color: var(--background-modifier-border);
+	flex: 0 0 auto;
+}
+
 .pbl-filter {
 	display: inline-flex;
 	align-items: center;
@@ -229,6 +236,27 @@
 	box-shadow: inset 2px 0 0 var(--interactive-accent);
 }
 
+/* A move has been written and the view is waiting for the Bases refresh */
+.pbl-row.pbl-pending {
+	opacity: 0.45;
+	animation: pbl-pending-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes pbl-pending-pulse {
+	from {
+		opacity: 0.45;
+	}
+	to {
+		opacity: 0.7;
+	}
+}
+
+/* The matching part of a title while the quick filter is active */
+.pbl-match {
+	background-color: hsla(var(--interactive-accent-hsl), 0.25);
+	border-radius: 2px;
+}
+
 .pbl-tree:focus-visible {
 	outline: none;
 }
@@ -380,8 +408,11 @@
 .pbl-badge {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: var(--size-2-1);
 	flex: 0 0 auto;
+	/* A shared minimum keeps titles starting at an even column for the default level names */
+	min-width: 58px;
 	font-size: var(--font-ui-smaller);
 	font-weight: var(--font-medium);
 	line-height: 1.6;
@@ -484,6 +515,18 @@
 	width: 1px;
 	background-color: var(--background-modifier-border);
 	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pbl-grip,
+	.pbl-add,
+	.pbl-chevron {
+		transition: none;
+	}
+
+	.pbl-row.pbl-pending {
+		animation: none;
+	}
 }
 
 /* Touch devices: no hover to reveal controls, and targets need to be larger */

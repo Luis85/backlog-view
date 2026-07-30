@@ -23,11 +23,19 @@ function fixture() {
 
 describe('zoneForRatio', () => {
 	it('maps row positions to zones', () => {
-		expect(zoneForRatio(0.1)).toBe('before');
-		expect(zoneForRatio(0.5)).toBe('inside');
-		expect(zoneForRatio(0.9)).toBe('after');
-		expect(zoneForRatio(0.25)).toBe('inside');
-		expect(zoneForRatio(0.75)).toBe('inside');
+		expect(zoneForRatio(0.1, false)).toBe('before');
+		expect(zoneForRatio(0.5, false)).toBe('inside');
+		expect(zoneForRatio(0.9, false)).toBe('after');
+		expect(zoneForRatio(0.25, false)).toBe('inside');
+		expect(zoneForRatio(0.75, false)).toBe('inside');
+	});
+
+	it('narrows the nest zone on leaf rows', () => {
+		// Reordering is the common intent on leaves — nesting needs a deliberate aim
+		expect(zoneForRatio(0.3, true)).toBe('before');
+		expect(zoneForRatio(0.5, true)).toBe('inside');
+		expect(zoneForRatio(0.7, true)).toBe('after');
+		expect(zoneForRatio(0.3, false)).toBe('inside');
 	});
 });
 

@@ -174,8 +174,9 @@ function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>, setti
  * The nearest ancestor folder note ("Epic X/Epic X.md") in the result set.
  * A folder note itself starts the walk above its own folder, and container
  * folders without a note of their own (like "use-cases/") pass through.
+ * Exported so "Use folder position" can predict where an item will land.
  */
-function inferFolderParent(item: BacklogItem, byPath: Map<string, BacklogItem>): BacklogItem | null {
+export function inferFolderParent(item: BacklogItem, byPath: Map<string, BacklogItem>): BacklogItem | null {
 	let folder = parentFolderOf(item.file.path);
 	if (folder !== null && folderNotePath(folder) === item.file.path) {
 		folder = parentFolderOf(folder);

@@ -43,7 +43,7 @@ export class DragDropController {
 				this.setDropIndicator(row, null);
 				return;
 			}
-			const zone = this.zoneFor(evt, row);
+			const zone = this.zoneFor(evt, row, hasChildren);
 			const target = this.host.model ? dropTargetFor(this.host.model, item, zone, dragged) : null;
 			if (!target) {
 				this.setDropIndicator(row, null);
@@ -66,7 +66,7 @@ export class DragDropController {
 			evt.preventDefault();
 			evt.stopPropagation();
 			const dragged = this.getDraggedItem();
-			const zone = this.zoneFor(evt, row);
+			const zone = this.zoneFor(evt, row, hasChildren);
 			const target =
 				dragged && dragged !== item && this.host.model
 					? dropTargetFor(this.host.model, item, zone, dragged)
@@ -139,10 +139,10 @@ export class DragDropController {
 		this.cancelHoverExpand();
 	}
 
-	private zoneFor(evt: DragEvent, row: HTMLElement): DropZone {
+	private zoneFor(evt: DragEvent, row: HTMLElement, hasChildren: boolean): DropZone {
 		const rect = row.getBoundingClientRect();
 		const ratio = rect.height > 0 ? (evt.clientY - rect.top) / rect.height : 0.5;
-		return zoneForRatio(ratio);
+		return zoneForRatio(ratio, !hasChildren);
 	}
 
 	private getDraggedItem(): BacklogItem | null {

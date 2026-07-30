@@ -107,7 +107,8 @@ function renderRowLead(
 
 	renderBadge(host, row, item);
 
-	const title = row.createSpan({ cls: 'pbl-title', text: item.title });
+	const title = row.createSpan({ cls: 'pbl-title' });
+	renderTitleText(host, title, item.title);
 	title.addEventListener('mouseover', (evt) => {
 		host.app.workspace.trigger('hover-link', {
 			event: evt,
@@ -124,6 +125,19 @@ function renderRowLead(
 		setIcon(orphan, 'unlink');
 		setTooltip(orphan, 'Parent is set but not part of this view');
 	}
+}
+
+/** While filtering, the matching substring lights up so hits are scannable. */
+function renderTitleText(host: BacklogViewHost, titleEl: HTMLElement, text: string): void {
+	const needle = host.filterText.trim().toLowerCase();
+	const idx = needle.length > 0 ? text.toLowerCase().indexOf(needle) : -1;
+	if (idx === -1) {
+		titleEl.setText(text);
+		return;
+	}
+	titleEl.appendText(text.substring(0, idx));
+	titleEl.createSpan({ cls: 'pbl-match', text: text.substring(idx, idx + needle.length) });
+	titleEl.appendText(text.substring(idx + needle.length));
 }
 
 function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {

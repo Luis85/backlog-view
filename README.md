@@ -129,7 +129,8 @@ Rules to know:
 - An explicit `parent` link always overrides the folder structure, which is exactly what
   drag and drop writes — so re-parenting works as usual, but **files are not moved on
   disk**. The folder tree and the parent links can diverge; the links win. Right-click →
-  **Use folder position** removes the override and returns the item to its folder parent.
+  **Use folder position** removes the override and returns the item to its folder parent
+  (retyped for that level, together with its typed subtree, when auto-type is on).
 - Moving an item to the top level writes an empty `parent` property as a "pinned to top
   level" marker (deleting it would just re-infer the folder parent). **Clear parent
   link** on an orphaned item removes the property entirely, so in folder mode the item

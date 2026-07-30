@@ -29,6 +29,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		menu.showAtMouseEvent(evt);
 	});
 
+	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	iconButton(barEl, 'sparkles', 'Assign missing type and order properties', () => {
 		void runInit(host);
 	});
@@ -63,7 +64,11 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setTooltip(warn, problems.join(' '));
 	}
 	const count = model.items.length;
-	const countEl = barEl.createSpan({ cls: 'pbl-count-label', text: `${count} item${count === 1 ? '' : 's'}` });
+	const countEl = barEl.createSpan({
+		cls: 'pbl-count-label',
+		text: `${count} item${count === 1 ? '' : 's'}`,
+		attr: { 'aria-live': 'polite' },
+	});
 	setTooltip(countEl, levelBreakdown(host, model));
 }
 

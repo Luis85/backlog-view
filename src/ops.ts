@@ -87,9 +87,10 @@ function computeParentField(dragged: BacklogItem, parent: BacklogItem | null): T
  * typed descendants follow, so a subtree move cannot leave inconsistent
  * hierarchy metadata. Untyped descendants need no write (their level is
  * implied from the parent chain) and custom types outside the configured
- * ladder are deliberate — both are left alone.
+ * ladder are deliberate — both are left alone. Exported so parent-link
+ * removal ("Use folder position") retypes exactly like a drop would.
  */
-function computeTypeChanges(
+export function computeTypeChanges(
 	dragged: BacklogItem,
 	parent: BacklogItem | null,
 	settings: BacklogSettings,

@@ -48,6 +48,9 @@ export function installObsidianDom(): void {
 	proto.setText = function (this: HTMLElement, text: string): void {
 		this.textContent = text;
 	};
+	proto.appendText = function (this: HTMLElement, text: string): void {
+		this.appendChild(document.createTextNode(text));
+	};
 	proto.addClass = function (this: HTMLElement, ...classes: string[]): void {
 		this.classList.add(...classes);
 	};

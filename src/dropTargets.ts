@@ -2,10 +2,15 @@ import { DropZone } from './host';
 import { BacklogItem, BacklogModel } from './model';
 import { DropTarget } from './ops';
 
-/** Map a pointer position (0..1 within the row height) to a drop zone. */
-export function zoneForRatio(ratio: number): DropZone {
-	if (ratio < 0.25) return 'before';
-	if (ratio > 0.75) return 'after';
+/**
+ * Map a pointer position (0..1 within the row height) to a drop zone. Rows
+ * without children get a narrower "inside" band: reordering is the common
+ * intent on leaves, and a half-height nest zone caught too many drops.
+ */
+export function zoneForRatio(ratio: number, isLeaf: boolean): DropZone {
+	const edge = isLeaf ? 0.35 : 0.25;
+	if (ratio < edge) return 'before';
+	if (ratio > 1 - edge) return 'after';
 	return 'inside';
 }
 

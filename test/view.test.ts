@@ -294,6 +294,31 @@ describe('drag and drop', () => {
 		expect(vault.writeLog).toHaveLength(0);
 	});
 
+	it('marks the moved row pending until the data refreshes', async () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault);
+
+		drag(rowByTitle(containerEl, 'Epic B'), rowByTitle(containerEl, 'Epic A'), 'before');
+		expect(rowByTitle(containerEl, 'Epic B').classList.contains('pbl-pending')).toBe(true);
+
+		await flush();
+		view.onDataUpdated(); // the Bases refresh re-renders the tree
+		expect(containerEl.querySelector('.pbl-pending')).toBeNull();
+	});
+
+	it('clears the pending mark when the write is rejected', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, { orderProperty: 'note.parent' });
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown', { altKey: true });
+		await flush();
+
+		expect(containerEl.querySelector('.pbl-pending')).toBeNull();
+		expect(vault.writeLog).toHaveLength(0);
+	});
+
 	it('shows the drop indicator on the hovered row', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
@@ -539,6 +564,41 @@ describe('context menu', () => {
 		const flat = makeView(fixture());
 		rowByTitle(flat.containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		expect(Menu.lastShown?.item('Use folder position')).toBeUndefined();
+	});
+
+	it('retypes items handed back to the folder hierarchy', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Epics/Alpha/Login/Login.md', { frontmatter: { type: 'Feature' } });
+		vault.addFile('Epics/Alpha/Login/Fast path/Fast path.md', {
+			frontmatter: { type: 'Feature' },
+			parentLink: 'Alpha',
+		});
+		const { containerEl } = makeView(vault, { inferFolderHierarchy: true });
+
+		rowByTitle(containerEl, 'Fast path').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Use folder position')?.click();
+		await flush();
+
+		// The folder parent is the Feature "Login", so the item becomes a PBI
+		const fm = vault.fm('Epics/Alpha/Login/Fast path/Fast path.md');
+		expect('parent' in fm).toBe(false);
+		expect(fm['type']).toBe('PBI');
+	});
+
+	it('retypes an orphan cleared to the top level', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Orphan.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Missing' });
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Orphan').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Clear parent link')?.click();
+		await flush();
+
+		const fm = vault.fm('Orphan.md');
+		expect('parent' in fm).toBe(false);
+		expect(fm['type']).toBe('Epic');
 	});
 
 	it('opens the context menu from the keyboard', () => {
@@ -938,6 +998,19 @@ describe('quick filter', () => {
 		expect(document.activeElement).toBe(input);
 	});
 
+	it('highlights the matching part of titles', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		setFilterText(containerEl, 'b1');
+		expect(rowByTitle(containerEl, 'Feature B1').querySelector('.pbl-match')?.textContent).toBe('B1');
+		// Ancestors shown for context only are not falsely highlighted
+		expect(rowByTitle(containerEl, 'Epic B').querySelector('.pbl-match')).toBeNull();
+
+		setFilterText(containerEl, '');
+		expect(rowByTitle(containerEl, 'Feature B1').querySelector('.pbl-match')).toBeNull();
+	});
+
 	it('pauses collapse controls while filtering', () => {
 		const vault = fixture();
 		const { containerEl, config } = makeView(vault);
@@ -1030,6 +1103,8 @@ describe('toolbar count breakdown', () => {
 
 		expect(count?.textContent).toBe('4 items');
 		expect(count?.dataset.tooltip).toBe('2 Epic · 2 Feature');
+		// Filter changes to the count are announced to assistive tech
+		expect(count?.getAttribute('aria-live')).toBe('polite');
 	});
 });
 

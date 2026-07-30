@@ -246,7 +246,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			this.persistCollapsedState();
 		}
 		const writes = computeDropWrites(dragged, target, this.settings);
-		await this.applySafely(writes);
+		// Mark the moved row until the Bases refresh re-renders it in place.
+		const row = this.rowElFor(dragged);
+		row?.classList.add('pbl-pending');
+		const applied = await this.applySafely(writes);
+		if (!applied) row?.classList.remove('pbl-pending');
 	}
 
 	async applySafely(writes: ItemWrite[]): Promise<boolean> {
