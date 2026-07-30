@@ -164,11 +164,13 @@ repository URL once a release exists.
 
 ```bash
 npm install
-npm run dev    # watch mode
-npm run build  # typecheck + production build
-npm test       # unit + DOM interaction tests (vitest, jsdom)
-npm run lint   # eslint with the official eslint-plugin-obsidianmd rules
-npm run check  # all three in one shot — the pre-commit gate
+npm run dev            # watch mode
+npm run build          # typecheck + production build
+npm test               # unit + DOM interaction tests (vitest, jsdom)
+npm run test:coverage  # tests with enforced coverage thresholds
+npm run lint           # eslint with the official eslint-plugin-obsidianmd rules
+npm run analyze        # fallow: dead code, duplication, complexity, dependencies
+npm run check          # everything in one shot — the pre-commit gate
 ```
 
 The entry point is `src/main.ts`; the view lives in `src/view.ts`, tree building in
@@ -176,13 +178,14 @@ The entry point is `src/main.ts`; the view lives in `src/view.ts`, tree building
 
 The pure logic — tree building, drop planning, ranking, property backfill, note
 creation — is covered by node unit tests, and the interaction layer (rendering, drag &
-drop, keyboard, menus) by jsdom tests that dispatch real DOM events against the actual
-view, all running against a small mock of the `obsidian` module (`test/obsidian-mock.ts`).
-Linting uses Obsidian's official
-[`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin) ruleset, which
-encodes the community directory review guidelines. CI builds, lints and tests every push
-and pull request. `CLAUDE.md` documents the architecture, invariants and test harness for
-AI-assisted development.
+drop, keyboard, menus, creation prompts) by jsdom tests that dispatch real DOM events
+against the actual view, all running against a small mock of the `obsidian` module
+(`test/obsidian-mock.ts`). Coverage (v8) is threshold-enforced. Linting uses Obsidian's
+official [`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin)
+ruleset plus size/complexity budgets, and [fallow](https://github.com/fallow-rs/fallow)
+gates dead code, duplication, complexity hotspots (CRAP, fed by the coverage report) and
+dependency hygiene. CI runs the full gate on every push and pull request. `CLAUDE.md`
+documents the architecture, invariants and test harness for AI-assisted development.
 
 ## License
 

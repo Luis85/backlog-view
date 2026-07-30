@@ -1,12 +1,12 @@
-import { TFile } from './obsidian-mock';
+import { TFile, TFolder } from './obsidian-mock';
 
-export interface FakeLink {
+interface FakeLink {
 	key: string;
 	link: string;
 	original: string;
 }
 
-export interface FakeCache {
+interface FakeCache {
 	frontmatter?: Record<string, unknown>;
 	frontmatterLinks?: FakeLink[];
 }
@@ -57,6 +57,13 @@ export class FakeVault {
 		vault: {
 			getAbstractFileByPath: (path: string) =>
 				this.files.get(path) ?? (this.folders.has(path) ? { path } : null),
+			getAllLoadedFiles: () =>
+				[...this.folders].map((path) => {
+					const folder = new TFolder();
+					folder.path = path;
+					folder.name = path.split('/').pop() ?? path;
+					return folder;
+				}),
 			create: async (path: string, _content: string) => {
 				if (this.files.has(path)) throw new Error(`File already exists: ${path}`);
 				const file = new TFile(path);
@@ -97,9 +104,15 @@ export class FakeVault {
 		return file;
 	}
 
+	/** Per-file property values served through the BasesEntry stand-ins (keyed by property id). */
+	entryValues = new Map<string, Record<string, unknown>>();
+
 	/** BasesEntry stand-ins in insertion order. */
-	entries(): { file: TFile; getValue: () => null }[] {
-		return [...this.files.values()].map((file) => ({ file, getValue: () => null }));
+	entries(): { file: TFile; getValue: (propertyId: string) => unknown }[] {
+		return [...this.files.values()].map((file) => ({
+			file,
+			getValue: (propertyId: string) => this.entryValues.get(file.path)?.[propertyId] ?? null,
+		}));
 	}
 
 	fm(path: string): Record<string, unknown> {

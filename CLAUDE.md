@@ -7,12 +7,16 @@ work-item tree (Epic → Feature → PBI → Task) over notes in a flat folder, 
 ## Definition of done
 
 ```bash
-npm run check   # build (tsc + esbuild) + lint (eslint-plugin-obsidianmd) + tests (vitest)
+npm run check   # build + lint + coverage-thresholded tests + fallow static analysis
 ```
 
-All three must pass before committing. CI runs the same three steps. Obsidian itself
-cannot run here — the jsdom test harness below is the substitute; say so honestly when a
-change still needs a live-vault smoke test.
+All four must pass before committing; CI runs the same steps. Coverage thresholds
+(vitest.config.ts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
+duplication, complexity/CRAP (fed by the vitest coverage file) and dependency hygiene —
+framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
+`usedClassMembers`, not suppressed inline. Obsidian itself cannot run here — the jsdom
+test harness below is the substitute; say so honestly when a change still needs a
+live-vault smoke test.
 
 ## Architecture (one file per concern, 400-line max enforced by lint)
 

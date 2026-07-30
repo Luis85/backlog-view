@@ -164,24 +164,26 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		await this.applySafely(writes);
 	}
 
-	async applySafely(writes: ItemWrite[]): Promise<void> {
-		if (writes.length === 0) return;
+	async applySafely(writes: ItemWrite[]): Promise<boolean> {
+		if (writes.length === 0) return false;
 		const problems = configProblems(this.settings);
 		if (problems.length > 0) {
 			// Writing with e.g. parent and order on the same key would corrupt notes.
 			new Notice(`Fix the view options first: ${problems[0]}`);
-			return;
+			return false;
 		}
 		if (this.applying) {
 			new Notice('Still applying the previous change — try again in a moment.');
-			return;
+			return false;
 		}
 		this.applying = true;
 		try {
 			await applyWrites(this.app, this.settings, writes);
+			return true;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
 			new Notice('Failed to update backlog items. See the developer console for details.');
+			return false;
 		} finally {
 			this.applying = false;
 		}

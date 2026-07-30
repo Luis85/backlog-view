@@ -22,7 +22,7 @@ export interface BacklogSettings {
 }
 
 export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
-export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
+const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
 
 export function defaultSettings(): BacklogSettings {
 	return {
@@ -38,11 +38,6 @@ export function defaultSettings(): BacklogSettings {
 		stateKey: '',
 		doneValues: [...DEFAULT_DONE_VALUES],
 	};
-}
-
-/** Name of the hierarchy level at the given depth; depths below the deepest level reuse it. */
-export function levelForDepth(levels: string[], depth: number): string {
-	return levels[Math.min(Math.max(depth, 0), levels.length - 1)];
 }
 
 /**

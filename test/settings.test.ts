@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LEVELS, defaultSettings, getViewOptions, levelForDepth, resolveSettings } from '../src/settings';
+import { DEFAULT_LEVELS, defaultSettings, getViewOptions, resolveSettings } from '../src/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -57,17 +57,6 @@ describe('resolveSettings', () => {
 		expect(settings.showChips).toBe(false);
 		expect(settings.showCounts).toBe(false);
 		expect(settings.newItemFolder).toBe('Backlog/Items');
-	});
-});
-
-describe('levelForDepth', () => {
-	const levels = ['Epic', 'Feature', 'PBI', 'Task'];
-
-	it('maps depths to levels and clamps at both ends', () => {
-		expect(levelForDepth(levels, 0)).toBe('Epic');
-		expect(levelForDepth(levels, 3)).toBe('Task');
-		expect(levelForDepth(levels, 9)).toBe('Task');
-		expect(levelForDepth(levels, -1)).toBe('Epic');
 	});
 });
 

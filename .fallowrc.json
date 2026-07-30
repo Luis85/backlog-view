@@ -1,0 +1,26 @@
+{
+	"$schema": "./node_modules/fallow/schema.json",
+	"entry": ["src/main.ts"],
+	"usedClassMembers": [
+		{ "extends": "BasesView", "members": ["type"] },
+		{
+			"extends": "AbstractInputSuggest",
+			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion"]
+		}
+	],
+	"health": {
+		"coverage": "coverage/coverage-final.json"
+	},
+	"rules": {
+		"unused-dev-dependencies": "error",
+		"unused-optional-dependencies": "error",
+		"unused-class-members": "error",
+		"private-type-leaks": "warn"
+	},
+	"overrides": [
+		{
+			"files": ["test/**"],
+			"rules": { "unused-class-members": "off" }
+		}
+	]
+}

@@ -62,24 +62,28 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 	const parentItem = request.parentItem;
 	if (parentItem && host.setCollapsed(parentItem.file.path, false)) host.persistCollapsedState();
 
-	const siblings = parentItem ? parentItem.children : host.model?.roots ?? [];
-	let maxOrder = 0;
-	for (const s of siblings) {
-		if (s.order !== null && s.order > maxOrder) maxOrder = s.order;
-	}
 	try {
 		const file = await createBacklogItem(host.app, host.settings, {
 			folder: request.folder,
 			title: request.title,
 			typeName: request.levelName,
 			parent: parentItem?.file ?? null,
-			order: Math.floor(maxOrder) + ORDER_SPACING,
+			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.roots ?? []),
 		});
 		new Notice(`Created "${file.basename}".`);
 	} catch (e) {
 		console.error('Product Backlog: failed to create item', e);
 		new Notice('Could not create the item. See the developer console for details.');
 	}
+}
+
+/** An order value placing a new item after every ranked sibling. */
+function endOfSiblingsOrder(siblings: BacklogItem[]): number {
+	let maxOrder = 0;
+	for (const s of siblings) {
+		if (s.order !== null && s.order > maxOrder) maxOrder = s.order;
+	}
+	return Math.floor(maxOrder) + ORDER_SPACING;
 }
 
 /** Without a configured folder, place new items where most existing items live. */

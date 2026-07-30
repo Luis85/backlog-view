@@ -8,25 +8,28 @@ import { computeInitWrites } from '../ops';
  * All of them route through host.performDrop and reuse the drop-plan logic.
  */
 
-export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
+/** The item's sibling list and index within it, or null when it cannot be moved. */
+function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: BacklogItem[]; idx: number } | null {
 	const model = host.model;
-	if (!model || item.focusRoot) return;
+	if (!model || item.focusRoot) return null;
 	const fullList = item.parent ? item.parent.children : model.roots;
 	const idx = fullList.indexOf(item);
-	if (idx === -1) return;
-	const insertIndex = delta === -1 ? idx - 1 : idx + 1;
-	if (insertIndex < 0 || insertIndex >= fullList.length) return;
-	const siblings = fullList.filter((s) => s !== item);
+	return idx === -1 ? null : { fullList, idx };
+}
+
+export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
+	const ctx = siblingContext(host, item);
+	if (!ctx) return;
+	const insertIndex = delta === -1 ? ctx.idx - 1 : ctx.idx + 1;
+	if (insertIndex < 0 || insertIndex >= ctx.fullList.length) return;
+	const siblings = ctx.fullList.filter((s) => s !== item);
 	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
 }
 
 export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): void {
-	const model = host.model;
-	if (!model || item.focusRoot) return;
-	const fullList = item.parent ? item.parent.children : model.roots;
-	const idx = fullList.indexOf(item);
-	if (idx === -1 || idx === (edge === 'top' ? 0 : fullList.length - 1)) return;
-	const siblings = fullList.filter((s) => s !== item);
+	const ctx = siblingContext(host, item);
+	if (!ctx || ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return;
+	const siblings = ctx.fullList.filter((s) => s !== item);
 	const insertIndex = edge === 'top' ? 0 : siblings.length;
 	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
 }
@@ -45,12 +48,9 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 
 /** Nest the item under its previous sibling, at the end of its children. */
 export function indent(host: BacklogViewHost, item: BacklogItem): void {
-	const model = host.model;
-	if (!model || item.focusRoot) return;
-	const fullList = item.parent ? item.parent.children : model.roots;
-	const idx = fullList.indexOf(item);
-	if (idx <= 0) return;
-	const newParent = fullList[idx - 1];
+	const ctx = siblingContext(host, item);
+	if (!ctx || ctx.idx === 0) return;
+	const newParent = ctx.fullList[ctx.idx - 1];
 	const siblings = newParent.children.filter((s) => s !== item);
 	void host.performDrop(item, { parent: newParent, siblings, insertIndex: siblings.length });
 }
@@ -64,6 +64,10 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 		new Notice('All items already have type and order properties.');
 		return;
 	}
-	await host.applySafely(writes);
-	new Notice(`Product Backlog: updated ${writes.length} item${writes.length === 1 ? '' : 's'}.`);
+	// applySafely reports its own notices when blocked or failing — only claim
+	// success when the whole batch actually went through.
+	const applied = await host.applySafely(writes);
+	if (applied) {
+		new Notice(`Product Backlog: updated ${writes.length} item${writes.length === 1 ? '' : 's'}.`);
+	}
 }

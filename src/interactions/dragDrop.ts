@@ -2,7 +2,7 @@ import { dropTargetFor, rootDropTarget, zoneForRatio } from '../dropTargets';
 import { BacklogViewHost, DropZone } from '../host';
 import { BacklogItem } from '../model';
 
-interface DragDropElements {
+export interface DragDropElements {
 	viewEl: HTMLElement;
 	treeEl: HTMLElement;
 	rootDropEl: HTMLElement;

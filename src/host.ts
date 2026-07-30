@@ -30,7 +30,10 @@ export interface BacklogViewHost {
 	openItemInNewTab(item: BacklogItem): void;
 
 	render(): void;
-	/** Serialized, validated frontmatter writes — the only mutation path. */
-	applySafely(writes: ItemWrite[]): Promise<void>;
+	/**
+	 * Serialized, validated frontmatter writes — the only mutation path.
+	 * Resolves true only when every write in the batch was applied.
+	 */
+	applySafely(writes: ItemWrite[]): Promise<boolean>;
 	performDrop(dragged: BacklogItem, target: DropTarget): Promise<void>;
 }

@@ -10,7 +10,6 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "moduleResolution": "node",
-    "importHelpers": true,
     "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

@@ -168,7 +168,7 @@ export class Menu {
 	}
 }
 
-class TextComponent {
+export class TextComponent {
 	inputEl: HTMLInputElement;
 	constructor(containerEl: HTMLElement) {
 		this.inputEl = containerEl.createEl('input') as HTMLInputElement;
@@ -187,7 +187,7 @@ class TextComponent {
 	}
 }
 
-class ButtonComponent {
+export class ButtonComponent {
 	buttonEl: HTMLButtonElement;
 	constructor(containerEl: HTMLElement) {
 		this.buttonEl = containerEl.createEl('button') as HTMLButtonElement;
@@ -230,6 +230,8 @@ export class Setting {
 }
 
 export class Modal {
+	/** The modal most recently opened — flows that create modals internally are tested through this. */
+	static lastOpened: Modal | null = null;
 	app: unknown;
 	titleEl: HTMLElement;
 	contentEl: HTMLElement;
@@ -239,6 +241,7 @@ export class Modal {
 		this.contentEl = document.createElement('div');
 	}
 	open(): void {
+		Modal.lastOpened = this;
 		(this as unknown as { onOpen?: () => void }).onOpen?.();
 	}
 	close(): void {
@@ -248,12 +251,18 @@ export class Modal {
 
 export abstract class AbstractInputSuggest<T> {
 	app: any;
-	constructor(app: unknown, _textInputEl: unknown) {
+	private readonly suggestInputEl: unknown;
+	constructor(app: unknown, textInputEl: unknown) {
 		this.app = app;
+		this.suggestInputEl = textInputEl;
 	}
-	setValue(_value: string): void {}
+	setValue(value: string): void {
+		const el = this.suggestInputEl;
+		if (el instanceof HTMLInputElement) el.value = value;
+	}
 	getValue(): string {
-		return '';
+		const el = this.suggestInputEl;
+		return el instanceof HTMLInputElement ? el.value : '';
 	}
 	close(): void {}
 	protected abstract getSuggestions(query: string): T[] | Promise<T[]>;

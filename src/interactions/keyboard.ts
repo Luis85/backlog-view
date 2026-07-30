@@ -3,7 +3,7 @@ import { BacklogItem, BacklogModel } from '../model';
 import { indent, moveWithinSiblings, outdent } from './structure';
 
 /** Items currently rendered, top to bottom, honoring collapsed subtrees. */
-export function visibleItems(model: BacklogModel, isCollapsed: (path: string) => boolean): BacklogItem[] {
+function visibleItems(model: BacklogModel, isCollapsed: (path: string) => boolean): BacklogItem[] {
 	const visible: BacklogItem[] = [];
 	const walk = (items: BacklogItem[]) => {
 		for (const item of items) {
@@ -27,7 +27,11 @@ export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): vo
 	const visible = visibleItems(model, (path) => host.isCollapsed(path));
 	if (visible.length === 0) return;
 
-	const current = host.selectedPath ? model.byPath.get(host.selectedPath) ?? null : null;
+	// Resolve the selection from the visible list: an item hidden by a collapsed
+	// ancestor or a focus-level change must not be opened or moved invisibly.
+	const current = host.selectedPath
+		? visible.find((item) => item.file.path === host.selectedPath) ?? null
+		: null;
 	if (evt.altKey) {
 		if (current) handleStructureKey(host, current, evt);
 		return;

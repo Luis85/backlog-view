@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { TitlePromptModal } from '../src/modal';
+import { FolderSuggest, TitlePromptModal } from '../src/modal';
 import { installObsidianDom } from './dom-helpers';
 import { FakeVault } from './helpers';
+import { TFolder } from './obsidian-mock';
 
 installObsidianDom();
 
@@ -52,5 +53,30 @@ describe('TitlePromptModal', () => {
 		const { results, createBtn } = openModal();
 		createBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(results).toHaveLength(0);
+	});
+});
+
+describe('FolderSuggest', () => {
+	it('suggests matching folders sorted by path and applies the selection', () => {
+		const vault = new FakeVault();
+		vault.folders.add('Backlog/Items');
+		vault.folders.add('Backlog');
+		vault.folders.add('Archive');
+		const input = document.body.createEl('input') as HTMLInputElement;
+		const suggest = new FolderSuggest(vault.app as never, input);
+
+		const matches = (
+			suggest as unknown as { getSuggestions: (query: string) => TFolder[] }
+		).getSuggestions('back');
+		expect(matches.map((f) => f.path)).toEqual(['Backlog', 'Backlog/Items']);
+		// The vault root is never suggested
+		const all = (suggest as unknown as { getSuggestions: (query: string) => TFolder[] }).getSuggestions('');
+		expect(all.some((f) => f.path === '/')).toBe(false);
+
+		let inputEvents = 0;
+		input.addEventListener('input', () => inputEvents++);
+		suggest.selectSuggestion(matches[0], new MouseEvent('click'));
+		expect(input.value).toBe('Backlog');
+		expect(inputEvents).toBe(1);
 	});
 });

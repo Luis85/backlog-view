@@ -272,18 +272,21 @@ function resolveParent(app: App, file: TFile, parentKey: string): { path: string
 	// Fallback: raw frontmatter value, e.g. a plain note name without brackets.
 	const raw: unknown = cache.frontmatter?.[parentKey];
 	const rawValue: unknown = Array.isArray(raw) ? raw[0] : raw;
-	if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
-		let linkpath = rawValue.trim();
-		const wiki = linkpath.match(/^\[\[([^\]]+)\]\]$/);
-		if (wiki) linkpath = wiki[1];
-		linkpath = linkpath.split('|')[0].split('#')[0].trim();
-		if (linkpath.length > 0) {
-			const dest = app.metadataCache.getFirstLinkpathDest(linkpath, file.path);
-			return { path: dest?.path ?? null, hasValue: true };
-		}
-		return { path: null, hasValue: true };
+	if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
+		return { path: null, hasValue: false };
 	}
-	return { path: null, hasValue: false };
+	const linkpath = linkpathFromRawValue(rawValue);
+	if (linkpath.length === 0) return { path: null, hasValue: true };
+	const dest = app.metadataCache.getFirstLinkpathDest(linkpath, file.path);
+	return { path: dest?.path ?? null, hasValue: true };
+}
+
+/** Strip wikilink brackets, aliases and heading refs from a raw parent value. */
+function linkpathFromRawValue(rawValue: string): string {
+	let linkpath = rawValue.trim();
+	const wiki = linkpath.match(/^\[\[([^\]]+)\]\]$/);
+	if (wiki) linkpath = wiki[1];
+	return linkpath.split('|')[0].split('#')[0].trim();
 }
 
 function readString(value: unknown): string | null {

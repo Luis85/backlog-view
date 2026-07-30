@@ -10,7 +10,7 @@ export function zoneForRatio(ratio: number): DropZone {
 }
 
 /** True when placing `dragged` under `parent` erases a parent link that points outside the view. */
-export function clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): boolean {
+function clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): boolean {
 	return parent === null && dragged.parent === null && dragged.hasParentValue;
 }
 
@@ -32,35 +32,41 @@ export function dropTargetFor(
 	zone: DropZone,
 	dragged: BacklogItem,
 ): DropTarget | null {
-	let parent: BacklogItem | null;
-	let siblings: BacklogItem[];
-	let insertIndex: number;
-
-	if (zone === 'inside') {
-		parent = item;
-		siblings = item.children.filter((c) => c !== dragged);
-		insertIndex = siblings.length;
-	} else {
-		// The top row of a focused view groups items from different real parents;
-		// there is no shared sibling ranking to insert into.
-		if (item.focusRoot) return null;
-		parent = item.parent;
-		const fullList = parent ? parent.children : model.roots;
-		siblings = fullList.filter((c) => c !== dragged);
-		const idx = siblings.indexOf(item);
-		if (idx === -1) return null;
-		insertIndex = zone === 'before' ? idx : idx + 1;
-	}
-
-	if (isInvalidParent(parent, dragged)) return null;
+	const position = zone === 'inside' ? insidePosition(item, dragged) : siblingPosition(model, item, zone, dragged);
+	if (!position) return null;
+	if (isInvalidParent(position.parent, dragged)) return null;
 
 	// Dropping into the slot the item already occupies is a no-op — unless the
 	// drop would clear a stale parent link, which is a real change.
-	if (parent === dragged.parent && !clearsStaleLink(parent, dragged)) {
-		const fullList = parent ? parent.children : model.roots;
-		if (fullList.indexOf(dragged) === insertIndex) return null;
+	if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
+		const fullList = position.parent ? position.parent.children : model.roots;
+		if (fullList.indexOf(dragged) === position.insertIndex) return null;
 	}
-	return { parent, siblings, insertIndex };
+	return position;
+}
+
+/** Append as the last child of the hovered item. */
+function insidePosition(item: BacklogItem, dragged: BacklogItem): DropTarget {
+	const siblings = item.children.filter((c) => c !== dragged);
+	return { parent: item, siblings, insertIndex: siblings.length };
+}
+
+/** Insert before or after the hovered item within its sibling group. */
+function siblingPosition(
+	model: BacklogModel,
+	item: BacklogItem,
+	zone: DropZone,
+	dragged: BacklogItem,
+): DropTarget | null {
+	// The top row of a focused view groups items from different real parents;
+	// there is no shared sibling ranking to insert into.
+	if (item.focusRoot) return null;
+	const parent = item.parent;
+	const fullList = parent ? parent.children : model.roots;
+	const siblings = fullList.filter((c) => c !== dragged);
+	const idx = siblings.indexOf(item);
+	if (idx === -1) return null;
+	return { parent, siblings, insertIndex: zone === 'before' ? idx : idx + 1 };
 }
 
 /** The target for the "Move to top level" strip, or null when unavailable. */

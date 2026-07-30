@@ -25,5 +25,8 @@ jobs:
       - name: Lint (Obsidian plugin guidelines)
         run: npm run lint
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage thresholds
+        run: npm run test:coverage
+
+      - name: Static analysis (fallow)
+        run: npm run analyze

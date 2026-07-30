@@ -13,8 +13,8 @@ export interface NewItemPromptOptions {
 	onSubmit: (result: NewItemPromptResult) => void;
 }
 
-/** Folder autocomplete for the folder field of the prompt. */
-class FolderSuggest extends AbstractInputSuggest<TFolder> {
+/** Folder autocomplete for the folder field of the prompt. Exported for tests. */
+export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 	private readonly textInputEl: HTMLInputElement;
 
 	constructor(app: App, textInputEl: HTMLInputElement) {
