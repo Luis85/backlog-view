@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildModel, displayType } from '../src/model';
+import { buildModel, childLevelIndex, displayType } from '../src/model';
 import { defaultSettings } from '../src/settings';
 import { FakeVault } from './helpers';
 
@@ -233,6 +233,22 @@ describe('buildModel with a focus level', () => {
 		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Feature' });
 
 		expect(names(model.roots)).toEqual(['Implied Feature']);
+	});
+
+	it('keeps the semantic depth of unknown types when re-rooted', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Feat.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Bugfix Item.md', { frontmatter: { type: 'Bugfix' }, parentLink: 'Feat' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Feature' });
+
+		const bugfix = model.roots[0].children[0];
+		expect(bugfix.levelIndex).toBe(-1);
+		// Visually one level below the focused Feature, semantically still depth 2
+		expect(bugfix.depth).toBe(1);
+		expect(bugfix.semanticDepth).toBe(2);
+		// A child created under it must imply Task (index 3), not PBI
+		expect(childLevelIndex(bugfix, settings.levels)).toBe(3);
 	});
 
 	it('ignores a focus level that is not in the configured levels', () => {

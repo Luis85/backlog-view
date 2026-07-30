@@ -18,6 +18,8 @@ export interface BacklogItem {
 	children: BacklogItem[];
 	/** Visual depth in the rendered tree (0 for rendered roots, focused or not). */
 	depth: number;
+	/** Depth in the full hierarchy, independent of any focus level re-rooting. */
+	semanticDepth: number;
 	/** Index into settings.levels; -1 when typeName doesn't match any configured level. */
 	levelIndex: number;
 	/** True when the level was derived from the parent chain because typeName is missing. */
@@ -67,6 +69,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 			parent: null,
 			children: [],
 			depth: 0,
+			semanticDepth: 0,
 			levelIndex: 0,
 			impliedType: false,
 			orphan: false,
@@ -136,6 +139,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		const items: BacklogItem[] = [];
 		const assign = (item: BacklogItem, depth: number) => {
 			item.depth = depth;
+			item.semanticDepth = depth;
 			computeLevel(item, settings);
 			items.push(item);
 			let count = 0;
@@ -180,6 +184,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	return { roots, byPath, items, focused: false };
 }
 
+/** Focused rendering re-roots the tree visually; semanticDepth deliberately stays untouched. */
 function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 	const items: BacklogItem[] = [];
 	const assign = (item: BacklogItem, depth: number) => {
@@ -203,7 +208,10 @@ export function displayType(item: BacklogItem, settings: BacklogSettings): strin
  */
 export function childLevelIndex(parent: BacklogItem | null, levels: string[]): number {
 	if (!parent) return 0;
-	const parentIdx = parent.levelIndex >= 0 ? parent.levelIndex : Math.min(parent.depth, levels.length - 1);
+	// For unknown types, fall back to the full-tree depth — never the visual depth,
+	// which shifts when a focus level re-roots the rendered tree.
+	const parentIdx =
+		parent.levelIndex >= 0 ? parent.levelIndex : Math.min(parent.semanticDepth, levels.length - 1);
 	return Math.min(parentIdx + 1, levels.length - 1);
 }
 
