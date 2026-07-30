@@ -504,6 +504,16 @@ export class ProductBacklogView extends BasesView {
 				mi.setTitle('Outdent').setIcon('indent-decrease').onClick(() => this.outdent(item)),
 			);
 		}
+		if (!item.parent && item.hasParentValue) {
+			// Top-level item whose parent property points outside the view (or was
+			// part of a cycle): offer an explicit way to drop the stale link.
+			menu.addItem((mi) =>
+				mi
+					.setTitle('Clear parent link')
+					.setIcon('unlink')
+					.onClick(() => void this.applySafely([{ file: item.file, parent: null }])),
+			);
+		}
 		menu.addSeparator();
 		menu.addItem((mi) =>
 			mi
@@ -667,8 +677,9 @@ export class ProductBacklogView extends BasesView {
 
 		if (this.isInvalidParent(parent, dragged)) return null;
 
-		// Dropping into the slot the item already occupies is a no-op.
-		if (parent === dragged.parent) {
+		// Dropping into the slot the item already occupies is a no-op — unless the
+		// drop would clear a stale parent link, which is a real change.
+		if (parent === dragged.parent && !this.clearsStaleLink(parent, dragged)) {
 			const fullList = parent ? parent.children : model.roots;
 			if (fullList.indexOf(dragged) === insertIndex) return null;
 		}
@@ -679,8 +690,16 @@ export class ProductBacklogView extends BasesView {
 		const model = this.model;
 		if (!model) return null;
 		const siblings = model.roots.filter((r) => r !== dragged);
-		if (dragged.parent === null && model.roots.indexOf(dragged) === model.roots.length - 1) return null;
+		const alreadyLastRoot = dragged.parent === null && model.roots.indexOf(dragged) === model.roots.length - 1;
+		// The last root with a stale parent link still needs the drop target: the
+		// "move" is a no-op positionally but clears the unresolved parent property.
+		if (alreadyLastRoot && !this.clearsStaleLink(null, dragged)) return null;
 		return { parent: null, siblings, insertIndex: siblings.length };
+	}
+
+	/** True when placing `dragged` under `parent` erases a parent link that points outside the view. */
+	private clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): boolean {
+		return parent === null && dragged.parent === null && dragged.hasParentValue;
 	}
 
 	private isInvalidParent(parent: BacklogItem | null, dragged: BacklogItem): boolean {

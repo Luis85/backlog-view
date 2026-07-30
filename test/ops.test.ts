@@ -173,6 +173,21 @@ describe('computeDropWrites', () => {
 		expect(writes[0].parent).toBeNull();
 	});
 
+	it('clears the stale link even when the orphan keeps its last-root position', () => {
+		const vault = new FakeVault();
+		vault.addFile('Root.md', { frontmatter: { order: 10 } });
+		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Not In View' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
+		const siblings = siblingsWithout(model.roots, dragged);
+
+		// Dropping onto "Move to top level" appends at the end — positionally a no-op.
+		const writes = computeDropWrites(dragged, { parent: null, siblings, insertIndex: siblings.length }, settings);
+
+		expect(writes).toHaveLength(1);
+		expect(writes[0].parent).toBeNull();
+	});
+
 	it('omits the parent write when reordering within the same parent', () => {
 		const { get } = fixture();
 		const dragged = get('Feature B2');
