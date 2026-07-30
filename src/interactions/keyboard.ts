@@ -102,7 +102,9 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 	} else if (hasChildren && collapsed) {
 		collapseKeepingSelection(host, current, false);
 	} else if (hasChildren) {
-		host.selectItem(current.children[0]);
+		// Under a filter the first child may be hidden; jump to the first rendered one.
+		const firstVisible = current.children.find((child) => !host.isFilteredOut(child));
+		if (firstVisible) host.selectItem(firstVisible);
 	}
 }
 

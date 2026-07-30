@@ -212,6 +212,9 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// a blank note without its hierarchy properties behind.
 	const fm: Record<string, unknown> = { [settings.typeKey]: spec.typeName };
 	if (spec.parent) fm[settings.parentKey] = wikilinkTo(app, spec.parent, path);
+	// In folder mode a missing parent key would let folder inference nest this
+	// intentionally top-level note — pin it with an explicitly empty parent.
+	else if (settings.folderHierarchy) fm[settings.parentKey] = '';
 	fm[settings.orderKey] = spec.order;
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }

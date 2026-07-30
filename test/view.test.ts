@@ -900,6 +900,18 @@ describe('quick filter', () => {
 		expect(document.activeElement).toBe(input);
 	});
 
+	it('jumps to the first visible child when expanding under a filter', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		setFilterText(containerEl, 'B2'); // Epic B visible via Feature B2; Feature B1 hidden
+		key(tree, 'ArrowDown'); // Epic B
+		key(tree, 'ArrowRight');
+
+		expect(rowByTitle(containerEl, 'Feature B2').classList.contains('pbl-selected')).toBe(true);
+	});
+
 	it('shows a clear button while active and clears on click', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

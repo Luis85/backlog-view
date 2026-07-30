@@ -10,20 +10,27 @@ const BASE_FILE_NAME = 'Product Backlog';
  * markdown notes, opening directly in the Product Backlog view.
  */
 export function baseFileContent(folder: string): string {
-	const quoted = folder.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+	// Two escaping layers: the folder inside the formula's string literal, and the
+	// whole formula as a double-quoted YAML scalar — a plain scalar would treat
+	// " #" in a folder name as the start of a YAML comment and truncate the filter.
+	const formulaArg = folder.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 	return [
 		'filters:',
 		'  and:',
-		`    - file.inFolder("${quoted}")`,
+		`    - ${yamlQuote(`file.inFolder("${formulaArg}")`)}`,
 		'    - file.ext == "md"',
 		'views:',
 		'  - type: product-backlog',
 		'    name: Backlog',
 		// Pre-wire the creation folder so the first "New Epic" cannot land
 		// outside the filter — the view reads this option via config.get.
-		`    newItemFolder: "${quoted}"`,
+		`    newItemFolder: ${yamlQuote(folder)}`,
 		'',
 	].join('\n');
+}
+
+function yamlQuote(value: string): string {
+	return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 /** Create the backlog folder (if needed) and a configured .base file inside it. */

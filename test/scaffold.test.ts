@@ -20,17 +20,23 @@ beforeEach(() => {
 describe('baseFileContent', () => {
 	it('filters to markdown notes in the folder and opens the backlog view', () => {
 		const content = baseFileContent('Backlog');
-		expect(content).toContain('file.inFolder("Backlog")');
+		expect(content).toContain('- "file.inFolder(\\"Backlog\\")"');
 		expect(content).toContain('file.ext == "md"');
 		expect(content).toContain('type: product-backlog');
 		// The creation folder is pre-wired so the first item lands inside the filter
 		expect(content).toContain('newItemFolder: "Backlog"');
 	});
 
-	it('escapes quotes and backslashes in the folder name', () => {
-		expect(baseFileContent('A"B')).toContain('file.inFolder("A\\"B")');
+	it('quotes the filter as a YAML scalar so hash folder names survive', () => {
+		// In a plain scalar, " #" would start a YAML comment and truncate the filter
+		const content = baseFileContent('Roadmap #1');
+		expect(content).toContain('- "file.inFolder(\\"Roadmap #1\\")"');
+		expect(content).toContain('newItemFolder: "Roadmap #1"');
+	});
+
+	it('escapes quotes in the folder name through both layers', () => {
+		expect(baseFileContent('A"B')).toContain('"file.inFolder(\\"');
 		expect(baseFileContent('A"B')).toContain('newItemFolder: "A\\"B"');
-		expect(baseFileContent('A\\B')).toContain('file.inFolder("A\\\\B")');
 	});
 });
 
@@ -41,7 +47,7 @@ describe('createBacklogBase', () => {
 
 		expect(file.path).toBe('Backlog/Product Backlog.base');
 		expect(vault.folders.has('Backlog')).toBe(true);
-		expect(vault.contents.get(file.path)).toContain('file.inFolder("Backlog")');
+		expect(vault.contents.get(file.path)).toContain('- "file.inFolder(\\"Backlog\\")"');
 	});
 
 	it('defaults an empty folder input to Backlog and dedupes the file name', async () => {

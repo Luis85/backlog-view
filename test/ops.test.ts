@@ -392,6 +392,22 @@ describe('createBacklogItem', () => {
 		expect(vault.fm(second.path)).toEqual({ type: 'PBI', order: 20 });
 	});
 
+	it('pins parentless creations in folder mode', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });
+
+		const file = await createBacklogItem(vault.app, { ...settings, folderHierarchy: true }, {
+			folder: 'Epics/Alpha',
+			title: 'Standalone',
+			typeName: 'Epic',
+			parent: null,
+			order: 10,
+		});
+
+		// Without the empty-parent pin, folder inference would nest this under Alpha
+		expect(vault.fm(file.path)['parent']).toBe('');
+	});
+
 	it('falls back to Untitled for empty titles and supports the vault root', async () => {
 		const vault = new FakeVault();
 		const file = await createBacklogItem(vault.app, settings, {
