@@ -241,8 +241,8 @@ function resolveParent(app: App, file: TFile, parentKey: string): { path: string
 	}
 
 	// Fallback: raw frontmatter value, e.g. a plain note name without brackets.
-	const raw = cache.frontmatter?.[parentKey];
-	const rawValue = Array.isArray(raw) ? raw[0] : raw;
+	const raw: unknown = cache.frontmatter?.[parentKey];
+	const rawValue: unknown = Array.isArray(raw) ? raw[0] : raw;
 	if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
 		let linkpath = rawValue.trim();
 		const wiki = linkpath.match(/^\[\[([^\]]+)\]\]$/);

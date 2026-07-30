@@ -36,6 +36,9 @@ Prerequisites — all already satisfied by this repository:
       `innerHTML`, styling via CSS classes and `setCssProps`, `normalizePath()` for
       user-entered paths, cleanup via `Component`/`registerDomEvent`, sentence case UI
       text, error-only console output, no network calls or telemetry.
+- [x] Lint-clean against Obsidian's official
+      [`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin) ruleset
+      (`npm run lint`, enforced in CI).
 
 Steps:
 

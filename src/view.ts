@@ -88,7 +88,7 @@ export class ProductBacklogView extends BasesView {
 			if (next.size !== this.collapsedPaths.size || paths.some((p) => !this.collapsedPaths.has(p))) {
 				this.collapsedPaths = next;
 			}
-		} catch (e) {
+		} catch {
 			// Older Bases versions without config storage — keep the in-memory state.
 		}
 	}
@@ -106,7 +106,7 @@ export class ProductBacklogView extends BasesView {
 		const paths = [...this.collapsedPaths].filter((p) => model.byPath.has(p)).sort();
 		try {
 			this.config.set(COLLAPSED_CONFIG_KEY, paths);
-		} catch (e) {
+		} catch {
 			// Persistence is best-effort; the in-memory state still applies.
 		}
 	}
@@ -207,7 +207,7 @@ export class ProductBacklogView extends BasesView {
 			cls: 'pbl-empty-hint',
 			text: focused
 				? `Nothing at the "${topLevel}" level matches this view. Switch the focus level back to "All levels" in the view options, or create a ${topLevel}.`
-				: `Point this Base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`,
+				: `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`,
 		});
 		const btn = empty.createEl('button', { cls: 'mod-cta' });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
@@ -330,7 +330,7 @@ export class ProductBacklogView extends BasesView {
 		let props: BasesPropertyId[] = [];
 		try {
 			props = this.config.getOrder();
-		} catch (e) {
+		} catch {
 			return;
 		}
 		const skip = new Set<string>([
@@ -344,7 +344,7 @@ export class ProductBacklogView extends BasesView {
 			let value = null;
 			try {
 				value = item.entry.getValue(prop);
-			} catch (e) {
+			} catch {
 				continue;
 			}
 			if (value === null || value instanceof NullValue) continue;
@@ -356,14 +356,14 @@ export class ProductBacklogView extends BasesView {
 			let label = prop.substring(prop.indexOf('.') + 1);
 			try {
 				label = this.config.getDisplayName(prop);
-			} catch (e) {
+			} catch {
 				// keep the raw property name
 			}
 			chip.createSpan({ cls: 'pbl-chip-label', text: label });
 			const valueEl = chip.createSpan({ cls: 'pbl-chip-value' });
 			try {
 				value.renderTo(valueEl, this.app.renderContext);
-			} catch (e) {
+			} catch {
 				valueEl.setText(text);
 			}
 			if (valueEl.textContent?.trim() === '' && text.trim() === '') chip.detach();
@@ -882,7 +882,7 @@ export class ProductBacklogView extends BasesView {
 	private async applySafely(writes: ItemWrite[]): Promise<void> {
 		if (writes.length === 0) return;
 		if (this.applying) {
-			new Notice('Product Backlog: still applying the previous change — try again in a moment.');
+			new Notice('Still applying the previous change — try again in a moment.');
 			return;
 		}
 		this.applying = true;
@@ -890,7 +890,7 @@ export class ProductBacklogView extends BasesView {
 			await applyWrites(this.app, this.settings, writes);
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
-			new Notice('Product Backlog: failed to update items. See developer console for details.');
+			new Notice('Failed to update backlog items. See the developer console for details.');
 		} finally {
 			this.applying = false;
 		}
@@ -933,7 +933,7 @@ export class ProductBacklogView extends BasesView {
 						new Notice(`Created "${file.basename}".`);
 					} catch (e) {
 						console.error('Product Backlog: failed to create item', e);
-						new Notice('Product Backlog: could not create the item. See developer console for details.');
+						new Notice('Could not create the item. See the developer console for details.');
 					}
 				})();
 			},

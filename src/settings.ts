@@ -53,7 +53,7 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	if (config) {
 		try {
 			levels = resolveSettings(config).levels;
-		} catch (e) {
+		} catch {
 			// fall back to the default level names
 		}
 	}
@@ -175,7 +175,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 				const parsed = parsePropertyId(pid);
 				if (parsed.type === 'note' && parsed.name) return parsed.name;
 			}
-		} catch (e) {
+		} catch {
 			// fall through to default
 		}
 		return def;

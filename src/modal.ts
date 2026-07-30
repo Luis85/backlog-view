@@ -88,10 +88,10 @@ export class TitlePromptModal extends Modal {
 			new Setting(this.contentEl)
 				.setName('Folder')
 				.setDesc(
-					"New items are created here, and the choice is saved to the view options. Point this Base's filter at the same folder so items show up. Leave empty for the vault root.",
+					"New items are created here, and the choice is saved to the view options. Point this base's filter at the same folder so items show up. Leave empty for the vault root.",
 				)
 				.addText((text) => {
-					text.setPlaceholder('e.g. Backlog');
+					text.setPlaceholder('Backlog');
 					text.onChange((v) => (folder = v));
 					new FolderSuggest(this.app, text.inputEl);
 					submitOnEnter(text.inputEl);

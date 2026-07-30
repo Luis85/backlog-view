@@ -216,7 +216,7 @@ async function ensureFolder(app: App, folder: string): Promise<void> {
 		if (app.vault.getAbstractFileByPath(current) === null) {
 			try {
 				await app.vault.createFolder(current);
-			} catch (e) {
+			} catch {
 				// Folder may have been created concurrently; creation of the note will surface real errors.
 			}
 		}

@@ -167,6 +167,7 @@ npm install
 npm run dev    # watch mode
 npm run build  # typecheck + production build
 npm test       # unit tests (vitest)
+npm run lint   # eslint with the official eslint-plugin-obsidianmd rules
 ```
 
 The entry point is `src/main.ts`; the view lives in `src/view.ts`, tree building in
@@ -174,8 +175,10 @@ The entry point is `src/main.ts`; the view lives in `src/view.ts`, tree building
 
 The pure logic — tree building, drop planning, ranking, property backfill, note
 creation — is covered by unit tests in `test/`, which run against a small mock of the
-`obsidian` module (`test/obsidian-mock.ts`). CI builds and tests every push and pull
-request.
+`obsidian` module (`test/obsidian-mock.ts`). Linting uses Obsidian's official
+[`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin) ruleset, which
+encodes the community directory review guidelines. CI builds, lints and tests every push
+and pull request.
 
 ## License
 
