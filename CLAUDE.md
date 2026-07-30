@@ -71,6 +71,8 @@ code so imports stay cycle-free.
   level; custom types outside the ladder are deliberate user data.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
+- `model.roots` is the RENDERED forest (synthetic under focus); every data operation
+  (backfill, ranking parentless items, root-level outdent) must use `model.realRoots`.
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
   at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
 - Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling

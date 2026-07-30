@@ -68,7 +68,8 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			title: request.title,
 			typeName: request.levelName,
 			parent: parentItem?.file ?? null,
-			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.roots ?? []),
+			// Parentless items rank among the real top level, not the focus rows.
+			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.realRoots ?? []),
 		});
 		new Notice(`Created "${file.basename}".`);
 	} catch (e) {

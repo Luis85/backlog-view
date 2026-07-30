@@ -118,6 +118,20 @@ describe('buildModel', () => {
 		expect(model.roots[0].children).toHaveLength(0);
 	});
 
+	it('coerces non-string type values to strings', () => {
+		const vault = new FakeVault();
+		vault.addFile('Numeric.md', { frontmatter: { type: 123 } });
+		vault.addFile('Boolean.md', { frontmatter: { type: true } });
+
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const numeric = model.roots.find((r) => r.title === 'Numeric');
+		const boolean = model.roots.find((r) => r.title === 'Boolean');
+
+		expect(numeric?.typeName).toBe('123');
+		expect(boolean?.typeName).toBe('true');
+		expect(numeric?.levelIndex).toBe(-1);
+	});
+
 	it('skips non-markdown files and duplicate paths', () => {
 		const vault = new FakeVault();
 		vault.addFile('Note.md');

@@ -150,14 +150,13 @@ function renumberWrites(
 }
 
 /**
- * Fill in missing order and type properties across the whole tree without
- * touching values that already exist. In focus mode the top row of the tree
- * is a synthetic grouping of items from different real parents, so no order
- * values are assigned at that level.
+ * Fill in missing order and type properties across the whole hierarchy without
+ * touching values that already exist. Walks the real tree, so a focused view
+ * still backfills hidden ancestors and branches outside the focus level.
  */
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
 	const writes: ItemWrite[] = [];
-	const visit = (siblings: BacklogItem[], skipOrders: boolean) => {
+	const visit = (siblings: BacklogItem[]) => {
 		let maxOrder = 0;
 		for (const item of siblings) {
 			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;
@@ -165,7 +164,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		for (const item of siblings) {
 			const write: ItemWrite = { file: item.file };
 			let needed = false;
-			if (item.order === null && !skipOrders) {
+			if (item.order === null) {
 				maxOrder = Math.floor(maxOrder) + ORDER_SPACING;
 				write.order = maxOrder;
 				needed = true;
@@ -178,10 +177,10 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 				needed = true;
 			}
 			if (needed) writes.push(write);
-			visit(item.children, false);
+			visit(item.children);
 		}
 	};
-	visit(model.roots, model.focused);
+	visit(model.realRoots);
 	return writes;
 }
 

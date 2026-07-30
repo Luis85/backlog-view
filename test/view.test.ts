@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProductBacklogView } from '../src/view';
 import { installObsidianDom } from './dom-helpers';
 import { FakeVault, FakeViewConfig } from './helpers';
-import { Menu, Modal, Notice } from './obsidian-mock';
+import { Menu, MenuItem, Modal, Notice } from './obsidian-mock';
 
 installObsidianDom();
 
@@ -83,6 +83,25 @@ beforeEach(() => {
 	Menu.lastShown = null;
 	Modal.lastOpened = null;
 });
+
+afterEach(() => {
+	vi.useRealTimers();
+	vi.restoreAllMocks();
+});
+
+/** Fill the currently open prompt and submit it. */
+function submitPrompt(fields: { title: string; folder?: string }): void {
+	const modal = Modal.lastOpened;
+	if (!modal) throw new Error('prompt not opened');
+	const inputs = Array.from(modal.contentEl.querySelectorAll('input'));
+	inputs[0].value = fields.title;
+	inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+	if (fields.folder !== undefined) {
+		inputs[1].value = fields.folder;
+		inputs[1].dispatchEvent(new Event('input', { bubbles: true }));
+	}
+	modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
 
 describe('rendering', () => {
 	it('renders the hierarchy with badges, depths and tree semantics', () => {
@@ -450,5 +469,317 @@ describe('context menu', () => {
 		submenu.item('Task')?.click();
 		await flush();
 		expect(vault.fm('Epic A.md')['type']).toBe('Task');
+	});
+
+	it('indents under the previous sibling and moves to the bottom', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Feature B2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Indent under "Feature B1"')?.click();
+		await flush();
+		expect(vault.fm('Feature B2.md')['parent']).toBe('[[Feature B1]]');
+		expect(vault.fm('Feature B2.md')['type']).toBe('PBI');
+
+		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Move to bottom')?.click();
+		await flush();
+		expect(vault.fm('Feature B1.md')['order']).toBe(30);
+	});
+
+	it('clears a stale parent link through the menu', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Root.md', { frontmatter: { order: 10 } });
+		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Orphan').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Clear parent link')?.click();
+		await flush();
+
+		expect('parent' in vault.fm('Orphan.md')).toBe(false);
+	});
+
+	it('falls back to cycling the type when submenus are unsupported', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const proto = MenuItem.prototype as unknown as { setSubmenu?: () => Menu };
+		const original = proto.setSubmenu;
+		delete proto.setSubmenu;
+		try {
+			rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+			Menu.lastShown?.item('Set type: next level')?.click();
+			await flush();
+			expect(vault.fm('Epic A.md')['type']).toBe('Feature');
+		} finally {
+			proto.setSubmenu = original;
+		}
+	});
+});
+
+describe('keyboard structure shortcuts', () => {
+	it('moves up, outdents and indents with Alt+arrows', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown'); // Epic B
+		key(tree, 'ArrowUp', { altKey: true });
+		await flush();
+		expect(vault.fm('Epic B.md')['order']).toBe(0);
+
+		key(tree, 'ArrowRight', { altKey: true }); // indent under Epic A (previous sibling)
+		await flush();
+		expect(vault.fm('Epic B.md')['parent']).toBe('[[Epic A]]');
+		// The explicitly typed subtree follows the ladder
+		expect(vault.fm('Feature B1.md')['type']).toBe('PBI');
+	});
+
+	it('outdents to the top level with Alt+ArrowLeft', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown'); // Feature B1
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+
+		const fm = vault.fm('Feature B1.md');
+		expect('parent' in fm).toBe(false);
+		expect(fm['order']).toBe(30);
+	});
+});
+
+describe('drag state details', () => {
+	it('expands a collapsed row after hovering over it during a drag', () => {
+		vi.useFakeTimers();
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+
+		const to = rowByTitle(containerEl, 'Epic B');
+		stubRect(to);
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		to.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 15 }));
+		vi.advanceTimersByTime(700);
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+	});
+
+	it('clears the indicator when the drag leaves the row', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const from = rowByTitle(containerEl, 'Epic B');
+		const to = rowByTitle(containerEl, 'Epic A');
+		stubRect(to);
+		from.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		to.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 3 }));
+		expect(to.classList.contains('pbl-drop-before')).toBe(true);
+
+		to.dispatchEvent(new MouseEvent('dragleave', { bubbles: true }));
+		expect(to.classList.contains('pbl-drop-before')).toBe(false);
+	});
+
+	it('drops on the tree background to move an item to the top level', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		tree.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
+		tree.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
+		await flush();
+
+		const fm = vault.fm('Feature B1.md');
+		expect('parent' in fm).toBe(false);
+		expect(fm['order']).toBe(30);
+	});
+
+	it('clears all drag state on dragend', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const row = rowByTitle(containerEl, 'Epic A');
+		row.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-dragging')).toBe(true);
+		expect(row.classList.contains('pbl-drag-source')).toBe(true);
+
+		row.dispatchEvent(new MouseEvent('dragend', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-dragging')).toBe(false);
+		expect(row.classList.contains('pbl-drag-source')).toBe(false);
+	});
+});
+
+describe('toolbar controls', () => {
+	it('offers every level in the New picker and opens the right prompt', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const picker = Menu.lastShown;
+		expect(picker?.items.map((i) => i.titleText)).toEqual(['New Epic', 'New Feature', 'New PBI', 'New Task']);
+
+		picker?.item('New PBI')?.click();
+		expect(Modal.lastOpened?.titleEl.textContent).toBe('New PBI');
+	});
+
+	it('collapses and expands everything from the toolbar', () => {
+		const vault = fixture();
+		const { containerEl, config } = makeView(vault);
+
+		containerEl
+			.querySelector<HTMLElement>('[aria-label="Collapse all"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+		expect(config.values['collapsedItems']).toEqual(['Epic B.md']);
+
+		containerEl
+			.querySelector<HTMLElement>('[aria-label="Expand all"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		expect(config.values['collapsedItems']).toEqual([]);
+	});
+});
+
+describe('creation flows', () => {
+	it('asks for a folder on an empty view and persists the choice', async () => {
+		const vault = new FakeVault();
+		const { containerEl, config } = makeView(vault);
+
+		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'First Epic', folder: 'Backlog' });
+		await flush();
+
+		expect(config.values['newItemFolder']).toBe('Backlog');
+		expect(vault.folders.has('Backlog')).toBe(true);
+		expect(vault.fm('Backlog/First Epic.md')['type']).toBe('Epic');
+	});
+
+	it('ranks top-level creations against the real roots in focus mode', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic 1.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('Epic 2.md', { frontmatter: { type: 'Epic', order: 200 } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic 1' });
+		const { containerEl } = makeView(vault, { focusLevel: 'Feature' });
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'Fresh Feature' });
+		await flush();
+
+		// After the real epics (order 200), not squeezed between the focus rows
+		expect(vault.fm('Fresh Feature.md')['order']).toBe(210);
+	});
+
+	it('surfaces creation failures as a notice', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		(vault.app.vault as { create: unknown }).create = async () => {
+			throw new Error('disk full');
+		};
+
+		rowByTitle(containerEl, 'Epic A')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'Doomed' });
+		await flush();
+
+		expect(Notice.messages.some((m) => m.startsWith('Could not create the item'))).toBe(true);
+	});
+});
+
+describe('focused structure operations', () => {
+	it('outdents a child of a rootless focus row against the real top level', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('Loose Feature.md', { frontmatter: { type: 'Feature', order: 5 } });
+		vault.addFile('Story.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Loose Feature' });
+		const { containerEl } = makeView(vault, { focusLevel: 'Feature' });
+
+		rowByTitle(containerEl, 'Story').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Outdent')?.click();
+		await flush();
+
+		const fm = vault.fm('Story.md');
+		expect('parent' in fm).toBe(false);
+		// Midpoint between the REAL roots Loose Feature (5) and Epic (100)
+		expect(fm['order']).toBe(52.5);
+	});
+});
+
+describe('write robustness', () => {
+	it('rejects overlapping writes with a notice', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => (release = resolve));
+		const fileManager = vault.app.fileManager as {
+			processFrontMatter: (file: unknown, fn: (fm: Record<string, unknown>) => void) => Promise<void>;
+		};
+		const original = fileManager.processFrontMatter.bind(fileManager);
+		fileManager.processFrontMatter = async (file, fn) => {
+			await gate;
+			return original(file, fn);
+		};
+
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown', { altKey: true }); // starts a write held by the gate
+		key(tree, 'ArrowDown', { altKey: true }); // second attempt while busy
+		expect(Notice.messages).toContain('Still applying the previous change — try again in a moment.');
+
+		release();
+		await flush();
+		expect(vault.fm('Epic A.md')['order']).toBe(30);
+	});
+
+	it('reports write failures without leaving the gate stuck', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		(vault.app.fileManager as { processFrontMatter: unknown }).processFrontMatter = async () => {
+			throw new Error('vault locked');
+		};
+
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown', { altKey: true });
+		await flush();
+
+		expect(Notice.messages.some((m) => m.startsWith('Failed to update backlog items'))).toBe(true);
+	});
+});
+
+describe('view state details', () => {
+	it('restores the collapsed set persisted in the view config', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, { collapsedItems: ['Epic B.md'] });
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+		expect(rowByTitle(containerEl, 'Epic B').getAttribute('aria-expanded')).toBe('false');
+	});
+
+	it('opens in a new tab on middle click', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+
+		expect(vault.opened).toEqual([{ path: 'Epic A.md', mode: 'tab' }]);
+	});
+
+	it('drops chips whose value renders empty', () => {
+		const vault = fixture();
+		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '' } });
+		const { containerEl, config, view } = makeView(vault);
+		config.order = ['note.points'];
+		view.onDataUpdated();
+
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-chip')).toBeNull();
 	});
 });

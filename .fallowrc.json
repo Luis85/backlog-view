@@ -9,7 +9,8 @@
 		}
 	],
 	"health": {
-		"coverage": "coverage/coverage-final.json"
+		"coverage": "coverage/coverage-final.json",
+		"ignore": ["test/**"]
 	},
 	"rules": {
 		"unused-dev-dependencies": "error",

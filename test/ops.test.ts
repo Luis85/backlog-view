@@ -315,23 +315,26 @@ describe('computeInitWrites', () => {
 		expect(writes[0].typeName).toBeUndefined();
 	});
 
-	it('assigns no orders to the synthetic top row of a focused view', () => {
+	it('backfills the whole hierarchy even in focus mode', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Feat.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
 		vault.addFile('Story.md', { parentLink: 'Feat' });
+		// This branch has no Feature-level item, so it is invisible while focused
+		vault.addFile('Bare Epic.md', { frontmatter: { type: 'Epic' } });
 		const focusSettings = { ...settings, focusLevel: 'Feature' };
 		const model = buildModel(vault.app, vault.entries(), focusSettings);
 		expect(model.focused).toBe(true);
 
 		const writes = computeInitWrites(model, focusSettings);
+		const byPath = new Map(writes.map((w) => [w.file.path, w]));
 
-		// Feat has no order, but the focused top row spans different real parents —
-		// only its untyped child gets backfilled.
-		expect(writes).toHaveLength(1);
-		expect(writes[0].file.path).toBe('Story.md');
-		expect(writes[0].typeName).toBe('PBI');
-		expect(writes[0].order).toBe(ORDER_SPACING);
+		// Feat gets an order within its REAL sibling group (children of Epic)
+		expect(byPath.get('Feat.md')?.order).toBe(ORDER_SPACING);
+		// The hidden branch is backfilled too, ranked after the existing root
+		expect(byPath.get('Bare Epic.md')?.order).toBe(20);
+		expect(byPath.get('Story.md')?.typeName).toBe('PBI');
+		expect(byPath.get('Story.md')?.order).toBe(ORDER_SPACING);
 	});
 });
 

@@ -88,6 +88,30 @@ describe('getViewOptions', () => {
 		const focus = flat.find((o) => o.key === 'focusLevel') as { options: Record<string, string> };
 		expect(Object.keys(focus.options)).toEqual(['', 'Theme', 'Story']);
 	});
+
+	it('falls back to the default levels when the config is unreadable', () => {
+		const broken = {
+			get: () => {
+				throw new Error('no config');
+			},
+			getAsPropertyId: () => {
+				throw new Error('no config');
+			},
+		} as never;
+		const flat = getViewOptions(broken).flatMap((o) => ('items' in o ? o.items : [o]));
+		const focus = flat.find((o) => o.key === 'focusLevel') as { options: Record<string, string> };
+		expect(Object.keys(focus.options)).toEqual(['', ...DEFAULT_LEVELS]);
+	});
+
+	it('limits the property pickers to note properties', () => {
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const parent = flat.find((o) => o.key === 'parentProperty') as {
+			filter: (prop: string) => boolean;
+		};
+		expect(parent.filter('note.parent')).toBe(true);
+		expect(parent.filter('file.name')).toBe(false);
+		expect(parent.filter('formula.x')).toBe(false);
+	});
 });
 
 describe('resolveSettings progress options', () => {

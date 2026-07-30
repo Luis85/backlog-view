@@ -43,7 +43,13 @@ export interface BacklogItem {
 }
 
 export interface BacklogModel {
+	/** Roots of the rendered tree — synthetic focus rows when a focus level is active. */
 	roots: BacklogItem[];
+	/**
+	 * Roots of the full hierarchy, regardless of focus. Data operations (backfill,
+	 * ranking parentless items) must use these; only rendering uses `roots`.
+	 */
+	realRoots: BacklogItem[];
 	byPath: Map<string, BacklogItem>;
 	/** All rendered items in depth-first (visual) order. */
 	items: BacklogItem[];
@@ -66,9 +72,9 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	if (focusIdx >= 0) {
 		const focusRoots = collectFocusRoots(roots, focusIdx);
 		items = assignVisualDepth(focusRoots);
-		return { roots: focusRoots, byPath, items, focused: true };
+		return { roots: focusRoots, realRoots: roots, byPath, items, focused: true };
 	}
-	return { roots, byPath, items, focused: false };
+	return { roots, realRoots: roots, byPath, items, focused: false };
 }
 
 /** The level name to show on an item's badge. */

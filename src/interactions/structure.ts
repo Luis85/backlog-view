@@ -40,7 +40,8 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 	const parent = item.parent;
 	if (!model || !parent || item.focusRoot) return;
 	const grandparent = parent.parent;
-	const fullList = grandparent ? grandparent.children : model.roots;
+	// Root-level outdents rank among the real top level, not the focus rows.
+	const fullList = grandparent ? grandparent.children : model.realRoots;
 	const siblings = fullList.filter((s) => s !== item);
 	const insertIndex = siblings.indexOf(parent) + 1;
 	void host.performDrop(item, { parent: grandparent, siblings, insertIndex });
