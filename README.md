@@ -71,11 +71,27 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
 | Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
 | Create a child item | Hover a row and click **+**, or use the context menu |
-| Move / indent / outdent without dragging | Right-click → Move up / Move down / Indent / Outdent |
+| Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type |
 
 While dragging, hovering the middle of a collapsed row briefly expands it so you can drop
-deeper into the tree. Dropping an item onto its own descendant is prevented.
+deeper into the tree. Dropping an item onto its own descendant is prevented. Which items
+are collapsed is remembered per view in the `.base` file.
+
+### Keyboard
+
+Click or <kbd>Tab</kbd> into the tree first, then (mirroring Azure DevOps backlog
+shortcuts where sensible):
+
+| Keys | Action |
+| --- | --- |
+| <kbd>↑</kbd> / <kbd>↓</kbd> | Select the previous / next visible item |
+| <kbd>←</kbd> | Collapse the item, or jump to its parent |
+| <kbd>→</kbd> | Expand the item, or jump to its first child |
+| <kbd>Enter</kbd> | Open the selected item (Ctrl/Cmd for a new tab) |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down among its siblings |
+| <kbd>Alt</kbd>+<kbd>←</kbd> | Outdent — make it a sibling of its parent |
+| <kbd>Alt</kbd>+<kbd>→</kbd> | Indent — nest it under the previous sibling |
 
 ### Ranking details
 
@@ -104,7 +120,10 @@ Notes:
   and the `order` property.
 - **Group by** is ignored; the hierarchy is the grouping.
 - Items whose `parent` links to a note outside the current filter results are shown at the
-  top level with an unlink icon.
+  top level with an unlink icon. Dropping such an item at the top level clears the stale
+  link.
+- When the view is empty and no folder is configured, creating the first item asks for
+  the target folder (with autocomplete) and saves the choice to the view options.
 
 ## Installation
 
@@ -121,10 +140,16 @@ Until the plugin is listed in the community directory:
 npm install
 npm run dev    # watch mode
 npm run build  # typecheck + production build
+npm test       # unit tests (vitest)
 ```
 
 The entry point is `src/main.ts`; the view lives in `src/view.ts`, tree building in
 `src/model.ts`, and all frontmatter writes in `src/ops.ts`.
+
+The pure logic — tree building, drop planning, ranking, property backfill, note
+creation — is covered by unit tests in `test/`, which run against a small mock of the
+`obsidian` module (`test/obsidian-mock.ts`). CI builds and tests every push and pull
+request.
 
 ## License
 

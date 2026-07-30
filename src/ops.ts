@@ -52,7 +52,11 @@ export function computeDropWrites(
 
 	const oldParentPath = dragged.parent?.file.path ?? null;
 	const newParentPath = parent?.file.path ?? null;
-	const parentChanged = oldParentPath !== newParentPath;
+	// An item whose parent link points outside the view renders as a root while the
+	// stale property is still set; placing it at the top level must clear that link,
+	// otherwise it would re-nest as soon as the linked note enters the filter.
+	const staleRootLink = parent === null && dragged.parent === null && dragged.hasParentValue;
+	const parentChanged = oldParentPath !== newParentPath || staleRootLink;
 	const parentField: TFile | null | undefined = parentChanged ? (parent ? parent.file : null) : undefined;
 
 	let typeField: string | undefined;
@@ -177,7 +181,7 @@ function sanitizeTitle(title: string): string {
 		.replace(/[\\/:*?"<>|#^[\]]/g, '-')
 		.replace(/\s+/g, ' ')
 		.trim()
-		.replace(/^\.+/, '');
+		.replace(/^[-\s.]+|[-\s]+$/g, '');
 	return cleaned.length > 0 ? cleaned : 'Untitled';
 }
 

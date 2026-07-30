@@ -77,6 +77,19 @@
 	background-color: var(--background-modifier-hover);
 }
 
+.pbl-row.pbl-selected {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+.pbl-tree:focus-visible {
+	outline: none;
+}
+
+.pbl-tree:focus-visible .pbl-row.pbl-selected {
+	background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+
 .pbl-grip {
 	display: flex;
 	align-items: center;

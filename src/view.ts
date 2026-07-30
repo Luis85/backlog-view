@@ -26,6 +26,7 @@ import { BacklogSettings, defaultSettings, levelForDepth, resolveSettings } from
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 const BADGE_COLOR_COUNT = 8;
+const COLLAPSED_CONFIG_KEY = 'collapsedItems';
 type DropZone = 'before' | 'after' | 'inside';
 
 export class ProductBacklogView extends BasesView {
@@ -39,6 +40,7 @@ export class ProductBacklogView extends BasesView {
 	private settings: BacklogSettings = defaultSettings();
 	private model: BacklogModel | null = null;
 	private collapsedPaths = new Set<string>();
+	private selectedPath: string | null = null;
 
 	private draggedPath: string | null = null;
 	private activeDropRow: HTMLElement | null = null;
@@ -49,12 +51,16 @@ export class ProductBacklogView extends BasesView {
 		super(controller);
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view' });
 		this.toolbarEl = this.viewEl.createDiv({ cls: 'pbl-toolbar' });
-		this.treeEl = this.viewEl.createDiv({ cls: 'pbl-tree' });
+		this.treeEl = this.viewEl.createDiv({
+			cls: 'pbl-tree',
+			attr: { role: 'tree', tabindex: '0', 'aria-label': 'Product backlog' },
+		});
 		this.rootDropEl = this.viewEl.createDiv({ cls: 'pbl-root-drop' });
 		setIcon(this.rootDropEl.createSpan({ cls: 'pbl-root-drop-icon' }), 'corner-left-up');
 		this.rootDropEl.createSpan({ text: 'Move to top level' });
 
 		this.setupRootDropZone();
+		this.treeEl.addEventListener('keydown', (evt) => this.handleKeyDown(evt));
 		this.registerDomEvent(document, 'dragend', () => this.clearDragState());
 	}
 
@@ -66,7 +72,41 @@ export class ProductBacklogView extends BasesView {
 	onDataUpdated(): void {
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
+		this.restoreCollapsedState();
 		this.render();
+	}
+
+	/** Adopt the collapsed-item list persisted in the view config (survives reopening the Base). */
+	private restoreCollapsedState(): void {
+		try {
+			const stored = this.config.get(COLLAPSED_CONFIG_KEY);
+			if (!Array.isArray(stored)) return;
+			const paths = stored.filter((p): p is string => typeof p === 'string');
+			const next = new Set(paths);
+			if (next.size !== this.collapsedPaths.size || paths.some((p) => !this.collapsedPaths.has(p))) {
+				this.collapsedPaths = next;
+			}
+		} catch (e) {
+			// Older Bases versions without config storage — keep the in-memory state.
+		}
+	}
+
+	private setCollapsed(path: string, collapsed: boolean): boolean {
+		const changed = collapsed ? !this.collapsedPaths.has(path) : this.collapsedPaths.delete(path);
+		if (collapsed) this.collapsedPaths.add(path);
+		return changed;
+	}
+
+	private persistCollapsedState(): void {
+		const model = this.model;
+		if (!model) return;
+		// Prune paths that no longer exist so renames and deletions don't accumulate.
+		const paths = [...this.collapsedPaths].filter((p) => model.byPath.has(p)).sort();
+		try {
+			this.config.set(COLLAPSED_CONFIG_KEY, paths);
+		} catch (e) {
+			// Persistence is best-effort; the in-memory state still applies.
+		}
 	}
 
 	// ------------------------------------------------------------------ render
@@ -103,12 +143,14 @@ export class ProductBacklogView extends BasesView {
 		});
 		this.iconButton(bar, 'chevrons-up-down', 'Expand all', () => {
 			this.collapsedPaths.clear();
+			this.persistCollapsedState();
 			this.render();
 		});
 		this.iconButton(bar, 'chevrons-down-up', 'Collapse all', () => {
 			for (const item of model.items) {
 				if (item.children.length > 0) this.collapsedPaths.add(item.file.path);
 			}
+			this.persistCollapsedState();
 			this.render();
 		});
 
@@ -145,7 +187,16 @@ export class ProductBacklogView extends BasesView {
 		const collapsed = this.collapsedPaths.has(item.file.path);
 		const childLevel = levelForDepth(this.settings.levels, item.depth + 1);
 
-		const row = containerEl.createDiv({ cls: 'pbl-row' });
+		const selected = this.selectedPath === item.file.path;
+		const row = containerEl.createDiv({
+			cls: 'pbl-row' + (selected ? ' pbl-selected' : ''),
+			attr: {
+				role: 'treeitem',
+				'aria-level': String(item.depth + 1),
+				'aria-selected': String(selected),
+			},
+		});
+		if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
 		row.style.setProperty('--pbl-depth', String(item.depth));
 		row.dataset.path = item.file.path;
 		row.draggable = true;
@@ -209,6 +260,7 @@ export class ProductBacklogView extends BasesView {
 		});
 
 		row.addEventListener('click', (evt) => {
+			this.selectItem(item, false);
 			void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(item.file);
 		});
 		row.addEventListener('auxclick', (evt) => {
@@ -219,7 +271,7 @@ export class ProductBacklogView extends BasesView {
 		this.setupRowDragAndDrop(row, item, hasChildren, collapsed);
 
 		if (hasChildren && !collapsed) {
-			const childrenEl = containerEl.createDiv({ cls: 'pbl-children' });
+			const childrenEl = containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
 			for (const child of item.children) this.renderItem(childrenEl, child);
 		}
 	}
@@ -246,6 +298,9 @@ export class ProductBacklogView extends BasesView {
 				continue;
 			}
 			if (value === null || value instanceof NullValue) continue;
+			// isEmpty() is not yet part of the published typings; prefer it when present.
+			const maybeEmpty = value as { isEmpty?: () => boolean };
+			if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) continue;
 			const text = value.toString();
 			const chip = containerEl.createDiv({ cls: 'pbl-chip' });
 			let label = prop.substring(prop.indexOf('.') + 1);
@@ -268,9 +323,134 @@ export class ProductBacklogView extends BasesView {
 	// ------------------------------------------------------------ interactions
 
 	private toggleCollapsed(item: BacklogItem): void {
-		if (this.collapsedPaths.has(item.file.path)) this.collapsedPaths.delete(item.file.path);
-		else this.collapsedPaths.add(item.file.path);
+		this.setCollapsed(item.file.path, !this.collapsedPaths.has(item.file.path));
+		this.persistCollapsedState();
 		this.render();
+	}
+
+	// ----------------------------------------------------------------- keyboard
+
+	/** Items currently rendered, top to bottom, honoring collapsed subtrees. */
+	private visibleItems(): BacklogItem[] {
+		const model = this.model;
+		if (!model) return [];
+		const visible: BacklogItem[] = [];
+		const walk = (items: BacklogItem[]) => {
+			for (const item of items) {
+				visible.push(item);
+				if (item.children.length > 0 && !this.collapsedPaths.has(item.file.path)) {
+					walk(item.children);
+				}
+			}
+		};
+		walk(model.roots);
+		return visible;
+	}
+
+	private selectedItem(): BacklogItem | null {
+		if (!this.selectedPath || !this.model) return null;
+		return this.model.byPath.get(this.selectedPath) ?? null;
+	}
+
+	private selectItem(item: BacklogItem, scroll = true): void {
+		this.selectedPath = item.file.path;
+		this.treeEl.querySelectorAll('.pbl-selected').forEach((el) => {
+			el.classList.remove('pbl-selected');
+			el.setAttribute('aria-selected', 'false');
+		});
+		const row = this.rowElFor(item);
+		if (row) {
+			row.classList.add('pbl-selected');
+			row.setAttribute('aria-selected', 'true');
+			if (scroll) row.scrollIntoView({ block: 'nearest' });
+		}
+	}
+
+	private rowElFor(item: BacklogItem): HTMLElement | null {
+		const rows = this.treeEl.querySelectorAll<HTMLElement>('.pbl-row');
+		for (const row of Array.from(rows)) {
+			if (row.dataset.path === item.file.path) return row;
+		}
+		return null;
+	}
+
+	private handleKeyDown(evt: KeyboardEvent): void {
+		const model = this.model;
+		if (!model || model.items.length === 0) return;
+		const visible = this.visibleItems();
+		if (visible.length === 0) return;
+
+		const current = this.selectedItem();
+		const currentIdx = current ? visible.indexOf(current) : -1;
+		const select = (item: BacklogItem | undefined) => {
+			if (item) this.selectItem(item);
+		};
+
+		// Alt + arrows mirror the Azure DevOps backlog shortcuts: move within
+		// siblings, outdent to the parent's level, indent under the previous sibling.
+		if (evt.altKey && current) {
+			switch (evt.key) {
+				case 'ArrowUp':
+					evt.preventDefault();
+					this.moveWithinSiblings(current, -1);
+					return;
+				case 'ArrowDown':
+					evt.preventDefault();
+					this.moveWithinSiblings(current, 1);
+					return;
+				case 'ArrowLeft':
+					evt.preventDefault();
+					this.outdent(current);
+					return;
+				case 'ArrowRight':
+					evt.preventDefault();
+					this.indent(current);
+					return;
+			}
+			return;
+		}
+
+		switch (evt.key) {
+			case 'ArrowDown':
+				evt.preventDefault();
+				select(currentIdx === -1 ? visible[0] : visible[Math.min(currentIdx + 1, visible.length - 1)]);
+				break;
+			case 'ArrowUp':
+				evt.preventDefault();
+				select(currentIdx === -1 ? visible[visible.length - 1] : visible[Math.max(currentIdx - 1, 0)]);
+				break;
+			case 'ArrowLeft':
+				if (!current) break;
+				evt.preventDefault();
+				if (current.children.length > 0 && !this.collapsedPaths.has(current.file.path)) {
+					this.setCollapsed(current.file.path, true);
+					this.persistCollapsedState();
+					this.render();
+					this.selectItem(current);
+				} else if (current.parent) {
+					select(current.parent);
+				}
+				break;
+			case 'ArrowRight':
+				if (!current) break;
+				evt.preventDefault();
+				if (current.children.length > 0 && this.collapsedPaths.has(current.file.path)) {
+					this.setCollapsed(current.file.path, false);
+					this.persistCollapsedState();
+					this.render();
+					this.selectItem(current);
+				} else if (current.children.length > 0) {
+					select(current.children[0]);
+				}
+				break;
+			case 'Enter':
+				if (!current) break;
+				evt.preventDefault();
+				void this.app.workspace
+					.getLeaf(evt.ctrlKey || evt.metaKey ? 'tab' : false)
+					.openFile(current.file);
+				break;
+		}
 	}
 
 	private showItemMenu(evt: MouseEvent, item: BacklogItem, childLevel: string): void {
@@ -304,6 +484,19 @@ export class ProductBacklogView extends BasesView {
 		if (idx >= 0 && idx < siblingList.length - 1) {
 			menu.addItem((mi) =>
 				mi.setTitle('Move down').setIcon('arrow-down').onClick(() => this.moveWithinSiblings(item, 1)),
+			);
+		}
+		if (idx > 0) {
+			menu.addItem((mi) =>
+				mi.setTitle('Move to top').setIcon('arrow-up-to-line').onClick(() => this.moveToEdge(item, 'top')),
+			);
+		}
+		if (idx >= 0 && idx < siblingList.length - 1) {
+			menu.addItem((mi) =>
+				mi
+					.setTitle('Move to bottom')
+					.setIcon('arrow-down-to-line')
+					.onClick(() => this.moveToEdge(item, 'bottom')),
 			);
 		}
 		if (item.parent) {
@@ -517,7 +710,10 @@ export class ProductBacklogView extends BasesView {
 		this.cancelHoverExpand();
 		const timer = window.setTimeout(() => {
 			this.hoverExpand = null;
-			if (this.collapsedPaths.delete(path)) this.render();
+			if (this.collapsedPaths.delete(path)) {
+				this.persistCollapsedState();
+				this.render();
+			}
 		}, 600);
 		this.hoverExpand = { path, timer };
 	}
@@ -544,9 +740,22 @@ export class ProductBacklogView extends BasesView {
 	// ---------------------------------------------------------------- mutations
 
 	private async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
-		if (target.parent) this.collapsedPaths.delete(target.parent.file.path);
+		if (target.parent && this.setCollapsed(target.parent.file.path, false)) {
+			this.persistCollapsedState();
+		}
 		const writes = computeDropWrites(dragged, target, this.settings);
 		await this.applySafely(writes);
+	}
+
+	private moveToEdge(item: BacklogItem, edge: 'top' | 'bottom'): void {
+		const model = this.model;
+		if (!model) return;
+		const fullList = item.parent ? item.parent.children : model.roots;
+		const idx = fullList.indexOf(item);
+		if (idx === -1 || idx === (edge === 'top' ? 0 : fullList.length - 1)) return;
+		const siblings = fullList.filter((s) => s !== item);
+		const insertIndex = edge === 'top' ? 0 : siblings.length;
+		void this.performDrop(item, { parent: item.parent, siblings, insertIndex });
 	}
 
 	private moveWithinSiblings(item: BacklogItem, delta: -1 | 1): void {
@@ -596,7 +805,11 @@ export class ProductBacklogView extends BasesView {
 	}
 
 	private async applySafely(writes: ItemWrite[]): Promise<void> {
-		if (this.applying || writes.length === 0) return;
+		if (writes.length === 0) return;
+		if (this.applying) {
+			new Notice('Product Backlog: still applying the previous change — try again in a moment.');
+			return;
+		}
 		this.applying = true;
 		try {
 			await applyWrites(this.app, this.settings, writes);
@@ -609,28 +822,46 @@ export class ProductBacklogView extends BasesView {
 	}
 
 	private promptCreate(levelName: string, parentItem: BacklogItem | null): void {
-		new TitlePromptModal(this.app, `New ${levelName}`, (title) => {
-			void (async () => {
-				if (parentItem) this.collapsedPaths.delete(parentItem.file.path);
-				const siblings = parentItem ? parentItem.children : this.model?.roots ?? [];
-				let maxOrder = 0;
-				for (const s of siblings) {
-					if (s.order !== null && s.order > maxOrder) maxOrder = s.order;
-				}
-				try {
-					const file = await createBacklogItem(this.app, this.settings, {
-						folder: this.settings.newItemFolder || this.inferFolder(),
-						title,
-						typeName: levelName,
-						parent: parentItem?.file ?? null,
-						order: Math.floor(maxOrder) + ORDER_SPACING,
-					});
-					new Notice(`Created "${file.basename}".`);
-				} catch (e) {
-					console.error('Product Backlog: failed to create item', e);
-					new Notice('Product Backlog: could not create the item. See developer console for details.');
-				}
-			})();
+		const hasItems = (this.model?.items.length ?? 0) > 0;
+		const inferredFolder = this.settings.newItemFolder || (hasItems ? this.inferFolder() : '');
+		// Without items or a configured folder there is nothing to infer from, and a note
+		// in the vault root would most likely fall outside this Base's filter — ask instead.
+		const askFolder = !hasItems && this.settings.newItemFolder === '';
+
+		new TitlePromptModal(this.app, {
+			heading: `New ${levelName}`,
+			askFolder,
+			onSubmit: ({ title, folder }) => {
+				void (async () => {
+					const targetFolder = askFolder ? folder ?? '' : inferredFolder;
+					if (askFolder && targetFolder) {
+						try {
+							this.config.set('newItemFolder', targetFolder);
+						} catch (e) {
+							console.error('Product Backlog: could not save folder to the view options', e);
+						}
+					}
+					if (parentItem && this.setCollapsed(parentItem.file.path, false)) this.persistCollapsedState();
+					const siblings = parentItem ? parentItem.children : this.model?.roots ?? [];
+					let maxOrder = 0;
+					for (const s of siblings) {
+						if (s.order !== null && s.order > maxOrder) maxOrder = s.order;
+					}
+					try {
+						const file = await createBacklogItem(this.app, this.settings, {
+							folder: targetFolder,
+							title,
+							typeName: levelName,
+							parent: parentItem?.file ?? null,
+							order: Math.floor(maxOrder) + ORDER_SPACING,
+						});
+						new Notice(`Created "${file.basename}".`);
+					} catch (e) {
+						console.error('Product Backlog: failed to create item', e);
+						new Notice('Product Backlog: could not create the item. See developer console for details.');
+					}
+				})();
+			},
 		}).open();
 	}
 
