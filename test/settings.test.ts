@@ -71,6 +71,7 @@ describe('getViewOptions', () => {
 				'typeProperty',
 				'levels',
 				'focusLevel',
+				'inferFolderHierarchy',
 				'autoAssignType',
 				'stateProperty',
 				'doneValues',

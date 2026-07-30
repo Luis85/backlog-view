@@ -29,8 +29,11 @@ export async function applyWrites(app: App, settings: BacklogSettings, writes: I
 	for (const write of writes) {
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
 			if (write.parent !== undefined) {
-				if (write.parent === null) delete fm[settings.parentKey];
-				else fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
+				if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
+				// In folder mode a deleted key would just re-infer the folder parent;
+				// an explicitly empty value pins the item to the top level instead.
+				else if (settings.folderHierarchy) fm[settings.parentKey] = '';
+				else delete fm[settings.parentKey];
 			}
 			if (write.order !== undefined) fm[settings.orderKey] = write.order;
 			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;

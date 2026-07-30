@@ -19,6 +19,11 @@ export interface BacklogItem {
 	parentPath: string | null;
 	/** True when the parent property holds any value at all. */
 	hasParentValue: boolean;
+	/**
+	 * True when the parent key is present but explicitly empty — in folder
+	 * hierarchy mode this pins the item to the top level instead of re-inferring.
+	 */
+	explicitRoot: boolean;
 	parent: BacklogItem | null;
 	children: BacklogItem[];
 	/** Visual depth in the rendered tree (0 for rendered roots, focused or not). */
@@ -64,7 +69,7 @@ export interface BacklogModel {
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
 	const { all, byPath } = createItems(app, entries, settings);
-	const roots = linkParents(all, byPath);
+	const roots = linkParents(all, byPath, settings);
 	breakCycles(all, roots);
 	sortSiblingsDeep(roots);
 	let items = assignAll(roots, settings);
@@ -124,6 +129,7 @@ function createItems(
 			entryIndex: all.length,
 			parentPath: parentRef.path,
 			hasParentValue: parentRef.hasValue,
+			explicitRoot: parentRef.explicitRoot,
 			parent: null,
 			children: [],
 			depth: 0,
@@ -144,10 +150,15 @@ function createItems(
 }
 
 /** Attach children to parents; anything unresolvable becomes a root. */
-function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>): BacklogItem[] {
+function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>, settings: BacklogSettings): BacklogItem[] {
 	const roots: BacklogItem[] = [];
 	for (const item of all) {
-		const parent = item.parentPath ? byPath.get(item.parentPath) : undefined;
+		let parent = item.parentPath ? byPath.get(item.parentPath) : undefined;
+		// Folder mode: notes without an explicit parent link attach to the nearest
+		// ancestor folder note, unless an empty parent key pins them to the top.
+		if (!parent && settings.folderHierarchy && !item.hasParentValue && !item.explicitRoot) {
+			parent = inferFolderParent(item, byPath) ?? undefined;
+		}
 		if (parent && parent !== item) {
 			item.parent = parent;
 			parent.children.push(item);
@@ -157,6 +168,34 @@ function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>): Back
 		}
 	}
 	return roots;
+}
+
+/**
+ * The nearest ancestor folder note ("Epic X/Epic X.md") in the result set.
+ * A folder note itself starts the walk above its own folder, and container
+ * folders without a note of their own (like "use-cases/") pass through.
+ */
+function inferFolderParent(item: BacklogItem, byPath: Map<string, BacklogItem>): BacklogItem | null {
+	let folder = parentFolderOf(item.file.path);
+	if (folder !== null && folderNotePath(folder) === item.file.path) {
+		folder = parentFolderOf(folder);
+	}
+	while (folder !== null) {
+		const candidate = byPath.get(folderNotePath(folder));
+		if (candidate && candidate !== item) return candidate;
+		folder = parentFolderOf(folder);
+	}
+	return null;
+}
+
+function folderNotePath(folderPath: string): string {
+	const name = folderPath.substring(folderPath.lastIndexOf('/') + 1);
+	return `${folderPath}/${name}.md`;
+}
+
+function parentFolderOf(path: string): string | null {
+	const idx = path.lastIndexOf('/');
+	return idx > 0 ? path.substring(0, idx) : null;
 }
 
 /** Any item not reachable from a root is part of a parent cycle — re-root it. */
@@ -273,28 +312,37 @@ function computeLevel(item: BacklogItem, settings: BacklogSettings): void {
 
 // ----------------------------------------------------------- frontmatter IO
 
-function resolveParent(app: App, file: TFile, parentKey: string): { path: string | null; hasValue: boolean } {
+interface ParentRef {
+	path: string | null;
+	hasValue: boolean;
+	/** Parent key present but empty — an explicit "top level" marker in folder mode. */
+	explicitRoot: boolean;
+}
+
+function resolveParent(app: App, file: TFile, parentKey: string): ParentRef {
 	const cache = app.metadataCache.getFileCache(file);
-	if (!cache) return { path: null, hasValue: false };
+	if (!cache) return { path: null, hasValue: false, explicitRoot: false };
 
 	// Preferred: the parsed frontmatter link cache (handles wikilinks and aliases).
 	for (const link of cache.frontmatterLinks ?? []) {
 		if (link.key === parentKey || link.key.startsWith(parentKey + '.')) {
 			const dest = app.metadataCache.getFirstLinkpathDest(link.link, file.path);
-			return { path: dest?.path ?? null, hasValue: true };
+			return { path: dest?.path ?? null, hasValue: true, explicitRoot: false };
 		}
 	}
 
 	// Fallback: raw frontmatter value, e.g. a plain note name without brackets.
-	const raw: unknown = cache.frontmatter?.[parentKey];
+	const fm = cache.frontmatter;
+	const raw: unknown = fm?.[parentKey];
 	const rawValue: unknown = Array.isArray(raw) ? raw[0] : raw;
 	if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
-		return { path: null, hasValue: false };
+		const keyPresent = !!fm && parentKey in fm;
+		return { path: null, hasValue: false, explicitRoot: keyPresent };
 	}
 	const linkpath = linkpathFromRawValue(rawValue);
-	if (linkpath.length === 0) return { path: null, hasValue: true };
+	if (linkpath.length === 0) return { path: null, hasValue: true, explicitRoot: false };
 	const dest = app.metadataCache.getFirstLinkpathDest(linkpath, file.path);
-	return { path: dest?.path ?? null, hasValue: true };
+	return { path: dest?.path ?? null, hasValue: true, explicitRoot: false };
 }
 
 /** Strip wikilink brackets, aliases and heading refs from a raw parent value. */

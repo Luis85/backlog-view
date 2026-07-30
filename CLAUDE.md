@@ -80,6 +80,9 @@ code so imports stay cycle-free.
   toolbar input keeps focus.
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
   at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
+- Folder mode (`settings.folderHierarchy`): explicit links beat folder-note inference;
+  parent-clearing writes `parent: ''` (`explicitRoot`) instead of deleting the key,
+  because a deleted key re-infers on the next build. Files are never moved on disk.
 - Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling
   group renumbers. Missing orders sort last, in Bases result order (`entryIndex`) —
   `data.data` arrives presorted by the user's Bases sort config, so never re-sort it.

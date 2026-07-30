@@ -23,10 +23,14 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 		return;
 	}
 	const hasItems = (host.model?.items.length ?? 0) > 0;
-	const inferredFolder = host.settings.newItemFolder || (hasItems ? inferFolder(host.model) : '');
+	// In folder mode, children belong next to their parent's folder note.
+	const parentFolder =
+		host.settings.folderHierarchy && parentItem ? normalizeFolder(parentItem.file.parent?.path) : null;
+	const inferredFolder =
+		parentFolder ?? (host.settings.newItemFolder || (hasItems ? inferFolder(host.model) : ''));
 	// Without items or a configured folder there is nothing to infer from, and a note
 	// in the vault root would most likely fall outside this base's filter — ask instead.
-	const askFolder = !hasItems && host.settings.newItemFolder === '';
+	const askFolder = parentFolder === null && !hasItems && host.settings.newItemFolder === '';
 
 	new TitlePromptModal(host.app, {
 		heading: `New ${levelName}`,
@@ -85,6 +89,10 @@ function endOfSiblingsOrder(siblings: BacklogItem[]): number {
 		if (s.order !== null && s.order > maxOrder) maxOrder = s.order;
 	}
 	return Math.floor(maxOrder) + ORDER_SPACING;
+}
+
+function normalizeFolder(path: string | undefined): string {
+	return !path || path === '/' ? '' : path;
 }
 
 /** Without a configured folder, place new items where most existing items live. */

@@ -101,6 +101,40 @@ re-parenting by dropping *into* a row still works — but the top row of a focus
 no shared ranking, so reordering, indent/outdent and the top-level drop strip are disabled
 there.
 
+### Folder-based backlogs
+
+Backlogs organized as folders work too. Enable **Infer hierarchy from folder notes** in
+the view options for structures like:
+
+```text
+product-managements/
+  payments/                      (a folder per product domain)
+    epics/
+      Checkout/
+        Checkout.md              (folder note → top-level Epic)
+        One-click pay/
+          One-click pay.md       (folder note → Feature under Checkout)
+          use-cases/
+            Pay with saved card.md   (→ PBI under One-click pay)
+```
+
+Notes without an explicit `parent` link attach to the nearest ancestor **folder note**
+(a note named like its folder, e.g. `Checkout/Checkout.md`). Container folders without
+a folder note — `epics/`, `use-cases/`, the domain folders — simply pass through, and a
+folder note itself looks for parents above its own folder. Untyped notes still imply
+their level from the parent chain, so a note under a typed Feature reads as a PBI.
+
+Rules to know:
+
+- An explicit `parent` link always overrides the folder structure, which is exactly what
+  drag and drop writes — so re-parenting works as usual, but **files are not moved on
+  disk**. The folder tree and the parent links can diverge; the links win.
+- Moving an item to the top level writes an empty `parent` property as a "pinned to top
+  level" marker (deleting it would just re-infer the folder parent).
+- New child items are created in their parent note's folder.
+- If your domain folders also contain folder notes inside the filter, they become the
+  top level — add a level name for them (e.g. `Domain, Epic, Feature, PBI, Task`).
+
 ### Progress rollup
 
 Set the **State property** (e.g. `status`) in the view options and parents show a

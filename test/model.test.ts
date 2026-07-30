@@ -219,6 +219,72 @@ describe('buildModel', () => {
 	});
 });
 
+describe('buildModel with folder hierarchy', () => {
+	const folderSettings = { ...settings, folderHierarchy: true };
+
+	/** The documented layout: domains > epics > epic folders > feature folders > use-cases. */
+	function projectVault(): FakeVault {
+		const vault = new FakeVault();
+		const epics = 'product-managements/payments/epics';
+		vault.addFile(`${epics}/Checkout/Checkout.md`, { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile(`${epics}/Checkout/One-click pay/One-click pay.md`, {
+			frontmatter: { type: 'Feature', order: 10 },
+		});
+		vault.addFile(`${epics}/Checkout/One-click pay/use-cases/Pay with saved card.md`, {
+			frontmatter: { order: 10 },
+		});
+		return vault;
+	}
+
+	it('infers the hierarchy from folder notes in a domain/epics layout', () => {
+		const vault = projectVault();
+		const model = buildModel(vault.app, vault.entries(), folderSettings);
+
+		expect(names(model.roots)).toEqual(['Checkout']);
+		const epic = model.roots[0];
+		expect(names(epic.children)).toEqual(['One-click pay']);
+		const feature = epic.children[0];
+		// The use-cases container has no folder note; the walk passes through it
+		expect(names(feature.children)).toEqual(['Pay with saved card']);
+		const pbi = feature.children[0];
+		expect(pbi.orphan).toBe(false);
+		expect(pbi.impliedType).toBe(true);
+		expect(displayType(pbi, folderSettings)).toBe('PBI');
+	});
+
+	it('stays off unless the option is enabled', () => {
+		const vault = projectVault();
+		const model = buildModel(vault.app, vault.entries(), settings);
+		expect(model.roots).toHaveLength(3);
+	});
+
+	it('lets explicit parent links override the folder structure', () => {
+		const vault = new FakeVault();
+		vault.addFile('epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('epics/Beta/Beta.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('epics/Alpha/Stray Feature/Stray Feature.md', {
+			frontmatter: { type: 'Feature' },
+			parentLink: 'Beta',
+		});
+		const model = buildModel(vault.app, vault.entries(), folderSettings);
+
+		const beta = model.roots.find((r) => r.title === 'Beta');
+		expect(names(beta?.children ?? [])).toEqual(['Stray Feature']);
+	});
+
+	it('pins items to the top level when the parent key is explicitly empty', () => {
+		const vault = new FakeVault();
+		vault.addFile('epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('epics/Alpha/Detached.md', { frontmatter: { parent: '' } });
+		const model = buildModel(vault.app, vault.entries(), folderSettings);
+
+		const detached = model.roots.find((r) => r.title === 'Detached');
+		expect(detached).toBeDefined();
+		expect(detached?.orphan).toBe(false);
+		expect(detached?.explicitRoot).toBe(true);
+	});
+});
+
 describe('buildModel with a focus level', () => {
 	function focusVault() {
 		const vault = new FakeVault();

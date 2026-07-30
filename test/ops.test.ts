@@ -352,6 +352,16 @@ describe('applyWrites', () => {
 		await applyWrites(vault.app, settings, [{ file: child, parent: null }]);
 		expect(vault.fm('Child.md')).toEqual({ order: 15, type: 'Feature' });
 	});
+
+	it('pins folder-mode top-level moves with an empty parent value', async () => {
+		const vault = new FakeVault();
+		const child = vault.addFile('Epic/Child.md', { frontmatter: { parent: '[[Epic]]' } });
+
+		await applyWrites(vault.app, { ...settings, folderHierarchy: true }, [{ file: child, parent: null }]);
+
+		// Deleting the key would just re-infer the folder parent on the next build
+		expect(vault.fm('Epic/Child.md')).toEqual({ parent: '' });
+	});
 });
 
 describe('createBacklogItem', () => {

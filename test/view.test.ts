@@ -698,6 +698,22 @@ describe('creation flows', () => {
 		expect(vault.fm('Fresh Feature.md')['order']).toBe(210);
 	});
 
+	it('creates children beside the parent folder note in folder mode', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic X/Epic X.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeView(vault, { inferFolderHierarchy: true });
+
+		rowByTitle(containerEl, 'Epic X')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'Fast checkout' });
+		await flush();
+
+		const fm = vault.fm('Backlog/Epic X/Fast checkout.md');
+		expect(fm['type']).toBe('Feature');
+		expect(fm['parent']).toBe('[[Epic X]]');
+	});
+
 	it('surfaces creation failures as a notice', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
 		const vault = fixture();

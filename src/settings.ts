@@ -9,6 +9,8 @@ export interface BacklogSettings {
 	orderKey: string;
 	typeKey: string;
 	levels: string[];
+	/** Parent notes are inferred from folder notes when no explicit parent link is set. */
+	folderHierarchy: boolean;
 	autoType: boolean;
 	showChips: boolean;
 	showCounts: boolean;
@@ -30,6 +32,7 @@ export function defaultSettings(): BacklogSettings {
 		orderKey: 'order',
 		typeKey: 'type',
 		levels: [...DEFAULT_LEVELS],
+		folderHierarchy: false,
 		autoType: true,
 		showChips: true,
 		showCounts: true,
@@ -133,6 +136,12 @@ function hierarchyGroup(levels: string[]): BasesAllOptions {
 					displayName: 'Focus level',
 					default: '',
 					options: focusOptions,
+				},
+				{
+					type: 'toggle',
+					key: 'inferFolderHierarchy',
+					displayName: 'Infer hierarchy from folder notes',
+					default: false,
 				},
 				{
 					type: 'toggle',
@@ -241,6 +250,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		orderKey: propKey('orderProperty', fallback.orderKey),
 		typeKey: propKey('typeProperty', fallback.typeKey),
 		levels: levels.length > 0 ? levels : fallback.levels,
+		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
 		autoType: bool('autoAssignType', fallback.autoType),
 		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
