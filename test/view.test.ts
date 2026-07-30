@@ -755,6 +755,106 @@ describe('write robustness', () => {
 	});
 });
 
+describe('quick filter', () => {
+	function filterInput(containerEl: HTMLElement): HTMLInputElement {
+		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
+		if (!input) throw new Error('filter input missing');
+		return input;
+	}
+	function setFilterText(containerEl: HTMLElement, text: string): void {
+		const input = filterInput(containerEl);
+		input.value = text;
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+	}
+
+	it('shows matches with their ancestors and subtrees', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		setFilterText(containerEl, 'B1');
+		expect(titlesOf(containerEl)).toEqual(['Epic B', 'Feature B1']);
+
+		setFilterText(containerEl, 'Epic B');
+		expect(titlesOf(containerEl)).toEqual(['Epic B', 'Feature B1', 'Feature B2']);
+
+		setFilterText(containerEl, '');
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+	});
+
+	it('overrides collapsed state while active and restores it after', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+
+		setFilterText(containerEl, 'B1');
+		expect(titlesOf(containerEl)).toEqual(['Epic B', 'Feature B1']);
+
+		setFilterText(containerEl, '');
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
+	it('disables dragging while filtering', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		setFilterText(containerEl, 'Epic');
+		expect(rowByTitle(containerEl, 'Epic A').draggable).toBe(false);
+		setFilterText(containerEl, '');
+		expect(rowByTitle(containerEl, 'Epic A').draggable).toBe(true);
+	});
+
+	it('keeps keyboard navigation within the filtered rows', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		setFilterText(containerEl, 'B1');
+		key(tree, 'ArrowDown');
+		expect(rowByTitle(containerEl, 'Epic B').classList.contains('pbl-selected')).toBe(true);
+		key(tree, 'ArrowDown');
+		expect(rowByTitle(containerEl, 'Feature B1').classList.contains('pbl-selected')).toBe(true);
+		key(tree, 'Enter');
+		expect(vault.opened).toEqual([{ path: 'Feature B1.md', mode: false }]);
+	});
+
+	it('shows a no-match message and clears with Escape', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		setFilterText(containerEl, 'zzz');
+		expect(containerEl.querySelector('.pbl-empty-filter')).not.toBeNull();
+		expect(titlesOf(containerEl)).toEqual([]);
+
+		filterInput(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		expect(filterInput(containerEl).value).toBe('');
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+	});
+
+	it('keeps the input focused while filtering re-renders the tree', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const input = filterInput(containerEl);
+
+		input.focus();
+		setFilterText(containerEl, 'B');
+		expect(document.activeElement).toBe(input);
+	});
+});
+
+describe('toolbar count breakdown', () => {
+	it('summarizes items per level in the count tooltip', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
+
+		expect(count?.textContent).toBe('4 items');
+		expect(count?.dataset.tooltip).toBe('2 Epic · 2 Feature');
+	});
+});
+
 describe('view state details', () => {
 	it('restores the collapsed set persisted in the view config', () => {
 		const vault = fixture();

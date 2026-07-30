@@ -30,7 +30,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
 	selectedPath: string | null = null;
+	filterText = '';
 	private collapsedPaths = new Set<string>();
+	/** Paths visible under the active filter; null when no filter is set. */
+	private filterVisible: Set<string> | null = null;
 	private applying = false;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
@@ -64,13 +67,52 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		this.restoreCollapsedState();
+		this.recomputeFilter();
 		this.render();
+	}
+
+	// ------------------------------------------------------------- quick filter
+
+	setFilter(text: string): void {
+		this.filterText = text;
+		this.recomputeFilter();
+		this.renderTreeContent();
+	}
+
+	isFilteredOut(item: BacklogItem): boolean {
+		return this.filterVisible !== null && !this.filterVisible.has(item.file.path);
+	}
+
+	/** Matches stay visible together with all their ancestors and descendants. */
+	private recomputeFilter(): void {
+		const model = this.model;
+		const needle = this.filterText.trim().toLowerCase();
+		if (!model || needle === '') {
+			this.filterVisible = null;
+			return;
+		}
+		const visible = new Set<string>();
+		const markSubtree = (item: BacklogItem) => {
+			visible.add(item.file.path);
+			for (const child of item.children) markSubtree(child);
+		};
+		const visit = (item: BacklogItem): boolean => {
+			const selfMatch = item.title.toLowerCase().includes(needle);
+			if (selfMatch) markSubtree(item);
+			let anyMatch = selfMatch;
+			for (const child of item.children) anyMatch = visit(child) || anyMatch;
+			if (anyMatch) visible.add(item.file.path);
+			return anyMatch;
+		};
+		for (const root of model.roots) visit(root);
+		this.filterVisible = visible;
 	}
 
 	// ----------------------------------------------------------- collapse state
 
 	isCollapsed(path: string): boolean {
-		return this.collapsedPaths.has(path);
+		// While filtering, everything on a path to a match renders expanded.
+		return this.filterVisible === null && this.collapsedPaths.has(path);
 	}
 
 	setCollapsed(path: string, collapsed: boolean): boolean {
@@ -141,12 +183,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	// ------------------------------------------------------------------- render
 
 	render(): void {
+		if (!this.model) return;
+		renderToolbar(this, this.toolbarEl);
+		this.renderTreeContent();
+	}
+
+	/** Re-render only the tree — used by the filter so the toolbar input keeps focus. */
+	private renderTreeContent(): void {
 		const model = this.model;
 		if (!model) return;
 		this.dnd.onRenderStart();
 		this.viewEl.toggleClass('pbl-focused', model.focused);
-
-		renderToolbar(this, this.toolbarEl);
 
 		const scrollTop = this.treeEl.scrollTop;
 		this.treeEl.empty();

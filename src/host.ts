@@ -18,6 +18,13 @@ export interface BacklogViewHost {
 	readonly settings: BacklogSettings;
 	readonly model: BacklogModel | null;
 	readonly selectedPath: string | null;
+	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
+	readonly filterText: string;
+
+	/** True when the quick filter hides this item; always false without a filter. */
+	isFilteredOut(item: BacklogItem): boolean;
+	/** Update the quick filter and re-render the tree (the toolbar keeps its state). */
+	setFilter(text: string): void;
 
 	isCollapsed(path: string): boolean;
 	/** Returns true when the state actually changed. */

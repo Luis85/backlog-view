@@ -45,6 +45,57 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 	}
 }
 
+export interface FolderPromptOptions {
+	heading: string;
+	description: string;
+	ctaLabel: string;
+	defaultFolder: string;
+	onSubmit: (folder: string) => void;
+}
+
+/** Prompt asking for a single folder, prefilled and with autocomplete. */
+export class FolderPromptModal extends Modal {
+	private readonly options: FolderPromptOptions;
+
+	constructor(app: App, options: FolderPromptOptions) {
+		super(app);
+		this.options = options;
+	}
+
+	onOpen(): void {
+		this.titleEl.setText(this.options.heading);
+		let folder = this.options.defaultFolder;
+		const submit = () => {
+			this.close();
+			this.options.onSubmit(folder.trim().replace(/^\/+|\/+$/g, ''));
+		};
+
+		new Setting(this.contentEl)
+			.setName('Folder')
+			.setDesc(this.options.description)
+			.addText((text) => {
+				text.setValue(this.options.defaultFolder);
+				text.onChange((v) => (folder = v));
+				new FolderSuggest(this.app, text.inputEl);
+				text.inputEl.addEventListener('keydown', (evt) => {
+					if (evt.key === 'Enter') {
+						evt.preventDefault();
+						submit();
+					}
+				});
+				window.setTimeout(() => text.inputEl.focus(), 0);
+			});
+
+		new Setting(this.contentEl).addButton((btn) => {
+			btn.setButtonText(this.options.ctaLabel).setCta().onClick(submit);
+		});
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
 /** Prompt asking for the title (and, when needed, target folder) of a new backlog item. */
 export class TitlePromptModal extends Modal {
 	private readonly options: NewItemPromptOptions;

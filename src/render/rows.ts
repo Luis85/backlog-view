@@ -18,6 +18,9 @@ export function renderTree(host: BacklogViewHost, dnd: DragDropController, treeE
 		return;
 	}
 	for (const root of model.roots) renderItem(host, dnd, treeEl, root);
+	if (host.filterText !== '' && treeEl.childElementCount === 0) {
+		treeEl.createDiv({ cls: 'pbl-empty-filter', text: 'No items match the filter.' });
+	}
 }
 
 function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
@@ -43,6 +46,7 @@ function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 }
 
 function renderItem(host: BacklogViewHost, dnd: DragDropController, containerEl: HTMLElement, item: BacklogItem): void {
+	if (host.isFilteredOut(item)) return;
 	const hasChildren = item.children.length > 0;
 	const collapsed = host.isCollapsed(item.file.path);
 	const childLevel = host.settings.levels[childLevelIndex(item, host.settings.levels)];
@@ -60,7 +64,8 @@ function renderItem(host: BacklogViewHost, dnd: DragDropController, containerEl:
 	if (item.done) row.addClass('pbl-done');
 	row.setCssProps({ '--pbl-depth': String(item.depth) });
 	row.dataset.path = item.file.path;
-	row.draggable = true;
+	// While filtering, visual neighbors are not real siblings — ranking by drag would mislead.
+	row.draggable = host.filterText === '';
 
 	renderRowLead(host, row, item, { hasChildren, collapsed });
 	renderRowTrailing(host, row, item, childLevel);

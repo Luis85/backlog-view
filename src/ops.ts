@@ -235,7 +235,7 @@ function sanitizeTitle(title: string): string {
 	return cleaned.length > 0 ? cleaned : 'Untitled';
 }
 
-async function ensureFolder(app: App, folder: string): Promise<void> {
+export async function ensureFolder(app: App, folder: string): Promise<void> {
 	if (!folder) return;
 	const parts = folder.split('/');
 	let current = '';

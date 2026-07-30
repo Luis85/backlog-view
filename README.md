@@ -41,6 +41,12 @@ Azure DevOps Boards.
 
 ## Setup
 
+The fast way: run the **Product Backlog: Create backlog** command. It asks for a folder
+(default `Backlog`), creates it together with a fully configured `Product Backlog.base`
+inside, and opens the view — from empty vault to working backlog in one step.
+
+Manually, the equivalent is:
+
 1. Create a folder for your backlog, e.g. `Backlog/`.
 2. Create a Base (e.g. `Product Backlog.base`) and add a filter such as
    `file.inFolder("Backlog")`.
@@ -78,6 +84,12 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Create any level at the top | Toolbar **New** button, or the **▾** menu next to it for other levels |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type |
+| Find items | Type in the toolbar filter — matches keep their ancestors and subtrees, Escape clears |
+| See counts per level | Hover the item count in the toolbar |
+
+While the filter is active the tree ignores collapsed state and drag and drop is
+disabled (visual neighbors aren't necessarily real siblings); keyboard navigation and
+the context menu keep working on the filtered rows.
 
 ### Focus on one backlog level
 

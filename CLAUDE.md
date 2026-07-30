@@ -35,7 +35,8 @@ live-vault smoke test.
 | `src/interactions/menu.ts` | Context menu | jsdom tests |
 | `src/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
 | `src/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
-| `src/modal.ts` | New-item prompt (+ folder suggest) | jsdom tests |
+| `src/modal.ts` | New-item and folder prompts (+ folder suggest) | jsdom tests |
+| `src/scaffold.ts` | "Create backlog" command: folder + configured .base file | jsdom tests |
 
 Rules: never write frontmatter outside `src/ops.ts` (`applyWrites` / `createBacklogItem`),
 and every write path — including creation — goes through the `configProblems` gate.
@@ -73,6 +74,10 @@ code so imports stay cycle-free.
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - `model.roots` is the RENDERED forest (synthetic under focus); every data operation
   (backfill, ranking parentless items, root-level outdent) must use `model.realRoots`.
+- The quick filter is ephemeral view state: while active, `isCollapsed` reports false
+  (everything on a match path renders expanded), rows are not draggable (visual
+  neighbors are not real siblings), and `setFilter` re-renders the tree only so the
+  toolbar input keeps focus.
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
   at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
 - Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling

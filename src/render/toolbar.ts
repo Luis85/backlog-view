@@ -2,6 +2,7 @@ import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
+import { BacklogModel, displayType } from '../model';
 import { configProblems } from '../settings';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
@@ -44,6 +45,8 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		host.render();
 	});
 
+	renderFilterBox(host, barEl);
+
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
@@ -53,7 +56,38 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setTooltip(warn, problems.join(' '));
 	}
 	const count = model.items.length;
-	barEl.createSpan({ cls: 'pbl-count-label', text: `${count} item${count === 1 ? '' : 's'}` });
+	const countEl = barEl.createSpan({ cls: 'pbl-count-label', text: `${count} item${count === 1 ? '' : 's'}` });
+	setTooltip(countEl, levelBreakdown(host, model));
+}
+
+/** Type-to-filter box; matches keep their ancestors and subtrees visible. */
+function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
+	const filterEl = barEl.createDiv({ cls: 'pbl-filter' });
+	setIcon(filterEl.createSpan({ cls: 'pbl-filter-icon' }), 'search');
+	const input = filterEl.createEl('input', {
+		cls: 'pbl-filter-input',
+		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items' },
+	});
+	input.value = host.filterText;
+	input.addEventListener('input', () => host.setFilter(input.value));
+	input.addEventListener('keydown', (evt) => {
+		if (evt.key === 'Escape' && input.value !== '') {
+			evt.preventDefault();
+			evt.stopPropagation();
+			input.value = '';
+			host.setFilter('');
+		}
+	});
+}
+
+/** e.g. "2 Epic · 4 Feature · 9 PBI" for the item-count tooltip. */
+function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
+	const byLevel = new Map<string, number>();
+	for (const item of model.items) {
+		const label = displayType(item, host.settings) || 'Untyped';
+		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
+	}
+	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');
 }
 
 function iconButton(parent: HTMLElement, icon: string, label: string, onClick: () => void): HTMLElement {

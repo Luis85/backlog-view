@@ -26,6 +26,8 @@ export class FakeVault {
 	folders = new Set<string>(['/']);
 	caches = new Map<string, FakeCache>();
 	frontmatter = new Map<string, Record<string, unknown>>();
+	/** Raw body text passed to vault.create, keyed by path. */
+	contents = new Map<string, string>();
 	writeLog: { path: string; fm: Record<string, unknown> }[] = [];
 	/** Files opened through workspace.getLeaf().openFile(), with the leaf mode used. */
 	opened: { path: string; mode: unknown }[] = [];
@@ -64,12 +66,13 @@ export class FakeVault {
 					folder.name = path.split('/').pop() ?? path;
 					return folder;
 				}),
-			create: async (path: string, _content: string) => {
+			create: async (path: string, content: string) => {
 				if (this.files.has(path)) throw new Error(`File already exists: ${path}`);
 				const file = new TFile(path);
 				this.files.set(path, file);
 				this.frontmatter.set(path, {});
 				this.caches.set(path, {});
+				this.contents.set(path, content);
 				return file;
 			},
 			createFolder: async (path: string) => {

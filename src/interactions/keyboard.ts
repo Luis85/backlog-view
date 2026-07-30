@@ -2,13 +2,14 @@ import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../model';
 import { indent, moveWithinSiblings, outdent } from './structure';
 
-/** Items currently rendered, top to bottom, honoring collapsed subtrees. */
-function visibleItems(model: BacklogModel, isCollapsed: (path: string) => boolean): BacklogItem[] {
+/** Items currently rendered, top to bottom, honoring collapsed subtrees and the filter. */
+function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
 	const visible: BacklogItem[] = [];
 	const walk = (items: BacklogItem[]) => {
 		for (const item of items) {
+			if (host.isFilteredOut(item)) continue;
 			visible.push(item);
-			if (item.children.length > 0 && !isCollapsed(item.file.path)) {
+			if (item.children.length > 0 && !host.isCollapsed(item.file.path)) {
 				walk(item.children);
 			}
 		}
@@ -24,7 +25,7 @@ function visibleItems(model: BacklogModel, isCollapsed: (path: string) => boolea
 export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	const model = host.model;
 	if (!model || model.items.length === 0) return;
-	const visible = visibleItems(model, (path) => host.isCollapsed(path));
+	const visible = visibleItems(host, model);
 	if (visible.length === 0) return;
 
 	// Resolve the selection from the visible list: an item hidden by a collapsed

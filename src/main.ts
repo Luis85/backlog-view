@@ -1,4 +1,5 @@
 import { Plugin } from 'obsidian';
+import { promptCreateBacklogBase } from './scaffold';
 import { getViewOptions } from './settings';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view';
 
@@ -13,6 +14,12 @@ export default class ProductBacklogPlugin extends Plugin {
 			icon: 'lucide-list-tree',
 			factory: (controller, containerEl) => new ProductBacklogView(controller, containerEl),
 			options: getViewOptions,
+		});
+		this.addCommand({
+			id: 'create-backlog',
+			// Obsidian prefixes command names with the plugin name in the palette.
+			name: 'Create backlog',
+			callback: () => promptCreateBacklogBase(this.app),
 		});
 	}
 }
