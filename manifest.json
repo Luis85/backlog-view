@@ -1,0 +1,10 @@
+{
+  "id": "product-backlog-view",
+  "name": "Product Backlog",
+  "version": "0.1.0",
+  "minAppVersion": "1.10.2",
+  "description": "Display Bases results as a sortable product backlog tree (Epics → Features → PBIs → Tasks) with drag-and-drop ranking, inspired by Azure DevOps Boards.",
+  "author": "Luis85",
+  "authorUrl": "https://github.com/Luis85",
+  "isDesktopOnly": false
+}
