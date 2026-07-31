@@ -7,6 +7,12 @@ export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 export type DropZone = 'before' | 'after' | 'inside';
 
+/** Progress of the write batch in flight, for the toolbar's busy indicator. */
+export interface BusyState {
+	done: number;
+	total: number;
+}
+
 /**
  * The surface ProductBacklogView exposes to its render and interaction modules.
  * Everything DOM-independent goes through this interface so the modules stay

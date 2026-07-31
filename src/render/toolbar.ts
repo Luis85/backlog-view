@@ -1,6 +1,7 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost } from '../host';
+import { BacklogViewHost, BusyState } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
+import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogModel, displayType } from '../model';
 import { configProblems } from '../settings';
@@ -26,12 +27,16 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 				mi.setTitle(`New ${level}`).setIcon('plus').onClick(() => promptCreateItem(host, level, null)),
 			);
 		}
-		menu.showAtMouseEvent(evt);
+		showMenuForClick(menu, evt);
 	});
 	renderFocusPicker(host, barEl, model);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
-	iconButton(barEl, 'sparkles', 'Assign missing type and order properties').addEventListener('click', () => {
+	// The one command that routinely writes hundreds of notes: it carries the
+	// write-control marker so it goes disabled while a batch is already in flight.
+	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing type and order properties');
+	initBtn.addClass('pbl-write-ctl');
+	initBtn.addEventListener('click', () => {
 		void runInit(host);
 	});
 	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
@@ -61,6 +66,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		warn.createSpan({ text: 'Check view options' });
 		setTooltip(warn, problems.join(' '));
 	}
+	renderBusyIndicator(barEl);
 	// The Base's own results — context ancestors are not items of this base.
 	const count = model.results.length;
 	const countEl = barEl.createSpan({
@@ -69,6 +75,37 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(host, model));
+}
+
+/**
+ * The write-in-flight indicator. Always rendered and hidden by CSS rather than
+ * created on demand: progress ticks once per file, and rebuilding the toolbar for
+ * each of them would be its own source of jank. `syncBusy` drives it in place.
+ */
+function renderBusyIndicator(barEl: HTMLElement): void {
+	const busy = barEl.createDiv({ cls: 'pbl-busy', attr: { role: 'status', 'aria-live': 'polite' } });
+	setIcon(busy.createSpan({ cls: 'pbl-busy-spinner' }), 'loader-2');
+	busy.createSpan({ cls: 'pbl-busy-label' });
+}
+
+/**
+ * Point the toolbar at the batch currently being written, or at nothing when idle.
+ * Called on every render and on every progress tick, so it only touches text and
+ * flags — never structure. Controls that would be refused mid-batch go `disabled`
+ * with it, so the busy state is something a user reads rather than discovers.
+ */
+export function syncBusy(barEl: HTMLElement, busy: BusyState | null): void {
+	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
+	if (el) {
+		el.toggleClass('pbl-busy-on', busy !== null);
+		// A single-file write is over before it could be read; naming a count only
+		// when there is a count to name keeps the label honest either way.
+		const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
+		el.querySelector<HTMLElement>('.pbl-busy-label')?.setText(busy ? label : '');
+	}
+	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
+		btn.disabled = busy !== null;
+	});
 }
 
 /**
@@ -164,7 +201,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 			);
 		choice('', 'All levels');
 		for (const level of host.settings.levels) choice(level, level);
-		menu.showAtMouseEvent(evt);
+		showMenuForClick(menu, evt);
 	});
 
 	if (active === '') return;

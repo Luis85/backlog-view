@@ -158,6 +158,8 @@ export class MenuItem {
 export class Menu {
 	/** The menu most recently opened via showAtMouseEvent — submenus are never shown. */
 	static lastShown: Menu | null = null;
+	/** Where it was anchored: the point for showAtPosition, null for a mouse event. */
+	static lastPosition: { x: number; y: number } | null = null;
 	items: MenuItem[] = [];
 	separators = 0;
 
@@ -173,10 +175,12 @@ export class Menu {
 	}
 	showAtMouseEvent(_evt: unknown): this {
 		Menu.lastShown = this;
+		Menu.lastPosition = null;
 		return this;
 	}
-	showAtPosition(_pos: unknown): this {
+	showAtPosition(pos: { x: number; y: number }): this {
 		Menu.lastShown = this;
+		Menu.lastPosition = pos;
 		return this;
 	}
 	/** Find an item by its (exact) title. */

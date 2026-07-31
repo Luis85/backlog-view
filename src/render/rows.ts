@@ -109,6 +109,17 @@ function renderAllDoneState(host: BacklogViewHost, treeEl: HTMLElement, total: n
 	btn.addEventListener('click', () => host.config.set('showCompleted', true));
 }
 
+/**
+ * Shown from construction until Bases delivers the first result set. There is no
+ * model to render before that, and a blank pane reads as a broken view rather than
+ * a working one — the first render replaces this wholesale.
+ */
+export function renderLoadingState(treeEl: HTMLElement): void {
+	const loading = treeEl.createDiv({ cls: 'pbl-loading', attr: { role: 'status', 'aria-live': 'polite' } });
+	setIcon(loading.createDiv({ cls: 'pbl-loading-spinner' }), 'loader-2');
+	loading.createDiv({ text: 'Loading backlog…' });
+}
+
 function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const model = host.model;
 	const focused = model?.focused ?? false;

@@ -366,6 +366,24 @@ describe('applyWrites', () => {
 		expect(vault.fm('Child.md')).toEqual({ order: 15, type: 'Feature' });
 	});
 
+	it('reports progress after each file, knowing the total from the start', async () => {
+		const vault = new FakeVault();
+		const files = ['A.md', 'B.md', 'C.md'].map((p) => vault.addFile(p));
+		const ticks: string[] = [];
+
+		await applyWrites(
+			vault.app,
+			settings,
+			files.map((file, i) => ({ file, order: (i + 1) * 10 })),
+			(done, total) => ticks.push(`${done}/${total}`),
+		);
+
+		// One tick per file, after that file is on disk — so a caller can report
+		// real progress rather than an estimate.
+		expect(ticks).toEqual(['1/3', '2/3', '3/3']);
+		expect(vault.writeLog).toHaveLength(3);
+	});
+
 	it('writes the state to the configured key, and never to an empty key', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { status: 'Open' } });

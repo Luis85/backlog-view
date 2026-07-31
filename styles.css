@@ -196,6 +196,67 @@
 	height: 24px;
 }
 
+/* Write-in-flight indicator. Held back by an animation delay so a single-file
+   write — the common case — finishes before it would ever appear, and only a
+   batch long enough to be worth reporting actually shows up. */
+.pbl-busy {
+	display: none;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding-inline-end: var(--size-4-1);
+}
+
+.pbl-busy.pbl-busy-on {
+	display: inline-flex;
+	animation: pbl-busy-in 120ms ease-out 250ms both;
+}
+
+@keyframes pbl-busy-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.pbl-busy-spinner,
+.pbl-loading-spinner {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-accent);
+	animation: pbl-spin 900ms linear infinite;
+}
+
+.pbl-busy-spinner .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+@keyframes pbl-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Before the first result set arrives — an empty pane reads as a broken view */
+.pbl-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-loading-spinner .svg-icon {
+	width: 24px;
+	height: 24px;
+}
+
 .pbl-count-label {
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
@@ -693,6 +754,16 @@
 
 	.pbl-row.pbl-pending,
 	.pbl-row.pbl-hover-expanding .pbl-chevron {
+		animation: none;
+	}
+
+	/* The spinners still have to read as "working", so they step rather than spin */
+	.pbl-busy-spinner,
+	.pbl-loading-spinner {
+		animation: pbl-spin 3s steps(8) infinite;
+	}
+
+	.pbl-busy.pbl-busy-on {
 		animation: none;
 	}
 }

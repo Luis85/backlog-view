@@ -1,12 +1,12 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
-import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
+import { BacklogViewHost, BusyState, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 import { DragDropController } from './interactions/dragDrop';
 import { handleTreeKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from './model';
 import { applyWrites, computeDropWrites, DropTarget, ItemWrite } from './ops';
-import { renderToolbar } from './render/toolbar';
-import { refreshRowChildren, renderTree, rowContext, RowContext } from './render/rows';
+import { renderToolbar, syncBusy } from './render/toolbar';
+import { refreshRowChildren, renderLoadingState, renderTree, rowContext, RowContext } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from './settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
@@ -42,6 +42,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** Paths visible under the active filter; null when no filter is set. */
 	private filterVisible: Set<string> | null = null;
 	private applying = false;
+	/** A data update that arrived mid-batch and is waiting for it to finish. */
+	private pendingDataUpdate = false;
+	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
+	private busy: BusyState | null = null;
 	/**
 	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
 	 * wasteful at six hundred — every selection change would walk the whole DOM.
@@ -57,6 +61,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			cls: 'pbl-tree',
 			attr: { role: 'tree', tabindex: '0', 'aria-label': 'Product backlog' },
 		});
+		// Nothing to render until Bases delivers the first result set — say what is
+		// happening instead of showing an empty pane.
+		renderLoadingState(this.treeEl);
 		this.rootDropEl = this.viewEl.createDiv({ cls: 'pbl-root-drop' });
 		setIcon(this.rootDropEl.createSpan({ cls: 'pbl-root-drop-icon' }), 'corner-left-up');
 		this.rootDropEl.createSpan({ text: 'Move to top level' });
@@ -77,6 +84,19 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	onDataUpdated(): void {
+		// Every file a batch touches comes back here as its own data update, and
+		// rebuilding the model and every row for each one is the one thing that
+		// genuinely stalls this view — a backfill over a large backlog would do it
+		// hundreds of times, each render showing a half-applied tree. The refresh
+		// waits for the batch and then runs once, against the final state.
+		if (this.applying) {
+			this.pendingDataUpdate = true;
+			return;
+		}
+		this.refreshFromData();
+	}
+
+	private refreshFromData(): void {
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		this.groupingIgnored = this.detectIgnoredGrouping();
@@ -316,6 +336,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	render(): void {
 		if (!this.model) return;
 		renderToolbar(this, this.toolbarEl);
+		// The toolbar was just rebuilt; a batch may still be running behind it.
+		syncBusy(this.toolbarEl, this.busy);
 		this.renderTreeContent();
 	}
 
@@ -392,8 +414,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			return false;
 		}
 		this.applying = true;
+		this.setBusy({ done: 0, total: writes.length });
 		try {
-			await applyWrites(this.app, this.settings, writes);
+			await applyWrites(this.app, this.settings, writes, (done, total) => this.setBusy({ done, total }));
 			return true;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
@@ -401,6 +424,23 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			return false;
 		} finally {
 			this.applying = false;
+			this.setBusy(null);
+			// Whatever landed while the batch ran gets one rebuild, now, against the
+			// finished state. A failed batch takes this path too: the writes before the
+			// failure are applied, and the tree has to show what is actually on disk.
+			if (this.pendingDataUpdate) {
+				this.pendingDataUpdate = false;
+				this.refreshFromData();
+			}
 		}
+	}
+
+	/** Publish batch progress to the toolbar without re-rendering anything. */
+	private setBusy(state: BusyState | null): void {
+		this.busy = state;
+		syncBusy(this.toolbarEl, state);
+		// The tree's content is mid-change; say so once, rather than per row.
+		if (state) this.treeEl.setAttribute('aria-busy', 'true');
+		else this.treeEl.removeAttribute('aria-busy');
 	}
 }

@@ -31,8 +31,19 @@ export interface DropTarget {
 	insertIndex: number;
 }
 
-/** Apply writes sequentially so concurrent edits of the same file cannot race. */
-export async function applyWrites(app: App, settings: BacklogSettings, writes: ItemWrite[]): Promise<void> {
+/**
+ * Apply writes sequentially so concurrent edits of the same file cannot race.
+ * `onProgress` reports after each file so a long batch — a backfill over a whole
+ * backlog is hundreds of notes — can show how far along it is. Each await yields
+ * to the event loop, so the view stays interactive throughout.
+ */
+export async function applyWrites(
+	app: App,
+	settings: BacklogSettings,
+	writes: ItemWrite[],
+	onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+	let done = 0;
 	for (const write of writes) {
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
 			if (write.removeParentKey) {
@@ -49,6 +60,7 @@ export async function applyWrites(app: App, settings: BacklogSettings, writes: I
 			// The stateKey may be unset (progress tracking off) — never write to an empty key.
 			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
 		});
+		onProgress?.(++done, writes.length);
 	}
 }
 

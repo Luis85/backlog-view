@@ -142,21 +142,29 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	}
 }
 
+/**
+ * Show a menu for a click that may not have come from a pointer. Enter or Space on
+ * a focused button synthesizes a click at (0, 0), and anchoring a menu there drops
+ * it in the viewport corner instead of beside the control the user is standing on.
+ * Every menu opened from a button goes through here.
+ */
+export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
+	const el = evt.currentTarget;
+	if (evt.clientX === 0 && evt.clientY === 0 && el instanceof HTMLElement) {
+		const rect = el.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.left, y: rect.bottom });
+		return;
+	}
+	menu.showAtMouseEvent(evt);
+}
+
 /** State menu for the row's state chip. */
 export function showStateMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
 	evt.preventDefault();
 	evt.stopPropagation();
 	const menu = new Menu();
 	addStateItems(host, menu, item);
-	// A keyboard-activated button click carries no pointer position — anchor
-	// the menu to the chip instead of the (0,0) corner.
-	const el = evt.currentTarget;
-	if (evt.clientX === 0 && evt.clientY === 0 && el instanceof HTMLElement) {
-		const rect = el.getBoundingClientRect();
-		menu.showAtPosition({ x: rect.left, y: rect.bottom });
-	} else {
-		menu.showAtMouseEvent(evt);
-	}
+	showMenuForClick(menu, evt);
 }
 
 /**

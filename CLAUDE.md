@@ -238,6 +238,24 @@ code so imports stay cycle-free.
   chip) are buttons with `tabindex="-1"`: activatable by assistive tech, invisible to
   Tab, with the context menu as the documented keyboard path. A `div` with an
   `aria-label` and a click handler is the thing to avoid in either zone.
+- A batch write is one refresh, not one per file. Every file `applyWrites` touches
+  comes back as its own `onDataUpdated`, so mid-batch the view would rebuild the model
+  and every row hundreds of times, each pass rendering a half-applied tree. While
+  `applying`, `onDataUpdated` only records `pendingDataUpdate`; `applySafely` flushes it
+  through `refreshFromData` in its `finally`, so a failed batch refreshes too — the
+  writes before the failure are on disk and the tree has to show them. Nothing about
+  interaction pauses: each write awaits, so scrolling, filtering and selection keep
+  working against the (briefly stale) model.
+- `applyWrites` reports progress per file and the view publishes it with `syncBusy`,
+  which touches text and flags only — never structure. Re-rendering the toolbar per
+  tick would reintroduce exactly the jank the deferral removes. The indicator is
+  rendered always and hidden in CSS, with an animation delay so a single-file write
+  never flashes it.
+- Any menu opened from a `<button>` goes through `showMenuForClick`. Enter or Space
+  synthesizes a click at (0, 0), and `showAtMouseEvent` would drop the menu in the
+  viewport corner; the helper falls back to the button's own rect. This is a standing
+  consequence of the toolbar being focusable — a new `showAtMouseEvent` call on a
+  button reopens it.
 - Once a control is focusable, disabling it in CSS is a lie — `pointer-events: none`
   stops a mouse and nothing else. The collapse controls pause while the quick filter
   overrides collapse state, so they carry a real `disabled` flag, set in

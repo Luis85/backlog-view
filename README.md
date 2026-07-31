@@ -280,6 +280,14 @@ touches frontmatter) still re-renders every row, because the Base re-runs its qu
 any visible property may have changed; collapsing the levels you're not working on is the
 best lever there.
 
+A **batch** — "Assign missing type and order properties" over a whole backlog, or a drop
+that renumbers a large sibling group — writes one note at a time, and each of those writes
+would otherwise come back as its own refresh. The view rebuilds once when the batch
+finishes instead, so the tree doesn't churn through hundreds of half-applied states on the
+way. Nothing is frozen while that happens: you can scroll, filter, expand and select
+throughout. The toolbar shows how far along the batch is (`Updating 12 of 340…`), and the
+commands that would be refused mid-batch grey out until it's done.
+
 ### Ranking details
 
 Sibling order is a number (`10, 20, 30…`). Dropping between two items assigns the halfway

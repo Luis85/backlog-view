@@ -97,6 +97,7 @@ beforeEach(() => {
 	document.body.empty();
 	Notice.reset();
 	Menu.lastShown = null;
+	Menu.lastPosition = null;
 	Modal.lastOpened = null;
 });
 
@@ -1006,6 +1007,183 @@ describe('toolbar controls are reachable without a mouse', () => {
 		expect(add?.tagName).toBe('BUTTON');
 		expect(add?.getAttribute('tabindex')).toBe('-1');
 		expect(add?.getAttribute('aria-label')).toBe('New Feature');
+	});
+});
+
+describe('menus opened without a pointer', () => {
+	/** Enter or Space on a focused button: a click carrying no coordinates. */
+	function pressButton(el: HTMLElement, rect: { left: number; bottom: number }): void {
+		el.getBoundingClientRect = () =>
+			({ ...rect, top: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+		el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	}
+
+	it('anchors the type picker to its button, not the viewport corner', () => {
+		const { containerEl } = makeView(fixture());
+		const pick = containerEl.querySelector<HTMLElement>('.pbl-new-pick');
+		if (!pick) throw new Error('type picker not rendered');
+
+		pressButton(pick, { left: 40, bottom: 24 });
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('New Epic');
+		expect(Menu.lastPosition).toEqual({ x: 40, y: 24 });
+	});
+
+	it('anchors the focus-level picker to its button', () => {
+		const { containerEl } = makeView(fixture());
+		const btn = containerEl.querySelector<HTMLElement>('.pbl-focus-btn');
+		if (!btn) throw new Error('focus picker not rendered');
+
+		pressButton(btn, { left: 12, bottom: 30 });
+		expect(Menu.lastPosition).toEqual({ x: 12, y: 30 });
+	});
+
+	it('still follows the pointer when there is one', () => {
+		const { containerEl } = makeView(fixture());
+		containerEl
+			.querySelector<HTMLElement>('.pbl-new-pick')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 120, clientY: 80 }));
+
+		// A real pointer position beats the button's box.
+		expect(Menu.lastShown).not.toBeNull();
+		expect(Menu.lastPosition).toBeNull();
+	});
+});
+
+describe('long operations stay legible and non-blocking', () => {
+	/** Four items with no order or type — enough writes for a batch to be visible. */
+	function backfillFixture(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('F1.md', { parentLink: 'Epic' });
+		vault.addFile('F2.md', { parentLink: 'Epic' });
+		vault.addFile('F3.md', { parentLink: 'Epic' });
+		return vault;
+	}
+
+	function runBackfill(containerEl: HTMLElement): void {
+		containerEl
+			.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	}
+
+	/** Run `probe` after each file the next batch writes. */
+	function onEachWrite(vault: FakeVault, probe: () => void): void {
+		const original = vault.app.fileManager.processFrontMatter;
+		vault.app.fileManager.processFrontMatter = async (file, fn) => {
+			await original(file, fn);
+			probe();
+		};
+	}
+
+	function busyLabel(containerEl: HTMLElement): string | null {
+		const el = containerEl.querySelector<HTMLElement>('.pbl-busy');
+		return el?.classList.contains('pbl-busy-on') ? (el.querySelector('.pbl-busy-label')?.textContent ?? '') : null;
+	}
+
+	it('shows a loading state until the first result set arrives', () => {
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+
+		// Bases constructs the view and delivers data separately; the gap must not
+		// look like a broken view.
+		expect(containerEl.querySelector('.pbl-loading')?.textContent).toContain('Loading backlog');
+
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = fixture().app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = { data: [] };
+		view.onDataUpdated();
+		expect(containerEl.querySelector('.pbl-loading')).toBeNull();
+	});
+
+	it('counts a batch off file by file, then clears', async () => {
+		const vault = backfillFixture();
+		const { containerEl } = makeView(vault);
+		const seen: (string | null)[] = [];
+		onEachWrite(vault, () => seen.push(busyLabel(containerEl)));
+
+		expect(busyLabel(containerEl)).toBeNull();
+		runBackfill(containerEl);
+		await flush();
+
+		// The probe runs as each file lands, just before that file's progress tick,
+		// so it reads one behind: the point is that it counts up per file and that
+		// the total is known from the start.
+		expect(seen).toEqual(['Updating 0 of 4…', 'Updating 1 of 4…', 'Updating 2 of 4…', 'Updating 3 of 4…']);
+		// The indicator belongs to the batch, not to the view.
+		expect(busyLabel(containerEl)).toBeNull();
+	});
+
+	it('does not put a count on a single-file write', async () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault);
+		const seen: (string | null)[] = [];
+		onEachWrite(vault, () => seen.push(busyLabel(containerEl)));
+
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model!.byPath.get('Feature B2.md')!);
+		key(tree, 'ArrowUp', { altKey: true });
+		await flush();
+
+		expect(seen).toEqual(['Updating…']);
+	});
+
+	it('rebuilds once after a batch, not once per file it writes', async () => {
+		const vault = backfillFixture();
+		const { containerEl, view } = makeView(vault);
+		let renders = 0;
+		const real = view.render.bind(view);
+		(view as unknown as { render: () => void }).render = () => {
+			renders++;
+			real();
+		};
+		// Every file a batch touches comes back as its own data update. Rebuilding
+		// the model and every row for each one is the thing that actually stalls.
+		onEachWrite(vault, () => view.onDataUpdated());
+
+		runBackfill(containerEl);
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(4);
+		expect(renders).toBe(1);
+		// Deferred, not dropped: the tree ends up showing what landed on disk.
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'F1', 'F2', 'F3']);
+	});
+
+	it('withholds the backfill command while a batch is already running', async () => {
+		const vault = backfillFixture();
+		const { containerEl } = makeView(vault);
+		const initBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-write-ctl');
+		const seen: boolean[] = [];
+		onEachWrite(vault, () => seen.push(initBtn?.disabled ?? false));
+
+		expect(initBtn?.disabled).toBe(false);
+		runBackfill(containerEl);
+		await flush();
+
+		// Disabled for the whole batch, released at the end — a control that would be
+		// refused should not be offered in the first place.
+		expect(seen.every(Boolean)).toBe(true);
+		expect(containerEl.querySelector<HTMLButtonElement>('.pbl-write-ctl')?.disabled).toBe(false);
+	});
+
+	it('keeps the tree interactive while a batch is in flight', async () => {
+		const vault = backfillFixture();
+		const { containerEl, view } = makeView(vault);
+		let collapsedMidBatch: string[] | null = null;
+		onEachWrite(vault, () => {
+			if (collapsedMidBatch) return;
+			// Reading and navigating the tree must keep working during the writes.
+			view.setFilter('F');
+			collapsedMidBatch = titlesOf(containerEl);
+			view.setFilter('');
+		});
+
+		runBackfill(containerEl);
+		await flush();
+
+		expect(collapsedMidBatch).toEqual(['Epic', 'F1', 'F2', 'F3']);
+		expect(treeOf(containerEl).getAttribute('aria-busy')).toBeNull();
 	});
 });
 
