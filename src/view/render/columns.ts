@@ -39,12 +39,18 @@ export function rowContext(
 const STATE_COL_WIDTH = 116;
 const META_COL_WIDTH = 84;
 /**
- * What a row at the top level keeps for itself: grip, chevron, badge and a usable
- * title. A constant is only honest because every part of it is bounded — the badge
- * is capped at 120px in styles.css, so even the longest custom level name leaves
- * room for a title here.
+ * Everything on a row that is not one of the columns, at its widest: the constant
+ * is a sum of the bounds in styles.css rather than a guess, so it can be checked
+ * against them. Each term includes the 4px flex gap that follows it.
  */
-const ROW_LEAD_WIDTH = 260;
+const ROW_LEAD_WIDTH =
+	8 + // row padding, both ends
+	18 + // grip
+	22 + // chevron
+	124 + // badge at its max-width
+	64 + // the title's min-width — below this it is not worth showing
+	12 + // the spacer that anchors the columns
+	28; // the row's own add button
 /** Indent one depth level adds, mirroring the row padding in styles.css. */
 const INDENT_PER_DEPTH = 24;
 

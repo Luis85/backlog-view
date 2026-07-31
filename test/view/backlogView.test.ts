@@ -637,7 +637,7 @@ describe('property columns', () => {
 		const { containerEl, config, view } = makeView(vault, {}, { collapsed: true });
 		config.order = ['note.points'];
 		const tree = treeOf(containerEl);
-		Object.defineProperty(tree, 'clientWidth', { value: 480, configurable: true });
+		Object.defineProperty(tree, 'clientWidth', { value: 560, configurable: true });
 		view.onDataUpdated();
 		const viewEl = containerEl.querySelector('.pbl-view');
 
