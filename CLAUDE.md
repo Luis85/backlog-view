@@ -224,8 +224,15 @@ depend on the effectful one.
 
 ## Gotchas
 
-- `obsidian` npm typings may trail the app; feature-detect newer API (`setSubmenu`,
-  `isEmpty`) instead of hard-importing it.
+- `obsidian` npm typings trail the app: `setSubmenu` is absent from them entirely, so
+  `submenuOf` casts rather than imports. That is a typings gap, NOT a version guard —
+  submenus predate the 1.10.2 in `manifest.json`, so there is no fallback path and
+  should not be one. `isEmpty` is the opposite case: it IS in the typings, but on
+  `ObjectValue` rather than the `Value` that `getValue()` returns, so testing for it
+  is a genuine question about the value in hand.
+- Nothing here carries compatibility with older *plugin* versions. `minAppVersion`
+  is the only compatibility boundary, and it is a floor, not a range — a shim for an
+  Obsidian older than it is dead code by definition.
 - Marketplace rules (enforced by `npm run lint` + review): sentence-case UI text, no
   special characters in the manifest description, `setCssProps` over inline styles,
   `normalizePath` on user paths, no global `app`.
@@ -234,7 +241,7 @@ depend on the effectful one.
 - Collapse state persists to vault-scoped localStorage (`storage/collapseStore.ts`), and is
   still NEVER written to the `.base` file: a path per collapsed row is exactly the growth
   that file should not take, and it is shared state where this is one person's working
-  position. `dropLegacyCollapsedConfig` clears the key older versions wrote there.
+  position.
   The tree still opens collapsed for a parent nobody has ruled on — `collapseNewParents`
   collapses each one the first time it is seen, tracked in `defaultedPaths` so a data
   update never undoes what the user expanded. An explicit `setCollapsed` also marks the

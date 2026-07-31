@@ -434,7 +434,8 @@ function renderChip(host: BacklogViewHost, containerEl: HTMLElement, item: Backl
 		return;
 	}
 	if (value === null || value instanceof NullValue) return;
-	// isEmpty() is not yet part of the published typings; prefer it when present.
+	// isEmpty() is declared on some Value subclasses (ObjectValue) but not on Value
+	// itself, so this stays a genuine test of the value in hand, not a version guard.
 	const maybeEmpty = value as { isEmpty?: () => boolean };
 	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return;
 

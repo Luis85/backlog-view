@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { FileView, Menu, MenuItem, Modal, Notice } from '../helpers/obsidian-mock';
+import { FileView, Menu, Modal, Notice } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 
@@ -756,21 +756,6 @@ describe('context menu', () => {
 		expect(Menu.lastShown).toBeNull();
 	});
 
-	it('falls back to cycling the type when submenus are unsupported', async () => {
-		const vault = fixture();
-		const { containerEl } = makeView(vault);
-		const proto = MenuItem.prototype as unknown as { setSubmenu?: () => Menu };
-		const original = proto.setSubmenu;
-		delete proto.setSubmenu;
-		try {
-			rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-			Menu.lastShown?.item('Set type: next level')?.click();
-			await flush();
-			expect(vault.fm('Epic A.md')['type']).toBe('Feature');
-		} finally {
-			proto.setSubmenu = original;
-		}
-	});
 });
 
 describe('keyboard structure shortcuts', () => {
@@ -1758,15 +1743,6 @@ describe('view state details', () => {
 		expect(config.setCalls.some((c) => c.key === 'collapsedItems')).toBe(false);
 	});
 
-	it('ignores a collapsed list left by an older version, and clears it', () => {
-		const vault = fixture();
-		const { config } = makeView(vault, { collapsedItems: ['Epic B.md'] }, { collapsed: true });
-
-		// Cleared rather than honoured: the key is what made the .base file grow.
-		expect(config.setCalls.filter((c) => c.key === 'collapsedItems')).toEqual([
-			{ key: 'collapsedItems', value: null },
-		]);
-	});
 
 	it('keeps a leaf that just gained its first child expanded', () => {
 		const vault = fixture();

@@ -191,23 +191,19 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	}
 }
 
+/**
+ * `setSubmenu` is missing from the published obsidian typings, not from the app:
+ * submenus predate the 1.10.2 this plugin requires, so the cast asserts what is
+ * always there rather than guarding against its absence.
+ */
+function submenuOf(item: MenuItem): Menu {
+	return (item as MenuItem & { setSubmenu: () => Menu }).setSubmenu();
+}
+
 function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
 		mi.setTitle('Set state').setIcon('circle-check');
-		const withSubmenu = mi as MenuItem & { setSubmenu?: () => Menu };
-		if (typeof withSubmenu.setSubmenu === 'function') {
-			addStateItems(host, withSubmenu.setSubmenu(), item);
-		} else {
-			// Older API without submenus: step through the known states.
-			const choices = stateChoices(host, item);
-			mi.setTitle('Set state: next');
-			mi.onClick(() => {
-				const current = choices.findIndex(
-					(s) => item.stateValue !== null && s.toLowerCase() === item.stateValue.toLowerCase(),
-				);
-				void host.applySafely([{ file: item.file, state: choices[(current + 1) % choices.length] }]);
-			});
-		}
+		addStateItems(host, submenuOf(mi), item);
 	});
 }
 
@@ -217,25 +213,13 @@ function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	};
 	menu.addItem((mi) => {
 		mi.setTitle('Set type').setIcon('tag');
-		const withSubmenu = mi as MenuItem & { setSubmenu?: () => Menu };
-		if (typeof withSubmenu.setSubmenu === 'function') {
-			const submenu = withSubmenu.setSubmenu();
-			for (const level of host.settings.levels) {
-				submenu.addItem((si) => {
-					si.setTitle(level).onClick(() => apply(level));
-					if (item.typeName !== null && item.typeName.toLowerCase() === level.toLowerCase()) {
-						si.setChecked(true);
-					}
-				});
-			}
-		} else {
-			// Older API without submenus: cycle through the configured levels.
-			mi.setTitle('Set type: next level');
-			mi.onClick(() => {
-				const current = host.settings.levels.findIndex(
-					(l) => item.typeName !== null && l.toLowerCase() === item.typeName.toLowerCase(),
-				);
-				apply(host.settings.levels[(current + 1) % host.settings.levels.length]);
+		const submenu = submenuOf(mi);
+		for (const level of host.settings.levels) {
+			submenu.addItem((si) => {
+				si.setTitle(level).onClick(() => apply(level));
+				if (item.typeName !== null && item.typeName.toLowerCase() === level.toLowerCase()) {
+					si.setChecked(true);
+				}
 			});
 		}
 	});

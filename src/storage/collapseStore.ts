@@ -144,8 +144,8 @@ function readMap(app: App): StoredMap {
 function readEntry(value: unknown): StoredEntry | null {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
 	const record = value as Record<string, unknown>;
-	// Without a base an entry cannot be pruned, so it is not worth keeping — that
-	// also drops anything written before the base was recorded alongside the paths.
+	// An entry with no base cannot be pruned when its file goes, so it would linger
+	// forever; dropping it costs one view's collapse state and is self-healing.
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
 	const entry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };

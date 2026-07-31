@@ -14,8 +14,6 @@ import { BacklogSettings, configProblems, defaultSettings, resolveSettings } fro
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 
-const COLLAPSED_CONFIG_KEY = 'collapsedItems';
-
 /** Source of unique row ids for aria-activedescendant, shared across view instances. */
 let rowIdCounter = 0;
 
@@ -107,7 +105,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// overwritten by the very pass that is meant to honor it.
 		this.collapse.restore(this.viewEl);
 		this.collapse.collapseNewParents(this.model.items);
-		this.dropLegacyCollapsedConfig();
 		this.recomputeFilter();
 		this.render();
 	}
@@ -212,15 +209,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return this.collapse.set(path, collapsed);
 	}
 
-	/** Earlier versions stored the collapsed list in the view config; clear it once. */
-	private dropLegacyCollapsedConfig(): void {
-		try {
-			if (this.config.get(COLLAPSED_CONFIG_KEY) === undefined) return;
-			this.config.set(COLLAPSED_CONFIG_KEY, null);
-		} catch {
-			// Nothing to clean up on Bases versions without config storage.
-		}
-	}
 
 	// -------------------------------------------------------- selection, opening
 
