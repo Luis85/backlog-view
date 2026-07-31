@@ -37,6 +37,14 @@ describe('normalizeTag', () => {
 		expect(normalizeTag('  ¡hola!  ')).toBe('hola');
 	});
 
+	it('leaves hyphens the user typed alone, wherever they are', () => {
+		// Hyphens are tag characters, so a doubled one is a different tag, not a typo
+		expect(normalizeTag('release--candidate')).toBe('release--candidate');
+		// …but hyphens caught up in a run of unusable characters are part of it
+		expect(normalizeTag('a!-!b')).toBe('a-b');
+		expect(normalizeTag('a - b')).toBe('a-b');
+	});
+
 	it('keeps a typed hyphen at either end but never a boundary slash', () => {
 		// A hyphen is a legal tag character and the user's choice; a leading or
 		// trailing slash would be an empty nesting segment.

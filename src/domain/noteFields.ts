@@ -94,12 +94,17 @@ export function hasTag(tags: string[], tag: string): boolean {
 export function normalizeTag(input: string): string {
 	const tag = input
 		.trim()
+		// Unusable characters at the edges are dropped, not turned into a hyphen:
+		// "Sprint 12!" is "Sprint-12", not "Sprint-12-".
 		.replace(/^[^\p{L}\p{N}\p{M}_/-]+|[^\p{L}\p{N}\p{M}_/-]+$/gu, '')
-		.replace(/[^\p{L}\p{N}\p{M}_/-]+/gu, '-')
-		.replace(/-{2,}/g, '-')
-		// A hyphen the user typed is theirs to keep, at either end — "-urgent" and
+		// One hyphen per run of unusable characters — hyphens caught up in such a run
+		// ("a!-!b") are part of the separator, so they collapse with it. A run made
+		// only of hyphens is not a separator: "release--candidate" is what was typed
+		// and is a perfectly good tag, so it survives untouched.
+		.replace(/[^\p{L}\p{N}\p{M}_/]*[^\p{L}\p{N}\p{M}_/-][^\p{L}\p{N}\p{M}_/]*/gu, '-')
+		// A hyphen the user typed is theirs to keep at either end too — "-urgent" and
 		// "123-" are real tags. A slash there is not: it means an empty nesting
-		// segment, which is why only those are trimmed.
+		// segment, which is why only those are collapsed and trimmed.
 		.replace(/\/{2,}/g, '/')
 		.replace(/^\/+|\/+$/g, '');
 	return /[^\p{N}]/u.test(tag) ? tag : '';
