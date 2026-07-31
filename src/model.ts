@@ -4,7 +4,14 @@ import { BacklogSettings } from './settings';
 /** One node of the backlog tree, wrapping a BasesEntry. */
 export interface BacklogItem {
 	file: TFile;
-	entry: BasesEntry;
+	/** The Bases result row, or null for an ancestor loaded from outside the filter. */
+	entry: BasesEntry | null;
+	/**
+	 * True when the Base's own filter did not return this note: it was pulled in
+	 * from the metadata cache to keep the hierarchy above a match intact. Such a
+	 * row is context only — its real siblings are unknown, so it cannot be ranked.
+	 */
+	outsideFilter: boolean;
 	title: string;
 	/** Raw value of the type property, if present. */
 	typeName: string | null;
@@ -113,52 +120,92 @@ export function childLevelIndex(parent: BacklogItem | null, levels: string[]): n
 
 // ------------------------------------------------------------- build phases
 
-function createItems(
-	app: App,
-	entries: BasesEntry[],
-	settings: BacklogSettings,
-): { all: BacklogItem[]; byPath: Map<string, BacklogItem> } {
-	const byPath = new Map<string, BacklogItem>();
-	const all: BacklogItem[] = [];
-	const doneValues = new Set(settings.doneValues.map((v) => v.toLowerCase()));
+interface ItemStore {
+	all: BacklogItem[];
+	byPath: Map<string, BacklogItem>;
+}
+
+function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings): ItemStore {
+	const store: ItemStore = { all: [], byPath: new Map() };
+	/** Files the parent properties point at — the seeds for loading outside ancestors. */
+	const parents: TFile[] = [];
 
 	for (const entry of entries) {
 		const file = entry.file;
 		// Only markdown files can carry the frontmatter properties this view manages.
-		if (!file || file.extension !== 'md' || byPath.has(file.path)) continue;
-		// One cache lookup per note: the model is rebuilt on every vault change.
-		const cache = app.metadataCache.getFileCache(file);
-		const fm = cache?.frontmatter;
-		const parentRef = resolveParent(app, file, cache, settings.parentKey);
-		const stateValue = settings.stateKey ? readString(fm?.[settings.stateKey]) : null;
-		const item: BacklogItem = {
-			file,
-			entry,
-			title: file.basename,
-			typeName: readString(fm?.[settings.typeKey]),
-			order: readNumber(fm?.[settings.orderKey]),
-			entryIndex: all.length,
-			parentPath: parentRef.path,
-			hasParentValue: parentRef.hasValue,
-			explicitRoot: parentRef.explicitRoot,
-			parent: null,
-			children: [],
-			depth: 0,
-			levelIndex: 0,
-			effectiveLevelIndex: 0,
-			impliedType: false,
-			orphan: false,
-			focusRoot: false,
-			descendantCount: 0,
-			stateValue,
-			done: stateValue !== null && doneValues.has(stateValue.toLowerCase()),
-			doneDescendants: 0,
-			subtreeDone: false,
-		};
-		byPath.set(file.path, item);
-		all.push(item);
+		if (!file || file.extension !== 'md' || store.byPath.has(file.path)) continue;
+		const parentFile = addItem(app, store, file, entry, settings);
+		if (parentFile) parents.push(parentFile);
 	}
-	return { all, byPath };
+	if (settings.showOutsideParents) loadOutsideParents(app, store, parents, settings);
+	return store;
+}
+
+/**
+ * Read one note into an item and register it. Returns the file its parent property
+ * points at — resolved through the metadata cache, so it is a real note whether or
+ * not the Base's filter returned it.
+ */
+function addItem(
+	app: App,
+	store: ItemStore,
+	file: TFile,
+	entry: BasesEntry | null,
+	settings: BacklogSettings,
+): TFile | null {
+	// One cache lookup per note: the model is rebuilt on every vault change.
+	const cache = app.metadataCache.getFileCache(file);
+	const fm = cache?.frontmatter;
+	const parentRef = resolveParent(app, file, cache, settings.parentKey);
+	const stateValue = settings.stateKey ? readString(fm?.[settings.stateKey]) : null;
+	const doneValues = settings.doneValues.map((v) => v.toLowerCase());
+	const item: BacklogItem = {
+		file,
+		entry,
+		outsideFilter: entry === null,
+		title: file.basename,
+		typeName: readString(fm?.[settings.typeKey]),
+		order: readNumber(fm?.[settings.orderKey]),
+		entryIndex: store.all.length,
+		parentPath: parentRef.file?.path ?? null,
+		hasParentValue: parentRef.hasValue,
+		explicitRoot: parentRef.explicitRoot,
+		parent: null,
+		children: [],
+		depth: 0,
+		levelIndex: 0,
+		effectiveLevelIndex: 0,
+		impliedType: false,
+		orphan: false,
+		focusRoot: false,
+		descendantCount: 0,
+		stateValue,
+		done: stateValue !== null && doneValues.includes(stateValue.toLowerCase()),
+		doneDescendants: 0,
+		subtreeDone: false,
+	};
+	store.byPath.set(file.path, item);
+	store.all.push(item);
+	return parentRef.file;
+}
+
+/**
+ * Pull in the ancestors the Base's own query left out. A base filtered to one
+ * level, one state or one tag returns work items whose parents are not in the
+ * result set — without them every match renders as a flat orphan and the tree
+ * this view exists to show collapses into a list. The ancestors come from the
+ * metadata cache and are marked `outsideFilter`: context, not results.
+ */
+function loadOutsideParents(app: App, store: ItemStore, parents: TFile[], settings: BacklogSettings): void {
+	const queue = [...parents];
+	while (queue.length > 0) {
+		const file = queue.pop();
+		// Already known — a result row, or an ancestor another branch loaded. This
+		// is also what terminates a parent cycle among notes outside the filter.
+		if (!file || file.extension !== 'md' || store.byPath.has(file.path)) continue;
+		const next = addItem(app, store, file, null, settings);
+		if (next) queue.push(next);
+	}
 }
 
 /** Attach children to parents; anything unresolvable becomes a root. */
@@ -224,8 +271,12 @@ function breakCycles(all: BacklogItem[], roots: BacklogItem[]): void {
 		}
 	};
 	for (const root of roots) markSubtree(root);
-	for (const item of all) {
-		if (visited.has(item)) continue;
+	for (const unreachable of all) {
+		if (visited.has(unreachable)) continue;
+		// Cut the link that actually closes the loop, not whatever hangs below it:
+		// an item is unreachable as soon as any ancestor is in a cycle, and
+		// re-rooting the item itself would strand a healthy parent link.
+		const item = cycleEntry(unreachable);
 		if (item.parent) {
 			const siblings = item.parent.children;
 			const idx = siblings.indexOf(item);
@@ -278,6 +329,17 @@ function pruneOutsideHierarchy(
 		}
 	}
 	return dropped.size > 0 ? all.filter((item) => !dropped.has(item)) : all;
+}
+
+/** Walking up from an unreachable item always ends on the cycle that stranded it. */
+function cycleEntry(start: BacklogItem): BacklogItem {
+	const seen = new Set<BacklogItem>();
+	let cur = start;
+	while (cur.parent && !seen.has(cur)) {
+		seen.add(cur);
+		cur = cur.parent;
+	}
+	return cur;
 }
 
 /**
@@ -386,20 +448,21 @@ function computeLevel(item: BacklogItem, settings: BacklogSettings): void {
 // ----------------------------------------------------------- frontmatter IO
 
 interface ParentRef {
-	path: string | null;
+	/** The note the parent property resolves to, regardless of the Base's filter. */
+	file: TFile | null;
 	hasValue: boolean;
 	/** Parent key present but empty — an explicit "top level" marker in folder mode. */
 	explicitRoot: boolean;
 }
 
 function resolveParent(app: App, file: TFile, cache: CachedMetadata | null, parentKey: string): ParentRef {
-	if (!cache) return { path: null, hasValue: false, explicitRoot: false };
+	if (!cache) return { file: null, hasValue: false, explicitRoot: false };
 
 	// Preferred: the parsed frontmatter link cache (handles wikilinks and aliases).
 	for (const link of cache.frontmatterLinks ?? []) {
 		if (link.key === parentKey || link.key.startsWith(parentKey + '.')) {
 			const dest = app.metadataCache.getFirstLinkpathDest(link.link, file.path);
-			return { path: dest?.path ?? null, hasValue: true, explicitRoot: false };
+			return { file: dest ?? null, hasValue: true, explicitRoot: false };
 		}
 	}
 
@@ -409,12 +472,12 @@ function resolveParent(app: App, file: TFile, cache: CachedMetadata | null, pare
 	const rawValue: unknown = Array.isArray(raw) ? raw[0] : raw;
 	if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
 		const keyPresent = !!fm && parentKey in fm;
-		return { path: null, hasValue: false, explicitRoot: keyPresent };
+		return { file: null, hasValue: false, explicitRoot: keyPresent };
 	}
 	const linkpath = linkpathFromRawValue(rawValue);
-	if (linkpath.length === 0) return { path: null, hasValue: true, explicitRoot: false };
+	if (linkpath.length === 0) return { file: null, hasValue: true, explicitRoot: false };
 	const dest = app.metadataCache.getFirstLinkpathDest(linkpath, file.path);
-	return { path: dest?.path ?? null, hasValue: true, explicitRoot: false };
+	return { file: dest ?? null, hasValue: true, explicitRoot: false };
 }
 
 /** Strip wikilink brackets, aliases and heading refs from a raw parent value. */

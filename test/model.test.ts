@@ -500,3 +500,99 @@ describe('buildModel progress rollup', () => {
 		expect(model.observedStates).toEqual(['Active', 'Ready', 'Done']);
 	});
 });
+
+describe('buildModel with parents outside the filter', () => {
+	/** A three-level chain; the Base's filter returns only the PBI. */
+	function chainVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		return vault;
+	}
+
+	/** Stand-in for a Base filtered to one level or state. */
+	function only(vault: FakeVault, ...paths: string[]) {
+		return vault.entries().filter((e) => paths.includes(e.file.path));
+	}
+
+	it('rebuilds the whole ancestor chain above a match', () => {
+		const vault = chainVault();
+		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
+
+		expect(names(model.roots)).toEqual(['Epic']);
+		const feature = model.roots[0].children[0];
+		expect(feature.title).toBe('Feature');
+		expect(names(feature.children)).toEqual(['PBI']);
+		// The match is a result; everything above it is context
+		expect(model.roots[0].outsideFilter).toBe(true);
+		expect(feature.outsideFilter).toBe(true);
+		expect(feature.children[0].outsideFilter).toBe(false);
+		// With its parent present, the match is no longer a broken orphan
+		expect(feature.children[0].orphan).toBe(false);
+	});
+
+	it('leaves the match flat when the option is off', () => {
+		const vault = chainVault();
+		const model = buildModel(vault.app, only(vault, 'PBI.md'), { ...settings, showOutsideParents: false });
+
+		expect(names(model.roots)).toEqual(['PBI']);
+		expect(model.roots[0].orphan).toBe(true);
+	});
+
+	it('gives context ancestors no Bases row', () => {
+		const vault = chainVault();
+		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
+
+		expect(model.roots[0].entry).toBeNull();
+		expect(model.byPath.get('PBI.md')?.entry).not.toBeNull();
+	});
+
+	it('keeps a shared ancestor as one row for several matches', () => {
+		const vault = chainVault();
+		vault.addFile('PBI 2.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Feature' });
+		const model = buildModel(vault.app, only(vault, 'PBI.md', 'PBI 2.md'), settings);
+
+		expect(names(model.roots)).toEqual(['Epic']);
+		expect(names(model.roots[0].children[0].children)).toEqual(['PBI', 'PBI 2']);
+		expect(model.items).toHaveLength(4);
+	});
+
+	it('does not re-add an ancestor the filter already returned', () => {
+		const vault = chainVault();
+		const model = buildModel(vault.app, only(vault, 'Epic.md', 'PBI.md'), settings);
+
+		expect(model.items).toHaveLength(3);
+		expect(model.roots[0].outsideFilter).toBe(false);
+		expect(model.roots[0].children[0].outsideFilter).toBe(true);
+	});
+
+	it('terminates on a parent cycle outside the filter', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic' }, parentLink: 'B' });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic' }, parentLink: 'A' });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI' }, parentLink: 'A' });
+		const model = buildModel(vault.app, only(vault, 'Child.md'), settings);
+
+		expect(model.items).toHaveLength(3);
+		expect(model.roots).toHaveLength(1);
+	});
+
+	it('still ignores a parent link that resolves to nothing', () => {
+		const vault = new FakeVault();
+		vault.addFile('Lonely.md', { frontmatter: { type: 'PBI' }, parentLink: 'Missing Epic' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(names(model.roots)).toEqual(['Lonely']);
+		expect(model.roots[0].orphan).toBe(true);
+	});
+
+	it('rolls up only the descendants the filter returned', () => {
+		const vault = chainVault();
+		vault.addFile('PBI 2.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Feature' });
+		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
+
+		// Context ancestors describe the visible subtree, not the whole backlog
+		expect(model.roots[0].descendantCount).toBe(2);
+	});
+});

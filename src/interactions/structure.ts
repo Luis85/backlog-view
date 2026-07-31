@@ -11,7 +11,9 @@ import { computeInitWrites } from '../ops';
 /** The item's sibling list and index within it, or null when it cannot be moved. */
 function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: BacklogItem[]; idx: number } | null {
 	const model = host.model;
-	if (!model || item.focusRoot) return null;
+	// Focus roots share no ranking; an ancestor from outside the filter has siblings
+	// the query never returned, so ordering it against the loaded ones would be a guess.
+	if (!model || item.focusRoot || item.outsideFilter) return null;
 	const fullList = item.parent ? item.parent.children : model.roots;
 	const idx = fullList.indexOf(item);
 	return idx === -1 ? null : { fullList, idx };
@@ -54,7 +56,7 @@ export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top'
 export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 	const model = host.model;
 	const parent = item.parent;
-	if (!model || !parent || item.focusRoot) return;
+	if (!model || !parent || item.focusRoot || item.outsideFilter) return;
 	const grandparent = parent.parent;
 	// Root-level outdents rank among the real top level, not the focus rows.
 	const fullList = grandparent ? grandparent.children : model.realRoots;

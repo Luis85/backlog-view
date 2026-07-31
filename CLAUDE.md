@@ -99,6 +99,18 @@ code so imports stay cycle-free.
   neighbor (`visibleNeighbor`) so no command is visually inert; a parent whose
   children all hide renders as a leaf (chevron and aria-expanded follow visible
   children, not `children.length`).
+- Outside-filter ancestors (`settings.showOutsideParents`, on by default): the Bases query
+  returns matches without their parents, which would flatten the tree, so `loadOutsideParents`
+  walks each item's parent chain through the *metadata cache* and adds the missing notes with
+  `entry: null` and `outsideFilter: true`. They are context, not results: no Bases row (so no
+  property chips), not draggable, excluded from every ranking path (`siblingPosition`,
+  `siblingContext`, `outdent`, the move menu) because their real siblings were never loaded,
+  and skipped by `computeInitWrites`. They ARE valid drop parents and can take new children.
+  Their rollups describe the visible subtree only. `entry` is nullable for exactly this
+  reason — anything reading `item.entry` must handle null.
+- `breakCycles` re-roots `cycleEntry(item)`, the node that actually closes the loop, not the
+  first unreachable item found: with outside-filter ancestors the unreachable item is usually
+  a healthy match hanging below a cycle, and re-rooting it would strand a valid parent link.
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
   at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
 - Folder mode (`settings.folderHierarchy`): explicit links beat folder-note inference;

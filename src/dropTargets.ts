@@ -64,8 +64,9 @@ function siblingPosition(
 	dragged: BacklogItem,
 ): DropTarget | null {
 	// The top row of a focused view groups items from different real parents;
-	// there is no shared sibling ranking to insert into.
-	if (item.focusRoot) return null;
+	// there is no shared sibling ranking to insert into. An ancestor pulled in from
+	// outside the filter is the same problem: most of its siblings were never loaded.
+	if (item.focusRoot || item.outsideFilter) return null;
 	const parent = item.parent;
 	const fullList = parent ? parent.children : model.roots;
 	const siblings = fullList.filter((c) => c !== dragged);

@@ -167,10 +167,12 @@ function renderItem(
 	});
 	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
 	if (item.done) row.addClass('pbl-done');
+	if (item.outsideFilter) row.addClass('pbl-outside');
 	row.setCssProps({ '--pbl-depth': String(item.depth) });
 	row.dataset.path = item.file.path;
-	// While filtering, visual neighbors are not real siblings — ranking by drag would mislead.
-	row.draggable = !host.isFiltering();
+	// While filtering, visual neighbors are not real siblings — ranking by drag would
+	// mislead; an ancestor from outside the filter has unknown siblings for the same reason.
+	row.draggable = !host.isFiltering() && !item.outsideFilter;
 	ctx.rows.set(item.file.path, row);
 
 	renderRowLead(ctx, row, item, { hasChildren, collapsed });
@@ -238,6 +240,12 @@ function renderRowLead(
 		const orphan = row.createSpan({ cls: 'pbl-orphan' });
 		setIcon(orphan, 'unlink');
 		setTooltip(orphan, 'Parent is set but not part of this view');
+	}
+
+	if (item.outsideFilter) {
+		const marker = row.createSpan({ cls: 'pbl-outside-marker' });
+		setIcon(marker, 'corner-left-down');
+		setTooltip(marker, "Not in this base's filter — shown to keep the hierarchy");
 	}
 }
 
@@ -380,13 +388,15 @@ function chipLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
 }
 
 function renderChips(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem): void {
+	// An ancestor from outside the filter has no Bases row, so no property values.
+	if (!item.entry) return;
 	for (const chip of ctx.chips) renderChip(ctx.host, containerEl, item, chip);
 }
 
 function renderChip(host: BacklogViewHost, containerEl: HTMLElement, item: BacklogItem, prop: ChipProp): void {
 	let value = null;
 	try {
-		value = item.entry.getValue(prop.prop);
+		value = item.entry?.getValue(prop.prop) ?? null;
 	} catch {
 		return;
 	}

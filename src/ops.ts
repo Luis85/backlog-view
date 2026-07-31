@@ -177,6 +177,12 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;
 		}
 		for (const item of siblings) {
+			// Ancestors pulled in from outside the filter are context, not results —
+			// the backfill must not write properties into notes the base excluded.
+			if (item.outsideFilter) {
+				visit(item.children);
+				continue;
+			}
 			const write: ItemWrite = { file: item.file };
 			let needed = false;
 			if (item.order === null) {

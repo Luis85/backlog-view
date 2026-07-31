@@ -457,3 +457,17 @@ describe('createBacklogItem', () => {
 		expect(file.path).toBe('Untitled.md');
 	});
 });
+
+describe('computeInitWrites with parents outside the filter', () => {
+	it('backfills the matches but never the context ancestors', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
+		const filtered = vault.entries().filter((e) => e.file.path === 'PBI.md');
+		const model = buildModel(vault.app, filtered, settings);
+
+		// The Epic is present only as context; only the match is missing an order
+		expect(model.roots[0].outsideFilter).toBe(true);
+		expect(computeInitWrites(model, settings).map((w) => w.file.path)).toEqual(['PBI.md']);
+	});
+});

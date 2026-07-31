@@ -89,8 +89,10 @@ function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite
 }
 
 function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, model: BacklogModel): void {
-	// The top row of a focused view has no shared sibling ranking to move within.
-	if (item.focusRoot || (item.parent ? item.parent.children : model.roots).indexOf(item) === -1) return;
+	// No shared sibling ranking to move within: the top row of a focused view, or an
+	// ancestor loaded from outside the filter (its real siblings were never returned).
+	if (item.focusRoot || item.outsideFilter) return;
+	if ((item.parent ? item.parent.children : model.roots).indexOf(item) === -1) return;
 	// Gate on rendered neighbors: with completed items hidden, a swap with a
 	// hidden sibling would change nothing visibly.
 	const prev = visibleNeighbor(host, item, -1);

@@ -396,6 +396,28 @@
 	min-width: 0;
 }
 
+/* An ancestor the Base's filter excluded: context for the tree, not a result */
+.pbl-row.pbl-outside .pbl-title {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.pbl-row.pbl-outside .pbl-badge {
+	opacity: 0.65;
+}
+
+.pbl-outside-marker {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+	flex: 0 0 auto;
+}
+
+.pbl-outside-marker .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
 .pbl-count {
 	flex: 0 0 auto;
 	font-size: var(--font-ui-smaller);

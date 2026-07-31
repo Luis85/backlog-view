@@ -129,3 +129,33 @@ describe('rootDropTarget', () => {
 		expect(rootDropTarget(model, model.roots[0])).toBeNull();
 	});
 });
+
+describe('dropTargetFor with parents outside the filter', () => {
+	function outsideFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('PBI 1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI 2.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic' });
+		const filtered = vault.entries().filter((e) => e.file.path !== 'Epic.md');
+		const model = buildModel(vault.app, filtered, settings);
+		return { model, epic: model.roots[0], children: model.roots[0].children };
+	}
+
+	it('refuses to rank against an ancestor whose siblings were never loaded', () => {
+		const { model, epic, children } = outsideFixture();
+		expect(epic.outsideFilter).toBe(true);
+
+		expect(dropTargetFor(model, epic, 'before', children[0])).toBeNull();
+		expect(dropTargetFor(model, epic, 'after', children[0])).toBeNull();
+	});
+
+	it('still accepts drops into it, so a match can be re-parented home', () => {
+		const { model, epic, children } = outsideFixture();
+		const target = dropTargetFor(model, epic, 'inside', children[1]);
+		// Already its last child — the no-op rule applies, as for any other parent
+		expect(target).toBeNull();
+
+		const moved = dropTargetFor(model, epic, 'inside', children[0]);
+		expect(moved?.parent).toBe(epic);
+	});
+});

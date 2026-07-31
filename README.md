@@ -204,6 +204,33 @@ shortcuts where sensible):
 | <kbd>Escape</kbd> | Clear the filter, then the selection |
 | <kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the context menu for the selected item |
 
+### Filtered bases keep their tree
+
+A Base filtered to one level, one state or one tag returns matching items but not their
+parents — and a backlog with no parents is just a list. So the view loads the missing
+**ancestors** from the vault and renders them as context: filter to `type == "PBI"` and
+each PBI still appears under its real Feature and Epic.
+
+```text
+▾ [Epic]    Customer Portal          ↳   (context — not in the filter)
+  ▾ [Feature] Self-service login     ↳
+      [PBI]   Password reset flow        (the actual match)
+```
+
+Context rows are italic and dimmed, with a `↳` marker. They are **not results**, so:
+
+- they can't be dragged, moved, indented or outdented — the Base never returned their
+  real siblings, so there is no sibling order to rank them within;
+- they *are* valid drop targets, so you can drag a match onto its parent as usual, and
+  **New \<child\>** works on them;
+- the ✨ backfill never writes properties into them;
+- their descendant counts and progress bars describe **the visible subtree only** — the
+  children the filter excluded are not counted (this is equally true of a matched parent
+  in a filtered base).
+
+Turn **Show parents outside the filter** off to go back to a flat list of matches, where
+items whose parent is missing show the unlink icon.
+
 ### Large backlogs
 
 Expanding or collapsing a row re-renders only that row's children, selection and keyboard
@@ -231,6 +258,7 @@ Open the view options in the Bases toolbar to configure:
 | Item type property | `type` | Hierarchy level of the item |
 | Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors and icons |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
+| Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
 | Focus level | All levels | Re-root the tree at one level, like ADO's per-level backlogs |
 | Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
@@ -256,13 +284,14 @@ Notes:
 - **Group by** is ignored — the hierarchy is the grouping. The toolbar says so when a
   group-by is configured.
 - A Base **limit** truncates the result set, which can drop parents while keeping their
-  children — the children then appear as top-level items with an unlink icon. Prefer
-  filters over limits for backlogs.
+  children. Their ancestors are loaded back in as context rows (see above); the counts
+  and rollups on those rows still describe only what the Base returned, so prefer filters
+  over limits for backlogs.
 - Creating an item from a focused view's toolbar makes it top-level (parentless) at that
   level; assign a parent afterwards by dragging it into place.
-- Items whose `parent` links to a note outside the current filter results are shown at the
-  top level with an unlink icon. Dropping such an item at the top level clears the stale
-  link.
+- Items whose `parent` links to a note that does not exist at all are shown at the top
+  level with an unlink icon. Dropping such an item at the top level clears the stale link.
+  A parent that exists but sits outside the filter is loaded as a context row instead.
 - When the view is empty and no folder is configured, creating the first item asks for
   the target folder (with autocomplete) and saves the choice to the view options.
 

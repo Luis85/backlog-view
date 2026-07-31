@@ -1745,3 +1745,73 @@ describe('targeted subtree rendering', () => {
 		expect(tree.getAttribute('aria-activedescendant')).toBeNull();
 	});
 });
+
+describe('parents outside the filter', () => {
+	/** The Base returns only the PBI; its Feature and Epic live outside the filter. */
+	function filteredView(configValues: Record<string, unknown> = {}) {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const config = new FakeViewConfig(configValues);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = config;
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
+		view.onDataUpdated();
+		return { view, config, containerEl, vault };
+	}
+
+	it('renders the match inside its full hierarchy', () => {
+		const { containerEl } = filteredView();
+
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature', 'PBI']);
+		expect(rowByTitle(containerEl, 'PBI').getAttribute('aria-level')).toBe('3');
+	});
+
+	it('marks the context rows and keeps them out of drag and drop', () => {
+		const { containerEl } = filteredView();
+		const epic = rowByTitle(containerEl, 'Epic');
+		const pbi = rowByTitle(containerEl, 'PBI');
+
+		expect(epic.classList.contains('pbl-outside')).toBe(true);
+		expect(epic.draggable).toBe(false);
+		expect(epic.querySelector('.pbl-outside-marker')).not.toBeNull();
+		// The match itself is an ordinary, fully interactive row
+		expect(pbi.classList.contains('pbl-outside')).toBe(false);
+		expect(pbi.draggable).toBe(true);
+		expect(pbi.querySelector('.pbl-outside-marker')).toBeNull();
+	});
+
+	it('offers no move commands on a context row', () => {
+		const { containerEl } = filteredView();
+
+		rowByTitle(containerEl, 'Feature').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).not.toContain('Move up');
+		expect(titles).not.toContain('Move down');
+		expect(titles).not.toContain('Outdent');
+		// Creating a child under it is still the natural thing to do
+		expect(titles).toContain('New PBI');
+	});
+
+	it('ignores Alt+arrow on a context row', async () => {
+		const { view, containerEl, vault } = filteredView();
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Epic.md') as never);
+
+		key(tree, 'ArrowDown', { altKey: true });
+		await flush();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('drops the context rows when the option is off', () => {
+		const { containerEl } = filteredView({ showOutsideParents: false });
+
+		expect(titlesOf(containerEl)).toEqual(['PBI']);
+		// Without its parent in the view, the match reads as a broken link again
+		expect(rowByTitle(containerEl, 'PBI').querySelector('.pbl-orphan')).not.toBeNull();
+	});
+})
