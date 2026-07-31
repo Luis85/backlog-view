@@ -1,4 +1,4 @@
-import { AbstractInputSuggest, App, Modal, Setting, TFolder } from 'obsidian';
+import { AbstractInputSuggest, App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
 
 export interface NewItemPromptResult {
 	title: string;
@@ -8,6 +8,8 @@ export interface NewItemPromptResult {
 
 export interface NewItemPromptOptions {
 	heading: string;
+	/** Context line under the heading: where the new item will land. */
+	detail?: string;
 	/** Ask where to create the item because no folder is configured or inferable. */
 	askFolder?: boolean;
 	onSubmit: (result: NewItemPromptResult) => void;
@@ -107,8 +109,12 @@ export class TitlePromptModal extends Modal {
 
 	onOpen(): void {
 		this.titleEl.setText(this.options.heading);
+		if (this.options.detail) {
+			this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.detail });
+		}
 		let title = '';
 		let folder = '';
+		let createBtn: ButtonComponent | null = null;
 
 		const submit = () => {
 			const trimmed = title.trim();
@@ -130,7 +136,10 @@ export class TitlePromptModal extends Modal {
 
 		new Setting(this.contentEl).setName('Title').addText((text) => {
 			text.setPlaceholder('Item title');
-			text.onChange((v) => (title = v));
+			text.onChange((v) => {
+				title = v;
+				createBtn?.setDisabled(title.trim().length === 0);
+			});
 			submitOnEnter(text.inputEl);
 			window.setTimeout(() => text.inputEl.focus(), 0);
 		});
@@ -150,7 +159,8 @@ export class TitlePromptModal extends Modal {
 		}
 
 		new Setting(this.contentEl).addButton((btn) => {
-			btn.setButtonText('Create').setCta().onClick(submit);
+			btn.setButtonText('Create').setCta().setDisabled(true).onClick(submit);
+			createBtn = btn;
 		});
 	}
 

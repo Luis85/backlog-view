@@ -18,7 +18,7 @@ export class DragDropController {
 	private readonly els: DragDropElements;
 	private draggedPath: string | null = null;
 	private activeDropRow: HTMLElement | null = null;
-	private hoverExpand: { path: string; timer: number } | null = null;
+	private hoverExpand: { path: string; timer: number; row: HTMLElement } | null = null;
 
 	constructor(host: BacklogViewHost, els: DragDropElements) {
 		this.host = host;
@@ -52,7 +52,7 @@ export class DragDropController {
 			evt.preventDefault();
 			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
 			this.setDropIndicator(row, zone);
-			if (zone === 'inside' && hasChildren && collapsed) this.scheduleHoverExpand(item.file.path);
+			if (zone === 'inside' && hasChildren && collapsed) this.scheduleHoverExpand(row, item.file.path);
 			else if (this.hoverExpand?.path === item.file.path) this.cancelHoverExpand();
 		});
 
@@ -160,22 +160,26 @@ export class DragDropController {
 		row.classList.toggle('pbl-drop-inside', zone === 'inside');
 	}
 
-	private scheduleHoverExpand(path: string): void {
+	private scheduleHoverExpand(row: HTMLElement, path: string): void {
 		if (this.hoverExpand?.path === path) return;
 		this.cancelHoverExpand();
+		// The chevron animates while the timer runs — "keep hovering to expand".
+		row.addClass('pbl-hover-expanding');
 		const timer = window.setTimeout(() => {
 			this.hoverExpand = null;
+			row.removeClass('pbl-hover-expanding');
 			if (this.host.setCollapsed(path, false)) {
 				this.host.persistCollapsedState();
 				this.host.render();
 			}
 		}, 600);
-		this.hoverExpand = { path, timer };
+		this.hoverExpand = { path, timer, row };
 	}
 
 	private cancelHoverExpand(): void {
 		if (this.hoverExpand) {
 			window.clearTimeout(this.hoverExpand.timer);
+			this.hoverExpand.row.removeClass('pbl-hover-expanding');
 			this.hoverExpand = null;
 		}
 	}

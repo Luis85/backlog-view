@@ -36,6 +36,12 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 			.setIcon('file-plus')
 			.onClick(() => host.openItemInNewTab(item)),
 	);
+	menu.addItem((mi) =>
+		mi
+			.setTitle('Open to the right')
+			.setIcon('separator-vertical')
+			.onClick(() => host.openItemToSide(item)),
+	);
 
 	host.app.workspace.trigger('file-menu', menu, item.file, PRODUCT_BACKLOG_VIEW_TYPE);
 	return menu;

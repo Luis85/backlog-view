@@ -3,6 +3,7 @@
 /* ========================================================================== */
 
 .pbl-view {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -45,10 +46,14 @@
 }
 
 /* Collapse state is overridden while filtering — the controls pause with it */
-.pbl-toolbar.pbl-filtering [aria-label='Expand all'],
-.pbl-toolbar.pbl-filtering [aria-label='Collapse all'] {
+.pbl-view.pbl-filtering .pbl-collapse-ctl {
 	opacity: 0.4;
 	pointer-events: none;
+}
+
+/* Dragging is disabled while filtering; a grab handle would be a lie */
+.pbl-view.pbl-filtering .pbl-grip {
+	display: none;
 }
 
 .pbl-toolbar-spacer {
@@ -98,6 +103,12 @@
 	padding: 0;
 	font-size: var(--font-ui-small);
 	color: var(--text-normal);
+	transition: width 120ms ease-in-out;
+}
+
+/* A little room to breathe while actually typing */
+.pbl-filter-input:focus {
+	width: 170px;
 }
 
 .pbl-filter-input::placeholder {
@@ -128,7 +139,8 @@
 	color: var(--interactive-accent);
 	background-color: hsla(var(--interactive-accent-hsl), 0.12);
 	border-radius: var(--radius-l);
-	padding: 0 var(--size-2-1) 0 var(--size-4-1);
+	padding-block: 0;
+	padding-inline: var(--size-4-1) var(--size-2-1);
 	line-height: 1.9;
 	white-space: nowrap;
 }
@@ -153,16 +165,29 @@
 }
 
 .pbl-empty-filter {
-	padding: var(--size-4-4);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
 	text-align: center;
 	color: var(--text-faint);
 	font-size: var(--font-ui-small);
 }
 
+.pbl-empty-filter-icon {
+	color: var(--text-faint);
+}
+
+.pbl-empty-filter-icon .svg-icon {
+	width: 24px;
+	height: 24px;
+}
+
 .pbl-count-label {
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
-	padding-right: var(--size-4-1);
+	padding-inline-end: var(--size-4-1);
 }
 
 .pbl-grouping-note {
@@ -221,7 +246,7 @@
 	gap: var(--size-4-1);
 	min-height: 30px;
 	padding: var(--size-2-1) var(--size-4-1);
-	padding-left: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px);
+	padding-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px);
 	border-radius: var(--radius-s);
 	cursor: pointer;
 	user-select: none;
@@ -261,8 +286,11 @@
 	outline: none;
 }
 
+/* With keyboard focus in the tree, the selection doubles as the focus ring */
 .pbl-tree:focus-visible .pbl-row.pbl-selected {
 	background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
 }
 
 .pbl-grip {
@@ -324,10 +352,12 @@
 	color: var(--text-accent);
 }
 
+/* A broken parent link deserves attention — the context menu can clear it */
 .pbl-orphan {
 	display: flex;
 	align-items: center;
-	color: var(--text-faint);
+	color: rgb(var(--color-orange-rgb));
+	opacity: 0.85;
 	flex: 0 0 auto;
 }
 
@@ -385,7 +415,13 @@
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 	min-width: 28px;
-	text-align: right;
+	text-align: end;
+}
+
+/* Everything below this item is done */
+.pbl-progress.pbl-complete .pbl-progress-label {
+	color: rgb(var(--color-green-rgb));
+	font-weight: var(--font-medium);
 }
 
 .pbl-add {
@@ -464,10 +500,10 @@
 	flex: 1 1 auto;
 	min-width: 0;
 	overflow: hidden;
-	margin-left: var(--size-4-2);
+	margin-inline-start: var(--size-4-2);
 	/* Overflowing chips fade out instead of clipping hard */
-	-webkit-mask-image: linear-gradient(90deg, black calc(100% - 16px), transparent);
-	mask-image: linear-gradient(90deg, black calc(100% - 16px), transparent);
+	-webkit-mask-image: linear-gradient(to right, black calc(100% - 16px), transparent);
+	mask-image: linear-gradient(to right, black calc(100% - 16px), transparent);
 }
 
 .pbl-chip {
@@ -511,7 +547,7 @@
 	position: absolute;
 	top: 2px;
 	bottom: 2px;
-	left: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px + 26px);
+	inset-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px + 26px);
 	width: 1px;
 	background-color: var(--background-modifier-border);
 	pointer-events: none;
@@ -520,11 +556,13 @@
 @media (prefers-reduced-motion: reduce) {
 	.pbl-grip,
 	.pbl-add,
-	.pbl-chevron {
+	.pbl-chevron,
+	.pbl-filter-input {
 		transition: none;
 	}
 
-	.pbl-row.pbl-pending {
+	.pbl-row.pbl-pending,
+	.pbl-row.pbl-hover-expanding .pbl-chevron {
 		animation: none;
 	}
 }
@@ -559,8 +597,8 @@
 .pbl-row.pbl-drop-after::after {
 	content: '';
 	position: absolute;
-	left: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px);
-	right: var(--size-4-1);
+	inset-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px);
+	inset-inline-end: var(--size-4-1);
 	height: 2px;
 	border-radius: 1px;
 	background-color: var(--interactive-accent);
@@ -576,23 +614,68 @@
 	bottom: -1px;
 }
 
+/* A dot caps the insertion line, anchoring the eye to the target indent */
+.pbl-row.pbl-drop-before::after,
+.pbl-row.pbl-drop-after::before {
+	content: '';
+	position: absolute;
+	inset-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px - 3px);
+	width: 8px;
+	height: 8px;
+	box-sizing: border-box;
+	border: 2px solid var(--interactive-accent);
+	border-radius: 50%;
+	background-color: var(--background-primary);
+	pointer-events: none;
+	z-index: 11;
+}
+
+.pbl-row.pbl-drop-before::after {
+	top: -4px;
+}
+
+.pbl-row.pbl-drop-after::before {
+	bottom: -4px;
+}
+
+/* Keep hovering the middle of a collapsed row to expand it mid-drag */
+.pbl-row.pbl-hover-expanding .pbl-chevron {
+	color: var(--interactive-accent);
+	animation: pbl-expand-nudge 600ms ease-in-out forwards;
+}
+
+@keyframes pbl-expand-nudge {
+	50% {
+		transform: rotate(45deg);
+	}
+	100% {
+		transform: rotate(90deg);
+	}
+}
+
 .pbl-row.pbl-drop-inside {
 	box-shadow: inset 0 0 0 2px var(--interactive-accent);
 	background-color: hsla(var(--interactive-accent-hsl), 0.1);
 }
 
+/* Overlays the bottom edge while dragging — appearing must not reflow the
+   tree, or rows would shift under the cursor right as the drag starts. */
 .pbl-root-drop {
 	display: none;
 	align-items: center;
 	justify-content: center;
 	gap: var(--size-4-2);
-	margin: var(--size-4-2);
+	position: absolute;
+	bottom: var(--size-4-2);
+	inset-inline: var(--size-4-2);
+	z-index: 20;
 	padding: var(--size-4-2);
 	border: 2px dashed var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
-	flex: 0 0 auto;
+	background-color: var(--background-primary);
+	box-shadow: var(--shadow-s);
 }
 
 .pbl-view.pbl-dragging:not(.pbl-focused) .pbl-root-drop {
@@ -600,7 +683,7 @@
 }
 
 .pbl-new-pick {
-	margin-left: calc(var(--size-4-1) * -1);
+	margin-inline-start: calc(var(--size-4-1) * -1);
 }
 
 .pbl-new-pick .svg-icon {
@@ -662,4 +745,13 @@
 	align-items: center;
 	gap: var(--size-4-1);
 	margin-top: var(--size-4-2);
+}
+
+/* ------------------------------------------------------------------- modals */
+
+/* "Under "Epic X" · in folder "Backlog"" context line of the new-item prompt */
+.pbl-modal-detail {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-bottom: var(--size-4-3);
 }
