@@ -6,7 +6,7 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from './model';
 import { applyWrites, computeDropWrites, DropTarget, ItemWrite } from './ops';
 import { renderToolbar } from './render/toolbar';
-import { columnFit, rowContext, RowContext } from './render/columns';
+import { columnFit, renderedDepth, rowContext, RowContext } from './render/columns';
 import { refreshRowChildren, renderTree } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from './settings';
 
@@ -95,7 +95,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const width = this.treeEl.clientWidth;
 		// Zero while detached or before the first layout: keep the last decision.
 		if (width === 0) return;
-		const fit = columnFit(this.settings, this.visibleChipCount, width);
+		// Indent is part of what a row needs, so expanding a deep branch can be what
+		// makes the columns stop fitting — hence the live depth, not a stored one.
+		const fit = columnFit(this.settings, this.visibleChipCount, renderedDepth(this), width);
 		this.viewEl.toggleClass('pbl-hide-props', fit.hideProps);
 		this.viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
 	}
@@ -323,6 +325,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			return;
 		}
 		refreshRowChildren(this.rowCtx(), item, row);
+		// Expanding or collapsing changes the deepest rendered row, and with it the
+		// room the columns have left.
+		this.syncColumnFit();
 		// The selection may have been inside the subtree that just collapsed.
 		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
 		this.syncActiveDescendant(this.selectedRowEl);

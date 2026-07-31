@@ -615,6 +615,30 @@ describe('property columns', () => {
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
 	});
 
+	it('counts the indent of the deepest rendered row', () => {
+		// A chain deep enough that its indent alone eats a column's worth of room.
+		const vault = new FakeVault();
+		vault.addFile('L0.md', { frontmatter: { type: 'Epic', order: 10 } });
+		for (let i = 1; i <= 8; i++) {
+			vault.addFile(`L${i}.md`, { frontmatter: { type: 'Task', order: 10 }, parentLink: `L${i - 1}` });
+		}
+		const { containerEl, config, view } = makeView(vault, {}, { collapsed: true });
+		config.order = ['note.points'];
+		const tree = treeOf(containerEl);
+		Object.defineProperty(tree, 'clientWidth', { value: 480, configurable: true });
+		view.onDataUpdated();
+		const viewEl = containerEl.querySelector('.pbl-view');
+
+		// Collapsed, only the root renders: one 132px column fits beside it
+		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
+
+		// Expanding the chain puts a row eight levels in — 192px of indent — on screen
+		containerEl
+			.querySelector<HTMLElement>('.pbl-collapse-ctl[aria-label="Expand all"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+	});
+
 	it('has no header when no properties are shown', () => {
 		const { containerEl } = makeView(fixture(), { stateProperty: 'note.status' });
 		expect(containerEl.querySelector('.pbl-cols')).toBeNull();
@@ -690,6 +714,25 @@ describe('tag editing', () => {
 		expect(remove?.getAttribute('tabindex')).toBe('-1');
 		expect(remove?.getAttribute('aria-label')).toBe('Remove tag alpha');
 		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-tag-add')).not.toBeNull();
+	});
+
+	it('keeps the add button beside the pills, not behind them', () => {
+		const vault = new FakeVault();
+		// More tags than a column can show: the pills clip, the control must not
+		vault.addFile('Epic A.md', {
+			frontmatter: { type: 'Epic', order: 10, tags: ['one', 'two', 'three', 'four', 'five', 'six'] },
+		});
+		const harness = makeView(vault);
+		harness.config.order = ['note.tags'];
+		harness.view.onDataUpdated();
+
+		const cell = rowByTitle(harness.containerEl, 'Epic A').querySelector('.pbl-prop-tags');
+		const list = cell?.querySelector('.pbl-tag-list');
+		expect(list?.querySelectorAll('.pbl-tag')).toHaveLength(6);
+		// A sibling of the clipped pill box, and the last thing in the cell
+		expect(cell?.querySelector('.pbl-tag-add')?.parentElement).toBe(cell);
+		expect(list?.querySelector('.pbl-tag-add')).toBeNull();
+		expect(cell?.lastElementChild?.classList.contains('pbl-tag-add')).toBe(true);
 	});
 
 	it('removes a tag without touching the others', async () => {

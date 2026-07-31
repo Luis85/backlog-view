@@ -38,26 +38,49 @@ export function rowContext(
 /** Widths of the fixed columns, mirroring the defaults of their CSS custom properties. */
 const STATE_COL_WIDTH = 116;
 const META_COL_WIDTH = 84;
-/** What a row keeps for itself before any column may claim space: indent, badge, a usable title. */
+/** What a row at the top level keeps for itself: grip, chevron, badge, a usable title. */
 const ROW_LEAD_WIDTH = 260;
+/** Indent one depth level adds, mirroring the row padding in styles.css. */
+const INDENT_PER_DEPTH = 24;
 
 /**
  * Which columns still fit in a pane this wide. Columns never shrink — that is what
  * keeps them aligned — so a pane too narrow for them has to drop them instead, and
- * the threshold has to come from the configured width and count rather than a fixed
- * breakpoint: two 280px columns need more than twice the room of two 100px ones.
- * They go in reverse order of usefulness, the state chip being the last to survive.
+ * the threshold has to come from what the rows actually need rather than a fixed
+ * breakpoint: two 280px columns need more than twice the room of two 100px ones,
+ * and every level of indent takes another 24px away from the deepest row's title.
+ * Columns go in reverse order of usefulness, the state chip being the last to survive.
  */
 export function columnFit(
 	settings: BacklogSettings,
 	chipCount: number,
+	depth: number,
 	width: number,
 ): { hideProps: boolean; hideMeta: boolean } {
 	const state = settings.stateKey ? STATE_COL_WIDTH : 0;
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
 	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
-	const base = ROW_LEAD_WIDTH + state;
+	const base = ROW_LEAD_WIDTH + depth * INDENT_PER_DEPTH + state;
 	return { hideProps: width < base + meta + props, hideMeta: width < base + meta };
+}
+
+/**
+ * The deepest row currently on screen. Depth is what the fit has to answer for: a
+ * collapsed or hidden branch costs nothing, and an expanded one narrows every row's
+ * usable width by its indent. Walks the rendered forest, not the model, for exactly
+ * that reason — expanding a deep branch is what makes the columns stop fitting.
+ */
+export function renderedDepth(host: BacklogViewHost): number {
+	let max = 0;
+	const walk = (items: BacklogItem[]) => {
+		for (const item of items) {
+			if (host.isRowHidden(item)) continue;
+			if (item.depth > max) max = item.depth;
+			if (!host.isCollapsed(item.file.path)) walk(item.children);
+		}
+	};
+	walk(host.model?.roots ?? []);
+	return max;
 }
 
 /** The visible properties to render as columns, with their labels — one lookup per render. */
@@ -187,8 +210,12 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, chip: ChipProp): void {
 	cell.addClass('pbl-prop-tags');
 	const editable = !item.outsideFilter;
+	// The pills live in their own box so that *they* clip when there are more than
+	// the column can show. The add button is a sibling of that box, not the last
+	// thing in the row of pills, or enough tags would push it out of the cell.
+	const list = cell.createDiv({ cls: 'pbl-tag-list' });
 	for (const tag of item.tags) {
-		const pill = cell.createSpan({ cls: 'pbl-tag' });
+		const pill = list.createSpan({ cls: 'pbl-tag' });
 		pill.createSpan({ cls: 'pbl-tag-text', text: `#${tag}` });
 		if (!editable) continue;
 		// No Tab stop: the tree keeps its single-tab-stop model and the context

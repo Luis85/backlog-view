@@ -624,6 +624,16 @@
 
 .pbl-prop-tags {
 	gap: var(--size-2-2);
+}
+
+/* Only the pills clip: the add button beside them keeps its place in the cell */
+.pbl-tag-list {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
 	/* Overflowing tags fade out instead of clipping hard */
 	-webkit-mask-image: linear-gradient(to right, black calc(100% - 12px), transparent);
 	mask-image: linear-gradient(to right, black calc(100% - 12px), transparent);
