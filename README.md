@@ -246,8 +246,11 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
 - they *are* valid drop targets, so you can drag a match onto its parent as usual, and
   **New \<child\>** works on them;
 - the ✨ backfill never writes properties into them;
-- their descendant counts and progress bars describe **the visible subtree only** — the
-  children the filter excluded are not counted.
+- they don't count anywhere: descendant counts and progress bars report **the results the
+  Base returned**, so a context row in the middle of a chain is passed through rather than
+  tallied, and its own state can't skew a rollup or keep a finished subtree on screen.
+  (Children the filter excluded are still not counted — a rollup describes the visible
+  subtree, not the whole backlog.)
 
 The last point generalizes into the one real caveat of working in a filtered base: **any
 parent whose children are partly filtered out has a partial sibling list**, whether it is

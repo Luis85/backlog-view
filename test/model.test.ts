@@ -592,8 +592,38 @@ describe('buildModel with parents outside the filter', () => {
 		vault.addFile('PBI 2.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Feature' });
 		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
 
-		// Context ancestors describe the visible subtree, not the whole backlog
-		expect(model.roots[0].descendantCount).toBe(2);
+		// One result below it: the excluded PBI 2 is not counted, and neither is the
+		// context Feature that merely carries the chain.
+		expect(model.roots[0].descendantCount).toBe(1);
+		expect(model.roots[0].children[0].outsideFilter).toBe(true);
+	});
+
+	it('keeps a context row out of the progress a result reports', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Active' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', status: 'Active' }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'Done' }, parentLink: 'Feature' });
+		// Epic and PBI are results; the Feature between them is not
+		const filtered = vault.entries().filter((e) => e.file.path !== 'Feature.md');
+		const model = buildModel(vault.app, filtered, { ...settings, stateKey: 'status' });
+		const epic = model.roots[0];
+
+		// One descendant, and it is done — the open context Feature counts for neither
+		expect(epic.descendantCount).toBe(1);
+		expect(epic.doneDescendants).toBe(1);
+	});
+
+	it('lets a finished subtree complete despite an open context row in the middle', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', status: 'Active' }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'Done' }, parentLink: 'Feature' });
+		const filtered = vault.entries().filter((e) => e.file.path !== 'Feature.md');
+		const model = buildModel(vault.app, filtered, { ...settings, stateKey: 'status' });
+
+		// Every result in the subtree is done, so it may hide; the excluded note's
+		// own state is not this base's business.
+		expect(model.roots[0].subtreeDone).toBe(true);
 	});
 });
 

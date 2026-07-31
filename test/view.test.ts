@@ -2092,8 +2092,10 @@ describe('write safety with context rows, across every entry point', () => {
 		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
-		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature B' });
-		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
+		// The context row in the middle is done and the result below it is not, so
+		// counting either one in a rollup would show up as a wrong number.
+		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
 
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
@@ -2270,5 +2272,53 @@ describe('toolbar figures describe the Base results', () => {
 		const label = containerEl.querySelector('.pbl-completed-toggle')?.getAttribute('aria-label');
 
 		expect(label).toBe('Show completed items (1 hidden)');
+	});
+});
+
+describe('rollups describe the Base results only', () => {
+	/** Reuses the stress fixture: context rows above, beside and between results. */
+	interface Node {
+		children: Node[];
+		outsideFilter: boolean;
+		done: boolean;
+		descendantCount: number;
+		doneDescendants: number;
+	}
+
+	it('never counts a context row, anywhere in the tree', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
+		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		anyView.data = {
+			data: vault.entries().filter((e) => !['Epic.md', 'Feature A.md', 'Mid.md'].includes(e.file.path)),
+		};
+		view.onDataUpdated();
+
+		// Stated from the rule, not from the implementation: a rollup counts the
+		// results below an item, and nothing else.
+		const results = (item: Node): number =>
+			item.children.reduce((n, c) => n + (c.outsideFilter ? 0 : 1) + results(c), 0);
+		const doneResults = (item: Node): number =>
+			item.children.reduce((n, c) => n + (!c.outsideFilter && c.done ? 1 : 0) + doneResults(c), 0);
+
+		const items = (view.model?.items ?? []) as unknown as Node[];
+		expect(items.length).toBe(6);
+		for (const item of items) {
+			expect(item.descendantCount).toBe(results(item));
+			expect(item.doneDescendants).toBe(doneResults(item));
+		}
+		// Not vacuous: the done context row and the open result under it are both there
+		const featureB = view.model?.byPath.get('Feature B.md');
+		expect(featureB?.descendantCount).toBe(1);
+		expect(featureB?.doneDescendants).toBe(0);
 	});
 });

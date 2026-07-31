@@ -385,8 +385,12 @@ function assignAll(renderedRoots: BacklogItem[], settings: BacklogSettings): Bac
 		let done = 0;
 		for (const child of item.children) {
 			assign(child, depth + 1);
-			count += 1 + child.descendantCount;
-			done += (child.done ? 1 : 0) + child.doneDescendants;
+			// Traverse *through* a context row to the results below it, but never count
+			// it: rollups describe what the Base returned, and an excluded note's own
+			// state must not skew a progress bar or keep a finished subtree on screen.
+			const self = child.outsideFilter ? 0 : 1;
+			count += self + child.descendantCount;
+			done += (child.done ? self : 0) + child.doneDescendants;
 		}
 		item.descendantCount = count;
 		item.doneDescendants = done;

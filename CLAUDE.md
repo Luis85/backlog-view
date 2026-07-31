@@ -121,6 +121,12 @@ code so imports stay cycle-free.
   "write safety with context rows, across every entry point" test in `view.test.ts`
   drives every interaction against a fixture with context rows above, beside and between
   results, so a new write path fails it without anyone predicting the surface.
+- "Derived from the results" includes numbers computed *while walking the tree*, not just
+  code that reads a model collection: `assignAll` traverses **through** a context row to
+  the results below it but never counts it, so a rollup reports what the Base returned and
+  an excluded note's own state can neither skew a progress bar nor keep a finished subtree
+  on screen. Two invariant tests in `view.test.ts` state this from the rule rather than
+  the implementation — one for writes, one for rollups.
 - `model.results` is the Base's own rows and `model.items` is everything rendered.
   Anything answering "what is in this base" takes `results`; only rendering, navigation
   and collapse state take `items`.
