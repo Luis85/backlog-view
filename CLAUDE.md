@@ -112,7 +112,15 @@ code so imports stay cycle-free.
   nearest folder note *in the vault* when `folderHierarchy` is on) — seeding from explicit
   links alone leaves filtered folder hierarchies flat, since inference only ever looks in
   `byPath`.
-- The view NEVER writes to a note the Base excluded. Renumbering rewrites a whole sibling
+- The view NEVER writes to a note the Base excluded — enforced structurally in
+  `applySafely`, which drops writes whose target item is `outsideFilter`, so a new write
+  path cannot reopen the hole by omission. The UI withholds every control that would
+  produce one: the state chip renders as a static `.pbl-state-static` div (and not at all
+  when unset), and the context menu drops Set type, Set state and the parent-link actions.
+  `New <child>` stays — it writes a *different* note. Creation-folder inference
+  (`inferFolder`) counts only result rows, or a chain of ancestors living elsewhere would
+  aim new notes out of the base's own folder.
+- Renumbering rewrites a whole sibling
   group, so `computeDropWrites` refuses that path when the group holds an `outsideFilter`
   row and places the item after the highest known order instead (`afterHighestKnown`) —
   the single choke point that makes the invariant hold. Because that fallback lands the

@@ -109,8 +109,13 @@ function inferFolder(model: BacklogModel | null): string {
 	const counts = new Map<string, number>();
 	const visit = (items: BacklogItem[]) => {
 		for (const item of items) {
-			const path = item.file.parent?.path ?? '';
-			counts.set(path, (counts.get(path) ?? 0) + 1);
+			// Ancestors loaded from outside the filter live wherever they live — often
+			// outside the base's folder entirely. Counting them would aim new notes
+			// there, straight out of the view they were created from.
+			if (!item.outsideFilter) {
+				const path = item.file.parent?.path ?? '';
+				counts.set(path, (counts.get(path) ?? 0) + 1);
+			}
 			visit(item.children);
 		}
 	};

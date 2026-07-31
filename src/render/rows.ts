@@ -331,22 +331,39 @@ function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem
 /** Clickable state chip — the inline write surface for the workflow state. */
 function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
 	const value = item.stateValue;
+	const cls = 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
+
+	// A note the Base excluded is context: show the state it has, never offer to
+	// write it. An unset one renders nothing at all rather than a "State" button
+	// that would look like an invitation.
+	if (item.outsideFilter) {
+		if (value === null) return;
+		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
+		fillStateChip(chip, item, value);
+		setTooltip(chip, "Not in this base's filter — state can't be changed here");
+		return;
+	}
+
 	// A native button, so assistive tech can activate it — but no Tab stop: the
 	// tree keeps its single-tab-stop model, and the context menu carries the
 	// documented keyboard path (Set state).
 	const chip = col.createEl('button', {
-		cls: 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : ''),
+		cls,
 		attr: {
 			type: 'button',
 			tabindex: '-1',
 			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
 		},
 	});
+	fillStateChip(chip, item, value);
+	setTooltip(chip, 'Change state');
+	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
+}
+
+function fillStateChip(chip: HTMLElement, item: BacklogItem, value: string | null): void {
 	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
 	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
-	setTooltip(chip, 'Change state');
-	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
 }
 
 function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childLevel: string): void {

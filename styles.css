@@ -614,9 +614,15 @@
 	cursor: var(--cursor);
 }
 
-.pbl-state-chip:hover {
+.pbl-state-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
+}
+
+/* The state of a row outside the filter: shown, but not a write surface */
+.pbl-state-static {
+	cursor: default;
+	opacity: 0.75;
 }
 
 .pbl-state-chip .svg-icon {

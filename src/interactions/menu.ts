@@ -19,18 +19,24 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 	if (!model) return null;
 	const menu = new Menu();
 
+	// Creating a child writes a new note, not this one — the one mutation that is
+	// still fair game on an ancestor the Base excluded. Everything that would edit
+	// the row's own frontmatter is withheld: it is context, not a result.
+	const editable = !item.outsideFilter;
 	menu.addItem((mi) =>
 		mi
 			.setTitle(`New ${childLevel}`)
 			.setIcon('plus')
 			.onClick(() => promptCreateItem(host, childLevel, item)),
 	);
-	addSetTypeMenu(host, menu, item);
-	if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+	if (editable) {
+		addSetTypeMenu(host, menu, item);
+		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+	}
 	menu.addSeparator();
 
 	addMoveSection(host, menu, item, model);
-	addParentLinkSection(host, menu, item);
+	if (editable) addParentLinkSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi

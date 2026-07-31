@@ -221,11 +221,16 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
 
 - they can't be dragged, moved, indented or outdented — the Base never returned their
   real siblings, so there is no sibling order to rank them within;
-- **nothing ever writes into them.** Re-ranking a sibling group renumbers all of it when
-  the gaps run out, so a group that contains a context row offers no reordering at all:
-  no before/after drop, no **Move up/down/to top/to bottom**, no **Outdent** — even for
-  an ordinary result row that happens to sit next to one. Dropping *into* a parent, the
-  top-level strip and **Indent** keep working, because those append;
+- **nothing ever writes into them.** Their state chip is display-only, and the context
+  menu drops **Set type**, **Set state** and the parent-link commands — a note the filter
+  excluded is not yours to edit from a view that doesn't contain it. Re-ranking a sibling
+  group also renumbers all of it when the gaps run out, so a group that contains a context
+  row offers no reordering at all: no before/after drop, no **Move up/down/to top/to
+  bottom**, no **Outdent** — even for an ordinary result row that happens to sit next to
+  one. Dropping *into* a parent, the top-level strip and **Indent** keep working, because
+  those append;
+- they don't influence where new notes go: the folder for new items is inferred from the
+  Base's own results, never from ancestors that live somewhere else in the vault;
 - they *are* valid drop targets, so you can drag a match onto its parent as usual, and
   **New \<child\>** works on them;
 - the ✨ backfill never writes properties into them;

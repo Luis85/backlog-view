@@ -1866,3 +1866,109 @@ describe('moves in a group that holds an outside-filter row', () => {
 		expect(vault.writeLog).toEqual([]);
 	});
 });
+
+describe('context rows are read-only', () => {
+	/** Filter returns only the PBI; its Feature and Epic load as context. */
+	function readOnlyView(configValues: Record<string, unknown> = { stateProperty: 'note.status' }) {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Feature.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'Active' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Feature' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig(configValues);
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('shows the state of a context row without making it a write surface', () => {
+		const { containerEl } = readOnlyView();
+		const epicChip = rowByTitle(containerEl, 'Epic').querySelector('.pbl-state-chip');
+		const pbiChip = rowByTitle(containerEl, 'PBI').querySelector('.pbl-state-chip');
+
+		// Still legible, but a div rather than a button, and with no menu behind it
+		expect(epicChip?.textContent).toContain('Active');
+		expect(epicChip?.tagName).toBe('DIV');
+		expect(epicChip?.classList.contains('pbl-state-static')).toBe(true);
+		expect(pbiChip?.tagName).toBe('BUTTON');
+	});
+
+	it('opens no state menu when a context chip is clicked', () => {
+		const { containerEl, vault } = readOnlyView();
+		Menu.lastShown = null;
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-state-chip')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(Menu.lastShown).toBeNull();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('withholds every frontmatter command from the context menu', () => {
+		const { containerEl } = readOnlyView();
+
+		rowByTitle(containerEl, 'Epic').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).not.toContain('Set type');
+		expect(titles).not.toContain('Set state');
+		expect(titles).not.toContain('Clear parent link');
+		// Creating a child writes a new note, not this one — still offered
+		expect(titles).toContain('New Feature');
+		expect(titles).toContain('Open in new tab');
+	});
+
+	it('refuses a write aimed at a context note even if one gets through', async () => {
+		const { view, vault } = readOnlyView();
+		const epic = view.model?.byPath.get('Epic.md');
+
+		const applied = await view.applySafely([{ file: epic?.file as never, state: 'Done' }]);
+
+		expect(applied).toBe(false);
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('keeps writes to real results working', async () => {
+		const { view, vault } = readOnlyView();
+		const pbi = view.model?.byPath.get('PBI.md');
+
+		const applied = await view.applySafely([{ file: pbi?.file as never, state: 'Done' }]);
+
+		expect(applied).toBe(true);
+		expect(vault.fm('PBI.md').status).toBe('Done');
+	});
+});
+
+describe('new-item folder inference with context rows', () => {
+	it('ignores ancestors that live outside the filtered folder', () => {
+		const vault = new FakeVault();
+		// A deep chain of ancestors elsewhere would outvote the two real results
+		vault.addFile('Elsewhere/Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Elsewhere/Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Elsewhere/Sub.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
+		vault.addFile('Backlog/A.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
+		vault.addFile('Backlog/B.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = {
+			data: vault.entries().filter((e) => e.file.path.startsWith('Backlog/')),
+		};
+		view.onDataUpdated();
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// Three context ancestors in Elsewhere/ must not outvote two results in Backlog/
+		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
+		expect(detail).toContain('folder "Backlog"');
+		expect(detail).not.toContain('Elsewhere');
+	});
+});
