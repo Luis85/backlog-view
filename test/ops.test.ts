@@ -578,3 +578,34 @@ describe('auto-type cascade across a context row', () => {
 		expect(writes.map((w) => w.file.path).sort()).toEqual(['Epic.md', 'Feature.md', 'PBI.md']);
 	});
 });
+
+describe('backfill ranking beside a context sibling', () => {
+	/** Ranked(10), Context(1000) and an unranked result, all under one Epic. */
+	function mixedRanks() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Ranked.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Context.md', { frontmatter: { type: 'PBI', order: 1000 }, parentLink: 'Epic' });
+		// Keeps Context.md loaded as an ancestor of a result
+		vault.addFile('Deep.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Context' });
+		vault.addFile('Unranked.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
+		const filtered = vault.entries().filter((e) => e.file.path !== 'Context.md');
+		return buildModel(vault.app, filtered, settings);
+	}
+
+	it('keeps a backfilled item where it already renders, below the context row', () => {
+		const model = mixedRanks();
+		const epic = model.byPath.get('Epic.md') as BacklogItem;
+		// Unranked has no order, so it sorts last — after the context row on screen
+		expect(epic.children.map((c) => c.title)).toEqual(['Ranked', 'Context', 'Unranked']);
+		expect(model.byPath.get('Context.md')?.outsideFilter).toBe(true);
+
+		const writes = computeInitWrites(model, settings);
+
+		// One spacing past everything visible: filling in a blank must not reorder
+		// the tree. Ignoring the context row's 1000 would rank it 20 and move it up.
+		expect(writes.find((w) => w.file.path === 'Unranked.md')?.order).toBe(1010);
+		// ...while still never writing to the context note itself
+		expect(writes.some((w) => w.file.path === 'Context.md')).toBe(false);
+	});
+});

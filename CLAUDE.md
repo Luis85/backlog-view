@@ -117,7 +117,10 @@ code so imports stay cycle-free.
   that forgot the rule rather than a new rule: **an `outsideFilter` row is never a write
   target, never a ranking peer, and never a source of anything derived from the Base's
   results** (counts, level breakdown, state vocabulary, creation folder). It renders, it
-  parents, and that is all. Ask that question of any new code touching the tree; the
+  parents, and that is all. "Never a ranking peer" means never written to and never
+  renumbered — its `order` is still *read* (`afterHighestKnown`, `endOfSiblingsOrder`,
+  the backfill's max-order scan), because the row is on screen and a rank that ignored
+  it would place an item above something the user can see. Ask that question of any new code touching the tree; the
   "write safety with context rows, across every entry point" test in `view.test.ts`
   drives every interaction against a fixture with context rows above, beside and between
   results, so a new write path fails it without anyone predicting the surface.

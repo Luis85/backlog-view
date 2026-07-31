@@ -194,6 +194,11 @@ function renumberWrites(
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
 	const writes: ItemWrite[] = [];
 	const visit = (siblings: BacklogItem[]) => {
+		// Deliberately reads context siblings' orders too. They are *rendered*, so a
+		// rank that ignored them would place a backfilled item above a row the user
+		// can see — a backfill that fills in blanks must not reorder the tree. Not
+		// writing to them is the rule; not looking at them would break this. The drop
+		// and creation paths (afterHighestKnown, endOfSiblingsOrder) do the same.
 		let maxOrder = 0;
 		for (const item of siblings) {
 			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;
