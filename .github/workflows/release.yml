@@ -11,6 +11,9 @@ on:
 
 permissions:
   contents: write
+  # Artifact attestations: id-token signs the provenance, attestations stores it.
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -54,6 +57,16 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      # Lets users verify a downloaded asset was built here, from this source, with
+      # `gh attestation verify <file> --repo Luis85/backlog-view`. Runs before the
+      # release so a published asset always has provenance attached.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            styles.css
 
       - name: Create release
         env:

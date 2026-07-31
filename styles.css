@@ -425,8 +425,9 @@
 /* Done items dim out; the title gets a subtle strike-through. */
 .pbl-row.pbl-done .pbl-title {
 	color: var(--text-faint);
-	text-decoration: line-through;
-	text-decoration-color: var(--text-faint);
+	/* Longhand, and no explicit decoration color: it defaults to currentColor, which is
+	   the --text-faint above. The shorthand is only partially supported by Obsidian. */
+	text-decoration-line: line-through;
 }
 
 .pbl-row.pbl-done .pbl-badge {
