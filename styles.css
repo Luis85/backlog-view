@@ -41,8 +41,17 @@
 	height: var(--icon-s);
 }
 
-.pbl-icon-btn {
+/* Toolbar icon controls are <button>s so they sit in the tab order; the shared
+   reset below drops the default button chrome clickable-icon does not cover */
+.pbl-icon-btn,
+.pbl-filter-clear,
+.pbl-focus-clear,
+.pbl-add {
 	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
 }
 
 /* The eye button lights up while completed items are hidden */
@@ -51,10 +60,15 @@
 	background-color: var(--background-modifier-hover);
 }
 
-/* Collapse state is overridden while filtering — the controls pause with it */
-.pbl-view.pbl-filtering .pbl-collapse-ctl {
+/* Collapse state is overridden while filtering — the controls pause with it.
+   The disabled attribute does the refusing; this only says so visually. */
+.pbl-icon-btn:disabled {
 	opacity: 0.4;
-	pointer-events: none;
+	cursor: default;
+}
+
+.pbl-icon-btn:disabled:hover {
+	background-color: transparent;
 }
 
 /* Dragging is disabled while filtering; a grab handle would be a lie */
@@ -113,7 +127,6 @@
 
 .pbl-filter-clear {
 	display: none;
-	flex: 0 0 auto;
 	padding: 0;
 }
 
@@ -179,6 +192,67 @@
 }
 
 .pbl-empty-filter-icon .svg-icon {
+	width: 24px;
+	height: 24px;
+}
+
+/* Write-in-flight indicator. Held back by an animation delay so a single-file
+   write — the common case — finishes before it would ever appear, and only a
+   batch long enough to be worth reporting actually shows up. */
+.pbl-busy {
+	display: none;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding-inline-end: var(--size-4-1);
+}
+
+.pbl-busy.pbl-busy-on {
+	display: inline-flex;
+	animation: pbl-busy-in 120ms ease-out 250ms both;
+}
+
+@keyframes pbl-busy-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.pbl-busy-spinner,
+.pbl-loading-spinner {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-accent);
+	animation: pbl-spin 900ms linear infinite;
+}
+
+.pbl-busy-spinner .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+@keyframes pbl-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Before the first result set arrives — an empty pane reads as a broken view */
+.pbl-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-loading-spinner .svg-icon {
 	width: 24px;
 	height: 24px;
 }
@@ -283,7 +357,15 @@
 	border-radius: 2px;
 }
 
+/* The selection is the focus ring — but only once there is one. Tabbing into an
+   unselected tree used to show nothing at all, so the container carries the ring
+   until the first row is selected. */
 .pbl-tree:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
+}
+
+.pbl-tree:focus-visible:has(.pbl-row.pbl-selected) {
 	outline: none;
 }
 
@@ -472,12 +554,14 @@
 }
 
 .pbl-add {
-	flex: 0 0 auto;
 	opacity: 0;
 	transition: opacity 120ms ease-in-out;
 }
 
-.pbl-row:hover .pbl-add {
+/* Focus can only arrive programmatically (tabindex -1), but a control that is
+   focused and invisible is worse than one that is merely always shown */
+.pbl-row:hover .pbl-add,
+.pbl-add:focus-visible {
 	opacity: 1;
 }
 
@@ -822,6 +906,16 @@
 
 	.pbl-row.pbl-pending,
 	.pbl-row.pbl-hover-expanding .pbl-chevron {
+		animation: none;
+	}
+
+	/* The spinners still have to read as "working", so they step rather than spin */
+	.pbl-busy-spinner,
+	.pbl-loading-spinner {
+		animation: pbl-spin 3s steps(8) infinite;
+	}
+
+	.pbl-busy.pbl-busy-on {
 		animation: none;
 	}
 }

@@ -5,7 +5,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			// The real 'obsidian' package is types-only; tests run against a small mock.
-			obsidian: fileURLToPath(new URL('./test/obsidian-mock.ts', import.meta.url)),
+			obsidian: fileURLToPath(new URL('./test/helpers/obsidian-mock.ts', import.meta.url)),
 		},
 	},
 	test: {
@@ -20,10 +20,10 @@ export default defineConfig({
 			// Measured 98/92/99/98 — thresholds sit just below to catch regressions
 			// without being brittle. Raise them as coverage grows, never lower.
 			thresholds: {
-				statements: 95,
+				statements: 96,
 				branches: 89,
-				functions: 96,
-				lines: 95,
+				functions: 98,
+				lines: 96,
 			},
 		},
 	},

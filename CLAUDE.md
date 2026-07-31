@@ -20,42 +20,69 @@ live-vault smoke test.
 
 ## Architecture (one file per concern, 400-line max enforced by lint)
 
+Four layers, outermost first. **Each may reach anything below it and nothing above** —
+`eslint.config.mjs` enforces this with per-directory `no-restricted-imports`, so a
+violation fails `npm run lint` rather than waiting for review:
+
+```
+main → commands → view → storage → domain
+                    ↘________________↗
+```
+
+`ui/` is a leaf of reusable Obsidian dialogs that knows about none of them. `test/`
+mirrors the same directories.
+
 | File | Responsibility | Testable |
 | --- | --- | --- |
-| `src/main.ts` | Registers the view via `registerBasesView` | — |
-| `src/settings.ts` | View options schema, config resolution, `configProblems` validation | node tests |
-| `src/model.ts` | Pure tree building: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
-| `src/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
-| `src/ops.ts` | ALL frontmatter writes: drop plans, ranking, backfill, note creation | node tests |
-| `src/dropTargets.ts` | Pure drop-target math (zones, no-op/cycle/stale-link rules) | node tests |
-| `src/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
-| `src/view.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
-| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
-| `src/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
-| `src/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
-| `src/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
-| `src/interactions/menu.ts` | Context menu | jsdom tests |
-| `src/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
-| `src/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
-| `src/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
-| `src/modal.ts` | New-item and folder prompts (+ folder suggest) | jsdom tests |
-| `src/scaffold.ts` | "Create backlog" command: folder + configured .base file | jsdom tests |
+| `src/main.ts` | Registers the view via `registerBasesView`, plus the command | — |
+| **`domain/`** | **The backlog itself. Reads the vault, never writes it; never touches the DOM.** | |
+| `domain/settings.ts` | View options schema, config resolution, `configProblems` validation | node tests |
+| `domain/noteFields.ts` | Reading a work item's fields off a note: wikilink/bare/alias/list parents, tolerant numbers | node tests |
+| `domain/model.ts` | Tree building: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
+| `domain/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
+| `domain/dropTargets.ts` | Drop-target math and the `DropZone`/`DropTarget` vocabulary (zones, no-op/cycle/stale-link rules) | node tests |
+| `domain/writePlan.ts` | What a change *would* write: drop plans, ranking, backfill. Pure — applies nothing | node tests |
+| **`storage/`** | **The only place anything is persisted.** | |
+| `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |
+| `storage/baseFile.ts` | Writing the `.base` file itself | node tests |
+| `storage/collapseStore.ts` | Collapse state in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
+| **`view/`** | **DOM and interaction.** | |
+| `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
+| `view/backlogView.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
+| `view/collapseState.ts` | Which rows are shut, the once-only default, and the debounced save | jsdom tests |
+| `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
+| `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
+| `view/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
+| `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
+| `view/interactions/menu.ts` | Context menu | jsdom tests |
+| `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
+| `view/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
+| `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
+| `src/ui/prompts.ts` | New-item and folder prompts (+ folder suggest) | jsdom tests |
+| `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
 
-Rules: never write frontmatter outside `src/ops.ts` (`applyWrites` / `createBacklogItem`),
-and every write path — including creation — goes through the `configProblems` gate.
-Modules reach view state only through `BacklogViewHost`; keep `host.ts` free of runtime
-code so imports stay cycle-free.
+Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites` /
+`createBacklogItem`), and every write path — including creation — goes through the
+`configProblems` gate. That rule is also enforced mechanically: `no-restricted-syntax`
+bans `processFrontMatter`, `vault.create` and `load/saveLocalStorage` everywhere outside
+`storage/`, so a new write path cannot appear by accident. Modules reach view state only
+through `BacklogViewHost`; keep `host.ts` free of runtime code so imports stay cycle-free.
+
+A type belongs with the code that *produces* it, not the code that consumes it — that is
+why `DropTarget` and `DropZone` live in `domain/dropTargets.ts` rather than with the
+writer and the view that read them. Both used to sit upstream and made the pure layer
+depend on the effectful one.
 
 ## Testing
 
-- `test/obsidian-mock.ts` — runtime stand-in for the `obsidian` module (aliased in
+- `test/helpers/obsidian-mock.ts` — runtime stand-in for the `obsidian` module (aliased in
   `vitest.config.ts`). Extend it when new obsidian API surface is used; keep it minimal.
-- `test/dom-helpers.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
+- `test/helpers/dom.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
   `addClass`, `setCssProps`, …) for jsdom files. Call `installObsidianDom()` at module top.
-- `test/helpers.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
+- `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
   recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
   `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
-- View tests (`test/view.test.ts`) drive REAL interactions: dispatch `dragstart`/
+- View tests (`test/view/backlogView.test.ts`) drive REAL interactions: dispatch `dragstart`/
   `dragover`/`drop` (stub `getBoundingClientRect` for drop zones — jsdom returns zeros),
   `keydown`, `click`, `contextmenu` (grab the menu via `Menu.lastShown`). Async writes
   need `await flush()`.
@@ -135,14 +162,14 @@ code so imports stay cycle-free.
   renumbered — its `order` is still *read* (`afterHighestKnown`, `endOfSiblingsOrder`,
   the backfill's max-order scan), because the row is on screen and a rank that ignored
   it would place an item above something the user can see. Ask that question of any new code touching the tree; the
-  "write safety with context rows, across every entry point" test in `view.test.ts`
+  "write safety with context rows, across every entry point" test in `test/view/backlogView.test.ts`
   drives every interaction against a fixture with context rows above, beside and between
   results, so a new write path fails it without anyone predicting the surface.
 - "Derived from the results" includes numbers computed *while walking the tree*, not just
   code that reads a model collection: `assignAll` traverses **through** a context row to
   the results below it but never counts it, so a rollup reports what the Base returned and
   an excluded note's own state can neither skew a progress bar nor keep a finished subtree
-  on screen. Two invariant tests in `view.test.ts` state this from the rule rather than
+  on screen. Two invariant tests in `test/view/backlogView.test.ts` state this from the rule rather than
   the implementation — one for writes, one for rollups.
 - `model.results` is the Base's own rows and `model.items` is everything rendered.
   Anything answering "what is in this base" takes `results`; only rendering, navigation
@@ -211,26 +238,69 @@ code so imports stay cycle-free.
 
 ## Gotchas
 
-- `obsidian` npm typings may trail the app; feature-detect newer API (`setSubmenu`,
-  `isEmpty`) instead of hard-importing it.
+- `obsidian` npm typings trail the app: `setSubmenu` is absent from them entirely, so
+  `submenuOf` casts rather than imports. That is a typings gap, NOT a version guard —
+  submenus predate the 1.10.2 in `manifest.json`, so there is no fallback path and
+  should not be one. `isEmpty` is the opposite case: it IS in the typings, but on
+  `ObjectValue` rather than the `Value` that `getValue()` returns, so testing for it
+  is a genuine question about the value in hand.
+- Nothing here carries compatibility with older *plugin* versions. `minAppVersion`
+  is the only compatibility boundary, and it is a floor, not a range — a shim for an
+  Obsidian older than it is dead code by definition.
 - Marketplace rules (enforced by `npm run lint` + review): sentence-case UI text, no
   special characters in the manifest description, `setCssProps` over inline styles,
   `normalizePath` on user paths, no global `app`.
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
-- Collapse state is session-only and is NEVER written to the `.base` file: a path per
-  collapsed row is exactly the growth the file should not take, and the Bases API hands
-  a view no reference to its own file, so there is nowhere else to key it either
-  (`data.json` would need one map per base). The tree therefore opens collapsed —
-  `collapseNewParents` collapses each parent the first time it is seen, tracked in
-  `defaultedPaths` so a data update never undoes what the user expanded, and prunes
-  paths that leave the model so a long-lived view does not hold every path it ever saw.
-  An explicit `setCollapsed` also marks the path defaulted, so a row expanded to
-  reveal a drop or a new child is not collapsed again by the refresh that follows the
-  write — a childless row is not a "parent" until that write lands, so nothing else
-  would have settled it. `dropLegacyCollapsedConfig` clears the key older versions wrote. View tests start
-  from the collapsed tree, so `makeView` expands through the real toolbar control
-  unless a test opts in with `{ collapsed: true }`.
+- Collapse state persists to vault-scoped localStorage (`storage/collapseStore.ts`), and is
+  still NEVER written to the `.base` file: a path per collapsed row is exactly the growth
+  that file should not take, and it is shared state where this is one person's working
+  position.
+  The tree still opens collapsed for a parent nobody has ruled on — `collapseNewParents`
+  collapses each one the first time it is seen, tracked in `defaultedPaths` so a data
+  update never undoes what the user expanded. An explicit `setCollapsed` also marks the
+  path defaulted, so a row expanded to reveal a drop or a new child is not collapsed
+  again by the refresh that follows the write — a childless row is not a "parent" until
+  that write lands, so nothing else would have settled it. View tests start from the
+  collapsed tree, so `makeView` expands through the real toolbar control unless a test
+  opts in with `{ collapsed: true }`.
+- The store's key only has to be UNIQUE, never parsed: each entry carries its own
+  `base`, because a view name may contain anything a user can type ("Sprint #3" is an
+  ordinary name) and splitting the key on a separator misreads the base path — which
+  made another view's `pruneMissingBases` delete a live entry. Both halves are
+  percent-encoded so no two identities can collide. The base path comes from walking
+  `iterateAllLeaves` for the `FileView` whose `containerEl` contains this view's element
+  — the Bases API still hands a view no reference to its own file, but the leaf drawing
+  it has one. The leaf's file must be the `.base` itself: a base embedded in a note is drawn
+  inside that note's leaf, so the file on offer there is the host note, and every base
+  embedded in it would answer to one key. When the identity resolves to nothing — no
+  leaf, or an embedded base — the view is session-only, exactly as before persistence
+  existed. A shared fallback key would be worse than not persisting, because two bases
+  would inherit each other's open rows and overwrite each other's state.
+- Both halves of the key, and both collapse sets, are paths or names a user can change
+  at any moment — so each one needs its own migration, not just whichever bit first.
+  A **note** rename moves that row's entry in `collapsed`/`settled` (`renamePath`, wired
+  to `vault.on('rename')` in the view), or the next refresh shuts it as a parent nobody
+  has ruled on. A **view** rename moves the stored entry, which is why `dispose` flushes
+  on an identity change even with nothing pending — the state is unchanged and yet
+  belongs elsewhere. A **base** rename moves every entry naming it (`rekeyBase`, wired in
+  `main.ts`, covering bases with no view open) while `flushCollapseState` re-resolves its
+  own identity (covering the view watching it happen). And a rename is never only the
+  thing renamed: `movedPath` carries everything beneath the old path, because moving a
+  *folder* reports the folder — not the base inside it, nor the notes under it — so
+  matching the renamed path alone leaves the whole subtree stranded. That also makes
+  both migrations idempotent, which is what lets them be right without knowing whether
+  Obsidian reports a folder move once or once per descendant. Without these, ordinary tidying
+  orphans an entry under a key nothing will look up again, and the next save prunes it
+  for naming a file that no longer exists.
+- Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
+  paths that are missing from the model — a query that has not warmed up yet, or a
+  filter the user just narrowed, would read as "these notes are gone" and throw away a
+  session they still want. `flushCollapseState` is the only place that forgets a path,
+  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`.
+- Saves are debounced (`scheduleCollapseSave`); "Collapse all" settles every parent in
+  one loop and a write per row would be quadratic. `onunload` flushes a pending write,
+  since closing the view is when it matters most.
 - Rendering cost is the scaling limit (a few hundred rows is a normal backlog), so:
   expand/collapse calls `host.refreshSubtree(item)` — which re-renders that row's child
   group in place — never `host.render()`; the view keeps a path → row element index
@@ -258,3 +328,33 @@ code so imports stay cycle-free.
 - `tagsKey` is the one property option whose default is a real key, so `resolveSettings`
   tells "never set" from "cleared" (`clearablePropKey`): without that the option could
   not be turned off, since `getAsPropertyId` reports both as null.
+- Two tab-stop zones, and a control's element type follows from which one it is in.
+  The **toolbar** is ordinary UI: every activatable control is a real `<button>`
+  (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one
+  stop — arrows move the selection — so its per-row controls (`.pbl-add`, the state
+  chip) are buttons with `tabindex="-1"`: activatable by assistive tech, invisible to
+  Tab, with the context menu as the documented keyboard path. A `div` with an
+  `aria-label` and a click handler is the thing to avoid in either zone.
+- A batch write is one refresh, not one per file. Every file `applyWrites` touches
+  comes back as its own `onDataUpdated`, so mid-batch the view would rebuild the model
+  and every row hundreds of times, each pass rendering a half-applied tree. While
+  `applying`, `onDataUpdated` only records `pendingDataUpdate`; `applySafely` flushes it
+  through `refreshFromData` in its `finally`, so a failed batch refreshes too — the
+  writes before the failure are on disk and the tree has to show them. Nothing about
+  interaction pauses: each write awaits, so scrolling, filtering and selection keep
+  working against the (briefly stale) model.
+- `applyWrites` reports progress per file and the view publishes it with `syncBusy`,
+  which touches text and flags only — never structure. Re-rendering the toolbar per
+  tick would reintroduce exactly the jank the deferral removes. The indicator is
+  rendered always and hidden in CSS, with an animation delay so a single-file write
+  never flashes it.
+- Any menu opened from a `<button>` goes through `showMenuForClick`. Enter or Space
+  synthesizes a click at (0, 0), and `showAtMouseEvent` would drop the menu in the
+  viewport corner; the helper falls back to the button's own rect. This is a standing
+  consequence of the toolbar being focusable — a new `showAtMouseEvent` call on a
+  button reopens it.
+- Once a control is focusable, disabling it in CSS is a lie — `pointer-events: none`
+  stops a mouse and nothing else. The collapse controls pause while the quick filter
+  overrides collapse state, so they carry a real `disabled` flag, set in
+  `syncFilterUi` because a filter change re-renders only the tree and leaves the
+  toolbar's DOM in place.
