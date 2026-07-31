@@ -763,6 +763,28 @@ describe('tag editing', () => {
 		expect('tags' in vault.fm('Epic A.md')).toBe(false);
 	});
 
+	it('keeps the hyphens a user typed while cleaning up the rest', async () => {
+		const { containerEl, vault } = tagged();
+		const typeTag = async (text: string) => {
+			openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
+			const modal = Modal.lastOpened;
+			const input = modal?.contentEl.querySelector('input');
+			if (!modal || !input) throw new Error('tag prompt not opened');
+			input.value = text;
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+			modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			await flush();
+		};
+
+		// A leading or trailing hyphen is a legal tag character and the user's choice;
+		// a slash there would be an empty nesting segment, and punctuation is noise.
+		await typeTag('-urgent');
+		await typeTag('/release/1-0/');
+		await typeTag('Sprint 12!');
+
+		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', '-urgent', 'release/1-0', 'Sprint-12']);
+	});
+
 	it('accepts a tag whose only non-numeric character is a separator', async () => {
 		const { containerEl, vault } = tagged();
 

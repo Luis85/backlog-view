@@ -15,9 +15,16 @@ function normalizeTag(input: string): string {
 	const tag = input
 		.trim()
 		.replace(/^#+/, '')
+		// Unusable characters at the edges are dropped, not turned into a hyphen:
+		// "Sprint 12!" should be "Sprint-12", not "Sprint-12-".
+		.replace(/^[^\p{L}\p{N}_/-]+|[^\p{L}\p{N}_/-]+$/gu, '')
 		.replace(/[^\p{L}\p{N}_/-]+/gu, '-')
 		.replace(/-{2,}/g, '-')
-		.replace(/^[-/]+|[-/]+$/g, '');
+		// A hyphen the user typed is theirs to keep, at either end — "-urgent" and
+		// "123-" are real tags. A slash there is not: it means an empty nesting
+		// segment, which is why only those are trimmed.
+		.replace(/\/{2,}/g, '/')
+		.replace(/^\/+|\/+$/g, '');
 	return /[^\p{N}]/u.test(tag) ? tag : '';
 }
 
