@@ -33,6 +33,10 @@ export class FakeVault {
 	opened: { path: string; mode: unknown }[] = [];
 	/** Arguments of workspace.trigger() calls (hover-link, file-menu, …). */
 	triggers: unknown[][] = [];
+	/** Leaves iterateAllLeaves walks — how the view finds the base file it belongs to. */
+	leaves: { view: unknown }[] = [];
+	/** Vault-scoped localStorage, as Obsidian's load/saveLocalStorage present it. */
+	localStorage = new Map<string, unknown>();
 
 	readonly app = {
 		workspace: {
@@ -44,6 +48,16 @@ export class FakeVault {
 			trigger: (...args: unknown[]) => {
 				this.triggers.push(args);
 			},
+			iterateAllLeaves: (cb: (leaf: { view: unknown }) => unknown) => {
+				for (const leaf of this.leaves) cb(leaf);
+			},
+		},
+		loadLocalStorage: (key: string) => this.localStorage.get(key) ?? null,
+		saveLocalStorage: (key: string, data: unknown) => {
+			if (data === null) this.localStorage.delete(key);
+			// Obsidian serializes on the way out; round-trip so tests cannot pass by
+			// holding a live reference to the object the view still mutates.
+			else this.localStorage.set(key, JSON.parse(JSON.stringify(data)) as unknown);
 		},
 		renderContext: {},
 		metadataCache: {
@@ -140,6 +154,8 @@ function parseMockFrontmatter(content: string): Record<string, unknown> {
 
 /** In-memory BasesViewConfig double that records set() calls. */
 export class FakeViewConfig {
+	/** User-facing view name — part of the key the collapse store is written under. */
+	name = 'Backlog';
 	values: Record<string, unknown>;
 	setCalls: { key: string; value: unknown }[] = [];
 	/** Visible property order, as configured in the Bases properties menu. */

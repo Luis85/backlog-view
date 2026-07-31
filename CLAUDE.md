@@ -29,6 +29,7 @@ live-vault smoke test.
 | `src/ops.ts` | ALL frontmatter writes: drop plans, ranking, backfill, note creation | node tests |
 | `src/dropTargets.ts` | Pure drop-target math (zones, no-op/cycle/stale-link rules) | node tests |
 | `src/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
+| `src/collapseStore.ts` | Collapse state in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
 | `src/view.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
 | `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering (`RowContext` carries the per-pass row index and hoisted config lookups) | jsdom tests |
 | `src/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
@@ -204,19 +205,32 @@ code so imports stay cycle-free.
   `normalizePath` on user paths, no global `app`.
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
-- Collapse state is session-only and is NEVER written to the `.base` file: a path per
-  collapsed row is exactly the growth the file should not take, and the Bases API hands
-  a view no reference to its own file, so there is nowhere else to key it either
-  (`data.json` would need one map per base). The tree therefore opens collapsed —
-  `collapseNewParents` collapses each parent the first time it is seen, tracked in
-  `defaultedPaths` so a data update never undoes what the user expanded, and prunes
-  paths that leave the model so a long-lived view does not hold every path it ever saw.
-  An explicit `setCollapsed` also marks the path defaulted, so a row expanded to
-  reveal a drop or a new child is not collapsed again by the refresh that follows the
-  write — a childless row is not a "parent" until that write lands, so nothing else
-  would have settled it. `dropLegacyCollapsedConfig` clears the key older versions wrote. View tests start
-  from the collapsed tree, so `makeView` expands through the real toolbar control
-  unless a test opts in with `{ collapsed: true }`.
+- Collapse state persists to vault-scoped localStorage (`src/collapseStore.ts`), and is
+  still NEVER written to the `.base` file: a path per collapsed row is exactly the growth
+  that file should not take, and it is shared state where this is one person's working
+  position. `dropLegacyCollapsedConfig` clears the key older versions wrote there.
+  The tree still opens collapsed for a parent nobody has ruled on — `collapseNewParents`
+  collapses each one the first time it is seen, tracked in `defaultedPaths` so a data
+  update never undoes what the user expanded. An explicit `setCollapsed` also marks the
+  path defaulted, so a row expanded to reveal a drop or a new child is not collapsed
+  again by the refresh that follows the write — a childless row is not a "parent" until
+  that write lands, so nothing else would have settled it. View tests start from the
+  collapsed tree, so `makeView` expands through the real toolbar control unless a test
+  opts in with `{ collapsed: true }`.
+- The store is keyed `<basePath>#<viewName>`, and the base path comes from walking
+  `iterateAllLeaves` for the `FileView` whose `containerEl` contains this view's element
+  — the Bases API still hands a view no reference to its own file, but the leaf drawing
+  it has one. When that resolves to nothing the view is session-only, exactly as before
+  persistence existed: a shared fallback key would be worse than not persisting, because
+  two bases would inherit each other's open rows and prune each other's paths.
+- Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
+  paths that are missing from the model — a query that has not warmed up yet, or a
+  filter the user just narrowed, would read as "these notes are gone" and throw away a
+  session they still want. `flushCollapseState` is the only place that forgets a path,
+  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`.
+- Saves are debounced (`scheduleCollapseSave`); "Collapse all" settles every parent in
+  one loop and a write per row would be quadratic. `onunload` flushes a pending write,
+  since closing the view is when it matters most.
 - Rendering cost is the scaling limit (a few hundred rows is a normal backlog), so:
   expand/collapse calls `host.refreshSubtree(item)` — which re-renders that row's child
   group in place — never `host.render()`; the view keeps a path → row element index

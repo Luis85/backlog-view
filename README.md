@@ -181,8 +181,9 @@ lists.
 
 While dragging, hovering the middle of a collapsed row expands it after a moment (the
 chevron lights up while the timer runs) so you can drop deeper into the tree. Dropping an
-item onto its own descendant is prevented. Which items are collapsed is remembered per
-view in the `.base` file. Indent guides connect each child group to its parent, and on
+item onto its own descendant is prevented. Which rows you left open is remembered per
+view, on this device — see [Where the view remembers things](#where-the-view-remembers-things).
+Indent guides connect each child group to its parent, and on
 touch devices the per-row **+** button is always visible with larger touch targets.
 The tree is a real ARIA tree — screen readers announce level, position and expansion
 state — and the view honors reduced-motion and right-to-left settings.
@@ -287,6 +288,26 @@ finishes instead, so the tree doesn't churn through hundreds of half-applied sta
 way. Nothing is frozen while that happens: you can scroll, filter, expand and select
 throughout. The toolbar shows how far along the batch is (`Updating 12 of 340…`), and the
 commands that would be refused mid-batch grey out until it's done.
+
+### Where the view remembers things
+
+Two different kinds of state, kept in two different places on purpose:
+
+- **Everything in the view options** — the properties, the levels, the focus level, the
+  folder for new items — lives in the **`.base` file**. It describes the view itself, so
+  it is shared with anyone you share the base with, and it travels with the vault.
+- **Which rows you left open** lives in this device's **local storage**, keyed per base
+  and per view name. It is your working position rather than a property of the backlog:
+  it would be noise in a shared file, and a path per collapsed row is growth that file
+  should not take. So it survives restarts and stays out of everyone else's way.
+
+A row nobody has ruled on yet opens collapsed, so a large backlog starts as a readable
+list of top-level items rather than a wall of every task. Once you open or close a row,
+that choice is what comes back. Notes you delete are forgotten on the next save.
+
+If the view can't tell which base it belongs to, it quietly falls back to remembering
+your rows for the session only — sharing one bucket between bases would be worse than
+forgetting, because two backlogs would keep opening each other's rows.
 
 ### Ranking details
 

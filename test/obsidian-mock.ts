@@ -90,6 +90,21 @@ export class Component {
 }
 
 /** Matches the runtime surface ProductBacklogView relies on; app/config/data are assigned by the test harness. */
+/**
+ * Minimal stand-in for the leaf view that owns a base file. The plugin identifies
+ * its base by walking up from its own element to the FileView containing it, so the
+ * only surface that matters is `file` + `containerEl` + the instanceof check.
+ */
+export class FileView {
+	file: TFile | null;
+	containerEl: HTMLElement;
+
+	constructor(file: TFile | null, containerEl: HTMLElement) {
+		this.file = file;
+		this.containerEl = containerEl;
+	}
+}
+
 export class BasesView extends Component {
 	app: unknown;
 	config: unknown;

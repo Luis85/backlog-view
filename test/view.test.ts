@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProductBacklogView } from '../src/view';
 import { installObsidianDom } from './dom-helpers';
 import { FakeVault, FakeViewConfig } from './helpers';
-import { Menu, MenuItem, Modal, Notice } from './obsidian-mock';
+import { FileView, Menu, MenuItem, Modal, Notice } from './obsidian-mock';
 
 installObsidianDom();
 
@@ -21,11 +21,16 @@ interface Harness {
 function makeView(
 	vault: FakeVault,
 	configValues: Record<string, unknown> = {},
-	{ collapsed = false }: { collapsed?: boolean } = {},
+	{ collapsed = false, base, viewName }: { collapsed?: boolean; base?: string; viewName?: string } = {},
 ): Harness {
-	const containerEl = document.body.createDiv();
+	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
+	// the view identifies which base it is, so persistence tests need the real nesting.
+	const leafEl = document.body.createDiv();
+	const containerEl = leafEl.createDiv();
+	if (base) vault.leaves.push({ view: new FileView(vault.addFile(base), leafEl) });
 	const view = new ProductBacklogView({} as never, containerEl);
 	const config = new FakeViewConfig(configValues);
+	if (viewName) config.name = viewName;
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
 	anyView.config = config;
@@ -1007,6 +1012,125 @@ describe('toolbar controls are reachable without a mouse', () => {
 		expect(add?.tagName).toBe('BUTTON');
 		expect(add?.getAttribute('tabindex')).toBe('-1');
 		expect(add?.getAttribute('aria-label')).toBe('New Feature');
+	});
+});
+
+describe('collapse state persistence', () => {
+	interface StoredEntry {
+		collapsed: string[];
+		expanded: string[];
+	}
+
+	function stored(vault: FakeVault): Record<string, StoredEntry> {
+		return (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, StoredEntry>;
+	}
+
+	const expandedTitles = ['Epic A', 'Epic B', 'Feature B1', 'Feature B2'];
+
+	it('reopens a base where the last session left it', () => {
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		expect(titlesOf(first.containerEl)).toEqual(expandedTitles);
+		first.view.onunload();
+
+		expect(stored(vault)['Backlog.base#Backlog'].expanded).toContain('Epic B.md');
+
+		// `collapsed: true` skips the harness's expand-all, so an expanded tree here
+		// is the restore doing it — not the test.
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(titlesOf(second.containerEl)).toEqual(expandedTitles);
+	});
+
+	it('still opens collapsed with nothing stored', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
+	it('remembers a row that was shut, not just ones that were opened', () => {
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		rowByTitle(first.containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(first.containerEl)).toEqual(['Epic A', 'Epic B']);
+		first.view.onunload();
+
+		expect(stored(vault)['Backlog.base#Backlog'].collapsed).toContain('Epic B.md');
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(titlesOf(second.containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
+	it('keeps two bases out of one another’s state', () => {
+		const vault = fixture();
+		const a = makeView(vault, {}, { base: 'A.base' });
+		a.view.onunload();
+
+		const b = makeView(vault, {}, { base: 'B.base', collapsed: true });
+		// A's expanded rows must not open B, which nobody has touched.
+		expect(titlesOf(b.containerEl)).toEqual(['Epic A', 'Epic B']);
+		expect(Object.keys(stored(vault))).toEqual(['A.base#Backlog']);
+	});
+
+	it('separates two views of one base by name', () => {
+		const vault = fixture();
+		const a = makeView(vault, {}, { base: 'Shared.base', viewName: 'Planning' });
+		a.view.onunload();
+		expect(Object.keys(stored(vault))).toEqual(['Shared.base#Planning']);
+
+		const b = makeView(vault, {}, { base: 'Shared.base', viewName: 'Triage', collapsed: true });
+		expect(titlesOf(b.containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
+	it('stays session-only when the base cannot be identified', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+
+		// No leaf owns this element, so there is no key. Sharing one would be worse
+		// than not persisting: bases would inherit each other's rows.
+		expect(titlesOf(containerEl)).toEqual(expandedTitles);
+		view.onunload();
+		expect(vault.localStorage.size).toBe(0);
+	});
+
+	it('forgets paths whose note is gone, and entries whose base is gone', () => {
+		const vault = fixture();
+		vault.localStorage.set('product-backlog:collapse', {
+			'Deleted.base#Backlog': { collapsed: ['Whatever.md'], expanded: [] },
+		});
+		const { view } = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.files.delete('Epic B.md');
+		view.onunload();
+
+		const entry = stored(vault)['Backlog.base#Backlog'];
+		expect([...entry.collapsed, ...entry.expanded]).not.toContain('Epic B.md');
+		// Nothing else will ever enumerate the base that wrote this.
+		expect(stored(vault)['Deleted.base#Backlog']).toBeUndefined();
+	});
+
+	it('ignores stored state it cannot read rather than failing to render', () => {
+		const vault = fixture();
+		vault.localStorage.set('product-backlog:collapse', 'not an object');
+		const { containerEl } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
+	it('coalesces the writes instead of saving once per row', () => {
+		vi.useFakeTimers();
+		const vault = fixture();
+		const { containerEl } = makeView(vault, {}, { base: 'Backlog.base' });
+		const save = vi.spyOn(vault.app, 'saveLocalStorage');
+
+		containerEl
+			.querySelector<HTMLElement>('[aria-label="Collapse all"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		// Settling every parent is one loop; serializing the whole list per row
+		// would be quadratic on a real backlog.
+		expect(save).not.toHaveBeenCalled();
+
+		vi.advanceTimersByTime(400);
+		expect(save).toHaveBeenCalledTimes(1);
 	});
 });
 

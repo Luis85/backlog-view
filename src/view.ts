@@ -1,4 +1,5 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
+import { collapseStoreKey, loadCollapseState, saveCollapseState } from './collapseStore';
 import { BacklogViewHost, BusyState, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 import { DragDropController } from './interactions/dragDrop';
 import { handleTreeKeydown } from './interactions/keyboard';
@@ -46,6 +47,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
 	private busy: BusyState | null = null;
+	/** localStorage key for this base's collapse state; null when the base is unidentifiable. */
+	private storeKey: string | null = null;
+	private collapseLoaded = false;
+	/** Pending debounced collapse-state write; non-null means there are changes to flush. */
+	private saveTimer: number | null = null;
 	/**
 	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
 	 * wasteful at six hundred — every selection change would walk the whole DOM.
@@ -79,6 +85,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	onunload(): void {
+		// Closing the view is exactly when the pending write matters most.
+		if (this.saveTimer !== null) {
+			window.clearTimeout(this.saveTimer);
+			this.saveTimer = null;
+			this.flushCollapseState();
+		}
 		this.dnd.dispose();
 		this.viewEl.detach();
 	}
@@ -100,6 +112,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		this.groupingIgnored = this.detectIgnoredGrouping();
+		// Before the defaults are applied, or a restored session would be overwritten
+		// by the very pass that is meant to honor it.
+		this.restoreCollapseState();
 		this.collapseNewParents();
 		this.dropLegacyCollapsedConfig();
 		this.recomputeFilter();
@@ -210,16 +225,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// or a create expands it before the write, and the refresh that follows would
 		// otherwise collapse it as a newly seen parent and hide what just landed there.
 		this.defaultedPaths.add(path);
+		this.scheduleCollapseSave();
 		return changed;
 	}
 
 	/**
-	 * Collapse state is session-only: it is deliberately not written to the `.base`
-	 * file, which would grow it by a path per collapsed row, and the Bases API gives
-	 * a view no handle on its own file to key the state anywhere else. So the tree
-	 * opens collapsed and every parent starts that way the first time it is seen —
-	 * "first time" being per parent, not per pass, so a data update does not undo
-	 * what the user expanded.
+	 * A parent the user has never ruled on opens collapsed — "never" being per parent,
+	 * not per pass, so a data update does not undo what was expanded, and a restored
+	 * session does not re-collapse what was left open.
 	 */
 	private collapseNewParents(): void {
 		const model = this.model;
@@ -230,14 +243,51 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			this.defaultedPaths.add(path);
 			this.collapsedPaths.add(path);
 		}
-		// Paths that have gone are not coming back under the same identity; letting
-		// them accumulate would keep a long-lived view holding every path it ever saw.
+	}
+
+	/**
+	 * Restore where this view was left, once, on the first data update — by which
+	 * point the view is mounted and the leaf that owns it can be found.
+	 */
+	private restoreCollapseState(): void {
+		if (this.collapseLoaded) return;
+		this.collapseLoaded = true;
+		this.storeKey = collapseStoreKey(this.app, this.viewEl, this.config.name);
+		// No identifiable base: session-only, exactly as before this was persisted.
+		if (this.storeKey === null) return;
+		const snapshot = loadCollapseState(this.app, this.storeKey);
+		this.collapsedPaths = snapshot.collapsed;
+		// Both sets settle a path; only the collapsed ones are shut.
+		this.defaultedPaths = new Set([...snapshot.collapsed, ...snapshot.expanded]);
+	}
+
+	/**
+	 * Coalesce the writes. "Collapse all" settles every parent in one loop, and
+	 * serializing the whole path list per row would be quadratic on a large backlog.
+	 */
+	private scheduleCollapseSave(): void {
+		if (this.storeKey === null || this.saveTimer !== null) return;
+		this.saveTimer = window.setTimeout(() => {
+			this.saveTimer = null;
+			this.flushCollapseState();
+		}, 400);
+	}
+
+	private flushCollapseState(): void {
+		const key = this.storeKey;
+		if (key === null) return;
+		// Paths whose note is gone are not coming back under the same identity. This
+		// is the one place that drops them, which is why it is keyed on the vault
+		// rather than on the model: a query that has not warmed up yet, or a filter
+		// the user narrowed, must not be read as "these notes no longer exist" and
+		// throw away a session the user still wants.
 		for (const path of this.defaultedPaths) {
-			if (!model.byPath.has(path)) {
-				this.defaultedPaths.delete(path);
-				this.collapsedPaths.delete(path);
-			}
+			if (this.app.vault.getAbstractFileByPath(path) !== null) continue;
+			this.defaultedPaths.delete(path);
+			this.collapsedPaths.delete(path);
 		}
+		const expanded = new Set([...this.defaultedPaths].filter((path) => !this.collapsedPaths.has(path)));
+		saveCollapseState(this.app, key, { collapsed: this.collapsedPaths, expanded });
 	}
 
 	/** Earlier versions stored the collapsed list in the view config; clear it once. */
