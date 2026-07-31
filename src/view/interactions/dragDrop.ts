@@ -1,7 +1,7 @@
 import { dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
 import { DropZone } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
-import { BacklogItem } from '../../domain/model';
+import { BacklogItem, BacklogModel } from '../../domain/model';
 
 export interface DragDropElements {
 	viewEl: HTMLElement;
@@ -44,13 +44,13 @@ export class DragDropController {
 		});
 
 		row.addEventListener('dragover', (evt) => {
-			const dragged = this.getDraggedItem();
-			if (!dragged || dragged === item) {
+			const drag = this.dragContext();
+			if (!drag || drag.dragged === item) {
 				this.setDropIndicator(row, null);
 				return;
 			}
 			const zone = this.zoneFor(evt, row, hasChildren());
-			const target = this.host.model ? dropTargetFor(this.host.model, item, zone, dragged) : null;
+			const target = dropTargetFor(drag.model, item, zone, drag.dragged);
 			if (!target) {
 				this.setDropIndicator(row, null);
 				return;
@@ -72,14 +72,11 @@ export class DragDropController {
 		row.addEventListener('drop', (evt) => {
 			evt.preventDefault();
 			evt.stopPropagation();
-			const dragged = this.getDraggedItem();
+			const drag = this.dragContext();
 			const zone = this.zoneFor(evt, row, hasChildren());
-			const target =
-				dragged && dragged !== item && this.host.model
-					? dropTargetFor(this.host.model, item, zone, dragged)
-					: null;
+			const target = drag && drag.dragged !== item ? dropTargetFor(drag.model, item, zone, drag.dragged) : null;
 			this.clearDragState();
-			if (dragged && target) void this.host.performDrop(dragged, target);
+			if (drag && target) void this.host.performDrop(drag.dragged, target);
 		});
 
 		row.addEventListener('dragend', () => this.clearDragState());
@@ -88,13 +85,13 @@ export class DragDropController {
 	/** Wire the persistent "Move to top level" strip and the tree background. */
 	setupRootDropZone(): void {
 		const handleOver = (evt: DragEvent, hover: (on: boolean) => void) => {
-			const dragged = this.getDraggedItem();
-			const target = dragged && this.host.model ? rootDropTarget(this.host.model, dragged) : null;
-			if (!dragged || !target) return null;
+			const drag = this.dragContext();
+			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
+			if (!drag || !target) return null;
 			evt.preventDefault();
 			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
 			hover(true);
-			return { dragged, target };
+			return { dragged: drag.dragged, target };
 		};
 
 		this.els.rootDropEl.addEventListener('dragover', (evt) => {
@@ -110,18 +107,18 @@ export class DragDropController {
 		// Dropping on the empty area below the tree also moves items to the top level.
 		this.els.treeEl.addEventListener('dragover', (evt) => {
 			if (evt.target !== this.els.treeEl) return;
-			const dragged = this.getDraggedItem();
-			if (!dragged || !this.host.model || !rootDropTarget(this.host.model, dragged)) return;
+			const drag = this.dragContext();
+			if (!drag || !rootDropTarget(drag.model, drag.dragged)) return;
 			evt.preventDefault();
 			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
 		});
 		this.els.treeEl.addEventListener('drop', (evt) => {
 			if (evt.target !== this.els.treeEl) return;
 			evt.preventDefault();
-			const dragged = this.getDraggedItem();
-			const target = dragged && this.host.model ? rootDropTarget(this.host.model, dragged) : null;
+			const drag = this.dragContext();
+			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
 			this.clearDragState();
-			if (dragged && target) void this.host.performDrop(dragged, target);
+			if (drag && target) void this.host.performDrop(drag.dragged, target);
 		});
 	}
 
@@ -152,9 +149,17 @@ export class DragDropController {
 		return zoneForRatio(ratio, !hasChildren);
 	}
 
-	private getDraggedItem(): BacklogItem | null {
-		if (!this.draggedPath || !this.host.model) return null;
-		return this.host.model.byPath.get(this.draggedPath) ?? null;
+	/**
+	 * The drag in flight, with the model it is happening in — one lookup, so no call
+	 * site has to re-check a model it already knows is there. The dragged path outlives
+	 * the model it was taken from (a refresh mid-drag can drop the note entirely), which
+	 * is why the item is looked up on every event rather than captured at dragstart.
+	 */
+	private dragContext(): { dragged: BacklogItem; model: BacklogModel } | null {
+		const model = this.host.model;
+		if (!model || !this.draggedPath) return null;
+		const dragged = model.byPath.get(this.draggedPath);
+		return dragged ? { dragged, model } : null;
 	}
 
 	private setDropIndicator(row: HTMLElement, zone: DropZone | null): void {

@@ -2,13 +2,14 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 70
-status: Open
+status: Done
 priority: P3
 area: testing
 created: 2026-07-31
 source: PR #14 maintainability review
 files:
   - src/view/interactions/dragDrop.ts
+  - test/view/dragDrop.test.ts
 ---
 
 # Close the drag-and-drop coverage gap
@@ -63,3 +64,30 @@ harness rather than being copied.
 Fallow's per-file CRAP "risk" column matched only **226 of 1,063 functions**, so its
 ranking is partial — it currently rates `noteFields.ts`, a 69-line pure module, as
 highest risk. Treat that column as a hint; the coverage JSON above is the real signal.
+
+## Outcome
+
+Done: **21 uncovered branches to 0**, and overall branch coverage 92.3% to 94.1%. The
+`vitest.config.ts` branch threshold went 89 to 92.
+
+Four of the twenty-one could not be reached by any test, and no test pretends otherwise.
+`getDraggedItem()` already returned null when `host.model` was null, but each call site
+re-checked `host.model` anyway to narrow the type — branches that only the type checker
+could take. `dragContext()` now returns the dragged item *and* the model it was found
+in, so the check happens once and the call sites have nothing left to guard.
+
+The rest were reachable and are now driven:
+
+- `dataTransfer`, absent from every jsdom drag event, supplied by a `transferEvent`
+  helper — so `setData`, `effectAllowed` and the three `dropEffect` assignments run.
+- `dragleave` with `relatedTarget` inside the row: the indicator stays.
+- Hover-expand's re-entry guard (a second `dragover` must not restart the 600 ms wait)
+  and its cancel path (the pointer moving to the row's edge).
+- The tree background: a drop landing on a row group, and a drag over an item already
+  last at the top level, which is offered no drop.
+- A drag with nothing in flight — a file dragged in from outside Obsidian.
+- A drag whose note is deleted mid-gesture, so the path outlives the item.
+- A row the browser has not measured, where the zero-height rect falls back to the
+  middle of the row rather than dividing by zero.
+
+`rows.ts` (15) and `backlogView.ts` (11) are now the largest remaining gaps.
