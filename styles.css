@@ -816,6 +816,23 @@
 		opacity: 1;
 	}
 
+	/* Revealed by row hover on a pointer device, which a touch user cannot produce —
+	   without this the inline tag editing has no reachable control at all. */
+	.pbl-tag-remove,
+	.pbl-tag-add {
+		display: inline-flex;
+	}
+
+	.pbl-tag-remove {
+		width: 16px;
+		height: 16px;
+	}
+
+	.pbl-tag-add {
+		width: 20px;
+		height: 20px;
+	}
+
 	.pbl-row {
 		min-height: 40px;
 	}

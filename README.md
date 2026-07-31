@@ -224,7 +224,8 @@ While dragging, hovering the middle of a collapsed row expands it after a moment
 chevron lights up while the timer runs) so you can drop deeper into the tree. Dropping an
 item onto its own descendant is prevented. Which items are collapsed is remembered per
 view in the `.base` file. Indent guides connect each child group to its parent, and on
-touch devices the per-row **+** button is always visible with larger touch targets.
+touch devices the per-row **+** button and the tag add/remove controls are always
+visible, with larger touch targets.
 The tree is a real ARIA tree — screen readers announce level, position and expansion
 state — and the view honors reduced-motion and right-to-left settings.
 
