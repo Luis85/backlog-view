@@ -211,7 +211,10 @@ code so imports stay cycle-free.
   `collapseNewParents` collapses each parent the first time it is seen, tracked in
   `defaultedPaths` so a data update never undoes what the user expanded, and prunes
   paths that leave the model so a long-lived view does not hold every path it ever saw.
-  `dropLegacyCollapsedConfig` clears the key older versions wrote. View tests start
+  An explicit `setCollapsed` also marks the path defaulted, so a row expanded to
+  reveal a drop or a new child is not collapsed again by the refresh that follows the
+  write — a childless row is not a "parent" until that write lands, so nothing else
+  would have settled it. `dropLegacyCollapsedConfig` clears the key older versions wrote. View tests start
   from the collapsed tree, so `makeView` expands through the real toolbar control
   unless a test opts in with `{ collapsed: true }`.
 - Rendering cost is the scaling limit (a few hundred rows is a normal backlog), so:

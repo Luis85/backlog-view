@@ -178,6 +178,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	setCollapsed(path: string, collapsed: boolean): boolean {
 		const changed = collapsed ? !this.collapsedPaths.has(path) : this.collapsedPaths.delete(path);
 		if (collapsed) this.collapsedPaths.add(path);
+		// An explicit expand or collapse settles this row, so the initial state is not
+		// applied to it later. That matters most for a row with no children yet: a drop
+		// or a create expands it before the write, and the refresh that follows would
+		// otherwise collapse it as a newly seen parent and hide what just landed there.
+		this.defaultedPaths.add(path);
 		return changed;
 	}
 

@@ -1359,6 +1359,21 @@ describe('view state details', () => {
 		]);
 	});
 
+	it('keeps a leaf that just gained its first child expanded', () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault, {}, { collapsed: true });
+
+		// What a drop into, or a create under, a childless row does before it writes.
+		view.setCollapsed('Epic A.md', false);
+		// The write lands and Bases refreshes with the child present.
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic A' });
+		(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
+		view.onDataUpdated();
+
+		// The initial collapse must not apply here and hide what was just put there.
+		expect(titlesOf(containerEl)).toContain('PBI A1');
+	});
+
 	it('keeps what the user expanded across a data update', () => {
 		const vault = fixture();
 		const { containerEl, view } = makeView(vault, {}, { collapsed: true });
