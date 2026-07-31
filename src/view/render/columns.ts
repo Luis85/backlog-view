@@ -193,21 +193,25 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 	const maybeEmpty = value as { isEmpty?: () => boolean };
 	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return;
 
+	const text = value.toString().trim();
 	const valueEl = cell.createSpan({ cls: 'pbl-prop-value' });
 	try {
 		value.renderTo(valueEl, host.app.renderContext);
 	} catch {
-		valueEl.setText(value.toString());
+		valueEl.setText(text);
 	}
 	// Reading textContent serializes whatever renderTo built, so do it once.
 	const rendered = valueEl.textContent?.trim() ?? '';
-	if (rendered === '') {
+	// Emptiness is a question about the value, not about the DOM it produced: a
+	// checkbox or an icon renders no text of its own and is still a value to show.
+	if (rendered === '' && text === '') {
 		valueEl.detach();
 		return;
 	}
 	// The column is narrow and the header names it only once — say both here, and
-	// in the accessible name too, since the header itself is presentational.
-	const described = `${chip.label}: ${rendered}`;
+	// in the accessible name too, since the header itself is presentational (and
+	// for a purely visual rendering it is the only thing that says what the cell is).
+	const described = `${chip.label}: ${rendered || text}`;
 	setTooltip(valueEl, described);
 	valueEl.setAttribute('aria-label', described);
 }

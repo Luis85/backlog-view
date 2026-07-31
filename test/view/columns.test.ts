@@ -23,6 +23,28 @@ describe('property columns', () => {
 		expect(empty?.querySelector('.pbl-prop-value')).toBeNull();
 	});
 
+	it('keeps a value that renders as pure visuals, with no text of its own', () => {
+		const vault = fixture();
+		// A checkbox or an icon: renderTo builds DOM, textContent stays empty, and the
+		// cell is still showing something — emptiness is a question about the value.
+		vault.entryValues.set('Epic A.md', {
+			'note.done': {
+				toString: () => 'true',
+				renderTo: (el: HTMLElement) => {
+					el.createEl('input', { attr: { type: 'checkbox', checked: 'true' } });
+				},
+			},
+		});
+		const { containerEl, config, view } = makeView(vault);
+		config.order = ['note.done'];
+		view.onDataUpdated();
+
+		const value = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-prop-value');
+		expect(value?.querySelector('input')).not.toBeNull();
+		// The accessible name is all a screen reader has for a cell drawn as a picture
+		expect(value?.dataset.tooltip).toBe('done: true');
+	});
+
 	it('names the columns once, in a header above the rows', () => {
 		const vault = fixture();
 		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
