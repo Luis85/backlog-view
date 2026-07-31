@@ -77,8 +77,9 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			console.error('Product Backlog: could not save folder to the view options', e);
 		}
 	}
+	// The new child has to be visible under its parent, collapsed or not.
 	const parentItem = request.parentItem;
-	if (parentItem && host.setCollapsed(parentItem.file.path, false)) host.persistCollapsedState();
+	if (parentItem) host.setCollapsed(parentItem.file.path, false);
 
 	try {
 		const file = await createBacklogItem(host.app, host.settings, {

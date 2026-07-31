@@ -206,7 +206,6 @@ function collapseButton(
 	btn.addClass('pbl-collapse-ctl');
 	btn.addEventListener('click', () => {
 		mutate();
-		host.persistCollapsedState();
 		host.render();
 	});
 }

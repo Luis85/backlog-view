@@ -44,7 +44,6 @@ export interface BacklogViewHost {
 	isCollapsed(path: string): boolean;
 	/** Returns true when the state actually changed. */
 	setCollapsed(path: string, collapsed: boolean): boolean;
-	persistCollapsedState(): void;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;
