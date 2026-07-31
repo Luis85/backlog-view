@@ -553,37 +553,239 @@ describe('toolbar backfill', () => {
 	});
 });
 
-describe('property chips', () => {
-	it('renders visible properties as chips with the toString fallback', () => {
+describe('property columns', () => {
+	it('renders visible properties as fixed cells with the toString fallback', () => {
 		const vault = fixture();
 		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
 		const { containerEl, config, view } = makeView(vault);
 		config.order = ['note.points'];
 		view.onDataUpdated();
 
-		const chip = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-chip');
-		expect(chip?.querySelector('.pbl-chip-label')?.textContent).toBe('points');
-		expect(chip?.querySelector('.pbl-chip-value')?.textContent).toBe('5');
-		// Rows without a value for the property get no chip
-		expect(rowByTitle(containerEl, 'Epic B').querySelector('.pbl-chip')).toBeNull();
+		const cell = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-prop');
+		expect(cell?.querySelector('.pbl-prop-value')?.textContent).toBe('5');
+		// The label is not repeated per row — it is in the header and the tooltip
+		expect(cell?.querySelector<HTMLElement>('.pbl-prop-value')?.dataset.tooltip).toBe('points: 5');
+		// A row without a value keeps the empty cell, or the columns after it would shift
+		const empty = rowByTitle(containerEl, 'Epic B').querySelector('.pbl-prop');
+		expect(empty).not.toBeNull();
+		expect(empty?.querySelector('.pbl-prop-value')).toBeNull();
 	});
 
-	it('keeps the empty space around chips part of the row click target', () => {
+	it('names the columns once, in a header above the rows', () => {
+		const vault = fixture();
+		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
+		const { containerEl, config, view } = makeView(vault, { stateProperty: 'note.status' });
+		config.order = ['note.points'];
+		view.onDataUpdated();
+
+		const header = treeOf(containerEl).querySelector('.pbl-cols');
+		expect(header?.getAttribute('aria-hidden')).toBe('true');
+		expect(Array.from(header?.querySelectorAll('.pbl-col-label') ?? []).map((el) => el.textContent)).toEqual([
+			'points',
+			'status',
+			'Progress',
+		]);
+		// Same column widths as the rows, so the labels sit above their values
+		expect(header?.querySelector('.pbl-props')?.childElementCount).toBe(1);
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-count')).toBe('1');
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-col')).toBe('132px');
+	});
+
+	it('has no header when no properties are shown', () => {
+		const { containerEl } = makeView(fixture(), { stateProperty: 'note.status' });
+		expect(containerEl.querySelector('.pbl-cols')).toBeNull();
+	});
+
+	it('sizes the columns from the view option', () => {
+		const vault = fixture();
+		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 200 });
+		config.order = ['note.points'];
+		view.onDataUpdated();
+
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-col')).toBe('200px');
+	});
+
+	it('keeps the empty space around the columns part of the row click target', () => {
 		const vault = fixture();
 		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
 		const { containerEl, config, view } = makeView(vault);
 		config.order = ['note.points'];
 		view.onDataUpdated();
 
-		// A click on the chip itself must not open the note (it may hold links)…
-		const chipValue = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-chip-value');
-		chipValue?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		// A click on the value itself must not open the note (it may hold links)…
+		const value = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-prop-value');
+		value?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(vault.opened).toEqual([]);
 
-		// …but the flexible area next to the chips is still the row.
-		const chips = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-chips');
-		chips?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		// …but the flexible area before the columns is still the row.
+		const spacer = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-row-spacer');
+		spacer?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(vault.opened).toEqual([{ path: 'Epic A.md', mode: false }]);
+	});
+});
+
+describe('tag editing', () => {
+	/** Two epics carrying tags, with the tags property among the visible ones. */
+	function tagged(configValues: Record<string, unknown> = {}): Harness & { vault: FakeVault } {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, tags: ['alpha', 'beta'] } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, tags: 'gamma' } });
+		const harness = makeView(vault, configValues);
+		harness.config.order = ['note.tags'];
+		harness.view.onDataUpdated();
+		return { ...harness, vault };
+	}
+
+	function tagsOf(containerEl: HTMLElement, title: string): string[] {
+		return Array.from(rowByTitle(containerEl, title).querySelectorAll('.pbl-tag-text')).map(
+			(el) => el.textContent ?? '',
+		);
+	}
+
+	/** Click the row's add-tag button and return the menu it opened. */
+	function openTagMenu(containerEl: HTMLElement, title: string): Menu {
+		rowByTitle(containerEl, title)
+			.querySelector<HTMLElement>('.pbl-tag-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('tag menu not shown');
+		return menu;
+	}
+
+	it('renders each tag as a removable pill with a way to add one', () => {
+		const { containerEl } = tagged();
+
+		expect(tagsOf(containerEl, 'Epic A')).toEqual(['#alpha', '#beta']);
+		// A string value holding tags is read the same as a list
+		expect(tagsOf(containerEl, 'Epic B')).toEqual(['#gamma']);
+
+		const pill = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-tag');
+		const remove = pill?.querySelector('.pbl-tag-remove');
+		expect(remove?.tagName).toBe('BUTTON');
+		// No Tab stop — the tree keeps its single-tab-stop model
+		expect(remove?.getAttribute('tabindex')).toBe('-1');
+		expect(remove?.getAttribute('aria-label')).toBe('Remove tag alpha');
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-tag-add')).not.toBeNull();
+	});
+
+	it('removes a tag without touching the others', async () => {
+		const { containerEl, vault } = tagged();
+
+		rowByTitle(containerEl, 'Epic A')
+			.querySelector<HTMLElement>('.pbl-tag-remove')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(vault.fm('Epic A.md').tags).toEqual(['beta']);
+		// The click stays on the pill — it must not also open the note
+		expect(vault.opened).toEqual([]);
+	});
+
+	it('removes the key when the last tag goes', async () => {
+		const { containerEl, vault } = tagged();
+
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-tag-remove')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect('tags' in vault.fm('Epic B.md')).toBe(false);
+	});
+
+	it('offers the tags in use, checked where the item already carries them', async () => {
+		const { containerEl, vault } = tagged();
+		const menu = openTagMenu(containerEl, 'Epic B');
+
+		expect(menu.items.map((i) => i.titleText)).toEqual(['#alpha', '#beta', '#gamma', 'New tag...']);
+		expect(menu.item('#gamma')?.checked).toBe(true);
+		expect(menu.item('#alpha')?.checked).toBe(false);
+
+		menu.item('#alpha')?.click();
+		await flush();
+		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', 'alpha']);
+	});
+
+	it('toggles an assigned tag back off from the menu', async () => {
+		const { containerEl, vault } = tagged();
+
+		openTagMenu(containerEl, 'Epic B').item('#gamma')?.click();
+		await flush();
+
+		expect('tags' in vault.fm('Epic B.md')).toBe(false);
+	});
+
+	it('adds a typed tag, normalized to a usable frontmatter tag', async () => {
+		const { containerEl, vault } = tagged();
+
+		openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('tag prompt not opened');
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('tag input not rendered');
+		input.value = '#Sprint 12!';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', 'Sprint-12']);
+	});
+
+	it('reaches the same choices from the context menu', () => {
+		const { containerEl } = tagged();
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const submenu = Menu.lastShown?.item('Edit tags')?.submenu;
+		expect(submenu?.items.map((i) => i.titleText)).toEqual(['#alpha', '#beta', '#gamma', 'New tag...']);
+	});
+
+	it('leaves the property read-only when it is not the configured tags property', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, tags: ['alpha'] } });
+		vault.entryValues.set('Epic A.md', { 'note.tags': { toString: () => 'alpha' } });
+		const { containerEl, config, view } = makeView(vault, { tagsProperty: 'note.labels' });
+		config.order = ['note.tags'];
+		view.onDataUpdated();
+
+		expect(containerEl.querySelector('.pbl-tag')).toBeNull();
+		expect(containerEl.querySelector('.pbl-prop-value')?.textContent).toBe('alpha');
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Edit tags')).toBeUndefined();
+	});
+
+	it('offers no tag editing while the column is hidden', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, tags: ['alpha'] } });
+		const { containerEl } = makeView(vault);
+
+		expect(containerEl.querySelector('.pbl-tag')).toBeNull();
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Edit tags')).toBeUndefined();
+	});
+
+	it('shows a context row’s tags without offering to change them', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, tags: ['outside'] } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, tags: ['alpha'] }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		const config = new FakeViewConfig({});
+		config.order = ['note.tags'];
+		anyView.config = config;
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
+		view.onDataUpdated();
+		expandAll(containerEl);
+
+		const epic = rowByTitle(containerEl, 'Epic');
+		expect(tagsOf(containerEl, 'Epic')).toEqual(['#outside']);
+		expect(epic.querySelector('.pbl-tag-remove')).toBeNull();
+		expect(epic.querySelector('.pbl-tag-add')).toBeNull();
+		epic.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Edit tags')).toBeUndefined();
+
+		// An excluded note's tags are not this base's vocabulary either
+		expect(openTagMenu(containerEl, 'PBI').items.map((i) => i.titleText)).toEqual(['#alpha', 'New tag...']);
 	});
 });
 
@@ -1395,14 +1597,16 @@ describe('view state details', () => {
 		expect(vault.opened).toEqual([{ path: 'Epic A.md', mode: 'tab' }]);
 	});
 
-	it('drops chips whose value renders empty', () => {
+	it('drops values that render empty, keeping the column', () => {
 		const vault = fixture();
 		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '' } });
 		const { containerEl, config, view } = makeView(vault);
 		config.order = ['note.points'];
 		view.onDataUpdated();
 
-		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-chip')).toBeNull();
+		const cell = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-prop');
+		expect(cell).not.toBeNull();
+		expect(cell?.querySelector('.pbl-prop-value')).toBeNull();
 	});
 
 	it('tolerates filter calls before the first data render', () => {
@@ -1457,7 +1661,7 @@ describe('state editing', () => {
 		const epicB = rowByTitle(containerEl, 'Epic B');
 		const chip = epicB.querySelector('.pbl-state-chip');
 		expect(chip?.querySelector('.pbl-state-text')?.textContent).toBe('Active');
-		expect(epicB.querySelector('.pbl-chip')).toBeNull();
+		expect(epicB.querySelector('.pbl-prop')).toBeNull();
 		// A native button assistive tech can activate — without joining the tab order.
 		expect(chip?.tagName).toBe('BUTTON');
 		expect(chip?.getAttribute('tabindex')).toBe('-1');
@@ -1729,15 +1933,15 @@ describe('row columns', () => {
 		return vault;
 	}
 
-	it('puts the state chip in a column of its own, after the flexible chips', () => {
+	it('puts the state chip in a column of its own, after the flexible spacer', () => {
 		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
 
 		for (const row of rows(containerEl)) {
 			const col = row.querySelector('.pbl-state-col');
 			expect(col).not.toBeNull();
 			expect(col?.querySelector('.pbl-state-chip')).not.toBeNull();
-			// The chips absorb the free space, so the column lands at a fixed offset
-			expect(col?.previousElementSibling?.classList.contains('pbl-chips')).toBe(true);
+			// The spacer absorbs the free space, so the column lands at a fixed offset
+			expect(col?.previousElementSibling?.classList.contains('pbl-row-spacer')).toBe(true);
 		}
 	});
 
@@ -2163,20 +2367,23 @@ describe('write safety with context rows, across every entry point', () => {
 
 	function stressView() {
 		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active', tags: ['ctx'] } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10, tags: ['ctx'] }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20, tags: ['a'] }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
 		// The context row in the middle is done and the result below it is not, so
 		// counting either one in a rollup would show up as a wrong number.
-		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
+		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done', tags: ['ctx'] }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
 
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		const config = new FakeViewConfig({ stateProperty: 'note.status' });
+		// The tag column is a write surface too — drive it like every other one.
+		config.order = ['note.tags'];
+		anyView.config = config;
 		anyView.data = {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
 		};
@@ -2241,6 +2448,16 @@ describe('write safety with context rows, across every entry point', () => {
 			row.querySelector<HTMLElement>('.pbl-state-chip')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 			for (const state of Menu.lastShown?.items ?? []) {
 				state.clickHandler?.();
+				await flush();
+			}
+			// Every tag control on the row: the add menu and each remove button
+			row.querySelector<HTMLElement>('.pbl-tag-add')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			for (const tag of Menu.lastShown?.items ?? []) {
+				tag.clickHandler?.();
+				await flush();
+			}
+			for (const remove of row.querySelectorAll<HTMLElement>('.pbl-tag-remove')) {
+				remove.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 				await flush();
 			}
 			row.dispatchEvent(new MouseEvent('click', { bubbles: true }));

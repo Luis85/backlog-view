@@ -378,6 +378,23 @@ describe('applyWrites', () => {
 		expect(vault.fm('Item.md')).toEqual({ status: 'Done' });
 	});
 
+	it('replaces the tag list, and removes the key when it empties', async () => {
+		const vault = new FakeVault();
+		const tagged = { ...settings, tagsKey: 'tags' };
+		const item = vault.addFile('Item.md', { frontmatter: { tags: 'alpha beta' } });
+
+		await applyWrites(vault.app, tagged, [{ file: item, tags: ['alpha', 'beta', 'gamma'] }]);
+		// Always written as a list, whatever shape the note held before
+		expect(vault.fm('Item.md')).toEqual({ tags: ['alpha', 'beta', 'gamma'] });
+
+		await applyWrites(vault.app, tagged, [{ file: item, tags: [] }]);
+		expect(vault.fm('Item.md')).toEqual({});
+
+		// Without a configured tags property the write is dropped, not misfiled.
+		await applyWrites(vault.app, { ...settings, tagsKey: '' }, [{ file: item, tags: ['x'] }]);
+		expect(vault.fm('Item.md')).toEqual({});
+	});
+
 	it('removeParentKey deletes the property even in folder mode', async () => {
 		const vault = new FakeVault();
 		const child = vault.addFile('Epic/Child.md', { frontmatter: { parent: '[[Elsewhere]]' } });

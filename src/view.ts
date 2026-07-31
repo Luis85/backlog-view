@@ -6,7 +6,8 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from './model';
 import { applyWrites, computeDropWrites, DropTarget, ItemWrite } from './ops';
 import { renderToolbar } from './render/toolbar';
-import { refreshRowChildren, renderTree, rowContext, RowContext } from './render/rows';
+import { rowContext, RowContext } from './render/columns';
+import { refreshRowChildren, renderTree } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from './settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';

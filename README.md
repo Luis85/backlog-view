@@ -93,6 +93,8 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type |
 | Change an item's state | Click the state chip on the row, or right-click → Set state |
+| Add a tag | Click the **+** in the row's tag column, or right-click → Edit tags |
+| Remove a tag | Hover the row and click the **✕** on the tag |
 | Hide finished work | Click the eye button in the toolbar (or toggle **Show completed items** in the view options) |
 | Open in a new tab or split | Middle-click, Ctrl/Cmd-click, or right-click → Open in new tab / Open to the right |
 | Find items | Type in the toolbar filter (or press <kbd>/</kbd> in the tree) — matches keep their ancestors and subtrees, Escape clears |
@@ -154,6 +156,38 @@ Rules to know:
 - If your domain folders also contain folder notes inside the filter, they become the
   top level — add a level name for them (e.g. `Domain, Epic, Feature, PBI, Task`).
 
+### Properties on a row
+
+Every property you make visible in the Base gets its **own fixed-width column** at the
+end of the row, in the order the Base lists them, with the names in a header pinned to
+the top of the tree. Values line up down the page instead of trailing each item's title,
+so adding a property doesn't turn the rows into ragged text — a long Epic title and a
+short Task title put their `points` in the same place. Narrow panes shrink the columns
+before they shrink the title, and **Property column width** in the view options sets how
+wide one column is. A value too long for its column is truncated, with the full text (and
+the property name) in its tooltip.
+
+Rows carry no `Property:` labels of their own — that is what the header is for. Turn the
+columns off entirely with **Show visible properties on rows**.
+
+#### Tags
+
+When the property named by **Tags property** (`tags` by default) is one of the visible
+properties, its column becomes editable:
+
+- each tag renders as a pill; hover the row and click the **✕** on a pill to remove it,
+- the **+** at the end of the column opens the tags already used in this base, checked
+  where the item carries them, plus **New tag...** for a free-text one (with
+  autocomplete),
+- right-click → **Edit tags** offers exactly the same list, for the keyboard path.
+
+Tags are written to frontmatter as a list, and typed input is normalized to a usable tag
+(`#Sprint 12!` becomes `Sprint-12`). Removing the last tag removes the key rather than
+leaving an empty list behind. Rows loaded as context from outside the Base's filter show
+their tags but offer no editing, like every other write in this view. Point **Tags
+property** at another key (or clear it) and that property goes back to rendering as a
+plain, read-only value.
+
 ### States and progress
 
 Set the **State property** (e.g. `status`) in the view options and parents show a
@@ -163,7 +197,8 @@ as done is configurable (`Done, Closed, Completed, Removed` by default, case-ins
 The state chip and the progress rollup sit in **fixed columns at the end of each row**,
 so they line up vertically no matter how long an item's title is or how deep it sits in
 the tree — the eye can scan states down the column instead of hunting for them behind
-each title. Enabled properties render as chips in the flexible space before them.
+each title. The Base's visible properties get the same treatment, one column each,
+just before them (see [Properties on a row](#properties-on-a-row)).
 
 Each row then carries a clickable **state chip**: pick a new state from its menu (also
 available via right-click → **Set state**) and the note's frontmatter updates without
@@ -297,7 +332,9 @@ Open the view options in the Bases toolbar to configure:
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
 | Folder for new items | *(inferred)* | Where the view creates new notes; defaults to the folder most items live in |
-| Show visible properties on rows | on | Render the Base's visible properties as chips |
+| Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
+| Property column width | `132` px | Width of one property column |
+| Tags property | `tags` | Property whose column supports adding and removing tags inline |
 | Show descendant counts | on | Show the number of items below each parent (replaced by the progress rollup when a state property is set) |
 
 Notes:

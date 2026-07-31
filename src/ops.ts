@@ -21,6 +21,11 @@ export interface ItemWrite {
 	typeName?: string;
 	/** New value for the state property; ignored when no state property is configured. */
 	state?: string;
+	/**
+	 * The complete new tag list (without '#'), replacing whatever the key held.
+	 * An empty list removes the key rather than leaving an empty array behind.
+	 */
+	tags?: string[];
 }
 
 export interface DropTarget {
@@ -48,6 +53,13 @@ export async function applyWrites(app: App, settings: BacklogSettings, writes: I
 			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
 			// The stateKey may be unset (progress tracking off) — never write to an empty key.
 			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+			if (write.tags !== undefined && settings.tagsKey) {
+				// Tags are always rewritten as a list: it is the shape Obsidian's own
+				// property editor writes, and a note that had them inline as one string
+				// would otherwise keep growing a value nothing can round-trip.
+				if (write.tags.length > 0) fm[settings.tagsKey] = write.tags;
+				else delete fm[settings.tagsKey];
+			}
 		});
 	}
 }

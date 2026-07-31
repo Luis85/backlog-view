@@ -6,6 +6,7 @@ import { computeTypeChanges, ItemWrite } from '../ops';
 import { stateMenuValues } from '../settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
+import { addTagItems, promptNewTag, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childLevel: string): void {
@@ -33,6 +34,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
 		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	}
 	menu.addSeparator();
 
@@ -144,12 +146,26 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 
 /** State menu for the row's state chip. */
 export function showStateMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
-	evt.preventDefault();
-	evt.stopPropagation();
 	const menu = new Menu();
 	addStateItems(host, menu, item);
-	// A keyboard-activated button click carries no pointer position — anchor
-	// the menu to the chip instead of the (0,0) corner.
+	showFromChip(menu, evt);
+}
+
+/** Tag picker for the row's add-tag button. */
+export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
+	const menu = new Menu();
+	addTagItems(host, menu, item);
+	showFromChip(menu, evt);
+}
+
+/**
+ * Open a menu a row control triggered, without letting the click reach the row
+ * (which would open the note). A keyboard-activated button click carries no
+ * pointer position — anchor to the control instead of the (0,0) corner.
+ */
+function showFromChip(menu: Menu, evt: MouseEvent): void {
+	evt.preventDefault();
+	evt.stopPropagation();
 	const el = evt.currentTarget;
 	if (evt.clientX === 0 && evt.clientY === 0 && el instanceof HTMLElement) {
 		const rect = el.getBoundingClientRect();
@@ -199,6 +215,23 @@ function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 				);
 				void host.applySafely([{ file: item.file, state: choices[(current + 1) % choices.length] }]);
 			});
+		}
+	});
+}
+
+/**
+ * Tag editing on the keyboard path. Without submenus the entry falls back to the
+ * free-text prompt, which can still add a tag — the toggles are the convenience.
+ */
+function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Edit tags').setIcon('tags');
+		const withSubmenu = mi as MenuItem & { setSubmenu?: () => Menu };
+		if (typeof withSubmenu.setSubmenu === 'function') {
+			addTagItems(host, withSubmenu.setSubmenu(), item);
+		} else {
+			mi.setTitle('Add tag');
+			mi.onClick(() => promptNewTag(host, item));
 		}
 	});
 }

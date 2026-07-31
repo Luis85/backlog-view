@@ -30,12 +30,14 @@ live-vault smoke test.
 | `src/dropTargets.ts` | Pure drop-target math (zones, no-op/cycle/stale-link rules) | node tests |
 | `src/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `src/view.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
-| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering (`RowContext` carries the per-pass row index and hoisted config lookups) | jsdom tests |
+| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
+| `src/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `src/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
 | `src/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `src/interactions/menu.ts` | Context menu | jsdom tests |
 | `src/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
 | `src/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
+| `src/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
 | `src/modal.ts` | New-item and folder prompts (+ folder suggest) | jsdom tests |
 | `src/scaffold.ts` | "Create backlog" command: folder + configured .base file | jsdom tests |
 
@@ -88,6 +90,14 @@ code so imports stay cycle-free.
   (everything on a match path renders expanded), rows are not draggable (visual
   neighbors are not real siblings), and `setFilter` re-renders the tree only so the
   toolbar input keeps focus.
+- Tag editing follows the *column*, not the setting: `tagsColumnVisible` requires
+  `tagsKey` to be configured AND that property to be one of the Base's visible ones,
+  because the pills the user removes are the ones the column renders — a context menu
+  that edited an invisible property would write things nothing on screen shows.
+  `applyWrites` drops `ItemWrite.tags` without a `tagsKey` (same rule as state), an
+  empty list deletes the key rather than writing `[]`, and the list is always rewritten
+  as a YAML sequence even when the note held one space-separated string. `observedTags`
+  is result-only vocabulary, exactly like `observedStates`.
 - State editing: the chip/menu UI renders only when `stateKey` is configured, and
   `applyWrites` drops `ItemWrite.state` without a stateKey (never write to an empty
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
@@ -226,8 +236,13 @@ code so imports stay cycle-free.
   anything captured at wire time (drag handlers) must read expansion state live, because
   a targeted refresh leaves surrounding rows in place. Data updates still rebuild
   everything — skipping that needs to account for arbitrary chip property values.
-- Row layout is columnar: `.pbl-chips` is the flexible middle, and `.pbl-state-col` /
-  `.pbl-meta-col` are fixed-width trailing columns so the state chip and the rollup line
-  up across rows regardless of title length and indent. Both columns render on every row
-  whenever their feature is configured — a leaf without a rollup still gets the empty
-  `.pbl-meta-col`, or the columns after it would shift per row.
+- Row layout is columnar: `.pbl-row-spacer` is the flexible middle, and everything after
+  it (`.pbl-props` → `.pbl-state-col` → `.pbl-meta-col`) is fixed-width, so values line
+  up across rows regardless of title length and indent. Every configured column renders
+  on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
+  after it would shift per row. Widths live on the tree element as `--pbl-prop-col` /
+  `--pbl-prop-count` (one set per render pass, inherited by targeted subtree refreshes),
+  and `.pbl-cols` is the presentational (`aria-hidden`) header naming the columns; row
+  cells carry the property name in their tooltip and `aria-label` instead of repeating
+  it as visible text. The header is not a row: `renderTree` checks for a rendered
+  `.pbl-row` before falling back to the empty states.

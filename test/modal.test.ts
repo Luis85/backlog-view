@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FolderSuggest, TitlePromptModal } from '../src/modal';
+import { FolderSuggest, TagPromptModal, TagSuggest, TitlePromptModal } from '../src/modal';
 import { installObsidianDom } from './dom-helpers';
 import { FakeVault } from './helpers';
 import { TFolder } from './obsidian-mock';
@@ -96,6 +96,46 @@ describe('FolderSuggest', () => {
 		input.addEventListener('input', () => inputEvents++);
 		suggest.selectSuggestion(matches[0], new MouseEvent('click'));
 		expect(input.value).toBe('Backlog');
+		expect(inputEvents).toBe(1);
+	});
+});
+
+describe('TagPromptModal', () => {
+	function openTagPrompt(known: string[] = ['alpha', 'beta']) {
+		const vault = new FakeVault();
+		const added: string[] = [];
+		const modal = new TagPromptModal(vault.app as never, { known, onSubmit: (tag) => added.push(tag) });
+		modal.open();
+		const input = modal.contentEl.querySelector('input');
+		const addBtn = modal.contentEl.querySelector('button');
+		if (!input || !addBtn) throw new Error('tag prompt incomplete');
+		return { vault, added, input, addBtn };
+	}
+
+	it('submits the typed tag and ignores a blank one', () => {
+		const { added, input, addBtn } = openTagPrompt();
+		addBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(added).toEqual([]);
+
+		type(input, 'release/1-0');
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		expect(added).toEqual(['release/1-0']);
+	});
+
+	it('suggests the known tags, matching with or without the hash', () => {
+		const { input } = openTagPrompt(['alpha', 'beta', 'alphabet']);
+		const suggest = new TagSuggest({} as never, input, ['alpha', 'beta', 'alphabet']);
+		const matches = (suggest as unknown as { getSuggestions: (q: string) => string[] }).getSuggestions('#alph');
+		expect(matches).toEqual(['alpha', 'alphabet']);
+
+		const el = document.body.createDiv();
+		suggest.renderSuggestion('alpha', el);
+		expect(el.textContent).toBe('#alpha');
+
+		let inputEvents = 0;
+		input.addEventListener('input', () => inputEvents++);
+		suggest.selectSuggestion('alpha', new MouseEvent('click'));
+		expect(input.value).toBe('alpha');
 		expect(inputEvents).toBe(1);
 	});
 });
