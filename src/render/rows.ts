@@ -132,7 +132,7 @@ function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
  */
 function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): string {
 	if (focused) {
-		return `Nothing at the "${topLevel}" level matches this view. Switch the focus level back to "All levels" in the view options, or create a ${topLevel}.`;
+		return `Nothing at the "${topLevel}" level matches this view. Switch the level button in the toolbar back to "All levels", or create a ${topLevel}.`;
 	}
 	const ignored = host.model?.ignoredCount ?? 0;
 	if (ignored > 0) {
