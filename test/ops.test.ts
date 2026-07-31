@@ -528,3 +528,53 @@ describe('computeDropWrites in a group holding an outside-filter row', () => {
 		expect(writes.map((w) => w.file.path).sort()).toEqual(['A.md', 'B.md', 'Mover.md']);
 	});
 });
+
+describe('auto-type cascade across a context row', () => {
+	/** The Base returns the Epic and the PBI, but not the Feature between them. */
+	function splitChain() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const filtered = vault.entries().filter((e) => e.file.path !== 'Feature.md');
+		const model = buildModel(vault.app, filtered, settings);
+		return {
+			model,
+			epic: model.byPath.get('Epic.md') as BacklogItem,
+			feature: model.byPath.get('Feature.md') as BacklogItem,
+			other: model.byPath.get('Other.md') as BacklogItem,
+		};
+	}
+
+	it('a context row can sit under a result, not only above one', () => {
+		const { epic, feature } = splitChain();
+		expect(feature.outsideFilter).toBe(true);
+		expect(feature.parent).toBe(epic);
+	});
+
+	it('stops the cascade at the context row instead of retyping past it', () => {
+		const { epic, other } = splitChain();
+
+		const writes = computeDropWrites(epic, { parent: other, siblings: [], insertIndex: 0 }, settings);
+
+		// Only the dragged Epic is retyped: writing Feature.md is forbidden, and
+		// retyping PBI.md below it would half-update the ladder.
+		expect(writes.map((w) => w.file.path)).toEqual(['Epic.md']);
+		expect(writes[0].typeName).toBe('Feature');
+	});
+
+	it('still cascades through a branch made only of results', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const epic = model.byPath.get('Epic.md') as BacklogItem;
+		const other = model.byPath.get('Other.md') as BacklogItem;
+
+		const writes = computeDropWrites(epic, { parent: other, siblings: [], insertIndex: 0 }, settings);
+		expect(writes.map((w) => w.file.path).sort()).toEqual(['Epic.md', 'Feature.md', 'PBI.md']);
+	});
+});

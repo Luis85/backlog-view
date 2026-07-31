@@ -130,6 +130,11 @@ export function computeTypeChanges(
 	const lastIdx = settings.levels.length - 1;
 	const walk = (node: BacklogItem) => {
 		for (const child of node.children) {
+			// The cascade stops at a note the Base excluded — a filter can leave one
+			// *between* two results (Epic and PBI returned, the Feature between them
+			// not). We may not retype it, and retyping only the levels below it would
+			// leave a worse ladder than leaving that branch as it stands.
+			if (child.outsideFilter) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
 				const targetLevel = settings.levels[Math.min(newBaseIdx + (child.depth - dragged.depth), lastIdx)];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {

@@ -343,11 +343,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	async applySafely(writes: ItemWrite[]): Promise<boolean> {
-		// Notes the Base excluded are context, and nothing may write to them. Every
-		// control that could is already withheld from those rows; enforcing it here
-		// too means a new write path cannot reintroduce the hole by omission.
-		writes = writes.filter((w) => this.model?.byPath.get(w.file.path)?.outsideFilter !== true);
 		if (writes.length === 0) return false;
+		// Notes the Base excluded are context, and nothing may write to them: the
+		// controls that could are withheld and the auto-type cascade stops at them.
+		// If one still arrives, the batch is refused whole — dropping just that write
+		// would apply the rest and leave the hierarchy half-updated.
+		if (writes.some((w) => this.model?.byPath.get(w.file.path)?.outsideFilter === true)) {
+			console.error('Product Backlog: refused a batch writing to a note outside the filter', writes);
+			new Notice('That change would edit a note outside this base’s filter, so nothing was written.');
+			return false;
+		}
 		const problems = configProblems(this.settings);
 		if (problems.length > 0) {
 			// Writing with e.g. parent and order on the same key would corrupt notes.

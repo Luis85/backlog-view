@@ -112,9 +112,15 @@ code so imports stay cycle-free.
   nearest folder note *in the vault* when `folderHierarchy` is on) — seeding from explicit
   links alone leaves filtered folder hierarchies flat, since inference only ever looks in
   `byPath`.
+- An `outsideFilter` row is NOT always an ancestor: a filter that returns an Epic and its
+  PBI but not the Feature between them loads that Feature as context *below* a result, so
+  any subtree walk can meet one. The autoType cascade therefore stops at such a row and
+  skips its whole branch — retyping only the levels below it would half-update the ladder.
 - The view NEVER writes to a note the Base excluded — enforced structurally in
-  `applySafely`, which drops writes whose target item is `outsideFilter`, so a new write
-  path cannot reopen the hole by omission. The UI withholds every control that would
+  `applySafely`, which refuses the WHOLE batch (loudly) if any write targets an
+  `outsideFilter` item, so a new write path cannot reopen the hole by omission. It rejects
+  rather than filters: dropping the offending write alone would apply the rest and leave
+  the hierarchy half-updated. The UI withholds every control that would
   produce one: the state chip renders as a static `.pbl-state-static` div (and not at all
   when unset), and the context menu drops Set type, Set state and the parent-link actions.
   `New <child>` stays — it writes a *different* note. Creation-folder inference

@@ -231,6 +231,10 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   those append;
 - they don't influence where new notes go: the folder for new items is inferred from the
   Base's own results, never from ancestors that live somewhere else in the vault;
+- they stop the auto-type cascade. A filter can leave a context row *between* two results
+  (the Epic and its PBI returned, the Feature between them not), and moving the item above
+  it retypes only down to that row — its branch keeps the types it has, rather than being
+  half-rewritten around a note that can't be touched;
 - they *are* valid drop targets, so you can drag a match onto its parent as usual, and
   **New \<child\>** works on them;
 - the ✨ backfill never writes properties into them;
