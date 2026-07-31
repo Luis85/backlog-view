@@ -15,10 +15,12 @@ for any later release where the bump landed on `main` but the tag did not. Do **
 - From the browser: **Actions** → **Release** → **Run workflow** on `main`. The workflow
   reads the version from `manifest.json`, creates that tag on the selected commit, and
   publishes it.
-- Or from a clone, if you would rather push the tag yourself:
+- Or from a clone, if you would rather push the tag yourself. Read the tag from the
+  manifest rather than typing it, so this works for whatever version is committed:
 
   ```bash
-  git tag 0.1.0 && git push origin 0.1.0
+  tag="$(node -p "require('./manifest.json').version")"
+  git tag "$tag" && git push origin "$tag"
   ```
 
 ### When you still need to bump the version
