@@ -236,6 +236,9 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   still points at the right item);
 - they don't contribute workflow states: the state menu offers the values your results
   use, not one an excluded ancestor happens to carry;
+- they don't count. The item count, the per-level breakdown and the "N hidden" figure all
+  describe what the Base returned; and a context row disappears as soon as nothing below
+  it is visible, so hiding completed work never leaves empty scaffolding behind;
 - they stop the auto-type cascade. A filter can leave a context row *between* two results
   (the Epic and its PBI returned, the Feature between them not), and moving the item above
   it retypes only down to that row — its branch keeps the types it has, rather than being

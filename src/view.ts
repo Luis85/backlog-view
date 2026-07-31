@@ -119,8 +119,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	isRowHidden(item: BacklogItem): boolean {
 		// While filtering, the filter alone decides — a match must be findable even
 		// when completed items are hidden, so hiding is suspended.
-		if (this.filterVisible !== null) return !this.filterVisible.has(item.file.path);
-		return this.hidingCompleted() && item.subtreeDone;
+		if (this.filterVisible !== null) {
+			if (!this.filterVisible.has(item.file.path)) return true;
+		} else if (this.hidingCompleted() && item.subtreeDone) {
+			return true;
+		}
+		// A context row is here only to place a result. Once nothing below it is
+		// visible it is an empty scaffold, so it goes with them — whatever hid them.
+		// One visible child is enough: a context child is itself subject to this rule.
+		if (item.outsideFilter) return !item.children.some((child) => !this.isRowHidden(child));
+		return false;
 	}
 
 	/** True when the completed-items toggle is actively hiding fully-done subtrees. */
@@ -315,17 +323,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private updateCountLabel(model: BacklogModel): void {
 		const label = this.toolbarEl.querySelector<HTMLElement>('.pbl-count-label');
 		if (!label) return;
-		const total = model.items.length;
-		// Collapsed rows still count as shown — only filtering and hiding narrow the number.
-		const hidden = this.hidingCompleted() ? model.items.filter((i) => i.subtreeDone).length : 0;
-		if (this.isFiltering()) {
-			const visible = this.treeEl.querySelectorAll('.pbl-row').length;
-			label.setText(`${visible} of ${total}`);
-		} else if (hidden > 0) {
-			label.setText(`${total - hidden} of ${total}`);
-		} else {
-			label.setText(`${total} item${total === 1 ? '' : 's'}`);
-		}
+		// The Base's own results: ancestors loaded for context are not items of this
+		// base and must not inflate its count. Collapsed rows still count as shown —
+		// only filtering and hiding narrow the number, which isRowHidden covers both of.
+		const total = model.results.length;
+		const shown = model.results.filter((item) => !this.isRowHidden(item)).length;
+		if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
+		else label.setText(`${shown} of ${total}`);
 	}
 
 	// -------------------------------------------------------------------- writes

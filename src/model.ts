@@ -1,4 +1,5 @@
 import { App, BasesEntry, CachedMetadata, TFile } from 'obsidian';
+import { inferFolderParent, nearestFolderNote } from './folderNotes';
 import { BacklogSettings } from './settings';
 
 /** One node of the backlog tree, wrapping a BasesEntry. */
@@ -76,8 +77,14 @@ export interface BacklogModel {
 	 */
 	realRoots: BacklogItem[];
 	byPath: Map<string, BacklogItem>;
-	/** All rendered items in depth-first (visual) order. */
+	/** All rendered rows in depth-first (visual) order — including context rows. */
 	items: BacklogItem[];
+	/**
+	 * The rendered rows the Bases query actually returned. Anything describing *this
+	 * base* — counts, the level breakdown, how much is hidden — must use this, or
+	 * ancestors loaded only for context inflate the answer.
+	 */
+	results: BacklogItem[];
 	/** True when a focus level restricts the rendered tree. */
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
@@ -101,12 +108,13 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const focusIdx = settings.focusLevel
 		? settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase())
 		: -1;
+	const rest = { realRoots: roots, byPath, observedStates, ignoredCount };
+	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
 	if (focusIdx >= 0) {
 		const focusRoots = collectFocusRoots(roots, focusIdx);
-		items = assignVisualDepth(focusRoots);
-		return { roots: focusRoots, realRoots: roots, byPath, items, focused: true, observedStates, ignoredCount };
+		return { ...rest, ...shown(assignVisualDepth(focusRoots)), roots: focusRoots, focused: true };
 	}
-	return { roots, realRoots: roots, byPath, items, focused: false, observedStates, ignoredCount };
+	return { ...rest, ...shown(items), roots, focused: false };
 }
 
 /** The level name to show on an item's badge. */
@@ -222,18 +230,6 @@ function outsideParentSeed(
 	return nearestFolderNote(app, file.path);
 }
 
-/** `inferFolderParent`'s walk, run against the vault rather than the loaded items. */
-function nearestFolderNote(app: App, path: string): TFile | null {
-	let folder = parentFolderOf(path);
-	if (folder !== null && folderNotePath(folder) === path) folder = parentFolderOf(folder);
-	while (folder !== null) {
-		const candidate = app.vault.getAbstractFileByPath(folderNotePath(folder));
-		if (candidate instanceof TFile && candidate.path !== path) return candidate;
-		folder = parentFolderOf(folder);
-	}
-	return null;
-}
-
 /**
  * Pull in the ancestors the Base's own query left out. A base filtered to one
  * level, one state or one tag returns work items whose parents are not in the
@@ -272,35 +268,6 @@ function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>, setti
 		}
 	}
 	return roots;
-}
-
-/**
- * The nearest ancestor folder note ("Epic X/Epic X.md") in the result set.
- * A folder note itself starts the walk above its own folder, and container
- * folders without a note of their own (like "use-cases/") pass through.
- * Exported so "Use folder position" can predict where an item will land.
- */
-export function inferFolderParent(item: BacklogItem, byPath: Map<string, BacklogItem>): BacklogItem | null {
-	let folder = parentFolderOf(item.file.path);
-	if (folder !== null && folderNotePath(folder) === item.file.path) {
-		folder = parentFolderOf(folder);
-	}
-	while (folder !== null) {
-		const candidate = byPath.get(folderNotePath(folder));
-		if (candidate && candidate !== item) return candidate;
-		folder = parentFolderOf(folder);
-	}
-	return null;
-}
-
-function folderNotePath(folderPath: string): string {
-	const name = folderPath.substring(folderPath.lastIndexOf('/') + 1);
-	return `${folderPath}/${name}.md`;
-}
-
-function parentFolderOf(path: string): string | null {
-	const idx = path.lastIndexOf('/');
-	return idx > 0 ? path.substring(0, idx) : null;
 }
 
 /** Any item not reachable from a root is part of a parent cycle — re-root it. */

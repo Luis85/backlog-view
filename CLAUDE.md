@@ -25,6 +25,7 @@ live-vault smoke test.
 | `src/main.ts` | Registers the view via `registerBasesView` | — |
 | `src/settings.ts` | View options schema, config resolution, `configProblems` validation | node tests |
 | `src/model.ts` | Pure tree building: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
+| `src/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
 | `src/ops.ts` | ALL frontmatter writes: drop plans, ranking, backfill, note creation | node tests |
 | `src/dropTargets.ts` | Pure drop-target math (zones, no-op/cycle/stale-link rules) | node tests |
 | `src/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
@@ -112,6 +113,20 @@ code so imports stay cycle-free.
   nearest folder note *in the vault* when `folderHierarchy` is on) — seeding from explicit
   links alone leaves filtered folder hierarchies flat, since inference only ever looks in
   `byPath`.
+- One rule covers the whole context-row feature, and every past bug in it was a place
+  that forgot the rule rather than a new rule: **an `outsideFilter` row is never a write
+  target, never a ranking peer, and never a source of anything derived from the Base's
+  results** (counts, level breakdown, state vocabulary, creation folder). It renders, it
+  parents, and that is all. Ask that question of any new code touching the tree; the
+  "write safety with context rows, across every entry point" test in `view.test.ts`
+  drives every interaction against a fixture with context rows above, beside and between
+  results, so a new write path fails it without anyone predicting the surface.
+- `model.results` is the Base's own rows and `model.items` is everything rendered.
+  Anything answering "what is in this base" takes `results`; only rendering, navigation
+  and collapse state take `items`.
+- A context row is visible only while it is placing a visible result: `isRowHidden` hides
+  one whose children have all gone, whatever hid them, so a done subtree can't leave an
+  empty scaffold behind.
 - An `outsideFilter` row is NOT always an ancestor: a filter that returns an Epic and its
   PBI but not the Feature between them loads that Feature as context *below* a result, so
   any subtree walk can meet one. The autoType cascade therefore stops at such a row and

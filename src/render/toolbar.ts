@@ -61,7 +61,8 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		warn.createSpan({ text: 'Check view options' });
 		setTooltip(warn, problems.join(' '));
 	}
-	const count = model.items.length;
+	// The Base's own results — context ancestors are not items of this base.
+	const count = model.results.length;
 	const countEl = barEl.createSpan({
 		cls: 'pbl-count-label',
 		text: `${count} item${count === 1 ? '' : 's'}`,
@@ -94,7 +95,7 @@ function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void {
 function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	if (!host.settings.stateKey) return;
 	const showing = host.settings.showCompleted;
-	const hidden = model.items.filter((item) => item.subtreeDone).length;
+	const hidden = model.results.filter((item) => item.subtreeDone).length;
 	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
 	const btn = iconButton(barEl, showing ? 'eye' : 'eye-off', showing ? 'Hide completed items' : `Show completed items${suffix}`);
 	btn.addClass('pbl-completed-toggle');
@@ -154,7 +155,7 @@ function renderFocusChip(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 /** e.g. "2 Epic · 4 Feature · 9 PBI" for the item-count tooltip. */
 function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
 	const byLevel = new Map<string, number>();
-	for (const item of model.items) {
+	for (const item of model.results) {
 		const label = displayType(item, host.settings) || 'Untyped';
 		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
 	}

@@ -47,7 +47,7 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	renderForest(ctx, treeEl, model.roots);
 	if (treeEl.childElementCount === 0) {
 		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
-		else renderAllDoneState(ctx.host, treeEl, model.items.length);
+		else renderAllDoneState(ctx.host, treeEl, model.results.length);
 	}
 }
 
