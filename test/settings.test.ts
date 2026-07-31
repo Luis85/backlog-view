@@ -76,7 +76,6 @@ describe('getViewOptions', () => {
 				'typeProperty',
 				'levels',
 				'hierarchyOnly',
-				'focusLevel',
 				'inferFolderHierarchy',
 				'autoAssignType',
 				'stateProperty',
@@ -88,26 +87,9 @@ describe('getViewOptions', () => {
 		);
 	});
 
-	it('builds the focus dropdown from the configured levels', () => {
-		const flat = getViewOptions(fakeConfig({ levels: 'Theme, Story' })).flatMap((o) =>
-			'items' in o ? o.items : [o],
-		);
-		const focus = flat.find((o) => o.key === 'focusLevel') as { options: Record<string, string> };
-		expect(Object.keys(focus.options)).toEqual(['', 'Theme', 'Story']);
-	});
-
-	it('falls back to the default levels when the config is unreadable', () => {
-		const broken = {
-			get: () => {
-				throw new Error('no config');
-			},
-			getAsPropertyId: () => {
-				throw new Error('no config');
-			},
-		} as never;
-		const flat = getViewOptions(broken).flatMap((o) => ('items' in o ? o.items : [o]));
-		const focus = flat.find((o) => o.key === 'focusLevel') as { options: Record<string, string> };
-		expect(Object.keys(focus.options)).toEqual(['', ...DEFAULT_LEVELS]);
+	it('leaves the focus level to the view toolbar', () => {
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		expect(flat.some((o) => o.key === 'focusLevel')).toBe(false);
 	});
 
 	it('limits the property pickers to note properties', () => {

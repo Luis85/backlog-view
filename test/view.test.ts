@@ -171,18 +171,34 @@ describe('rendering', () => {
 		expect(containerEl.querySelector('.pbl-new-btn')?.textContent).toContain('New Feature');
 	});
 
-	it('shows a focus chip with a one-click way back to all levels', () => {
-		const vault = fixture();
-		const { containerEl, config } = makeView(vault, { focusLevel: 'Feature' });
+	it('picks the focus level from the toolbar', () => {
+		const { containerEl, config } = makeView(fixture());
 
-		const chip = containerEl.querySelector<HTMLElement>('.pbl-focus-chip');
-		expect(chip?.textContent).toContain('Focus: Feature');
+		const btn = containerEl.querySelector<HTMLElement>('.pbl-focus-btn');
+		expect(btn?.textContent).toContain('All levels');
+		// Nothing is focused, so there is nothing to clear
+		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 
-		chip?.querySelector<HTMLElement>('.pbl-focus-clear')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All levels', 'Epic', 'Feature', 'PBI', 'Task']);
+		expect(Menu.lastShown?.item('All levels')?.checked).toBe(true);
+		Menu.lastShown?.item('Feature')?.click();
+		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === 'Feature')).toBe(true);
+	});
+
+	it('shows the active focus level with a one-click way back to all levels', () => {
+		const { containerEl, config } = makeView(fixture(), { focusLevel: 'Feature' });
+
+		const focusEl = containerEl.querySelector<HTMLElement>('.pbl-focus');
+		expect(focusEl?.classList.contains('pbl-focus-active')).toBe(true);
+		expect(focusEl?.querySelector('.pbl-focus-btn')?.textContent).toContain('Feature');
+		containerEl.querySelector<HTMLElement>('.pbl-focus-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(Menu.lastShown?.item('Feature')?.checked).toBe(true);
+
+		containerEl
+			.querySelector<HTMLElement>('.pbl-focus-clear')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === '')).toBe(true);
-		// Without a focus level there is no chip
-		const plain = makeView(fixture());
-		expect(plain.containerEl.querySelector('.pbl-focus-chip')).toBeNull();
 	});
 
 	it('marks child groups with their parent depth for indent guides', () => {

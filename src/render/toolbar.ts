@@ -28,6 +28,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		}
 		menu.showAtMouseEvent(evt);
 	});
+	renderFocusPicker(host, barEl, model);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	iconButton(barEl, 'sparkles', 'Assign missing type and order properties').addEventListener('click', () => {
@@ -44,7 +45,6 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderCompletedToggle(host, barEl, model);
 
 	renderFilterBox(host, barEl);
-	renderFocusChip(host, barEl, model);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
 	if (host.groupingIgnored) {
@@ -136,20 +136,45 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	clearBtn.addEventListener('click', clear);
 }
 
-/** Visible cue (with an exit) that a focus level is narrowing the tree. */
-function renderFocusChip(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	if (!model.focused || !host.settings.focusLevel) return;
-	const chip = barEl.createDiv({ cls: 'pbl-focus-chip' });
-	setIcon(chip.createSpan({ cls: 'pbl-focus-chip-icon' }), 'filter');
-	chip.createSpan({ text: `Focus: ${newItemLevel(host.settings, model)}` });
-	const clear = chip.createDiv({
+/**
+ * Focus level picker — beside the New button, because the focus level is also what
+ * that button creates. Doubles as the cue that a level is narrowing the tree: it
+ * shows the active level, accented, with a one-click way back to all levels.
+ */
+function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	// A focus level naming no configured level re-roots nothing — report all levels.
+	const active = model.focused ? newItemLevel(host.settings, model) : '';
+	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
+	wrap.toggleClass('pbl-focus-active', active !== '');
+	// Bases persists the change and refreshes the view.
+	const setLevel = (level: string) => host.config.set('focusLevel', level);
+
+	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn' });
+	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
+	btn.createSpan({ text: active || 'All levels' });
+	setTooltip(btn, 'Focus level — show one level as the top of the tree');
+	btn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		const choice = (level: string, title: string) =>
+			menu.addItem((mi) =>
+				mi
+					.setTitle(title)
+					.setChecked(active === level)
+					.onClick(() => setLevel(level)),
+			);
+		choice('', 'All levels');
+		for (const level of host.settings.levels) choice(level, level);
+		menu.showAtMouseEvent(evt);
+	});
+
+	if (active === '') return;
+	const clear = wrap.createDiv({
 		cls: 'pbl-focus-clear clickable-icon',
 		attr: { 'aria-label': 'Show all levels' },
 	});
 	setIcon(clear, 'x');
 	setTooltip(clear, 'Show all levels');
-	// Bases persists the change and refreshes the view with the full hierarchy.
-	clear.addEventListener('click', () => host.config.set('focusLevel', ''));
+	clear.addEventListener('click', () => setLevel(''));
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI" for the item-count tooltip. */

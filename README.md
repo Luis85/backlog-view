@@ -89,6 +89,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
 | Create a child item | Hover a row and click **+**, or use the context menu |
 | Create any level at the top | Toolbar **New** button, or the **▾** menu next to it for other levels |
+| Focus one backlog level | Toolbar level button next to **New** → pick a level (**All levels** returns) |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type |
 | Change an item's state | Click the state chip on the row, or right-click → Set state |
@@ -103,10 +104,11 @@ the context menu keep working on the filtered rows.
 
 ### Focus on one backlog level
 
-Like the separate Epics / Features / Stories backlogs in Azure DevOps, the **Focus level**
-option re-roots the tree at any level: pick *Feature* and every feature becomes a top-level
-row with its PBIs and tasks below it. While focused, the toolbar shows a
-`Focus: Feature ✕` chip — one click returns to all levels. Items keep their real parents —
+Like the separate Epics / Features / Stories backlogs in Azure DevOps, the focus level
+re-roots the tree at any level: pick *Feature* from the level button next to **New** in the
+toolbar and every feature becomes a top-level row with its PBIs and tasks below it. While
+focused, that button shows the level, accented, with a `✕` beside it that returns to all
+levels in one click (so does picking *All levels*). Items keep their real parents —
 re-parenting by dropping *into* a row still works — but the top row of a focused view has
 no shared ranking, so reordering, indent/outdent and the top-level drop strip are disabled
 there.
@@ -291,7 +293,6 @@ Open the view options in the Bases toolbar to configure:
 | Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors and icons |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
-| Focus level | All levels | Re-root the tree at one level, like ADO's per-level backlogs |
 | Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
