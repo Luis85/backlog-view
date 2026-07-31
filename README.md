@@ -230,7 +230,12 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   one. Dropping *into* a parent, the top-level strip and **Indent** keep working, because
   those append;
 - they don't influence where new notes go: the folder for new items is inferred from the
-  Base's own results, never from ancestors that live somewhere else in the vault;
+  Base's own results, never from ancestors that live somewhere else in the vault — and
+  **New \<child\>** on a context row creates the note in that results folder rather than
+  beside the excluded parent, so it doesn't vanish on the next refresh (its `parent` link
+  still points at the right item);
+- they don't contribute workflow states: the state menu offers the values your results
+  use, not one an excluded ancestor happens to carry;
 - they stop the auto-type cascade. A filter can leave a context row *between* two results
   (the Epic and its PBI returned, the Feature between them not), and moving the item above
   it retypes only down to that row — its branch keeps the types it has, rather than being

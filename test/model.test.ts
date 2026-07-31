@@ -665,3 +665,17 @@ describe('buildModel with folder-note ancestors outside the filter', () => {
 		expect(model.items).toHaveLength(1);
 	});
 });
+
+describe('observed states with parents outside the filter', () => {
+	it('offers only the states the Base results actually use', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Archived' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'Active' }, parentLink: 'Epic' });
+		const filtered = vault.entries().filter((e) => e.file.path === 'PBI.md');
+		const model = buildModel(vault.app, filtered, { ...settings, stateKey: 'status' });
+
+		// The Epic is context, so "Archived" is not this base's vocabulary
+		expect(model.byPath.get('Epic.md')?.outsideFilter).toBe(true);
+		expect(model.observedStates).toEqual(['Active']);
+	});
+});

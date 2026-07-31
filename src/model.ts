@@ -419,6 +419,9 @@ function assignAll(renderedRoots: BacklogItem[], settings: BacklogSettings): Bac
 function collectObservedStates(all: BacklogItem[], settings: BacklogSettings): string[] {
 	const seen = new Map<string, string>();
 	for (const item of all) {
+		// Ancestors from outside the filter are not part of this base's vocabulary:
+		// offering their states would make values assignable that the results never use.
+		if (item.outsideFilter) continue;
 		if (item.stateValue !== null && !seen.has(item.stateValue.toLowerCase())) {
 			seen.set(item.stateValue.toLowerCase(), item.stateValue);
 		}

@@ -25,9 +25,14 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 	// Judge existence and infer folders from the FULL tree — a focused view with no
 	// matching rows still knows where the hidden items live.
 	const hasItems = (host.model?.realRoots.length ?? 0) > 0;
-	// In folder mode, children belong next to their parent's folder note.
+	// In folder mode, children belong next to their parent's folder note — unless that
+	// parent is only here as context, because its folder is where the Base's filter
+	// isn't: the new note would vanish on the next refresh. Its explicit parent link
+	// keeps the hierarchy right wherever it lands, so fall back to the usual folder.
 	const parentFolder =
-		host.settings.folderHierarchy && parentItem ? normalizeFolder(parentItem.file.parent?.path) : null;
+		host.settings.folderHierarchy && parentItem && !parentItem.outsideFilter
+			? normalizeFolder(parentItem.file.parent?.path)
+			: null;
 	const inferredFolder =
 		parentFolder ?? (host.settings.newItemFolder || (hasItems ? inferFolder(host.model) : ''));
 	// Without items or a configured folder there is nothing to infer from, and a note

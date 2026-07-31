@@ -123,9 +123,12 @@ code so imports stay cycle-free.
   the hierarchy half-updated. The UI withholds every control that would
   produce one: the state chip renders as a static `.pbl-state-static` div (and not at all
   when unset), and the context menu drops Set type, Set state and the parent-link actions.
-  `New <child>` stays — it writes a *different* note. Creation-folder inference
-  (`inferFolder`) counts only result rows, or a chain of ancestors living elsewhere would
-  aim new notes out of the base's own folder.
+  `New <child>` stays — it writes a *different* note — but it must not land that note
+  outside the filter either: `inferFolder` counts only result rows, and folder mode's
+  "children go beside the parent's folder note" rule is skipped for a context parent
+  (the explicit parent link keeps the hierarchy right wherever it lands).
+  `observedStates` likewise skips them: an excluded parent's state is not this base's
+  vocabulary and must not become assignable to results.
 - Renumbering rewrites a whole sibling
   group, so `computeDropWrites` refuses that path when the group holds an `outsideFilter`
   row and places the item after the highest known order instead (`afterHighestKnown`) —

@@ -1972,3 +1972,64 @@ describe('new-item folder inference with context rows', () => {
 		expect(detail).not.toContain('Elsewhere');
 	});
 });
+
+describe('creating a child under a context parent', () => {
+	/** Folder mode, a base scoped to Backlog/, and a parent living outside it. */
+	function outsideParentView() {
+		const vault = new FakeVault();
+		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true });
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('keeps the new note in the results folder, not beside the excluded parent', () => {
+		const { containerEl } = outsideParentView();
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
+		expect(detail).toContain('Under "Epic"');
+		expect(detail).toContain('folder "Backlog"');
+		expect(detail).not.toContain('Projects');
+	});
+
+	it('still writes the parent link, so the hierarchy survives the different folder', async () => {
+		const { containerEl, vault } = outsideParentView();
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'New work' });
+		await flush();
+
+		expect(vault.fm('Backlog/New work.md')['parent']).toBe('[[Epic]]');
+	});
+
+	it('still puts children beside a parent that is a real result', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true });
+		anyView.data = { data: vault.entries() };
+		view.onDataUpdated();
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
+		expect(detail).toContain('folder "Backlog/Epic"');
+	});
+});
