@@ -6,7 +6,7 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from './model';
 import { applyWrites, computeDropWrites, DropTarget, ItemWrite } from './ops';
 import { renderToolbar } from './render/toolbar';
-import { rowContext, RowContext } from './render/columns';
+import { columnFit, rowContext, RowContext } from './render/columns';
 import { refreshRowChildren, renderTree } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from './settings';
 
@@ -49,6 +49,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	private rowEls = new Map<string, HTMLElement>();
 	private selectedRowEl: HTMLElement | null = null;
+	private resizeObserver: ResizeObserver | null = null;
+	/** Property columns of the last render — the width the columns need is derived from it. */
+	private visibleChipCount = 0;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -70,11 +73,31 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.dnd.setupRootDropZone();
 		this.treeEl.addEventListener('keydown', (evt) => handleTreeKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
+		// Which columns fit depends on the pane, which changes without a data update.
+		if (typeof ResizeObserver !== 'undefined') {
+			this.resizeObserver = new ResizeObserver(() => this.syncColumnFit());
+			this.resizeObserver.observe(this.viewEl);
+		}
 	}
 
 	onunload(): void {
+		this.resizeObserver?.disconnect();
 		this.dnd.dispose();
 		this.viewEl.detach();
+	}
+
+	/**
+	 * Drop the columns a pane this narrow cannot hold. They never shrink — that is
+	 * what keeps them aligned across rows — so the alternative to hiding them is
+	 * clipping whatever sits at the row's end, which is the state and the rollup.
+	 */
+	private syncColumnFit(): void {
+		const width = this.treeEl.clientWidth;
+		// Zero while detached or before the first layout: keep the last decision.
+		if (width === 0) return;
+		const fit = columnFit(this.settings, this.visibleChipCount, width);
+		this.viewEl.toggleClass('pbl-hide-props', fit.hideProps);
+		this.viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
 	}
 
 	onDataUpdated(): void {
@@ -326,7 +349,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const scrollTop = this.treeEl.scrollTop;
 		this.treeEl.empty();
 		this.rowEls.clear();
-		renderTree(this.rowCtx(), this.treeEl);
+		const ctx = this.rowCtx();
+		this.visibleChipCount = ctx.chips.length;
+		this.syncColumnFit();
+		renderTree(ctx, this.treeEl);
 		this.treeEl.scrollTop = scrollTop;
 		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
 		this.syncActiveDescendant(this.selectedRowEl);

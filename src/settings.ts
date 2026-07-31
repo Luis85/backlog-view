@@ -304,6 +304,24 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		}
 		return def;
 	};
+	/**
+	 * Like `propKey`, but only for an option whose default is a real key: clearing
+	 * it in the view options has to mean "off", and only an option that was never
+	 * touched falls back. Without the distinction the tags property could never be
+	 * turned off — `getAsPropertyId` reports cleared and unset the same way.
+	 */
+	const clearablePropKey = (key: string, def: string): string => {
+		let raw: unknown;
+		try {
+			raw = config.get(key);
+		} catch {
+			return def;
+		}
+		if (raw === undefined) return def;
+		// Set to something: honor it, and treat anything unusable (cleared, or a
+		// property this view cannot write, like file.tags) as off.
+		return propKey(key, '');
+	};
 	const str = (key: string): string => {
 		const v = config.get(key);
 		return typeof v === 'string' ? v : '';
@@ -353,7 +371,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		newItemFolder: str('newItemFolder').trim().replace(/^\/+|\/+$/g, ''),
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
-		tagsKey: propKey('tagsProperty', fallback.tagsKey),
+		tagsKey: clearablePropKey('tagsProperty', fallback.tagsKey),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
 		states: dedupe(list('stateValues')),

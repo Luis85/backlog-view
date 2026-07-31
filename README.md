@@ -162,10 +162,15 @@ Every property you make visible in the Base gets its **own fixed-width column** 
 end of the row, in the order the Base lists them, with the names in a header pinned to
 the top of the tree. Values line up down the page instead of trailing each item's title,
 so adding a property doesn't turn the rows into ragged text — a long Epic title and a
-short Task title put their `points` in the same place. Narrow panes shrink the columns
-before they shrink the title, and **Property column width** in the view options sets how
-wide one column is. A value too long for its column is truncated, with the full text (and
-the property name) in its tooltip.
+short Task title put their `points` in the same place. **Property column width** in the
+view options sets how wide one column is; a value too long for its column is truncated,
+with the full text (and the property name) in its tooltip.
+
+Columns never shrink — that is what keeps them aligned — so a long title truncates
+first, and a pane too narrow for the columns it is asked to show drops them instead of
+clipping them: the properties go first, then the progress rollup, leaving the title and
+the state chip. The view measures this against the width you configured, so wide columns
+give way earlier than narrow ones.
 
 Rows carry no `Property:` labels of their own — that is what the header is for. Turn the
 columns off entirely with **Show visible properties on rows**.
@@ -182,11 +187,12 @@ properties, its column becomes editable:
 - right-click → **Edit tags** offers exactly the same list, for the keyboard path.
 
 Tags are written to frontmatter as a list, and typed input is normalized to a usable tag
-(`#Sprint 12!` becomes `Sprint-12`). Removing the last tag removes the key rather than
-leaving an empty list behind. Rows loaded as context from outside the Base's filter show
-their tags but offer no editing, like every other write in this view. Point **Tags
-property** at another key (or clear it) and that property goes back to rendering as a
-plain, read-only value.
+(`#Sprint 12!` becomes `Sprint-12`); input Obsidian would not accept as a tag at all — a
+number like `123` — is refused with a notice instead of being written. Removing the last
+tag removes the key rather than leaving an empty list behind. Rows loaded as context from
+outside the Base's filter show their tags but offer no editing, like every other write in
+this view. Point **Tags property** at another key, or clear it, and that property goes
+back to rendering as a plain, read-only value.
 
 ### States and progress
 

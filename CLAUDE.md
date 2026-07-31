@@ -245,4 +245,12 @@ code so imports stay cycle-free.
   and `.pbl-cols` is the presentational (`aria-hidden`) header naming the columns; row
   cells carry the property name in their tooltip and `aria-label` instead of repeating
   it as visible text. The header is not a row: `renderTree` checks for a rendered
-  `.pbl-row` before falling back to the empty states.
+  `.pbl-row` before falling back to the empty states. Columns never shrink (a shrunk
+  column no longer sits under its header), so a pane too narrow for them drops them
+  whole: `columnFit` derives the threshold from the *configured* width and count — a
+  fixed CSS breakpoint would clip two 280px columns in a 700px pane — and the view
+  toggles `pbl-hide-props` / `pbl-hide-meta` from a `ResizeObserver` (absent in jsdom,
+  and `clientWidth` is 0 there, so tests stub it and call the render path).
+- `tagsKey` is the one property option whose default is a real key, so `resolveSettings`
+  tells "never set" from "cleared" (`clearablePropKey`): without that the option could
+  not be turned off, since `getAsPropertyId` reports both as null.

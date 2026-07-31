@@ -561,21 +561,15 @@
 }
 
 /* Columns drop out in reverse order of usefulness once the pane cannot hold them:
-   first the properties, then the rollup, leaving the title and the state chip. */
-.pbl-tree {
-	container-type: inline-size;
+   first the properties, then the rollup, leaving the title and the state chip. The
+   view measures itself for this (see columnFit): the threshold depends on the
+   configured column width and count, which a media or container query cannot read. */
+.pbl-view.pbl-hide-props .pbl-props {
+	display: none;
 }
 
-@container (max-width: 600px) {
-	.pbl-props {
-		display: none;
-	}
-}
-
-@container (max-width: 380px) {
-	.pbl-meta-col {
-		display: none;
-	}
+.pbl-view.pbl-hide-meta .pbl-meta-col {
+	display: none;
 }
 
 .pbl-prop {

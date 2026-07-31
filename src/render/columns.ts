@@ -4,6 +4,7 @@ import { DragDropController } from '../interactions/dragDrop';
 import { showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { BacklogItem } from '../model';
+import { BacklogSettings } from '../settings';
 
 /** A visible property and its display name, resolved once instead of per row. */
 export interface ChipProp {
@@ -32,6 +33,31 @@ export function rowContext(
 	rows: Map<string, HTMLElement>,
 ): RowContext {
 	return { host, dnd, rows, chips: host.settings.showChips ? chipProps(host) : [] };
+}
+
+/** Widths of the fixed columns, mirroring the defaults of their CSS custom properties. */
+const STATE_COL_WIDTH = 116;
+const META_COL_WIDTH = 84;
+/** What a row keeps for itself before any column may claim space: indent, badge, a usable title. */
+const ROW_LEAD_WIDTH = 260;
+
+/**
+ * Which columns still fit in a pane this wide. Columns never shrink — that is what
+ * keeps them aligned — so a pane too narrow for them has to drop them instead, and
+ * the threshold has to come from the configured width and count rather than a fixed
+ * breakpoint: two 280px columns need more than twice the room of two 100px ones.
+ * They go in reverse order of usefulness, the state chip being the last to survive.
+ */
+export function columnFit(
+	settings: BacklogSettings,
+	chipCount: number,
+	width: number,
+): { hideProps: boolean; hideMeta: boolean } {
+	const state = settings.stateKey ? STATE_COL_WIDTH : 0;
+	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
+	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
+	const base = ROW_LEAD_WIDTH + state;
+	return { hideProps: width < base + meta + props, hideMeta: width < base + meta };
 }
 
 /** The visible properties to render as columns, with their labels — one lookup per render. */

@@ -153,6 +153,15 @@ describe('resolveSettings display options', () => {
 		expect(resolveSettings(fakeConfig({ tagsProperty: 'note.labels' })).tagsKey).toBe('labels');
 	});
 
+	it('treats a cleared tags property as off, not as unset', () => {
+		// Unlike the state property, this one defaults to a real key — clearing it in
+		// the view options has to be able to turn tag editing off.
+		expect(resolveSettings(fakeConfig({ tagsProperty: '' })).tagsKey).toBe('');
+		expect(resolveSettings(fakeConfig({ tagsProperty: null })).tagsKey).toBe('');
+		// A property this view cannot write is equally "off"
+		expect(resolveSettings(fakeConfig({ tagsProperty: 'file.tags' })).tagsKey).toBe('');
+	});
+
 	it('clamps the property column width and ignores unusable values', () => {
 		const width = (v: unknown) => resolveSettings(fakeConfig({ propertyColumnWidth: v })).propColumnWidth;
 		expect(width(180)).toBe(180);

@@ -591,6 +591,30 @@ describe('property columns', () => {
 		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-col')).toBe('132px');
 	});
 
+	it('drops the columns a pane cannot hold, measuring what they actually need', () => {
+		const vault = fixture();
+		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280, stateProperty: 'note.status' });
+		config.order = ['note.points', 'note.owner'];
+		const tree = treeOf(containerEl);
+		const viewEl = containerEl.querySelector('.pbl-view');
+		const paneWidth = (px: number) => {
+			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
+			view.onDataUpdated();
+		};
+
+		// Wider than any fixed breakpoint would be, yet two 280px columns do not fit
+		paneWidth(700);
+		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+
+		paneWidth(1400);
+		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
+
+		// Narrow enough that even the rollup has to go
+		paneWidth(300);
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
+	});
+
 	it('has no header when no properties are shown', () => {
 		const { containerEl } = makeView(fixture(), { stateProperty: 'note.status' });
 		expect(containerEl.querySelector('.pbl-cols')).toBeNull();
@@ -728,6 +752,33 @@ describe('tag editing', () => {
 		await flush();
 
 		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', 'Sprint-12']);
+	});
+
+	it('refuses a tag Obsidian would not recognize, and says why', async () => {
+		const { containerEl, vault } = tagged();
+
+		openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
+		const modal = Modal.lastOpened;
+		const input = modal?.contentEl.querySelector('input');
+		if (!modal || !input) throw new Error('tag prompt not opened');
+		// Digits alone are not a tag — writing it would look like it worked
+		input.value = '123';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(vault.fm('Epic B.md').tags).toBe('gamma');
+		expect(Notice.messages.some((m) => m.includes('at least one letter'))).toBe(true);
+	});
+
+	it('stops offering tag editing when the tags property is cleared', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, tags: ['alpha'] } });
+		const { containerEl } = makeView(vault, { tagsProperty: '' });
+
+		expect(containerEl.querySelector('.pbl-tag')).toBeNull();
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Edit tags')).toBeUndefined();
 	});
 
 	it('reaches the same choices from the context menu', () => {

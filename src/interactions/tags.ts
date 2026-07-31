@@ -1,4 +1,4 @@
-import { Menu } from 'obsidian';
+import { Menu, Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { TagPromptModal } from '../modal';
 import { BacklogItem } from '../model';
@@ -6,15 +6,18 @@ import { BacklogItem } from '../model';
 /**
  * Frontmatter tags carry no '#' and no spaces, and Obsidian only accepts letters,
  * digits, underscores, hyphens and '/' as a nesting separator. Anything else a
- * user types becomes a hyphen rather than an unusable tag.
+ * user types becomes a hyphen rather than an unusable tag. Returns '' for input
+ * that cannot become a tag at all — Obsidian also requires at least one
+ * non-numeric character, so "123" would be written and then never recognized.
  */
 function normalizeTag(input: string): string {
-	return input
+	const tag = input
 		.trim()
 		.replace(/^#+/, '')
 		.replace(/[^\p{L}\p{N}_/-]+/gu, '-')
 		.replace(/-{2,}/g, '-')
 		.replace(/^[-/]+|[-/]+$/g, '');
+	return /[\p{L}_]/u.test(tag) ? tag : '';
 }
 
 /**
@@ -47,7 +50,12 @@ function hasTag(item: BacklogItem, tag: string): boolean {
 /** Add a tag unless the item already carries it (ignoring case). */
 function addTag(host: BacklogViewHost, item: BacklogItem, raw: string): void {
 	const tag = normalizeTag(raw);
-	if (tag.length === 0 || hasTag(item, tag)) return;
+	if (tag.length === 0) {
+		// Say so rather than closing the prompt as if the tag had been added.
+		if (raw.trim().length > 0) new Notice('Tags need at least one letter or underscore, so that was not added.');
+		return;
+	}
+	if (hasTag(item, tag)) return;
 	void host.applySafely([{ file: item.file, tags: [...item.tags, tag] }]);
 }
 
