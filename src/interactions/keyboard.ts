@@ -23,6 +23,9 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
  * the Azure DevOps backlog shortcuts (move within siblings, outdent, indent).
  */
 export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
+	// Keys bubbling out of a focused row control (the state chip) drive that
+	// control alone — Enter there must not also open the selected item.
+	if (evt.target !== evt.currentTarget) return;
 	const model = host.model;
 	if (!model || model.items.length === 0) return;
 	if (handleFilterKey(host, evt)) return;

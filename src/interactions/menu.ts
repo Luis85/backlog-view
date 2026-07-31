@@ -130,13 +130,21 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, mo
 	}
 }
 
-/** State menu for the row's state chip (mouse path). */
+/** State menu for the row's state chip. */
 export function showStateMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
 	evt.preventDefault();
 	evt.stopPropagation();
 	const menu = new Menu();
 	addStateItems(host, menu, item);
-	menu.showAtMouseEvent(evt);
+	// A keyboard-activated button click carries no pointer position — anchor
+	// the menu to the chip instead of the (0,0) corner.
+	const el = evt.currentTarget;
+	if (evt.clientX === 0 && evt.clientY === 0 && el instanceof HTMLElement) {
+		const rect = el.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.left, y: rect.bottom });
+	} else {
+		menu.showAtMouseEvent(evt);
+	}
 }
 
 /**

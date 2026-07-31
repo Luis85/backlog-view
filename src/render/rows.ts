@@ -239,10 +239,14 @@ function renderRowTrailing(host: BacklogViewHost, row: HTMLElement, item: Backlo
 /** Clickable state chip — the inline write surface for the workflow state. */
 function renderStateChip(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
 	const value = item.stateValue;
-	const chip = row.createDiv({
+	// A native button, so assistive tech can activate it — but no Tab stop: the
+	// tree keeps its single-tab-stop model, and the context menu carries the
+	// documented keyboard path (Set state).
+	const chip = row.createEl('button', {
 		cls: 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : ''),
 		attr: {
-			role: 'button',
+			type: 'button',
+			tabindex: '-1',
 			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
 		},
 	});

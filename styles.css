@@ -543,22 +543,28 @@
 	display: inline;
 }
 
-/* Clickable workflow-state chip */
+/* Clickable workflow-state chip (a real button, minus the default button chrome) */
 .pbl-state-chip {
+	appearance: none;
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
 	max-width: 140px;
 	overflow: hidden;
 	white-space: nowrap;
+	font-family: inherit;
 	font-size: var(--font-ui-smaller);
+	font-weight: inherit;
 	color: var(--text-muted);
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);
 	padding: 0 var(--size-4-1);
 	line-height: 1.7;
+	height: auto;
+	box-shadow: none;
 	flex: 0 0 auto;
+	margin: 0;
 	margin-inline-start: var(--size-4-2);
 	cursor: var(--cursor);
 }
