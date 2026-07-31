@@ -60,12 +60,15 @@ jobs:
 
       # Lets users verify a downloaded asset was built here, from this source, with
       # `gh attestation verify <file> --repo Luis85/backlog-view`. Runs before the
-      # release so a published asset always has provenance attached.
+      # release so a published asset always has provenance attached. Subjects must
+      # stay in step with the assets uploaded below — an unattested one fails the
+      # verify command rather than silently skipping it.
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             main.js
+            manifest.json
             styles.css
 
       - name: Create release
