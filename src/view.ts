@@ -1,5 +1,5 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
-import { collapseStoreKey, loadCollapseState, saveCollapseState } from './collapseStore';
+import { collapseStoreIdentity, loadCollapseState, saveCollapseState, ViewIdentity } from './collapseStore';
 import { BacklogViewHost, BusyState, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 import { DragDropController } from './interactions/dragDrop';
 import { handleTreeKeydown } from './interactions/keyboard';
@@ -47,8 +47,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
 	private busy: BusyState | null = null;
-	/** localStorage key for this base's collapse state; null when the base is unidentifiable. */
-	private storeKey: string | null = null;
+	/** Which base+view the collapse state belongs to; null when that is unanswerable. */
+	private storeId: ViewIdentity | null = null;
 	private collapseLoaded = false;
 	/** Pending debounced collapse-state write; non-null means there are changes to flush. */
 	private saveTimer: number | null = null;
@@ -252,10 +252,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private restoreCollapseState(): void {
 		if (this.collapseLoaded) return;
 		this.collapseLoaded = true;
-		this.storeKey = collapseStoreKey(this.app, this.viewEl, this.config.name);
+		this.storeId = collapseStoreIdentity(this.app, this.viewEl, this.config.name);
 		// No identifiable base: session-only, exactly as before this was persisted.
-		if (this.storeKey === null) return;
-		const snapshot = loadCollapseState(this.app, this.storeKey);
+		if (this.storeId === null) return;
+		const snapshot = loadCollapseState(this.app, this.storeId);
 		this.collapsedPaths = snapshot.collapsed;
 		// Both sets settle a path; only the collapsed ones are shut.
 		this.defaultedPaths = new Set([...snapshot.collapsed, ...snapshot.expanded]);
@@ -266,7 +266,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * serializing the whole path list per row would be quadratic on a large backlog.
 	 */
 	private scheduleCollapseSave(): void {
-		if (this.storeKey === null || this.saveTimer !== null) return;
+		if (this.storeId === null || this.saveTimer !== null) return;
 		this.saveTimer = window.setTimeout(() => {
 			this.saveTimer = null;
 			this.flushCollapseState();
@@ -274,8 +274,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	private flushCollapseState(): void {
-		const key = this.storeKey;
-		if (key === null) return;
+		const id = this.storeId;
+		if (id === null) return;
 		// Paths whose note is gone are not coming back under the same identity. This
 		// is the one place that drops them, which is why it is keyed on the vault
 		// rather than on the model: a query that has not warmed up yet, or a filter
@@ -287,7 +287,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			this.collapsedPaths.delete(path);
 		}
 		const expanded = new Set([...this.defaultedPaths].filter((path) => !this.collapsedPaths.has(path)));
-		saveCollapseState(this.app, key, { collapsed: this.collapsedPaths, expanded });
+		saveCollapseState(this.app, id, { collapsed: this.collapsedPaths, expanded });
 	}
 
 	/** Earlier versions stored the collapsed list in the view config; clear it once. */

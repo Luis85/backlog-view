@@ -217,7 +217,11 @@ code so imports stay cycle-free.
   that write lands, so nothing else would have settled it. View tests start from the
   collapsed tree, so `makeView` expands through the real toolbar control unless a test
   opts in with `{ collapsed: true }`.
-- The store is keyed `<basePath>#<viewName>`, and the base path comes from walking
+- The store's key only has to be UNIQUE, never parsed: each entry carries its own
+  `base`, because a view name may contain anything a user can type ("Sprint #3" is an
+  ordinary name) and splitting the key on a separator misreads the base path — which
+  made another view's `pruneMissingBases` delete a live entry. Both halves are
+  percent-encoded so no two identities can collide. The base path comes from walking
   `iterateAllLeaves` for the `FileView` whose `containerEl` contains this view's element
   — the Bases API still hands a view no reference to its own file, but the leaf drawing
   it has one. When that resolves to nothing the view is session-only, exactly as before

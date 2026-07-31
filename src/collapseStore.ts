@@ -27,12 +27,35 @@ export interface CollapseSnapshot {
 	expanded: Set<string>;
 }
 
+/** Which base view an entry belongs to. */
+export interface ViewIdentity {
+	/** Path of the `.base` file. */
+	base: string;
+	/** The view's name within that base. */
+	view: string;
+}
+
 interface StoredEntry {
+	/**
+	 * The base this entry belongs to, carried rather than parsed back out of the key.
+	 * A view name may contain anything a user can type — "Sprint #3" is an ordinary
+	 * name — so splitting the key on a separator would misread the base path and let
+	 * another view's save prune a live entry.
+	 */
+	base: string;
 	collapsed: string[];
 	expanded: string[];
 }
 
 type StoredMap = Record<string, StoredEntry>;
+
+/**
+ * The map key. It only has to be unique, never parsed — both halves are encoded so
+ * no pair of base path and view name can collide with a different pair.
+ */
+function mapKey(id: ViewIdentity): string {
+	return `${encodeURIComponent(id.base)}#${encodeURIComponent(id.view)}`;
+}
 
 /**
  * Which base view this is, as a storage key — or null when that cannot be answered.
@@ -45,7 +68,7 @@ type StoredMap = Record<string, StoredEntry>;
  * shared key would be worse than not persisting: two bases would inherit each other's
  * open rows and prune each other's paths.
  */
-export function collapseStoreKey(app: App, el: HTMLElement, viewName: string): string | null {
+export function collapseStoreIdentity(app: App, el: HTMLElement, viewName: string): ViewIdentity | null {
 	// An array rather than a nullable local: the callback runs synchronously, but
 	// narrowing after a closure assignment does not survive the type checker.
 	const owner: string[] = [];
@@ -56,11 +79,11 @@ export function collapseStoreKey(app: App, el: HTMLElement, viewName: string): s
 			owner.push(view.file.path);
 		}
 	});
-	return owner.length > 0 ? `${owner[0]}#${viewName}` : null;
+	return owner.length > 0 ? { base: owner[0], view: viewName } : null;
 }
 
-export function loadCollapseState(app: App, key: string): CollapseSnapshot {
-	const entry = readMap(app)[key];
+export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot {
+	const entry = readMap(app)[mapKey(id)];
 	return {
 		collapsed: new Set(entry?.collapsed ?? []),
 		expanded: new Set(entry?.expanded ?? []),
@@ -72,12 +95,13 @@ export function loadCollapseState(app: App, key: string): CollapseSnapshot {
  * is gone go with it — the only chance to notice, since nothing enumerates the bases
  * that ever wrote here.
  */
-export function saveCollapseState(app: App, key: string, snapshot: CollapseSnapshot): void {
+export function saveCollapseState(app: App, id: ViewIdentity, snapshot: CollapseSnapshot): void {
 	const map = readMap(app);
+	const key = mapKey(id);
 	const collapsed = [...snapshot.collapsed].slice(0, MAX_PATHS);
 	const expanded = [...snapshot.expanded].slice(0, MAX_PATHS - collapsed.length);
 	if (collapsed.length === 0 && expanded.length === 0) delete map[key];
-	else map[key] = { collapsed, expanded };
+	else map[key] = { base: id.base, collapsed, expanded };
 	pruneMissingBases(app, map, key);
 	try {
 		app.saveLocalStorage(STORE_KEY, map);
@@ -90,11 +114,9 @@ export function saveCollapseState(app: App, key: string, snapshot: CollapseSnaps
 
 /** Drop entries for bases that no longer exist, never the one being written. */
 function pruneMissingBases(app: App, map: StoredMap, keep: string): void {
-	for (const key of Object.keys(map)) {
+	for (const [key, entry] of Object.entries(map)) {
 		if (key === keep) continue;
-		const idx = key.lastIndexOf('#');
-		const basePath = idx > 0 ? key.substring(0, idx) : '';
-		if (basePath === '' || app.vault.getAbstractFileByPath(basePath) === null) delete map[key];
+		if (app.vault.getAbstractFileByPath(entry.base) === null) delete map[key];
 	}
 }
 
@@ -122,7 +144,11 @@ function readMap(app: App): StoredMap {
 function readEntry(value: unknown): StoredEntry | null {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
 	const record = value as Record<string, unknown>;
-	const entry = { collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
+	// Without a base an entry cannot be pruned, so it is not worth keeping — that
+	// also drops anything written before the base was recorded alongside the paths.
+	const base = record.base;
+	if (typeof base !== 'string' || base.length === 0) return null;
+	const entry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
 	return entry.collapsed.length > 0 || entry.expanded.length > 0 ? entry : null;
 }
 

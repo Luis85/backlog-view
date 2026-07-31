@@ -1093,10 +1093,27 @@ describe('collapse state persistence', () => {
 		expect(vault.localStorage.size).toBe(0);
 	});
 
+	it('survives a view name containing the key separator', () => {
+		const vault = fixture();
+		// "Sprint #3" is an ordinary view name. The base path is carried in the entry
+		// rather than parsed back out of the key, so a `#` in either half cannot make
+		// one view's save mistake another's entry for a base that no longer exists.
+		const first = makeView(vault, {}, { base: 'Backlog.base', viewName: 'Sprint #3' });
+		first.view.onunload();
+
+		// Saving from any other view is when stale entries get pruned — the moment a
+		// misparsed base path turns a live entry into one whose base "no longer exists".
+		const other = makeView(vault, {}, { base: 'Other.base' });
+		other.view.onunload();
+
+		const reopened = makeView(vault, {}, { base: 'Backlog.base', viewName: 'Sprint #3', collapsed: true });
+		expect(titlesOf(reopened.containerEl)).toEqual(expandedTitles);
+	});
+
 	it('forgets paths whose note is gone, and entries whose base is gone', () => {
 		const vault = fixture();
 		vault.localStorage.set('product-backlog:collapse', {
-			'Deleted.base#Backlog': { collapsed: ['Whatever.md'], expanded: [] },
+			'Deleted.base#Backlog': { base: 'Deleted.base', collapsed: ['Whatever.md'], expanded: [] },
 		});
 		const { view } = makeView(vault, {}, { base: 'Backlog.base' });
 		vault.files.delete('Epic B.md');
