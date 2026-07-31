@@ -264,15 +264,19 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
 	else badge.addClass('pbl-lvl-unknown');
-	if (item.impliedType) {
+	const implied = item.impliedType
+		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'
+		: '';
+	if (implied) {
 		badge.addClass('pbl-implied');
-		setTooltip(badge, 'Type property not set — level implied from position. Use "Assign missing properties" to write it.');
-		return;
+		setTooltip(badge, implied);
 	}
 	// A long level name is capped so the row's lead stays bounded (columnFit budgets
-	// for it); the full name is one hover away when that cap actually bites.
+	// for it); the full name is one hover away when that cap actually bites — and an
+	// implied badge needs both, since the cap hides the very level it is explaining.
 	badge.addEventListener('mouseover', () => {
-		if (textEl.scrollWidth > textEl.clientWidth) setTooltip(badge, badgeText);
+		if (textEl.scrollWidth <= textEl.clientWidth) return;
+		setTooltip(badge, implied ? `${badgeText} · ${implied}` : badgeText);
 	});
 }
 

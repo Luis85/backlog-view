@@ -49,6 +49,7 @@ const ROW_LEAD_WIDTH =
 	22 + // chevron
 	124 + // badge at its max-width
 	64 + // the title's min-width — below this it is not worth showing
+	32 + // the orphan and outside-filter markers, which a row can carry both of
 	12 + // the spacer that anchors the columns
 	28; // the row's own add button
 /** Indent one depth level adds, mirroring the row padding in styles.css. */
