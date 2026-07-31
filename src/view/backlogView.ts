@@ -283,8 +283,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		row.setAttribute('aria-selected', 'false');
 	}
 
-	/** Focus stays on the tree element; this tells assistive tech which row is active. */
+	/**
+	 * Focus stays on the tree element; this tells assistive tech which row is active.
+	 * The class says the same thing to CSS, which needs it to decide whether the tree
+	 * or the selected row carries the focus ring — a `:has()` selector would answer
+	 * that too, at the price of invalidating on every subtree change.
+	 */
 	private syncActiveDescendant(row: HTMLElement | null): void {
+		this.treeEl.toggleClass('pbl-has-selection', row !== null);
 		if (!row) {
 			this.treeEl.removeAttribute('aria-activedescendant');
 			return;

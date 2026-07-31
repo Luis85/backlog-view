@@ -365,7 +365,10 @@
 	outline-offset: -1px;
 }
 
-.pbl-tree:focus-visible:has(.pbl-row.pbl-selected) {
+/* The view sets this class alongside aria-activedescendant. `:has()` would express
+   the same thing without the bookkeeping, but it invalidates on every subtree change,
+   and this tree rebuilds itself on every data update. */
+.pbl-tree:focus-visible.pbl-has-selection {
 	outline: none;
 }
 
@@ -509,7 +512,10 @@
 .pbl-row.pbl-done .pbl-title {
 	color: var(--text-faint);
 	/* Longhand, and no explicit decoration color: it defaults to currentColor, which is
-	   the --text-faint above. The shorthand is only partially supported by Obsidian. */
+	   the --text-faint above. Plugin review still reports "text-decoration" as partially
+	   supported — that verdict is about the feature group (skip-ink, thickness,
+	   underline-offset), none of which is used here; line-through is as old as CSS 1.
+	   Dropping it would mean dropping the strike-through, so the longhand stays. */
 	text-decoration-line: line-through;
 }
 

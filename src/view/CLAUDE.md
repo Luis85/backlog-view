@@ -103,6 +103,11 @@ free of runtime code so imports stay cycle-free.
   sequence, deletes the key when the last tag goes, and leaves the note untouched when
   the delta changes nothing. `observedTags` is result-only vocabulary, exactly like
   `observedStates`.
+- The tree carries a focus ring only until a row takes it, and the switch is a class
+  (`pbl-has-selection`, set beside `aria-activedescendant`) rather than `:has()`: a
+  `:has()` selector on a container invalidates whenever its subtree changes, and this
+  one rebuilds on every data update. Obsidian's plugin review flags `:has` for the same
+  reason. State CSS depends on belongs on the element, put there where the state changes.
 - Two tab-stop zones, and a control's element type follows from which one it is in.
   The **toolbar** is ordinary UI: every activatable control is a real `<button>`
   (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one
