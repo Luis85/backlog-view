@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
-import { ParentRef, readNumber, readString, readTags, resolveParent } from './noteFields';
+import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
 /** One node of the backlog tree, wrapping a BasesEntry. */
@@ -437,7 +437,7 @@ function collectObservedTags(all: BacklogItem[]): string[] {
 	for (const item of all) {
 		if (item.outsideFilter) continue;
 		for (const tag of item.tags) {
-			if (!seen.has(tag.toLowerCase())) seen.set(tag.toLowerCase(), tag);
+			if (!seen.has(tagKey(tag))) seen.set(tagKey(tag), tag);
 		}
 	}
 	return [...seen.values()].sort((a, b) => a.localeCompare(b));

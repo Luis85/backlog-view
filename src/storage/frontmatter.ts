@@ -1,5 +1,5 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
-import { readTags } from '../domain/noteFields';
+import { hasTag, normalizeTag, readTags } from '../domain/noteFields';
 import { BacklogSettings } from '../domain/settings';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
 
@@ -52,10 +52,12 @@ export async function applyWrites(
  */
 function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta): void {
 	const current = readTags(fm[key]);
-	const remove = new Set((delta.remove ?? []).map((tag) => tag.toLowerCase()));
-	const next = current.filter((tag) => !remove.has(tag.toLowerCase()));
-	for (const tag of delta.add ?? []) {
-		if (!next.some((existing) => existing.toLowerCase() === tag.toLowerCase())) next.push(tag);
+	const removals = delta.remove ?? [];
+	const next = current.filter((tag) => !hasTag(removals, tag));
+	// Normalizing here rather than at the call site is what makes "every tag on disk is
+	// one Obsidian will read" true of the write path itself, not of one caller.
+	for (const tag of (delta.add ?? []).map(normalizeTag)) {
+		if (tag.length > 0 && !hasTag(next, tag)) next.push(tag);
 	}
 	// A delta that changes nothing leaves the note alone, rather than rewriting the
 	// value into a different shape for no reason.

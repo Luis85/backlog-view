@@ -3,7 +3,14 @@ import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
 import { showItemMenu } from '../interactions/menu';
 import { BacklogItem, childLevelIndex, displayType } from '../../domain/model';
-import { renderColumnHeader, renderRowColumns, RowContext } from './columns';
+import {
+	INDENT_PER_DEPTH,
+	META_COL_WIDTH,
+	renderColumnHeader,
+	renderRowColumns,
+	RowContext,
+	STATE_COL_WIDTH,
+} from './columns';
 
 const BADGE_COLOR_COUNT = 8;
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
@@ -15,22 +22,29 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	if (!model) return;
 	// Column widths are the same for every row, so they live on the scroller and
 	// are inherited — including by the subtrees a targeted refresh re-renders.
+	// Geometry lives in one place: columnFit budgets with these numbers and the
+	// stylesheet lays out with them, so the two cannot drift apart.
 	treeEl.setCssProps({
 		'--pbl-prop-col': `${ctx.host.settings.propColumnWidth}px`,
 		'--pbl-prop-count': String(ctx.chips.length),
+		'--pbl-state-col': `${STATE_COL_WIDTH}px`,
+		'--pbl-meta-col': `${META_COL_WIDTH}px`,
+		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	});
 	if (model.items.length === 0) {
 		renderEmptyState(ctx.host, treeEl);
 		return;
 	}
-	renderColumnHeader(ctx, treeEl);
-	renderForest(ctx, treeEl, model.roots);
-	// The header is not a row; an empty forest still leaves it behind.
-	if (treeEl.querySelector('.pbl-row') === null) {
-		treeEl.empty();
+	// Whether any row will render is knowable before rendering one: renderForest draws
+	// a row per root isRowHidden lets through. Asking first keeps the header — which is
+	// not a row — from having to be built and then thrown away again.
+	if (!model.roots.some((root) => !ctx.host.isRowHidden(root))) {
 		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
 		else renderAllDoneState(ctx.host, treeEl, model.results.length);
+		return;
 	}
+	renderColumnHeader(ctx, treeEl);
+	renderForest(ctx, treeEl, model.roots);
 }
 
 /**

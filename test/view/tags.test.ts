@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
+import { Menu, Notice } from '../helpers/obsidian-mock';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { expandAll, flush, Harness, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { expandAll, flush, Harness, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -98,43 +98,6 @@ describe('tag editing', () => {
 		expect('tags' in vault.fm('Epic A.md')).toBe(false);
 	});
 
-	it('keeps the hyphens a user typed while cleaning up the rest', async () => {
-		const { containerEl, vault } = tagged();
-		const typeTag = async (text: string) => {
-			openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
-			const modal = Modal.lastOpened;
-			const input = modal?.contentEl.querySelector('input');
-			if (!modal || !input) throw new Error('tag prompt not opened');
-			input.value = text;
-			input.dispatchEvent(new Event('input', { bubbles: true }));
-			modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-			await flush();
-		};
-
-		// A leading or trailing hyphen is a legal tag character and the user's choice;
-		// a slash there would be an empty nesting segment, and punctuation is noise.
-		await typeTag('-urgent');
-		await typeTag('/release/1-0/');
-		await typeTag('Sprint 12!');
-
-		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', '-urgent', 'release/1-0', 'Sprint-12']);
-	});
-
-	it('accepts a tag whose only non-numeric character is a separator', async () => {
-		const { containerEl, vault } = tagged();
-
-		openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
-		const modal = Modal.lastOpened;
-		const input = modal?.contentEl.querySelector('input');
-		if (!modal || !input) throw new Error('tag prompt not opened');
-		input.value = '2026-07';
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		await flush();
-
-		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', '2026-07']);
-	});
-
 	it('removes the key when the last tag goes', async () => {
 		const { containerEl, vault } = tagged();
 
@@ -168,17 +131,14 @@ describe('tag editing', () => {
 		expect('tags' in vault.fm('Epic B.md')).toBe(false);
 	});
 
+	// The normalization rules themselves are node tests (test/domain/noteFields.test.ts);
+	// these two are the round trip that proves the prompt reaches them, and the notice
+	// the user gets when it refuses.
 	it('adds a typed tag, normalized to a usable frontmatter tag', async () => {
 		const { containerEl, vault } = tagged();
 
 		openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
-		const modal = Modal.lastOpened;
-		if (!modal) throw new Error('tag prompt not opened');
-		const input = modal.contentEl.querySelector('input');
-		if (!input) throw new Error('tag input not rendered');
-		input.value = '#Sprint 12!';
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: '#Sprint 12!' });
 		await flush();
 
 		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', 'Sprint-12']);
@@ -188,13 +148,8 @@ describe('tag editing', () => {
 		const { containerEl, vault } = tagged();
 
 		openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
-		const modal = Modal.lastOpened;
-		const input = modal?.contentEl.querySelector('input');
-		if (!modal || !input) throw new Error('tag prompt not opened');
 		// Digits alone are not a tag — writing it would look like it worked
-		input.value = '123';
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: '123' });
 		await flush();
 
 		expect(vault.fm('Epic B.md').tags).toBe('gamma');

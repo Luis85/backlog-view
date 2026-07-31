@@ -6,6 +6,10 @@
 		{
 			"extends": "AbstractInputSuggest",
 			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion"]
+		},
+		{
+			"extends": "ValueSuggest",
+			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion", "valueOf"]
 		}
 	],
 	"health": {

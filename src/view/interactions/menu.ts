@@ -6,7 +6,7 @@ import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
-import { addTagItems, promptNewTag, tagsColumnVisible } from './tags';
+import { addTagItems, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childLevel: string): void {
@@ -219,20 +219,11 @@ function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	});
 }
 
-/**
- * Tag editing on the keyboard path. Without submenus the entry falls back to the
- * free-text prompt, which can still add a tag — the toggles are the convenience.
- */
+/** Tag editing on the keyboard path — the same list the row's + button offers. */
 function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
 		mi.setTitle('Edit tags').setIcon('tags');
-		const withSubmenu = mi as MenuItem & { setSubmenu?: () => Menu };
-		if (typeof withSubmenu.setSubmenu === 'function') {
-			addTagItems(host, withSubmenu.setSubmenu(), item);
-		} else {
-			mi.setTitle('Add tag');
-			mi.onClick(() => promptNewTag(host, item));
-		}
+		addTagItems(host, submenuOf(mi), item);
 	});
 }
 

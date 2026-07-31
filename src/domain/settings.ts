@@ -311,16 +311,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	 * turned off — `getAsPropertyId` reports cleared and unset the same way.
 	 */
 	const clearablePropKey = (key: string, def: string): string => {
-		let raw: unknown;
-		try {
-			raw = config.get(key);
-		} catch {
-			return def;
-		}
-		if (raw === undefined) return def;
 		// Set to something: honor it, and treat anything unusable (cleared, or a
 		// property this view cannot write, like file.tags) as off.
-		return propKey(key, '');
+		return config.get(key) === undefined ? def : propKey(key, '');
 	};
 	const str = (key: string): string => {
 		const v = config.get(key);

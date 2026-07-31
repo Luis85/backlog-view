@@ -1,10 +1,23 @@
-import { App, BasesViewConfig } from 'obsidian';
+import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { ItemWrite } from '../domain/writePlan';
 import { BacklogSettings } from '../domain/settings';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
+
+/**
+ * A visible property resolved into a column: the id to read, the label the header
+ * shows, and whether it is the tags column. Declared here with the other view state
+ * the host exposes — the renderer that builds these imports the type from here, so
+ * the interface every module depends on depends on nothing itself.
+ */
+export interface ChipProp {
+	prop: BasesPropertyId;
+	label: string;
+	/** Render as editable tag pills instead of a plain value. */
+	tags: boolean;
+}
 
 /** Progress of the write batch in flight, for the toolbar's busy indicator. */
 export interface BusyState {
@@ -22,6 +35,13 @@ export interface BacklogViewHost {
 	readonly config: BasesViewConfig;
 	readonly settings: BacklogSettings;
 	readonly model: BacklogModel | null;
+	/**
+	 * The Base's visible properties resolved into the columns the rows render, once
+	 * per data update. Anything asking "is this property on screen" reads this rather
+	 * than re-deriving it from the config — that is what keeps the tag column and the
+	 * tag menu from disagreeing about what the row shows.
+	 */
+	readonly chips: ChipProp[];
 	readonly selectedPath: string | null;
 	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
 	readonly filterText: string;

@@ -7,6 +7,13 @@ in the root `CLAUDE.md` because it spans every layer.
 
 - Config property ids are `note.`-prefixed (`note.parent`); frontmatter keys are not.
   `resolveSettings` strips the prefix.
+- Tag identity is case-insensitive and lives in `noteFields.ts` (`tagKey`, `hasTag`):
+  every dedupe, membership test and delta comparison goes through it rather than
+  spelling `toLowerCase()` again. `normalizeTag` is the write-side inverse of
+  `readTags` and lives beside it, and `applyTagDelta` runs it at the write boundary —
+  so "every tag on disk is one Obsidian will read" is a property of the writer, not of
+  whichever caller remembered. Letters, digits and **combining marks** all survive it;
+  excluding marks corrupts every script that spells a letter with them.
 - `tagsKey` is the one property option whose default is a real key, so `resolveSettings`
   tells "never set" from "cleared" (`clearablePropKey`): without that the option could
   not be turned off, since `getAsPropertyId` reports both as null.

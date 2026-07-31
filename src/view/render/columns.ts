@@ -1,18 +1,10 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost } from '../host';
+import { BacklogViewHost, ChipProp } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { BacklogItem } from '../../domain/model';
 import { BacklogSettings } from '../../domain/settings';
-
-/** A visible property and its display name, resolved once instead of per row. */
-export interface ChipProp {
-	prop: BasesPropertyId;
-	label: string;
-	/** Render as editable tag pills instead of a plain value. */
-	tags: boolean;
-}
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -32,12 +24,17 @@ export function rowContext(
 	dnd: DragDropController,
 	rows: Map<string, HTMLElement>,
 ): RowContext {
-	return { host, dnd, rows, chips: host.settings.showChips ? chipProps(host) : [] };
+	return { host, dnd, rows, chips: host.chips };
 }
 
-/** Widths of the fixed columns, mirroring the defaults of their CSS custom properties. */
-const STATE_COL_WIDTH = 116;
-const META_COL_WIDTH = 84;
+/**
+ * Widths of the fixed columns. `renderTree` publishes these to CSS as custom
+ * properties, so the stylesheet reads them rather than repeating them — the same
+ * one-directional trick as the property column width. The fallbacks in styles.css
+ * are defaults for a stylesheet loaded without a render, not a second opinion.
+ */
+export const STATE_COL_WIDTH = 116;
+export const META_COL_WIDTH = 84;
 /**
  * Everything on a row that is not one of the columns, at its widest: the constant
  * is a sum of the bounds in styles.css rather than a guess, so it can be checked
@@ -52,8 +49,8 @@ const ROW_LEAD_WIDTH =
 	32 + // the orphan and outside-filter markers, which a row can carry both of
 	12 + // the spacer that anchors the columns
 	28; // the row's own add button
-/** Indent one depth level adds, mirroring the row padding in styles.css. */
-const INDENT_PER_DEPTH = 24;
+/** Indent one depth level adds; also published to CSS, which applies it per row. */
+export const INDENT_PER_DEPTH = 24;
 /**
  * The tree's own inline padding, both ends. `clientWidth` counts it, but rows live
  * in the content box, so it is width the columns never get.
@@ -89,32 +86,18 @@ export function columnFit(
 }
 
 /**
- * The deepest row currently on screen. Depth is what the fit has to answer for: a
- * collapsed or hidden branch costs nothing, and an expanded one narrows every row's
- * usable width by its indent. Walks the rendered forest, not the model, for exactly
- * that reason — expanding a deep branch is what makes the columns stop fitting.
+ * The visible properties to render as columns, with their labels. Resolved once per
+ * data update by the view (`host.chips`), because it answers two questions — what the
+ * rows draw, and what the tag menu may edit — and they must not drift apart.
  */
-export function renderedDepth(host: BacklogViewHost): number {
-	let max = 0;
-	const walk = (items: BacklogItem[]) => {
-		for (const item of items) {
-			if (host.isRowHidden(item)) continue;
-			if (item.depth > max) max = item.depth;
-			if (!host.isCollapsed(item.file.path)) walk(item.children);
-		}
-	};
-	walk(host.model?.roots ?? []);
-	return max;
-}
-
-/** The visible properties to render as columns, with their labels — one lookup per render. */
-function chipProps(host: BacklogViewHost): ChipProp[] {
+export function chipProps(host: BacklogViewHost): ChipProp[] {
 	let props: BasesPropertyId[] = [];
 	try {
 		props = host.config.getOrder();
 	} catch {
 		return [];
 	}
+	if (!host.settings.showChips) return [];
 	const skip = new Set<string>([
 		'file.name',
 		`note.${host.settings.parentKey}`,
@@ -190,7 +173,7 @@ function renderPropCells(ctx: RowContext, row: HTMLElement, item: BacklogItem): 
 	// Cells may render note links or tag buttons that must not also open the row's
 	// own note; the empty space around them stays part of the row's click target.
 	props.addEventListener('click', (evt) => {
-		if (evt.target instanceof Element && evt.target.closest('.pbl-prop-value, .pbl-tag, .pbl-tag-add')) {
+		if (evt.target instanceof Element && evt.target.closest('.pbl-prop-value, .pbl-tag')) {
 			evt.stopPropagation();
 		}
 	});
@@ -205,24 +188,26 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 		return;
 	}
 	if (value === null || value instanceof NullValue) return;
-	// isEmpty() is not yet part of the published typings; prefer it when present.
+	// isEmpty() is declared on some Value subclasses (ObjectValue) but not on Value
+	// itself, so this stays a genuine test of the value in hand, not a version guard.
 	const maybeEmpty = value as { isEmpty?: () => boolean };
 	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return;
 
-	const text = value.toString();
 	const valueEl = cell.createSpan({ cls: 'pbl-prop-value' });
 	try {
 		value.renderTo(valueEl, host.app.renderContext);
 	} catch {
-		valueEl.setText(text);
+		valueEl.setText(value.toString());
 	}
-	if (valueEl.textContent?.trim() === '' && text.trim() === '') {
+	// Reading textContent serializes whatever renderTo built, so do it once.
+	const rendered = valueEl.textContent?.trim() ?? '';
+	if (rendered === '') {
 		valueEl.detach();
 		return;
 	}
 	// The column is narrow and the header names it only once — say both here, and
 	// in the accessible name too, since the header itself is presentational.
-	const described = `${chip.label}: ${valueEl.textContent?.trim() || text}`;
+	const described = `${chip.label}: ${rendered}`;
 	setTooltip(valueEl, described);
 	valueEl.setAttribute('aria-label', described);
 }

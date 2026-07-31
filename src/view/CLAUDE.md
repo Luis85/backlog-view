@@ -77,19 +77,35 @@ free of runtime code so imports stay cycle-free.
   fixed CSS breakpoint would clip two 280px columns in a 700px pane — and the view
   toggles `pbl-hide-props` / `pbl-hide-meta` / `pbl-hide-state` from a `ResizeObserver`
   (absent in jsdom, and `clientWidth` is 0 there, so tests stub it and call the render
-  path). Everything the threshold counts has to be *bounded in CSS and summed here*:
+  path). Two things make the measurement honest: it happens *after* the rows render, so
+  the scrollbar that `overflow-y: auto` may have just added is already taking its width,
+  and the observer watches the **tree**, whose content box shrinks when that scrollbar
+  appears — the view's own box does not. A verdict that changes after a render triggers
+  exactly one more pass (`refitting`), since the second pass measures the same tree.
+  The indent term comes from `ctx.maxDepth`, an output of the render rather than a
+  second walk of the model: the pass that drew the rows is the one that knows which
+  rows are on screen. Everything the threshold counts has to be *bounded in CSS and summed here*:
   `ROW_LEAD_WIDTH` is written as its terms (padding, grip, chevron, capped badge, title
   min-width, the orphan and outside markers, spacer, add button) so it can be checked
   against `styles.css`, the badge carries a `max-width` for that reason, indent is added
   per rendered depth, and the tree's own padding is subtracted because `clientWidth`
-  includes it while rows live in the content box. A term that grows without a bound, or
+  includes it while rows live in the content box. The numbers TS owns — the two column
+  widths and the indent step — are *published* to CSS as custom properties by
+  `renderTree`, the same way `--pbl-prop-col` already was, so the stylesheet reads them
+  instead of repeating them. The terms that are Obsidian's (`--size-4-1` gaps, the tree
+  padding) cannot be owned that way and stay as constants; a theme that redefines them
+  moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
   one left out of the sum, comes back as a clipped row rather than a dropped column. The
   ladder ends at the state chip: below that only the row's lead is left, and the title
   truncates from there.
-- Tag editing follows the *column*, not the setting: `tagsColumnVisible` requires
-  `tagsKey` to be configured AND that property to be one of the Base's visible ones,
-  because the pills the user removes are the ones the column renders — a context menu
-  that edited an invisible property would write things nothing on screen shows. That
+- Which properties become columns is resolved once per data update into `host.chips`
+  (`chipProps`), and everything else reads that: the rows render it, and
+  `tagsColumnVisible` is `chips.some((c) => c.tags)`. Deriving it twice is how the tag
+  menu came to offer editing for a column `chipProps` had skipped.
+- Tag editing follows the *column*, not the setting: `tagsColumnVisible` asks whether
+  the tags property is one of the resolved columns, because the pills the user removes
+  are the ones the column renders — a context menu that edited an invisible property
+  would write things nothing on screen shows. That
   is a question about the Base's configuration, not about the pane: the responsive
   `pbl-hide-*` classes are a space decision, and no command is withheld for them (the
   state chip drops the same way and Set state stays). On a pane too narrow for the

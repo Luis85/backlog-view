@@ -60,10 +60,49 @@ export function readTags(value: unknown): string[] {
 		if (typeof entry !== 'string') continue;
 		for (const part of entry.split(/[,\s]+/)) {
 			const tag = part.trim().replace(/^#+/, '');
-			if (tag.length > 0 && !tags.some((t) => t.toLowerCase() === tag.toLowerCase())) tags.push(tag);
+			if (tag.length > 0 && !hasTag(tags, tag)) tags.push(tag);
 		}
 	}
 	return tags;
+}
+
+/**
+ * Tags compare case-insensitively — `#Sprint` and `#sprint` are one tag to Obsidian.
+ * Every membership test, dedupe and delta comparison goes through these two, so the
+ * notion of "same tag" is one decision rather than a `toLowerCase()` in each layer.
+ */
+export function tagKey(tag: string): string {
+	return tag.toLowerCase();
+}
+
+export function hasTag(tags: string[], tag: string): boolean {
+	return tags.some((existing) => tagKey(existing) === tagKey(tag));
+}
+
+/**
+ * What Obsidian will accept as a frontmatter tag, applied to what a user typed.
+ * Letters, digits, combining marks, underscores, hyphens and '/' as the nesting
+ * separator survive; anything else between them becomes a hyphen, and anything else
+ * at the edges is dropped ("Sprint 12!" is "Sprint-12", not "Sprint-12-"). Returns ''
+ * for input that cannot be a tag at all: Obsidian also requires one non-numeric
+ * character, so "123" would be written and then never recognized — a hyphen or a
+ * slash satisfies that, which is what makes "2026-07" a perfectly good tag.
+ *
+ * This is the write-side inverse of `readTags`, and `applyTagDelta` runs it on the way
+ * to disk, so no caller can put a tag Obsidian will not read into a note.
+ */
+export function normalizeTag(input: string): string {
+	const tag = input
+		.trim()
+		.replace(/^[^\p{L}\p{N}\p{M}_/-]+|[^\p{L}\p{N}\p{M}_/-]+$/gu, '')
+		.replace(/[^\p{L}\p{N}\p{M}_/-]+/gu, '-')
+		.replace(/-{2,}/g, '-')
+		// A hyphen the user typed is theirs to keep, at either end — "-urgent" and
+		// "123-" are real tags. A slash there is not: it means an empty nesting
+		// segment, which is why only those are trimmed.
+		.replace(/\/{2,}/g, '/')
+		.replace(/^\/+|\/+$/g, '');
+	return /[^\p{N}]/u.test(tag) ? tag : '';
 }
 
 export function readString(value: unknown): string | null {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { expandAll, fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -90,9 +90,7 @@ describe('property columns', () => {
 		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
 
 		// Expanding the chain puts a row eight levels in — 192px of indent — on screen
-		containerEl
-			.querySelector<HTMLElement>('.pbl-collapse-ctl[aria-label="Expand all"]')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expandAll(containerEl);
 		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
 	});
 

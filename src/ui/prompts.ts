@@ -1,4 +1,5 @@
-import { AbstractInputSuggest, App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
+import { App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
+import { ValueSuggest } from './valueSuggest';
 
 /**
  * Enter submits the prompt, and the field can claim focus once the modal is on
@@ -32,14 +33,7 @@ export interface NewItemPromptOptions {
 }
 
 /** Folder autocomplete for the folder field of the prompt. Exported for tests. */
-export class FolderSuggest extends AbstractInputSuggest<TFolder> {
-	private readonly textInputEl: HTMLInputElement;
-
-	constructor(app: App, textInputEl: HTMLInputElement) {
-		super(app, textInputEl);
-		this.textInputEl = textInputEl;
-	}
-
+export class FolderSuggest extends ValueSuggest<TFolder> {
 	protected getSuggestions(query: string): TFolder[] {
 		const needle = query.toLowerCase();
 		const folders: TFolder[] = [];
@@ -56,21 +50,17 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 		el.setText(folder.path);
 	}
 
-	selectSuggestion(folder: TFolder): void {
-		this.setValue(folder.path);
-		this.textInputEl.dispatchEvent(new Event('input'));
-		this.close();
+	protected valueOf(folder: TFolder): string {
+		return folder.path;
 	}
 }
 
 /** Autocomplete over the tags already in use, so spellings do not drift. Exported for tests. */
-export class TagSuggest extends AbstractInputSuggest<string> {
-	private readonly textInputEl: HTMLInputElement;
+export class TagSuggest extends ValueSuggest<string> {
 	private readonly known: string[];
 
 	constructor(app: App, textInputEl: HTMLInputElement, known: string[]) {
 		super(app, textInputEl);
-		this.textInputEl = textInputEl;
 		this.known = known;
 	}
 
@@ -83,10 +73,8 @@ export class TagSuggest extends AbstractInputSuggest<string> {
 		el.setText(`#${tag}`);
 	}
 
-	selectSuggestion(tag: string): void {
-		this.setValue(tag);
-		this.textInputEl.dispatchEvent(new Event('input'));
-		this.close();
+	protected valueOf(tag: string): string {
+		return tag;
 	}
 }
 

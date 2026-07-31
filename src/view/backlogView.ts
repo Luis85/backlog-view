@@ -1,6 +1,6 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
-import { BacklogViewHost, BusyState, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
+import { BacklogViewHost, BusyState, ChipProp, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 import { DragDropController } from './interactions/dragDrop';
 import { handleTreeKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
@@ -9,7 +9,7 @@ import { DropTarget } from '../domain/dropTargets';
 import { computeDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites } from '../storage/frontmatter';
 import { renderToolbar, syncBusy } from './render/toolbar';
-import { columnFit, renderedDepth, rowContext, RowContext } from './render/columns';
+import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
 import { refreshRowChildren, renderLoadingState, renderTree } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
@@ -54,8 +54,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private rowEls = new Map<string, HTMLElement>();
 	private selectedRowEl: HTMLElement | null = null;
 	private resizeObserver: ResizeObserver | null = null;
-	/** Property columns of the last render — the width the columns need is derived from it. */
-	private visibleChipCount = 0;
+	/** The Base's visible properties as columns, resolved once per data update. */
+	chips: ChipProp[] = [];
+
+	/** Guards the one re-render a changed fit may ask for, so it cannot recurse. */
+	private refitting = false;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -83,8 +86,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
-			this.resizeObserver = new ResizeObserver(() => this.syncColumnFit());
-			this.resizeObserver.observe(this.viewEl);
+			this.resizeObserver = new ResizeObserver(() => this.onResize());
+			// The tree, not the view: its content box is what the rows get, and it also
+			// changes when the vertical scrollbar appears, which the view's box does not.
+			this.resizeObserver.observe(this.treeEl);
 		}
 	}
 
@@ -99,17 +104,45 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * Drop the columns a pane this narrow cannot hold. They never shrink — that is
 	 * what keeps them aligned across rows — so the alternative to hiding them is
 	 * clipping whatever sits at the row's end, which is the state and the rollup.
+	 * Measured after the rows are in place: an empty tree has no scrollbar, and its
+	 * width is not the width the columns will actually get. Returns true when the
+	 * decision changed, which is when what was rendered no longer matches it.
 	 */
-	private syncColumnFit(): void {
+	private syncColumnFit(): boolean {
 		const width = this.treeEl.clientWidth;
 		// Zero while detached or before the first layout: keep the last decision.
-		if (width === 0) return;
+		if (width === 0) return false;
 		// Indent is part of what a row needs, so expanding a deep branch can be what
-		// makes the columns stop fitting — hence the live depth, not a stored one.
-		const fit = columnFit(this.settings, this.visibleChipCount, renderedDepth(this), width);
+		// makes the columns stop fitting.
+		const fit = columnFit(this.settings, this.chips.length, this.renderedDepth(), width);
+		const changed =
+			fit.hideProps !== this.viewEl.hasClass('pbl-hide-props') ||
+			fit.hideMeta !== this.viewEl.hasClass('pbl-hide-meta') ||
+			fit.hideState !== this.viewEl.hasClass('pbl-hide-state');
 		this.viewEl.toggleClass('pbl-hide-props', fit.hideProps);
 		this.viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
 		this.viewEl.toggleClass('pbl-hide-state', fit.hideState);
+		return changed;
+	}
+
+	/**
+	 * Deepest row on screen, read off the row index rather than walked out of the
+	 * model: `rowEls` holds exactly what was rendered, so this cannot disagree with
+	 * the tree the user is looking at, and a collapse shrinks it the same pass it
+	 * happens in.
+	 */
+	private renderedDepth(): number {
+		let max = 0;
+		for (const path of this.rowEls.keys()) {
+			const depth = this.model?.byPath.get(path)?.depth ?? 0;
+			if (depth > max) max = depth;
+		}
+		return max;
+	}
+
+	/** Re-measure after a resize, and rebuild only if a column came or went. */
+	private onResize(): void {
+		if (this.syncColumnFit()) this.renderTreeContent();
 	}
 
 	onDataUpdated(): void {
@@ -129,6 +162,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.watchRenames();
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
+		// Which properties become columns is a config question, so it is answered once
+		// here rather than per render — and once, so the rows and the tag menu cannot
+		// disagree about what is on screen.
+		this.chips = chipProps(this);
 		this.groupingIgnored = this.detectIgnoredGrouping();
 		// Restore before the defaults are applied, or a restored session would be
 		// overwritten by the very pass that is meant to honor it.
@@ -336,8 +373,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		}
 		refreshRowChildren(this.rowCtx(), item, row);
 		// Expanding or collapsing changes the deepest rendered row, and with it the
-		// room the columns have left.
-		this.syncColumnFit();
+		// room the columns have left — in both directions.
+		if (this.syncColumnFit()) this.renderTreeContent();
 		// The selection may have been inside the subtree that just collapsed.
 		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
 		this.syncActiveDescendant(this.selectedRowEl);
@@ -366,14 +403,19 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const scrollTop = this.treeEl.scrollTop;
 		this.treeEl.empty();
 		this.rowEls.clear();
-		const ctx = this.rowCtx();
-		this.visibleChipCount = ctx.chips.length;
-		this.syncColumnFit();
-		renderTree(ctx, this.treeEl);
+		renderTree(this.rowCtx(), this.treeEl);
 		this.treeEl.scrollTop = scrollTop;
 		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
 		this.syncActiveDescendant(this.selectedRowEl);
 		this.updateCountLabel(model);
+		// Measured against the tree that now exists, scrollbar and all. A changed
+		// verdict means a column came or went, which only the rows can show — one
+		// more pass, guarded, since the second pass measures the same tree.
+		if (this.syncColumnFit() && !this.refitting) {
+			this.refitting = true;
+			this.renderTreeContent();
+			this.refitting = false;
+		}
 	}
 
 	/** The per-pass render state: the row index plus the hoisted config lookups. */
