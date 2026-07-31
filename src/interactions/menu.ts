@@ -3,7 +3,7 @@ import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { BacklogItem, BacklogModel, inferFolderParent } from '../model';
 import { computeTypeChanges, ItemWrite } from '../ops';
 import { stateMenuValues } from '../settings';
-import { indent, moveToEdge, moveWithinSiblings, outdent, visibleNeighbor } from './structure';
+import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 
 /** Context menu for a backlog row (mouse path). */
@@ -89,9 +89,10 @@ function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite
 }
 
 function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, model: BacklogModel): void {
-	// No shared sibling ranking to move within: the top row of a focused view, or an
-	// ancestor loaded from outside the filter (its real siblings were never returned).
-	if (item.focusRoot || item.outsideFilter) return;
+	// No sibling ranking to move within: the top row of a focused view, an ancestor
+	// loaded from outside the filter, or a group holding one (renumbering it would
+	// write an order into a note the Base excluded).
+	if (!canReorder(host, item)) return;
 	if ((item.parent ? item.parent.children : model.roots).indexOf(item) === -1) return;
 	// Gate on rendered neighbors: with completed items hidden, a swap with a
 	// hidden sibling would change nothing visibly.
@@ -127,7 +128,7 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, mo
 				.onClick(() => moveToEdge(host, item, 'bottom')),
 		);
 	}
-	if (item.parent) {
+	if (outdentTarget(host, item)) {
 		menu.addItem((mi) => mi.setTitle('Outdent').setIcon('indent-decrease').onClick(() => outdent(host, item)));
 	}
 }

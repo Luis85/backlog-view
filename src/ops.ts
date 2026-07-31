@@ -71,7 +71,24 @@ export function computeDropWrites(
 	if (order !== null) {
 		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
 	}
+	// Renumbering rewrites every sibling, and the view never writes to a note the
+	// Base excluded. Placing the item past the highest order we can see keeps the
+	// drop working while touching only the note being moved. Callers refuse the
+	// *positional* drops in such a group, so landing last is what was asked for.
+	if (siblings.some((s) => s.outsideFilter)) {
+		const order = afterHighestKnown(siblings);
+		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
+	}
 	return [...renumberWrites(dragged, siblings, insertIndex, { parentField, typeField }), ...cascade];
+}
+
+/** One spacing beyond the highest order in the group, ignoring siblings that have none. */
+function afterHighestKnown(siblings: BacklogItem[]): number {
+	let max = 0;
+	for (const sibling of siblings) {
+		if (sibling.order !== null && sibling.order > max) max = sibling.order;
+	}
+	return Math.floor(max) + ORDER_SPACING;
 }
 
 /** The parent frontmatter update, or undefined when the parent is unchanged. */

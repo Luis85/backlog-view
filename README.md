@@ -221,6 +221,11 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
 
 - they can't be dragged, moved, indented or outdented — the Base never returned their
   real siblings, so there is no sibling order to rank them within;
+- **nothing ever writes into them.** Re-ranking a sibling group renumbers all of it when
+  the gaps run out, so a group that contains a context row offers no reordering at all:
+  no before/after drop, no **Move up/down/to top/to bottom**, no **Outdent** — even for
+  an ordinary result row that happens to sit next to one. Dropping *into* a parent, the
+  top-level strip and **Indent** keep working, because those append;
 - they *are* valid drop targets, so you can drag a match onto its parent as usual, and
   **New \<child\>** works on them;
 - the ✨ backfill never writes properties into them;

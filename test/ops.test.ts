@@ -471,3 +471,60 @@ describe('computeInitWrites with parents outside the filter', () => {
 		expect(computeInitWrites(model, settings).map((w) => w.file.path)).toEqual(['PBI.md']);
 	});
 });
+
+describe('computeDropWrites in a group holding an outside-filter row', () => {
+	/**
+	 * Epic E has Feature A and Feature B. The filter returns B and a PBI under A,
+	 * so A is loaded as context and E's children mix results with context rows.
+	 */
+	function mixedGroup() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// Feature A has no order, which is what forces the renumbering path
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Feature', order: 99 } });
+		const filtered = vault.entries().filter((e) =>
+			['Feature B.md', 'PBI.md', 'Mover.md'].includes(e.file.path),
+		);
+		const model = buildModel(vault.app, filtered, settings);
+		const epic = model.byPath.get('Epic.md') as BacklogItem;
+		return { vault, model, epic, mover: model.byPath.get('Mover.md') as BacklogItem };
+	}
+
+	it('never writes an order into a note the Base excluded', () => {
+		const { epic, mover } = mixedGroup();
+		// The group really is mixed: result Feature B, then context Feature A (unranked, so last)
+		expect(epic.children.map((c) => c.title)).toEqual(['Feature B', 'Feature A']);
+		expect(epic.children[1].outsideFilter).toBe(true);
+		expect(epic.children[1].order).toBeNull();
+
+		const siblings = epic.children;
+		const writes = computeDropWrites(mover, { parent: epic, siblings, insertIndex: siblings.length }, settings);
+
+		expect(writes.map((w) => w.file.path)).toEqual(['Mover.md']);
+		// Past the highest order it can see, rather than renumbering the group
+		expect(writes[0].order).toBe(30);
+		expect(writes.some((w) => w.file.path === 'Feature A.md')).toBe(false);
+	});
+
+	it('still renumbers a group made only of results', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Feature', order: 99 } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const epic = model.byPath.get('Epic.md') as BacklogItem;
+		const mover = model.byPath.get('Mover.md') as BacklogItem;
+
+		// Appending after the unranked A forces the renumbering path
+		const writes = computeDropWrites(
+			mover,
+			{ parent: epic, siblings: epic.children, insertIndex: epic.children.length },
+			settings,
+		);
+		expect(writes.map((w) => w.file.path).sort()).toEqual(['A.md', 'B.md', 'Mover.md']);
+	});
+});

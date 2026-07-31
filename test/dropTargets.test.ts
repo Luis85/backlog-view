@@ -159,3 +159,40 @@ describe('dropTargetFor with parents outside the filter', () => {
 		expect(moved?.parent).toBe(epic);
 	});
 });
+
+describe('reordering a group that holds an outside-filter row', () => {
+	/** Epic E over Feature A (context, its PBI matched) and Feature B (a result). */
+	function mixedGroup() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Feature', order: 99 } });
+		const filtered = vault.entries().filter((e) =>
+			['Feature B.md', 'PBI.md', 'Mover.md'].includes(e.file.path),
+		);
+		const model = buildModel(vault.app, filtered, settings);
+		return {
+			model,
+			epic: model.byPath.get('Epic.md') as BacklogItem,
+			featureB: model.byPath.get('Feature B.md') as BacklogItem,
+			mover: model.byPath.get('Mover.md') as BacklogItem,
+		};
+	}
+
+	it('refuses positional drops even when the hovered row is a result', () => {
+		const { model, epic, featureB, mover } = mixedGroup();
+		// Feature B is an ordinary result, but its sibling group holds a context row
+		expect(featureB.outsideFilter).toBe(false);
+		expect(epic.children.some((c) => c.outsideFilter)).toBe(true);
+
+		expect(dropTargetFor(model, featureB, 'before', mover)).toBeNull();
+		expect(dropTargetFor(model, featureB, 'after', mover)).toBeNull();
+	});
+
+	it('still allows appending into the parent', () => {
+		const { model, epic, mover } = mixedGroup();
+		expect(dropTargetFor(model, epic, 'inside', mover)?.parent).toBe(epic);
+	});
+});

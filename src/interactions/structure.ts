@@ -1,7 +1,8 @@
 import { Notice } from 'obsidian';
+import { reorderableGroup } from '../dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../model';
-import { computeInitWrites } from '../ops';
+import { computeInitWrites, DropTarget } from '../ops';
 
 /**
  * Structural operations shared by the context menu and keyboard shortcuts.
@@ -33,10 +34,20 @@ export function visibleNeighbor(host: BacklogViewHost, item: BacklogItem, delta:
 	return null;
 }
 
+/**
+ * True when the item can be reordered among its own siblings. Reordering renumbers
+ * the group if the gaps run out, which must never write to a note the Base excluded
+ * — so a group holding a context row offers no move commands at all.
+ */
+export function canReorder(host: BacklogViewHost, item: BacklogItem): boolean {
+	const ctx = siblingContext(host, item);
+	return ctx !== null && reorderableGroup(ctx.fullList);
+}
+
 export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
 	const ctx = siblingContext(host, item);
 	const neighbor = visibleNeighbor(host, item, delta);
-	if (!ctx || !neighbor) return;
+	if (!ctx || !neighbor || !reorderableGroup(ctx.fullList)) return;
 	// Land on the far side of the visible neighbor; order math still runs over the
 	// full sibling list, so hidden rows in between are simply skipped past.
 	const siblings = ctx.fullList.filter((s) => s !== item);
@@ -46,26 +57,42 @@ export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, del
 
 export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): void {
 	const ctx = siblingContext(host, item);
-	if (!ctx || ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return;
+	if (!ctx || !reorderableGroup(ctx.fullList)) return;
+	if (ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return;
 	const siblings = ctx.fullList.filter((s) => s !== item);
 	const insertIndex = edge === 'top' ? 0 : siblings.length;
 	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
 }
 
-/** Make the item a sibling of its parent, placed right after it. */
-export function outdent(host: BacklogViewHost, item: BacklogItem): void {
+/**
+ * Where outdenting would put the item — right after its parent among the parent's
+ * siblings — or null when that is unavailable. Exported so the menu can offer the
+ * command on exactly the rows where it works.
+ */
+export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
 	const model = host.model;
 	const parent = item.parent;
-	if (!model || !parent || item.focusRoot || item.outsideFilter) return;
+	if (!model || !parent || item.focusRoot || item.outsideFilter) return null;
 	const grandparent = parent.parent;
 	// Root-level outdents rank among the real top level, not the focus rows.
 	const fullList = grandparent ? grandparent.children : model.realRoots;
 	const siblings = fullList.filter((s) => s !== item);
-	const insertIndex = siblings.indexOf(parent) + 1;
-	void host.performDrop(item, { parent: grandparent, siblings, insertIndex });
+	// This lands the item at a position among the parent's siblings — and that group
+	// holds the context parent itself whenever the Base excluded it.
+	if (!reorderableGroup(siblings)) return null;
+	return { parent: grandparent, siblings, insertIndex: siblings.indexOf(parent) + 1 };
 }
 
-/** Nest the item under its previous visible sibling, at the end of its children. */
+/** Make the item a sibling of its parent, placed right after it. */
+export function outdent(host: BacklogViewHost, item: BacklogItem): void {
+	const target = outdentTarget(host, item);
+	if (target) void host.performDrop(item, target);
+}
+
+/**
+ * Nest the item under its previous visible sibling, at the end of its children.
+ * An append, so a partially loaded destination is fine: last is last either way.
+ */
 export function indent(host: BacklogViewHost, item: BacklogItem): void {
 	const newParent = visibleNeighbor(host, item, -1);
 	if (!newParent) return;

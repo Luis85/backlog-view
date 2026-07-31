@@ -112,6 +112,14 @@ code so imports stay cycle-free.
   nearest folder note *in the vault* when `folderHierarchy` is on) — seeding from explicit
   links alone leaves filtered folder hierarchies flat, since inference only ever looks in
   `byPath`.
+- The view NEVER writes to a note the Base excluded. Renumbering rewrites a whole sibling
+  group, so `computeDropWrites` refuses that path when the group holds an `outsideFilter`
+  row and places the item after the highest known order instead (`afterHighestKnown`) —
+  the single choke point that makes the invariant hold. Because that fallback lands the
+  item last, the *positional* operations refuse such a group up front instead of landing
+  somewhere other than aimed: `siblingPosition` (before/after drops), `canReorder` (the
+  move menu, Alt+arrow) and `outdentTarget`. Appends — dropping *into* a parent, the
+  top-level strip, indent — stay available, since last is what they mean anyway.
 - Known limitation, not specific to context rows: in a filtered base any parent whose
   children are partly excluded has a partial `children` list, so `insidePosition` +
   `computeInsertOrder` can compute an order that duplicates an excluded sibling's. Equal

@@ -1815,3 +1815,54 @@ describe('parents outside the filter', () => {
 		expect(rowByTitle(containerEl, 'PBI').querySelector('.pbl-orphan')).not.toBeNull();
 	});
 })
+
+describe('moves in a group that holds an outside-filter row', () => {
+	/** Epic E over Feature A (context, because its PBI matched) and Feature B (a result). */
+	function mixedView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = {
+			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
+		};
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('offers no move commands on a result whose siblings include a context row', () => {
+		const { containerEl } = mixedView();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).not.toContain('Move up');
+		expect(titles).not.toContain('Move down');
+		expect(titles).not.toContain('Move to top');
+	});
+
+	it('offers no outdent when it would rank against a context parent', () => {
+		const { containerEl } = mixedView();
+
+		rowByTitle(containerEl, 'PBI').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		// Its parent Feature A is context, so outdenting would renumber that group
+		expect(titles).not.toContain('Outdent');
+	});
+
+	it('writes nothing when Alt+arrow targets such a group', async () => {
+		const { view, containerEl, vault } = mixedView();
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
+
+		key(tree, 'ArrowUp', { altKey: true });
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+		expect(vault.writeLog).toEqual([]);
+	});
+});
