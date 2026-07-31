@@ -71,18 +71,21 @@ const RENDERED_ROOTS = {
 	message: 'Ranking runs over model.realRoots. model.roots is what is drawn, which under focus mode is not a sibling group.',
 };
 
-/** Files that carry extra selectors, and so must be excluded from the blanket block. */
-const OWN_SYNTAX_RULES = [
-	'src/view/interactions/menu.ts',
-	'src/domain/writePlan.ts',
-	'src/view/interactions/create.ts',
-];
+/**
+ * Flat config sets a rule wholesale per file: a narrower block REPLACES the wider one's
+ * options rather than adding to them, so two blocks matching the same file would leave
+ * it with only the later one's selectors — silently dropping the rest.
+ *
+ * So the blocks below partition `src/` into regions that do not overlap, and each names
+ * every selector that applies to it. Adding a region means removing its files from the
+ * one it came out of; adding a selector means asking which regions want it. The
+ * `syntaxRules` wrapper exists so that is the only decision, and the shape is uniform.
+ */
+const STORAGE = 'src/storage/**/*.ts';
+const MENU = 'src/view/interactions/menu.ts';
+const RANKING = ['src/domain/writePlan.ts', 'src/view/interactions/create.ts'];
 
-const restrictedSyntax = (files, extra = [], ignores = []) => ({
-	files,
-	ignores,
-	rules: { 'no-restricted-syntax': ['error', ...WRITE_BOUNDARY, ...extra] },
-});
+const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
 export default defineConfig([
 	{
@@ -102,18 +105,30 @@ export default defineConfig([
 	forbidden('ui', ['view', 'commands', 'domain', 'storage'], 'ui/ holds standalone dialogs; it must stay free of app structure.'),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
 	// -- invariants that are checked rather than described -----------------------
-	//
-	// Flat config sets a rule wholesale per file: a narrower block REPLACES the wider
-	// one's options rather than adding to them, so a file that gains a rule of its own
-	// would silently lose the write boundary. Every block is therefore composed from
-	// the shared selectors plus its own, and `restrictedSyntax` is the only way to
-	// write one.
-	restrictedSyntax(['src/**/*.ts'], [MENU_ANCHOR], ['src/storage/**/*.ts', ...OWN_SYNTAX_RULES]),
-	// The menu helper is where the anchoring decision is made, so it is the one place
-	// allowed to make it.
-	restrictedSyntax(['src/view/interactions/menu.ts']),
-	// Ranking code: what it writes is an order among real siblings.
-	restrictedSyntax(['src/domain/writePlan.ts', 'src/view/interactions/create.ts'], [MENU_ANCHOR, RENDERED_ROOTS]),
+	// Four disjoint regions of src/; see the note above `syntaxRules`.
+	{
+		// Everything that is not one of the three special cases below.
+		files: ['src/**/*.ts'],
+		ignores: [STORAGE, MENU, ...RANKING],
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR]),
+	},
+	{
+		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else
+		// about it is special — the menu rule still does.
+		files: [STORAGE],
+		rules: syntaxRules([MENU_ANCHOR]),
+	},
+	{
+		// The menu helper is where the anchoring decision is made, so it is the one place
+		// allowed to make it. It writes nothing, so the boundary still applies.
+		files: [MENU],
+		rules: syntaxRules([...WRITE_BOUNDARY]),
+	},
+	{
+		// Ranking code: what it writes is an order among real siblings.
+		files: RANKING,
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS]),
+	},
 	{
 		files: ['src/**/*.ts'],
 		languageOptions: {

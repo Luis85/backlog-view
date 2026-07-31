@@ -83,12 +83,25 @@ rather than arguing the case.
 
 Both were verified by introducing the violation and watching lint reject it.
 
-The config was restructured to make that safe. Flat config sets a rule *wholesale* per
-file: a narrower block replaces the wider one's options rather than adding to them, so a
-file that gained a rule of its own would silently lose the write boundary. Every block is
-now composed through `restrictedSyntax()` from the shared selectors plus its own, and
-there is a test-by-hand for exactly that — introducing a `processFrontMatter` call in
-`menu.ts`, which has its own block, still fails.
+The config was restructured to make that safe, and the first attempt got it wrong in a
+way worth recording. Flat config sets a rule *wholesale* per file: a narrower block
+replaces the wider one's options rather than adding to them. Composing each block from
+"the shared selectors plus its own" fixed that for files with extra rules — but the
+blanket block also carried `ignores: ['src/storage/**']`, there to exempt `storage/` from
+the *write boundary*, and the menu rule was riding in the same block. So `storage/`
+silently lost the menu rule too, and a rule documented as universal was not. Caught in
+review on #17.
+
+`src/` is now partitioned into four regions that cannot overlap, each naming every
+selector that applies to it: everything-else, `storage/` (the writer, so no write
+boundary — but the menu rule still applies), `interactions/menu.ts` (makes the anchoring
+decision, so exempt from that alone), and the two ranking files. Adding a region means
+removing its files from the one it came out of; adding a selector means asking which
+regions want it.
+
+Each region is verified by hand — plant the violation, watch lint reject it — including
+the one that started this: `processFrontMatter` in `menu.ts` still fails despite
+`menu.ts` having a block of its own.
 
 **Not enforced, and why.** The depth rule from the plan above stays blocked. A blanket
 ban on `.depth` would be wrong: `rows.ts` uses it for `aria-level`, where visual depth is
