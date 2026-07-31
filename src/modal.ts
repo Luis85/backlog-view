@@ -2,11 +2,13 @@ import { AbstractInputSuggest, App, ButtonComponent, Modal, Setting, TFolder } f
 
 /**
  * Enter submits the prompt, and the field can claim focus once the modal is on
- * screen — the shape every text field in these prompts wants.
+ * screen — the shape every text field in these prompts wants. The Enter that
+ * confirms an IME composition is not a submit: taking it would close the prompt
+ * on the half-finished reading instead of the word being composed.
  */
 function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus = false): void {
 	inputEl.addEventListener('keydown', (evt) => {
-		if (evt.key === 'Enter') {
+		if (evt.key === 'Enter' && !evt.isComposing) {
 			evt.preventDefault();
 			submit();
 		}

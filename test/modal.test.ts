@@ -122,6 +122,18 @@ describe('TagPromptModal', () => {
 		expect(added).toEqual(['release/1-0']);
 	});
 
+	it('lets an IME finish its composition before submitting', () => {
+		const { added, input } = openTagPrompt();
+		type(input, 'にほん');
+
+		// The Enter that confirms the composition is not a submit
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
+		expect(added).toEqual([]);
+
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		expect(added).toEqual(['にほん']);
+	});
+
 	it('suggests the known tags, matching with or without the hash', () => {
 		const { input } = openTagPrompt(['alpha', 'beta', 'alphabet']);
 		const suggest = new TagSuggest({} as never, input, ['alpha', 'beta', 'alphabet']);
