@@ -30,7 +30,10 @@ function normalizeTag(input: string): string {
 
 /**
  * True when the tags property is one of the base's visible properties. Tag editing
- * follows the column: the row shows what it can edit, and nothing more.
+ * follows the column: the row shows what it can edit, and nothing more. This asks
+ * about the Base's configuration, not the pane — a column dropped by `columnFit`
+ * for want of space keeps its menu entry, which is then the only way to edit tags,
+ * and which lists them checked rather than editing anything unseen.
  */
 export function tagsColumnVisible(host: BacklogViewHost): boolean {
 	const id = `note.${host.settings.tagsKey}`;

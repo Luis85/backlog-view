@@ -89,7 +89,12 @@ free of runtime code so imports stay cycle-free.
 - Tag editing follows the *column*, not the setting: `tagsColumnVisible` requires
   `tagsKey` to be configured AND that property to be one of the Base's visible ones,
   because the pills the user removes are the ones the column renders — a context menu
-  that edited an invisible property would write things nothing on screen shows.
+  that edited an invisible property would write things nothing on screen shows. That
+  is a question about the Base's configuration, not about the pane: the responsive
+  `pbl-hide-*` classes are a space decision, and no command is withheld for them (the
+  state chip drops the same way and Set state stays). On a pane too narrow for the
+  column the menu is the only way left to edit tags, and it shows the item's tags
+  checked, so nothing is edited unseen.
   `applyWrites` drops `ItemWrite.tags` without a `tagsKey` (same rule as state). The
   write is a *delta* (`TagDelta`), never a computed list: a row's `tags` are a snapshot
   from the last refresh, so two removals before the refresh lands would both start from
