@@ -1602,3 +1602,47 @@ describe('completed items', () => {
 		expect(config.setCalls).toContainEqual({ key: 'showCompleted', value: true });
 	});
 });
+
+describe('hierarchy scope', () => {
+	/** A backlog folder that also holds ordinary notes, as `file.inFolder()` returns it. */
+	function mixedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Backlog/Sprint notes.md');
+		vault.addFile('Backlog/README.md');
+		return vault;
+	}
+
+	it('renders only the work items and says how many notes it skipped', () => {
+		const { containerEl } = makeView(mixedVault());
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A']);
+		const note = containerEl.querySelector('.pbl-ignored-note');
+		expect(note?.textContent).toBe('2 notes ignored');
+		// The tooltip has to name the option that brings them back
+		expect((note as HTMLElement).dataset.tooltip).toContain('Ignore notes outside the hierarchy');
+		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
+	});
+
+	it('renders every note and no advisory when the option is off', () => {
+		const { containerEl } = makeView(mixedVault(), { hierarchyOnly: false });
+
+		expect(titlesOf(containerEl).sort()).toEqual(['Epic A', 'README', 'Sprint notes']);
+		expect(containerEl.querySelector('.pbl-ignored-note')).toBeNull();
+	});
+
+	it('explains an empty view caused by the scope', () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Sprint notes.md');
+		const { containerEl } = makeView(vault);
+
+		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(hint).toContain('1 note in this base has no supported type and no parent');
+		expect(hint).toContain('Ignore notes outside the hierarchy');
+	});
+
+	it('keeps the generic hint when the base is simply empty', () => {
+		const { containerEl } = makeView(new FakeVault());
+		expect(containerEl.querySelector('.pbl-empty-hint')?.textContent).toContain("Point this base's filter");
+	});
+});

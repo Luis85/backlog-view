@@ -69,13 +69,17 @@ export interface BacklogModel {
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
 	observedStates: string[];
+	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
+	ignoredCount: number;
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
 	const { all, byPath } = createItems(app, entries, settings);
-	const observedStates = collectObservedStates(all, settings);
 	const roots = linkParents(all, byPath, settings);
 	breakCycles(all, roots);
+	const scoped = settings.hierarchyOnly ? pruneOutsideHierarchy(all, byPath, roots, settings) : all;
+	const ignoredCount = all.length - scoped.length;
+	const observedStates = collectObservedStates(scoped, settings);
 	sortSiblingsDeep(roots);
 	let items = assignAll(roots, settings);
 
@@ -87,9 +91,9 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	if (focusIdx >= 0) {
 		const focusRoots = collectFocusRoots(roots, focusIdx);
 		items = assignVisualDepth(focusRoots);
-		return { roots: focusRoots, realRoots: roots, byPath, items, focused: true, observedStates };
+		return { roots: focusRoots, realRoots: roots, byPath, items, focused: true, observedStates, ignoredCount };
 	}
-	return { roots, realRoots: roots, byPath, items, focused: false, observedStates };
+	return { roots, realRoots: roots, byPath, items, focused: false, observedStates, ignoredCount };
 }
 
 /** The level name to show on an item's badge. */
@@ -230,6 +234,48 @@ function breakCycles(all: BacklogItem[], roots: BacklogItem[]): void {
 		roots.push(item);
 		markSubtree(item);
 	}
+}
+
+/**
+ * Drop the notes that are not backlog items. A base scoped with `file.inFolder(...)`
+ * returns everything living there — meeting notes, references, a README — and without
+ * this they would render as untyped top-level items and be typed by the backfill.
+ *
+ * A note belongs to the backlog when it declares a *supported* type (one of the
+ * configured levels) or has a parent, explicit or folder-inferred, resolvable or not.
+ * The test runs per root subtree, not per note: one participant keeps the whole
+ * component, so untyped children of a typed item stay, and so does an untyped (or
+ * custom-typed) container that holds typed ones. Returns the surviving items;
+ * `roots` and `byPath` are pruned in place.
+ */
+function pruneOutsideHierarchy(
+	all: BacklogItem[],
+	byPath: Map<string, BacklogItem>,
+	roots: BacklogItem[],
+	settings: BacklogSettings,
+): BacklogItem[] {
+	const levels = new Set(settings.levels.map((l) => l.toLowerCase()));
+	const belongs = (item: BacklogItem): boolean =>
+		item.parent !== null ||
+		item.hasParentValue ||
+		item.explicitRoot ||
+		(item.typeName !== null && levels.has(item.typeName.toLowerCase()));
+	const subtreeBelongs = (item: BacklogItem): boolean => belongs(item) || item.children.some(subtreeBelongs);
+
+	const dropped = new Set<BacklogItem>();
+	for (let i = roots.length - 1; i >= 0; i--) {
+		const root = roots[i];
+		if (subtreeBelongs(root)) continue;
+		roots.splice(i, 1);
+		const stack = [root];
+		while (stack.length > 0) {
+			const cur = stack.pop() as BacklogItem;
+			dropped.add(cur);
+			byPath.delete(cur.file.path);
+			for (const child of cur.children) stack.push(child);
+		}
+	}
+	return dropped.size > 0 ? all.filter((item) => !dropped.has(item)) : all;
 }
 
 /**

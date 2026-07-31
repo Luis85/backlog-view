@@ -65,16 +65,26 @@ function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 		cls: 'pbl-empty-title',
 		text: focused ? `No ${topLevel} items` : 'No backlog items',
 	});
-	empty.createDiv({
-		cls: 'pbl-empty-hint',
-		text: focused
-			? `Nothing at the "${topLevel}" level matches this view. Switch the focus level back to "All levels" in the view options, or create a ${topLevel}.`
-			: `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`,
-	});
+	empty.createDiv({ cls: 'pbl-empty-hint', text: emptyHint(host, focused, topLevel) });
 	const btn = empty.createEl('button', { cls: 'mod-cta' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	btn.createSpan({ text: `New ${topLevel}` });
 	btn.addEventListener('click', () => promptCreateItem(host, topLevel, null));
+}
+
+/**
+ * The empty state has to tell the truth about *why* it is empty: a base full of
+ * plain notes is a different problem than a base with nothing in it.
+ */
+function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): string {
+	if (focused) {
+		return `Nothing at the "${topLevel}" level matches this view. Switch the focus level back to "All levels" in the view options, or create a ${topLevel}.`;
+	}
+	const ignored = host.model?.ignoredCount ?? 0;
+	if (ignored > 0) {
+		return `${ignored} note${ignored === 1 ? '' : 's'} in this base ${ignored === 1 ? 'has' : 'have'} no supported type and no parent, so ${ignored === 1 ? 'it is' : 'they are'} not treated as backlog items. Create your first ${topLevel}, or turn off "Ignore notes outside the hierarchy" in the view options to organize the existing notes.`;
+	}
+	return `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`;
 }
 
 function renderItem(

@@ -76,7 +76,7 @@ describe('dropTargetFor', () => {
 
 	it('allows the same slot when it clears a stale parent link', () => {
 		const vault = new FakeVault();
-		vault.addFile('Root.md', { frontmatter: { order: 10 } });
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
@@ -115,7 +115,7 @@ describe('rootDropTarget', () => {
 
 	it('still fires for a last root whose parent link is stale', () => {
 		const vault = new FakeVault();
-		vault.addFile('Root.md', { frontmatter: { order: 10 } });
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;

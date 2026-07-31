@@ -4,6 +4,8 @@ import { defaultSettings } from '../src/settings';
 import { FakeVault } from './helpers';
 
 const settings = defaultSettings();
+/** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
+const unscoped = { ...settings, hierarchyOnly: false };
 
 function names(items: { title: string }[]): string[] {
 	return items.map((i) => i.title);
@@ -12,9 +14,9 @@ function names(items: { title: string }[]): string[] {
 describe('buildModel', () => {
 	it('treats items without a parent as sorted roots', () => {
 		const vault = new FakeVault();
-		vault.addFile('B.md', { frontmatter: { order: 20 } });
-		vault.addFile('A.md', { frontmatter: { order: 10 } });
-		vault.addFile('C.md', { frontmatter: { order: 30 } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C.md', { frontmatter: { type: 'Epic', order: 30 } });
 
 		const model = buildModel(vault.app, vault.entries(), settings);
 
@@ -48,10 +50,10 @@ describe('buildModel', () => {
 	it('sorts unordered siblings last, preserving the Base result order', () => {
 		const vault = new FakeVault();
 		// Entry order stands in for the sort the user configured in the Bases toolbar
-		vault.addFile('Zeta.md');
-		vault.addFile('Beta.md');
-		vault.addFile('First.md', { frontmatter: { order: 5 } });
-		vault.addFile('Second.md', { frontmatter: { order: '7.5' } });
+		vault.addFile('Zeta.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Beta.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('First.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Second.md', { frontmatter: { type: 'Epic', order: '7.5' } });
 
 		const model = buildModel(vault.app, vault.entries(), settings);
 
@@ -125,7 +127,7 @@ describe('buildModel', () => {
 		vault.addFile('Numeric.md', { frontmatter: { type: 123 } });
 		vault.addFile('Boolean.md', { frontmatter: { type: true } });
 
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const numeric = model.roots.find((r) => r.title === 'Numeric');
 		const boolean = model.roots.find((r) => r.title === 'Boolean');
 
@@ -136,7 +138,7 @@ describe('buildModel', () => {
 
 	it('skips non-markdown files and duplicate paths', () => {
 		const vault = new FakeVault();
-		vault.addFile('Note.md');
+		vault.addFile('Note.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('image.png');
 		const entries = [...vault.entries(), ...vault.entries()];
 
@@ -152,7 +154,8 @@ describe('buildModel', () => {
 		vault.addFile('Untyped.md', { parentLink: 'Top' });
 		vault.addFile('Custom.md', { frontmatter: { type: 'Bugfix' } });
 
-		const model = buildModel(vault.app, vault.entries(), settings);
+		// Custom is a top-level note with an unsupported type — only the opt-out keeps it.
+		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const top = model.roots.find((r) => r.title === 'Top');
 		const custom = model.roots.find((r) => r.title === 'Custom');
 		const untyped = top?.children[0];
@@ -219,6 +222,82 @@ describe('buildModel', () => {
 	});
 });
 
+describe('buildModel hierarchy scope', () => {
+	/** A backlog folder that also holds ordinary notes, as `file.inFolder()` returns it. */
+	function mixedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Backlog/Feature A1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('Backlog/Untyped child.md', { parentLink: 'Feature A1' });
+		vault.addFile('Backlog/Sprint notes.md');
+		vault.addFile('Backlog/README.md', { frontmatter: { tags: ['meta'] } });
+		vault.addFile('Backlog/Retro.md', { frontmatter: { type: 'meeting-note' } });
+		return vault;
+	}
+
+	it('keeps only the notes that carry a supported type or a parent', () => {
+		const vault = mixedVault();
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(names(model.items).sort()).toEqual(['Epic A', 'Feature A1', 'Untyped child']);
+		// Sprint notes, README and the meeting note are not work items
+		expect(model.ignoredCount).toBe(3);
+		expect(model.byPath.has('Backlog/Sprint notes.md')).toBe(false);
+	});
+
+	it('shows every note when the option is off', () => {
+		const vault = mixedVault();
+		const model = buildModel(vault.app, vault.entries(), unscoped);
+
+		expect(model.items).toHaveLength(6);
+		expect(model.ignoredCount).toBe(0);
+	});
+
+	it('keeps an untyped container that holds typed items', () => {
+		const vault = new FakeVault();
+		vault.addFile('Program.md');
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' }, parentLink: 'Program' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(names(model.roots)).toEqual(['Program']);
+		expect(names(model.roots[0].children)).toEqual(['Epic']);
+		expect(model.ignoredCount).toBe(0);
+	});
+
+	it('keeps orphans so their stale parent link stays fixable', () => {
+		const vault = new FakeVault();
+		vault.addFile('Orphan.md', { parentLink: 'Missing Epic' });
+		vault.addFile('Pinned.md', { frontmatter: { parent: '' } });
+		vault.addFile('Plain.md');
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(names(model.roots).sort()).toEqual(['Orphan', 'Pinned']);
+		expect(model.roots.find((r) => r.title === 'Orphan')?.orphan).toBe(true);
+		expect(model.ignoredCount).toBe(1);
+	});
+
+	it('ignores the states of notes outside the hierarchy', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Active' } });
+		vault.addFile('Meeting.md', { frontmatter: { status: 'Scheduled' } });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, stateKey: 'status' });
+
+		expect(model.observedStates).toEqual(['Active']);
+	});
+
+	it('drops a whole component, not just its top note', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Notes/Index.md');
+		vault.addFile('Notes/Detail.md', { parentLink: 'Index' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		// Detail has a parent, so its component belongs — the rule is per subtree
+		expect(names(model.items).sort()).toEqual(['Detail', 'Epic', 'Index']);
+		expect(model.ignoredCount).toBe(0);
+	});
+});
+
 describe('buildModel with folder hierarchy', () => {
 	const folderSettings = { ...settings, folderHierarchy: true };
 
@@ -254,8 +333,17 @@ describe('buildModel with folder hierarchy', () => {
 
 	it('stays off unless the option is enabled', () => {
 		const vault = projectVault();
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), unscoped);
 		expect(model.roots).toHaveLength(3);
+	});
+
+	it('keeps folder-inferred notes in scope even when they have no type', () => {
+		const vault = projectVault();
+		// Same layout, but the use-case note only belongs through its folder note.
+		const model = buildModel(vault.app, vault.entries(), folderSettings);
+
+		expect(model.ignoredCount).toBe(0);
+		expect(names(model.items)).toContain('Pay with saved card');
 	});
 
 	it('lets explicit parent links override the folder structure', () => {
@@ -377,7 +465,7 @@ describe('buildModel progress rollup', () => {
 
 	it('tracks no state when the state property is unset', () => {
 		const vault = new FakeVault();
-		vault.addFile('Item.md', { frontmatter: { status: 'Done' } });
+		vault.addFile('Item.md', { frontmatter: { type: 'Epic', status: 'Done' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		expect(model.roots[0].stateValue).toBeNull();
 		expect(model.roots[0].done).toBe(false);
@@ -402,11 +490,11 @@ describe('buildModel progress rollup', () => {
 
 	it('collects observed states deduped, open states first, then done states', () => {
 		const vault = new FakeVault();
-		vault.addFile('A.md', { frontmatter: { status: 'Ready' } });
-		vault.addFile('B.md', { frontmatter: { status: 'Done' } });
-		vault.addFile('C.md', { frontmatter: { status: 'ready' } });
-		vault.addFile('D.md', { frontmatter: { status: 'Active' } });
-		vault.addFile('E.md', {});
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', status: 'Ready' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic', status: 'Done' } });
+		vault.addFile('C.md', { frontmatter: { type: 'Epic', status: 'ready' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Epic', status: 'Active' } });
+		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 		const model = buildModel(vault.app, vault.entries(), { ...settings, stateKey: 'status' });
 
 		expect(model.observedStates).toEqual(['Active', 'Ready', 'Done']);

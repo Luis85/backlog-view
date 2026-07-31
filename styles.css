@@ -196,7 +196,7 @@
 	padding-inline-end: var(--size-4-1);
 }
 
-.pbl-grouping-note {
+.pbl-toolbar-note {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
@@ -205,12 +205,12 @@
 	cursor: help;
 }
 
-.pbl-grouping-note-icon {
+.pbl-toolbar-note-icon {
 	display: inline-flex;
 	align-items: center;
 }
 
-.pbl-grouping-note-icon .svg-icon {
+.pbl-toolbar-note-icon .svg-icon {
 	width: 12px;
 	height: 12px;
 }

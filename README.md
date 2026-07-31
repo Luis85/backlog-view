@@ -19,6 +19,10 @@ Azure DevOps Boards.
 ## How it works
 
 - All items live **flat in one folder** — the hierarchy comes from properties, not subfolders.
+- A folder holds more than work items, so the view only shows the notes that **belong to
+  the hierarchy**: a `type` matching one of the configured levels, or a parent. Meeting
+  notes, references and READMEs sitting in the same folder stay out of the tree (and out
+  of the backfill). The toolbar says how many notes it skipped.
 - Each item is an ordinary markdown note. The view reads three frontmatter properties:
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
@@ -52,7 +56,10 @@ Manually, the equivalent is:
    `file.inFolder("Backlog")`.
 3. In the view switcher of the Base, add a new view and pick **Product Backlog**.
 4. Drop existing notes into the folder, or use **+ New Epic** in the view to create items.
-5. If your notes don't have `type`/`order` yet, click the ✨ toolbar button once.
+5. If your notes don't have `type`/`order` yet, click the ✨ toolbar button once. Notes
+   with neither a supported `type` nor a `parent` aren't treated as backlog items — to
+   organize a folder of plain notes by dragging, turn **Ignore notes outside the
+   hierarchy** off in the view options first.
 
 Example `.base` file:
 
@@ -138,6 +145,9 @@ Rules to know:
   level" marker (deleting it would just re-infer the folder parent). **Clear parent
   link** on an orphaned item removes the property entirely, so in folder mode the item
   returns to its folder position.
+- A folder note is a parent, so every note below it counts as a backlog item even without
+  a `type` — in folder mode the folder structure *is* the hierarchy. Notes in folders
+  without a folder note above them still need a supported `type` to appear.
 - New child items are created in their parent note's folder.
 - If your domain folders also contain folder notes inside the filter, they become the
   top level — add a level name for them (e.g. `Domain, Epic, Feature, PBI, Task`).
@@ -205,6 +215,7 @@ Open the view options in the Bases toolbar to configure:
 | Order property | `order` | Numeric sibling rank |
 | Item type property | `type` | Hierarchy level of the item |
 | Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors and icons |
+| Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Focus level | All levels | Re-root the tree at one level, like ADO's per-level backlogs |
 | Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
@@ -218,6 +229,15 @@ Notes:
 - The `order` property always wins for ranked siblings. Items **without** an `order`
   sort last — in the order the Base's **sort** setting produces, so sorting by e.g.
   priority or modified date arranges your unranked items until you rank them.
+- **Ignore notes outside the hierarchy** decides what counts as a backlog item. A note
+  qualifies when its `type` is one of the configured **Levels**, or when it has a parent —
+  an explicit link (even a broken one, so stale links stay fixable), the empty "pinned to
+  top level" marker, or a folder note in folder mode. The test runs per subtree, so an
+  untyped child of a typed item stays, and so does an untyped or custom-typed note that
+  holds typed ones. Everything else — the meeting notes, the folder's README, a
+  `type: meeting-note` page — is skipped, and the toolbar shows an `N notes ignored`
+  advisory. Turn the option off to show every note the base returns (useful for
+  organizing a folder of plain notes by dragging them into a hierarchy).
 - **Group by** is ignored — the hierarchy is the grouping. The toolbar says so when a
   group-by is configured.
 - A Base **limit** truncates the result set, which can drop parents while keeping their

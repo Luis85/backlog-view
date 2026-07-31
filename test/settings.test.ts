@@ -58,6 +58,11 @@ describe('resolveSettings', () => {
 		expect(settings.showCounts).toBe(false);
 		expect(settings.newItemFolder).toBe('Backlog/Items');
 	});
+
+	it('scopes the view to the hierarchy unless the toggle is turned off', () => {
+		expect(resolveSettings(fakeConfig()).hierarchyOnly).toBe(true);
+		expect(resolveSettings(fakeConfig({ hierarchyOnly: false })).hierarchyOnly).toBe(false);
+	});
 });
 
 describe('getViewOptions', () => {
@@ -70,6 +75,7 @@ describe('getViewOptions', () => {
 				'orderProperty',
 				'typeProperty',
 				'levels',
+				'hierarchyOnly',
 				'focusLevel',
 				'inferFolderHierarchy',
 				'autoAssignType',

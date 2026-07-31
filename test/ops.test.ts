@@ -13,6 +13,8 @@ import { defaultSettings } from '../src/settings';
 import { FakeVault } from './helpers';
 
 const settings = defaultSettings();
+/** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
+const unscoped = { ...settings, hierarchyOnly: false };
 
 /** Standard fixture: two epics, the second with two features. */
 function fixture() {
@@ -69,7 +71,7 @@ describe('computeDropWrites', () => {
 		vault.addFile('One.md', { frontmatter: { order: 10 } });
 		vault.addFile('Two.md', { frontmatter: { order: 20 } });
 		vault.addFile('Three.md', { frontmatter: { order: 30 } });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const dragged = model.roots[2]; // Three
 		const writes = computeDropWrites(
 			dragged,
@@ -85,7 +87,7 @@ describe('computeDropWrites', () => {
 		vault.addFile('One.md', { frontmatter: { order: 10 } });
 		vault.addFile('Two.md', { frontmatter: { order: 10.001 } });
 		vault.addFile('Mover.md', { frontmatter: { order: 50 } });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const dragged = model.roots.find((r) => r.title === 'Mover') as BacklogItem;
 
 		const writes = computeDropWrites(
@@ -107,7 +109,7 @@ describe('computeDropWrites', () => {
 		vault.addFile('Ordered.md', { frontmatter: { order: 10 } });
 		vault.addFile('Unordered.md');
 		vault.addFile('Mover.md', { frontmatter: { order: 99 } });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const dragged = model.roots.find((r) => r.title === 'Mover') as BacklogItem;
 
 		// Insert between Ordered and Unordered
@@ -277,7 +279,8 @@ describe('computeInitWrites', () => {
 		vault.addFile('NoOrder.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('NoType.md', { frontmatter: { order: 5 } });
 		vault.addFile('Child.md', { parentLink: 'Complete' });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		// NoType has neither a type nor a parent — only the opt-out puts it in scope.
+		const model = buildModel(vault.app, vault.entries(), unscoped);
 
 		const writes = computeInitWrites(model, settings);
 
@@ -293,6 +296,16 @@ describe('computeInitWrites', () => {
 		expect(child?.order).toBe(ORDER_SPACING);
 		// Parent property is never touched by the backfill
 		expect(writes.every((w) => w.parent === undefined)).toBe(true);
+	});
+
+	it('never touches notes outside the hierarchy', () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Backlog/Sprint notes.md');
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		// Backfilling a plain note would stamp "type: Epic" onto it — the scope prevents that.
+		expect(computeInitWrites(model, settings)).toEqual([]);
 	});
 
 	it('returns nothing when every item is complete', () => {

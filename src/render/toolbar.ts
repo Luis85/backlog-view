@@ -48,11 +48,12 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
 	if (host.groupingIgnored) {
-		const note = barEl.createDiv({ cls: 'pbl-grouping-note' });
-		setIcon(note.createSpan({ cls: 'pbl-grouping-note-icon' }), 'info');
+		const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-grouping-note' });
+		setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'info');
 		note.createSpan({ text: 'Grouping ignored' });
 		setTooltip(note, 'The hierarchy is the grouping — the group by setting has no effect in this view.');
 	}
+	renderIgnoredNote(barEl, model);
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
 		const warn = barEl.createDiv({ cls: 'pbl-config-warning', attr: { 'aria-label': problems.join(' ') } });
@@ -67,6 +68,22 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(host, model));
+}
+
+/**
+ * Notes the base returned that aren't backlog items are silently skipped — say so,
+ * so a missing note is never a mystery, and point at the option that brings them back.
+ */
+function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void {
+	if (model.ignoredCount === 0) return;
+	const n = model.ignoredCount;
+	const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-ignored-note' });
+	setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'filter-x');
+	note.createSpan({ text: `${n} note${n === 1 ? '' : 's'} ignored` });
+	setTooltip(
+		note,
+		`${n} note${n === 1 ? ' in this base is' : 's in this base are'} not backlog items — no supported type and no parent. Turn off "Ignore notes outside the hierarchy" in the view options to show them.`,
+	);
 }
 
 /**

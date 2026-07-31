@@ -70,6 +70,15 @@ code so imports stay cycle-free.
   from depth.
 - The autoType cascade retypes only descendants whose type matches a configured
   level; custom types outside the ladder are deliberate user data.
+- Scope (`settings.hierarchyOnly`, on by default): a base filtered by folder returns
+  every note living there, so `pruneOutsideHierarchy` drops the ones that are not work
+  items — a note belongs when it has a *supported* type (matching a configured level) or
+  a parent (explicit, empty-marker, folder-inferred, or unresolvable). The test runs per
+  root subtree, so one participant keeps the whole component (untyped children, untyped
+  containers of typed items). Pruned notes leave `model.byPath`/`items` entirely, so
+  backfill and rollups never see them; `model.ignoredCount` carries the number for the
+  toolbar advisory and the empty state. Turning the option off restores "every note is
+  an item" — the fixture opt-out (`unscoped`) in the tests.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - `model.roots` is the RENDERED forest (synthetic under focus); every data operation

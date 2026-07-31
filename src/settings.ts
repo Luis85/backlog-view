@@ -9,6 +9,11 @@ export interface BacklogSettings {
 	orderKey: string;
 	typeKey: string;
 	levels: string[];
+	/**
+	 * Only treat notes that belong to the work-item hierarchy as items: a supported
+	 * type (one of `levels`) or a parent. When off, every note the base returns is an item.
+	 */
+	hierarchyOnly: boolean;
 	/** Parent notes are inferred from folder notes when no explicit parent link is set. */
 	folderHierarchy: boolean;
 	autoType: boolean;
@@ -36,6 +41,7 @@ export function defaultSettings(): BacklogSettings {
 		orderKey: 'order',
 		typeKey: 'type',
 		levels: [...DEFAULT_LEVELS],
+		hierarchyOnly: true,
 		folderHierarchy: false,
 		autoType: true,
 		showChips: true,
@@ -148,6 +154,12 @@ function hierarchyGroup(levels: string[]): BasesAllOptions {
 					displayName: 'Levels (top → bottom)',
 					default: DEFAULT_LEVELS.join(', '),
 					placeholder: DEFAULT_LEVELS.join(', '),
+				},
+				{
+					type: 'toggle',
+					key: 'hierarchyOnly',
+					displayName: 'Ignore notes outside the hierarchy',
+					default: true,
 				},
 				{
 					type: 'dropdown',
@@ -292,6 +304,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		orderKey: propKey('orderProperty', fallback.orderKey),
 		typeKey: propKey('typeProperty', fallback.typeKey),
 		levels: levels.length > 0 ? levels : fallback.levels,
+		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
 		autoType: bool('autoAssignType', fallback.autoType),
 		showChips: bool('showProperties', fallback.showChips),
