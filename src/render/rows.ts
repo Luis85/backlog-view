@@ -9,30 +9,84 @@ const BADGE_COLOR_COUNT = 8;
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
 
+/** A visible property and its display name, resolved once instead of per row. */
+export interface ChipProp {
+	prop: BasesPropertyId;
+	label: string;
+}
+
+/**
+ * State shared by one render pass. Config lookups and the row index live here so
+ * per-row work stays proportional to the rows themselves — repeating a handful of
+ * Bases config calls on every row is what makes a few hundred items feel slow.
+ */
+export interface RowContext {
+	host: BacklogViewHost;
+	dnd: DragDropController;
+	/** Rendered rows by path — the view's O(1) lookup for selection and subtree updates. */
+	rows: Map<string, HTMLElement>;
+	chips: ChipProp[];
+}
+
+export function rowContext(
+	host: BacklogViewHost,
+	dnd: DragDropController,
+	rows: Map<string, HTMLElement>,
+): RowContext {
+	return { host, dnd, rows, chips: host.settings.showChips ? chipProps(host) : [] };
+}
+
 /** Render the tree content (or the empty state) into the tree element. */
-export function renderTree(host: BacklogViewHost, dnd: DragDropController, treeEl: HTMLElement): void {
-	const model = host.model;
+export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
+	const model = ctx.host.model;
 	if (!model) return;
 	if (model.items.length === 0) {
-		renderEmptyState(host, treeEl);
+		renderEmptyState(ctx.host, treeEl);
 		return;
 	}
-	renderForest(host, dnd, treeEl, model.roots);
+	renderForest(ctx, treeEl, model.roots);
 	if (treeEl.childElementCount === 0) {
-		if (host.isFiltering()) renderFilterEmptyState(host, treeEl);
-		else renderAllDoneState(host, treeEl, model.items.length);
+		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
+		else renderAllDoneState(ctx.host, treeEl, model.results.length);
+	}
+}
+
+/**
+ * Re-render one row's child group in place. Expanding and collapsing is the most
+ * frequent interaction in a large backlog; rebuilding the whole tree for it would
+ * cost hundreds of rows of DOM work to change one subtree.
+ */
+export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTMLElement): void {
+	const collapsed = ctx.host.isCollapsed(item.file.path);
+	const hasChildren = item.children.some((c) => !ctx.host.isRowHidden(c));
+	row.querySelector('.pbl-chevron')?.classList.toggle('pbl-expanded', hasChildren && !collapsed);
+	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
+
+	const existing = row.nextElementSibling;
+	if (existing instanceof HTMLElement && existing.hasClass('pbl-children')) {
+		forgetSubtree(ctx.rows, item.children);
+		existing.detach();
+	}
+	const parentEl = row.parentElement;
+	if (!hasChildren || collapsed || !parentEl) return;
+	// createDiv appends to the container; move the group up to sit after its row.
+	const childrenEl = childGroupEl(parentEl, item);
+	parentEl.insertBefore(childrenEl, row.nextSibling);
+	renderForest(ctx, childrenEl, item.children);
+}
+
+/** Drop a removed subtree from the row index so stale elements can't be found. */
+function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[]): void {
+	for (const item of items) {
+		rows.delete(item.file.path);
+		forgetSubtree(rows, item.children);
 	}
 }
 
 /** Render a sibling group, skipping hidden items so aria positions stay true. */
-function renderForest(
-	host: BacklogViewHost,
-	dnd: DragDropController,
-	containerEl: HTMLElement,
-	siblings: BacklogItem[],
-): void {
-	const visible = siblings.filter((item) => !host.isRowHidden(item));
-	visible.forEach((item, i) => renderItem(host, dnd, containerEl, item, { pos: i + 1, count: visible.length }));
+function renderForest(ctx: RowContext, containerEl: HTMLElement, siblings: BacklogItem[]): void {
+	const visible = siblings.filter((item) => !ctx.host.isRowHidden(item));
+	visible.forEach((item, i) => renderItem(ctx, containerEl, item, { pos: i + 1, count: visible.length }));
 }
 
 function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
@@ -65,25 +119,35 @@ function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 		cls: 'pbl-empty-title',
 		text: focused ? `No ${topLevel} items` : 'No backlog items',
 	});
-	empty.createDiv({
-		cls: 'pbl-empty-hint',
-		text: focused
-			? `Nothing at the "${topLevel}" level matches this view. Switch the focus level back to "All levels" in the view options, or create a ${topLevel}.`
-			: `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`,
-	});
+	empty.createDiv({ cls: 'pbl-empty-hint', text: emptyHint(host, focused, topLevel) });
 	const btn = empty.createEl('button', { cls: 'mod-cta' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	btn.createSpan({ text: `New ${topLevel}` });
 	btn.addEventListener('click', () => promptCreateItem(host, topLevel, null));
 }
 
+/**
+ * The empty state has to tell the truth about *why* it is empty: a base full of
+ * plain notes is a different problem than a base with nothing in it.
+ */
+function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): string {
+	if (focused) {
+		return `Nothing at the "${topLevel}" level matches this view. Switch the focus level back to "All levels" in the view options, or create a ${topLevel}.`;
+	}
+	const ignored = host.model?.ignoredCount ?? 0;
+	if (ignored > 0) {
+		return `${ignored} note${ignored === 1 ? '' : 's'} in this base ${ignored === 1 ? 'has' : 'have'} no supported type and no parent, so ${ignored === 1 ? 'it is' : 'they are'} not treated as backlog items. Create your first ${topLevel}, or turn off "Ignore notes outside the hierarchy" in the view options to organize the existing notes.`;
+	}
+	return `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`;
+}
+
 function renderItem(
-	host: BacklogViewHost,
-	dnd: DragDropController,
+	ctx: RowContext,
 	containerEl: HTMLElement,
 	item: BacklogItem,
 	place: { pos: number; count: number },
 ): void {
+	const host = ctx.host;
 	// A row whose children are all hidden renders as a leaf: a chevron expanding
 	// into an empty group would be a lie (its progress bar tells the story).
 	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
@@ -103,31 +167,39 @@ function renderItem(
 	});
 	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
 	if (item.done) row.addClass('pbl-done');
+	if (item.outsideFilter) row.addClass('pbl-outside');
 	row.setCssProps({ '--pbl-depth': String(item.depth) });
 	row.dataset.path = item.file.path;
-	// While filtering, visual neighbors are not real siblings — ranking by drag would mislead.
-	row.draggable = !host.isFiltering();
+	// While filtering, visual neighbors are not real siblings — ranking by drag would
+	// mislead; an ancestor from outside the filter has unknown siblings for the same reason.
+	row.draggable = !host.isFiltering() && !item.outsideFilter;
+	ctx.rows.set(item.file.path, row);
 
-	renderRowLead(host, row, item, { hasChildren, collapsed });
-	renderRowTrailing(host, row, item, childLevel);
-	wireRowEvents(host, row, item, childLevel);
-	dnd.wireRow(row, item, hasChildren, collapsed);
+	renderRowLead(ctx, row, item, { hasChildren, collapsed });
+	renderRowTrailing(ctx, row, item, childLevel);
+	wireRowEvents(ctx, row, item, childLevel);
+	ctx.dnd.wireRow(row, item);
 
 	if (hasChildren && !collapsed) {
-		const childrenEl = containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
-		// The indent guide of this group aligns under the parent's chevron column.
-		childrenEl.setCssProps({ '--pbl-depth': String(item.depth) });
-		renderForest(host, dnd, childrenEl, item.children);
+		renderForest(ctx, childGroupEl(containerEl, item), item.children);
 	}
+}
+
+/** The child group of a row; its indent guide aligns under the parent's chevron column. */
+function childGroupEl(containerEl: HTMLElement, item: BacklogItem): HTMLElement {
+	const childrenEl = containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
+	childrenEl.setCssProps({ '--pbl-depth': String(item.depth) });
+	return childrenEl;
 }
 
 /** Grip, chevron, badge and title. */
 function renderRowLead(
-	host: BacklogViewHost,
+	ctx: RowContext,
 	row: HTMLElement,
 	item: BacklogItem,
 	state: { hasChildren: boolean; collapsed: boolean },
 ): void {
+	const host = ctx.host;
 	// Purely a drag affordance — the row itself is the draggable element.
 	const grip = row.createDiv({ cls: 'pbl-grip', attr: { 'aria-hidden': 'true' } });
 	setIcon(grip, 'grip-vertical');
@@ -143,7 +215,7 @@ function renderRowLead(
 			if (host.isFiltering()) return;
 			host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 			host.persistCollapsedState();
-			host.render();
+			host.refreshSubtree(item);
 		});
 	}
 
@@ -168,6 +240,12 @@ function renderRowLead(
 		const orphan = row.createSpan({ cls: 'pbl-orphan' });
 		setIcon(orphan, 'unlink');
 		setTooltip(orphan, 'Parent is set but not part of this view');
+	}
+
+	if (item.outsideFilter) {
+		const marker = row.createSpan({ cls: 'pbl-outside-marker' });
+		setIcon(marker, 'corner-left-down');
+		setTooltip(marker, "Not in this base's filter — shown to keep the hierarchy");
 	}
 }
 
@@ -200,20 +278,42 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	}
 }
 
-/** State control, chips, progress or count, and the add-child button. */
-function renderRowTrailing(host: BacklogViewHost, row: HTMLElement, item: BacklogItem, childLevel: string): void {
-	if (host.settings.stateKey) renderStateChip(host, row, item);
+/**
+ * Chips, then the fixed trailing columns. State and rollup sit in columns of their
+ * own so they line up across rows: anchored to the row's end, they stay readable as
+ * a column no matter how long the title is or how deep the item sits.
+ */
+function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem, childLevel: string): void {
 	const chips = row.createDiv({ cls: 'pbl-chips' });
-	if (host.settings.showChips) renderChips(host, chips, item);
+	if (ctx.chips.length > 0) renderChips(ctx, chips, item);
 	// Chips may render note links that must not also open the row's own note; the
 	// empty space around them stays part of the row's click target.
 	chips.addEventListener('click', (evt) => {
 		if (evt.target instanceof Element && evt.target.closest('.pbl-chip')) evt.stopPropagation();
 	});
 
-	if (host.settings.stateKey && item.descendantCount > 0) {
+	if (ctx.host.settings.stateKey) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
+	renderRollup(ctx.host, row, item);
+
+	const addBtn = row.createDiv({ cls: 'pbl-add clickable-icon', attr: { 'aria-label': `New ${childLevel}` } });
+	setIcon(addBtn, 'plus');
+	setTooltip(addBtn, `New ${childLevel}`);
+	addBtn.addEventListener('click', (evt) => {
+		evt.stopPropagation();
+		promptCreateItem(ctx.host, childLevel, item);
+	});
+}
+
+/** Progress rollup or descendant count, in a column of its own so both align. */
+function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
+	const settings = host.settings;
+	if (!settings.stateKey && !settings.showCounts) return;
+	const col = row.createDiv({ cls: 'pbl-meta-col' });
+	if (item.descendantCount === 0) return;
+
+	if (settings.stateKey) {
 		const ratio = item.doneDescendants / item.descendantCount;
-		const progress = row.createDiv({ cls: 'pbl-progress' + (ratio === 1 ? ' pbl-complete' : '') });
+		const progress = col.createDiv({ cls: 'pbl-progress' + (ratio === 1 ? ' pbl-complete' : '') });
 		const bar = progress.createDiv({ cls: 'pbl-progress-bar' });
 		bar.createDiv({ cls: 'pbl-progress-fill' }).setCssProps({
 			'--pbl-progress': `${Math.round(ratio * 100)}%`,
@@ -223,57 +323,67 @@ function renderRowTrailing(host: BacklogViewHost, row: HTMLElement, item: Backlo
 			text: `${item.doneDescendants}/${item.descendantCount}`,
 		});
 		setTooltip(progress, `${item.doneDescendants} of ${item.descendantCount} items done`);
-	} else if (host.settings.showCounts && item.descendantCount > 0) {
-		row.createSpan({ cls: 'pbl-count', text: String(item.descendantCount) });
+	} else if (settings.showCounts) {
+		col.createSpan({ cls: 'pbl-count', text: String(item.descendantCount) });
 	}
-
-	const addBtn = row.createDiv({ cls: 'pbl-add clickable-icon', attr: { 'aria-label': `New ${childLevel}` } });
-	setIcon(addBtn, 'plus');
-	setTooltip(addBtn, `New ${childLevel}`);
-	addBtn.addEventListener('click', (evt) => {
-		evt.stopPropagation();
-		promptCreateItem(host, childLevel, item);
-	});
 }
 
 /** Clickable state chip — the inline write surface for the workflow state. */
-function renderStateChip(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
+function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
 	const value = item.stateValue;
+	const cls = 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
+
+	// A note the Base excluded is context: show the state it has, never offer to
+	// write it. An unset one renders nothing at all rather than a "State" button
+	// that would look like an invitation.
+	if (item.outsideFilter) {
+		if (value === null) return;
+		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
+		fillStateChip(chip, item, value);
+		setTooltip(chip, "Not in this base's filter — state can't be changed here");
+		return;
+	}
+
 	// A native button, so assistive tech can activate it — but no Tab stop: the
 	// tree keeps its single-tab-stop model, and the context menu carries the
 	// documented keyboard path (Set state).
-	const chip = row.createEl('button', {
-		cls: 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : ''),
+	const chip = col.createEl('button', {
+		cls,
 		attr: {
 			type: 'button',
 			tabindex: '-1',
 			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
 		},
 	});
-	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
+	fillStateChip(chip, item, value);
 	setTooltip(chip, 'Change state');
 	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
 }
 
-function wireRowEvents(host: BacklogViewHost, row: HTMLElement, item: BacklogItem, childLevel: string): void {
-	row.addEventListener('click', (evt) => {
-		host.selectItem(item, false);
-		host.openItem(item, evt);
-	});
-	row.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1) host.openItemInNewTab(item);
-	});
-	row.addEventListener('contextmenu', (evt) => showItemMenu(host, evt, item, childLevel));
+function fillStateChip(chip: HTMLElement, item: BacklogItem, value: string | null): void {
+	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
+	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
 }
 
-function renderChips(host: BacklogViewHost, containerEl: HTMLElement, item: BacklogItem): void {
+function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childLevel: string): void {
+	row.addEventListener('click', (evt) => {
+		ctx.host.selectItem(item, false);
+		ctx.host.openItem(item, evt);
+	});
+	row.addEventListener('auxclick', (evt) => {
+		if (evt.button === 1) ctx.host.openItemInNewTab(item);
+	});
+	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childLevel));
+}
+
+/** The visible properties to render as chips, with their labels — one lookup per render. */
+function chipProps(host: BacklogViewHost): ChipProp[] {
 	let props: BasesPropertyId[] = [];
 	try {
 		props = host.config.getOrder();
 	} catch {
-		return;
+		return [];
 	}
 	const skip = new Set<string>([
 		'file.name',
@@ -283,15 +393,27 @@ function renderChips(host: BacklogViewHost, containerEl: HTMLElement, item: Back
 	]);
 	// The interactive state chip already shows this property.
 	if (host.settings.stateKey) skip.add(`note.${host.settings.stateKey}`);
-	for (const prop of props) {
-		if (!skip.has(prop)) renderChip(host, containerEl, item, prop);
+	return props.filter((prop) => !skip.has(prop)).map((prop) => ({ prop, label: chipLabel(host, prop) }));
+}
+
+function chipLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
+	try {
+		return host.config.getDisplayName(prop);
+	} catch {
+		return prop.substring(prop.indexOf('.') + 1);
 	}
 }
 
-function renderChip(host: BacklogViewHost, containerEl: HTMLElement, item: BacklogItem, prop: BasesPropertyId): void {
+function renderChips(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem): void {
+	// An ancestor from outside the filter has no Bases row, so no property values.
+	if (!item.entry) return;
+	for (const chip of ctx.chips) renderChip(ctx.host, containerEl, item, chip);
+}
+
+function renderChip(host: BacklogViewHost, containerEl: HTMLElement, item: BacklogItem, prop: ChipProp): void {
 	let value = null;
 	try {
-		value = item.entry.getValue(prop);
+		value = item.entry?.getValue(prop.prop) ?? null;
 	} catch {
 		return;
 	}
@@ -302,13 +424,7 @@ function renderChip(host: BacklogViewHost, containerEl: HTMLElement, item: Backl
 
 	const text = value.toString();
 	const chip = containerEl.createDiv({ cls: 'pbl-chip' });
-	let label = prop.substring(prop.indexOf('.') + 1);
-	try {
-		label = host.config.getDisplayName(prop);
-	} catch {
-		// keep the raw property name
-	}
-	chip.createSpan({ cls: 'pbl-chip-label', text: label });
+	chip.createSpan({ cls: 'pbl-chip-label', text: prop.label });
 	const valueEl = chip.createSpan({ cls: 'pbl-chip-value' });
 	try {
 		value.renderTo(valueEl, host.app.renderContext);

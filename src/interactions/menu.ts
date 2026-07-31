@@ -1,9 +1,10 @@
 import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
-import { BacklogItem, BacklogModel, inferFolderParent } from '../model';
+import { inferFolderParent } from '../folderNotes';
+import { BacklogItem } from '../model';
 import { computeTypeChanges, ItemWrite } from '../ops';
 import { stateMenuValues } from '../settings';
-import { indent, moveToEdge, moveWithinSiblings, outdent, visibleNeighbor } from './structure';
+import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 
 /** Context menu for a backlog row (mouse path). */
@@ -19,18 +20,24 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 	if (!model) return null;
 	const menu = new Menu();
 
+	// Creating a child writes a new note, not this one — the one mutation that is
+	// still fair game on an ancestor the Base excluded. Everything that would edit
+	// the row's own frontmatter is withheld: it is context, not a result.
+	const editable = !item.outsideFilter;
 	menu.addItem((mi) =>
 		mi
 			.setTitle(`New ${childLevel}`)
 			.setIcon('plus')
 			.onClick(() => promptCreateItem(host, childLevel, item)),
 	);
-	addSetTypeMenu(host, menu, item);
-	if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+	if (editable) {
+		addSetTypeMenu(host, menu, item);
+		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+	}
 	menu.addSeparator();
 
-	addMoveSection(host, menu, item, model);
-	addParentLinkSection(host, menu, item);
+	addMoveSection(host, menu, item);
+	if (editable) addParentLinkSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi
@@ -88,18 +95,23 @@ function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite
 	return writes;
 }
 
-function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, model: BacklogModel): void {
-	// The top row of a focused view has no shared sibling ranking to move within.
-	if (item.focusRoot || (item.parent ? item.parent.children : model.roots).indexOf(item) === -1) return;
+function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	// Gate on rendered neighbors: with completed items hidden, a swap with a
-	// hidden sibling would change nothing visibly.
+	// hidden sibling would change nothing visibly. Null for a row that cannot move
+	// at all — a focus root, or an ancestor loaded from outside the filter.
 	const prev = visibleNeighbor(host, item, -1);
 	const next = visibleNeighbor(host, item, 1);
+	// Only *reordering* renumbers the item's own group, so only reordering needs
+	// this. Indent and outdent land the item elsewhere and answer for their own
+	// destination — hiding them here would make the menu offer less than Alt+arrow.
+	const ranked = canReorder(host, item);
 
-	if (prev) {
+	if (ranked && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move up').setIcon('arrow-up').onClick(() => moveWithinSiblings(host, item, -1)),
 		);
+	}
+	if (prev) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(`Indent under "${prev.title}"`)
@@ -107,17 +119,17 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, mo
 				.onClick(() => indent(host, item)),
 		);
 	}
-	if (next) {
+	if (ranked && next) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move down').setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
 		);
 	}
-	if (prev) {
+	if (ranked && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move to top').setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
 		);
 	}
-	if (next) {
+	if (ranked && next) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle('Move to bottom')
@@ -125,7 +137,7 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, mo
 				.onClick(() => moveToEdge(host, item, 'bottom')),
 		);
 	}
-	if (item.parent) {
+	if (outdentTarget(host, item)) {
 		menu.addItem((mi) => mi.setTitle('Outdent').setIcon('indent-decrease').onClick(() => outdent(host, item)));
 	}
 }

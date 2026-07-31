@@ -25,8 +25,13 @@ export class DragDropController {
 		this.els = els;
 	}
 
-	/** Wire the drag handlers of one rendered row. */
-	wireRow(row: HTMLElement, item: BacklogItem, hasChildren: boolean, collapsed: boolean): void {
+	/**
+	 * Wire the drag handlers of one rendered row. Expansion state is read live: an
+	 * expand no longer rebuilds the tree, so a value captured here would go stale.
+	 */
+	wireRow(row: HTMLElement, item: BacklogItem): void {
+		const hasChildren = () => item.children.some((child) => !this.host.isRowHidden(child));
+
 		row.addEventListener('dragstart', (evt) => {
 			this.draggedPath = item.file.path;
 			if (evt.dataTransfer) {
@@ -43,7 +48,7 @@ export class DragDropController {
 				this.setDropIndicator(row, null);
 				return;
 			}
-			const zone = this.zoneFor(evt, row, hasChildren);
+			const zone = this.zoneFor(evt, row, hasChildren());
 			const target = this.host.model ? dropTargetFor(this.host.model, item, zone, dragged) : null;
 			if (!target) {
 				this.setDropIndicator(row, null);
@@ -52,7 +57,8 @@ export class DragDropController {
 			evt.preventDefault();
 			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
 			this.setDropIndicator(row, zone);
-			if (zone === 'inside' && hasChildren && collapsed) this.scheduleHoverExpand(row, item.file.path);
+			const collapsed = this.host.isCollapsed(item.file.path);
+			if (zone === 'inside' && hasChildren() && collapsed) this.scheduleHoverExpand(row, item);
 			else if (this.hoverExpand?.path === item.file.path) this.cancelHoverExpand();
 		});
 
@@ -66,7 +72,7 @@ export class DragDropController {
 			evt.preventDefault();
 			evt.stopPropagation();
 			const dragged = this.getDraggedItem();
-			const zone = this.zoneFor(evt, row, hasChildren);
+			const zone = this.zoneFor(evt, row, hasChildren());
 			const target =
 				dragged && dragged !== item && this.host.model
 					? dropTargetFor(this.host.model, item, zone, dragged)
@@ -160,7 +166,8 @@ export class DragDropController {
 		row.classList.toggle('pbl-drop-inside', zone === 'inside');
 	}
 
-	private scheduleHoverExpand(row: HTMLElement, path: string): void {
+	private scheduleHoverExpand(row: HTMLElement, item: BacklogItem): void {
+		const path = item.file.path;
 		if (this.hoverExpand?.path === path) return;
 		this.cancelHoverExpand();
 		// The chevron animates while the timer runs — "keep hovering to expand".
@@ -170,7 +177,7 @@ export class DragDropController {
 			row.removeClass('pbl-hover-expanding');
 			if (this.host.setCollapsed(path, false)) {
 				this.host.persistCollapsedState();
-				this.host.render();
+				this.host.refreshSubtree(item);
 			}
 		}, 600);
 		this.hoverExpand = { path, timer, row };

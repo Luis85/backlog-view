@@ -25,9 +25,14 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 	// Judge existence and infer folders from the FULL tree — a focused view with no
 	// matching rows still knows where the hidden items live.
 	const hasItems = (host.model?.realRoots.length ?? 0) > 0;
-	// In folder mode, children belong next to their parent's folder note.
+	// In folder mode, children belong next to their parent's folder note — unless that
+	// parent is only here as context, because its folder is where the Base's filter
+	// isn't: the new note would vanish on the next refresh. Its explicit parent link
+	// keeps the hierarchy right wherever it lands, so fall back to the usual folder.
 	const parentFolder =
-		host.settings.folderHierarchy && parentItem ? normalizeFolder(parentItem.file.parent?.path) : null;
+		host.settings.folderHierarchy && parentItem && !parentItem.outsideFilter
+			? normalizeFolder(parentItem.file.parent?.path)
+			: null;
 	const inferredFolder =
 		parentFolder ?? (host.settings.newItemFolder || (hasItems ? inferFolder(host.model) : ''));
 	// Without items or a configured folder there is nothing to infer from, and a note
@@ -109,8 +114,13 @@ function inferFolder(model: BacklogModel | null): string {
 	const counts = new Map<string, number>();
 	const visit = (items: BacklogItem[]) => {
 		for (const item of items) {
-			const path = item.file.parent?.path ?? '';
-			counts.set(path, (counts.get(path) ?? 0) + 1);
+			// Ancestors loaded from outside the filter live wherever they live — often
+			// outside the base's folder entirely. Counting them would aim new notes
+			// there, straight out of the view they were created from.
+			if (!item.outsideFilter) {
+				const path = item.file.parent?.path ?? '';
+				counts.set(path, (counts.get(path) ?? 0) + 1);
+			}
 			visit(item.children);
 		}
 	};

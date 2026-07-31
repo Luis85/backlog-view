@@ -25,11 +25,12 @@ live-vault smoke test.
 | `src/main.ts` | Registers the view via `registerBasesView` | — |
 | `src/settings.ts` | View options schema, config resolution, `configProblems` validation | node tests |
 | `src/model.ts` | Pure tree building: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
+| `src/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
 | `src/ops.ts` | ALL frontmatter writes: drop plans, ranking, backfill, note creation | node tests |
 | `src/dropTargets.ts` | Pure drop-target math (zones, no-op/cycle/stale-link rules) | node tests |
 | `src/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `src/view.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
-| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering | jsdom tests |
+| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering (`RowContext` carries the per-pass row index and hoisted config lookups) | jsdom tests |
 | `src/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
 | `src/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `src/interactions/menu.ts` | Context menu | jsdom tests |
@@ -70,6 +71,15 @@ code so imports stay cycle-free.
   from depth.
 - The autoType cascade retypes only descendants whose type matches a configured
   level; custom types outside the ladder are deliberate user data.
+- Scope (`settings.hierarchyOnly`, on by default): a base filtered by folder returns
+  every note living there, so `pruneOutsideHierarchy` drops the ones that are not work
+  items — a note belongs when it has a *supported* type (matching a configured level) or
+  a parent (explicit, empty-marker, folder-inferred, or unresolvable). The test runs per
+  root subtree, so one participant keeps the whole component (untyped children, untyped
+  containers of typed items). Pruned notes leave `model.byPath`/`items` entirely, so
+  backfill and rollups never see them; `model.ignoredCount` carries the number for the
+  toolbar advisory and the empty state. Turning the option off restores "every note is
+  an item" — the fixture opt-out (`unscoped`) in the tests.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - `model.roots` is the RENDERED forest (synthetic under focus); every data operation
@@ -90,6 +100,84 @@ code so imports stay cycle-free.
   neighbor (`visibleNeighbor`) so no command is visually inert; a parent whose
   children all hide renders as a leaf (chevron and aria-expanded follow visible
   children, not `children.length`).
+- Outside-filter ancestors (`settings.showOutsideParents`, on by default): the Bases query
+  returns matches without their parents, which would flatten the tree, so `loadOutsideParents`
+  walks each item's parent chain through the *metadata cache* and adds the missing notes with
+  `entry: null` and `outsideFilter: true`. They are context, not results: no Bases row (so no
+  property chips), not draggable, excluded from every ranking path (`siblingPosition`,
+  `siblingContext`, `outdent`, the move menu) because their real siblings were never loaded,
+  and skipped by `computeInitWrites`. They ARE valid drop parents and can take new children.
+  Their rollups describe the visible subtree only. `entry` is nullable for exactly this
+  reason — anything reading `item.entry` must handle null. The seed for the walk is
+  `outsideParentSeed`, which mirrors `linkParents`' precedence (explicit link, else the
+  nearest folder note *in the vault* when `folderHierarchy` is on) — seeding from explicit
+  links alone leaves filtered folder hierarchies flat, since inference only ever looks in
+  `byPath`.
+- One rule covers the whole context-row feature, and every past bug in it was a place
+  that forgot the rule rather than a new rule: **an `outsideFilter` row is never a write
+  target, never a ranking peer, and never a source of anything derived from the Base's
+  results** (counts, level breakdown, state vocabulary, creation folder). It renders, it
+  parents, and that is all. "Never a ranking peer" means never written to and never
+  renumbered — its `order` is still *read* (`afterHighestKnown`, `endOfSiblingsOrder`,
+  the backfill's max-order scan), because the row is on screen and a rank that ignored
+  it would place an item above something the user can see. Ask that question of any new code touching the tree; the
+  "write safety with context rows, across every entry point" test in `view.test.ts`
+  drives every interaction against a fixture with context rows above, beside and between
+  results, so a new write path fails it without anyone predicting the surface.
+- "Derived from the results" includes numbers computed *while walking the tree*, not just
+  code that reads a model collection: `assignAll` traverses **through** a context row to
+  the results below it but never counts it, so a rollup reports what the Base returned and
+  an excluded note's own state can neither skew a progress bar nor keep a finished subtree
+  on screen. Two invariant tests in `view.test.ts` state this from the rule rather than
+  the implementation — one for writes, one for rollups.
+- `model.results` is the Base's own rows and `model.items` is everything rendered.
+  Anything answering "what is in this base" takes `results`; only rendering, navigation
+  and collapse state take `items`.
+- A context row is visible only while it is placing a visible result: `isRowHidden` hides
+  one whose children have all gone, whatever hid them, so a done subtree can't leave an
+  empty scaffold behind.
+- An `outsideFilter` row is NOT always an ancestor: a filter that returns an Epic and its
+  PBI but not the Feature between them loads that Feature as context *below* a result, so
+  any subtree walk can meet one. The autoType cascade therefore stops at such a row and
+  skips its whole branch — retyping only the levels below it would half-update the ladder.
+- The view NEVER writes to a note the Base excluded — enforced structurally in
+  `applySafely`, which refuses the WHOLE batch (loudly) if any write targets an
+  `outsideFilter` item, so a new write path cannot reopen the hole by omission. It rejects
+  rather than filters: dropping the offending write alone would apply the rest and leave
+  the hierarchy half-updated. The UI withholds every control that would
+  produce one: the state chip renders as a static `.pbl-state-static` div (and not at all
+  when unset), and the context menu drops Set type, Set state and the parent-link actions.
+  `New <child>` stays — it writes a *different* note — but it must not land that note
+  outside the filter either: `inferFolder` counts only result rows, and folder mode's
+  "children go beside the parent's folder note" rule is skipped for a context parent
+  (the explicit parent link keeps the hierarchy right wherever it lands).
+  `observedStates` likewise skips them: an excluded parent's state is not this base's
+  vocabulary and must not become assignable to results.
+- Renumbering rewrites a whole sibling
+  group, so `computeDropWrites` refuses that path when the group holds an `outsideFilter`
+  row and places the item after the highest known order instead (`afterHighestKnown`) —
+  the single choke point that makes the invariant hold. Because that fallback lands the
+  item last, the *positional* operations refuse such a group up front instead of landing
+  somewhere other than aimed: `siblingPosition` (before/after drops), `canReorder` (the
+  move menu, Alt+arrow) and `outdentTarget`. Appends — dropping *into* a parent, the
+  top-level strip, indent — stay available, since last is what they mean anyway. Gate each
+  command on what it actually does: `canReorder` covers only the four move commands, while
+  Indent follows its neighbour and Outdent answers for its own destination — gating those
+  on `canReorder` too would make the menu offer less than Alt+arrow already allows.
+- `outsideParentSeed` is resolved for every item even when `showOutsideParents` is off: it
+  is also the evidence (`item.parentExists`) that a note is anchored in the hierarchy.
+  Without it `hierarchyOnly` prunes a folder-inferred Base result whose folder note simply
+  wasn't loaded — dropping a row the query explicitly returned. Only the *loading* of the
+  ancestors is gated by the option.
+- Known limitation, not specific to context rows: in a filtered base any parent whose
+  children are partly excluded has a partial `children` list, so `insidePosition` +
+  `computeInsertOrder` can compute an order that duplicates an excluded sibling's. Equal
+  orders fall back to `entryIndex` and the group self-corrects on the next renumbering
+  drop. Fixing it properly needs the complete child set (backlinks + folder scan), which
+  `computeDropWrites` cannot reach without giving up its purity.
+- `breakCycles` re-roots `cycleEntry(item)`, the node that actually closes the loop, not the
+  first unreachable item found: with outside-filter ancestors the unreachable item is usually
+  a healthy match hanging below a cycle, and re-rooting it would strand a valid parent link.
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
   at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
 - Folder mode (`settings.folderHierarchy`): explicit links beat folder-note inference;
@@ -118,3 +206,17 @@ code so imports stay cycle-free.
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
 - The collapsed-item list persists in the `.base` file via `config.set('collapsedItems')`
   — prune paths against `model.byPath` when persisting.
+- Rendering cost is the scaling limit (a few hundred rows is a normal backlog), so:
+  expand/collapse calls `host.refreshSubtree(item)` — which re-renders that row's child
+  group in place — never `host.render()`; the view keeps a path → row element index
+  (`rowEls`) plus the selected row, so no interaction scans the DOM; and per-render
+  config lookups (`getOrder`, `getDisplayName`) live on `RowContext`, not in the per-row
+  path. `refreshRowChildren` must prune the subtree it removes from `rowEls`, and
+  anything captured at wire time (drag handlers) must read expansion state live, because
+  a targeted refresh leaves surrounding rows in place. Data updates still rebuild
+  everything — skipping that needs to account for arbitrary chip property values.
+- Row layout is columnar: `.pbl-chips` is the flexible middle, and `.pbl-state-col` /
+  `.pbl-meta-col` are fixed-width trailing columns so the state chip and the rollup line
+  up across rows regardless of title length and indent. Both columns render on every row
+  whenever their feature is configured — a leaf without a rollup still gets the empty
+  `.pbl-meta-col`, or the columns after it would shift per row.

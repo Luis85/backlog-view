@@ -73,25 +73,21 @@
 	flex: 0 0 auto;
 }
 
+/* A bare row: the input keeps its own border, background and focus ring, so the
+   wrapper only has to line the icon and the clear button up beside it. */
 .pbl-filter {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
-	background-color: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	padding: 0 var(--size-4-1);
 	margin-left: var(--size-4-1);
-}
-
-.pbl-filter:focus-within {
-	border-color: var(--interactive-accent);
 }
 
 .pbl-filter-icon {
 	display: inline-flex;
 	align-items: center;
 	color: var(--text-faint);
+	/* Clear of the input's own box rather than tucked against it */
+	margin-inline-end: var(--size-2-3);
 }
 
 .pbl-filter-icon .svg-icon {
@@ -100,15 +96,9 @@
 }
 
 .pbl-filter-input {
-	border: none;
-	outline: none;
-	background: transparent;
-	box-shadow: none;
 	width: 130px;
 	height: 24px;
-	padding: 0;
 	font-size: var(--font-ui-small);
-	color: var(--text-normal);
 	transition: width 120ms ease-in-out;
 }
 
@@ -196,7 +186,7 @@
 	padding-inline-end: var(--size-4-1);
 }
 
-.pbl-grouping-note {
+.pbl-toolbar-note {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
@@ -205,12 +195,12 @@
 	cursor: help;
 }
 
-.pbl-grouping-note-icon {
+.pbl-toolbar-note-icon {
 	display: inline-flex;
 	align-items: center;
 }
 
-.pbl-grouping-note-icon .svg-icon {
+.pbl-toolbar-note-icon .svg-icon {
 	width: 12px;
 	height: 12px;
 }
@@ -368,6 +358,52 @@
 }
 
 .pbl-orphan .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* ------------------------------------------------------------------ columns */
+
+/* The state chip and the rollup sit in fixed columns anchored to the row's end,
+   so they line up across rows instead of trailing each item's title. */
+/* Both may shrink rather than push the title out of a narrow pane — alignment
+   degrades under pressure instead of costing the row its content. */
+.pbl-state-col {
+	display: flex;
+	align-items: center;
+	flex: 0 1 auto;
+	width: var(--pbl-state-col, 116px);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.pbl-meta-col {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 0 1 auto;
+	width: var(--pbl-meta-col, 84px);
+	min-width: 0;
+}
+
+/* An ancestor the Base's filter excluded: context for the tree, not a result */
+.pbl-row.pbl-outside .pbl-title {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.pbl-row.pbl-outside .pbl-badge {
+	opacity: 0.65;
+}
+
+.pbl-outside-marker {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+	flex: 0 0 auto;
+}
+
+.pbl-outside-marker .svg-icon {
 	width: 12px;
 	height: 12px;
 }
@@ -563,15 +599,20 @@
 	line-height: 1.7;
 	height: auto;
 	box-shadow: none;
-	flex: 0 0 auto;
+	flex: 0 1 auto;
 	margin: 0;
-	margin-inline-start: var(--size-4-2);
 	cursor: var(--cursor);
 }
 
-.pbl-state-chip:hover {
+.pbl-state-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
+}
+
+/* The state of a row outside the filter: shown, but not a write surface */
+.pbl-state-static {
+	cursor: default;
+	opacity: 0.75;
 }
 
 .pbl-state-chip .svg-icon {

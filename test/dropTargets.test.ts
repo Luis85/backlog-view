@@ -76,7 +76,7 @@ describe('dropTargetFor', () => {
 
 	it('allows the same slot when it clears a stale parent link', () => {
 		const vault = new FakeVault();
-		vault.addFile('Root.md', { frontmatter: { order: 10 } });
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
@@ -115,7 +115,7 @@ describe('rootDropTarget', () => {
 
 	it('still fires for a last root whose parent link is stale', () => {
 		const vault = new FakeVault();
-		vault.addFile('Root.md', { frontmatter: { order: 10 } });
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
@@ -127,5 +127,72 @@ describe('rootDropTarget', () => {
 		const { vault } = fixture();
 		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Feature' });
 		expect(rootDropTarget(model, model.roots[0])).toBeNull();
+	});
+});
+
+describe('dropTargetFor with parents outside the filter', () => {
+	function outsideFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('PBI 1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI 2.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic' });
+		const filtered = vault.entries().filter((e) => e.file.path !== 'Epic.md');
+		const model = buildModel(vault.app, filtered, settings);
+		return { model, epic: model.roots[0], children: model.roots[0].children };
+	}
+
+	it('refuses to rank against an ancestor whose siblings were never loaded', () => {
+		const { model, epic, children } = outsideFixture();
+		expect(epic.outsideFilter).toBe(true);
+
+		expect(dropTargetFor(model, epic, 'before', children[0])).toBeNull();
+		expect(dropTargetFor(model, epic, 'after', children[0])).toBeNull();
+	});
+
+	it('still accepts drops into it, so a match can be re-parented home', () => {
+		const { model, epic, children } = outsideFixture();
+		const target = dropTargetFor(model, epic, 'inside', children[1]);
+		// Already its last child — the no-op rule applies, as for any other parent
+		expect(target).toBeNull();
+
+		const moved = dropTargetFor(model, epic, 'inside', children[0]);
+		expect(moved?.parent).toBe(epic);
+	});
+});
+
+describe('reordering a group that holds an outside-filter row', () => {
+	/** Epic E over Feature A (context, its PBI matched) and Feature B (a result). */
+	function mixedGroup() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Feature', order: 99 } });
+		const filtered = vault.entries().filter((e) =>
+			['Feature B.md', 'PBI.md', 'Mover.md'].includes(e.file.path),
+		);
+		const model = buildModel(vault.app, filtered, settings);
+		return {
+			model,
+			epic: model.byPath.get('Epic.md') as BacklogItem,
+			featureB: model.byPath.get('Feature B.md') as BacklogItem,
+			mover: model.byPath.get('Mover.md') as BacklogItem,
+		};
+	}
+
+	it('refuses positional drops even when the hovered row is a result', () => {
+		const { model, epic, featureB, mover } = mixedGroup();
+		// Feature B is an ordinary result, but its sibling group holds a context row
+		expect(featureB.outsideFilter).toBe(false);
+		expect(epic.children.some((c) => c.outsideFilter)).toBe(true);
+
+		expect(dropTargetFor(model, featureB, 'before', mover)).toBeNull();
+		expect(dropTargetFor(model, featureB, 'after', mover)).toBeNull();
+	});
+
+	it('still allows appending into the parent', () => {
+		const { model, epic, mover } = mixedGroup();
+		expect(dropTargetFor(model, epic, 'inside', mover)?.parent).toBe(epic);
 	});
 });

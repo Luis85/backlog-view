@@ -163,6 +163,6 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 function collapseKeepingSelection(host: BacklogViewHost, item: BacklogItem, collapsed: boolean): void {
 	host.setCollapsed(item.file.path, collapsed);
 	host.persistCollapsedState();
-	host.render();
+	host.refreshSubtree(item);
 	host.selectItem(item);
 }

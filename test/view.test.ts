@@ -1602,3 +1602,723 @@ describe('completed items', () => {
 		expect(config.setCalls).toContainEqual({ key: 'showCompleted', value: true });
 	});
 });
+
+describe('hierarchy scope', () => {
+	/** A backlog folder that also holds ordinary notes, as `file.inFolder()` returns it. */
+	function mixedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Backlog/Sprint notes.md');
+		vault.addFile('Backlog/README.md');
+		return vault;
+	}
+
+	it('renders only the work items and says how many notes it skipped', () => {
+		const { containerEl } = makeView(mixedVault());
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A']);
+		const note = containerEl.querySelector('.pbl-ignored-note');
+		expect(note?.textContent).toBe('2 notes ignored');
+		// The tooltip has to name the option that brings them back
+		expect((note as HTMLElement).dataset.tooltip).toContain('Ignore notes outside the hierarchy');
+		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
+	});
+
+	it('renders every note and no advisory when the option is off', () => {
+		const { containerEl } = makeView(mixedVault(), { hierarchyOnly: false });
+
+		expect(titlesOf(containerEl).sort()).toEqual(['Epic A', 'README', 'Sprint notes']);
+		expect(containerEl.querySelector('.pbl-ignored-note')).toBeNull();
+	});
+
+	it('explains an empty view caused by the scope', () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Sprint notes.md');
+		const { containerEl } = makeView(vault);
+
+		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(hint).toContain('1 note in this base has no supported type and no parent');
+		expect(hint).toContain('Ignore notes outside the hierarchy');
+	});
+
+	it('keeps the generic hint when the base is simply empty', () => {
+		const { containerEl } = makeView(new FakeVault());
+		expect(containerEl.querySelector('.pbl-empty-hint')?.textContent).toContain("Point this base's filter");
+	});
+});
+
+describe('row columns', () => {
+	function statedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('A very long feature title indeed.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Short.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		return vault;
+	}
+
+	it('puts the state chip in a column of its own, after the flexible chips', () => {
+		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
+
+		for (const row of rows(containerEl)) {
+			const col = row.querySelector('.pbl-state-col');
+			expect(col).not.toBeNull();
+			expect(col?.querySelector('.pbl-state-chip')).not.toBeNull();
+			// The chips absorb the free space, so the column lands at a fixed offset
+			expect(col?.previousElementSibling?.classList.contains('pbl-chips')).toBe(true);
+		}
+	});
+
+	it('gives every row a rollup column, even leaves, so the columns line up', () => {
+		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
+
+		const epic = rowByTitle(containerEl, 'Epic');
+		const leaf = rowByTitle(containerEl, 'Short');
+		expect(epic.querySelector('.pbl-meta-col .pbl-progress-label')?.textContent).toBe('1/2');
+		expect(leaf.querySelector('.pbl-meta-col')).not.toBeNull();
+		expect(leaf.querySelector('.pbl-progress')).toBeNull();
+		expect(epic.querySelector('.pbl-state-col')?.nextElementSibling).toBe(epic.querySelector('.pbl-meta-col'));
+	});
+
+	it('drops both columns when neither states nor counts are configured', () => {
+		const { containerEl } = makeView(statedVault(), { showCounts: false });
+		const epic = rowByTitle(containerEl, 'Epic');
+		expect(epic.querySelector('.pbl-state-col')).toBeNull();
+		expect(epic.querySelector('.pbl-meta-col')).toBeNull();
+	});
+});
+
+describe('targeted subtree rendering', () => {
+	it('collapses and expands without rebuilding the rest of the tree', () => {
+		const { containerEl } = makeView(fixture());
+		const epicA = rowByTitle(containerEl, 'Epic A');
+		const epicB = rowByTitle(containerEl, 'Epic B');
+		const chevron = epicB.querySelector<HTMLElement>('.pbl-chevron');
+
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+		expect(epicB.getAttribute('aria-expanded')).toBe('false');
+		expect(chevron?.classList.contains('pbl-expanded')).toBe(false);
+		// Untouched rows keep their identity — the tree was not rebuilt
+		expect(rowByTitle(containerEl, 'Epic A')).toBe(epicA);
+		expect(rowByTitle(containerEl, 'Epic B')).toBe(epicB);
+
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		expect(epicB.getAttribute('aria-expanded')).toBe('true');
+		expect(rowByTitle(containerEl, 'Epic A')).toBe(epicA);
+	});
+
+	it('keeps re-expanded children fully interactive', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const chevron = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-chevron');
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// A rebuilt child row must still open, drag and rank like any other
+		const b2 = rowByTitle(containerEl, 'Feature B2');
+		b2.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(vault.opened.map((o) => o.path)).toEqual(['Feature B2.md']);
+
+		drag(b2, rowByTitle(containerEl, 'Feature B1'), 'before');
+		await flush();
+		// Ranked ahead of Feature B1 (order 10), a full spacing below it
+		expect(vault.fm('Feature B2.md').order).toBe(0);
+	});
+
+	it('drops the collapsed subtree from the selection index', () => {
+		const { view, containerEl } = makeView(fixture());
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Feature B1.md') as never);
+		expect(tree.getAttribute('aria-activedescendant')).not.toBeNull();
+
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// The selected row is gone; nothing may point at a detached element
+		expect(tree.getAttribute('aria-activedescendant')).toBeNull();
+	});
+});
+
+describe('parents outside the filter', () => {
+	/** The Base returns only the PBI; its Feature and Epic live outside the filter. */
+	function filteredView(configValues: Record<string, unknown> = {}) {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const config = new FakeViewConfig(configValues);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = config;
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
+		view.onDataUpdated();
+		return { view, config, containerEl, vault };
+	}
+
+	it('renders the match inside its full hierarchy', () => {
+		const { containerEl } = filteredView();
+
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature', 'PBI']);
+		expect(rowByTitle(containerEl, 'PBI').getAttribute('aria-level')).toBe('3');
+	});
+
+	it('marks the context rows and keeps them out of drag and drop', () => {
+		const { containerEl } = filteredView();
+		const epic = rowByTitle(containerEl, 'Epic');
+		const pbi = rowByTitle(containerEl, 'PBI');
+
+		expect(epic.classList.contains('pbl-outside')).toBe(true);
+		expect(epic.draggable).toBe(false);
+		expect(epic.querySelector('.pbl-outside-marker')).not.toBeNull();
+		// The match itself is an ordinary, fully interactive row
+		expect(pbi.classList.contains('pbl-outside')).toBe(false);
+		expect(pbi.draggable).toBe(true);
+		expect(pbi.querySelector('.pbl-outside-marker')).toBeNull();
+	});
+
+	it('offers no move commands on a context row', () => {
+		const { containerEl } = filteredView();
+
+		rowByTitle(containerEl, 'Feature').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).not.toContain('Move up');
+		expect(titles).not.toContain('Move down');
+		expect(titles).not.toContain('Outdent');
+		// Creating a child under it is still the natural thing to do
+		expect(titles).toContain('New PBI');
+	});
+
+	it('ignores Alt+arrow on a context row', async () => {
+		const { view, containerEl, vault } = filteredView();
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Epic.md') as never);
+
+		key(tree, 'ArrowDown', { altKey: true });
+		await flush();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('drops the context rows when the option is off', () => {
+		const { containerEl } = filteredView({ showOutsideParents: false });
+
+		expect(titlesOf(containerEl)).toEqual(['PBI']);
+		// Without its parent in the view, the match reads as a broken link again
+		expect(rowByTitle(containerEl, 'PBI').querySelector('.pbl-orphan')).not.toBeNull();
+	});
+})
+
+describe('moves in a group that holds an outside-filter row', () => {
+	/** Epic E over Feature A (context, because its PBI matched) and Feature B (a result). */
+	function mixedView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = {
+			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
+		};
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('offers no move commands on a result whose siblings include a context row', () => {
+		const { containerEl } = mixedView();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).not.toContain('Move up');
+		expect(titles).not.toContain('Move down');
+		expect(titles).not.toContain('Move to top');
+	});
+
+	it('offers no outdent when it would rank against a context parent', () => {
+		const { containerEl } = mixedView();
+
+		rowByTitle(containerEl, 'PBI').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		// Its parent Feature A is context, so outdenting would renumber that group
+		expect(titles).not.toContain('Outdent');
+	});
+
+	it('writes nothing when Alt+arrow targets such a group', async () => {
+		const { view, containerEl, vault } = mixedView();
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
+
+		key(tree, 'ArrowUp', { altKey: true });
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+		expect(vault.writeLog).toEqual([]);
+	});
+});
+
+describe('context rows are read-only', () => {
+	/** Filter returns only the PBI; its Feature and Epic load as context. */
+	function readOnlyView(configValues: Record<string, unknown> = { stateProperty: 'note.status' }) {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Feature.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'Active' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Feature' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig(configValues);
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('shows the state of a context row without making it a write surface', () => {
+		const { containerEl } = readOnlyView();
+		const epicChip = rowByTitle(containerEl, 'Epic').querySelector('.pbl-state-chip');
+		const pbiChip = rowByTitle(containerEl, 'PBI').querySelector('.pbl-state-chip');
+
+		// Still legible, but a div rather than a button, and with no menu behind it
+		expect(epicChip?.textContent).toContain('Active');
+		expect(epicChip?.tagName).toBe('DIV');
+		expect(epicChip?.classList.contains('pbl-state-static')).toBe(true);
+		expect(pbiChip?.tagName).toBe('BUTTON');
+	});
+
+	it('opens no state menu when a context chip is clicked', () => {
+		const { containerEl, vault } = readOnlyView();
+		Menu.lastShown = null;
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-state-chip')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(Menu.lastShown).toBeNull();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('withholds every frontmatter command from the context menu', () => {
+		const { containerEl } = readOnlyView();
+
+		rowByTitle(containerEl, 'Epic').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).not.toContain('Set type');
+		expect(titles).not.toContain('Set state');
+		expect(titles).not.toContain('Clear parent link');
+		// Creating a child writes a new note, not this one — still offered
+		expect(titles).toContain('New Feature');
+		expect(titles).toContain('Open in new tab');
+	});
+
+	it('refuses a write aimed at a context note even if one gets through', async () => {
+		const { view, vault } = readOnlyView();
+		const epic = view.model?.byPath.get('Epic.md');
+
+		const applied = await view.applySafely([{ file: epic?.file as never, state: 'Done' }]);
+
+		expect(applied).toBe(false);
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('keeps writes to real results working', async () => {
+		const { view, vault } = readOnlyView();
+		const pbi = view.model?.byPath.get('PBI.md');
+
+		const applied = await view.applySafely([{ file: pbi?.file as never, state: 'Done' }]);
+
+		expect(applied).toBe(true);
+		expect(vault.fm('PBI.md').status).toBe('Done');
+	});
+});
+
+describe('new-item folder inference with context rows', () => {
+	it('ignores ancestors that live outside the filtered folder', () => {
+		const vault = new FakeVault();
+		// A deep chain of ancestors elsewhere would outvote the two real results
+		vault.addFile('Elsewhere/Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Elsewhere/Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Elsewhere/Sub.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
+		vault.addFile('Backlog/A.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
+		vault.addFile('Backlog/B.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = {
+			data: vault.entries().filter((e) => e.file.path.startsWith('Backlog/')),
+		};
+		view.onDataUpdated();
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// Three context ancestors in Elsewhere/ must not outvote two results in Backlog/
+		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
+		expect(detail).toContain('folder "Backlog"');
+		expect(detail).not.toContain('Elsewhere');
+	});
+});
+
+describe('creating a child under a context parent', () => {
+	/** Folder mode, a base scoped to Backlog/, and a parent living outside it. */
+	function outsideParentView() {
+		const vault = new FakeVault();
+		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true });
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('keeps the new note in the results folder, not beside the excluded parent', () => {
+		const { containerEl } = outsideParentView();
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
+		expect(detail).toContain('Under "Epic"');
+		expect(detail).toContain('folder "Backlog"');
+		expect(detail).not.toContain('Projects');
+	});
+
+	it('still writes the parent link, so the hierarchy survives the different folder', async () => {
+		const { containerEl, vault } = outsideParentView();
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'New work' });
+		await flush();
+
+		expect(vault.fm('Backlog/New work.md')['parent']).toBe('[[Epic]]');
+	});
+
+	it('still puts children beside a parent that is a real result', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true });
+		anyView.data = { data: vault.entries() };
+		view.onDataUpdated();
+
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
+		expect(detail).toContain('folder "Backlog/Epic"');
+	});
+});
+
+describe('move commands that do not rank', () => {
+	/** Epic over Feature A (context, its PBI matched) and Feature B (a result). */
+	function mixedSiblings() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = {
+			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
+		};
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('still offers indent, which appends instead of ranking', () => {
+		const { containerEl } = mixedSiblings();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		// Reordering stays out, but indenting under the previous sibling is safe
+		expect(titles).not.toContain('Move up');
+		expect(titles).toContain('Indent under "Feature A"');
+	});
+
+	it('indents into a mixed group without writing to the context row', async () => {
+		const { containerEl, vault } = mixedSiblings();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.items.find((i) => i.titleText.startsWith('Indent'))?.clickHandler?.();
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
+		expect(vault.fm('Feature B.md').parent).toBe('[[Feature A]]');
+	});
+});
+
+describe('write safety with context rows, across every entry point', () => {
+	/**
+	 * Context rows in all three structural positions: above a result (Epic), beside
+	 * one (Feature A next to Feature B), and between two (Mid, whose parent Feature B
+	 * and child Task are both results). Nine review findings were each one surface of
+	 * "a context note got written to"; this asserts the rule itself rather than a
+	 * surface, so a new write path fails here without anyone having predicted it.
+	 */
+	const CONTEXT_PATHS = ['Epic.md', 'Feature A.md', 'Mid.md'];
+
+	function stressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
+		// The context row in the middle is done and the result below it is not, so
+		// counting either one in a rollup would show up as a wrong number.
+		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
+
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		anyView.data = {
+			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
+		};
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	/** Fire every menu command on a row, including the ones nested in submenus. */
+	async function triggerEveryCommand(row: HTMLElement): Promise<void> {
+		row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		for (const item of Menu.lastShown?.items ?? []) {
+			item.clickHandler?.();
+			await flush();
+			for (const sub of item.submenu?.items ?? []) {
+				sub.clickHandler?.();
+				await flush();
+			}
+		}
+	}
+
+	it('puts context rows in all three structural positions', () => {
+		const { view } = stressView();
+		const at = (p: string) => view.model?.byPath.get(p);
+		expect(at('Epic.md')?.outsideFilter).toBe(true);
+		// Beside a result
+		expect(at('Feature A.md')?.outsideFilter).toBe(true);
+		expect(at('Feature B.md')?.outsideFilter).toBe(false);
+		// Between two results
+		expect(at('Mid.md')?.outsideFilter).toBe(true);
+		expect(at('Mid.md')?.parent?.file.path).toBe('Feature B.md');
+		expect(at('Task.md')?.outsideFilter).toBe(false);
+	});
+
+	it('never writes to one, whatever is done to any row', async () => {
+		const { containerEl, vault } = stressView();
+		const allRows = rows(containerEl);
+		expect(allRows).toHaveLength(6);
+
+		// Every drag of every row onto every other row, in all three zones
+		for (const from of allRows) {
+			for (const to of allRows) {
+				if (from === to) continue;
+				for (const zone of ['before', 'after', 'inside'] as const) {
+					drag(from, to, zone);
+					await flush();
+				}
+			}
+		}
+		// The "move to top level" strip
+		for (const from of allRows) {
+			from.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+			const strip = containerEl.querySelector<HTMLElement>('.pbl-root-drop');
+			strip?.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
+			strip?.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
+			await flush();
+		}
+		// Every context-menu command, every state chip, every structural shortcut
+		const tree = treeOf(containerEl);
+		for (const row of allRows) {
+			await triggerEveryCommand(row);
+			row.querySelector<HTMLElement>('.pbl-state-chip')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			for (const state of Menu.lastShown?.items ?? []) {
+				state.clickHandler?.();
+				await flush();
+			}
+			row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			for (const key_ of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+				key(tree, key_, { altKey: true });
+				await flush();
+			}
+		}
+		// And the backfill, which walks the whole real tree
+		containerEl
+			.querySelectorAll<HTMLElement>('.pbl-icon-btn')[0]
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		const touched = [...new Set(vault.writeLog.map((w) => w.path))];
+		expect(touched.filter((p) => CONTEXT_PATHS.includes(p))).toEqual([]);
+		// Not vacuous: the result rows really were written to along the way
+		expect(touched.length).toBeGreaterThan(0);
+	});
+});
+
+describe('context rows follow the results they place', () => {
+	/** Epic (context, open) over a single done PBI, with completed items hidden. */
+	function doneUnderContext() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('hides a context row once nothing below it is visible', () => {
+		const { view, containerEl } = doneUnderContext();
+
+		// The Epic is open, so its own subtreeDone is false — it must still go
+		expect(view.model?.byPath.get('Epic.md')?.subtreeDone).toBe(false);
+		expect(titlesOf(containerEl)).toEqual([]);
+		expect(containerEl.querySelector('.pbl-empty-filter')?.textContent).toContain('All 1 item is done and hidden');
+	});
+
+	it('counts the results, not the scaffolding', () => {
+		const { containerEl } = doneUnderContext();
+		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('0 of 1');
+	});
+
+	it('brings the context row back with its result', () => {
+		const { view, containerEl } = doneUnderContext();
+		(view as unknown as { settings: { showCompleted: boolean } }).settings.showCompleted = true;
+		view.render();
+
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'PBI']);
+		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
+	});
+
+	it('keeps a context row whose other branch still has a visible result', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
+		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
+		view.onDataUpdated();
+
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Open']);
+		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 of 2');
+	});
+});
+
+describe('toolbar figures describe the Base results', () => {
+	function filteredWithState(showCompleted = true) {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
+		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted });
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
+		view.onDataUpdated();
+		return { view, containerEl };
+	}
+
+	it('breaks down levels without the context ancestor', () => {
+		const { containerEl } = filteredWithState();
+		const tooltip = containerEl.querySelector<HTMLElement>('.pbl-count-label')?.dataset.tooltip;
+
+		// The Epic is scaffolding, not one of this base's two PBIs
+		expect(tooltip).toBe('2 PBI');
+	});
+
+	it('counts only results as hidden in the completed toggle', () => {
+		const { containerEl } = filteredWithState(false);
+		const label = containerEl.querySelector('.pbl-completed-toggle')?.getAttribute('aria-label');
+
+		expect(label).toBe('Show completed items (1 hidden)');
+	});
+});
+
+describe('rollups describe the Base results only', () => {
+	/** Reuses the stress fixture: context rows above, beside and between results. */
+	interface Node {
+		children: Node[];
+		outsideFilter: boolean;
+		done: boolean;
+		descendantCount: number;
+		doneDescendants: number;
+	}
+
+	it('never counts a context row, anywhere in the tree', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
+		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		anyView.data = {
+			data: vault.entries().filter((e) => !['Epic.md', 'Feature A.md', 'Mid.md'].includes(e.file.path)),
+		};
+		view.onDataUpdated();
+
+		// Stated from the rule, not from the implementation: a rollup counts the
+		// results below an item, and nothing else.
+		const results = (item: Node): number =>
+			item.children.reduce((n, c) => n + (c.outsideFilter ? 0 : 1) + results(c), 0);
+		const doneResults = (item: Node): number =>
+			item.children.reduce((n, c) => n + (!c.outsideFilter && c.done ? 1 : 0) + doneResults(c), 0);
+
+		const items = (view.model?.items ?? []) as unknown as Node[];
+		expect(items.length).toBe(6);
+		for (const item of items) {
+			expect(item.descendantCount).toBe(results(item));
+			expect(item.doneDescendants).toBe(doneResults(item));
+		}
+		// Not vacuous: the done context row and the open result under it are both there
+		const featureB = view.model?.byPath.get('Feature B.md');
+		expect(featureB?.descendantCount).toBe(1);
+		expect(featureB?.doneDescendants).toBe(0);
+	});
+});

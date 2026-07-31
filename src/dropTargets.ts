@@ -19,6 +19,17 @@ function clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): bool
 	return parent === null && dragged.parent === null && dragged.hasParentValue;
 }
 
+/**
+ * True when a sibling group can be *reordered*. Ranking rewrites the whole group
+ * when the gaps run out, and the view never writes to a note the Base excluded —
+ * so in a group holding one, an item would silently land at the end instead of
+ * where it was aimed. Appending (dropping *into* a parent, the top-level strip,
+ * indent) stays available: landing last is what those mean anyway.
+ */
+export function reorderableGroup(siblings: BacklogItem[]): boolean {
+	return !siblings.some((s) => s.outsideFilter);
+}
+
 /** True when `parent` is the dragged item itself or one of its descendants. */
 export function isInvalidParent(parent: BacklogItem | null, dragged: BacklogItem): boolean {
 	for (let p: BacklogItem | null = parent; p !== null; p = p.parent) {
@@ -64,11 +75,13 @@ function siblingPosition(
 	dragged: BacklogItem,
 ): DropTarget | null {
 	// The top row of a focused view groups items from different real parents;
-	// there is no shared sibling ranking to insert into.
-	if (item.focusRoot) return null;
+	// there is no shared sibling ranking to insert into. An ancestor pulled in from
+	// outside the filter is the same problem: most of its siblings were never loaded.
+	if (item.focusRoot || item.outsideFilter) return null;
 	const parent = item.parent;
 	const fullList = parent ? parent.children : model.roots;
 	const siblings = fullList.filter((c) => c !== dragged);
+	if (!reorderableGroup(siblings)) return null;
 	const idx = siblings.indexOf(item);
 	if (idx === -1) return null;
 	return { parent, siblings, insertIndex: zone === 'before' ? idx : idx + 1 };

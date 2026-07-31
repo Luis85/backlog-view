@@ -19,6 +19,10 @@ Azure DevOps Boards.
 ## How it works
 
 - All items live **flat in one folder** — the hierarchy comes from properties, not subfolders.
+- A folder holds more than work items, so the view only shows the notes that **belong to
+  the hierarchy**: a `type` matching one of the configured levels, or a parent. Meeting
+  notes, references and READMEs sitting in the same folder stay out of the tree (and out
+  of the backfill). The toolbar says how many notes it skipped.
 - Each item is an ordinary markdown note. The view reads three frontmatter properties:
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
@@ -52,7 +56,10 @@ Manually, the equivalent is:
    `file.inFolder("Backlog")`.
 3. In the view switcher of the Base, add a new view and pick **Product Backlog**.
 4. Drop existing notes into the folder, or use **+ New Epic** in the view to create items.
-5. If your notes don't have `type`/`order` yet, click the ✨ toolbar button once.
+5. If your notes don't have `type`/`order` yet, click the ✨ toolbar button once. Notes
+   with neither a supported `type` nor a `parent` aren't treated as backlog items — to
+   organize a folder of plain notes by dragging, turn **Ignore notes outside the
+   hierarchy** off in the view options first.
 
 Example `.base` file:
 
@@ -138,6 +145,9 @@ Rules to know:
   level" marker (deleting it would just re-infer the folder parent). **Clear parent
   link** on an orphaned item removes the property entirely, so in folder mode the item
   returns to its folder position.
+- A folder note is a parent, so every note below it counts as a backlog item even without
+  a `type` — in folder mode the folder structure *is* the hierarchy. Notes in folders
+  without a folder note above them still need a supported `type` to appear.
 - New child items are created in their parent note's folder.
 - If your domain folders also contain folder notes inside the filter, they become the
   top level — add a level name for them (e.g. `Domain, Epic, Feature, PBI, Task`).
@@ -147,6 +157,11 @@ Rules to know:
 Set the **State property** (e.g. `status`) in the view options and parents show a
 progress bar with a done count (e.g. `3/7`), while done items dim out. Which values count
 as done is configurable (`Done, Closed, Completed, Removed` by default, case-insensitive).
+
+The state chip and the progress rollup sit in **fixed columns at the end of each row**,
+so they line up vertically no matter how long an item's title is or how deep it sits in
+the tree — the eye can scan states down the column instead of hunting for them behind
+each title. Enabled properties render as chips in the flexible space before them.
 
 Each row then carries a clickable **state chip**: pick a new state from its menu (also
 available via right-click → **Set state**) and the note's frontmatter updates without
@@ -189,6 +204,75 @@ shortcuts where sensible):
 | <kbd>Escape</kbd> | Clear the filter, then the selection |
 | <kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the context menu for the selected item |
 
+### Filtered bases keep their tree
+
+A Base filtered to one level, one state or one tag returns matching items but not their
+parents — and a backlog with no parents is just a list. So the view loads the missing
+**ancestors** from the vault and renders them as context: filter to `type == "PBI"` and
+each PBI still appears under its real Feature and Epic.
+
+```text
+▾ [Epic]    Customer Portal          ↳   (context — not in the filter)
+  ▾ [Feature] Self-service login     ↳
+      [PBI]   Password reset flow        (the actual match)
+```
+
+Context rows are italic and dimmed, with a `↳` marker. They are **not results**, so:
+
+- they can't be dragged, moved, indented or outdented — the Base never returned their
+  real siblings, so there is no sibling order to rank them within;
+- **nothing ever writes into them.** Their state chip is display-only, and the context
+  menu drops **Set type**, **Set state** and the parent-link commands — a note the filter
+  excluded is not yours to edit from a view that doesn't contain it. Re-ranking a sibling
+  group also renumbers all of it when the gaps run out, so a group that contains a context
+  row offers no reordering at all: no before/after drop, no **Move up/down/to top/to
+  bottom**, no **Outdent** — even for an ordinary result row that happens to sit next to
+  one. Dropping *into* a parent, the top-level strip and **Indent** keep working, because
+  those append;
+- they don't influence where new notes go: the folder for new items is inferred from the
+  Base's own results, never from ancestors that live somewhere else in the vault — and
+  **New \<child\>** on a context row creates the note in that results folder rather than
+  beside the excluded parent, so it doesn't vanish on the next refresh (its `parent` link
+  still points at the right item);
+- they don't contribute workflow states: the state menu offers the values your results
+  use, not one an excluded ancestor happens to carry;
+- they don't count. The item count, the per-level breakdown and the "N hidden" figure all
+  describe what the Base returned; and a context row disappears as soon as nothing below
+  it is visible, so hiding completed work never leaves empty scaffolding behind;
+- they stop the auto-type cascade. A filter can leave a context row *between* two results
+  (the Epic and its PBI returned, the Feature between them not), and moving the item above
+  it retypes only down to that row — its branch keeps the types it has, rather than being
+  half-rewritten around a note that can't be touched;
+- they *are* valid drop targets, so you can drag a match onto its parent as usual, and
+  **New \<child\>** works on them;
+- the ✨ backfill never writes properties into them;
+- they don't count anywhere: descendant counts and progress bars report **the results the
+  Base returned**, so a context row in the middle of a chain is passed through rather than
+  tallied, and its own state can't skew a rollup or keep a finished subtree on screen.
+  (Children the filter excluded are still not counted — a rollup describes the visible
+  subtree, not the whole backlog.)
+
+The last point generalizes into the one real caveat of working in a filtered base: **any
+parent whose children are partly filtered out has a partial sibling list**, whether it is
+a context row or a match. Dropping *into* such a parent appends after the last *visible*
+child, so the new `order` is computed without knowing the excluded children's values and
+can duplicate one of them. Nothing breaks — items with equal orders fall back to the
+Base's own sort, and the group is renumbered by the next drop that needs the room — but
+if you care about exact ranking, do the reordering in an unfiltered base.
+
+Turn **Show parents outside the filter** off to go back to a flat list of matches, where
+items whose parent is missing show the unlink icon.
+
+### Large backlogs
+
+Expanding or collapsing a row re-renders only that row's children, selection and keyboard
+navigation use a path index instead of searching the tree, and the Base's property lookups
+happen once per render rather than once per row — so a backlog of several hundred items
+stays responsive to interaction. A **write** (dragging, a state change, anything that
+touches frontmatter) still re-renders every row, because the Base re-runs its query and
+any visible property may have changed; collapsing the levels you're not working on is the
+best lever there.
+
 ### Ranking details
 
 Sibling order is a number (`10, 20, 30…`). Dropping between two items assigns the halfway
@@ -205,6 +289,8 @@ Open the view options in the Bases toolbar to configure:
 | Order property | `order` | Numeric sibling rank |
 | Item type property | `type` | Hierarchy level of the item |
 | Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors and icons |
+| Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
+| Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
 | Focus level | All levels | Re-root the tree at one level, like ADO's per-level backlogs |
 | Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
@@ -218,16 +304,26 @@ Notes:
 - The `order` property always wins for ranked siblings. Items **without** an `order`
   sort last — in the order the Base's **sort** setting produces, so sorting by e.g.
   priority or modified date arranges your unranked items until you rank them.
+- **Ignore notes outside the hierarchy** decides what counts as a backlog item. A note
+  qualifies when its `type` is one of the configured **Levels**, or when it has a parent —
+  an explicit link (even a broken one, so stale links stay fixable), the empty "pinned to
+  top level" marker, or a folder note in folder mode. The test runs per subtree, so an
+  untyped child of a typed item stays, and so does an untyped or custom-typed note that
+  holds typed ones. Everything else — the meeting notes, the folder's README, a
+  `type: meeting-note` page — is skipped, and the toolbar shows an `N notes ignored`
+  advisory. Turn the option off to show every note the base returns (useful for
+  organizing a folder of plain notes by dragging them into a hierarchy).
 - **Group by** is ignored — the hierarchy is the grouping. The toolbar says so when a
   group-by is configured.
 - A Base **limit** truncates the result set, which can drop parents while keeping their
-  children — the children then appear as top-level items with an unlink icon. Prefer
-  filters over limits for backlogs.
+  children. Their ancestors are loaded back in as context rows (see above); the counts
+  and rollups on those rows still describe only what the Base returned, so prefer filters
+  over limits for backlogs.
 - Creating an item from a focused view's toolbar makes it top-level (parentless) at that
   level; assign a parent afterwards by dragging it into place.
-- Items whose `parent` links to a note outside the current filter results are shown at the
-  top level with an unlink icon. Dropping such an item at the top level clears the stale
-  link.
+- Items whose `parent` links to a note that does not exist at all are shown at the top
+  level with an unlink icon. Dropping such an item at the top level clears the stale link.
+  A parent that exists but sits outside the filter is loaded as a context row instead.
 - When the view is empty and no folder is configured, creating the first item asks for
   the target folder (with autocomplete) and saves the choice to the view options.
 

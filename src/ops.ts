@@ -71,7 +71,24 @@ export function computeDropWrites(
 	if (order !== null) {
 		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
 	}
+	// Renumbering rewrites every sibling, and the view never writes to a note the
+	// Base excluded. Placing the item past the highest order we can see keeps the
+	// drop working while touching only the note being moved. Callers refuse the
+	// *positional* drops in such a group, so landing last is what was asked for.
+	if (siblings.some((s) => s.outsideFilter)) {
+		const order = afterHighestKnown(siblings);
+		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
+	}
 	return [...renumberWrites(dragged, siblings, insertIndex, { parentField, typeField }), ...cascade];
+}
+
+/** One spacing beyond the highest order in the group, ignoring siblings that have none. */
+function afterHighestKnown(siblings: BacklogItem[]): number {
+	let max = 0;
+	for (const sibling of siblings) {
+		if (sibling.order !== null && sibling.order > max) max = sibling.order;
+	}
+	return Math.floor(max) + ORDER_SPACING;
 }
 
 /** The parent frontmatter update, or undefined when the parent is unchanged. */
@@ -113,6 +130,11 @@ export function computeTypeChanges(
 	const lastIdx = settings.levels.length - 1;
 	const walk = (node: BacklogItem) => {
 		for (const child of node.children) {
+			// The cascade stops at a note the Base excluded — a filter can leave one
+			// *between* two results (Epic and PBI returned, the Feature between them
+			// not). We may not retype it, and retyping only the levels below it would
+			// leave a worse ladder than leaving that branch as it stands.
+			if (child.outsideFilter) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
 				const targetLevel = settings.levels[Math.min(newBaseIdx + (child.depth - dragged.depth), lastIdx)];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
@@ -172,11 +194,22 @@ function renumberWrites(
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
 	const writes: ItemWrite[] = [];
 	const visit = (siblings: BacklogItem[]) => {
+		// Deliberately reads context siblings' orders too. They are *rendered*, so a
+		// rank that ignored them would place a backfilled item above a row the user
+		// can see — a backfill that fills in blanks must not reorder the tree. Not
+		// writing to them is the rule; not looking at them would break this. The drop
+		// and creation paths (afterHighestKnown, endOfSiblingsOrder) do the same.
 		let maxOrder = 0;
 		for (const item of siblings) {
 			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;
 		}
 		for (const item of siblings) {
+			// Ancestors pulled in from outside the filter are context, not results —
+			// the backfill must not write properties into notes the base excluded.
+			if (item.outsideFilter) {
+				visit(item.children);
+				continue;
+			}
 			const write: ItemWrite = { file: item.file };
 			let needed = false;
 			if (item.order === null) {
