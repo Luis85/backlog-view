@@ -1,8 +1,9 @@
 import { Notice } from 'obsidian';
-import { reorderableGroup } from '../dropTargets';
+import { reorderableGroup } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
-import { BacklogItem } from '../model';
-import { computeInitWrites, DropTarget } from '../ops';
+import { BacklogItem } from '../../domain/model';
+import { DropTarget } from '../../domain/dropTargets';
+import { computeInitWrites } from '../../domain/writePlan';
 
 /**
  * Structural operations shared by the context menu and keyboard shortcuts.

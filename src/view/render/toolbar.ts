@@ -3,8 +3,8 @@ import { BacklogViewHost, BusyState } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
-import { BacklogModel, displayType } from '../model';
-import { configProblems } from '../settings';
+import { BacklogModel, displayType } from '../../domain/model';
+import { configProblems } from '../../domain/settings';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {

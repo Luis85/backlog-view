@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LEVELS, defaultSettings, getViewOptions, resolveSettings, stateMenuValues } from '../src/settings';
+import { DEFAULT_LEVELS, defaultSettings, getViewOptions, resolveSettings, stateMenuValues } from '../../src/domain/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {

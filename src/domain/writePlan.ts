@@ -1,6 +1,14 @@
-import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
+import { TFile } from 'obsidian';
+import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel, childLevelIndex } from './model';
 import { BacklogSettings } from './settings';
+
+/**
+ * What a change to the tree *would* write, worked out without touching anything.
+ * Applying an `ItemWrite` is `storage/frontmatter.ts`'s job; deciding what should
+ * be in one is this module's, which is why every function here is pure and every
+ * ordering rule is testable without a vault.
+ */
 
 /** Spacing between freshly assigned order values, leaving room to drop items in between. */
 export const ORDER_SPACING = 10;
@@ -21,47 +29,6 @@ export interface ItemWrite {
 	typeName?: string;
 	/** New value for the state property; ignored when no state property is configured. */
 	state?: string;
-}
-
-export interface DropTarget {
-	parent: BacklogItem | null;
-	/** Children of the new parent in visual order, excluding the dragged item. */
-	siblings: BacklogItem[];
-	/** Position among `siblings` where the dragged item should land. */
-	insertIndex: number;
-}
-
-/**
- * Apply writes sequentially so concurrent edits of the same file cannot race.
- * `onProgress` reports after each file so a long batch — a backfill over a whole
- * backlog is hundreds of notes — can show how far along it is. Each await yields
- * to the event loop, so the view stays interactive throughout.
- */
-export async function applyWrites(
-	app: App,
-	settings: BacklogSettings,
-	writes: ItemWrite[],
-	onProgress?: (done: number, total: number) => void,
-): Promise<void> {
-	let done = 0;
-	for (const write of writes) {
-		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
-			if (write.removeParentKey) {
-				delete fm[settings.parentKey];
-			} else if (write.parent !== undefined) {
-				if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
-				// In folder mode a deleted key would just re-infer the folder parent;
-				// an explicitly empty value pins the item to the top level instead.
-				else if (settings.folderHierarchy) fm[settings.parentKey] = '';
-				else delete fm[settings.parentKey];
-			}
-			if (write.order !== undefined) fm[settings.orderKey] = write.order;
-			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
-			// The stateKey may be unset (progress tracking off) — never write to an empty key.
-			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
-		});
-		onProgress?.(++done, writes.length);
-	}
 }
 
 /**
@@ -244,71 +211,8 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 	return writes;
 }
 
-export interface NewItemSpec {
-	folder: string;
-	title: string;
-	typeName: string;
-	parent: TFile | null;
-	order: number;
-}
 
-/** Create a new backlog note in the configured folder with its hierarchy properties set. */
-export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
-	const trimmed = spec.folder.trim().replace(/^\/+|\/+$/g, '');
-	const folder = trimmed ? normalizePath(trimmed) : '';
-	await ensureFolder(app, folder);
-
-	const base = sanitizeTitle(spec.title);
-	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
-	let path = filePath(base);
-	for (let i = 1; app.vault.getAbstractFileByPath(path) !== null; i++) {
-		path = filePath(`${base} ${i}`);
-	}
-
-	// One atomic write: a create-then-update pair could fail in between and leave
-	// a blank note without its hierarchy properties behind.
-	const fm: Record<string, unknown> = { [settings.typeKey]: spec.typeName };
-	if (spec.parent) fm[settings.parentKey] = wikilinkTo(app, spec.parent, path);
-	// In folder mode a missing parent key would let folder inference nest this
-	// intentionally top-level note — pin it with an explicitly empty parent.
-	else if (settings.folderHierarchy) fm[settings.parentKey] = '';
-	fm[settings.orderKey] = spec.order;
-	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
-}
-
-/**
- * Always write parents as quoted wikilinks so the metadata cache picks them up
- * as frontmatter links regardless of the user's link format setting.
- */
-function wikilinkTo(app: App, target: TFile, sourcePath: string): string {
-	return '[[' + app.metadataCache.fileToLinktext(target, sourcePath) + ']]';
-}
-
+/** Orders are fractional ranks; four decimals is well past the gap that triggers renumbering. */
 function roundOrder(value: number): number {
 	return Math.round(value * 10000) / 10000;
-}
-
-function sanitizeTitle(title: string): string {
-	const cleaned = title
-		.replace(/[\\/:*?"<>|#^[\]]/g, '-')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.replace(/^[-\s.]+|[-\s]+$/g, '');
-	return cleaned.length > 0 ? cleaned : 'Untitled';
-}
-
-export async function ensureFolder(app: App, folder: string): Promise<void> {
-	if (!folder) return;
-	const parts = folder.split('/');
-	let current = '';
-	for (const part of parts) {
-		current = current ? `${current}/${part}` : part;
-		if (app.vault.getAbstractFileByPath(current) === null) {
-			try {
-				await app.vault.createFolder(current);
-			} catch {
-				// Folder may have been created concurrently; creation of the note will surface real errors.
-			}
-		}
-	}
 }

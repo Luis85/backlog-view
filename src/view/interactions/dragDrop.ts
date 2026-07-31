@@ -1,6 +1,7 @@
-import { dropTargetFor, rootDropTarget, zoneForRatio } from '../dropTargets';
-import { BacklogViewHost, DropZone } from '../host';
-import { BacklogItem } from '../model';
+import { dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
+import { DropZone } from '../../domain/dropTargets';
+import { BacklogViewHost } from '../host';
+import { BacklogItem } from '../../domain/model';
 
 export interface DragDropElements {
 	viewEl: HTMLElement;

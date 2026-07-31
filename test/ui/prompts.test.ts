@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FolderSuggest, TitlePromptModal } from '../src/modal';
-import { installObsidianDom } from './dom-helpers';
-import { FakeVault } from './helpers';
-import { TFolder } from './obsidian-mock';
+import { FolderSuggest, TitlePromptModal } from '../../src/ui/prompts';
+import { installObsidianDom } from '../helpers/dom';
+import { FakeVault } from '../helpers/vault';
+import { TFolder } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 

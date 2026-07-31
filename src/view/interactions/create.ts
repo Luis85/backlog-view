@@ -1,9 +1,10 @@
 import { Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { TitlePromptModal } from '../modal';
-import { BacklogItem, BacklogModel } from '../model';
-import { createBacklogItem, ORDER_SPACING } from '../ops';
-import { BacklogSettings, configProblems } from '../settings';
+import { TitlePromptModal } from '../../ui/prompts';
+import { BacklogItem, BacklogModel } from '../../domain/model';
+import { ORDER_SPACING } from '../../domain/writePlan';
+import { createBacklogItem } from '../../storage/frontmatter';
+import { BacklogSettings, configProblems } from '../../domain/settings';
 
 /** Level for the primary New button: the focus level when active, else the top level. */
 export function newItemLevel(settings: BacklogSettings, model: BacklogModel): string {

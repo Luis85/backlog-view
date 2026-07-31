@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { baseFileContent, createBacklogBase, promptCreateBacklogBase } from '../src/scaffold';
-import { installObsidianDom } from './dom-helpers';
-import { FakeVault } from './helpers';
-import { Modal, Notice } from './obsidian-mock';
+import { baseFileContent, createBacklogBase } from '../../src/storage/baseFile';
+import { installObsidianDom } from '../helpers/dom';
+import { FakeVault } from '../helpers/vault';
+import { Modal, Notice } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 
@@ -57,27 +57,5 @@ describe('createBacklogBase', () => {
 
 		expect(first.path).toBe('Backlog/Product Backlog.base');
 		expect(second.path).toBe('Backlog/Product Backlog 1.base');
-	});
-});
-
-describe('promptCreateBacklogBase', () => {
-	it('prefills the folder, scaffolds the base and opens it', async () => {
-		const vault = new FakeVault();
-		promptCreateBacklogBase(vault.app as never);
-		const modal = Modal.lastOpened;
-		if (!modal) throw new Error('prompt not opened');
-
-		const input = modal.contentEl.querySelector('input');
-		if (!input) throw new Error('folder input missing');
-		expect(input.value).toBe('Backlog');
-
-		input.value = 'Roadmap';
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		await flush();
-
-		expect(vault.files.has('Roadmap/Product Backlog.base')).toBe(true);
-		expect(vault.opened).toEqual([{ path: 'Roadmap/Product Backlog.base', mode: true }]);
-		expect(Notice.messages.some((m) => m.startsWith('Created'))).toBe(true);
 	});
 });

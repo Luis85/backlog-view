@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildModel, childLevelIndex, displayType } from '../src/model';
-import { defaultSettings } from '../src/settings';
-import { FakeVault } from './helpers';
+import { buildModel, childLevelIndex, displayType } from '../../src/domain/model';
+import { defaultSettings } from '../../src/domain/settings';
+import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */

@@ -1,9 +1,9 @@
 import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
-import { inferFolderParent } from '../folderNotes';
-import { BacklogItem } from '../model';
-import { computeTypeChanges, ItemWrite } from '../ops';
-import { stateMenuValues } from '../settings';
+import { inferFolderParent } from '../../domain/folderNotes';
+import { BacklogItem } from '../../domain/model';
+import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 

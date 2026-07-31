@@ -3,7 +3,7 @@ import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
 import { DragDropController } from '../interactions/dragDrop';
 import { showItemMenu, showStateMenu } from '../interactions/menu';
-import { BacklogItem, childLevelIndex, displayType } from '../model';
+import { BacklogItem, childLevelIndex, displayType } from '../../domain/model';
 
 const BADGE_COLOR_COUNT = 8;
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */

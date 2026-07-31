@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { dropTargetFor, isInvalidParent, rootDropTarget, zoneForRatio } from '../src/dropTargets';
-import { BacklogItem, buildModel } from '../src/model';
-import { defaultSettings } from '../src/settings';
-import { FakeVault } from './helpers';
+import { dropTargetFor, isInvalidParent, rootDropTarget, zoneForRatio } from '../../src/domain/dropTargets';
+import { BacklogItem, buildModel } from '../../src/domain/model';
+import { defaultSettings } from '../../src/domain/settings';
+import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
 

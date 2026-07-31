@@ -5,7 +5,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			// The real 'obsidian' package is types-only; tests run against a small mock.
-			obsidian: fileURLToPath(new URL('./test/obsidian-mock.ts', import.meta.url)),
+			obsidian: fileURLToPath(new URL('./test/helpers/obsidian-mock.ts', import.meta.url)),
 		},
 	},
 	test: {

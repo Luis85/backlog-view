@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ProductBacklogView } from '../src/view';
-import { installObsidianDom } from './dom-helpers';
-import { FakeVault, FakeViewConfig } from './helpers';
-import { FileView, Menu, MenuItem, Modal, Notice } from './obsidian-mock';
+import { ProductBacklogView } from '../../src/view/backlogView';
+import { installObsidianDom } from '../helpers/dom';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FileView, Menu, MenuItem, Modal, Notice } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 

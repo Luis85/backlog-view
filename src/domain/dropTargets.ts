@@ -1,6 +1,21 @@
-import { DropZone } from './host';
 import { BacklogItem, BacklogModel } from './model';
-import { DropTarget } from './ops';
+
+/** Which third of a row the pointer is over, and so what a release there means. */
+export type DropZone = 'before' | 'after' | 'inside';
+
+/**
+ * A resolved landing place: whose child the item becomes, and where among that
+ * parent's children. Declared here with the functions that work it out, not with
+ * the writer that consumes it — a position is a fact about the tree, and computing
+ * one must not depend on anything that mutates the vault.
+ */
+export interface DropTarget {
+	parent: BacklogItem | null;
+	/** Children of the new parent in visual order, excluding the dragged item. */
+	siblings: BacklogItem[];
+	/** Position among `siblings` where the dragged item should land. */
+	insertIndex: number;
+}
 
 /**
  * Map a pointer position (0..1 within the row height) to a drop zone. Rows

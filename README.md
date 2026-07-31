@@ -391,14 +391,26 @@ npm run analyze        # fallow: dead code, duplication, complexity, dependencie
 npm run check          # everything in one shot — the pre-commit gate
 ```
 
-The entry point is `src/main.ts`; the view lives in `src/view.ts`, tree building in
-`src/model.ts`, and all frontmatter writes in `src/ops.ts`.
+`src/` is organised in four layers, each of which may reach anything below it and
+nothing above:
+
+| | |
+| --- | --- |
+| `domain/` | What a backlog *is*: tree building, ranking, drop-target math, view options. Reads the vault, never writes it, never touches the DOM. |
+| `storage/` | The only place anything is persisted: frontmatter, new notes, the `.base` file, collapse state. |
+| `view/` | The Bases view itself — rendering, drag & drop, keyboard, menus. |
+| `commands/`, `ui/` | The "Create backlog" command, and the shared prompts. |
+
+The direction is enforced, not just documented: `eslint.config.mjs` fails the build if
+`domain/` imports from `view/`, and bans `processFrontMatter`, `vault.create` and
+`load/saveLocalStorage` anywhere outside `storage/` — so a new write path can't appear
+by accident.
 
 The pure logic — tree building, drop planning, ranking, property backfill, note
 creation — is covered by node unit tests, and the interaction layer (rendering, drag &
 drop, keyboard, menus, creation prompts) by jsdom tests that dispatch real DOM events
 against the actual view, all running against a small mock of the `obsidian` module
-(`test/obsidian-mock.ts`). Coverage (v8) is threshold-enforced. Linting uses Obsidian's
+(`test/helpers/obsidian-mock.ts`). Coverage (v8) is threshold-enforced. Linting uses Obsidian's
 official [`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin)
 ruleset plus size/complexity budgets, and [fallow](https://github.com/fallow-rs/fallow)
 gates dead code, duplication, complexity hotspots (CRAP, fed by the coverage report) and

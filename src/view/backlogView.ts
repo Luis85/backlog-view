@@ -1,14 +1,16 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
-import { collapseStoreIdentity, loadCollapseState, saveCollapseState, ViewIdentity } from './collapseStore';
+import { collapseStoreIdentity, loadCollapseState, saveCollapseState, ViewIdentity } from '../storage/collapseStore';
 import { BacklogViewHost, BusyState, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 import { DragDropController } from './interactions/dragDrop';
 import { handleTreeKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
-import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from './model';
-import { applyWrites, computeDropWrites, DropTarget, ItemWrite } from './ops';
+import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from '../domain/model';
+import { DropTarget } from '../domain/dropTargets';
+import { computeDropWrites, ItemWrite } from '../domain/writePlan';
+import { applyWrites } from '../storage/frontmatter';
 import { renderToolbar, syncBusy } from './render/toolbar';
 import { refreshRowChildren, renderLoadingState, renderTree, rowContext, RowContext } from './render/rows';
-import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from './settings';
+import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 

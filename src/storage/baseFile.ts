@@ -1,8 +1,14 @@
-import { App, normalizePath, Notice, TFile } from 'obsidian';
-import { FolderPromptModal } from './modal';
-import { ensureFolder } from './ops';
+import { App, normalizePath, TFile } from 'obsidian';
+import { ensureFolder } from './frontmatter';
 
-const DEFAULT_BACKLOG_FOLDER = 'Backlog';
+/**
+ * Writing the `.base` file itself — the one vault write that is not a work item.
+ * It lives beside the frontmatter writer rather than with the command that calls
+ * it, so "everything that puts bytes in the vault is in storage/" stays true
+ * without an exception to remember.
+ */
+
+export const DEFAULT_BACKLOG_FOLDER = 'Backlog';
 const BASE_FILE_NAME = 'Product Backlog';
 
 /**
@@ -44,27 +50,4 @@ export async function createBacklogBase(app: App, folderInput: string): Promise<
 		path = normalizePath(`${folder}/${BASE_FILE_NAME} ${i}.base`);
 	}
 	return app.vault.create(path, baseFileContent(folder));
-}
-
-/** Command entry point: ask for the folder, scaffold the Base, and open it. */
-export function promptCreateBacklogBase(app: App): void {
-	new FolderPromptModal(app, {
-		heading: 'Create product backlog',
-		description:
-			'A folder for your backlog items and a configured .base file will be created here.',
-		ctaLabel: 'Create backlog',
-		defaultFolder: DEFAULT_BACKLOG_FOLDER,
-		onSubmit: (folder) => {
-			void (async () => {
-				try {
-					const file = await createBacklogBase(app, folder);
-					await app.workspace.getLeaf(true).openFile(file);
-					new Notice(`Created "${file.path}". Add your first epic from the view.`);
-				} catch (e) {
-					console.error('Product Backlog: failed to scaffold the base', e);
-					new Notice('Could not create the backlog. See the developer console for details.');
-				}
-			})();
-		},
-	}).open();
 }

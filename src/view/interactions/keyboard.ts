@@ -1,5 +1,5 @@
 import { BacklogViewHost } from '../host';
-import { BacklogItem, BacklogModel } from '../model';
+import { BacklogItem, BacklogModel } from '../../domain/model';
 import { indent, moveWithinSiblings, outdent } from './structure';
 
 /** Items currently rendered, top to bottom, honoring collapsed subtrees and the filter. */

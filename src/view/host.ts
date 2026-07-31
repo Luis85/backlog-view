@@ -1,11 +1,10 @@
 import { App, BasesViewConfig } from 'obsidian';
-import { BacklogItem, BacklogModel } from './model';
-import { DropTarget, ItemWrite } from './ops';
-import { BacklogSettings } from './settings';
+import { BacklogItem, BacklogModel } from '../domain/model';
+import { DropTarget } from '../domain/dropTargets';
+import { ItemWrite } from '../domain/writePlan';
+import { BacklogSettings } from '../domain/settings';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
-
-export type DropZone = 'before' | 'after' | 'inside';
 
 /** Progress of the write batch in flight, for the toolbar's busy indicator. */
 export interface BusyState {
