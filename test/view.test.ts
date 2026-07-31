@@ -919,6 +919,96 @@ describe('toolbar controls', () => {
 	});
 });
 
+describe('toolbar controls are reachable without a mouse', () => {
+	/** Every control the toolbar renders, by the label a user would hear. */
+	function controlsByLabel(containerEl: HTMLElement): Map<string, HTMLElement> {
+		const toolbar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
+		if (!toolbar) throw new Error('toolbar not rendered');
+		const found = new Map<string, HTMLElement>();
+		for (const el of Array.from(toolbar.querySelectorAll<HTMLElement>('[aria-label]'))) {
+			found.set(el.getAttribute('aria-label') ?? '', el);
+		}
+		return found;
+	}
+
+	it('renders every activatable toolbar control as a real button', () => {
+		const vault = fixture();
+		vault.addFile('Done.md', { frontmatter: { type: 'Epic', order: 30, status: 'Done' } });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status', focusLevel: 'Feature' });
+		const controls = controlsByLabel(containerEl);
+
+		// The full set a keyboard user has to be able to reach. Anything that only
+		// responds to a click is invisible to Tab, so a div here is a real defect.
+		for (const label of [
+			'New item of another type',
+			'Assign missing type and order properties',
+			'Expand all',
+			'Collapse all',
+			'Hide completed items',
+			'Filter items',
+			'Show all levels',
+		]) {
+			const el = controls.get(label);
+			expect(el, `no toolbar control labelled "${label}"`).toBeDefined();
+			expect(el?.tagName, `"${label}" is not keyboard-activatable`).toMatch(/^(BUTTON|INPUT)$/);
+		}
+	});
+
+	it('activates a toolbar button from the keyboard', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const collapse = controlsByLabel(containerEl).get('Collapse all');
+
+		// What Enter or Space on a focused <button> does: a plain click, no pointer.
+		collapse?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
+	it('really disables the collapse controls while a filter overrides them', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const collapseCtl = () =>
+			Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
+
+		expect(collapseCtl()).toHaveLength(2);
+		expect(collapseCtl().every((b) => b.disabled)).toBe(false);
+
+		// Dimming them with CSS was enough while they were unreachable divs; a
+		// focusable button has to refuse the press itself.
+		view.setFilter('Feature');
+		expect(collapseCtl().every((b) => b.disabled)).toBe(true);
+
+		view.setFilter('');
+		expect(collapseCtl().some((b) => b.disabled)).toBe(false);
+	});
+
+	it('keeps the clear buttons out of the tab order until they apply', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const clear = () => containerEl.querySelector<HTMLElement>('.pbl-filter-clear');
+
+		// Hidden by `display: none` until the filter is active — which removes it
+		// from the tab order too, so Tab does not stop on a control that does nothing.
+		expect(clear()?.tagName).toBe('BUTTON');
+		expect(containerEl.querySelector('.pbl-filter')?.classList.contains('pbl-filter-active')).toBe(false);
+
+		view.setFilter('Feature');
+		expect(containerEl.querySelector('.pbl-filter')?.classList.contains('pbl-filter-active')).toBe(true);
+	});
+
+	it('gives each row an add button assistive tech can activate, off the tab order', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const add = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-add');
+
+		// Same bargain as the state chip: a real button, but the tree keeps its
+		// single tab stop — one stop per row would bury the tree itself.
+		expect(add?.tagName).toBe('BUTTON');
+		expect(add?.getAttribute('tabindex')).toBe('-1');
+		expect(add?.getAttribute('aria-label')).toBe('New Feature');
+	});
+});
+
 describe('creation flows', () => {
 	it('asks for a folder on an empty view and persists the choice', async () => {
 		const vault = new FakeVault();

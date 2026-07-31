@@ -41,8 +41,17 @@
 	height: var(--icon-s);
 }
 
-.pbl-icon-btn {
+/* Toolbar icon controls are <button>s so they sit in the tab order; the shared
+   reset below drops the default button chrome clickable-icon does not cover */
+.pbl-icon-btn,
+.pbl-filter-clear,
+.pbl-focus-clear,
+.pbl-add {
 	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
 }
 
 /* The eye button lights up while completed items are hidden */
@@ -51,10 +60,15 @@
 	background-color: var(--background-modifier-hover);
 }
 
-/* Collapse state is overridden while filtering — the controls pause with it */
-.pbl-view.pbl-filtering .pbl-collapse-ctl {
+/* Collapse state is overridden while filtering — the controls pause with it.
+   The disabled attribute does the refusing; this only says so visually. */
+.pbl-icon-btn:disabled {
 	opacity: 0.4;
-	pointer-events: none;
+	cursor: default;
+}
+
+.pbl-icon-btn:disabled:hover {
+	background-color: transparent;
 }
 
 /* Dragging is disabled while filtering; a grab handle would be a lie */
@@ -113,7 +127,6 @@
 
 .pbl-filter-clear {
 	display: none;
-	flex: 0 0 auto;
 	padding: 0;
 }
 
@@ -281,7 +294,15 @@
 	border-radius: 2px;
 }
 
+/* The selection is the focus ring — but only once there is one. Tabbing into an
+   unselected tree used to show nothing at all, so the container carries the ring
+   until the first row is selected. */
 .pbl-tree:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
+}
+
+.pbl-tree:focus-visible:has(.pbl-row.pbl-selected) {
 	outline: none;
 }
 
@@ -471,12 +492,14 @@
 }
 
 .pbl-add {
-	flex: 0 0 auto;
 	opacity: 0;
 	transition: opacity 120ms ease-in-out;
 }
 
-.pbl-row:hover .pbl-add {
+/* Focus can only arrive programmatically (tabindex -1), but a control that is
+   focused and invisible is worse than one that is merely always shown */
+.pbl-row:hover .pbl-add,
+.pbl-add:focus-visible {
 	opacity: 1;
 }
 

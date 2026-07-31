@@ -189,8 +189,13 @@ state — and the view honors reduced-motion and right-to-left settings.
 
 ### Keyboard
 
-Click or <kbd>Tab</kbd> into the tree first, then (mirroring Azure DevOps backlog
-shortcuts where sensible):
+<kbd>Tab</kbd> walks the view's toolbar — new item, the type picker, the focus level,
+backfill, expand and collapse all, the completed-items toggle and the filter box — and
+then reaches the tree as a single stop. Inside the tree the selected row moves with the
+arrow keys rather than with <kbd>Tab</kbd>, so a long backlog never becomes a long tab
+sequence; the row's own controls are reachable through the context menu.
+
+Once in the tree (mirroring Azure DevOps backlog shortcuts where sensible):
 
 | Keys | Action |
 | --- | --- |

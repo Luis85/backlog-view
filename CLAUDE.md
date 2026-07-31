@@ -231,3 +231,15 @@ code so imports stay cycle-free.
   up across rows regardless of title length and indent. Both columns render on every row
   whenever their feature is configured — a leaf without a rollup still gets the empty
   `.pbl-meta-col`, or the columns after it would shift per row.
+- Two tab-stop zones, and a control's element type follows from which one it is in.
+  The **toolbar** is ordinary UI: every activatable control is a real `<button>`
+  (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one
+  stop — arrows move the selection — so its per-row controls (`.pbl-add`, the state
+  chip) are buttons with `tabindex="-1"`: activatable by assistive tech, invisible to
+  Tab, with the context menu as the documented keyboard path. A `div` with an
+  `aria-label` and a click handler is the thing to avoid in either zone.
+- Once a control is focusable, disabling it in CSS is a lie — `pointer-events: none`
+  stops a mouse and nothing else. The collapse controls pause while the quick filter
+  overrides collapse state, so they carry a real `disabled` flag, set in
+  `syncFilterUi` because a filter change re-renders only the tree and leaves the
+  toolbar's DOM in place.

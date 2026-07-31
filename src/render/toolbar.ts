@@ -127,9 +127,9 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 			clear();
 		}
 	});
-	const clearBtn = filterEl.createDiv({
+	const clearBtn = filterEl.createEl('button', {
 		cls: 'pbl-filter-clear clickable-icon',
-		attr: { 'aria-label': 'Clear filter' },
+		attr: { type: 'button', 'aria-label': 'Clear filter' },
 	});
 	setIcon(clearBtn, 'x');
 	setTooltip(clearBtn, 'Clear filter');
@@ -168,9 +168,9 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	});
 
 	if (active === '') return;
-	const clear = wrap.createDiv({
+	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
-		attr: { 'aria-label': 'Show all levels' },
+		attr: { type: 'button', 'aria-label': 'Show all levels' },
 	});
 	setIcon(clear, 'x');
 	setTooltip(clear, 'Show all levels');
@@ -187,14 +187,27 @@ function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
 	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');
 }
 
-function iconButton(parent: HTMLElement, icon: string, label: string): HTMLElement {
-	const btn = parent.createDiv({ cls: 'clickable-icon pbl-icon-btn', attr: { 'aria-label': label } });
+/**
+ * A toolbar icon control. A real `<button>`, not a div: the toolbar sits outside
+ * the tree's single-tab-stop model, and these are the only way to reach the type
+ * picker, the backfill and the collapse commands without a mouse.
+ */
+function iconButton(parent: HTMLElement, icon: string, label: string): HTMLButtonElement {
+	const btn = parent.createEl('button', {
+		cls: 'clickable-icon pbl-icon-btn',
+		attr: { type: 'button', 'aria-label': label },
+	});
 	setIcon(btn, icon);
 	setTooltip(btn, label);
 	return btn;
 }
 
-/** Expand/collapse toolbar buttons — inert while a filter overrides collapse state. */
+/**
+ * Expand/collapse toolbar buttons. Collapse state is overridden while a filter is
+ * active, so they are genuinely `disabled` then rather than only dimmed: a control
+ * a keyboard user can reach has to refuse the press, not just look like it would.
+ * The view re-syncs the flag on every filter change (`syncFilterUi`).
+ */
 function collapseButton(
 	host: BacklogViewHost,
 	parent: HTMLElement,
@@ -204,6 +217,7 @@ function collapseButton(
 ): void {
 	const btn = iconButton(parent, icon, label);
 	btn.addClass('pbl-collapse-ctl');
+	btn.disabled = host.isFiltering();
 	btn.addEventListener('click', () => {
 		mutate();
 		host.render();

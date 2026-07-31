@@ -117,6 +117,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const input = this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input');
 		if (input && input.value !== this.filterText) input.value = this.filterText;
 		input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', this.filterText !== '');
+		// A filter change re-renders only the tree, so the toolbar's collapse controls
+		// are updated here. They are focusable buttons: while collapse state is
+		// overridden, they have to actually refuse the press, not just look dimmed.
+		const filtering = this.isFiltering();
+		this.toolbarEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
+			btn.disabled = filtering;
+		});
 	}
 
 	isRowHidden(item: BacklogItem): boolean {

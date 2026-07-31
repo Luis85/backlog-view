@@ -294,7 +294,13 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 	if (ctx.host.settings.stateKey) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
 	renderRollup(ctx.host, row, item);
 
-	const addBtn = row.createDiv({ cls: 'pbl-add clickable-icon', attr: { 'aria-label': `New ${childLevel}` } });
+	// A native button so assistive tech can activate it, with no Tab stop — the same
+	// bargain the state chip makes: the tree keeps its single-tab-stop model, and the
+	// context menu carries the documented keyboard path (New <child>).
+	const addBtn = row.createEl('button', {
+		cls: 'pbl-add clickable-icon',
+		attr: { type: 'button', tabindex: '-1', 'aria-label': `New ${childLevel}` },
+	});
 	setIcon(addBtn, 'plus');
 	setTooltip(addBtn, `New ${childLevel}`);
 	addBtn.addEventListener('click', (evt) => {
