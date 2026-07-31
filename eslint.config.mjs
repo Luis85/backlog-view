@@ -1,4 +1,5 @@
 import tsparser from '@typescript-eslint/parser';
+import tseslint from 'typescript-eslint';
 import { defineConfig } from 'eslint/config';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 
@@ -22,11 +23,20 @@ const forbidden = (layer, groups, reason) => ({
 	},
 });
 
+/**
+ * The Obsidian ruleset is about *shipped plugin* code, and it is type-aware, which
+ * `test/` cannot satisfy: tsconfig.json covers `src/` only, and the test doubles exist
+ * precisely to do what those rules forbid — the DOM helper defines `createEl`, the fake
+ * vault casts to `TFile`. So the plugin rules stop at `src/`, and `test/` gets the
+ * TypeScript baseline plus this repo's own budgets, below.
+ */
+const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: [...(c.ignores ?? []), 'test/**'] }));
+
 export default defineConfig([
 	{
-		ignores: ['main.js', 'node_modules/**', 'esbuild.config.mjs', 'version-bump.mjs', 'test/**', 'vitest.config.ts'],
+		ignores: ['main.js', 'node_modules/**', 'esbuild.config.mjs', 'version-bump.mjs', 'vitest.config.ts'],
 	},
-	...obsidianmd.configs.recommended,
+	...pluginRules,
 	forbidden(
 		'domain',
 		['view', 'storage', 'ui', 'commands'],
@@ -79,6 +89,24 @@ export default defineConfig([
 			complexity: ['error', 16],
 			'max-depth': ['error', 4],
 			'max-params': ['error', 5],
+		},
+	},
+	{
+		files: ['test/**/*.ts'],
+		extends: [tseslint.configs.recommended],
+		languageOptions: { parser: tsparser },
+		rules: {
+			// `src/` had a size budget and `test/` had none, which is how one view suite
+			// grew to 59% of all test code while every source file stayed in budget. The
+			// cap is looser than src/'s 400 — a test file is mostly fixture setup — and it
+			// is there to force a split by subject long before a file becomes the place
+			// tests go to hide.
+			'max-lines': ['error', { max: 450, skipBlankLines: true, skipComments: true }],
+			// The harness deliberately reaches past the view's public surface.
+			'@typescript-eslint/no-explicit-any': 'off',
+			// A stand-in has to accept the arguments the real API is called with, whether
+			// or not the fake reads them; the underscore says so.
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
 		},
 	},
 ]);

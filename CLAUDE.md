@@ -80,10 +80,18 @@ depend on the effectful one.
 - `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
   recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
   `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
-- View tests (`test/view/backlogView.test.ts`) drive REAL interactions: dispatch `dragstart`/
-  `dragover`/`drop` (stub `getBoundingClientRect` for drop zones — jsdom returns zeros),
-  `keydown`, `click`, `contextmenu` (grab the menu via `Menu.lastShown`). Async writes
-  need `await flush()`.
+- `test/helpers/view.ts` — the view harness every `test/view/*.test.ts` file shares:
+  `makeView`, `refresh`, `fixture`, the row/tree accessors, `drag`, `key`, `stubRect`,
+  `flush`, `submitPrompt`, and `useViewHarness()` for the per-test reset. Call
+  `useViewHarness()` at the top of the file; the helper installs no hooks by itself.
+- View tests (`test/view/*.test.ts`, one file per subject) drive REAL interactions: dispatch
+  `dragstart`/`dragover`/`drop` (stub `getBoundingClientRect` for drop zones — jsdom returns
+  zeros, and `dataTransfer` is absent unless the test supplies one), `keydown`, `click`,
+  `contextmenu` (grab the menu via `Menu.lastShown`). Async writes need `await flush()`.
+- `test/**` has its own lint budget (`max-lines: 450`), because the one suite without a cap
+  is the one that grows: split by subject before a file becomes the place tests hide. The
+  Obsidian ruleset deliberately stops at `src/` — it is type-aware, and the test doubles
+  exist to do what it forbids.
 - Known harness limits: `FakeVault` caches are static — after a write, assert frontmatter
   rather than re-rendering; `entry.getValue()` returns null, so property chips render
   empty in tests.
@@ -148,14 +156,14 @@ depend on the effectful one.
   renumbered — its `order` is still *read* (`afterHighestKnown`, `endOfSiblingsOrder`,
   the backfill's max-order scan), because the row is on screen and a rank that ignored
   it would place an item above something the user can see. Ask that question of any new code touching the tree; the
-  "write safety with context rows, across every entry point" test in `test/view/backlogView.test.ts`
+  "write safety with context rows, across every entry point" test in `test/view/contextRowWrites.test.ts`
   drives every interaction against a fixture with context rows above, beside and between
   results, so a new write path fails it without anyone predicting the surface.
 - "Derived from the results" includes numbers computed *while walking the tree*, not just
   code that reads a model collection: `assignAll` traverses **through** a context row to
   the results below it but never counts it, so a rollup reports what the Base returned and
   an excluded note's own state can neither skew a progress bar nor keep a finished subtree
-  on screen. Two invariant tests in `test/view/backlogView.test.ts` state this from the rule rather than
+  on screen. Two invariant tests in `test/view/contextRowWrites.test.ts` state this from the rule rather than
   the implementation — one for writes, one for rollups.
 - `model.results` is the Base's own rows and `model.items` is everything rendered.
   Anything answering "what is in this base" takes `results`; only rendering, navigation

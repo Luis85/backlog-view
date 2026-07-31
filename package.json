@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src",
+    "lint": "eslint src test",
     "analyze": "fallow",
     "check": "npm run build && npm run lint && npm run test:coverage && npm run analyze",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
