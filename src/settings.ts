@@ -110,88 +110,75 @@ export function configProblems(settings: BacklogSettings): string[] {
 
 const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
 
-/** Options shown in the Bases toolbar "view options" menu. */
-export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
-	let levels = [...DEFAULT_LEVELS];
-	if (config) {
-		try {
-			levels = resolveSettings(config).levels;
-		} catch {
-			// fall back to the default level names
-		}
-	}
-	return [hierarchyGroup(levels), progressGroup(), newItemsGroup(), displayGroup()];
+/**
+ * Options shown in the Bases toolbar "view options" menu. The focus level is
+ * deliberately absent: it lives in the view's own toolbar, next to the New button
+ * whose level it changes.
+ */
+export function getViewOptions(): BasesAllOptions[] {
+	return [hierarchyGroup(), progressGroup(), newItemsGroup(), displayGroup()];
 }
 
-function hierarchyGroup(levels: string[]): BasesAllOptions {
-	const focusOptions: Record<string, string> = { '': 'All levels' };
-	for (const level of levels) focusOptions[level] = level;
+function hierarchyGroup(): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'Hierarchy',
 		items: [
-				{
-					type: 'property',
-					key: 'parentProperty',
-					displayName: 'Parent property',
-					default: 'note.parent',
-					placeholder: 'parent',
-					filter: notePropsOnly,
-				},
-				{
-					type: 'property',
-					key: 'orderProperty',
-					displayName: 'Order property',
-					default: 'note.order',
-					placeholder: 'order',
-					filter: notePropsOnly,
-				},
-				{
-					type: 'property',
-					key: 'typeProperty',
-					displayName: 'Item type property',
-					default: 'note.type',
-					placeholder: 'type',
-					filter: notePropsOnly,
-				},
-				{
-					type: 'text',
-					key: 'levels',
-					displayName: 'Levels (top → bottom)',
-					default: DEFAULT_LEVELS.join(', '),
-					placeholder: DEFAULT_LEVELS.join(', '),
-				},
-				{
-					type: 'toggle',
-					key: 'hierarchyOnly',
-					displayName: 'Ignore notes outside the hierarchy',
-					default: true,
-				},
-				{
-					type: 'toggle',
-					key: 'showOutsideParents',
-					displayName: 'Show parents outside the filter',
-					default: true,
-				},
-				{
-					type: 'dropdown',
-					key: 'focusLevel',
-					displayName: 'Focus level',
-					default: '',
-					options: focusOptions,
-				},
-				{
-					type: 'toggle',
-					key: 'inferFolderHierarchy',
-					displayName: 'Infer hierarchy from folder notes',
-					default: false,
-				},
-				{
-					type: 'toggle',
-					key: 'autoAssignType',
-					displayName: 'Assign item type when moving',
-					default: true,
-				},
+			{
+				type: 'property',
+				key: 'parentProperty',
+				displayName: 'Parent property',
+				default: 'note.parent',
+				placeholder: 'parent',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'property',
+				key: 'orderProperty',
+				displayName: 'Order property',
+				default: 'note.order',
+				placeholder: 'order',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'property',
+				key: 'typeProperty',
+				displayName: 'Item type property',
+				default: 'note.type',
+				placeholder: 'type',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'levels',
+				displayName: 'Levels (top → bottom)',
+				default: DEFAULT_LEVELS.join(', '),
+				placeholder: DEFAULT_LEVELS.join(', '),
+			},
+			{
+				type: 'toggle',
+				key: 'hierarchyOnly',
+				displayName: 'Ignore notes outside the hierarchy',
+				default: true,
+			},
+			{
+				type: 'toggle',
+				key: 'showOutsideParents',
+				displayName: 'Show parents outside the filter',
+				default: true,
+			},
+			{
+				type: 'toggle',
+				key: 'inferFolderHierarchy',
+				displayName: 'Infer hierarchy from folder notes',
+				default: false,
+			},
+			{
+				type: 'toggle',
+				key: 'autoAssignType',
+				displayName: 'Assign item type when moving',
+				default: true,
+			},
 		],
 	};
 }

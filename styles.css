@@ -126,29 +126,32 @@
 	height: 12px;
 }
 
-/* Cue that a focus level is narrowing the tree, with a one-click way out */
-.pbl-focus-chip {
+/* Focus level picker: the level dropdown lives here, not in the view options, and
+   doubles as the cue that a level is narrowing the tree */
+.pbl-focus {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
-	font-size: var(--font-ui-smaller);
-	color: var(--interactive-accent);
-	background-color: hsla(var(--interactive-accent-hsl), 0.12);
-	border-radius: var(--radius-l);
-	padding-block: 0;
-	padding-inline: var(--size-4-1) var(--size-2-1);
-	line-height: 1.9;
+	flex: 0 0 auto;
+}
+
+.pbl-focus-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
 	white-space: nowrap;
 }
 
-.pbl-focus-chip-icon {
-	display: inline-flex;
-	align-items: center;
+.pbl-focus-btn .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
 }
 
-.pbl-focus-chip-icon .svg-icon {
-	width: 11px;
-	height: 11px;
+/* An active focus hides rows, so say so louder than a plain button would */
+.pbl-focus-active .pbl-focus-btn {
+	color: var(--text-accent);
+	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
 .pbl-focus-clear {
