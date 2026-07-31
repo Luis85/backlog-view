@@ -225,8 +225,15 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   **New \<child\>** works on them;
 - the ✨ backfill never writes properties into them;
 - their descendant counts and progress bars describe **the visible subtree only** — the
-  children the filter excluded are not counted (this is equally true of a matched parent
-  in a filtered base).
+  children the filter excluded are not counted.
+
+The last point generalizes into the one real caveat of working in a filtered base: **any
+parent whose children are partly filtered out has a partial sibling list**, whether it is
+a context row or a match. Dropping *into* such a parent appends after the last *visible*
+child, so the new `order` is computed without knowing the excluded children's values and
+can duplicate one of them. Nothing breaks — items with equal orders fall back to the
+Base's own sort, and the group is renumbered by the next drop that needs the room — but
+if you care about exact ranking, do the reordering in an unfiltered base.
 
 Turn **Show parents outside the filter** off to go back to a flat list of matches, where
 items whose parent is missing show the unlink icon.

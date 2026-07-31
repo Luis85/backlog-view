@@ -107,7 +107,17 @@ code so imports stay cycle-free.
   `siblingContext`, `outdent`, the move menu) because their real siblings were never loaded,
   and skipped by `computeInitWrites`. They ARE valid drop parents and can take new children.
   Their rollups describe the visible subtree only. `entry` is nullable for exactly this
-  reason — anything reading `item.entry` must handle null.
+  reason — anything reading `item.entry` must handle null. The seed for the walk is
+  `outsideParentSeed`, which mirrors `linkParents`' precedence (explicit link, else the
+  nearest folder note *in the vault* when `folderHierarchy` is on) — seeding from explicit
+  links alone leaves filtered folder hierarchies flat, since inference only ever looks in
+  `byPath`.
+- Known limitation, not specific to context rows: in a filtered base any parent whose
+  children are partly excluded has a partial `children` list, so `insidePosition` +
+  `computeInsertOrder` can compute an order that duplicates an excluded sibling's. Equal
+  orders fall back to `entryIndex` and the group self-corrects on the next renumbering
+  drop. Fixing it properly needs the complete child set (backlinks + folder scan), which
+  `computeDropWrites` cannot reach without giving up its purity.
 - `breakCycles` re-roots `cycleEntry(item)`, the node that actually closes the loop, not the
   first unreachable item found: with outside-filter ancestors the unreachable item is usually
   a healthy match hanging below a cycle, and re-rooting it would strand a valid parent link.

@@ -127,7 +127,7 @@ interface ItemStore {
 
 function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings): ItemStore {
 	const store: ItemStore = { all: [], byPath: new Map() };
-	/** Files the parent properties point at — the seeds for loading outside ancestors. */
+	/** The notes these items hang from — seeds for loading the ancestors the filter cut. */
 	const parents: TFile[] = [];
 
 	for (const entry of entries) {
@@ -137,14 +137,13 @@ function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings)
 		const parentFile = addItem(app, store, file, entry, settings);
 		if (parentFile) parents.push(parentFile);
 	}
-	if (settings.showOutsideParents) loadOutsideParents(app, store, parents, settings);
+	loadOutsideParents(app, store, parents, settings);
 	return store;
 }
 
 /**
- * Read one note into an item and register it. Returns the file its parent property
- * points at — resolved through the metadata cache, so it is a real note whether or
- * not the Base's filter returned it.
+ * Read one note into an item and register it. Returns the note this item would hang
+ * from if the Base's filter had returned it — see `outsideParentSeed`.
  */
 function addItem(
 	app: App,
@@ -186,7 +185,38 @@ function addItem(
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
-	return parentRef.file;
+	return outsideParentSeed(app, file, parentRef, settings);
+}
+
+/**
+ * The note an item hangs from, resolved the way `linkParents` will resolve it but
+ * against the whole vault instead of the result set: the explicit parent link, or —
+ * in folder mode, with no explicit link — the nearest folder note. Seeding the walk
+ * with the same precedence is what makes a filtered *folder* hierarchy work: the
+ * folder note inference looks for later must be in `byPath` by then.
+ */
+function outsideParentSeed(
+	app: App,
+	file: TFile,
+	ref: ParentRef,
+	settings: BacklogSettings,
+): TFile | null {
+	if (!settings.showOutsideParents) return null;
+	if (ref.file) return ref.file;
+	if (!settings.folderHierarchy || ref.hasValue || ref.explicitRoot) return null;
+	return nearestFolderNote(app, file.path);
+}
+
+/** `inferFolderParent`'s walk, run against the vault rather than the loaded items. */
+function nearestFolderNote(app: App, path: string): TFile | null {
+	let folder = parentFolderOf(path);
+	if (folder !== null && folderNotePath(folder) === path) folder = parentFolderOf(folder);
+	while (folder !== null) {
+		const candidate = app.vault.getAbstractFileByPath(folderNotePath(folder));
+		if (candidate instanceof TFile && candidate.path !== path) return candidate;
+		folder = parentFolderOf(folder);
+	}
+	return null;
 }
 
 /**

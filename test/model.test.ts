@@ -596,3 +596,72 @@ describe('buildModel with parents outside the filter', () => {
 		expect(model.roots[0].descendantCount).toBe(2);
 	});
 });
+
+describe('buildModel with folder-note ancestors outside the filter', () => {
+	const folderSettings = { ...settings, folderHierarchy: true };
+
+	/** The documented folder layout; the Base returns only the deepest use-case note. */
+	function folderVault(): FakeVault {
+		const vault = new FakeVault();
+		const epics = 'product-managements/payments/epics';
+		vault.addFile(`${epics}/Checkout/Checkout.md`, { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile(`${epics}/Checkout/One-click pay/One-click pay.md`, {
+			frontmatter: { type: 'Feature', order: 10 },
+		});
+		vault.addFile(`${epics}/Checkout/One-click pay/use-cases/Pay with saved card.md`, {
+			frontmatter: { type: 'PBI', order: 10 },
+		});
+		return vault;
+	}
+
+	function onlyUseCase(vault: FakeVault) {
+		return vault.entries().filter((e) => e.file.path.includes('use-cases/'));
+	}
+
+	it('loads the folder notes an unlinked descendant infers its place from', () => {
+		const vault = folderVault();
+		const model = buildModel(vault.app, onlyUseCase(vault), folderSettings);
+
+		expect(names(model.roots)).toEqual(['Checkout']);
+		const feature = model.roots[0].children[0];
+		expect(feature.title).toBe('One-click pay');
+		expect(names(feature.children)).toEqual(['Pay with saved card']);
+		// Both folder notes are context; the container folder still passes through
+		expect(model.roots[0].outsideFilter).toBe(true);
+		expect(feature.outsideFilter).toBe(true);
+		expect(feature.children[0].outsideFilter).toBe(false);
+	});
+
+	it('leaves the descendant flat when folder inference is off', () => {
+		const vault = folderVault();
+		const model = buildModel(vault.app, onlyUseCase(vault), settings);
+
+		expect(names(model.roots)).toEqual(['Pay with saved card']);
+	});
+
+	it('lets an explicit parent link still win over the folder note', () => {
+		const vault = folderVault();
+		vault.addFile('Elsewhere/Other Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('product-managements/payments/epics/Checkout/One-click pay/use-cases/Linked.md', {
+			frontmatter: { type: 'PBI' },
+			parentLink: 'Other Epic',
+		});
+		const linked = vault.entries().filter((e) => e.file.path.endsWith('Linked.md'));
+		const model = buildModel(vault.app, linked, folderSettings);
+
+		expect(names(model.roots)).toEqual(['Other Epic']);
+		expect(names(model.roots[0].children)).toEqual(['Linked']);
+	});
+
+	it('does not chase folder notes for an item pinned to the top level', () => {
+		const vault = folderVault();
+		vault.addFile('product-managements/payments/epics/Checkout/Pinned.md', {
+			frontmatter: { type: 'Epic', parent: '' },
+		});
+		const pinned = vault.entries().filter((e) => e.file.path.endsWith('Pinned.md'));
+		const model = buildModel(vault.app, pinned, folderSettings);
+
+		expect(names(model.roots)).toEqual(['Pinned']);
+		expect(model.items).toHaveLength(1);
+	});
+});
