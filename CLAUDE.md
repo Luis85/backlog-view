@@ -263,13 +263,17 @@ depend on the effectful one.
   leaf, or an embedded base — the view is session-only, exactly as before persistence
   existed. A shared fallback key would be worse than not persisting, because two bases
   would inherit each other's open rows and overwrite each other's state.
-- The base's path is half the key, so the store has to follow the file. `rekeyBase`
-  (wired to `vault.on('rename')` in `main.ts`) moves the entries of a renamed `.base`,
-  and `flushCollapseState` re-resolves its identity instead of trusting the one it
-  started with — the first covers bases with no view open, the second covers the view
-  that is watching it happen. Without both, ordinary tidying orphans an entry under a
-  path nothing will look up again, and the next save prunes it for naming a file that
-  no longer exists.
+- Both halves of the key, and both collapse sets, are paths or names a user can change
+  at any moment — so each one needs its own migration, not just whichever bit first.
+  A **note** rename moves that row's entry in `collapsed`/`settled` (`renamePath`, wired
+  to `vault.on('rename')` in the view), or the next refresh shuts it as a parent nobody
+  has ruled on. A **view** rename moves the stored entry, which is why `dispose` flushes
+  on an identity change even with nothing pending — the state is unchanged and yet
+  belongs elsewhere. A **base** rename moves every entry naming it (`rekeyBase`, wired in
+  `main.ts`, covering bases with no view open) while `flushCollapseState` re-resolves its
+  own identity (covering the view watching it happen). Without these, ordinary tidying
+  orphans an entry under a key nothing will look up again, and the next save prunes it
+  for naming a file that no longer exists.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a

@@ -45,6 +45,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
 	private busy: BusyState | null = null;
+	private watchingRenames = false;
 	/**
 	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
 	 * wasteful at six hundred — every selection change would walk the whole DOM.
@@ -98,6 +99,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	private refreshFromData(): void {
+		this.watchRenames();
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		this.groupingIgnored = this.detectIgnoredGrouping();
@@ -107,6 +109,20 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.collapse.collapseNewParents(this.model.items);
 		this.recomputeFilter();
 		this.render();
+	}
+
+	/**
+	 * A renamed note is the same row; without this its state is left behind under the
+	 * old path and the next refresh shuts it as a parent nobody has ruled on. Wired on
+	 * the first data update rather than in the constructor — a Bases view is handed its
+	 * `app` afterwards, so there is nothing to subscribe to yet when it is built.
+	 */
+	private watchRenames(): void {
+		if (this.watchingRenames) return;
+		this.watchingRenames = true;
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => this.collapse.renamePath(oldPath, file.path)),
+		);
 	}
 
 	/** The hierarchy is this view's grouping; surface that a configured group-by has no effect. */

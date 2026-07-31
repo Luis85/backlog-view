@@ -147,6 +147,14 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	writeMap(app, map);
 }
 
+/** Forget one view's entry — used when its state has just been written elsewhere. */
+export function dropCollapseState(app: App, id: ViewIdentity): void {
+	const map = readMap(app);
+	if (!(mapKey(id) in map)) return;
+	delete map[mapKey(id)];
+	writeMap(app, map);
+}
+
 function writeMap(app: App, map: StoredMap): void {
 	try {
 		app.saveLocalStorage(STORE_KEY, map);

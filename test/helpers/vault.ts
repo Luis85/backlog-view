@@ -37,6 +37,8 @@ export class FakeVault {
 	leaves: { view: unknown }[] = [];
 	/** Vault-scoped localStorage, as Obsidian's load/saveLocalStorage present it. */
 	localStorage = new Map<string, unknown>();
+	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
+	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 
 	readonly app = {
 		workspace: {
@@ -94,6 +96,10 @@ export class FakeVault {
 				if (this.folders.has(path)) throw new Error('Folder already exists.');
 				this.folders.add(path);
 			},
+			on: (name: string, cb: (file: TFile, oldPath: string) => void) => {
+				if (name === 'rename') this.renameHandlers.push(cb);
+				return { name };
+			},
 		},
 		fileManager: {
 			processFrontMatter: async (file: TFile, fn: (fm: Record<string, unknown>) => void) => {
@@ -104,6 +110,35 @@ export class FakeVault {
 			},
 		},
 	};
+
+	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
+	renameFile(oldPath: string, newPath: string): TFile {
+		const existing = this.files.get(oldPath);
+		if (!existing) throw new Error(`no such file: ${oldPath}`);
+		this.files.delete(oldPath);
+		const cache = this.caches.get(oldPath);
+		const fm = this.frontmatter.get(oldPath);
+		this.caches.delete(oldPath);
+		this.frontmatter.delete(oldPath);
+		const file = new TFile(newPath);
+		this.files.set(newPath, file);
+		if (cache) this.caches.set(newPath, cache);
+		if (fm) this.frontmatter.set(newPath, fm);
+		// Obsidian rewrites links that pointed at the old name; without that the
+		// children of a renamed parent would orphan themselves and the rename would
+		// look like a restructure rather than a rename.
+		for (const [path, cache] of this.caches) {
+			for (const link of cache.frontmatterLinks ?? []) {
+				if (link.link !== existing.basename) continue;
+				link.link = file.basename;
+				link.original = `[[${file.basename}]]`;
+				const fm = this.frontmatter.get(path);
+				if (fm) fm['parent'] = `[[${file.basename}]]`;
+			}
+		}
+		for (const cb of this.renameHandlers) cb(file, oldPath);
+		return file;
+	}
 
 	addFile(path: string, options: AddFileOptions = {}): TFile {
 		const file = new TFile(path);

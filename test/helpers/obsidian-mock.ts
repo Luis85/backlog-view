@@ -84,6 +84,7 @@ export class Component {
 	onload(): void {}
 	onunload(): void {}
 	register(_cb: () => void): void {}
+	registerEvent(_ref: unknown): void {}
 	registerDomEvent(el: { addEventListener: (t: string, cb: (evt: unknown) => void) => void }, type: string, cb: (evt: unknown) => void): void {
 		el.addEventListener(type, cb);
 	}

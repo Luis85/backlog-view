@@ -46,6 +46,12 @@ function expandAll(containerEl: HTMLElement): void {
 	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
+/** Hand the view a fresh result set, the way Bases does after a vault change. */
+function refresh(view: ProductBacklogView, vault: FakeVault): void {
+	(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
+	view.onDataUpdated();
+}
+
 function rows(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-row'));
 }
@@ -1065,6 +1071,53 @@ describe('collapse state persistence', () => {
 
 		const b = makeView(vault, {}, { base: 'Shared.base', viewName: 'Triage', collapsed: true });
 		expect(titlesOf(b.containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
+	it('keeps an expanded parent open when the note is renamed', () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault, {}, { base: 'Backlog.base' });
+		expect(titlesOf(containerEl)).toEqual(expandedTitles);
+
+		// Renaming is an edit to the same row. The refresh that follows must not treat
+		// the new path as a parent nobody has ruled on and shut it.
+		vault.renameFile('Epic B.md', 'Epic B renamed.md');
+		refresh(view, vault);
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B renamed', 'Feature B1', 'Feature B2']);
+	});
+
+	it('carries a collapsed row to its new path too', () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault, {}, { base: 'Backlog.base' });
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		vault.renameFile('Epic B.md', 'Epic B renamed.md');
+		refresh(view, vault);
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B renamed']);
+	});
+
+	it('migrates the stored entry when the view itself is renamed', () => {
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base', viewName: 'Backlog' });
+		first.view.onunload();
+		expect(Object.keys(stored(vault))).toHaveLength(1);
+
+		// Reopen, rename the view, and close without touching a row — the state is
+		// unchanged but belongs under a different key now.
+		const second = makeView(vault, {}, { base: 'Backlog.base', viewName: 'Backlog', collapsed: true });
+		second.config.name = 'Planning';
+		second.view.onunload();
+
+		const keys = Object.keys(stored(vault));
+		expect(keys).toHaveLength(1);
+		expect(decodeURIComponent(keys[0].split('#')[1])).toBe('Planning');
+
+		// And the renamed view reopens where it was left, rather than at its defaults.
+		const third = makeView(vault, {}, { base: 'Backlog.base', viewName: 'Planning', collapsed: true });
+		expect(titlesOf(third.containerEl)).toEqual(expandedTitles);
 	});
 
 	it('follows the base when it is renamed under an open view', () => {

@@ -1,6 +1,7 @@
 import { BacklogItem } from '../domain/model';
 import {
 	collapseStoreIdentity,
+	dropCollapseState,
 	loadCollapseState,
 	saveCollapseState,
 	ViewIdentity,
@@ -68,6 +69,19 @@ export class CollapseState {
 	}
 
 	/**
+	 * Carry a row's state to its new path. A rename is an edit to the same item, but
+	 * the sets are keyed by path, so without this the renamed note is a parent nobody
+	 * has ruled on — and `collapseNewParents` shuts it on the very next refresh, in
+	 * front of the user who just renamed it.
+	 */
+	renamePath(oldPath: string, newPath: string): void {
+		if (!this.settled.delete(oldPath)) return;
+		this.settled.add(newPath);
+		if (this.collapsed.delete(oldPath)) this.collapsed.add(newPath);
+		this.scheduleSave();
+	}
+
+	/**
 	 * Restore where this view was left, once, on the first data update — by which
 	 * point the view is mounted and the leaf that owns it can be found.
 	 */
@@ -86,10 +100,25 @@ export class CollapseState {
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
 	dispose(): void {
-		if (this.saveTimer === null) return;
-		window.clearTimeout(this.saveTimer);
-		this.saveTimer = null;
-		this.flush();
+		if (this.saveTimer !== null) {
+			window.clearTimeout(this.saveTimer);
+			this.saveTimer = null;
+			this.flush();
+			return;
+		}
+		// Nothing pending, but the view may have been *renamed* since it was restored.
+		// The name is half the key, so the state is unchanged and yet belongs somewhere
+		// else; without this it stays under the old name and the renamed view reopens
+		// at its defaults, having never touched a row after the rename.
+		if (this.id !== null && this.currentIdentity() !== null) this.flush();
+	}
+
+	/** The identity as it stands now, or null when it no longer differs from the stored one. */
+	private currentIdentity(): ViewIdentity | null {
+		if (this.viewEl === null || this.id === null) return null;
+		const now = collapseStoreIdentity(this.host.app, this.viewEl, this.host.config.name);
+		if (now === null) return null;
+		return now.base === this.id.base && now.view === this.id.view ? null : now;
 	}
 
 	/**
@@ -111,10 +140,14 @@ export class CollapseState {
 		// started with would leave the state under a key nothing will look up again.
 		// A null answer means the leaf has gone (the view is closing) — keep the last
 		// known identity rather than dropping the write.
-		const id = this.viewEl
-			? collapseStoreIdentity(this.host.app, this.viewEl, this.host.config.name) ?? this.id
-			: this.id;
-		this.id = id;
+		const moved = this.currentIdentity();
+		if (moved !== null) {
+			// It has moved. Write it where it belongs now and take the old entry with
+			// it, so a renamed base or view migrates rather than leaving a copy behind.
+			dropCollapseState(this.host.app, this.id);
+			this.id = moved;
+		}
+		const id = this.id;
 		// Paths whose note is gone are not coming back under the same identity. This
 		// is the one place that drops them, which is why it is keyed on the vault
 		// rather than on the model: a query that has not warmed up yet, or a filter
