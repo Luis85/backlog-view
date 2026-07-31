@@ -32,6 +32,58 @@ const forbidden = (layer, groups, reason) => ({
  */
 const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: [...(c.ignores ?? []), 'test/**'] }));
 
+/**
+ * Every mutation of the vault goes through storage/, so the write-safety invariants
+ * can be verified by reading one directory instead of trusting every call site. This
+ * is the single most important rule in the codebase, which is why it is not prose.
+ */
+const WRITE_BOUNDARY = [
+	{
+		selector: "MemberExpression[property.name='processFrontMatter']",
+		message: 'All frontmatter writes go through src/storage/frontmatter.ts (applyWrites / createBacklogItem).',
+	},
+	{
+		selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
+		message: 'Creating files in the vault belongs in src/storage/ (createBacklogItem / createBacklogBase).',
+	},
+	{
+		selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
+		message: 'Persisted view state goes through src/storage/collapseStore.ts.',
+	},
+];
+
+/**
+ * Enter or Space on a focused button synthesizes a click at (0, 0), so anchoring a
+ * menu to the pointer drops it in the viewport corner. This shipped once already.
+ */
+const MENU_ANCHOR = {
+	selector: "MemberExpression[property.name='showAtMouseEvent']",
+	message: 'Open menus with showMenuForClick (src/view/interactions/menu.ts) so a keyboard-activated button anchors to its own rect.',
+};
+
+/**
+ * `model.roots` is the RENDERED forest — synthetic under focus mode, where the top row
+ * groups items that are not really siblings. Ranking against it writes an order among
+ * rows that only look adjacent.
+ */
+const RENDERED_ROOTS = {
+	selector: "MemberExpression[property.name='roots']",
+	message: 'Ranking runs over model.realRoots. model.roots is what is drawn, which under focus mode is not a sibling group.',
+};
+
+/** Files that carry extra selectors, and so must be excluded from the blanket block. */
+const OWN_SYNTAX_RULES = [
+	'src/view/interactions/menu.ts',
+	'src/domain/writePlan.ts',
+	'src/view/interactions/create.ts',
+];
+
+const restrictedSyntax = (files, extra = [], ignores = []) => ({
+	files,
+	ignores,
+	rules: { 'no-restricted-syntax': ['error', ...WRITE_BOUNDARY, ...extra] },
+});
+
 export default defineConfig([
 	{
 		ignores: ['main.js', 'node_modules/**', 'esbuild.config.mjs', 'version-bump.mjs', 'vitest.config.ts'],
@@ -49,30 +101,19 @@ export default defineConfig([
 	),
 	forbidden('ui', ['view', 'commands', 'domain', 'storage'], 'ui/ holds standalone dialogs; it must stay free of app structure.'),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
-	{
-		// The single most important rule in this codebase, made checkable: every
-		// mutation of the vault goes through storage/, so the write-safety invariants
-		// can be verified by reading one directory instead of trusting every call site.
-		files: ['src/**/*.ts'],
-		ignores: ['src/storage/**/*.ts'],
-		rules: {
-			'no-restricted-syntax': [
-				'error',
-				{
-					selector: "MemberExpression[property.name='processFrontMatter']",
-					message: 'All frontmatter writes go through src/storage/frontmatter.ts (applyWrites / createBacklogItem).',
-				},
-				{
-					selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
-					message: 'Creating files in the vault belongs in src/storage/ (createBacklogItem / createBacklogBase).',
-				},
-				{
-					selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
-					message: 'Persisted view state goes through src/storage/collapseStore.ts.',
-				},
-			],
-		},
-	},
+	// -- invariants that are checked rather than described -----------------------
+	//
+	// Flat config sets a rule wholesale per file: a narrower block REPLACES the wider
+	// one's options rather than adding to them, so a file that gains a rule of its own
+	// would silently lose the write boundary. Every block is therefore composed from
+	// the shared selectors plus its own, and `restrictedSyntax` is the only way to
+	// write one.
+	restrictedSyntax(['src/**/*.ts'], [MENU_ANCHOR], ['src/storage/**/*.ts', ...OWN_SYNTAX_RULES]),
+	// The menu helper is where the anchoring decision is made, so it is the one place
+	// allowed to make it.
+	restrictedSyntax(['src/view/interactions/menu.ts']),
+	// Ranking code: what it writes is an order among real siblings.
+	restrictedSyntax(['src/domain/writePlan.ts', 'src/view/interactions/create.ts'], [MENU_ANCHOR, RENDERED_ROOTS]),
 	{
 		files: ['src/**/*.ts'],
 		languageOptions: {

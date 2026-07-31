@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 50
-status: Open
+status: Done
 priority: P2
 area: tooling
+closed: 2026-07-31
 created: 2026-07-31
 source: PR #14 maintainability review
 files:
@@ -66,3 +67,55 @@ rather than arguing the case.
 - "Invariants that bite" materially shorter, with nothing lost — moved, not deleted.
 - Each remaining bullet still says *why*, not just *what*; the reasoning is the part
   that stops someone undoing it.
+
+---
+
+## Outcome
+
+**Enforced.** Two invariants became lint rules, both green on arrival:
+
+- `showAtMouseEvent` is banned everywhere except `view/interactions/menu.ts`, so a menu
+  opened from a focusable button must go through `showMenuForClick`. This one had
+  already shipped as a bug once.
+- `model.roots` is banned in `domain/writePlan.ts` and `view/interactions/create.ts` —
+  the two files that rank — so ranking runs over `realRoots` and never over the
+  synthetic focus forest.
+
+Both were verified by introducing the violation and watching lint reject it.
+
+The config was restructured to make that safe. Flat config sets a rule *wholesale* per
+file: a narrower block replaces the wider one's options rather than adding to them, so a
+file that gained a rule of its own would silently lose the write boundary. Every block is
+now composed through `restrictedSyntax()` from the shared selectors plus its own, and
+there is a test-by-hand for exactly that — introducing a `processFrontMatter` call in
+`menu.ts`, which has its own block, still fails.
+
+**Not enforced, and why.** The depth rule from the plan above stays blocked. A blanket
+ban on `.depth` would be wrong: `rows.ts` uses it for `aria-level`, where visual depth is
+the correct answer. Scoped to `domain/writePlan.ts` it would flag exactly the known
+offender, so it waits on
+[stop-deriving-levels-from-depth](stop-deriving-levels-from-depth.md). The selector is
+ready: `MemberExpression[property.name='depth']`.
+
+A `model.roots` ban in `dropTargets.ts` and `structure.ts` was also considered and
+rejected — the use there is correct, guarded by an earlier `focusRoot` return, so the
+rule would fire on good code. That subtlety is now written down beside it instead.
+
+**Co-located.** The invariants moved beside the layer they govern, so they load when you
+are working there rather than being read as one wall:
+
+| file | lines |
+| --- | --- |
+| `CLAUDE.md` (root) | 341 → 172 |
+| `src/domain/CLAUDE.md` | new, 94 |
+| `src/view/CLAUDE.md` | new, 94 |
+| `src/storage/CLAUDE.md` | new, 69 |
+
+The root keeps what belongs to no single layer: the context-row rule (which the codebase
+deliberately states as *one* rule spanning every layer), the write path, the build
+gotchas, and an index of the three.
+
+Nothing was lost. Checked mechanically rather than by eye — every backticked identifier
+in the old document still appears in one of the four, with a single exception:
+`defaultedPaths`, which the old document named after the field had already been renamed
+to `settled`. A stale reference found by the check, and corrected.
