@@ -86,6 +86,43 @@ export function collapseStoreIdentity(app: App, el: HTMLElement, viewName: strin
 	return owner.length > 0 ? { base: owner[0], view: viewName } : null;
 }
 
+/**
+ * Follow a `.base` file that was renamed or moved. The path is half the key, so
+ * without this an ordinary bit of vault tidying would orphan every entry for that
+ * base — never found again under the new path, and then deleted by the next save,
+ * because a base that no longer exists is exactly what `pruneMissingBases` looks for.
+ *
+ * Safe to call for any rename; it does nothing when no entry names the old path.
+ */
+export function rekeyBase(app: App, oldPath: string, newPath: string): void {
+	const map = readMap(app);
+	let moved = false;
+	for (const [key, entry] of Object.entries(map)) {
+		if (entry.base !== oldPath) continue;
+		const view = viewNameOf(key);
+		if (view === null) continue;
+		delete map[key];
+		map[mapKey({ base: newPath, view })] = { ...entry, base: newPath };
+		moved = true;
+	}
+	if (moved) writeMap(app, map);
+}
+
+/**
+ * The view name back out of a key. Only possible because both halves are encoded,
+ * so the single literal `#` is always the separator — the property that
+ * `pruneMissingBases` deliberately does not rely on, but that a rename needs.
+ */
+function viewNameOf(key: string): string | null {
+	const parts = key.split('#');
+	if (parts.length !== 2) return null;
+	try {
+		return decodeURIComponent(parts[1]);
+	} catch {
+		return null;
+	}
+}
+
 export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot {
 	const entry = readMap(app)[mapKey(id)];
 	return {
@@ -107,6 +144,10 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	if (collapsed.length === 0 && expanded.length === 0) delete map[key];
 	else map[key] = { base: id.base, collapsed, expanded };
 	pruneMissingBases(app, map, key);
+	writeMap(app, map);
+}
+
+function writeMap(app: App, map: StoredMap): void {
 	try {
 		app.saveLocalStorage(STORE_KEY, map);
 	} catch (e) {

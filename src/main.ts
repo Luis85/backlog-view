@@ -1,5 +1,6 @@
-import { Plugin } from 'obsidian';
+import { Plugin, TFile } from 'obsidian';
 import { promptCreateBacklogBase } from './commands/scaffold';
+import { rekeyBase } from './storage/collapseStore';
 import { getViewOptions } from './domain/settings';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
 
@@ -11,6 +12,17 @@ export default class ProductBacklogPlugin extends Plugin {
 			factory: (controller, containerEl) => new ProductBacklogView(controller, containerEl),
 			options: getViewOptions,
 		});
+		// Collapse state is keyed on the base's path, so it has to follow the file.
+		// The open view re-resolves its own identity when it saves; this covers the
+		// bases that are not open, whose entries would otherwise be orphaned and then
+		// pruned for naming a path that no longer exists.
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
+				if (file instanceof TFile && file.extension === 'base') {
+					rekeyBase(this.app, oldPath, file.path);
+				}
+			}),
+		);
 		this.addCommand({
 			id: 'create-backlog',
 			// Obsidian prefixes command names with the plugin name in the palette.

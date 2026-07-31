@@ -1067,6 +1067,24 @@ describe('collapse state persistence', () => {
 		expect(titlesOf(b.containerEl)).toEqual(['Epic A', 'Epic B']);
 	});
 
+	it('follows the base when it is renamed under an open view', () => {
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+
+		// The file explorer moves the base while the view is open. The view resolves
+		// its identity again when it saves, so the state lands under the new path
+		// rather than under a key nothing will look up again.
+		const leaf = vault.leaves[0].view as { file: { path: string; extension: string } };
+		vault.files.delete('Backlog.base');
+		vault.addFile('Archive/Backlog.base');
+		leaf.file = { path: 'Archive/Backlog.base', extension: 'base' };
+		first.view.onunload();
+
+		const keys = Object.keys(stored(vault));
+		expect(keys).toHaveLength(1);
+		expect(decodeURIComponent(keys[0].split('#')[0])).toBe('Archive/Backlog.base');
+	});
+
 	it('stays session-only for a base embedded in a note', () => {
 		const vault = fixture();
 		// An embedded base is drawn inside the host note's leaf, so the only file on

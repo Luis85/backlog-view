@@ -25,6 +25,8 @@ export class CollapseState {
 	private settled = new Set<string>();
 	private id: ViewIdentity | null = null;
 	private restored = false;
+	/** Kept so the identity can be re-resolved when the base is renamed under us. */
+	private viewEl: HTMLElement | null = null;
 	/** Pending debounced write; non-null means there are changes to flush. */
 	private saveTimer: number | null = null;
 
@@ -72,6 +74,7 @@ export class CollapseState {
 	restore(viewEl: HTMLElement): void {
 		if (this.restored) return;
 		this.restored = true;
+		this.viewEl = viewEl;
 		this.id = collapseStoreIdentity(this.host.app, viewEl, this.host.config.name);
 		// No identifiable base: session-only, exactly as before this was persisted.
 		if (this.id === null) return;
@@ -102,8 +105,16 @@ export class CollapseState {
 	}
 
 	private flush(): void {
-		const id = this.id;
-		if (id === null) return;
+		if (this.id === null) return;
+		// Re-resolved rather than trusted: the base may have been renamed, or the view
+		// itself renamed, since this view was mounted, and writing to the identity it
+		// started with would leave the state under a key nothing will look up again.
+		// A null answer means the leaf has gone (the view is closing) — keep the last
+		// known identity rather than dropping the write.
+		const id = this.viewEl
+			? collapseStoreIdentity(this.host.app, this.viewEl, this.host.config.name) ?? this.id
+			: this.id;
+		this.id = id;
 		// Paths whose note is gone are not coming back under the same identity. This
 		// is the one place that drops them, which is why it is keyed on the vault
 		// rather than on the model: a query that has not warmed up yet, or a filter
