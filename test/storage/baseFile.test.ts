@@ -7,10 +7,6 @@ import { Modal, Notice } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 
-function flush(): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
 beforeEach(() => {
 	document.body.empty();
 	Notice.reset();

@@ -1,4 +1,5 @@
 import tsparser from '@typescript-eslint/parser';
+import tseslint from 'typescript-eslint';
 import { defineConfig } from 'eslint/config';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 
@@ -22,11 +23,75 @@ const forbidden = (layer, groups, reason) => ({
 	},
 });
 
+/**
+ * The Obsidian ruleset is about *shipped plugin* code, and it is type-aware, which
+ * `test/` cannot satisfy: tsconfig.json covers `src/` only, and the test doubles exist
+ * precisely to do what those rules forbid — the DOM helper defines `createEl`, the fake
+ * vault casts to `TFile`. So the plugin rules stop at `src/`, and `test/` gets the
+ * TypeScript baseline plus this repo's own budgets, below.
+ */
+const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: [...(c.ignores ?? []), 'test/**'] }));
+
+/**
+ * Every mutation of the vault goes through storage/, so the write-safety invariants
+ * can be verified by reading one directory instead of trusting every call site. This
+ * is the single most important rule in the codebase, which is why it is not prose.
+ */
+const WRITE_BOUNDARY = [
+	{
+		selector: "MemberExpression[property.name='processFrontMatter']",
+		message: 'All frontmatter writes go through src/storage/frontmatter.ts (applyWrites / createBacklogItem).',
+	},
+	{
+		selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
+		message: 'Creating files in the vault belongs in src/storage/ (createBacklogItem / createBacklogBase).',
+	},
+	{
+		selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
+		message: 'Persisted view state goes through src/storage/collapseStore.ts.',
+	},
+];
+
+/**
+ * Enter or Space on a focused button synthesizes a click at (0, 0), so anchoring a
+ * menu to the pointer drops it in the viewport corner. This shipped once already.
+ */
+const MENU_ANCHOR = {
+	selector: "MemberExpression[property.name='showAtMouseEvent']",
+	message: 'Open menus with showMenuForClick (src/view/interactions/menu.ts) so a keyboard-activated button anchors to its own rect.',
+};
+
+/**
+ * `model.roots` is the RENDERED forest — synthetic under focus mode, where the top row
+ * groups items that are not really siblings. Ranking against it writes an order among
+ * rows that only look adjacent.
+ */
+const RENDERED_ROOTS = {
+	selector: "MemberExpression[property.name='roots']",
+	message: 'Ranking runs over model.realRoots. model.roots is what is drawn, which under focus mode is not a sibling group.',
+};
+
+/**
+ * Flat config sets a rule wholesale per file: a narrower block REPLACES the wider one's
+ * options rather than adding to them, so two blocks matching the same file would leave
+ * it with only the later one's selectors — silently dropping the rest.
+ *
+ * So the blocks below partition `src/` into regions that do not overlap, and each names
+ * every selector that applies to it. Adding a region means removing its files from the
+ * one it came out of; adding a selector means asking which regions want it. The
+ * `syntaxRules` wrapper exists so that is the only decision, and the shape is uniform.
+ */
+const STORAGE = 'src/storage/**/*.ts';
+const MENU = 'src/view/interactions/menu.ts';
+const RANKING = ['src/domain/writePlan.ts', 'src/view/interactions/create.ts'];
+
+const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
+
 export default defineConfig([
 	{
-		ignores: ['main.js', 'node_modules/**', 'esbuild.config.mjs', 'version-bump.mjs', 'test/**', 'vitest.config.ts'],
+		ignores: ['main.js', 'node_modules/**', 'esbuild.config.mjs', 'version-bump.mjs', 'vitest.config.ts'],
 	},
-	...obsidianmd.configs.recommended,
+	...pluginRules,
 	forbidden(
 		'domain',
 		['view', 'storage', 'ui', 'commands'],
@@ -39,29 +104,30 @@ export default defineConfig([
 	),
 	forbidden('ui', ['view', 'commands', 'domain', 'storage'], 'ui/ holds standalone dialogs; it must stay free of app structure.'),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
+	// -- invariants that are checked rather than described -----------------------
+	// Four disjoint regions of src/; see the note above `syntaxRules`.
 	{
-		// The single most important rule in this codebase, made checkable: every
-		// mutation of the vault goes through storage/, so the write-safety invariants
-		// can be verified by reading one directory instead of trusting every call site.
+		// Everything that is not one of the three special cases below.
 		files: ['src/**/*.ts'],
-		ignores: ['src/storage/**/*.ts'],
-		rules: {
-			'no-restricted-syntax': [
-				'error',
-				{
-					selector: "MemberExpression[property.name='processFrontMatter']",
-					message: 'All frontmatter writes go through src/storage/frontmatter.ts (applyWrites / createBacklogItem).',
-				},
-				{
-					selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
-					message: 'Creating files in the vault belongs in src/storage/ (createBacklogItem / createBacklogBase).',
-				},
-				{
-					selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
-					message: 'Persisted view state goes through src/storage/collapseStore.ts.',
-				},
-			],
-		},
+		ignores: [STORAGE, MENU, ...RANKING],
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR]),
+	},
+	{
+		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else
+		// about it is special — the menu rule still does.
+		files: [STORAGE],
+		rules: syntaxRules([MENU_ANCHOR]),
+	},
+	{
+		// The menu helper is where the anchoring decision is made, so it is the one place
+		// allowed to make it. It writes nothing, so the boundary still applies.
+		files: [MENU],
+		rules: syntaxRules([...WRITE_BOUNDARY]),
+	},
+	{
+		// Ranking code: what it writes is an order among real siblings.
+		files: RANKING,
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS]),
 	},
 	{
 		files: ['src/**/*.ts'],
@@ -79,6 +145,24 @@ export default defineConfig([
 			complexity: ['error', 16],
 			'max-depth': ['error', 4],
 			'max-params': ['error', 5],
+		},
+	},
+	{
+		files: ['test/**/*.ts'],
+		extends: [tseslint.configs.recommended],
+		languageOptions: { parser: tsparser },
+		rules: {
+			// `src/` had a size budget and `test/` had none, which is how one view suite
+			// grew to 59% of all test code while every source file stayed in budget. The
+			// cap is looser than src/'s 400 — a test file is mostly fixture setup — and it
+			// is there to force a split by subject long before a file becomes the place
+			// tests go to hide.
+			'max-lines': ['error', { max: 450, skipBlankLines: true, skipComments: true }],
+			// The harness deliberately reaches past the view's public surface.
+			'@typescript-eslint/no-explicit-any': 'off',
+			// A stand-in has to accept the arguments the real API is called with, whether
+			// or not the fake reads them; the underscore says so.
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
 		},
 	},
 ]);
