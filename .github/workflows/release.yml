@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - "*"
+  # Manual trigger: publishes the version currently in manifest.json and creates the
+  # matching tag on the selected ref. Use it for the first release, or whenever the
+  # version files are already committed and only the tag is missing.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,12 +22,31 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify tag matches manifest version
+      - name: Resolve release tag
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
           version="$(node -p "require('./manifest.json').version")"
-          if [ "$tag" != "$version" ]; then
-            echo "Tag '$tag' must exactly match manifest.json version '$version' (no v prefix)." >&2
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            # No tag ref to read: the manifest version is the tag, created on this commit.
+            tag="$version"
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+            if [ "$tag" != "$version" ]; then
+              echo "Tag '$tag' must exactly match manifest.json version '$version' (no v prefix)." >&2
+              exit 1
+            fi
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the release does not already exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release '$TAG' already exists. Bump the version in manifest.json, package.json and versions.json first." >&2
             exit 1
           fi
 
@@ -35,9 +58,12 @@ jobs:
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
-          gh release create "$tag" \
-            --title "$tag" \
+          # --target is what lets a manual run create the tag; it is ignored when the
+          # tag already exists, so tag pushes keep releasing exactly their own commit.
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --target "$GITHUB_SHA" \
             --generate-notes \
             main.js manifest.json styles.css

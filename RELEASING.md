@@ -2,6 +2,29 @@
 
 ## Cutting a release
 
+Either path below ends in the **Release** workflow building the plugin and creating a
+GitHub release with `main.js`, `manifest.json` and `styles.css` attached as individual
+assets. Both refuse to publish over a version that already has a release.
+
+### When the version files are already committed
+
+This is the case for the **first release** (the repository was authored at `0.1.0`), and
+for any later release where the bump landed on `main` but the tag did not. Do **not** run
+`npm version` here — it would bump past the version you mean to publish.
+
+- From the browser: **Actions** → **Release** → **Run workflow** on `main`. The workflow
+  reads the version from `manifest.json`, creates that tag on the selected commit, and
+  publishes it.
+- Or from a clone, if you would rather push the tag yourself. Read the tag from the
+  manifest rather than typing it, so this works for whatever version is committed:
+
+  ```bash
+  tag="$(node -p "require('./manifest.json').version")"
+  git tag "$tag" && git push origin "$tag"
+  ```
+
+### When you still need to bump the version
+
 1. Make sure `main` is green (CI runs build + tests on every push).
 2. Bump the version — this updates `package.json`, `manifest.json` and `versions.json`
    together and commits them:
@@ -16,11 +39,10 @@
    version. The release workflow refuses tags that don't match, as a second line of
    defense.
 
-3. The tag push triggers the **Release** workflow, which builds the plugin and creates a
-   GitHub release with `main.js`, `manifest.json` and `styles.css` attached as individual
-   assets.
-4. Verify on the releases page that the tag name **exactly matches** the version in
-   `manifest.json` (`x.y.z`, no `v` prefix) and that all three files are attached.
+3. The tag push triggers the **Release** workflow.
+
+Either way, verify on the releases page that the tag name **exactly matches** the version
+in `manifest.json` (`x.y.z`, no `v` prefix) and that all three files are attached.
 
 ## Submitting to the community directory (one-time)
 
