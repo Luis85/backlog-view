@@ -73,25 +73,21 @@
 	flex: 0 0 auto;
 }
 
+/* A bare row: the input keeps its own border, background and focus ring, so the
+   wrapper only has to line the icon and the clear button up beside it. */
 .pbl-filter {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
-	background-color: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	padding: 0 var(--size-4-1);
 	margin-left: var(--size-4-1);
-}
-
-.pbl-filter:focus-within {
-	border-color: var(--interactive-accent);
 }
 
 .pbl-filter-icon {
 	display: inline-flex;
 	align-items: center;
 	color: var(--text-faint);
+	/* Clear of the input's own box rather than tucked against it */
+	margin-inline-end: var(--size-2-3);
 }
 
 .pbl-filter-icon .svg-icon {
@@ -100,15 +96,9 @@
 }
 
 .pbl-filter-input {
-	border: none;
-	outline: none;
-	background: transparent;
-	box-shadow: none;
 	width: 130px;
 	height: 24px;
-	padding: 0;
 	font-size: var(--font-ui-small);
-	color: var(--text-normal);
 	transition: width 120ms ease-in-out;
 }
 
