@@ -35,7 +35,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 	}
 	menu.addSeparator();
 
-	addMoveSection(host, menu, item, model);
+	addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
@@ -94,21 +94,23 @@ function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite
 	return writes;
 }
 
-function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, model: BacklogModel): void {
-	// No sibling ranking to move within: the top row of a focused view, an ancestor
-	// loaded from outside the filter, or a group holding one (renumbering it would
-	// write an order into a note the Base excluded).
-	if (!canReorder(host, item)) return;
-	if ((item.parent ? item.parent.children : model.roots).indexOf(item) === -1) return;
+function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	// Gate on rendered neighbors: with completed items hidden, a swap with a
-	// hidden sibling would change nothing visibly.
+	// hidden sibling would change nothing visibly. Null for a row that cannot move
+	// at all — a focus root, or an ancestor loaded from outside the filter.
 	const prev = visibleNeighbor(host, item, -1);
 	const next = visibleNeighbor(host, item, 1);
+	// Only *reordering* renumbers the item's own group, so only reordering needs
+	// this. Indent and outdent land the item elsewhere and answer for their own
+	// destination — hiding them here would make the menu offer less than Alt+arrow.
+	const ranked = canReorder(host, item);
 
-	if (prev) {
+	if (ranked && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move up').setIcon('arrow-up').onClick(() => moveWithinSiblings(host, item, -1)),
 		);
+	}
+	if (prev) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(`Indent under "${prev.title}"`)
@@ -116,17 +118,17 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, mo
 				.onClick(() => indent(host, item)),
 		);
 	}
-	if (next) {
+	if (ranked && next) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move down').setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
 		);
 	}
-	if (prev) {
+	if (ranked && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move to top').setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
 		);
 	}
-	if (next) {
+	if (ranked && next) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle('Move to bottom')

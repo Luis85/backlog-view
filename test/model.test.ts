@@ -679,3 +679,35 @@ describe('observed states with parents outside the filter', () => {
 		expect(model.observedStates).toEqual(['Active']);
 	});
 });
+
+describe('hierarchy scope when context rows are not loaded', () => {
+	it('keeps a folder-inferred match whose folder note the filter excluded', () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
+		// Untyped and unlinked: it belongs only through the folder note above it
+		vault.addFile('Backlog/Epic/use-cases/Note.md', {});
+		const filtered = vault.entries().filter((e) => e.file.path.includes('use-cases/'));
+		const hidden = { ...settings, folderHierarchy: true, showOutsideParents: false };
+
+		const model = buildModel(vault.app, filtered, hidden);
+
+		// The ancestor is not rendered, but the Base's own result must not vanish
+		expect(names(model.roots)).toEqual(['Note']);
+		expect(model.ignoredCount).toBe(0);
+		expect(model.roots[0].parentExists).toBe(true);
+	});
+
+	it('still drops a note with no anchor at all', () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Backlog/Loose note.md', {});
+		const filtered = vault.entries().filter((e) => e.file.path.endsWith('Loose note.md'));
+		const hidden = { ...settings, folderHierarchy: true, showOutsideParents: false };
+
+		const model = buildModel(vault.app, filtered, hidden);
+
+		// No folder note above it, no type, no link — genuinely not a work item
+		expect(model.items).toHaveLength(0);
+		expect(model.ignoredCount).toBe(1);
+	});
+});

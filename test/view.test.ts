@@ -2033,3 +2033,45 @@ describe('creating a child under a context parent', () => {
 		expect(detail).toContain('folder "Backlog/Epic"');
 	});
 });
+
+describe('move commands that do not rank', () => {
+	/** Epic over Feature A (context, its PBI matched) and Feature B (a result). */
+	function mixedSiblings() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = {
+			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
+		};
+		view.onDataUpdated();
+		return { view, containerEl, vault };
+	}
+
+	it('still offers indent, which appends instead of ranking', () => {
+		const { containerEl } = mixedSiblings();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		// Reordering stays out, but indenting under the previous sibling is safe
+		expect(titles).not.toContain('Move up');
+		expect(titles).toContain('Indent under "Feature A"');
+	});
+
+	it('indents into a mixed group without writing to the context row', async () => {
+		const { containerEl, vault } = mixedSiblings();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.items.find((i) => i.titleText.startsWith('Indent'))?.clickHandler?.();
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
+		expect(vault.fm('Feature B.md').parent).toBe('[[Feature A]]');
+	});
+});

@@ -27,6 +27,12 @@ export interface BacklogItem {
 	/** True when the parent property holds any value at all. */
 	hasParentValue: boolean;
 	/**
+	 * True when the note this item hangs from exists in the vault — its link target,
+	 * or the folder note above it in folder mode — whether or not this view loaded it.
+	 * Hierarchy membership must stay detectable even when the ancestor is not rendered.
+	 */
+	parentExists: boolean;
+	/**
 	 * True when the parent key is present but explicitly empty — in folder
 	 * hierarchy mode this pins the item to the top level instead of re-inferring.
 	 */
@@ -137,7 +143,9 @@ function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings)
 		const parentFile = addItem(app, store, file, entry, settings);
 		if (parentFile) parents.push(parentFile);
 	}
-	loadOutsideParents(app, store, parents, settings);
+	// Seeds are resolved either way (they carry `parentExists`); only the loading
+	// of the ancestors themselves is optional.
+	if (settings.showOutsideParents) loadOutsideParents(app, store, parents, settings);
 	return store;
 }
 
@@ -156,6 +164,9 @@ function addItem(
 	const cache = app.metadataCache.getFileCache(file);
 	const fm = cache?.frontmatter;
 	const parentRef = resolveParent(app, file, cache, settings.parentKey);
+	// Resolved even when the ancestors are not being loaded: the scope test below
+	// still has to see that this note is anchored in the hierarchy.
+	const seed = outsideParentSeed(app, file, parentRef, settings);
 	const stateValue = settings.stateKey ? readString(fm?.[settings.stateKey]) : null;
 	const doneValues = settings.doneValues.map((v) => v.toLowerCase());
 	const item: BacklogItem = {
@@ -168,6 +179,7 @@ function addItem(
 		entryIndex: store.all.length,
 		parentPath: parentRef.file?.path ?? null,
 		hasParentValue: parentRef.hasValue,
+		parentExists: seed !== null,
 		explicitRoot: parentRef.explicitRoot,
 		parent: null,
 		children: [],
@@ -185,7 +197,7 @@ function addItem(
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
-	return outsideParentSeed(app, file, parentRef, settings);
+	return seed;
 }
 
 /**
@@ -194,6 +206,10 @@ function addItem(
  * in folder mode, with no explicit link — the nearest folder note. Seeding the walk
  * with the same precedence is what makes a filtered *folder* hierarchy work: the
  * folder note inference looks for later must be in `byPath` by then.
+ *
+ * Always resolved, even when `showOutsideParents` is off and nothing will be loaded:
+ * it is also the evidence that a note belongs to the hierarchy, and dropping a Base
+ * result because its anchor happens to be hidden would be worse than not showing it.
  */
 function outsideParentSeed(
 	app: App,
@@ -201,7 +217,6 @@ function outsideParentSeed(
 	ref: ParentRef,
 	settings: BacklogSettings,
 ): TFile | null {
-	if (!settings.showOutsideParents) return null;
 	if (ref.file) return ref.file;
 	if (!settings.folderHierarchy || ref.hasValue || ref.explicitRoot) return null;
 	return nearestFolderNote(app, file.path);
@@ -342,6 +357,9 @@ function pruneOutsideHierarchy(
 		item.parent !== null ||
 		item.hasParentValue ||
 		item.explicitRoot ||
+		// The anchor may be a folder note the filter excluded and the options chose
+		// not to load; the note is still part of the hierarchy either way.
+		item.parentExists ||
 		(item.typeName !== null && levels.has(item.typeName.toLowerCase()));
 	const subtreeBelongs = (item: BacklogItem): boolean => belongs(item) || item.children.some(subtreeBelongs);
 

@@ -136,7 +136,15 @@ code so imports stay cycle-free.
   item last, the *positional* operations refuse such a group up front instead of landing
   somewhere other than aimed: `siblingPosition` (before/after drops), `canReorder` (the
   move menu, Alt+arrow) and `outdentTarget`. Appends — dropping *into* a parent, the
-  top-level strip, indent — stay available, since last is what they mean anyway.
+  top-level strip, indent — stay available, since last is what they mean anyway. Gate each
+  command on what it actually does: `canReorder` covers only the four move commands, while
+  Indent follows its neighbour and Outdent answers for its own destination — gating those
+  on `canReorder` too would make the menu offer less than Alt+arrow already allows.
+- `outsideParentSeed` is resolved for every item even when `showOutsideParents` is off: it
+  is also the evidence (`item.parentExists`) that a note is anchored in the hierarchy.
+  Without it `hierarchyOnly` prunes a folder-inferred Base result whose folder note simply
+  wasn't loaded — dropping a row the query explicitly returned. Only the *loading* of the
+  ancestors is gated by the option.
 - Known limitation, not specific to context rows: in a filtered base any parent whose
   children are partly excluded has a partial `children` list, so `insidePosition` +
   `computeInsertOrder` can compute an order that duplicates an excluded sibling's. Equal
