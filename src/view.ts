@@ -110,8 +110,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', this.filterText !== '');
 	}
 
-	isFilteredOut(item: BacklogItem): boolean {
-		return this.filterVisible !== null && !this.filterVisible.has(item.file.path);
+	isRowHidden(item: BacklogItem): boolean {
+		// While filtering, the filter alone decides — a match must be findable even
+		// when completed items are hidden, so hiding is suspended.
+		if (this.filterVisible !== null) return !this.filterVisible.has(item.file.path);
+		return this.hidingCompleted() && item.subtreeDone;
+	}
+
+	/** True when the completed-items toggle is actively hiding fully-done subtrees. */
+	private hidingCompleted(): boolean {
+		return !this.settings.showCompleted && this.settings.stateKey !== '' && this.filterVisible === null;
 	}
 
 	isFiltering(): boolean {
@@ -279,9 +287,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const label = this.toolbarEl.querySelector<HTMLElement>('.pbl-count-label');
 		if (!label) return;
 		const total = model.items.length;
+		// Collapsed rows still count as shown — only filtering and hiding narrow the number.
+		const hidden = this.hidingCompleted() ? model.items.filter((i) => i.subtreeDone).length : 0;
 		if (this.isFiltering()) {
 			const visible = this.treeEl.querySelectorAll('.pbl-row').length;
 			label.setText(`${visible} of ${total}`);
+		} else if (hidden > 0) {
+			label.setText(`${total - hidden} of ${total}`);
 		} else {
 			label.setText(`${total} item${total === 1 ? '' : 's'}`);
 		}

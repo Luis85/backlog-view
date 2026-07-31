@@ -50,6 +50,8 @@ export interface BacklogItem {
 	done: boolean;
 	/** Number of descendants counting as done. */
 	doneDescendants: number;
+	/** True when the item and every descendant are done — the unit hidden by "Show completed items". */
+	subtreeDone: boolean;
 }
 
 export interface BacklogModel {
@@ -65,10 +67,13 @@ export interface BacklogModel {
 	items: BacklogItem[];
 	/** True when a focus level restricts the rendered tree. */
 	focused: boolean;
+	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
+	observedStates: string[];
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
 	const { all, byPath } = createItems(app, entries, settings);
+	const observedStates = collectObservedStates(all, settings);
 	const roots = linkParents(all, byPath, settings);
 	breakCycles(all, roots);
 	sortSiblingsDeep(roots);
@@ -82,9 +87,9 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	if (focusIdx >= 0) {
 		const focusRoots = collectFocusRoots(roots, focusIdx);
 		items = assignVisualDepth(focusRoots);
-		return { roots: focusRoots, realRoots: roots, byPath, items, focused: true };
+		return { roots: focusRoots, realRoots: roots, byPath, items, focused: true, observedStates };
 	}
-	return { roots, realRoots: roots, byPath, items, focused: false };
+	return { roots, realRoots: roots, byPath, items, focused: false, observedStates };
 }
 
 /** The level name to show on an item's badge. */
@@ -142,6 +147,7 @@ function createItems(
 			stateValue,
 			done: stateValue !== null && doneValues.has(stateValue.toLowerCase()),
 			doneDescendants: 0,
+			subtreeDone: false,
 		};
 		byPath.set(file.path, item);
 		all.push(item);
@@ -259,9 +265,27 @@ function assignAll(renderedRoots: BacklogItem[], settings: BacklogSettings): Bac
 		}
 		item.descendantCount = count;
 		item.doneDescendants = done;
+		item.subtreeDone = item.done && done === count;
 	};
 	for (const root of renderedRoots) assign(root, 0);
 	return items;
+}
+
+/**
+ * First occurrence of every state value, sorted for the state menus: open states
+ * alphabetically, done states after them. Deduped case-insensitively, keeping
+ * the casing seen first.
+ */
+function collectObservedStates(all: BacklogItem[], settings: BacklogSettings): string[] {
+	const seen = new Map<string, string>();
+	for (const item of all) {
+		if (item.stateValue !== null && !seen.has(item.stateValue.toLowerCase())) {
+			seen.set(item.stateValue.toLowerCase(), item.stateValue);
+		}
+	}
+	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
+	const values = [...seen.values()].sort((a, b) => a.localeCompare(b));
+	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
 }
 
 /** Focused rendering re-roots the tree visually; effective levels stay untouched. */

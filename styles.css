@@ -45,6 +45,12 @@
 	flex: 0 0 auto;
 }
 
+/* The eye button lights up while completed items are hidden */
+.pbl-completed-toggle.is-active {
+	color: var(--text-accent);
+	background-color: var(--background-modifier-hover);
+}
+
 /* Collapse state is overridden while filtering — the controls pause with it */
 .pbl-view.pbl-filtering .pbl-collapse-ctl {
 	opacity: 0.4;
@@ -535,6 +541,56 @@
 .pbl-chip-value p {
 	margin: 0;
 	display: inline;
+}
+
+/* Clickable workflow-state chip */
+.pbl-state-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	max-width: 140px;
+	overflow: hidden;
+	white-space: nowrap;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-4-1);
+	line-height: 1.7;
+	flex: 0 0 auto;
+	margin-inline-start: var(--size-4-2);
+	cursor: var(--cursor);
+}
+
+.pbl-state-chip:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.pbl-state-chip .svg-icon {
+	width: var(--icon-xs);
+	height: var(--icon-xs);
+}
+
+.pbl-state-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-state-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pbl-state-chip.pbl-state-done {
+	color: rgb(var(--color-green-rgb));
+	border-color: rgba(var(--color-green-rgb), 0.35);
+}
+
+.pbl-state-chip.pbl-state-unset {
+	color: var(--text-faint);
+	border-style: dashed;
 }
 
 /* Indent guides connect each child group to its parent's chevron column */

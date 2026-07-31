@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LEVELS, defaultSettings, getViewOptions, resolveSettings } from '../src/settings';
+import { DEFAULT_LEVELS, defaultSettings, getViewOptions, resolveSettings, stateMenuValues } from '../src/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -124,5 +124,39 @@ describe('resolveSettings progress options', () => {
 		const defaults = resolveSettings(fakeConfig());
 		expect(defaults.stateKey).toBe('');
 		expect(defaults.doneValues.length).toBeGreaterThan(0);
+	});
+
+	it('parses workflow states, dropping duplicates case-insensitively', () => {
+		const settings = resolveSettings(fakeConfig({ stateValues: 'New, Active, active, Done' }));
+		expect(settings.states).toEqual(['New', 'Active', 'Done']);
+		expect(resolveSettings(fakeConfig()).states).toEqual([]);
+	});
+
+	it('reads the completed-items toggle, defaulting to shown', () => {
+		expect(resolveSettings(fakeConfig()).showCompleted).toBe(true);
+		expect(resolveSettings(fakeConfig({ showCompleted: false })).showCompleted).toBe(false);
+	});
+
+	it('declares the new progress option keys', () => {
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		expect(flat.map((o) => o.key)).toEqual(expect.arrayContaining(['stateValues', 'showCompleted']));
+	});
+});
+
+describe('stateMenuValues', () => {
+	it('prefers the configured states verbatim', () => {
+		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
+		expect(stateMenuValues(settings, ['Blocked'])).toEqual(['New', 'Active', 'Done']);
+	});
+
+	it('falls back to observed values when they already include a done state', () => {
+		const settings = defaultSettings();
+		expect(stateMenuValues(settings, ['Active', 'Closed'])).toEqual(['Active', 'Closed']);
+	});
+
+	it('appends the first done value so marking done is always offered', () => {
+		const settings = defaultSettings();
+		expect(stateMenuValues(settings, ['Active'])).toEqual(['Active', 'Done']);
+		expect(stateMenuValues(settings, [])).toEqual(['Done']);
 	});
 });

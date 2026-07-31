@@ -17,12 +17,28 @@ function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: B
 	return idx === -1 ? null : { fullList, idx };
 }
 
+/**
+ * The nearest rendered sibling in the given direction, skipping rows hidden by
+ * the completed-items toggle. Moves and menus target this item, so structural
+ * commands never produce a visually inert change.
+ */
+export function visibleNeighbor(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): BacklogItem | null {
+	const ctx = siblingContext(host, item);
+	if (!ctx) return null;
+	for (let i = ctx.idx + delta; i >= 0 && i < ctx.fullList.length; i += delta) {
+		if (!host.isRowHidden(ctx.fullList[i])) return ctx.fullList[i];
+	}
+	return null;
+}
+
 export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
 	const ctx = siblingContext(host, item);
-	if (!ctx) return;
-	const insertIndex = delta === -1 ? ctx.idx - 1 : ctx.idx + 1;
-	if (insertIndex < 0 || insertIndex >= ctx.fullList.length) return;
+	const neighbor = visibleNeighbor(host, item, delta);
+	if (!ctx || !neighbor) return;
+	// Land on the far side of the visible neighbor; order math still runs over the
+	// full sibling list, so hidden rows in between are simply skipped past.
 	const siblings = ctx.fullList.filter((s) => s !== item);
+	const insertIndex = delta === -1 ? siblings.indexOf(neighbor) : siblings.indexOf(neighbor) + 1;
 	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
 }
 
@@ -47,11 +63,10 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 	void host.performDrop(item, { parent: grandparent, siblings, insertIndex });
 }
 
-/** Nest the item under its previous sibling, at the end of its children. */
+/** Nest the item under its previous visible sibling, at the end of its children. */
 export function indent(host: BacklogViewHost, item: BacklogItem): void {
-	const ctx = siblingContext(host, item);
-	if (!ctx || ctx.idx === 0) return;
-	const newParent = ctx.fullList[ctx.idx - 1];
+	const newParent = visibleNeighbor(host, item, -1);
+	if (!newParent) return;
 	const siblings = newParent.children.filter((s) => s !== item);
 	void host.performDrop(item, { parent: newParent, siblings, insertIndex: siblings.length });
 }

@@ -84,6 +84,8 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Create any level at the top | Toolbar **New** button, or the **▾** menu next to it for other levels |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type |
+| Change an item's state | Click the state chip on the row, or right-click → Set state |
+| Hide finished work | Click the eye button in the toolbar (or toggle **Show completed items** in the view options) |
 | Open in a new tab or split | Middle-click, Ctrl/Cmd-click, or right-click → Open in new tab / Open to the right |
 | Find items | Type in the toolbar filter (or press <kbd>/</kbd> in the tree) — matches keep their ancestors and subtrees, Escape clears |
 | See counts per level | Hover the item count in the toolbar |
@@ -140,11 +142,25 @@ Rules to know:
 - If your domain folders also contain folder notes inside the filter, they become the
   top level — add a level name for them (e.g. `Domain, Epic, Feature, PBI, Task`).
 
-### Progress rollup
+### States and progress
 
 Set the **State property** (e.g. `status`) in the view options and parents show a
 progress bar with a done count (e.g. `3/7`), while done items dim out. Which values count
 as done is configurable (`Done, Closed, Completed, Removed` by default, case-insensitive).
+
+Each row then carries a clickable **state chip**: pick a new state from its menu (also
+available via right-click → **Set state**) and the note's frontmatter updates without
+opening it. The menu offers the **Workflow states** configured in the view options — or,
+when none are configured, the states already used in the backlog, with a done state
+appended so marking an item done is always one click away. An item whose state isn't in
+the list keeps it selectable in its own menu.
+
+The toolbar's eye button (or the **Show completed items** view option) hides finished
+work: an item disappears once it *and its entire subtree* are done — a done parent with
+open children stays visible, so unfinished work can never hide. Progress bars keep
+counting hidden items, the quick filter still finds them, and moving or dropping rows
+around hidden siblings stays safe because ranking always runs over the real sibling
+lists.
 
 While dragging, hovering the middle of a collapsed row expands it after a moment (the
 chevron lights up while the timer runs) so you can drop deeper into the tree. Dropping an

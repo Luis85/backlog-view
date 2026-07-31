@@ -21,6 +21,10 @@ export interface BacklogSettings {
 	stateKey: string;
 	/** State values (case-insensitive) that count as done. */
 	doneValues: string[];
+	/** Workflow states offered by the state menus, in order; [] falls back to observed values. */
+	states: string[];
+	/** Render items whose whole subtree is done; when off they hide (the quick filter overrides). */
+	showCompleted: boolean;
 }
 
 export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
@@ -40,7 +44,22 @@ export function defaultSettings(): BacklogSettings {
 		focusLevel: '',
 		stateKey: '',
 		doneValues: [...DEFAULT_DONE_VALUES],
+		states: [],
+		showCompleted: true,
 	};
+}
+
+/**
+ * The states offered by the state menus: the configured list when set, else the
+ * values observed in the backlog — with a done state appended so marking an item
+ * done is always one click away. Menus append the item's own unlisted value on
+ * top of this, so the current state can always render checked.
+ */
+export function stateMenuValues(settings: BacklogSettings, observedStates: string[]): string[] {
+	if (settings.states.length > 0) return settings.states;
+	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
+	if (observedStates.some((v) => done.has(v.toLowerCase()))) return observedStates;
+	return [...observedStates, settings.doneValues[0]];
 }
 
 /**
@@ -167,10 +186,23 @@ function progressGroup(): BasesAllOptions {
 			},
 			{
 				type: 'text',
+				key: 'stateValues',
+				displayName: 'Workflow states (in order)',
+				default: '',
+				placeholder: 'New, Active, Done',
+			},
+			{
+				type: 'text',
 				key: 'doneValues',
 				displayName: 'States that count as done',
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
+			{
+				type: 'toggle',
+				key: 'showCompleted',
+				displayName: 'Show completed items',
+				default: true,
 			},
 		],
 	};
@@ -241,6 +273,16 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 			.split(',')
 			.map((s) => s.trim())
 			.filter((s) => s.length > 0);
+	// Duplicate states would render as duplicate menu entries — drop them silently.
+	const dedupe = (values: string[]): string[] => {
+		const seen = new Set<string>();
+		return values.filter((v) => {
+			const key = v.toLowerCase();
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	};
 
 	const levels = list('levels');
 	const doneValues = list('doneValues');
@@ -258,5 +300,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
+		states: dedupe(list('stateValues')),
+		showCompleted: bool('showCompleted', fallback.showCompleted),
 	};
 }

@@ -7,7 +7,7 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 	const visible: BacklogItem[] = [];
 	const walk = (items: BacklogItem[]) => {
 		for (const item of items) {
-			if (host.isFilteredOut(item)) continue;
+			if (host.isRowHidden(item)) continue;
 			visible.push(item);
 			if (item.children.length > 0 && !host.isCollapsed(item.file.path)) {
 				walk(item.children);
@@ -149,8 +149,8 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 	} else if (!filtering && hasChildren && collapsed) {
 		collapseKeepingSelection(host, current, false);
 	} else if (hasChildren) {
-		// Under a filter the first child may be hidden; jump to the first rendered one.
-		const firstVisible = current.children.find((child) => !host.isFilteredOut(child));
+		// The first child may be hidden (filter or completed items); jump to the first rendered one.
+		const firstVisible = current.children.find((child) => !host.isRowHidden(child));
 		if (firstVisible) host.selectItem(firstVisible);
 	}
 }

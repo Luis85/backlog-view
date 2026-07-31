@@ -19,6 +19,8 @@ export interface ItemWrite {
 	removeParentKey?: boolean;
 	order?: number;
 	typeName?: string;
+	/** New value for the state property; ignored when no state property is configured. */
+	state?: string;
 }
 
 export interface DropTarget {
@@ -44,6 +46,8 @@ export async function applyWrites(app: App, settings: BacklogSettings, writes: I
 			}
 			if (write.order !== undefined) fm[settings.orderKey] = write.order;
 			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
+			// The stateKey may be unset (progress tracking off) — never write to an empty key.
+			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
 		});
 	}
 }

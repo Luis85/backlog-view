@@ -1363,3 +1363,207 @@ describe('view state details', () => {
 		expect(fitting?.dataset.tooltip).toBeUndefined();
 	});
 });
+
+describe('state editing', () => {
+	/** Mixed states: an open epic, an active epic with one done feature. */
+	function stateFixture(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
+		vault.addFile('Feature B1.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
+			parentLink: 'Epic B',
+		});
+		return vault;
+	}
+
+	it('renders an interactive state chip instead of a read-only property chip', () => {
+		const vault = stateFixture();
+		vault.entryValues.set('Epic B.md', { 'note.status': 'Active' });
+		const { view, containerEl, config } = makeView(vault, { stateProperty: 'note.status' });
+		// The state property is among the visible properties — the chip replaces it.
+		config.order = ['note.status'];
+		view.onDataUpdated();
+		const epicB = rowByTitle(containerEl, 'Epic B');
+		expect(epicB.querySelector('.pbl-state-chip .pbl-state-text')?.textContent).toBe('Active');
+		expect(epicB.querySelector('.pbl-chip')).toBeNull();
+
+		const unset = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-state-chip');
+		expect(unset?.classList.contains('pbl-state-unset')).toBe(true);
+		expect(unset?.querySelector('.pbl-state-text')?.textContent).toBe('State');
+
+		const done = rowByTitle(containerEl, 'Feature B1').querySelector('.pbl-state-chip');
+		expect(done?.classList.contains('pbl-state-done')).toBe(true);
+		expect(done?.querySelector<HTMLElement>('.pbl-state-icon')?.dataset.icon).toBe('circle-check');
+	});
+
+	it('omits the state chip when no state property is configured', () => {
+		const { containerEl } = makeView(fixture());
+		expect(containerEl.querySelector('.pbl-state-chip')).toBeNull();
+	});
+
+	it('writes the state picked from the chip menu without opening the note', async () => {
+		const vault = stateFixture();
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+
+		const chip = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-state-chip');
+		chip?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('state menu not shown');
+
+		// Observed states: open ones first, done ones after; the current one checked.
+		expect(menu.items.map((i) => i.titleText)).toEqual(['Active', 'Done']);
+		expect(menu.item('Active')?.checked).toBe(true);
+
+		menu.item('Done')?.click();
+		await flush();
+		expect(vault.fm('Epic B.md').status).toBe('Done');
+		expect(vault.opened).toHaveLength(0);
+	});
+
+	it('offers the configured states plus the item’s unlisted current state', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Blocked' } });
+		const { containerEl } = makeView(vault, {
+			stateProperty: 'note.status',
+			stateValues: 'New, Active, Done',
+		});
+
+		rowByTitle(containerEl, 'Epic').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const submenu = Menu.lastShown?.item('Set state')?.submenu;
+		if (!submenu) throw new Error('submenu missing');
+
+		expect(submenu.items.map((i) => i.titleText)).toEqual(['New', 'Active', 'Done', 'Blocked']);
+		expect(submenu.item('Blocked')?.checked).toBe(true);
+		submenu.item('Active')?.click();
+		await flush();
+		expect(vault.fm('Epic.md').status).toBe('Active');
+	});
+
+	it('routes state writes through the config gate', async () => {
+		const vault = stateFixture();
+		const { containerEl } = makeView(vault, {
+			stateProperty: 'note.status',
+			orderProperty: 'note.parent',
+		});
+
+		rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-state-chip')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		Menu.lastShown?.item('Done')?.click();
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+	});
+});
+
+describe('completed items', () => {
+	/** Three top-level branches: done-with-open-child, fully done, open — plus a done leaf. */
+	function completedFixture(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic X.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
+		vault.addFile('F open.md', { frontmatter: { order: 10, status: 'Open' }, parentLink: 'Epic X' });
+		vault.addFile('Epic Y.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		vault.addFile('F done.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic Y' });
+		vault.addFile('Epic Z.md', { frontmatter: { type: 'Epic', order: 30, status: 'Open' } });
+		vault.addFile('Leaf D.md', { frontmatter: { type: 'Epic', order: 40, status: 'Done' } });
+		return vault;
+	}
+
+	// A factory: config.set() mutates the values object it was handed, so a
+	// shared literal would leak one test's toggle into the next.
+	const hiddenConfig = () => ({ stateProperty: 'note.status', showCompleted: false });
+
+	it('hides fully done subtrees but keeps done parents with open children', () => {
+		const { containerEl } = makeView(completedFixture(), hiddenConfig());
+
+		expect(titlesOf(containerEl)).toEqual(['Epic X', 'F open', 'Epic Z']);
+		// Visible siblings renumber the accessible positions.
+		expect(rowByTitle(containerEl, 'Epic X').getAttribute('aria-setsize')).toBe('2');
+		expect(rowByTitle(containerEl, 'Epic Z').getAttribute('aria-posinset')).toBe('2');
+		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('3 of 6');
+
+		const toggle = containerEl.querySelector<HTMLElement>('.pbl-completed-toggle');
+		expect(toggle?.classList.contains('is-active')).toBe(true);
+		expect(toggle?.getAttribute('aria-label')).toBe('Show completed items (3 hidden)');
+	});
+
+	it('renders a parent whose children are all hidden as a leaf with its rollup', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
+		vault.addFile('F1.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic' });
+		vault.addFile('F2.md', { frontmatter: { order: 20, status: 'Done' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault, hiddenConfig());
+
+		const epic = rowByTitle(containerEl, 'Epic');
+		expect(titlesOf(containerEl)).toEqual(['Epic']);
+		expect(epic.getAttribute('aria-expanded')).toBeNull();
+		expect(epic.querySelector('.pbl-chevron')?.classList.contains('pbl-leaf')).toBe(true);
+		// The rollup still counts the hidden children.
+		expect(epic.querySelector('.pbl-progress-label')?.textContent).toBe('2/2');
+	});
+
+	it('suspends hiding while the quick filter is active', () => {
+		const { view, containerEl } = makeView(completedFixture(), hiddenConfig());
+
+		view.setFilter('F done');
+		expect(titlesOf(containerEl)).toEqual(['Epic Y', 'F done']);
+		view.setFilter('');
+		expect(titlesOf(containerEl)).toEqual(['Epic X', 'F open', 'Epic Z']);
+	});
+
+	it('toggles the option from the toolbar eye button', () => {
+		const shown = makeView(completedFixture(), { stateProperty: 'note.status' });
+		shown.containerEl.querySelector<HTMLElement>('.pbl-completed-toggle')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(shown.config.setCalls).toContainEqual({ key: 'showCompleted', value: false });
+
+		const hidden = makeView(completedFixture(), hiddenConfig());
+		hidden.containerEl.querySelector<HTMLElement>('.pbl-completed-toggle')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(hidden.config.setCalls).toContainEqual({ key: 'showCompleted', value: true });
+	});
+
+	it('moves and navigates across hidden siblings to the next visible one', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
+		vault.addFile('H.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 30, status: 'Open' } });
+		const { containerEl } = makeView(vault, hiddenConfig());
+
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown');
+		expect(rowByTitle(containerEl, 'A').classList.contains('pbl-selected')).toBe(true);
+		key(tree, 'ArrowDown', { altKey: true });
+		await flush();
+		// A lands after B, the next visible sibling — past the hidden H.
+		expect(vault.fm('A.md').order).toBe(40);
+	});
+
+	it('omits move commands that could only swap with hidden rows', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
+		vault.addFile('H.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 30, status: 'Open' } });
+		const { containerEl } = makeView(vault, hiddenConfig());
+
+		rowByTitle(containerEl, 'B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		expect(menu?.item('Move down')).toBeUndefined();
+		expect(menu?.item('Move to bottom')).toBeUndefined();
+		// The visible predecessor is A — the hidden H is never named.
+		expect(menu?.item('Indent under "A"')).toBeDefined();
+	});
+
+	it('shows the all-done state with a way back when everything hides', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Closed' } });
+		const { containerEl, config } = makeView(vault, hiddenConfig());
+
+		const empty = containerEl.querySelector('.pbl-empty-filter');
+		expect(empty?.textContent).toContain('All 2 items are done and hidden.');
+		empty?.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(config.setCalls).toContainEqual({ key: 'showCompleted', value: true });
+	});
+});
