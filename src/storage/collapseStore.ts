@@ -75,9 +75,13 @@ export function collapseStoreIdentity(app: App, el: HTMLElement, viewName: strin
 	app.workspace.iterateAllLeaves((leaf) => {
 		if (owner.length > 0) return;
 		const view = leaf.view;
-		if (view instanceof FileView && view.file && view.containerEl.contains(el)) {
-			owner.push(view.file.path);
-		}
+		if (!(view instanceof FileView) || !view.file || !view.containerEl.contains(el)) return;
+		// It must be the `.base` itself. A base embedded in a note is drawn inside that
+		// note's leaf, so the file here would be the host note — and every base embedded
+		// in it, plus every view of each, would answer to one key and overwrite each
+		// other. That is the sharing this function exists to refuse, so an embedded base
+		// keeps its collapse state for the session and no longer.
+		if (view.file.extension === 'base') owner.push(view.file.path);
 	});
 	return owner.length > 0 ? { base: owner[0], view: viewName } : null;
 }

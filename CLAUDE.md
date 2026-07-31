@@ -257,9 +257,12 @@ depend on the effectful one.
   percent-encoded so no two identities can collide. The base path comes from walking
   `iterateAllLeaves` for the `FileView` whose `containerEl` contains this view's element
   — the Bases API still hands a view no reference to its own file, but the leaf drawing
-  it has one. When that resolves to nothing the view is session-only, exactly as before
-  persistence existed: a shared fallback key would be worse than not persisting, because
-  two bases would inherit each other's open rows and prune each other's paths.
+  it has one. The leaf's file must be the `.base` itself: a base embedded in a note is drawn
+  inside that note's leaf, so the file on offer there is the host note, and every base
+  embedded in it would answer to one key. When the identity resolves to nothing — no
+  leaf, or an embedded base — the view is session-only, exactly as before persistence
+  existed. A shared fallback key would be worse than not persisting, because two bases
+  would inherit each other's open rows and overwrite each other's state.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a

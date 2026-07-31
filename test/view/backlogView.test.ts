@@ -1067,6 +1067,18 @@ describe('collapse state persistence', () => {
 		expect(titlesOf(b.containerEl)).toEqual(['Epic A', 'Epic B']);
 	});
 
+	it('stays session-only for a base embedded in a note', () => {
+		const vault = fixture();
+		// An embedded base is drawn inside the host note's leaf, so the only file on
+		// offer is the note. Two embeds in one note would then share a key and
+		// overwrite each other — worse than forgetting, so it forgets.
+		const { view, containerEl } = makeView(vault, {}, { base: 'Notes/Plan.md' });
+
+		expect(titlesOf(containerEl)).toEqual(expandedTitles);
+		view.onunload();
+		expect(vault.localStorage.size).toBe(0);
+	});
+
 	it('stays session-only when the base cannot be identified', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
