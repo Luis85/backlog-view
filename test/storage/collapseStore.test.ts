@@ -92,3 +92,55 @@ describe('rekeyBase', () => {
 		expect(JSON.stringify(stored(vault))).toBe(before);
 	});
 });
+
+describe('rekeyBase across a folder move', () => {
+	it('carries a base that lived inside the renamed folder', () => {
+		vault.addFile('Work/Backlog.base');
+		vault.addFile('Epic.md');
+		saveCollapseState(
+			vault.app,
+			{ base: 'Work/Backlog.base', view: 'Backlog' },
+			{ collapsed: new Set(['Epic.md']), expanded: new Set() },
+		);
+
+		// Obsidian reports the folder, not the base inside it.
+		vault.files.delete('Work/Backlog.base');
+		vault.addFile('Archive/Work/Backlog.base');
+		rekeyBase(vault.app, 'Work', 'Archive/Work');
+
+		const restored = loadCollapseState(vault.app, { base: 'Archive/Work/Backlog.base', view: 'Backlog' });
+		expect([...restored.collapsed]).toEqual(['Epic.md']);
+	});
+
+	it('is idempotent, so a second event for the same move changes nothing', () => {
+		vault.addFile('Work/Backlog.base');
+		vault.addFile('Epic.md');
+		saveCollapseState(
+			vault.app,
+			{ base: 'Work/Backlog.base', view: 'Backlog' },
+			{ collapsed: new Set(['Epic.md']), expanded: new Set() },
+		);
+		vault.files.delete('Work/Backlog.base');
+		vault.addFile('Archive/Work/Backlog.base');
+
+		// Whether Obsidian reports a folder move once or once per descendant, the
+		// second pass must find nothing left to move.
+		rekeyBase(vault.app, 'Work', 'Archive/Work');
+		const after = JSON.stringify(stored(vault));
+		rekeyBase(vault.app, 'Work/Backlog.base', 'Archive/Work/Backlog.base');
+		expect(JSON.stringify(stored(vault))).toBe(after);
+	});
+
+	it('leaves a base that merely shares a name prefix alone', () => {
+		for (const path of ['Work/A.base', 'Workshop/B.base']) vault.addFile(path);
+		vault.addFile('Epic.md');
+		const snap = { collapsed: new Set(['Epic.md']), expanded: new Set<string>() };
+		saveCollapseState(vault.app, { base: 'Work/A.base', view: 'Backlog' }, snap);
+		saveCollapseState(vault.app, { base: 'Workshop/B.base', view: 'Backlog' }, snap);
+
+		rekeyBase(vault.app, 'Work', 'Archive');
+
+		const bases = Object.values(stored(vault)).map((e) => e.base).sort();
+		expect(bases).toEqual(['Archive/A.base', 'Workshop/B.base']);
+	});
+});

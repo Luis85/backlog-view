@@ -1086,6 +1086,22 @@ describe('collapse state persistence', () => {
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B renamed', 'Feature B1', 'Feature B2']);
 	});
 
+	it('keeps rows open when the folder above them is moved', () => {
+		const vault = new FakeVault();
+		vault.folders.add('Work');
+		vault.addFile('Work/Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Work/Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		const { containerEl, view } = makeView(vault, {}, { base: 'Backlog.base' });
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature']);
+
+		// Obsidian reports the folder, not each note inside it, so matching on the
+		// renamed path alone would leave every row behind under the old prefix.
+		vault.renameFolder('Work', 'Archive/Work');
+		refresh(view, vault);
+
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature']);
+	});
+
 	it('carries a collapsed row to its new path too', () => {
 		const vault = fixture();
 		const { containerEl, view } = makeView(vault, {}, { base: 'Backlog.base' });

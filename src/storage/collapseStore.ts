@@ -87,25 +87,39 @@ export function collapseStoreIdentity(app: App, el: HTMLElement, viewName: strin
 }
 
 /**
- * Follow a `.base` file that was renamed or moved. The path is half the key, so
- * without this an ordinary bit of vault tidying would orphan every entry for that
- * base — never found again under the new path, and then deleted by the next save,
- * because a base that no longer exists is exactly what `pruneMissingBases` looks for.
+ * Follow a `.base` that was renamed or moved — directly, or by moving a folder above
+ * it. The path is half the key, so without this an ordinary bit of vault tidying
+ * would orphan every entry for that base: never found again under the new path, and
+ * then deleted by the next save, because a base that no longer exists is exactly what
+ * `pruneMissingBases` looks for.
  *
- * Safe to call for any rename; it does nothing when no entry names the old path.
+ * Takes any rename, file or folder, and does nothing when no entry sits under the old
+ * path. That also makes it idempotent: whether Obsidian reports a folder move as one
+ * event or as one per descendant, the second pass finds nothing left to move.
  */
 export function rekeyBase(app: App, oldPath: string, newPath: string): void {
 	const map = readMap(app);
 	let moved = false;
 	for (const [key, entry] of Object.entries(map)) {
-		if (entry.base !== oldPath) continue;
+		const base = movedPath(entry.base, oldPath, newPath);
+		if (base === null) continue;
 		const view = viewNameOf(key);
 		if (view === null) continue;
 		delete map[key];
-		map[mapKey({ base: newPath, view })] = { ...entry, base: newPath };
+		map[mapKey({ base, view })] = { ...entry, base };
 		moved = true;
 	}
 	if (moved) writeMap(app, map);
+}
+
+/**
+ * Where `path` ends up when `oldPath` becomes `newPath`, or null when it is unaffected.
+ * A rename moves the thing itself and everything beneath it, so a folder carries its
+ * whole subtree — which is the only way a `.base` inside a moved folder is noticed.
+ */
+export function movedPath(path: string, oldPath: string, newPath: string): string | null {
+	if (path === oldPath) return newPath;
+	return path.startsWith(`${oldPath}/`) ? newPath + path.slice(oldPath.length) : null;
 }
 
 /**

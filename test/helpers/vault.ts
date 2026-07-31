@@ -140,6 +140,30 @@ export class FakeVault {
 		return file;
 	}
 
+	/**
+	 * Move a folder and everything under it, firing one vault rename for the folder —
+	 * which is what Obsidian reports, and what the descendant paths have to be derived
+	 * from.
+	 */
+	renameFolder(oldPath: string, newPath: string): void {
+		for (const path of [...this.files.keys()]) {
+			if (!path.startsWith(`${oldPath}/`)) continue;
+			const moved = newPath + path.slice(oldPath.length);
+			const file = new TFile(moved);
+			this.files.delete(path);
+			this.files.set(moved, file);
+			const cache = this.caches.get(path);
+			const fm = this.frontmatter.get(path);
+			this.caches.delete(path);
+			this.frontmatter.delete(path);
+			if (cache) this.caches.set(moved, cache);
+			if (fm) this.frontmatter.set(moved, fm);
+		}
+		this.folders.delete(oldPath);
+		this.folders.add(newPath);
+		for (const cb of this.renameHandlers) cb({ path: newPath } as TFile, oldPath);
+	}
+
 	addFile(path: string, options: AddFileOptions = {}): TFile {
 		const file = new TFile(path);
 		this.files.set(path, file);

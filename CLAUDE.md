@@ -271,7 +271,12 @@ depend on the effectful one.
   on an identity change even with nothing pending — the state is unchanged and yet
   belongs elsewhere. A **base** rename moves every entry naming it (`rekeyBase`, wired in
   `main.ts`, covering bases with no view open) while `flushCollapseState` re-resolves its
-  own identity (covering the view watching it happen). Without these, ordinary tidying
+  own identity (covering the view watching it happen). And a rename is never only the
+  thing renamed: `movedPath` carries everything beneath the old path, because moving a
+  *folder* reports the folder — not the base inside it, nor the notes under it — so
+  matching the renamed path alone leaves the whole subtree stranded. That also makes
+  both migrations idempotent, which is what lets them be right without knowing whether
+  Obsidian reports a folder move once or once per descendant. Without these, ordinary tidying
   orphans an entry under a key nothing will look up again, and the next save prunes it
   for naming a file that no longer exists.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop

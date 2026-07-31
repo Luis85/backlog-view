@@ -3,6 +3,7 @@ import {
 	collapseStoreIdentity,
 	dropCollapseState,
 	loadCollapseState,
+	movedPath,
 	saveCollapseState,
 	ViewIdentity,
 } from '../storage/collapseStore';
@@ -75,10 +76,19 @@ export class CollapseState {
 	 * front of the user who just renamed it.
 	 */
 	renamePath(oldPath: string, newPath: string): void {
-		if (!this.settled.delete(oldPath)) return;
-		this.settled.add(newPath);
-		if (this.collapsed.delete(oldPath)) this.collapsed.add(newPath);
-		this.scheduleSave();
+		let changed = false;
+		for (const path of [...this.settled]) {
+			const moved = movedPath(path, oldPath, newPath);
+			// A folder rename carries every row beneath it, so this cannot match on the
+			// renamed path alone — the event for a moved folder names the folder, and
+			// every row in it would otherwise be left behind under the old prefix.
+			if (moved === null) continue;
+			this.settled.delete(path);
+			this.settled.add(moved);
+			if (this.collapsed.delete(path)) this.collapsed.add(moved);
+			changed = true;
+		}
+		if (changed) this.scheduleSave();
 	}
 
 	/**
