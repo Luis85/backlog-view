@@ -137,7 +137,9 @@ function handleNavigationKey(
 /** Left collapses or jumps to the parent; right expands or jumps to the first child. */
 function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, evt: KeyboardEvent): void {
 	evt.preventDefault();
-	const hasChildren = current.children.length > 0;
+	// Same predicate as rendering: a parent whose children are all hidden is a
+	// leaf here too — collapsing it would invisibly mutate persisted state.
+	const hasChildren = current.children.some((child) => !host.isRowHidden(child));
 	const collapsed = host.isCollapsed(current.file.path);
 	// While filtering, collapse state is overridden and mutating it would be
 	// invisible — navigation still works, state changes wait for a clear filter.

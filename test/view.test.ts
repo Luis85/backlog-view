@@ -1555,6 +1555,22 @@ describe('completed items', () => {
 		expect(menu?.item('Indent under "A"')).toBeDefined();
 	});
 
+	it('treats a parent with only hidden children as a leaf for keyboard expansion', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
+		vault.addFile('F1.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic' });
+		const { containerEl, config } = makeView(vault, hiddenConfig());
+
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowLeft');
+		key(tree, 'ArrowRight');
+
+		// No invisible collapse state is written or persisted for the apparent leaf.
+		expect(config.setCalls.filter((c) => c.key === 'collapsedItems')).toHaveLength(0);
+		expect(rowByTitle(containerEl, 'Epic').classList.contains('pbl-selected')).toBe(true);
+	});
+
 	it('shows the all-done state with a way back when everything hides', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
