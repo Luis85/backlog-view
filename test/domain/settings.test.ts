@@ -139,11 +139,20 @@ describe('resolveSettings progress options', () => {
 });
 
 describe('configProblems', () => {
-	it('reports properties sharing a frontmatter key, tags included', () => {
+	it('reports properties sharing a frontmatter key', () => {
 		expect(configProblems(defaultSettings())).toEqual([]);
-		const clash = configProblems({ ...defaultSettings(), stateKey: 'tags' });
+		const clash = configProblems({ ...defaultSettings(), orderKey: 'parent' });
 		expect(clash).toHaveLength(1);
-		expect(clash[0]).toContain('state and tags');
+		expect(clash[0]).toContain('parent and order');
+	});
+
+	it('does not gate a view whose state property happens to be the tags key', () => {
+		// The tags column gives way instead: it would render nowhere in this config,
+		// so reporting a collision would only turn a working view read-only.
+		const settings = resolveSettings(fakeConfig({ stateProperty: 'note.tags' }));
+		expect(settings.stateKey).toBe('tags');
+		expect(settings.tagsKey).toBe('');
+		expect(configProblems(settings)).toEqual([]);
 	});
 });
 

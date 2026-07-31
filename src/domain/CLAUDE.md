@@ -16,7 +16,12 @@ in the root `CLAUDE.md` because it spans every layer.
   excluding marks corrupts every script that spells a letter with them.
 - `tagsKey` is the one property option whose default is a real key, so `resolveSettings`
   tells "never set" from "cleared" (`clearablePropKey`): without that the option could
-  not be turned off, since `getAsPropertyId` reports both as null.
+  not be turned off, since `getAsPropertyId` reports both as null. It is also the only
+  key that *yields*: one already used by parent, order, type or state resolves to '',
+  because the tags column is skipped in that configuration anyway. That is why
+  `configProblems` does not list it — a collision report would gate every write in a
+  base whose state property is `tags`, which was a working view before this option
+  existed.
 - `depth` is VISUAL only (focus mode re-roots it). Level math must use
   `effectiveLevelIndex`, which chains down the parent levels and carries unknown
   custom types through the ladder (see `childLevelIndex`). Never derive levels

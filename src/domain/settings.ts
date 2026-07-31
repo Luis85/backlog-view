@@ -104,9 +104,11 @@ export function configProblems(settings: BacklogSettings): string[] {
 	add('order', settings.orderKey);
 	add('type', settings.typeKey);
 	add('state', settings.stateKey);
-	// Editing tags rewrites the whole key — sharing it with a hierarchy property
-	// would have one feature overwrite the other's value.
-	add('tags', settings.tagsKey);
+	// `tagsKey` is deliberately absent: unlike the four above it cannot collide by
+	// the time anything reads it, because `resolveSettings` turns a colliding tags
+	// key off. Reporting it here would instead block every write in a view that was
+	// working before this option existed — a base whose state property happens to be
+	// `tags` would upgrade into a read-only view.
 	for (const [key, users] of keys) {
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
@@ -349,6 +351,23 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 
 	const levels = list('levels');
 	const doneValues = list('doneValues');
+	/**
+	 * The tags column is the only one whose property is also *editable*, so it gives
+	 * way to every other role: a key already spoken for by parent, order, type or
+	 * state is that feature's, and `chipProps` skips such a property anyway, so tag
+	 * editing would be unreachable. Resolving it to "off" here keeps that one fact
+	 * in one place instead of a collision report that would gate unrelated writes.
+	 */
+	const tagsKey = (): string => {
+		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
+		const taken = [
+			propKey('parentProperty', fallback.parentKey),
+			propKey('orderProperty', fallback.orderKey),
+			propKey('typeProperty', fallback.typeKey),
+			propKey('stateProperty', fallback.stateKey),
+		];
+		return taken.includes(key) ? '' : key;
+	};
 
 	return {
 		parentKey: propKey('parentProperty', fallback.parentKey),
@@ -364,7 +383,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		newItemFolder: str('newItemFolder').trim().replace(/^\/+|\/+$/g, ''),
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
-		tagsKey: clearablePropKey('tagsProperty', fallback.tagsKey),
+		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
 		states: dedupe(list('stateValues')),
