@@ -382,4 +382,33 @@ describe('buildModel progress rollup', () => {
 		expect(model.roots[0].stateValue).toBeNull();
 		expect(model.roots[0].done).toBe(false);
 	});
+
+	it('flags subtrees as done only when the item and every descendant are done', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });
+		vault.addFile('F1.md', { frontmatter: { status: 'Done' }, parentLink: 'Epic' });
+		vault.addFile('F2.md', { frontmatter: { status: 'Open' }, parentLink: 'Epic' });
+		vault.addFile('S1.md', { frontmatter: { status: 'Done' }, parentLink: 'F2' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, stateKey: 'status' });
+
+		const epic = model.roots[0];
+		// A done parent with an open child must stay visible when completed items hide.
+		expect(epic.subtreeDone).toBe(false);
+		expect(epic.children.find((c) => c.title === 'F1')?.subtreeDone).toBe(true);
+		const f2 = epic.children.find((c) => c.title === 'F2');
+		expect(f2?.subtreeDone).toBe(false);
+		expect(f2?.children[0].subtreeDone).toBe(true);
+	});
+
+	it('collects observed states deduped, open states first, then done states', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { status: 'Ready' } });
+		vault.addFile('B.md', { frontmatter: { status: 'Done' } });
+		vault.addFile('C.md', { frontmatter: { status: 'ready' } });
+		vault.addFile('D.md', { frontmatter: { status: 'Active' } });
+		vault.addFile('E.md', {});
+		const model = buildModel(vault.app, vault.entries(), { ...settings, stateKey: 'status' });
+
+		expect(model.observedStates).toEqual(['Active', 'Ready', 'Done']);
+	});
 });

@@ -78,6 +78,18 @@ code so imports stay cycle-free.
   (everything on a match path renders expanded), rows are not draggable (visual
   neighbors are not real siblings), and `setFilter` re-renders the tree only so the
   toolbar input keeps focus.
+- State editing: the chip/menu UI renders only when `stateKey` is configured, and
+  `applyWrites` drops `ItemWrite.state` without a stateKey (never write to an empty
+  key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
+  value) plus the item's own unlisted value, so the current state can always render
+  checked.
+- "Show completed items" hides only fully-done subtrees (`subtreeDone`) and only at
+  render level (`isRowHidden`): the model, rollups and ALL order math keep using full
+  sibling lists — hidden siblings still get renumber writes. The quick filter
+  suspends hiding. Structure ops and the move menu target the nearest *visible*
+  neighbor (`visibleNeighbor`) so no command is visually inert; a parent whose
+  children all hide renders as a leaf (chevron and aria-expanded follow visible
+  children, not `children.length`).
 - Orphans (`parent === null && hasParentValue`): never backfill their type; dropping them
   at top level MUST clear the stale link (`clearsStaleLink`), even position-unchanged.
 - Folder mode (`settings.folderHierarchy`): explicit links beat folder-note inference;

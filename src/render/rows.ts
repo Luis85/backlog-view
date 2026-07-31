@@ -2,7 +2,7 @@ import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
 import { DragDropController } from '../interactions/dragDrop';
-import { showItemMenu } from '../interactions/menu';
+import { showItemMenu, showStateMenu } from '../interactions/menu';
 import { BacklogItem, childLevelIndex, displayType } from '../model';
 
 const BADGE_COLOR_COUNT = 8;
@@ -18,19 +18,20 @@ export function renderTree(host: BacklogViewHost, dnd: DragDropController, treeE
 		return;
 	}
 	renderForest(host, dnd, treeEl, model.roots);
-	if (host.isFiltering() && treeEl.childElementCount === 0) {
-		renderFilterEmptyState(host, treeEl);
+	if (treeEl.childElementCount === 0) {
+		if (host.isFiltering()) renderFilterEmptyState(host, treeEl);
+		else renderAllDoneState(host, treeEl, model.items.length);
 	}
 }
 
-/** Render a sibling group, skipping filtered-out items so aria positions stay true. */
+/** Render a sibling group, skipping hidden items so aria positions stay true. */
 function renderForest(
 	host: BacklogViewHost,
 	dnd: DragDropController,
 	containerEl: HTMLElement,
 	siblings: BacklogItem[],
 ): void {
-	const visible = siblings.filter((item) => !host.isFilteredOut(item));
+	const visible = siblings.filter((item) => !host.isRowHidden(item));
 	visible.forEach((item, i) => renderItem(host, dnd, containerEl, item, { pos: i + 1, count: visible.length }));
 }
 
@@ -43,6 +44,15 @@ function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): voi
 		host.setFilter('');
 		host.focusFilter();
 	});
+}
+
+/** Everything is done and hidden — celebrate, and offer the way back. */
+function renderAllDoneState(host: BacklogViewHost, treeEl: HTMLElement, total: number): void {
+	const empty = treeEl.createDiv({ cls: 'pbl-empty-filter' });
+	setIcon(empty.createDiv({ cls: 'pbl-empty-filter-icon' }), 'circle-check');
+	empty.createDiv({ text: `All ${total} item${total === 1 ? ' is' : 's are'} done and hidden.` });
+	const btn = empty.createEl('button', { text: 'Show completed items' });
+	btn.addEventListener('click', () => host.config.set('showCompleted', true));
 }
 
 function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
@@ -74,7 +84,9 @@ function renderItem(
 	item: BacklogItem,
 	place: { pos: number; count: number },
 ): void {
-	const hasChildren = item.children.length > 0;
+	// A row whose children are all hidden renders as a leaf: a chevron expanding
+	// into an empty group would be a lie (its progress bar tells the story).
+	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
 	const collapsed = host.isCollapsed(item.file.path);
 	const childLevel = host.settings.levels[childLevelIndex(item, host.settings.levels)];
 
@@ -188,8 +200,9 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	}
 }
 
-/** Chips, progress or count, and the add-child button. */
+/** State control, chips, progress or count, and the add-child button. */
 function renderRowTrailing(host: BacklogViewHost, row: HTMLElement, item: BacklogItem, childLevel: string): void {
+	if (host.settings.stateKey) renderStateChip(host, row, item);
 	const chips = row.createDiv({ cls: 'pbl-chips' });
 	if (host.settings.showChips) renderChips(host, chips, item);
 	// Chips may render note links that must not also open the row's own note; the
@@ -223,6 +236,27 @@ function renderRowTrailing(host: BacklogViewHost, row: HTMLElement, item: Backlo
 	});
 }
 
+/** Clickable state chip — the inline write surface for the workflow state. */
+function renderStateChip(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
+	const value = item.stateValue;
+	// A native button, so assistive tech can activate it — but no Tab stop: the
+	// tree keeps its single-tab-stop model, and the context menu carries the
+	// documented keyboard path (Set state).
+	const chip = row.createEl('button', {
+		cls: 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : ''),
+		attr: {
+			type: 'button',
+			tabindex: '-1',
+			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
+		},
+	});
+	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
+	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
+	setTooltip(chip, 'Change state');
+	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
+}
+
 function wireRowEvents(host: BacklogViewHost, row: HTMLElement, item: BacklogItem, childLevel: string): void {
 	row.addEventListener('click', (evt) => {
 		host.selectItem(item, false);
@@ -247,6 +281,8 @@ function renderChips(host: BacklogViewHost, containerEl: HTMLElement, item: Back
 		`note.${host.settings.orderKey}`,
 		`note.${host.settings.typeKey}`,
 	]);
+	// The interactive state chip already shows this property.
+	if (host.settings.stateKey) skip.add(`note.${host.settings.stateKey}`);
 	for (const prop of props) {
 		if (!skip.has(prop)) renderChip(host, containerEl, item, prop);
 	}

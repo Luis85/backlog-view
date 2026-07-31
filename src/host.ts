@@ -23,8 +23,13 @@ export interface BacklogViewHost {
 	/** True when the Base has a group-by configured, which this view does not apply. */
 	readonly groupingIgnored: boolean;
 
-	/** True when the quick filter hides this item; always false without a filter. */
-	isFilteredOut(item: BacklogItem): boolean;
+	/**
+	 * True when this item's row is not rendered: excluded by the quick filter or,
+	 * while completed items are hidden, part of a fully-done subtree. Rendering,
+	 * keyboard navigation and menus consult this; data operations never do —
+	 * order math always runs over the full sibling lists.
+	 */
+	isRowHidden(item: BacklogItem): boolean;
 	/**
 	 * True while the quick filter is narrowing the tree. Collapse state, dragging
 	 * and their affordances pause on exactly this condition — not on the raw input

@@ -2,7 +2,8 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { BacklogItem, BacklogModel, inferFolderParent } from '../model';
 import { computeTypeChanges, ItemWrite } from '../ops';
-import { indent, moveToEdge, moveWithinSiblings, outdent } from './structure';
+import { stateMenuValues } from '../settings';
+import { indent, moveToEdge, moveWithinSiblings, outdent, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 
 /** Context menu for a backlog row (mouse path). */
@@ -25,6 +26,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 			.onClick(() => promptCreateItem(host, childLevel, item)),
 	);
 	addSetTypeMenu(host, menu, item);
+	if (host.settings.stateKey) addSetStateMenu(host, menu, item);
 	menu.addSeparator();
 
 	addMoveSection(host, menu, item, model);
@@ -88,32 +90,34 @@ function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite
 
 function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, model: BacklogModel): void {
 	// The top row of a focused view has no shared sibling ranking to move within.
-	if (item.focusRoot) return;
-	const siblingList = item.parent ? item.parent.children : model.roots;
-	const idx = siblingList.indexOf(item);
+	if (item.focusRoot || (item.parent ? item.parent.children : model.roots).indexOf(item) === -1) return;
+	// Gate on rendered neighbors: with completed items hidden, a swap with a
+	// hidden sibling would change nothing visibly.
+	const prev = visibleNeighbor(host, item, -1);
+	const next = visibleNeighbor(host, item, 1);
 
-	if (idx > 0) {
+	if (prev) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move up').setIcon('arrow-up').onClick(() => moveWithinSiblings(host, item, -1)),
 		);
 		menu.addItem((mi) =>
 			mi
-				.setTitle(`Indent under "${siblingList[idx - 1].title}"`)
+				.setTitle(`Indent under "${prev.title}"`)
 				.setIcon('indent-increase')
 				.onClick(() => indent(host, item)),
 		);
 	}
-	if (idx >= 0 && idx < siblingList.length - 1) {
+	if (next) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move down').setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
 		);
 	}
-	if (idx > 0) {
+	if (prev) {
 		menu.addItem((mi) =>
 			mi.setTitle('Move to top').setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
 		);
 	}
-	if (idx >= 0 && idx < siblingList.length - 1) {
+	if (next) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle('Move to bottom')
@@ -124,6 +128,67 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem, mo
 	if (item.parent) {
 		menu.addItem((mi) => mi.setTitle('Outdent').setIcon('indent-decrease').onClick(() => outdent(host, item)));
 	}
+}
+
+/** State menu for the row's state chip. */
+export function showStateMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
+	evt.preventDefault();
+	evt.stopPropagation();
+	const menu = new Menu();
+	addStateItems(host, menu, item);
+	// A keyboard-activated button click carries no pointer position — anchor
+	// the menu to the chip instead of the (0,0) corner.
+	const el = evt.currentTarget;
+	if (evt.clientX === 0 && evt.clientY === 0 && el instanceof HTMLElement) {
+		const rect = el.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.left, y: rect.bottom });
+	} else {
+		menu.showAtMouseEvent(evt);
+	}
+}
+
+/**
+ * The states this item's menu offers. The item's own value joins the configured
+ * or observed list when missing, so the current state can always render checked.
+ */
+function stateChoices(host: BacklogViewHost, item: BacklogItem): string[] {
+	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
+	const current = item.stateValue;
+	if (current !== null && !values.some((v) => v.toLowerCase() === current.toLowerCase())) {
+		return [...values, current];
+	}
+	return values;
+}
+
+function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	for (const state of stateChoices(host, item)) {
+		menu.addItem((si) => {
+			si.setTitle(state).onClick(() => void host.applySafely([{ file: item.file, state }]));
+			if (item.stateValue !== null && item.stateValue.toLowerCase() === state.toLowerCase()) {
+				si.setChecked(true);
+			}
+		});
+	}
+}
+
+function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set state').setIcon('circle-check');
+		const withSubmenu = mi as MenuItem & { setSubmenu?: () => Menu };
+		if (typeof withSubmenu.setSubmenu === 'function') {
+			addStateItems(host, withSubmenu.setSubmenu(), item);
+		} else {
+			// Older API without submenus: step through the known states.
+			const choices = stateChoices(host, item);
+			mi.setTitle('Set state: next');
+			mi.onClick(() => {
+				const current = choices.findIndex(
+					(s) => item.stateValue !== null && s.toLowerCase() === item.stateValue.toLowerCase(),
+				);
+				void host.applySafely([{ file: item.file, state: choices[(current + 1) % choices.length] }]);
+			});
+		}
+	});
 }
 
 function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {

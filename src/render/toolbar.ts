@@ -41,6 +41,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
 		}
 	});
+	renderCompletedToggle(host, barEl, model);
 
 	renderFilterBox(host, barEl);
 	renderFocusChip(host, barEl, model);
@@ -66,6 +67,22 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(host, model));
+}
+
+/**
+ * Eye toggle for the "Show completed items" option — hides fully-done subtrees.
+ * Only offered when a state property is configured; Bases persists the option
+ * and refreshes the view.
+ */
+function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	if (!host.settings.stateKey) return;
+	const showing = host.settings.showCompleted;
+	const hidden = model.items.filter((item) => item.subtreeDone).length;
+	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
+	const btn = iconButton(barEl, showing ? 'eye' : 'eye-off', showing ? 'Hide completed items' : `Show completed items${suffix}`);
+	btn.addClass('pbl-completed-toggle');
+	btn.toggleClass('is-active', !showing);
+	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
 }
 
 /** Type-to-filter box; matches keep their ancestors and subtrees visible. */

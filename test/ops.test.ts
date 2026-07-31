@@ -353,6 +353,18 @@ describe('applyWrites', () => {
 		expect(vault.fm('Child.md')).toEqual({ order: 15, type: 'Feature' });
 	});
 
+	it('writes the state to the configured key, and never to an empty key', async () => {
+		const vault = new FakeVault();
+		const item = vault.addFile('Item.md', { frontmatter: { status: 'Open' } });
+
+		await applyWrites(vault.app, { ...settings, stateKey: 'status' }, [{ file: item, state: 'Done' }]);
+		expect(vault.fm('Item.md')).toEqual({ status: 'Done' });
+
+		// Without a configured state property the write is dropped, not misfiled.
+		await applyWrites(vault.app, settings, [{ file: item, state: 'Open' }]);
+		expect(vault.fm('Item.md')).toEqual({ status: 'Done' });
+	});
+
 	it('removeParentKey deletes the property even in folder mode', async () => {
 		const vault = new FakeVault();
 		const child = vault.addFile('Epic/Child.md', { frontmatter: { parent: '[[Elsewhere]]' } });

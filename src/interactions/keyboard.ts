@@ -7,7 +7,7 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 	const visible: BacklogItem[] = [];
 	const walk = (items: BacklogItem[]) => {
 		for (const item of items) {
-			if (host.isFilteredOut(item)) continue;
+			if (host.isRowHidden(item)) continue;
 			visible.push(item);
 			if (item.children.length > 0 && !host.isCollapsed(item.file.path)) {
 				walk(item.children);
@@ -23,6 +23,9 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
  * the Azure DevOps backlog shortcuts (move within siblings, outdent, indent).
  */
 export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
+	// Keys bubbling out of a focused row control (the state chip) drive that
+	// control alone — Enter there must not also open the selected item.
+	if (evt.target !== evt.currentTarget) return;
 	const model = host.model;
 	if (!model || model.items.length === 0) return;
 	if (handleFilterKey(host, evt)) return;
@@ -137,7 +140,9 @@ function handleNavigationKey(
 /** Left collapses or jumps to the parent; right expands or jumps to the first child. */
 function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, evt: KeyboardEvent): void {
 	evt.preventDefault();
-	const hasChildren = current.children.length > 0;
+	// Same predicate as rendering: a parent whose children are all hidden is a
+	// leaf here too — collapsing it would invisibly mutate persisted state.
+	const hasChildren = current.children.some((child) => !host.isRowHidden(child));
 	const collapsed = host.isCollapsed(current.file.path);
 	// While filtering, collapse state is overridden and mutating it would be
 	// invisible — navigation still works, state changes wait for a clear filter.
@@ -149,8 +154,8 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 	} else if (!filtering && hasChildren && collapsed) {
 		collapseKeepingSelection(host, current, false);
 	} else if (hasChildren) {
-		// Under a filter the first child may be hidden; jump to the first rendered one.
-		const firstVisible = current.children.find((child) => !host.isFilteredOut(child));
+		// The first child may be hidden (filter or completed items); jump to the first rendered one.
+		const firstVisible = current.children.find((child) => !host.isRowHidden(child));
 		if (firstVisible) host.selectItem(firstVisible);
 	}
 }
