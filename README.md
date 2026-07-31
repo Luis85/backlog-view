@@ -168,9 +168,10 @@ with the full text (and the property name) in its tooltip.
 
 Columns never shrink — that is what keeps them aligned — so a long title truncates
 first, and a pane too narrow for the columns it is asked to show drops them instead of
-clipping them: the properties go first, then the progress rollup, leaving the title and
-the state chip. The view measures this against the width you configured, so wide columns
-give way earlier than narrow ones.
+clipping them: the properties go first, then the progress rollup, then the state chip,
+leaving the title. The view measures this against the width you configured and the
+depth on screen, so wide columns give way earlier than narrow ones, and expanding a
+deep branch can be what makes a column give way.
 
 Rows carry no `Property:` labels of their own — that is what the header is for. Turn the
 columns off entirely with **Show visible properties on rows**.

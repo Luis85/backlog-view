@@ -54,6 +54,11 @@ const ROW_LEAD_WIDTH =
 	28; // the row's own add button
 /** Indent one depth level adds, mirroring the row padding in styles.css. */
 const INDENT_PER_DEPTH = 24;
+/**
+ * The tree's own inline padding, both ends. `clientWidth` counts it, but rows live
+ * in the content box, so it is width the columns never get.
+ */
+const TREE_PADDING = 16;
 
 /**
  * Which columns still fit in a pane this wide. Columns never shrink — that is what
@@ -61,19 +66,26 @@ const INDENT_PER_DEPTH = 24;
  * the threshold has to come from what the rows actually need rather than a fixed
  * breakpoint: two 280px columns need more than twice the room of two 100px ones,
  * and every level of indent takes another 24px away from the deepest row's title.
- * Columns go in reverse order of usefulness, the state chip being the last to survive.
+ * Columns go in reverse order of usefulness — properties, then the rollup, then the
+ * state chip, which survives longest because it summarizes a row on its own.
  */
 export function columnFit(
 	settings: BacklogSettings,
 	chipCount: number,
 	depth: number,
 	width: number,
-): { hideProps: boolean; hideMeta: boolean } {
+): { hideProps: boolean; hideMeta: boolean; hideState: boolean } {
 	const state = settings.stateKey ? STATE_COL_WIDTH : 0;
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
 	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
-	const base = ROW_LEAD_WIDTH + depth * INDENT_PER_DEPTH + state;
-	return { hideProps: width < base + meta + props, hideMeta: width < base + meta };
+	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
+	return {
+		hideProps: width < lead + state + meta + props,
+		hideMeta: width < lead + state + meta,
+		// Nothing below this: what is left is the row's own lead, and the title
+		// truncates from there.
+		hideState: width < lead + state,
+	};
 }
 
 /**

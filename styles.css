@@ -666,6 +666,10 @@
 	display: none;
 }
 
+.pbl-view.pbl-hide-state .pbl-state-col {
+	display: none;
+}
+
 .pbl-prop {
 	display: flex;
 	align-items: center;

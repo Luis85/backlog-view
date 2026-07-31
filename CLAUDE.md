@@ -323,14 +323,17 @@ depend on the effectful one.
   column no longer sits under its header), so a pane too narrow for them drops them
   whole: `columnFit` derives the threshold from the *configured* width and count — a
   fixed CSS breakpoint would clip two 280px columns in a 700px pane — and the view
-  toggles `pbl-hide-props` / `pbl-hide-meta` from a `ResizeObserver` (absent in jsdom,
-  and `clientWidth` is 0 there, so tests stub it and call the render path). Everything
-  the threshold counts has to be *bounded in CSS and summed here*: `ROW_LEAD_WIDTH` is
-  written as its terms (padding, grip, chevron, capped badge, title min-width, spacer,
-  add button) so it can be checked against `styles.css`, the badge carries a
-  `max-width` for that reason, and indent is added per rendered depth. A term that
-  grows without a bound, or one left out of the sum, comes back as a clipped row
-  rather than a dropped column.
+  toggles `pbl-hide-props` / `pbl-hide-meta` / `pbl-hide-state` from a `ResizeObserver`
+  (absent in jsdom, and `clientWidth` is 0 there, so tests stub it and call the render
+  path). Everything the threshold counts has to be *bounded in CSS and summed here*:
+  `ROW_LEAD_WIDTH` is written as its terms (padding, grip, chevron, capped badge, title
+  min-width, the orphan and outside markers, spacer, add button) so it can be checked
+  against `styles.css`, the badge carries a `max-width` for that reason, indent is added
+  per rendered depth, and the tree's own padding is subtracted because `clientWidth`
+  includes it while rows live in the content box. A term that grows without a bound, or
+  one left out of the sum, comes back as a clipped row rather than a dropped column. The
+  ladder ends at the state chip: below that only the row's lead is left, and the title
+  truncates from there.
 - `tagsKey` is the one property option whose default is a real key, so `resolveSettings`
   tells "never set" from "cleared" (`clearablePropKey`): without that the option could
   not be turned off, since `getAsPropertyId` reports both as null.

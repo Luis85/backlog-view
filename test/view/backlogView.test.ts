@@ -647,9 +647,14 @@ describe('property columns', () => {
 		paneWidth(1400);
 		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
 
-		// Narrow enough that even the rollup has to go
-		paneWidth(300);
+		// Narrow enough that the rollup has to go, but the state chip still fits
+		paneWidth(500);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
+		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(false);
+
+		// Narrower than the row's own lead plus the state column: nothing left to give
+		paneWidth(400);
+		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(true);
 	});
 
 	it('counts the indent of the deepest rendered row', () => {

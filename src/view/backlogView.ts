@@ -109,6 +109,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const fit = columnFit(this.settings, this.visibleChipCount, renderedDepth(this), width);
 		this.viewEl.toggleClass('pbl-hide-props', fit.hideProps);
 		this.viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
+		this.viewEl.toggleClass('pbl-hide-state', fit.hideState);
 	}
 
 	onDataUpdated(): void {
