@@ -37,11 +37,23 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
+	// The banner survives minification, so the pointer back to the source repository
+	// stays on the shipped file.
+	minify: prod,
 	outfile: "main.js",
 });
 
 if (prod) {
 	await context.rebuild();
+	// styles.css is hand-edited source and stays readable at the repository root — a
+	// dev vault symlinked at the repo reads it directly. The release ships this
+	// minified copy instead, uploaded under the plain name esbuild gives it.
+	await esbuild.build({
+		entryPoints: ["styles.css"],
+		outfile: "dist/styles.css",
+		minify: true,
+		logLevel: "info",
+	});
 	process.exit(0);
 } else {
 	await context.watch();
