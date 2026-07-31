@@ -6,7 +6,7 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from './model';
 import { applyWrites, computeDropWrites, DropTarget, ItemWrite } from './ops';
 import { renderToolbar } from './render/toolbar';
-import { renderTree } from './render/rows';
+import { refreshRowChildren, renderTree, rowContext, RowContext } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from './settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
@@ -40,6 +40,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** Paths visible under the active filter; null when no filter is set. */
 	private filterVisible: Set<string> | null = null;
 	private applying = false;
+	/**
+	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
+	 * wasteful at six hundred — every selection change would walk the whole DOM.
+	 */
+	private rowEls = new Map<string, HTMLElement>();
+	private selectedRowEl: HTMLElement | null = null;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -197,6 +203,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.selectedPath = item.file.path;
 		this.deselectRows();
 		const row = this.rowElFor(item);
+		this.selectedRowEl = row;
 		this.syncActiveDescendant(row);
 		if (row) {
 			row.classList.add('pbl-selected');
@@ -211,11 +218,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.syncActiveDescendant(null);
 	}
 
+	/** Only one row is ever selected, so the tracked element is the whole search. */
 	private deselectRows(): void {
-		this.treeEl.querySelectorAll('.pbl-selected').forEach((el) => {
-			el.classList.remove('pbl-selected');
-			el.setAttribute('aria-selected', 'false');
-		});
+		const row = this.selectedRowEl;
+		this.selectedRowEl = null;
+		if (!row) return;
+		row.classList.remove('pbl-selected');
+		row.setAttribute('aria-selected', 'false');
 	}
 
 	/** Focus stays on the tree element; this tells assistive tech which row is active. */
@@ -249,11 +258,24 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	private rowElFor(item: BacklogItem): HTMLElement | null {
-		const rows = this.treeEl.querySelectorAll<HTMLElement>('.pbl-row');
-		for (const row of Array.from(rows)) {
-			if (row.dataset.path === item.file.path) return row;
+		return this.rowEls.get(item.file.path) ?? null;
+	}
+
+	/**
+	 * Re-render one row's children after an expand or collapse. Rebuilding the whole
+	 * tree for it is the difference between instant and visibly slow once a backlog
+	 * has a few hundred rows.
+	 */
+	refreshSubtree(item: BacklogItem): void {
+		const row = this.rowElFor(item);
+		if (!row) {
+			this.render();
+			return;
 		}
-		return null;
+		refreshRowChildren(this.rowCtx(), item, row);
+		// The selection may have been inside the subtree that just collapsed.
+		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
+		this.syncActiveDescendant(this.selectedRowEl);
 	}
 
 	// ------------------------------------------------------------------- render
@@ -276,10 +298,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 		const scrollTop = this.treeEl.scrollTop;
 		this.treeEl.empty();
-		renderTree(this, this.dnd, this.treeEl);
+		this.rowEls.clear();
+		renderTree(this.rowCtx(), this.treeEl);
 		this.treeEl.scrollTop = scrollTop;
-		this.syncActiveDescendant(this.treeEl.querySelector<HTMLElement>('.pbl-selected'));
+		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
+		this.syncActiveDescendant(this.selectedRowEl);
 		this.updateCountLabel(model);
+	}
+
+	/** The per-pass render state: the row index plus the hoisted config lookups. */
+	private rowCtx(): RowContext {
+		return rowContext(this, this.dnd, this.rowEls);
 	}
 
 	/** The toolbar survives filter renders; keep its count in sync imperatively. */

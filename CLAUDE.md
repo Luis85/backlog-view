@@ -29,7 +29,7 @@ live-vault smoke test.
 | `src/dropTargets.ts` | Pure drop-target math (zones, no-op/cycle/stale-link rules) | node tests |
 | `src/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `src/view.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
-| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering | jsdom tests |
+| `src/render/toolbar.ts`, `src/render/rows.ts` | DOM rendering (`RowContext` carries the per-pass row index and hoisted config lookups) | jsdom tests |
 | `src/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
 | `src/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `src/interactions/menu.ts` | Context menu | jsdom tests |
@@ -127,3 +127,17 @@ code so imports stay cycle-free.
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
 - The collapsed-item list persists in the `.base` file via `config.set('collapsedItems')`
   — prune paths against `model.byPath` when persisting.
+- Rendering cost is the scaling limit (a few hundred rows is a normal backlog), so:
+  expand/collapse calls `host.refreshSubtree(item)` — which re-renders that row's child
+  group in place — never `host.render()`; the view keeps a path → row element index
+  (`rowEls`) plus the selected row, so no interaction scans the DOM; and per-render
+  config lookups (`getOrder`, `getDisplayName`) live on `RowContext`, not in the per-row
+  path. `refreshRowChildren` must prune the subtree it removes from `rowEls`, and
+  anything captured at wire time (drag handlers) must read expansion state live, because
+  a targeted refresh leaves surrounding rows in place. Data updates still rebuild
+  everything — skipping that needs to account for arbitrary chip property values.
+- Row layout is columnar: `.pbl-chips` is the flexible middle, and `.pbl-state-col` /
+  `.pbl-meta-col` are fixed-width trailing columns so the state chip and the rollup line
+  up across rows regardless of title length and indent. Both columns render on every row
+  whenever their feature is configured — a leaf without a rollup still gets the empty
+  `.pbl-meta-col`, or the columns after it would shift per row.

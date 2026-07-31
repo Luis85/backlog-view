@@ -58,6 +58,11 @@ export interface BacklogViewHost {
 
 	render(): void;
 	/**
+	 * Re-render one row's children in place after an expand or collapse — the
+	 * targeted alternative to `render()`, which rebuilds every row in the tree.
+	 */
+	refreshSubtree(item: BacklogItem): void;
+	/**
 	 * Serialized, validated frontmatter writes — the only mutation path.
 	 * Resolves true only when every write in the batch was applied.
 	 */

@@ -372,6 +372,30 @@
 	height: 12px;
 }
 
+/* ------------------------------------------------------------------ columns */
+
+/* The state chip and the rollup sit in fixed columns anchored to the row's end,
+   so they line up across rows instead of trailing each item's title. */
+/* Both may shrink rather than push the title out of a narrow pane — alignment
+   degrades under pressure instead of costing the row its content. */
+.pbl-state-col {
+	display: flex;
+	align-items: center;
+	flex: 0 1 auto;
+	width: var(--pbl-state-col, 116px);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.pbl-meta-col {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 0 1 auto;
+	width: var(--pbl-meta-col, 84px);
+	min-width: 0;
+}
+
 .pbl-count {
 	flex: 0 0 auto;
 	font-size: var(--font-ui-smaller);
@@ -563,9 +587,8 @@
 	line-height: 1.7;
 	height: auto;
 	box-shadow: none;
-	flex: 0 0 auto;
+	flex: 0 1 auto;
 	margin: 0;
-	margin-inline-start: var(--size-4-2);
 	cursor: var(--cursor);
 }
 

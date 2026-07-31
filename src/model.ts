@@ -1,4 +1,4 @@
-import { App, BasesEntry, TFile } from 'obsidian';
+import { App, BasesEntry, CachedMetadata, TFile } from 'obsidian';
 import { BacklogSettings } from './settings';
 
 /** One node of the backlog tree, wrapping a BasesEntry. */
@@ -126,8 +126,10 @@ function createItems(
 		const file = entry.file;
 		// Only markdown files can carry the frontmatter properties this view manages.
 		if (!file || file.extension !== 'md' || byPath.has(file.path)) continue;
-		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-		const parentRef = resolveParent(app, file, settings.parentKey);
+		// One cache lookup per note: the model is rebuilt on every vault change.
+		const cache = app.metadataCache.getFileCache(file);
+		const fm = cache?.frontmatter;
+		const parentRef = resolveParent(app, file, cache, settings.parentKey);
 		const stateValue = settings.stateKey ? readString(fm?.[settings.stateKey]) : null;
 		const item: BacklogItem = {
 			file,
@@ -390,8 +392,7 @@ interface ParentRef {
 	explicitRoot: boolean;
 }
 
-function resolveParent(app: App, file: TFile, parentKey: string): ParentRef {
-	const cache = app.metadataCache.getFileCache(file);
+function resolveParent(app: App, file: TFile, cache: CachedMetadata | null, parentKey: string): ParentRef {
 	if (!cache) return { path: null, hasValue: false, explicitRoot: false };
 
 	// Preferred: the parsed frontmatter link cache (handles wikilinks and aliases).

@@ -1646,3 +1646,102 @@ describe('hierarchy scope', () => {
 		expect(containerEl.querySelector('.pbl-empty-hint')?.textContent).toContain("Point this base's filter");
 	});
 });
+
+describe('row columns', () => {
+	function statedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('A very long feature title indeed.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Short.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		return vault;
+	}
+
+	it('puts the state chip in a column of its own, after the flexible chips', () => {
+		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
+
+		for (const row of rows(containerEl)) {
+			const col = row.querySelector('.pbl-state-col');
+			expect(col).not.toBeNull();
+			expect(col?.querySelector('.pbl-state-chip')).not.toBeNull();
+			// The chips absorb the free space, so the column lands at a fixed offset
+			expect(col?.previousElementSibling?.classList.contains('pbl-chips')).toBe(true);
+		}
+	});
+
+	it('gives every row a rollup column, even leaves, so the columns line up', () => {
+		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
+
+		const epic = rowByTitle(containerEl, 'Epic');
+		const leaf = rowByTitle(containerEl, 'Short');
+		expect(epic.querySelector('.pbl-meta-col .pbl-progress-label')?.textContent).toBe('1/2');
+		expect(leaf.querySelector('.pbl-meta-col')).not.toBeNull();
+		expect(leaf.querySelector('.pbl-progress')).toBeNull();
+		expect(epic.querySelector('.pbl-state-col')?.nextElementSibling).toBe(epic.querySelector('.pbl-meta-col'));
+	});
+
+	it('drops both columns when neither states nor counts are configured', () => {
+		const { containerEl } = makeView(statedVault(), { showCounts: false });
+		const epic = rowByTitle(containerEl, 'Epic');
+		expect(epic.querySelector('.pbl-state-col')).toBeNull();
+		expect(epic.querySelector('.pbl-meta-col')).toBeNull();
+	});
+});
+
+describe('targeted subtree rendering', () => {
+	it('collapses and expands without rebuilding the rest of the tree', () => {
+		const { containerEl } = makeView(fixture());
+		const epicA = rowByTitle(containerEl, 'Epic A');
+		const epicB = rowByTitle(containerEl, 'Epic B');
+		const chevron = epicB.querySelector<HTMLElement>('.pbl-chevron');
+
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+		expect(epicB.getAttribute('aria-expanded')).toBe('false');
+		expect(chevron?.classList.contains('pbl-expanded')).toBe(false);
+		// Untouched rows keep their identity — the tree was not rebuilt
+		expect(rowByTitle(containerEl, 'Epic A')).toBe(epicA);
+		expect(rowByTitle(containerEl, 'Epic B')).toBe(epicB);
+
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		expect(epicB.getAttribute('aria-expanded')).toBe('true');
+		expect(rowByTitle(containerEl, 'Epic A')).toBe(epicA);
+	});
+
+	it('keeps re-expanded children fully interactive', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const chevron = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-chevron');
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// A rebuilt child row must still open, drag and rank like any other
+		const b2 = rowByTitle(containerEl, 'Feature B2');
+		b2.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(vault.opened.map((o) => o.path)).toEqual(['Feature B2.md']);
+
+		drag(b2, rowByTitle(containerEl, 'Feature B1'), 'before');
+		await flush();
+		// Ranked ahead of Feature B1 (order 10), a full spacing below it
+		expect(vault.fm('Feature B2.md').order).toBe(0);
+	});
+
+	it('drops the collapsed subtree from the selection index', () => {
+		const { view, containerEl } = makeView(fixture());
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Feature B1.md') as never);
+		expect(tree.getAttribute('aria-activedescendant')).not.toBeNull();
+
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// The selected row is gone; nothing may point at a detached element
+		expect(tree.getAttribute('aria-activedescendant')).toBeNull();
+	});
+});

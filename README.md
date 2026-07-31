@@ -158,6 +158,11 @@ Set the **State property** (e.g. `status`) in the view options and parents show 
 progress bar with a done count (e.g. `3/7`), while done items dim out. Which values count
 as done is configurable (`Done, Closed, Completed, Removed` by default, case-insensitive).
 
+The state chip and the progress rollup sit in **fixed columns at the end of each row**,
+so they line up vertically no matter how long an item's title is or how deep it sits in
+the tree — the eye can scan states down the column instead of hunting for them behind
+each title. Enabled properties render as chips in the flexible space before them.
+
 Each row then carries a clickable **state chip**: pick a new state from its menu (also
 available via right-click → **Set state**) and the note's frontmatter updates without
 opening it. The menu offers the **Workflow states** configured in the view options — or,
@@ -198,6 +203,16 @@ shortcuts where sensible):
 | <kbd>/</kbd> | Jump to the filter box |
 | <kbd>Escape</kbd> | Clear the filter, then the selection |
 | <kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the context menu for the selected item |
+
+### Large backlogs
+
+Expanding or collapsing a row re-renders only that row's children, selection and keyboard
+navigation use a path index instead of searching the tree, and the Base's property lookups
+happen once per render rather than once per row — so a backlog of several hundred items
+stays responsive to interaction. A **write** (dragging, a state change, anything that
+touches frontmatter) still re-renders every row, because the Base re-runs its query and
+any visible property may have changed; collapsing the levels you're not working on is the
+best lever there.
 
 ### Ranking details
 
