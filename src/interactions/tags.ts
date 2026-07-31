@@ -7,8 +7,9 @@ import { BacklogItem } from '../model';
  * Frontmatter tags carry no '#' and no spaces, and Obsidian only accepts letters,
  * digits, underscores, hyphens and '/' as a nesting separator. Anything else a
  * user types becomes a hyphen rather than an unusable tag. Returns '' for input
- * that cannot become a tag at all — Obsidian also requires at least one
- * non-numeric character, so "123" would be written and then never recognized.
+ * that cannot become a tag at all — Obsidian also requires one non-numeric
+ * character, so "123" would be written and then never recognized. A hyphen or a
+ * slash satisfies that, which is what makes "2026-07" a perfectly good tag.
  */
 function normalizeTag(input: string): string {
 	const tag = input
@@ -17,7 +18,7 @@ function normalizeTag(input: string): string {
 		.replace(/[^\p{L}\p{N}_/-]+/gu, '-')
 		.replace(/-{2,}/g, '-')
 		.replace(/^[-/]+|[-/]+$/g, '');
-	return /[\p{L}_]/u.test(tag) ? tag : '';
+	return /[^\p{N}]/u.test(tag) ? tag : '';
 }
 
 /**
@@ -47,22 +48,24 @@ function hasTag(item: BacklogItem, tag: string): boolean {
 	return item.tags.some((t) => t.toLowerCase() === tag.toLowerCase());
 }
 
-/** Add a tag unless the item already carries it (ignoring case). */
+/**
+ * Add or remove a tag. Both send a delta, never a computed list: the row's tags
+ * are a snapshot from the last refresh, so a second click before the refresh
+ * lands would otherwise write the list as it was before the first one.
+ */
 function addTag(host: BacklogViewHost, item: BacklogItem, raw: string): void {
 	const tag = normalizeTag(raw);
 	if (tag.length === 0) {
 		// Say so rather than closing the prompt as if the tag had been added.
-		if (raw.trim().length > 0) new Notice('Tags need at least one letter or underscore, so that was not added.');
+		if (raw.trim().length > 0) new Notice('Tags need at least one non-numeric character, so that was not added.');
 		return;
 	}
 	if (hasTag(item, tag)) return;
-	void host.applySafely([{ file: item.file, tags: [...item.tags, tag] }]);
+	void host.applySafely([{ file: item.file, tags: { add: [tag] } }]);
 }
 
 export function removeTag(host: BacklogViewHost, item: BacklogItem, tag: string): void {
-	if (!hasTag(item, tag)) return;
-	const tags = item.tags.filter((t) => t.toLowerCase() !== tag.toLowerCase());
-	void host.applySafely([{ file: item.file, tags }]);
+	void host.applySafely([{ file: item.file, tags: { remove: [tag] } }]);
 }
 
 function toggleTag(host: BacklogViewHost, item: BacklogItem, tag: string): void {

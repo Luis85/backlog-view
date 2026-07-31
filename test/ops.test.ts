@@ -378,21 +378,34 @@ describe('applyWrites', () => {
 		expect(vault.fm('Item.md')).toEqual({ status: 'Done' });
 	});
 
-	it('replaces the tag list, and removes the key when it empties', async () => {
+	it('applies tag deltas to what the note holds, and drops the key when it empties', async () => {
 		const vault = new FakeVault();
 		const tagged = { ...settings, tagsKey: 'tags' };
 		const item = vault.addFile('Item.md', { frontmatter: { tags: 'alpha beta' } });
 
-		await applyWrites(vault.app, tagged, [{ file: item, tags: ['alpha', 'beta', 'gamma'] }]);
-		// Always written as a list, whatever shape the note held before
+		await applyWrites(vault.app, tagged, [{ file: item, tags: { add: ['gamma'] } }]);
+		// Always written back as a list, whatever shape the note held before
 		expect(vault.fm('Item.md')).toEqual({ tags: ['alpha', 'beta', 'gamma'] });
 
-		await applyWrites(vault.app, tagged, [{ file: item, tags: [] }]);
+		await applyWrites(vault.app, tagged, [{ file: item, tags: { remove: ['alpha', 'gamma'] } }]);
+		expect(vault.fm('Item.md')).toEqual({ tags: ['beta'] });
+
+		await applyWrites(vault.app, tagged, [{ file: item, tags: { remove: ['BETA'] } }]);
 		expect(vault.fm('Item.md')).toEqual({});
 
 		// Without a configured tags property the write is dropped, not misfiled.
-		await applyWrites(vault.app, { ...settings, tagsKey: '' }, [{ file: item, tags: ['x'] }]);
+		await applyWrites(vault.app, { ...settings, tagsKey: '' }, [{ file: item, tags: { add: ['x'] } }]);
 		expect(vault.fm('Item.md')).toEqual({});
+	});
+
+	it('leaves the note alone when the delta changes nothing', async () => {
+		const vault = new FakeVault();
+		const tagged = { ...settings, tagsKey: 'tags' };
+		const item = vault.addFile('Item.md', { frontmatter: { tags: 'alpha beta' } });
+
+		await applyWrites(vault.app, tagged, [{ file: item, tags: { add: ['alpha'], remove: ['gamma'] } }]);
+		// Still the original string: a no-op delta must not restyle the value
+		expect(vault.fm('Item.md')).toEqual({ tags: 'alpha beta' });
 	});
 
 	it('removeParentKey deletes the property even in folder mode', async () => {

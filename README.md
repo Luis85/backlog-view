@@ -188,7 +188,8 @@ properties, its column becomes editable:
 
 Tags are written to frontmatter as a list, and typed input is normalized to a usable tag
 (`#Sprint 12!` becomes `Sprint-12`); input Obsidian would not accept as a tag at all — a
-number like `123` — is refused with a notice instead of being written. Removing the last
+number like `123` — is refused with a notice instead of being written (`2026-07` is
+fine: the hyphen is the non-numeric character Obsidian asks for). Removing the last
 tag removes the key rather than leaving an empty list behind. Rows loaded as context from
 outside the Base's filter show their tags but offer no editing, like every other write in
 this view. Point **Tags property** at another key, or clear it, and that property goes

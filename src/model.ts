@@ -547,7 +547,7 @@ function readString(value: unknown): string | null {
  * holding several tags separated by commas or spaces. The leading '#' is optional
  * in frontmatter, so it is stripped here and re-added only for display.
  */
-function readTags(value: unknown): string[] {
+export function readTags(value: unknown): string[] {
 	const raw = Array.isArray(value) ? value : [value];
 	const tags: string[] = [];
 	for (const entry of raw) {

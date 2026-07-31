@@ -94,10 +94,14 @@ code so imports stay cycle-free.
   `tagsKey` to be configured AND that property to be one of the Base's visible ones,
   because the pills the user removes are the ones the column renders — a context menu
   that edited an invisible property would write things nothing on screen shows.
-  `applyWrites` drops `ItemWrite.tags` without a `tagsKey` (same rule as state), an
-  empty list deletes the key rather than writing `[]`, and the list is always rewritten
-  as a YAML sequence even when the note held one space-separated string. `observedTags`
-  is result-only vocabulary, exactly like `observedStates`.
+  `applyWrites` drops `ItemWrite.tags` without a `tagsKey` (same rule as state). The
+  write is a *delta* (`TagDelta`), never a computed list: a row's `tags` are a snapshot
+  from the last refresh, so two removals before the refresh lands would both start from
+  the same list and the second would put the first tag back. `applyTagDelta` therefore
+  runs inside `processFrontMatter` against the live value, rewrites it as a YAML
+  sequence, deletes the key when the last tag goes, and leaves the note untouched when
+  the delta changes nothing. `observedTags` is result-only vocabulary, exactly like
+  `observedStates`.
 - State editing: the chip/menu UI renders only when `stateKey` is configured, and
   `applyWrites` drops `ItemWrite.state` without a stateKey (never write to an empty
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done

@@ -1,5 +1,5 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
-import { BacklogItem, BacklogModel, childLevelIndex } from './model';
+import { BacklogItem, BacklogModel, childLevelIndex, readTags } from './model';
 import { BacklogSettings } from './settings';
 
 /** Spacing between freshly assigned order values, leaving room to drop items in between. */
@@ -22,10 +22,17 @@ export interface ItemWrite {
 	/** New value for the state property; ignored when no state property is configured. */
 	state?: string;
 	/**
-	 * The complete new tag list (without '#'), replacing whatever the key held.
-	 * An empty list removes the key rather than leaving an empty array behind.
+	 * Tags to add and remove (without '#'). A delta rather than the new list,
+	 * because the row it came from can be a refresh behind the note: two removals
+	 * in a row would otherwise both compute from the same stale list, and the
+	 * second would put the first tag back.
 	 */
-	tags?: string[];
+	tags?: TagDelta;
+}
+
+export interface TagDelta {
+	add?: string[];
+	remove?: string[];
 }
 
 export interface DropTarget {
@@ -54,14 +61,30 @@ export async function applyWrites(app: App, settings: BacklogSettings, writes: I
 			// The stateKey may be unset (progress tracking off) — never write to an empty key.
 			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
 			if (write.tags !== undefined && settings.tagsKey) {
-				// Tags are always rewritten as a list: it is the shape Obsidian's own
-				// property editor writes, and a note that had them inline as one string
-				// would otherwise keep growing a value nothing can round-trip.
-				if (write.tags.length > 0) fm[settings.tagsKey] = write.tags;
-				else delete fm[settings.tagsKey];
+				applyTagDelta(fm, settings.tagsKey, write.tags);
 			}
 		});
 	}
+}
+
+/**
+ * Add and remove tags on whatever the note holds right now — inside processFrontMatter,
+ * so the list a click was rendered from cannot overwrite a change made since. Always
+ * written back as a YAML list (the shape Obsidian's own property editor writes), and
+ * the key goes when the last tag does rather than leaving an empty array behind.
+ */
+function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta): void {
+	const current = readTags(fm[key]);
+	const remove = new Set((delta.remove ?? []).map((tag) => tag.toLowerCase()));
+	const next = current.filter((tag) => !remove.has(tag.toLowerCase()));
+	for (const tag of delta.add ?? []) {
+		if (!next.some((existing) => existing.toLowerCase() === tag.toLowerCase())) next.push(tag);
+	}
+	// A delta that changes nothing leaves the note alone, rather than rewriting the
+	// value into a different shape for no reason.
+	if (next.length === current.length && next.every((tag, i) => tag === current[i])) return;
+	if (next.length > 0) fm[key] = next;
+	else delete fm[key];
 }
 
 /**

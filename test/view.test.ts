@@ -748,6 +748,36 @@ describe('tag editing', () => {
 		expect(vault.opened).toEqual([]);
 	});
 
+	it('removes two tags in a row without the second undoing the first', async () => {
+		// Both clicks come from the same rendered row, whose tags are a snapshot from
+		// before either write — the second must not put the first tag back.
+		const { containerEl, vault } = tagged();
+		const row = rowByTitle(containerEl, 'Epic A');
+		const [first, second] = Array.from(row.querySelectorAll<HTMLElement>('.pbl-tag-remove'));
+
+		first.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		second.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect('tags' in vault.fm('Epic A.md')).toBe(false);
+	});
+
+	it('accepts a tag whose only non-numeric character is a separator', async () => {
+		const { containerEl, vault } = tagged();
+
+		openTagMenu(containerEl, 'Epic B').item('New tag...')?.click();
+		const modal = Modal.lastOpened;
+		const input = modal?.contentEl.querySelector('input');
+		if (!modal || !input) throw new Error('tag prompt not opened');
+		input.value = '2026-07';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(vault.fm('Epic B.md').tags).toEqual(['gamma', '2026-07']);
+	});
+
 	it('removes the key when the last tag goes', async () => {
 		const { containerEl, vault } = tagged();
 
@@ -811,7 +841,7 @@ describe('tag editing', () => {
 		await flush();
 
 		expect(vault.fm('Epic B.md').tags).toBe('gamma');
-		expect(Notice.messages.some((m) => m.includes('at least one letter'))).toBe(true);
+		expect(Notice.messages.some((m) => m.includes('at least one non-numeric character'))).toBe(true);
 	});
 
 	it('stops offering tag editing when the tags property is cleared', () => {
