@@ -46,6 +46,11 @@ in `manifest.json` (`x.y.z`, no `v` prefix) and that all three files are attache
 
 ## Submitting to the community directory (one-time)
 
+**Done** — the plugin is listed at
+[community.obsidian.md/plugins/product-backlog-view](https://community.obsidian.md/plugins/product-backlog-view).
+Subsequent releases need no re-submission; see *After acceptance* below. The rest of this
+section is kept as the record of what the review required.
+
 Prerequisites — all already satisfied by this repository:
 
 - [x] Public GitHub repository with `README.md`, `LICENSE` and `manifest.json` in the
