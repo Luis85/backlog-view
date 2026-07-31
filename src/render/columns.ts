@@ -38,7 +38,12 @@ export function rowContext(
 /** Widths of the fixed columns, mirroring the defaults of their CSS custom properties. */
 const STATE_COL_WIDTH = 116;
 const META_COL_WIDTH = 84;
-/** What a row at the top level keeps for itself: grip, chevron, badge, a usable title. */
+/**
+ * What a row at the top level keeps for itself: grip, chevron, badge and a usable
+ * title. A constant is only honest because every part of it is bounded — the badge
+ * is capped at 120px in styles.css, so even the longest custom level name leaves
+ * room for a title here.
+ */
 const ROW_LEAD_WIDTH = 260;
 /** Indent one depth level adds, mirroring the row padding in styles.css. */
 const INDENT_PER_DEPTH = 24;

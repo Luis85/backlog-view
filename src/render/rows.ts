@@ -250,13 +250,19 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
 	}
-	badge.createSpan({ text: badgeText });
+	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
 	else badge.addClass('pbl-lvl-unknown');
 	if (item.impliedType) {
 		badge.addClass('pbl-implied');
 		setTooltip(badge, 'Type property not set — level implied from position. Use "Assign missing properties" to write it.');
+		return;
 	}
+	// A long level name is capped so the row's lead stays bounded (columnFit budgets
+	// for it); the full name is one hover away when that cap actually bites.
+	badge.addEventListener('mouseover', () => {
+		if (textEl.scrollWidth > textEl.clientWidth) setTooltip(badge, badgeText);
+	});
 }
 
 /** The fixed trailing columns, then the row's own add button. */

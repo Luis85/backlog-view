@@ -494,8 +494,11 @@
 	justify-content: center;
 	gap: var(--size-2-1);
 	flex: 0 0 auto;
-	/* A shared minimum keeps titles starting at an even column for the default level names */
+	/* A shared minimum keeps titles starting at an even column for the default level
+	   names; the maximum keeps a long custom level from eating the row — the fit
+	   calculation budgets for a badge no wider than this. */
 	min-width: 58px;
+	max-width: 120px;
 	font-size: var(--font-ui-smaller);
 	font-weight: var(--font-medium);
 	line-height: 1.6;
@@ -507,9 +510,16 @@
 	white-space: nowrap;
 }
 
+.pbl-badge-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
 .pbl-badge-icon {
 	display: inline-flex;
 	align-items: center;
+	flex: 0 0 auto;
 }
 
 .pbl-badge-icon .svg-icon {
