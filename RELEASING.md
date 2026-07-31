@@ -6,6 +6,13 @@ Either path below ends in the **Release** workflow building the plugin and creat
 GitHub release with `main.js`, `manifest.json` and `styles.css` attached as individual
 assets. Both refuse to publish over a version that already has a release.
 
+The two built assets are minified: `npm run build` minifies the bundle into `main.js`
+and writes a minified `styles.css` to `dist/`, which is what the release uploads. The
+`styles.css` at the repository root stays readable and is the file to edit — a dev vault
+symlinked at the repo reads it directly. Each built asset also gets a signed provenance
+attestation, verifiable with
+`gh attestation verify <file> --repo Luis85/backlog-view`.
+
 ### When the version files are already committed
 
 This is the case for the **first release** (the repository was authored at `0.1.0`), and

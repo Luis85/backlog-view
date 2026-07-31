@@ -13,7 +13,16 @@ interface Harness {
 	containerEl: HTMLElement;
 }
 
-function makeView(vault: FakeVault, configValues: Record<string, unknown> = {}): Harness {
+/**
+ * The tree opens collapsed, which would hide the rows most tests are about, so the
+ * harness expands it through the real toolbar control. Pass `collapsed` to assert on
+ * the opening state itself.
+ */
+function makeView(
+	vault: FakeVault,
+	configValues: Record<string, unknown> = {},
+	{ collapsed = false }: { collapsed?: boolean } = {},
+): Harness {
 	const containerEl = document.body.createDiv();
 	const view = new ProductBacklogView({} as never, containerEl);
 	const config = new FakeViewConfig(configValues);
@@ -22,7 +31,14 @@ function makeView(vault: FakeVault, configValues: Record<string, unknown> = {}):
 	anyView.config = config;
 	anyView.data = { data: vault.entries() };
 	view.onDataUpdated();
+	if (!collapsed) expandAll(containerEl);
 	return { view, config, containerEl };
+}
+
+function expandAll(containerEl: HTMLElement): void {
+	const btn = containerEl.querySelector<HTMLElement>('.pbl-collapse-ctl[aria-label="Expand all"]');
+	if (!btn) throw new Error('expand all button not rendered');
+	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
 function rows(containerEl: HTMLElement): HTMLElement[] {
@@ -238,7 +254,7 @@ describe('rendering', () => {
 });
 
 describe('collapsing', () => {
-	it('collapses a subtree via the chevron and persists the state', () => {
+	it('collapses a subtree via the chevron, without touching the base file', () => {
 		const vault = fixture();
 		const { containerEl, config } = makeView(vault);
 
@@ -247,8 +263,8 @@ describe('collapsing', () => {
 
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
 		expect(rowByTitle(containerEl, 'Epic B').getAttribute('aria-expanded')).toBe('false');
-		expect(config.setCalls.some((c) => c.key === 'collapsedItems')).toBe(true);
-		expect(config.values['collapsedItems']).toEqual(['Epic B.md']);
+		// Collapse state is session-only: the .base file must not grow a path per row.
+		expect(config.setCalls.some((c) => c.key === 'collapsedItems')).toBe(false);
 		// The chevron click must not open the note
 		expect(vault.opened).toHaveLength(0);
 	});
@@ -893,13 +909,13 @@ describe('toolbar controls', () => {
 			.querySelector<HTMLElement>('[aria-label="Collapse all"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
-		expect(config.values['collapsedItems']).toEqual(['Epic B.md']);
 
 		containerEl
 			.querySelector<HTMLElement>('[aria-label="Expand all"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
-		expect(config.values['collapsedItems']).toEqual([]);
+		// Neither control writes to the base file.
+		expect(config.setCalls.some((c) => c.key === 'collapsedItems')).toBe(false);
 	});
 });
 
@@ -1125,7 +1141,7 @@ describe('quick filter', () => {
 			.querySelector<HTMLElement>('.pbl-chevron')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
-		expect(config.values['collapsedItems']).toEqual(['Epic B.md']);
+		expect(config.setCalls.some((c) => c.key === 'collapsedItems')).toBe(false);
 	});
 
 	it('keeps keyboard navigation within the filtered rows', () => {
@@ -1324,12 +1340,50 @@ describe('toolbar count breakdown', () => {
 });
 
 describe('view state details', () => {
-	it('restores the collapsed set persisted in the view config', () => {
+	it('opens collapsed, so the base file needs no stored UI state', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { collapsedItems: ['Epic B.md'] });
+		const { containerEl, config } = makeView(vault, {}, { collapsed: true });
 
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
 		expect(rowByTitle(containerEl, 'Epic B').getAttribute('aria-expanded')).toBe('false');
+		expect(config.setCalls.some((c) => c.key === 'collapsedItems')).toBe(false);
+	});
+
+	it('ignores a collapsed list left by an older version, and clears it', () => {
+		const vault = fixture();
+		const { config } = makeView(vault, { collapsedItems: ['Epic B.md'] }, { collapsed: true });
+
+		// Cleared rather than honoured: the key is what made the .base file grow.
+		expect(config.setCalls.filter((c) => c.key === 'collapsedItems')).toEqual([
+			{ key: 'collapsedItems', value: null },
+		]);
+	});
+
+	it('keeps a leaf that just gained its first child expanded', () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault, {}, { collapsed: true });
+
+		// What a drop into, or a create under, a childless row does before it writes.
+		view.setCollapsed('Epic A.md', false);
+		// The write lands and Bases refreshes with the child present.
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic A' });
+		(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
+		view.onDataUpdated();
+
+		// The initial collapse must not apply here and hide what was just put there.
+		expect(titlesOf(containerEl)).toContain('PBI A1');
+	});
+
+	it('keeps what the user expanded across a data update', () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault, {}, { collapsed: true });
+		const chevron = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-chevron');
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+
+		view.onDataUpdated(); // a vault edit refreshes the Bases query
+
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
 	});
 
 	it('opens in a new tab on middle click', () => {
@@ -1777,6 +1831,7 @@ describe('parents outside the filter', () => {
 		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, config, containerEl, vault };
 	}
 
@@ -1849,6 +1904,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
 		};
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -1900,6 +1956,7 @@ describe('context rows are read-only', () => {
 		anyView.config = new FakeViewConfig(configValues);
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -2002,6 +2059,7 @@ describe('creating a child under a context parent', () => {
 		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -2067,6 +2125,7 @@ describe('move commands that do not rank', () => {
 			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
 		};
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -2122,6 +2181,7 @@ describe('write safety with context rows, across every entry point', () => {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
 		};
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -2215,6 +2275,7 @@ describe('context rows follow the results they place', () => {
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -2253,6 +2314,7 @@ describe('context rows follow the results they place', () => {
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		expandAll(containerEl);
 
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'Open']);
 		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 of 2');
@@ -2272,6 +2334,7 @@ describe('toolbar figures describe the Base results', () => {
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		expandAll(containerEl);
 		return { view, containerEl };
 	}
 

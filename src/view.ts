@@ -37,6 +37,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	filterText = '';
 	groupingIgnored = false;
 	private collapsedPaths = new Set<string>();
+	/** Parents already given their initial collapsed state, so it is applied once each. */
+	private defaultedPaths = new Set<string>();
 	/** Paths visible under the active filter; null when no filter is set. */
 	private filterVisible: Set<string> | null = null;
 	private applying = false;
@@ -78,7 +80,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.settings = resolveSettings(this.config);
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		this.groupingIgnored = this.detectIgnoredGrouping();
-		this.restoreCollapsedState();
+		this.collapseNewParents();
+		this.dropLegacyCollapsedConfig();
 		this.recomputeFilter();
 		this.render();
 	}
@@ -175,33 +178,48 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	setCollapsed(path: string, collapsed: boolean): boolean {
 		const changed = collapsed ? !this.collapsedPaths.has(path) : this.collapsedPaths.delete(path);
 		if (collapsed) this.collapsedPaths.add(path);
+		// An explicit expand or collapse settles this row, so the initial state is not
+		// applied to it later. That matters most for a row with no children yet: a drop
+		// or a create expands it before the write, and the refresh that follows would
+		// otherwise collapse it as a newly seen parent and hide what just landed there.
+		this.defaultedPaths.add(path);
 		return changed;
 	}
 
-	persistCollapsedState(): void {
+	/**
+	 * Collapse state is session-only: it is deliberately not written to the `.base`
+	 * file, which would grow it by a path per collapsed row, and the Bases API gives
+	 * a view no handle on its own file to key the state anywhere else. So the tree
+	 * opens collapsed and every parent starts that way the first time it is seen —
+	 * "first time" being per parent, not per pass, so a data update does not undo
+	 * what the user expanded.
+	 */
+	private collapseNewParents(): void {
 		const model = this.model;
 		if (!model) return;
-		// Prune paths that no longer exist so renames and deletions don't accumulate.
-		const paths = [...this.collapsedPaths].filter((p) => model.byPath.has(p)).sort();
-		try {
-			this.config.set(COLLAPSED_CONFIG_KEY, paths);
-		} catch {
-			// Persistence is best-effort; the in-memory state still applies.
+		for (const item of model.items) {
+			const path = item.file.path;
+			if (item.children.length === 0 || this.defaultedPaths.has(path)) continue;
+			this.defaultedPaths.add(path);
+			this.collapsedPaths.add(path);
+		}
+		// Paths that have gone are not coming back under the same identity; letting
+		// them accumulate would keep a long-lived view holding every path it ever saw.
+		for (const path of this.defaultedPaths) {
+			if (!model.byPath.has(path)) {
+				this.defaultedPaths.delete(path);
+				this.collapsedPaths.delete(path);
+			}
 		}
 	}
 
-	/** Adopt the collapsed-item list persisted in the view config (survives reopening the Base). */
-	private restoreCollapsedState(): void {
+	/** Earlier versions stored the collapsed list in the view config; clear it once. */
+	private dropLegacyCollapsedConfig(): void {
 		try {
-			const stored = this.config.get(COLLAPSED_CONFIG_KEY);
-			if (!Array.isArray(stored)) return;
-			const paths = stored.filter((p): p is string => typeof p === 'string');
-			const next = new Set(paths);
-			if (next.size !== this.collapsedPaths.size || paths.some((p) => !this.collapsedPaths.has(p))) {
-				this.collapsedPaths = next;
-			}
+			if (this.config.get(COLLAPSED_CONFIG_KEY) === undefined) return;
+			this.config.set(COLLAPSED_CONFIG_KEY, null);
 		} catch {
-			// Older Bases versions without config storage — keep the in-memory state.
+			// Nothing to clean up on Bases versions without config storage.
 		}
 	}
 
@@ -335,9 +353,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	// -------------------------------------------------------------------- writes
 
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
-		if (target.parent && this.setCollapsed(target.parent.file.path, false)) {
-			this.persistCollapsedState();
-		}
+		// Dropping into a collapsed parent reveals where the item landed.
+		if (target.parent) this.setCollapsed(target.parent.file.path, false);
 		const writes = computeDropWrites(dragged, target, this.settings);
 		// Mark the moved row until the Bases refresh re-renders it in place.
 		const row = this.rowElFor(dragged);

@@ -176,7 +176,6 @@ export class DragDropController {
 			this.hoverExpand = null;
 			row.removeClass('pbl-hover-expanding');
 			if (this.host.setCollapsed(path, false)) {
-				this.host.persistCollapsedState();
 				this.host.refreshSubtree(item);
 			}
 		}, 600);

@@ -214,7 +214,6 @@ function renderRowLead(
 			// would change nothing visibly until the filter clears.
 			if (host.isFiltering()) return;
 			host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
-			host.persistCollapsedState();
 			host.refreshSubtree(item);
 		});
 	}

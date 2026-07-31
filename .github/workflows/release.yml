@@ -69,7 +69,7 @@ jobs:
           subject-path: |
             main.js
             manifest.json
-            styles.css
+            dist/styles.css
 
       - name: Create release
         env:
@@ -82,4 +82,4 @@ jobs:
             --title "$TAG" \
             --target "$GITHUB_SHA" \
             --generate-notes \
-            main.js manifest.json styles.css
+            main.js manifest.json dist/styles.css
