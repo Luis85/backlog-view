@@ -174,6 +174,25 @@ ids, so a double-quoted id, or one lifted to a constant, matched nothing and rep
 nothing. Both surfaces go through one loop now, which is the point: exempting one of two
 symmetric things is how every one of these got here.
 
+An eighth round closed the last gap in the extension rule, and corrected a note the gate
+cannot judge:
+
+| Planted | Reported |
+| --- | --- |
+| `- **3b — ` relabelled `- **9a — ` | `extension 9a departs from step 9, which the main flow does not have` |
+| A main flow stripped of its numbering | `main flow has no numbered steps` |
+
+The label was checked for **shape and order and nothing else**, so `**99a — ` passed: a
+well-formed label departing from nowhere. The main flow's numbered steps are parsed now and
+every extension must name one of them, which is what makes the label mean what
+`docs/README.md` says it means — *numbered against the step it departs from* — rather than
+just being well punctuated.
+
+Separately, `docs/adrs/README.md` explained ADRs as carrying "a `type` that is none of the
+six". They carry **no** `type` at all, and the checker exempts them by path. The conclusion
+was right and the reason was wrong, which is the more misleading of the two: a reader
+correcting the file would have gone looking for a type that is not there.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 

@@ -10,13 +10,14 @@ could only ever have gone one way is documentation, not a decision — it belong
 
 ## Not part of the backlog
 
-These notes are deliberately outside the work-item hierarchy: no `parent`, and a `type`
-that is none of the six the view understands. The consequence is worth knowing, because
-it is the plugin's own behaviour applied to itself — the base filters on
-`file.inFolder("docs")`, so these files **are** returned by the query, and
-[[What counts as a work item]] then drops them: no supported type, no parent, therefore
-not backlog items. The toolbar counts them in its "not backlog items" advisory, which is
-the honest report.
+These notes are deliberately outside the work-item hierarchy: **no `parent` and no
+`type` at all** — an ADR's frontmatter carries `adr`, `title`, `status`, `date` and
+`area`, and nothing the view reads. The consequence is worth knowing, because it is the
+plugin's own behaviour applied to itself — the base filters on `file.inFolder("docs")`,
+so these files **are** returned by the query, and [[What counts as a work item]] then
+drops them: a note belongs if it has a supported type *or* a parent, and an ADR has
+neither. The toolbar counts them in its "not backlog items" advisory, which is the
+honest report.
 
 If that advisory becomes noise, narrow the base's filter to exclude this folder rather
 than giving these notes a `parent` — a decision record is not a work item, and making one

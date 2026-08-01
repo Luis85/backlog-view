@@ -166,12 +166,16 @@ for (const [, note] of notes) {
 	for (const section of USE_CASE_SECTIONS) {
 		if (!text.includes(section)) fail(note.file, `use case has no ${section}`);
 	}
-	// Extensions are numbered against the step they depart from, in step order. EVERY
-	// bullet is validated, not only the ones already shaped like a label: a mistyped
-	// `**3 —` or `**3A —` would otherwise drop out of the list silently and leave the
-	// rest looking well ordered.
+	// Extensions are numbered against the step they depart from, in step order. Three
+	// things are checked, and the third is what makes the label mean anything: EVERY
+	// bullet is labelled (a mistyped `**3 —` would otherwise drop out silently and leave
+	// the rest looking well ordered), the labels are ordered, and each names a step the
+	// **Main flow** actually has — a `**99a —` departs from nowhere.
 	const block = /\*\*Extensions\*\*\n\n([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
 	if (!block) continue;
+	const flow = /\*\*Main flow\*\*\n\n([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
+	const steps = new Set([...(flow?.[1] ?? "").matchAll(/^(\d+)\. /gm)].map(([, n]) => Number(n)));
+	if (steps.size === 0) fail(note.file, "main flow has no numbered steps");
 	const labels = [];
 	for (const [bullet] of block[1].matchAll(/^- .*/gm)) {
 		const label = /^- \*\*(\d+)([a-z]) — /.exec(bullet);
@@ -179,7 +183,11 @@ for (const [, note] of notes) {
 			fail(note.file, `extension is not labelled \`**Na — \`: ${bullet.slice(0, 60)}`);
 			continue;
 		}
-		labels.push([Number(label[1]), label[2]]);
+		const step = Number(label[1]);
+		if (steps.size > 0 && !steps.has(step)) {
+			fail(note.file, `extension ${label[1]}${label[2]} departs from step ${step}, which the main flow does not have`);
+		}
+		labels.push([step, label[2]]);
 	}
 	const ordered = [...labels].sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1]));
 	if (labels.some(([step, letter], i) => ordered[i][0] !== step || ordered[i][1] !== letter)) {

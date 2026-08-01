@@ -77,8 +77,9 @@ can run is worse than none, because it invites trust it has not earned:
    listed is the point: visible, not silently exempt.
 5. Every use case has all its sections — including **all four rows** of the use-case
    table, not just `Actor` — and **every** extension bullet is labelled `**Na — `, in step
-   order. Validating only the bullets that already look like labels would let a mistyped
-   one vanish and leave the rest looking well ordered.
+   order, **naming a step the main flow actually has**. Validating only the bullets that
+   already look like labels would let a mistyped one vanish and leave the rest looking well
+   ordered; validating only shape and order would let `**99a — ` depart from nowhere.
 6. Every ADR: frontmatter complete, number matching its filename, unique, no gaps in the
    sequence, a known status and area, relative links resolving, and every record listed in
    the ADR index. `supersedes` and `superseded-by` must name a record that **exists**, and
