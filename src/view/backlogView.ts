@@ -49,8 +49,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	board: BoardSnapshot | null = null;
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
-	/** Whether the last render drew the dated timeline: entering it is what centers on today. */
-	private timelineShown = false;
+	/** What the scroller last drew — a horizontal offset belongs to the content that made it. */
+	private scrolledContent = '';
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -411,16 +411,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		}
 		this.treeEl.scrollTop = scrollTop;
 		this.treeEl.scrollLeft = scrollLeft;
-		// The timeline opens on today on ENTRY, and entry is tracked rather than read
-		// off the position: the scroller is shared across projections, so a board's
-		// leftover offset must not skip the centering, and a timeline panned to its
-		// far-past edge must not be yanked back by a data update. Leaving mirrors it:
-		// a months-wide pan means nothing to the buckets or the tree, so it resets.
+		// A horizontal offset belongs to the content that made it: restored on a
+		// re-render of the same projection and axis (a data update must not move the
+		// view), reset on any switch (a board's pan means nothing to the buckets),
+		// and replaced on entering the dated timeline, which opens centered on today.
+		// Tracked, never read off the position — zero is a place a user can pan to.
 		const todayLeft = this.roadmap?.todayLeft ?? null;
-		if (todayLeft != null && !this.timelineShown) {
-			this.treeEl.scrollLeft = Math.max(todayLeft - this.treeEl.clientWidth / 2, 0);
-		} else if (todayLeft == null && this.timelineShown) this.treeEl.scrollLeft = 0;
-		this.timelineShown = todayLeft != null;
+		const drawn = todayLeft != null ? 'dates' : this.roadmap ? 'horizons' : projection;
+		if (drawn !== this.scrolledContent) {
+			this.treeEl.scrollLeft = todayLeft == null ? 0 : Math.max(todayLeft - this.treeEl.clientWidth / 2, 0);
+		}
+		this.scrolledContent = drawn;
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
 		if (projection !== 'tree') return;

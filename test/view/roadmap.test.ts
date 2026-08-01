@@ -196,7 +196,7 @@ describe('roadmap keyboard support', () => {
 	});
 });
 
-describe('entering the dated timeline', () => {
+describe('the shared scroller across projections', () => {
 	const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
 
 	function datedVault(): FakeVault {
@@ -246,6 +246,21 @@ describe('entering the dated timeline', () => {
 
 		pick('Show horizons');
 		// A months-wide pan means nothing to the buckets: the leading horizon shows.
+		expect(bucketsOf(containerEl).length).toBeGreaterThan(0);
+		expect(scroller(containerEl).scrollLeft).toBe(0);
+	});
+
+	it('resets the offset when switching column projections — a pan belongs to its content', () => {
+		const vault = roadmapVault();
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...AXES, stateProperty: 'note.status', stateValues: 'Open, Done' },
+			{ collapsed: true },
+		);
+		view.setProjection('board');
+		scroller(containerEl).scrollLeft = 240;
+
+		view.setProjection('roadmap');
 		expect(bucketsOf(containerEl).length).toBeGreaterThan(0);
 		expect(scroller(containerEl).scrollLeft).toBe(0);
 	});
