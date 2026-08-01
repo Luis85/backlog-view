@@ -26,7 +26,8 @@ filter, not a place cards are moved to.
   `.base`.
 - A collapsed column keeps its name and count visible and stays a drop target, as
   Trello's collapsed lists and Linear's hidden columns both do.
-- "Show completed items" off hides done columns whole; the quick filter overrides
-  hiding, as it does in the tree.
+- "Show completed items" off hides done columns whole — one of the two deliberate
+  narrowings the epic's invariant names, beside the focus level; the quick filter
+  overrides hiding, as it does in the tree.
 - Age-based hiding stays out of scope until [[Stamp when work starts and finishes]]
   gives it a date to read.

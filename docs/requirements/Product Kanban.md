@@ -59,16 +59,19 @@ one field away — offered, never enforced.
 ## Definition of done, for anything under this epic
 
 The product epic's own rules apply unchanged — never write to a note the Base
-excluded, every change can be taken back, nothing is maintained by hand. On top of
-them:
+excluded, every property change can be taken back, nothing is maintained by hand.
+Creation keeps its documented exception: undo never deletes a note, so a card made in
+place sits outside the undo history here exactly as a new item does in the tree. On
+top of them:
 
 - The two projections never disagree: one model, one result set, one write gate, one
   undo history. A change made on the board is the change the tree shows.
 - The board never loses a result: at full scope, every item the Base returned renders
-  in exactly one column, and column counts sum to the result count. A focus level
-  narrows the card set the same way it narrows the tree — descendants surface in card
-  rollups, ancestors as context — and the narrowing belongs to the focus control,
-  never to the board: clearing focus always restores every result to a column.
+  in exactly one column, and column counts sum to the result count. Exactly two
+  controls narrow that deliberately, in both projections alike — the focus level
+  (descendants surface in card rollups, ancestors as context) and "Show completed
+  items" (done columns hide whole) — and the narrowing belongs to those controls,
+  never to the board: restoring them restores every result to a column.
 - No second source of truth: no board-only rank property, no board-only state, no
   state string written that the user did not configure or observe.
 - A row outside the Base's filter obeys the context-row rule on the board exactly as

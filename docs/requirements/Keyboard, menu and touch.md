@@ -29,7 +29,9 @@ mobile HTML5 drag events never fire. The menu is all of those answers at once.
   drop writes. There is deliberately no Alt+Up/Down rank — within-column order is
   derived ([[Board order is derived not stored]]).
 - Set state in the context menu is the equivalent non-drag path on every platform, and
-  the required one on touch; it offers the same vocabulary in both projections.
+  the required one on touch; it offers the same vocabulary in both projections — which
+  includes clearing: a no-state entry writing the same remove-state write the no-state
+  column's drop writes, or the menu could not reach every column a drag can.
 - Every move — drag, key or menu — is announced to assistive technology from a polite
   live region, naming the card and its old and new column; hidden instructions on the
   board describe the shortcuts and the menu path.

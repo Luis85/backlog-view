@@ -27,5 +27,6 @@ has no authority to show less.
 - State-to-column matching is case-insensitive, exactly as `doneValues` matching
   already is.
 - Column counts sum to the cards on the board — at full scope, exactly the result
-  count; [[Focus level picks the cards]] narrows the two together. A row loaded only
+  count; only the two narrowings the epic names move the two together
+  ([[Focus level picks the cards]], [[Done columns stay lean]]). A row loaded only
   for context is not a card and is in no count.
