@@ -13,6 +13,7 @@ files:
   - test/helpers/register.ts
   - test/docs/checkerAccepts.test.ts
   - test/docs/checkerRejects.test.ts
+  - test/docs/checkerRejectsAdrs.test.ts
 ---
 
 # Plant a corpus the register gate runs against
@@ -59,9 +60,13 @@ missed it by percent-encoding everywhere.
 2. One valid corpus, with **every case a single delta against it** — so a failure names a
    rule rather than a document. The tree carries `src/` and `test/` as well as `docs/`,
    because the gate's last rule reads them.
-3. Both directions, as two files. `test/docs/checkerAccepts.test.ts` plants legal forms the
-   register does not itself use and expects green; `test/docs/checkerRejects.test.ts` plants
-   the violations that were previously prose and expects each to be named.
+3. Both directions, as three files. `test/docs/checkerAccepts.test.ts` plants legal forms
+   the register does not itself use and expects green;
+   `test/docs/checkerRejects.test.ts` and `test/docs/checkerRejectsAdrs.test.ts` plant the
+   violations that were previously prose and expect each to be named. The ADR rules are
+   split off because they alone outnumber every other group in the gate.
+4. **One planted case per report site**, enumerated from the gate rather than chosen — see
+   the Outcome for why that had to be checked mechanically instead of claimed.
 
 ## Acceptance criteria
 

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { expect, it } from 'vitest';
 
 /**
  * A whole miniature repository, handed to the real `docs-check.mjs`.
@@ -89,6 +90,26 @@ function parseProblems(stderr: string): string[] {
 		.slice(1)
 		.filter((line) => line.startsWith('  '))
 		.map((line) => line.trim());
+}
+
+/**
+ * One planted violation: a name, the single edit that plants it, and the message the
+ * gate must produce. Shared by the two rejection suites, which are split by subject
+ * rather than by kind — the ADR rules alone outnumber every other group.
+ */
+export type RejectionCase = [name: string, plant: (files: Register) => void, expected: string];
+
+/** Run a table of them, each against its own fresh copy of the valid corpus. */
+export function runRejections(cases: RejectionCase[]): void {
+	it.each(cases)('reports %s', async (_name, plant, expected) => {
+		const files = baseRegister();
+		plant(files);
+		const result = await checkRegister(files);
+		// A planted violation that produced a green run is the failure these suites exist
+		// to catch, and it should say so before the message assertion reports "" instead.
+		expect(result.ok, 'expected the gate to reject this document, but it passed').toBe(false);
+		expect(result.problems.join('\n')).toContain(expected);
+	});
 }
 
 /**

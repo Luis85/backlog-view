@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { adr, baseRegister, checkRegister, note, useCase } from '../helpers/register';
-import type { Register } from '../helpers/register';
+import { readFile } from 'node:fs/promises';
+import { note, runRejections, useCase } from '../helpers/register';
 
 /**
  * **Does an invalid document fail?**
@@ -11,32 +11,23 @@ import type { Register } from '../helpers/register';
  * and recorded in prose, so each tightening re-derived the evidence or did without it.
  *
  * These are those plantings, executable. Each case is **one edit** to the valid corpus in
- * `checkerAccepts.test.ts`, so a failure names a rule rather than a document, and a rule
- * quietly removed from the gate fails here instead of going unnoticed until the register
- * drifts. The accept direction lives in the sibling file, and neither is worth much
- * alone.
+ * `checkerAccepts.test.ts`, so a failure names a rule rather than a document. The ADR
+ * rules are the sibling file; the accept direction is `checkerAccepts.test.ts`, and none
+ * of the three is worth much alone.
+ *
+ * **The guarantee, stated exactly.** Every place the gate can report a problem has at
+ * least one planted case across the two rejection files, so a rule deleted from
+ * `docs-check.mjs` turns one of them red. That claim was true when written and is the
+ * kind that rots silently, so it is not left as prose — the last test in this file pins
+ * the number of report sites the corpus was built against, and a new rule moves it.
+ *
+ * What it does **not** claim: that every *input* reaching a rule is covered. One case per
+ * site proves the rule exists and fires; it does not prove the rule is right about every
+ * document, and enumerating those is the trap this checker keeps falling into.
  */
 
-type Case = [name: string, plant: (files: Register) => void, expected: string];
-
-async function problemsFor(files: Register): Promise<string> {
-	const result = await checkRegister(files);
-	// A planted violation that produced a green run is the failure this file exists to
-	// catch, and it should say so before the message assertion reports "" instead.
-	expect(result.ok, `expected the gate to reject this document, but it passed`).toBe(false);
-	return result.problems.join('\n');
-}
-
-function run(cases: Case[]): void {
-	it.each(cases)('reports %s', async (_name, plant, expected) => {
-		const files = baseRegister();
-		plant(files);
-		expect(await problemsFor(files)).toContain(expected);
-	});
-}
-
 describe('the backlog tree', () => {
-	run([
+	runRejections([
 		[
 			'two siblings holding the same rank',
 			(files) => {
@@ -119,7 +110,7 @@ describe('the backlog tree', () => {
 });
 
 describe('cross-references', () => {
-	run([
+	runRejections([
 		[
 			'a wikilink that resolves to nothing',
 			(files) => {
@@ -154,7 +145,7 @@ describe('cross-references', () => {
 });
 
 describe('the use-case shape', () => {
-	run([
+	runRejections([
 		[
 			'a use case missing one of its sections',
 			(files) => {
@@ -234,123 +225,54 @@ describe('the use-case shape', () => {
 			},
 			'extensions are not in step order',
 		],
+		[
+			'an **Extensions** block that cannot be read at all',
+			(files) => {
+				// A parser that gives up quietly is the same failure as a filter standing in
+				// for a check: every rule below the block would be skipped on a note that
+				// still has the heading three lines up. So it is loud instead.
+				files['docs/requirements/Doing the thing.md'] = useCase().replace(
+					'**Extensions**\n',
+					'**Extensions** — none worth stating.\n',
+				);
+			},
+			'**Extensions** block could not be parsed',
+		],
+		[
+			'an **Extensions** block that parses but holds no bullets',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({ extensions: 'None worth stating.' });
+			},
+			'**Extensions** has no bullets',
+		],
+		[
+			'a main flow with no numbered steps for extensions to depart from',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					mainFlow: '- They ask for it.\n- It happens.',
+				});
+			},
+			'main flow has no numbered steps',
+		],
 	]);
 });
 
-describe('ADRs', () => {
-	run([
-		[
-			'an ADR missing one of its frontmatter fields',
-			(files) => {
-				files['docs/adrs/0001-the-first-decision.md'] = files['docs/adrs/0001-the-first-decision.md'].replace(
-					'area: tooling\n',
-					'',
-				);
-			},
-			'ADR has no area',
-		],
-		[
-			'a date that is not YYYY-MM-DD',
-			(files) => {
-				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', { date: 'August 2026' });
-			},
-			'date is not YYYY-MM-DD',
-		],
-		[
-			'a heading that merely starts with the required one',
-			(files) => {
-				// `## Contextual` satisfied `## Context` under a line-start anchor alone —
-				// the same prefix hole as `showCounts` vouching for `showCount`.
-				files['docs/adrs/0001-the-first-decision.md'] = files['docs/adrs/0001-the-first-decision.md'].replace(
-					'## Context',
-					'## Contextual',
-				);
-			},
-			'ADR has no ## Context',
-		],
-		[
-			'ADR sections in the wrong order',
-			(files) => {
-				files['docs/adrs/0001-the-first-decision.md'] = files['docs/adrs/0001-the-first-decision.md']
-					.replace('## Context\n\nSomething.\n\n## Decision\n\nSomething.\n', '## Decision\n\nSomething.\n\n## Context\n\nSomething.\n');
-			},
-			'ADR has ## Decision before ## Context',
-		],
-		[
-			'a gap in the ADR numbering',
-			(files) => {
-				files['docs/adrs/0003-the-third-decision.md'] = adr(3, 'the-third-decision');
-				files['docs/adrs/README.md'] += '- [0003](0003-the-third-decision.md)\n';
-			},
-			'no ADR 0002 — numbering has a gap',
-		],
-		[
-			'a record the index does not list',
-			(files) => {
-				files['docs/adrs/README.md'] = '# ADRs\n\nNothing here yet.\n';
-			},
-			'does not list 0001-the-first-decision.md',
-		],
-		[
-			'a filename that does not look like an ADR, which must be reported not skipped',
-			(files) => {
-				// Filtering on `NNNN-` would let a malformed name opt out of every check
-				// below by failing to look like one.
-				files['docs/adrs/thoughts.md'] = adr(2, 'thoughts');
-				files['docs/adrs/README.md'] += '- [thoughts](thoughts.md)\n';
-			},
-			'ADR filename is not `NNNN-slug.md`',
-		],
-		[
-			'a supersession chain declared from one end only',
-			(files) => {
-				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', {
-					status: 'Superseded',
-					'superseded-by': '2',
-				});
-				files['docs/adrs/0002-the-second-decision.md'] = adr(2, 'the-second-decision');
-				files['docs/adrs/README.md'] += '- [0002](0002-the-second-decision.md)\n';
-			},
-			'but ADR 2 does not say supersedes: 1',
-		],
-		[
-			'a chain whose arrow points the wrong way through time',
-			(files) => {
-				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', { supersedes: '2' });
-				files['docs/adrs/0002-the-second-decision.md'] = adr(2, 'the-second-decision', {
-					status: 'Superseded',
-					'superseded-by': '1',
-				});
-				files['docs/adrs/README.md'] += '- [0002](0002-the-second-decision.md)\n';
-			},
-			'a record is replaced by a later ADR',
-		],
-		[
-			'a record that names a successor while still reading as current',
-			(files) => {
-				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', { 'superseded-by': '2' });
-				files['docs/adrs/0002-the-second-decision.md'] = adr(2, 'the-second-decision', { supersedes: '1' });
-				files['docs/adrs/README.md'] += '- [0002](0002-the-second-decision.md)\n';
-			},
-			'names superseded-by but its status is "Accepted", not Superseded',
-		],
-	]);
+describe('the corpus covers every rule', () => {
+	it('is built against every place the gate can report a problem', async () => {
+		// The two rejection files were written by enumerating the gate's report sites and
+		// planting one violation per site. That mapping is hand-made and would rot the
+		// moment a rule was added — the exact drift this register removed hand-maintained
+		// counts to avoid — so it is pinned rather than described. A new `fail(` moves this
+		// number and the run goes red until someone plants a case for it, or raises it
+		// knowingly.
+		//
+		// A count over source is a crude instrument and deliberately so: its failure mode
+		// is a false ALARM that makes somebody look, never a false pass. It is the one
+		// direction in which regex-over-source is safe, which is why this is not the thing
+		// `docs/README.md` warns about.
+		const source = await readFile('docs-check.mjs', 'utf8');
+		const sites = source.match(/\bfail\(/g) ?? [];
 
-	it('reports a bare `parent:` on an ADR, which has a value to no parser but a key to every one', async () => {
-		// The divergence class in `The checker reads frontmatter its own way`, pinned as a
-		// test rather than as a paragraph. `resolveParent` reads a bare `parent:` as an
-		// explicit root — enrolling the ADR in the plugin's own backlog exactly as a filled
-		// one would — while a reader that wants a *value* reports it as absent. The
-		// prohibition is on the key being there at all, so the key is what is tested, and
-		// this is the form that needs no typo: a template, or an abandoned edit.
-		const files = baseRegister();
-		files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', { parent: '' });
-
-		const result = await checkRegister(files);
-
-		// Exactly one problem: the mutation is one line, and nothing else may notice it.
-		expect(result.problems).toEqual([
-			'docs/adrs/0001-the-first-decision.md: ADR carries a `parent` — an ADR is not a work item',
-		]);
+		expect(sites.length).toBe(45);
 	});
 });
