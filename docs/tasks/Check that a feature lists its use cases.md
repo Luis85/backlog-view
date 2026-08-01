@@ -160,7 +160,22 @@ a child*.
 | `- [[Scaffolding a backlog]` | `… does not list [[Scaffolding a backlog]]` |
 | `- [[Name\|alias]]` and `- [[Name#Heading]]` | *(nothing — both still index Name)* |
 
-The pattern across all seven rounds: every hole was the check answering a slightly different
+An eighth round closed the two boundaries of the section itself, both shared with the rest
+of the file rather than introduced here:
+
+| Planted | Reported |
+| --- | --- |
+| The real index replaced by a `~~~`-fenced example of one | all five children reported missing |
+| `  ## Related material` indented, with entries below it | the two below it reported missing |
+
+`withoutCode` stripped backtick fences only, so everything structural in this file —
+headings, sections, entries — was readable inside a tilde fence, where nothing renders.
+And `useCaseIndex` ended the section at a column-zero `## `, so an indented heading did not
+close it and the bullets beneath counted. Both now follow the same CommonMark rule the
+entry matcher does, which is the point: **one module, one idea of what a heading and a
+list item are.**
+
+The pattern across all eight rounds: every hole was the check answering a slightly different
 question than the rule does. The rule is about the list a reader sees; the code variously
 asked about the section, about every child, about text a reader never sees, about every link
 in a bullet, about a bullet's first link wherever it sat, and about bullets in one exact

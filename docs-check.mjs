@@ -114,7 +114,13 @@ function between(text, start, end) {
 
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
-	return text.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+	// Both fence characters. CommonMark fences with ``` or ~~~, and stripping only the
+	// first left every structural question in this file — headings, sections, index
+	// entries — readable inside a tilde fence, where nothing renders and nothing is real.
+	return text
+		.replace(/```[\s\S]*?```/g, "")
+		.replace(/~~~[\s\S]*?~~~/g, "")
+		.replace(/`[^`\n]*`/g, "");
 }
 
 /**
@@ -438,10 +444,14 @@ for (const [name, note] of notes) {
  */
 function useCaseIndex(text) {
 	text = text.replace(/<!--[\s\S]*?-->/g, "");
-	const start = /^## Use cases\s*$/m.exec(text);
+	// Up to three leading spaces on the heading, at both ends of the section — the same
+	// CommonMark rule the entry matcher follows for list items. Demanding column zero on
+	// the closing boundary is the worse half: the section would run past an indented
+	// `## Something else` and count its bullets as entries.
+	const start = /^ {0,3}## Use cases\s*$/m.exec(text);
 	if (!start) return null;
 	const rest = text.slice(start.index + start[0].length);
-	const end = /^## /m.exec(rest);
+	const end = /^ {0,3}## /m.exec(rest);
 	return end ? rest.slice(0, end.index) : rest;
 }
 
