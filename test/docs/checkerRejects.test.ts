@@ -17,9 +17,18 @@ import { note, runRejections, useCase } from '../helpers/register';
  *
  * **The guarantee, stated exactly.** Every place the gate can report a problem has at
  * least one planted case across the two rejection files, so a rule deleted from
- * `docs-check.mjs` turns one of them red. That claim was true when written and is the
- * kind that rots silently, so it is not left as prose — the last test in this file pins
- * the number of report sites the corpus was built against, and a new rule moves it.
+ * `docs-check.mjs` turns one of them red.
+ *
+ * That was **measured, not read**: each of the 45 report sites was neutered in turn and
+ * the suite went red for every one. Worth knowing that the first two attempts at that
+ * measurement were themselves wrong — one used `\b` in an awk regex (a backspace, not a
+ * word boundary), so no mutation ever landed and every site looked uncovered; the other
+ * would have had the count test below failing on every mutation, so every site would have
+ * looked covered. Both were caught by asking what a broken run would print, which is the
+ * check `checkerAccepts.test.ts` now tells contributors to apply to a case.
+ *
+ * The sweep is a one-off and does not re-run. What re-runs is the count at the end of
+ * this file: a new rule moves it and the suite goes red until somebody plants a case.
  *
  * What it does **not** claim: that every *input* reaching a rule is covered. One case per
  * site proves the rule exists and fires; it does not prove the rule is right about every

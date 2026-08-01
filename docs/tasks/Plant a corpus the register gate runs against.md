@@ -146,6 +146,42 @@ else. That is a hand check, and saying so is more honest than implying the suite
 self-guarding — this is the same limit `docs/README.md` already states about the register,
 arriving one level down.
 
+### Coverage, and three attempts to measure it
+
+Review's last finding was that the file claimed *"a rule quietly removed from the gate
+fails here"* while covering only the rules that happened to have a case. `ADR_AREAS` was
+the example and a good one: every fixture used `area: tooling`, and so does every record
+in the real register, so deleting that check left the suite **and** `npm run docs` green.
+
+Enumerating the gate found **45** report sites, of which 31 were covered. The other 14 are
+now planted, and the ADR rules moved into their own file — they alone outnumber every
+other group.
+
+Then the claim had to be established rather than asserted, and this is the part worth
+keeping. **The first two measurements were both wrong, in opposite directions:**
+
+| Attempt | What it did | What it would have "proved" |
+| --- | --- | --- |
+| 1 | Mutated with `gsub(/\bfail\(/…)` in awk, where `\b` is a **backspace**, not a word boundary | No mutation ever landed, every run tested a pristine gate, and all 45 sites reported *uncovered* |
+| 2 | Fixed the regex, but left the new site-count test in the run — it fails on **any** mutation | Every site would have reported *covered*: "uncovered: NONE", indistinguishable from success |
+| 3 | Excluded the count test, and asserted two preflights first | Measured: all 45 sites turn the suite red |
+
+The third attempt is the only one that proves anything, and the difference is the two
+preflights: **a pristine gate must pass, and a known-covered rule must turn it red**,
+checked before any result is believed. Attempt 2 is the more instructive failure — it
+would have printed exactly what success prints.
+
+That is five vacuous verifications in this task, counting the two review found. The
+pattern is consistent and worth naming: the artifact kept getting built and its existence
+treated as the evidence. The check that caught every one of them is a single question —
+*if this were broken, what would it print?* — and it is now written into
+`checkerAccepts.test.ts` as the instruction for adding a case.
+
+The sweep does not re-run; it was a one-off. What re-runs is a test pinning the number of
+report sites, so a rule added to `docs-check.mjs` turns the suite red until somebody
+plants a case for it. That is the same trade the register made when it deleted its
+hand-maintained counts: a fact worth trusting is one that fails when it drifts.
+
 What this does **not** do is close the enumeration: the constructs worth covering come from
 Markdown, and the Issue is right that enumerating them exhaustively is the trap this
 checker keeps falling into. The corpus is the forms someone has thought of, held where the
