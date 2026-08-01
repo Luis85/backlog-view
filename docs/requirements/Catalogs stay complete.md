@@ -10,6 +10,39 @@ status: Open
 Every shipped locale is checked against English: nothing missing that would silently fall
 back, nothing left over that no longer exists.
 
+
+**As** someone maintaining a translation, **I want** a missing or stale key to fail the
+build, **so that** a half-finished catalog is caught here rather than by a user reading a
+half-English view.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever changes the plugin, and whoever translates it |
+| **Trigger** | `npm run check`, on every build |
+| **Preconditions** | Catalogs exist, including the fixtures |
+| **Guarantee** | Every check can fail. With one shipped locale that takes fixtures, and a parity check that has only ever seen one catalog is not a check. |
+
+**Main flow**
+
+1. The check reads every catalog, shipped and fixture.
+2. It compares each key set against English.
+3. It compares each message's parameter set against English.
+4. It validates each locale's plural categories against `Intl.PluralRules`.
+
+**Extensions**
+
+- **2a — a key is missing.** Reported as missing. The runtime falls back to English, which
+  is the right runtime behaviour and the wrong build behaviour.
+- **2b — a key is left over.** Reported as stale, and distinguished from missing: they have
+  different fixes.
+- **3a — a translation drops a parameter.** Caught here. A typed catalog only guarantees
+  the call site is right, not the translation.
+- **4a — the locale has fewer categories than English.** Not an error. English supplying
+  `one` and `other` must not force Japanese to invent a second form.
+- **4b — the locale supplies a category it does not have.** An error.
+
 ## The two failure modes
 
 **Missing keys** degrade quietly. `Locale resolution and fallback` makes a missing key
@@ -46,3 +79,12 @@ rather than an assumption that `npm run check` already covers it.
   with the reason, not left as a silently-passing accident.
 - A deliberately broken locale fixture proves each check fails. A completeness check that
   has never failed is a check nobody has tested.
+
+## Where it lives
+
+**Nothing yet — this note is design.** The check runs as part of `npm run check`, which
+already chains `npm run docs` for the register's own gate — the same shape, applied to the
+catalog.
+
+The fixtures live under `test/`, beside the harness in `test/helpers/view.ts` that already
+owns per-test setup.

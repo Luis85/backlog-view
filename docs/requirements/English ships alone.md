@@ -15,6 +15,41 @@ is a plugin whose strings all come from a catalog, not a plugin available in fiv
 languages, and shipping a translation nobody on the project can review would be a worse
 first move than shipping none.
 
+
+**As** the maintainer, **I want** the first round to ship English only, **so that** the
+deliverable is a plugin whose strings all come from a catalog rather than a plugin shipping
+a translation nobody on the project can review.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | The maintainer, deciding scope |
+| **Trigger** | Deciding what the translation round ships |
+| **Preconditions** | The catalog and locale layer exist |
+| **Guarantee** | Adding a real language later is one catalog file plus one registry entry. Nothing else changes anywhere. |
+
+**Main flow**
+
+1. English ships as the default, the fallback and the only catalog.
+2. The locale registry holds one entry, and the second-locale code path exists unused.
+3. Fixture catalogs in `test/` exercise everything a second locale would.
+4. A development-only pseudo-locale covers what a fixture cannot see.
+
+**Extensions**
+
+- **1a — the user runs Obsidian in another language.** They see an English plugin, because
+  none has been written yet — a different and more honest state than a string being missed.
+- **2a — the fallback chain has nothing to fall back through.** Every code resolves to `en`
+  and no lookup can miss, which makes the resolution logic correct-by-vacuum. That is the
+  state the fixtures exist to break.
+- **3a — a check would pass vacuously.** The parity check, the regional fallback, plural
+  categories beyond `one`/`other` and the catalog-versus-requested split are all
+  unexercisable with one catalog, so fixtures are what make them capable of failing.
+- **4a — the check is visual.** The pseudo-locale pads by a known factor and brackets every
+  string, so expansion and RTL can be checked and an unbracketed string on screen is one
+  the sweep missed.
+
 ## What it settles
 
 - **The fallback always terminates.** Every locale resolves to English, so no lookup can
@@ -101,3 +136,13 @@ Not work, listed only so the boundary is legible: a real translation, reviewed b
 who reads the language; a maintainer recorded against it; and the live-vault checklists
 re-run for it. A machine-translated catalog shipped as a real one is worse than English,
 because English is at least consistently wrong.
+
+## Where it lives
+
+**Nothing yet — this note is design.** It records a scope decision rather than adding code,
+and the locale registry it constrains is part of the module `Locale resolution and fallback`
+describes.
+
+The fixtures and the pseudo-locale live under `test/`, and the pseudo-locale must be
+reachable from a `npm run test-build` vault — `test-build.mjs` is the script that builds
+one — while shipping in no release.

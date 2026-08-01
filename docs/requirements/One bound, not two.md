@@ -9,6 +9,35 @@ status: Open
 
 A width that CSS applies and TypeScript adds up is written once, so the two cannot drift.
 
+
+**As** someone changing a width, **I want** to change it in one place, **so that** the
+column-fit arithmetic cannot silently disagree with the stylesheet and clip a row.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever changes the plugin |
+| **Trigger** | Changing any width the row's lead is made of |
+| **Preconditions** | None |
+| **Guarantee** | `columnFit`'s behaviour is unchanged. This is about where the numbers live, not what they are. |
+
+**Main flow**
+
+1. A developer changes a bound — a badge cap, an indent step, a column width.
+2. They change it in one place.
+3. Both the stylesheet and the fit arithmetic follow.
+
+**Extensions**
+
+- **1a — the bound is one Obsidian owns.** The two gap terms stay hand-maintained, with the
+  existing accepted-cost note intact. This narrows the set; it does not empty it.
+- **2a — a rule declines to read the published value.** Already happened: `--pbl-indent` is
+  published and two drag-indicator rules hard-code `24px` anyway, so changing the indent
+  moves every row and leaves the indicator behind.
+- **3a — the two disagree anyway.** A check fails the build. One that cannot fail is not a
+  check — prove it by moving a bound and watching it go red.
+
 ## The duplication
 
 `columnFit` decides which columns fit a pane by summing what the row's lead costs:
@@ -87,3 +116,11 @@ per term — is what this PBI is for.
   allowing a rule to bypass it is the same duplication with an extra step.
 - The two gap terms Obsidian owns stay as they are, with the existing accepted-cost note
   intact. This PBI narrows the hand-maintained set; it does not pretend to empty it.
+
+## Where it lives
+
+`src/view/render/columns.ts` holds `ROW_LEAD_WIDTH` and its eight terms, plus
+`INDENT_PER_DEPTH` and `TREE_PADDING` · `src/view/render/rows.ts` publishes the TS-owned
+values to CSS as custom properties in `renderTree` · `styles.css` applies them, and is
+where two rules hard-code the indent instead of reading it · `src/view/CLAUDE.md` describes
+the current hand-checked arrangement as though it were the end state.

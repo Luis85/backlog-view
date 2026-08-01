@@ -10,6 +10,46 @@ status: Open
 `styles.css` splits into one file per concern, mirroring the modules it styles, and the
 build assembles them into the single file Obsidian loads.
 
+
+**As** someone changing how one part of the view looks, **I want** to open a file about
+that part, **so that** I am not reading 1143 lines to find the forty that matter.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever changes the plugin |
+| **Trigger** | Editing any style, or adding a new one |
+| **Preconditions** | None — this lands first among the styling PBIs |
+| **Guarantee** | The assembled stylesheet is equivalent to today's. A reorganisation that changes what the user sees has failed, and nothing here can see a stylesheet. |
+
+**Main flow**
+
+1. The stylesheet splits into one partial per concern, mirroring the modules it styles.
+2. An entry file imports them in a stated, load-bearing order.
+3. The build assembles the entry into the single file Obsidian loads.
+4. `npm run dev` rebuilds it on change, so a symlinked vault stays current.
+
+**Extensions**
+
+- **1a — the banner does not bound the concern.** The `tags` banner runs to 975 and only
+  its first hundred lines are tags; the state chip and the indent guide move to the files
+  that own them.
+- **1b — the rules are cross-cutting.** The two media queries restyle elements owned by
+  three partials, so they get a stated home and a stated reason rather than being filed
+  under whichever section they sat in.
+- **1c — a `@keyframes` is used outside the partial defining it.** Colocate with its only
+  user, or hoist the shared ones; the `pbl-` prefix means nothing collides either way.
+- **2a — two rules of equal specificity depend on their order.** That order is behaviour,
+  not organisation, so the entry file states it and stays stable.
+- **3a — the assembled output is compared against today's.** Not byte-for-byte: moving the
+  state chip into the columns partial necessarily moves it relative to the badge and tag
+  blocks. The comparison is over the **resolved cascade** — every selector's winning
+  declarations — so a reordering that changes nothing observable passes and one that
+  changes a winner fails.
+- **4a — the root file is now generated.** Three comments and `RELEASING.md` say it is
+  hand-edited source; all four become false together and change in the same commit.
+
 ## Why this one is not optional
 
 The root `CLAUDE.md` opens its architecture section with *"one file per concern, 400-line
@@ -120,10 +160,16 @@ to carry over.
 - An entry file that imports them in an order that is **stated to be load-bearing**, and
   the build assembles it. `npm run build` and `npm run test-build` both produce a
   stylesheet, and the release keeps shipping the minified one.
-- **The assembled output is proven equivalent to today's file**, not eyeballed. Nothing
-  in this repository can see a stylesheet, so a refactor that "looks the same" is a claim
-  with no evidence behind it. Normalise whitespace and compare — a byte-identical rule
-  set is the only proof available here, and it is available, so it is required.
+- **The assembled output is proven equivalent to today's file**, not eyeballed. Nothing in
+  this repository can see a stylesheet, so a refactor that "looks the same" is a claim with
+  no evidence behind it.
+- Equivalence is over the **resolved cascade**, not the bytes. Byte-identity is not merely
+  strict here, it is unsatisfiable: moving `.pbl-state-chip` into the columns partial and
+  `.pbl-children` into the tree partial — which this PBI requires — necessarily moves them
+  relative to the badge, property and tag blocks. A comparison that rejects the
+  reorganisation it mandates is a contradiction, not a high bar. Compare every selector's
+  winning declarations, so a reordering that changes nothing observable passes and one that
+  changes a winner fails.
 - `npm run dev` rebuilds the stylesheet on change, or the symlinked-vault workflow that
   `RELEASING.md` documents is updated to say what replaces it.
 - The three comments above are corrected in the same commit. A comment asserting a file
@@ -152,3 +198,13 @@ That also settles the sequencing: this lands **first** among the styling PBIs. T
 tokenization sweep and the bound audit both edit the stylesheet extensively, and doing
 them in nine small files against stable addresses is the difference between a reviewable
 diff and a 1143-line one.
+
+## Where it lives
+
+`styles.css` is the file that splits · `esbuild.config.mjs` already runs esbuild over it
+and writes the minified `dist/styles.css` the release uploads, so the build step exists and
+gains sources rather than being new · `test-build.mjs` copies the root file into a vault
+and says in a comment that it is hand-edited · `eslint.config.mjs` carries the 400-line cap
+the partials must meet.
+`.github/workflows/release.yml` uploads the built asset; `RELEASING.md` documents the
+hand-edited claim that stops being true.

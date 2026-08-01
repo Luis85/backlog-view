@@ -10,6 +10,39 @@ status: Open
 The view is checked in both theme variants, with reduced motion on, and against a
 non-default theme — and the checklist stays, because none of it can be tested here.
 
+
+**As** someone using a community theme, a dark mode, or reduced motion, **I want** the
+backlog to look right in my setup, **so that** it reads as part of Obsidian rather than as
+a plugin that assumed the default theme.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Anyone whose appearance settings are not the defaults |
+| **Trigger** | Opening the view in a theme variant, a community theme, or with reduced motion on |
+| **Preconditions** | A live vault — `npm run test-build` builds one |
+| **Guarantee** | Nothing signals by colour alone. A done row, an orphan and a context row stay identifiable without colour vision. |
+
+**Main flow**
+
+1. The checker builds a vault and opens the view.
+2. They look at it in light and in dark.
+3. They look at it under one non-default community theme.
+4. They turn reduced motion on and look again.
+
+**Extensions**
+
+- **2a — a semantic colour is hard to read.** The two in use, green for done and orange for
+  orphan and warning, are checked against the muted row background in both variants and
+  against the four badge colours.
+- **3a — the theme redefines a token.** That is the case worth the trip: a theme that
+  changes the accent hue or a `--color-*` is the only real test of variable-driven colour.
+- **4a — something needs adjusting.** The fix goes in the **source partial** that owns the
+  rule, never the assembled `styles.css`, which the next build overwrites.
+- **4b — a behaviour change falls out of the look check.** It becomes a separate note, the
+  way the existing appearance issue already insists.
+
 ## Why this is a note rather than a habit
 
 `docs/issues/Smoke test the visual changes.md` records the standing limitation in one
@@ -57,3 +90,12 @@ way to get it:
   has already established that these get reopened rather than rewritten.
 - It records which theme was used. "Checked against a community theme" is not evidence a
   year later if nobody wrote down which one.
+
+## Where it lives
+
+`styles.css` — after `One stylesheet per concern`, its source partials — carries the
+`prefers-reduced-motion` and `hover: none` blocks and the two semantic colours ·
+`test-build.mjs` is the one-command path to a vault, which is what made the last round of
+these checks cheap enough to do · `docs/issues/Smoke test the visual changes.md` is the
+existing checklist this one joins, and the precedent for leaving a re-runnable note behind
+rather than closing a task.

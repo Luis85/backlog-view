@@ -10,6 +10,36 @@ status: Open
 Sizing and spacing come from Obsidian's design tokens wherever a token exists, so a theme
 that rescales the app rescales this plugin with it.
 
+
+**As** someone using a theme that rescales Obsidian, **I want** this plugin to rescale with
+it, **so that** the backlog does not sit at one fixed size inside a UI that moved.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Anyone using a theme that redefines Obsidian's tokens |
+| **Trigger** | Rendering any row, column or control |
+| **Preconditions** | `One stylesheet per concern` has landed, so edits go to partials |
+| **Guarantee** | No visual change is intended. Any that appears is a bug in the mapping, not a decision. |
+
+**Main flow**
+
+1. Every raw pixel value in the stylesheet sources is classified.
+2. Values with an Obsidian token become that token.
+3. The three piles are written down, not just applied.
+
+**Extensions**
+
+- **1a — the value is a bound `columnFit` sums.** It stays a number, because a theme could
+  otherwise change a number TypeScript is adding up; `One bound, not two` owns it.
+- **1b — the value is a hairline or a radius.** Genuinely arbitrary, exempt by default, with
+  a one-line reason. A border that scales with a spacing token is not a border.
+- **2a — no token matches.** That is a finding worth stating rather than a reason to invent
+  a mapping.
+- **3a — the reader is adding a new rule.** They need to know which question to ask, which
+  is why the piles are recorded rather than merely applied.
+
 ## What is left
 
 Colour is done — 0 literal values, every colour expression already reads a variable,
@@ -66,3 +96,10 @@ deliverable as much as the edit is.
   working around.
 - No visual change is intended. Any that appears is a bug in the mapping, and this PBI
   cannot be closed without the live-vault look from `Light, dark and reduced motion`.
+
+## Where it lives
+
+`styles.css` — after `One stylesheet per concern`, the source partials — holds the raw
+values · `src/view/render/columns.ts` holds `ROW_LEAD_WIDTH`, `INDENT_PER_DEPTH` and
+`TREE_PADDING`, the constants that make some of those pixels load-bearing ·
+`src/view/CLAUDE.md` records why they are summed rather than measured.

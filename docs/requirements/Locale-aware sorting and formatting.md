@@ -10,6 +10,41 @@ status: Open
 The places where the *locale* changes an ordering or a rendering even though no string is
 being translated. Small, easy to miss, and nothing else in this feature will surface them.
 
+
+**As** someone whose language sorts and folds letters differently, **I want** ordering,
+matching and number formatting to follow my locale, **so that** a list reads in my
+alphabet and the filter finds what is plainly on screen.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Anyone whose locale is not the host's default |
+| **Trigger** | Sorting a suggest list, filtering by title, or rendering a count |
+| **Preconditions** | The locale layer exposes both the catalog locale and the requested one |
+| **Guarantee** | Collation and folding are presentation only. No write path depends on a locale-sorted list, and no identity comparison changes with the locale. |
+
+**Main flow**
+
+1. The plugin resolves the requested locale and validates it once.
+2. A comparison or a format asks for that locale explicitly.
+3. Lists sort, titles match and numbers render the way the language expects.
+
+**Extensions**
+
+- **1a — the code is malformed.** `Intl` throws on `''` or `en_US`, so the requested locale
+  is normalized to English when `getCanonicalLocales` rejects it — never merely because it
+  is untranslated.
+- **2a — the operation is grammar rather than data.** Plural categories and list joining
+  follow the **catalog** locale; collation and number formatting follow the **requested**
+  one.
+- **2b — the comparison decides identity.** It keeps `toLowerCase()`. Thirty-eight calls
+  canonicalize a type, a tag key or a persisted option key, and folding those with a locale
+  would corrupt vaults.
+- **3a — the match feeds a highlight.** Folding is not length-preserving, so an index from
+  the folded string does not address the original. That is a live bug today and needs an
+  index-preserving matcher rather than the boolean filter's recipe.
+
 ## Where they are
 
 Three `localeCompare` calls, all currently locale-less:
@@ -194,3 +229,14 @@ or the guard has to be remembered eleven times.
   the menu — what gets *written* is the value the user picked.
 - Dates, if any are ever rendered, use `obsidian.moment`, which Obsidian has already
   configured, rather than a second date stack.
+
+## Where it lives
+
+`src/domain/model.ts` sorts the state and tag vocabularies · `src/ui/prompts.ts` sorts and
+filters the folder and tag suggests · `src/view/backlogView.ts` holds the quick filter's
+match · `src/view/render/rows.ts` holds `renderTitleText`, the fold-then-index highlight ·
+`src/view/render/columns.ts` renders the counts · `src/domain/settings.ts`,
+`src/domain/itemTypes.ts`, `src/domain/noteFields.ts` and `src/domain/writePlan.ts` hold
+the identity folds that must not change.
+Tests: `test/view/filter.test.ts`, `test/domain/model.test.ts`,
+`test/domain/noteFields.test.ts`.

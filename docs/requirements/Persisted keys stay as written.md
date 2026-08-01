@@ -10,6 +10,40 @@ status: Open
 Everything the plugin puts in a `.base` file, in localStorage or on disk is byte-identical
 in every locale.
 
+
+**As** someone whose vault is configured in one language and opened in another, **I want**
+everything the plugin persists to be byte-identical across locales, **so that** switching
+language never silently resets my configuration.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Anyone whose vault outlives one language setting |
+| **Trigger** | Any write: frontmatter, a `.base` file, a created note, collapse state |
+| **Preconditions** | The translation layer exists |
+| **Guarantee** | Nothing the plugin writes changes with the locale. A vault created in one language is fully readable in every other. |
+
+**Main flow**
+
+1. The user does something that writes — a move, a creation, a scaffold, a collapse.
+2. The write path resolves keys and values from the canonical vocabulary.
+3. The bytes that land are the same ones any other locale would have written.
+
+**Extensions**
+
+- **2a — the value is an option key.** Byte-identical, including every generated
+  `typeFolder.<type>` key, which is derived from a type name.
+- **2b — the value is a placeholder that mirrors a real default.** It stays as written,
+  because clearing the field falls back to exactly that string.
+- **2c — the write is a restore.** `applyRestores` replays values captured from the note,
+  so it is locale-independent by construction — a dependency on `applyWrites` being
+  correct, not an exemption from checking.
+- **3a — the write is the scaffold.** The generated `.base` content and the created file
+  path are identical to the English run, byte for byte.
+- **3b — the write is collapse state.** The base's identity key does not vary by locale,
+  or a language switch drops everyone's collapse state.
+
 ## What is covered
 
 **View-option keys** — all of them, including the generated `typeFolder.<type>` set.
@@ -75,3 +109,12 @@ one of the two things this repository cannot test.
   in one language opens correctly in another. That needs two live vaults **and two
   languages**, so with English shipping alone it cannot arise yet — the note is opened
   against the first real translation, not this round.
+
+## Where it lives
+
+`src/storage/frontmatter.ts` holds all three writers — `applyWrites`, `applyRestores` and
+`createBacklogItem` · `src/storage/baseFile.ts` writes the scaffolded `.base` and owns the
+`docs` and `Product Backlog` defaults · `src/storage/collapseStore.ts` keys collapse state
+on the base's path · `src/domain/settings.ts` derives `typeFolderKey` from a type name.
+Tests: `test/storage/frontmatter.test.ts`, `test/storage/restore.test.ts`,
+`test/storage/baseFile.test.ts`, `test/storage/collapseStore.test.ts`.

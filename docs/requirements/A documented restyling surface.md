@@ -10,6 +10,38 @@ status: Open
 The plugin publishes a small set of custom properties a theme or snippet author can
 override, and says which ones they are.
 
+
+**As** a theme or snippet author, **I want** a named set of custom properties I can
+override, **so that** I can recolour the backlog without guessing which of the plugin's
+internals will survive the next release.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | A theme or snippet author |
+| **Trigger** | Wanting the view to match a theme |
+| **Preconditions** | None |
+| **Guarantee** | Every property in the contract is a promise. Renaming one is a breaking change and is called one. |
+
+**Main flow**
+
+1. The author reads the documented set of overridable properties.
+2. They override one in a snippet — recolouring the level badges is the obvious case.
+3. The view renders with their value.
+
+**Extensions**
+
+- **1a — the property is internal.** Marked as such where it is set, so nobody promotes one
+  by documenting it. Seven of the eight `--pbl-*` properties are written by TypeScript on
+  every render and are transport, not interface.
+- **2a — the override is fought by a per-render write.** Then it was never contract
+  material: a property that must be both is split into a TS-owned value and a
+  user-overridable one the stylesheet composes.
+- **3a — the author's snippet does not work.** A worked example ships with the
+  documentation and is checked in a live vault, because a snippet that does not work is
+  worse than no snippet.
+
 ## Why there isn't one today
 
 Eight `--pbl-*` properties exist, and every one is **internal plumbing** rather than a
@@ -58,3 +90,11 @@ is a bug report after the next refactor.
 - Renaming a contract property is a breaking change and is called one in `RELEASING.md`
   terms. `--pbl-*` names are as much a published surface as the view-option keys are, and
   the register already knows what happens when a persisted name moves.
+
+## Where it lives
+
+`src/view/render/rows.ts` sets six of the eight `--pbl-*` properties per render, and
+`src/view/render/columns.ts` sets the seventh · `styles.css` sets `--pbl-badge-rgb` per
+level class, which is the one that looks like a knob and is the obvious contract candidate ·
+`README.md` is where a theme author will look, so the contract goes there rather than only
+in `docs/` · `RELEASING.md` carries the versioning terms a breaking rename would need.

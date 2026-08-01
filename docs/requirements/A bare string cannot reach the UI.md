@@ -10,6 +10,44 @@ status: Open
 An English literal passed to a user-facing API fails `npm run lint`, rather than being
 caught in review or not at all.
 
+
+**As** someone maintaining this plugin after the sweep, **I want** an English literal on a
+UI path to fail the build, **so that** the translation does not decay one convenient
+string at a time.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever changes the plugin |
+| **Trigger** | Writing code that puts a string on screen |
+| **Preconditions** | The catalog exists and the sweep has run |
+| **Guarantee** | Rendering the user's own text needs no cast and no `t()` call. The rule constrains where text comes from, never what the plugin may display. |
+
+**Main flow**
+
+1. A contributor writes code that renders text.
+2. They call a UI helper, which accepts only a value with known provenance.
+3. `t()` supplies a catalog message; the vault boundary supplies the user's own text.
+4. `npm run check` passes.
+
+**Extensions**
+
+- **1a — they write a literal at the sink.** Lint rejects it and names the fix.
+- **1b — they assign the literal to a local first, or return it from a helper.** The type
+  rejects it at the sink regardless of where it was built — which is the hole a
+  sink-matching rule cannot close.
+- **2a — they reach past the helper for a raw setter.** Banned across every shipped layer,
+  so the wrappers are the only route.
+- **2b — they reach for a native DOM sink.** `textContent`, `innerText`, `innerHTML`,
+  `createTextNode`, `insertAdjacentText`, and the reflected text properties `placeholder`,
+  `title`, `alt` and `ariaLabel` are all assignments the ban must cover. A branded type
+  cannot help here at all: the DOM types them `string`.
+- **2c — the code reads one of those properties.** Legal. `columns.ts` reads `textContent`
+  to serialize rendered output; the rule matches assignment, not the property name.
+- **3a — the message interpolates a parameter.** Parameters carry provenance too, or a
+  literal launders itself into a branded result.
+
 ## The pattern to copy
 
 `eslint.config.mjs` already does exactly this for the write boundary:
@@ -133,7 +171,14 @@ Stop classifying literals. Make the *destination* refuse them.
    the DOM, and the DOM underneath them is still reachable: `el.textContent = 'English'`,
    `innerText`, `innerHTML`, `document.createTextNode`, `insertAdjacentText`, and
    `append`/`prepend`/`replaceChildren` with a string argument all render a literal and
-   would compile and lint clean against an Obsidian-only ban. None is used as a *write* in
+   would compile and lint clean against an Obsidian-only ban.
+
+   **The reflected text properties are the same hole once more.** `input.placeholder`,
+   `button.title`, `img.alt` and `el.ariaLabel` are assignments that render user-facing
+   text, and the DOM types every one of them `string` — so the branded helpers do not
+   reach them either. They belong in the ban beside `textContent`, and they are the reason
+   "the native DOM boundary" has to be enumerated rather than gestured at: it is not one
+   API, it is every property that reflects text. None is used as a *write* in
    `src/` today, so this is a hole the sweep would leave open rather than one it has to
    close — which is exactly the kind that gets found a year later.
 
@@ -370,3 +415,16 @@ needed three rounds of review to abandon.
   exempt for the reason the Obsidian ruleset already stops at `src/`.
 - Messages name the fix, not the violation. *"UI text belongs in the catalog — add a key
   and call `t()`"* teaches; *"unexpected string literal"* gets suppressed.
+
+## Where it lives
+
+**Nothing yet — this note is design.** The rule belongs in `eslint.config.mjs`, beside the
+`no-restricted-syntax` bans on `processFrontMatter`, `vault.create` and `showAtMouseEvent`
+that it copies.
+
+What it constrains is every rendering module — `src/view/render/toolbar.ts`,
+`src/view/render/rows.ts`, `src/view/render/columns.ts`,
+`src/view/render/emptyStates.ts`, `src/view/interactions/menu.ts`,
+`src/view/backlogView.ts`, `src/ui/prompts.ts`, `src/commands/scaffold.ts` and
+`src/main.ts` — plus `src/domain/viewOptions.ts`, whose option objects are text
+destinations with no setter to ban.

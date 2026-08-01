@@ -11,6 +11,41 @@ The 30 sites in `domain/viewOptions.ts` — four group names, every `displayName
 `placeholder` — plus the problem sentences `configProblems` produces. The highest-risk
 file in the sweep, because half of what it contains must **not** change.
 
+
+**As** someone configuring the view in another language, **I want** the options menu and
+its warnings in my language, **so that** I can set the plugin up without the settings
+being the one English surface left.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever configures a base |
+| **Trigger** | Opening the Bases view-options menu, or a config problem gating a write |
+| **Preconditions** | The catalog exists |
+| **Guarantee** | Every persisted `key` is byte-identical before and after. A user's configuration survives the translation, and survives switching language afterwards. |
+
+**Main flow**
+
+1. A developer moves each group name, `displayName` and hint `placeholder` to the catalog.
+2. Every `key` is left exactly as it is, including the generated `typeFolder.<type>` set.
+3. `configProblems` stops returning prose and returns structured problems.
+4. The view formats those problems for the toolbar chip and the write-gate notice.
+
+**Extensions**
+
+- **1a — the placeholder mirrors the option's real default.** It stays as written: clearing
+  the field falls back to the string on screen.
+- **1b — the placeholder is a mixed expression.** `homeFolder || 'Home folder'` renders the
+  user's path as their own and the fallback label from the catalog.
+- **2a — a key is derived from a type name.** `typeFolderKey` keeps deriving from the
+  canonical name, so no locale can change a persisted key. See `Type names are data`.
+- **3a — three or four labels collide.** `Intl.ListFormat` renders them, which changes the
+  English past two labels — an improvement to accept deliberately rather than a regression
+  to avoid.
+- **4a — a problem is quoted into a notice.** The write gate quotes the formatted problem;
+  the structured form never reaches the user.
+
 ## The hazard, stated once
 
 `viewOptions.ts` says it about itself: *"Every `key` here is PERSISTED in the user's
@@ -89,3 +124,12 @@ Notice from three call sites (`backlogView.ts:534`, `create.ts:34`).
 - Marketplace review requires sentence-case UI text. That is an **English** rule and the
   lint that enforces it must apply to the English catalog only — German capitalizes
   nouns, and a rule that fights the language it is translating into is a bug in the rule.
+
+## Where it lives
+
+`src/domain/viewOptions.ts` is the schema whose `displayName`s and `placeholder`s move and
+whose `key`s must not · `src/domain/settings.ts` holds `configProblems` and
+`typeFolderKey` · `src/view/render/toolbar.ts` renders the warning chip ·
+`src/view/backlogView.ts` and `src/view/interactions/create.ts` quote a problem into a
+notice.
+Tests: `test/domain/viewOptions.test.ts`, `test/domain/settings.test.ts`.

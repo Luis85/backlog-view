@@ -10,6 +10,37 @@ status: Open
 The suite asserts behaviour, not wording, so the whole thing passes in any locale and a
 copy edit does not turn into a red build.
 
+
+**As** someone changing a message, **I want** the suite to assert behaviour rather than
+wording, **so that** a copy edit does not turn into a red build and a locale bug is not
+hidden by tests that only ever ran in English.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever changes the plugin |
+| **Trigger** | Running the suite, or editing a message |
+| **Preconditions** | The catalog exists |
+| **Guarantee** | Coverage thresholds do not drop. They only ever go up, and moving assertions is not a reason for an exception. |
+
+**Main flow**
+
+1. A test drives a real interaction, as it does today.
+2. It asserts what happened by naming the message **key**, not its text.
+3. The harness resolves a locale explicitly rather than inheriting one.
+4. The suite runs green under a non-English fixture locale as well as English.
+
+**Extensions**
+
+- **2a — the assertion really is about wording.** A few are: that the English catalog reads
+  in sentence case, that a translated option label is quoted into the hint naming it. Those
+  stay, and say so in a comment.
+- **3a — the locale plumbing pushes a file over its budget.** It splits by subject, the rule
+  the suite already lives by.
+- **4a — the fixture carries three plural categories and a regional code.** That is the
+  point: English cannot, so a suite that only ran in English proves nothing about the layer.
+
 ## What is there now
 
 Roughly 33 assertions in `test/**` match on user-facing prose. They read like:
@@ -43,3 +74,11 @@ not been reworded. The first is the test's purpose. The second is a hostage.
   assertions is not a reason for an exception.
 - `test/**` keeps its 450-line budget. If the locale plumbing pushes a file over, the
   file splits by subject — the rule the suite already lives by.
+
+## Where it lives
+
+`test/helpers/view.ts` owns `useViewHarness()` and the per-test reset, so the resolved
+locale belongs beside it · `test/helpers/obsidian-mock.ts` is where `getLanguage` gets a
+stand-in · `test/view/state.test.ts` holds an assertion matching a notice by its English
+text today, which is the shape that changes.
+Config: `vitest.config.ts` carries the coverage thresholds that must not drop.

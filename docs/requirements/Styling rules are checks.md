@@ -10,6 +10,43 @@ status: Open
 The stylesheet properties that are true today become properties that stay true, enforced
 by `npm run check`.
 
+
+**As** someone adding a style, **I want** the stylesheet's rules enforced by the build,
+**so that** they hold after the person who knew them has stopped reviewing every diff.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever changes the plugin |
+| **Trigger** | `npm run check`, on every build |
+| **Preconditions** | The direction fixes have landed, so the rules pass on today's file |
+| **Guarantee** | Every rule passes on the file as it stands. A check added to a clean file is a check nobody has to argue about. |
+
+**Main flow**
+
+1. `npm run check` reads the stylesheet, which `eslint src test` never did.
+2. Each rule runs: no literal rendered colour, no `!important`, `.pbl` scope, no
+   direction-dependent value, no `:has()` on a container.
+3. A separate rule reads TypeScript and classifies every icon name as directional or
+   neutral.
+4. The build passes.
+
+**Extensions**
+
+- **2a — the value is `transparent` or a mask stop.** Outside the rule by reason, not by a
+  suppression list: one names the absence of a colour, the other an alpha.
+- **2b — the literal sits in a `var()` fallback.** Still matched. The file's one instance is
+  dead code and is deleted rather than exempted.
+- **2c — the direction rule is keyed on property names.** It must not be: neither the
+  shadow's x-offset nor the gradient has a logical twin to demand, and a manual audit
+  missed both.
+- **3a — an icon name is in neither list.** The build fails, so a seventh directional icon
+  is classified rather than noticed. A name passed as a variable cannot be classified by
+  any search, which is why this is the only mechanism that can be correct.
+- **4a — a rule needs an exception.** Narrow, with a reason inline, matching how
+  `usedClassMembers` declares framework-invoked members rather than suppressing them.
+
 ## The argument, already made and already won
 
 `Codebase health` closed `Invariants as checks, not conventions` on exactly this
@@ -160,3 +197,13 @@ instead. Neither rule comes out of a default config.
 - The rules are stated in `src/view/CLAUDE.md`, beside the render-cost notes, so they are
   loaded when someone is working on the view rather than read as one wall — the pattern
   the layer guides already follow.
+
+## Where it lives
+
+`eslint.config.mjs` holds the existing `no-restricted-syntax` bans this copies, and does
+not read CSS today · `package.json` chains the checks `npm run check` runs · `styles.css`,
+after `One stylesheet per concern` its partials, is what gains a reader · `.fallowrc.json`
+is the other static gate, for the precedent of a config with reasons written into it ·
+`src/view/CLAUDE.md` is where the rules get stated beside the render-cost notes ·
+`src/view/render/toolbar.ts`, `src/view/render/rows.ts`, `src/view/interactions/menu.ts`
+and `src/view/backlogView.ts` choose the icon names the classification covers.

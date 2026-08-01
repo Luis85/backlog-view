@@ -10,6 +10,43 @@ status: Open
 Translated strings are a different length and sometimes a different direction. The view
 has a fixed-width column model and a depth-indented tree, so both are load-bearing.
 
+
+**As** someone reading the plugin in a language with longer words or the other reading
+direction, **I want** the tree to still line up and point the right way, **so that** the
+view is usable rather than merely translated.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Anyone using the view in a non-English or right-to-left Obsidian |
+| **Trigger** | Rendering any row, column, icon or keyboard move |
+| **Preconditions** | The direction work in `Theming and styling` has landed |
+| **Guarantee** | Nothing measures text to decide layout. A width computed from an English string is a layout that only holds in English. |
+
+**Main flow**
+
+1. The view renders with translated text in a right-to-left context.
+2. Rows indent from the inline start, and the columns line up as they do in English.
+3. Icons that point at something point the way the text runs.
+4. The arrow keys move the way the tree looks.
+
+**Extensions**
+
+- **2a — a label is longer than its column.** It truncates or wraps by the rule
+  `Property columns` already sets; it does not overflow and does not push the columns out
+  of alignment.
+- **2b — a construct pins a side without naming one.** Three exist: the filter's
+  `margin-left`, the selection accent's `box-shadow` x-offset, and the tag-list mask's
+  gradient. Two have no logical twin, so replacing physical properties is not the whole job.
+- **3a — the icon is vertical.** It is left alone. `arrow-up`, `arrow-down` and their
+  `-to-line` pair are the move commands, and vertical is vertical in every direction.
+- **3b — the icon is the chevron.** Icon, static rotation and the hover-expand keyframes
+  are one construct in three parts; fixing one and not the others points expanded rows up.
+- **4a — the keyboard still moves the LTR way.** `ArrowLeft`/`ArrowRight` and their `Alt+`
+  pair follow the inline direction. WAI-ARIA's tree pattern requires the swap, and this is
+  the one part of RTL with real tests rather than a checklist.
+
 ## What the evidence says
 
 **Direction is mostly free already, but not entirely.** `styles.css` is 1143 lines and
@@ -205,3 +242,14 @@ The pseudo-locale earns its place twice over here, because its bracketing makes 
 visible: any string still rendering as plain English is one the sweep missed. That is a
 completeness check on `Every surface translated` that no lint rule can perform, and it is
 available in round one precisely because it is not a translation.
+
+## Where it lives
+
+`styles.css` carries the three direction-dependent constructs and the chevron's rotations —
+after `One stylesheet per concern` those live in the source partials rather than the
+assembled file · `src/view/render/rows.ts` chooses the chevron and the context marker ·
+`src/view/backlogView.ts` the root-drop affordance · `src/view/interactions/menu.ts` the
+indent icons · `src/view/render/toolbar.ts` the undo icon ·
+`src/view/interactions/keyboard.ts` binds the four physical direction keys.
+Tests: `test/view/keyboard.test.ts` is where direction-aware navigation gets asserted;
+the visual half cannot be tested here at all.

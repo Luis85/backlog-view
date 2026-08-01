@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Creating items]]"
-order: 40
+order: 60
 status: Open
 priority: P2
 created: 2026-08-01
@@ -24,6 +24,50 @@ view option, and a new item is written as `<folder>/<Title>/<Title>.md` instead 
 
 Flat stays the default and stays the shipped layout. This is a choice about how a backlog
 is filed, not a claim that folders are better.
+
+
+**As** someone who wants a work item to own the folder its attachments and notes live in,
+**I want** new items written as `<folder>/<Title>/<Title>.md`, **so that** the file tree
+and the item tree are the same hierarchy instead of two views that only agree by hand.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Creating an item while `Create items in their own folder` is on |
+| **Preconditions** | The option is on; the write gate is open |
+| **Guarantee** | Turning the option on or off never touches a note already on disk. Flat and foldered items coexist, and nothing downstream distinguishes them. |
+
+**Main flow**
+
+1. The user turns on `Create items in their own folder` in the New items group.
+2. They create an item, as they would today.
+3. The container folder is resolved exactly as it is today — folder mode's parent folder,
+   the type's folder, the home folder, where most items live, then ask.
+4. The item is written to `<container>/<Title>/<Title>.md`, folder and note sharing one
+   sanitized name.
+5. A parentless creation is pinned with an explicit empty `parent`.
+
+**Extensions**
+
+- **1a — the option is off.** Today's behaviour exactly, which is the shipped default.
+- **3a — the parent is a folder note.** The child's container is the parent's own folder,
+  so it lands inside. This widening is what makes the mode do anything at all.
+- **3b — the parent is not a folder note.** The child lands beside it. One rule, two
+  outcomes, and no file is ever moved to make a folder for a parent.
+- **3c — the parent is a context row.** It still does not lend its folder; the explicit
+  link alone places the child.
+- **3d — nothing is configured and nothing can be inferred.** The prompt asks for the
+  **container**, and `inferFolder` counts topmost result rows rather than every item, or
+  a nested Epic's folder outvotes its own container.
+- **4a — the folder name already exists.** Disambiguation happens on the folder —
+  `Checkout 1/Checkout 1.md` — and an existing folder is reused only when empty.
+- **4b — the creation fails.** Cleanup removes only the folder this attempt created, and
+  only if it is still empty when the cleanup runs.
+- **5a — a later move sends the item to the root.** The marker is written from a predicate
+  over the settings *and* the file, so a note that is itself a folder note stays pinned
+  even after the option is turned off.
 
 ## Why it exists
 
@@ -239,3 +283,15 @@ switch `Infer hierarchy from folder notes` on and off and confirm the tree is un
 that last one is the check the parentless pin exists for. The jsdom harness covers the
 paths written and the choices made; it cannot say the result looks like a backlog in the
 file explorer.
+
+## Where it lives
+
+**Nothing yet — this note is design.** Every module it names exists; none of them does
+this yet.
+
+`src/domain/itemTypes.ts` answers whether a type gets a folder, beside `folderForType` ·
+`src/domain/settings.ts` and `src/domain/viewOptions.ts` carry the one new boolean ·
+`src/domain/folderNotes.ts` holds `folderNotePath`, the convention both halves spell ·
+`src/view/interactions/create.ts` widens the parent-folder condition and `inferFolder` ·
+`src/storage/frontmatter.ts` builds the path, searches for collisions and writes the
+top-level marker in both `createBacklogItem` and `applyWrites`.

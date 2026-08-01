@@ -15,6 +15,43 @@ and every notice.
 text sits on adjacent lines to keys that must not move, and it carries a domain-layer
 change with it, so it is reviewed on its own.
 
+
+**As** someone using the plugin in another language, **I want** every label, tooltip and
+notice to come from the catalog, **so that** the view does not read as half-translated —
+which is worse than not translated at all.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Anyone using the view in a non-English Obsidian |
+| **Trigger** | Any rendered surface: the toolbar, a row, a menu, a modal, a notice |
+| **Preconditions** | The catalog and the locale layer exist |
+| **Guarantee** | Nothing the view *does* changes. This is a text move: the same rows, the same menu items in the same order, the same writes. |
+
+**Main flow**
+
+1. A developer works through one surface at a time, moving each literal to a key.
+2. Screen-reader text moves with the visible text — `aria-label` and tooltips are UI text.
+3. Values the user owns stay as they are: titles, tags, state names, file names.
+4. The surface renders from the catalog.
+
+**Extensions**
+
+- **1a — the string names a view option.** It quotes the *translated* option label, so the
+  sentence points at a control the user can find. Two sentences spell one option's label as
+  a literal today.
+- **1b — the string is withheld for a context row.** It stays withheld. `Set type`,
+  `Set state` and the parent-link actions are *absent* for an `outsideFilter` row, not
+  translated and disabled.
+- **2a — the surface is a modal detail line.** It stays a function of the chosen type, so
+  it is still true at the moment of confirming, and it stops sentence-casing its own first
+  character — the capitalized form belongs in the message.
+- **3a — the value is interpolated into a sentence.** The sentence is one key with the
+  value as a parameter, never a translated word glued to a data value.
+- **4a — the surface is the busy chip.** Its 250 ms `animation-delay` behaviour is
+  unchanged; a text move must not read as a flicker regression.
+
 ## What is here
 
 **Toolbar** (`toolbar.ts`, 23 sites) — the `New <type>` button and its type picker, the
@@ -84,3 +121,17 @@ which is correct: Obsidian needs a restart to change language.
   belongs *in* the message and not every script has case at all.
 - No behaviour changes. This is a text move; anything else found on the way is its own
   note.
+
+## Where it lives
+
+**Nothing yet — this note is design.** The sweep touches every rendering module without
+changing what any of them does.
+
+`src/view/render/toolbar.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
+`src/view/render/emptyStates.ts` · `src/view/interactions/menu.ts` ·
+`src/view/interactions/create.ts` · `src/view/interactions/tags.ts` ·
+`src/view/interactions/structure.ts` · `src/view/interactions/undo.ts` ·
+`src/view/backlogView.ts` · `src/ui/prompts.ts` · `src/commands/scaffold.ts` ·
+`src/main.ts`.
+Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
+untouched — they guard the two behaviours this sweep is most likely to disturb.
