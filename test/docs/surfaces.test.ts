@@ -32,14 +32,33 @@ const specText = readdirSync(REQUIREMENTS)
 	.join('\n');
 
 /**
- * Whole-name matching. A substring search accepts a rename to any prefix of a documented
- * name — `showCounts` would vouch for `showCount` — so the name may not be flanked by
- * anything that could make it part of a longer identifier.
+ * Only the **code** in the requirements — the spans and blocks the register writes an
+ * identifier in. Searching the prose let ordinary English vouch for a surface: the word
+ * "backlog" is on nearly every page, so renaming the command to `backlog` passed a check
+ * whose whole job was to notice that nobody had specified it. An id is never prose here,
+ * so restricting the corpus costs nothing and closes the collision entirely.
  */
-function named(name: string): boolean {
-	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	return new RegExp(`(?<![\\w.])${escaped}(?![\\w.])`).test(specText);
+function code(text: string): string {
+	const fenced = [...text.matchAll(/```\w*\n([\s\S]*?)```/g)].map(([, body]) => body);
+	const inline = [...text.replace(/```[\s\S]*?```/g, '').matchAll(/`([^`\n]+)`/g)].map(([, body]) => body);
+	return [...fenced, ...inline].join('\n');
 }
+
+/**
+ * That code split into the identifiers it contains, so a name is *found* only when the
+ * text carries that whole name and nothing more. A substring search accepts a rename to
+ * any fragment of a documented name, and the fragment can sit at either end and be made
+ * of any of the three characters an id here is built from: `showCounts` vouching for
+ * `showCount`, `create-backlog` for `backlog`, `typeFolder.epic` for `typeFolder`.
+ * Membership in a token set has no ends to get wrong; a boundary pattern has two, and the
+ * hyphen was missing from both.
+ */
+function tokens(text: string): Set<string> {
+	const found = code(text).match(/[\w.-]+/g) ?? [];
+	return new Set(found.map((token) => token.replace(/^[.-]+|[.-]+$/g, '')).filter(Boolean));
+}
+const SPEC_TOKENS = tokens(specText);
+const named = (name: string): boolean => SPEC_TOKENS.has(name);
 
 /** What `onload` registers, by running it against the mock `Plugin`. */
 function loadPlugin() {
@@ -100,9 +119,18 @@ describe('every user-facing surface is specified', () => {
 		expect(registeredViews().map((v) => v.type)).toContain('product-backlog');
 	});
 
-	it('rejects a name that is only a prefix of a documented one', () => {
-		// The substring trap, pinned: `showCounts` is documented, `showCount` is not.
+	it('rejects a name that is only a fragment of a documented one', () => {
+		// Pinned against a fixed sample rather than the register, so the rule is stated
+		// rather than depending on which English words the requirements happen to use —
+		// `backlog` is a word on nearly every page, and it must still fail as an id.
+		const sample = tokens('`showCounts`, `create-backlog` and `typeFolder.epic`.');
+		for (const whole of ['showCounts', 'create-backlog', 'typeFolder.epic']) {
+			expect(sample.has(whole)).toBe(true);
+		}
+		for (const fragment of ['showCount', 'backlog', 'create', 'typeFolder', 'epic']) {
+			expect(sample.has(fragment)).toBe(false);
+		}
+		// And the real corpus does document the name the trap was found on.
 		expect(named('showCounts')).toBe(true);
-		expect(named('showCount')).toBe(false);
 	});
 });

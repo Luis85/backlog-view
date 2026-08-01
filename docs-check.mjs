@@ -18,6 +18,7 @@ import process from "node:process";
  */
 
 const DOCS = "docs";
+const ADRS = path.join(DOCS, "adrs");
 const LEGAL_CHILDREN = {
 	Epic: new Set(["Feature", "Issue", "Bug"]),
 	Feature: new Set(["PBI", "Issue", "Bug"]),
@@ -57,7 +58,7 @@ const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 
 const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
-const count = (text, pattern) => [...text.matchAll(pattern)].length;
+const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : null);
 
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
@@ -197,10 +198,18 @@ for (const [, note] of notes) {
 }
 
 // ----------------------------------------------------------------------------- ADRs
-const adrFiles = files.filter((f) => /adrs[/\\]\d{4}-/.test(f));
+/**
+ * An ADR is any note under `docs/adrs/` that is not the index — discovered by **where it
+ * lives**, never by whether its name looks right. Filtering on `NNNN-` would let a
+ * malformed filename opt out of every ADR check by failing to look like one: no
+ * frontmatter checked, no sections, no index membership, and a green run. That is the same
+ * silent skip a typeless note used to get. The name is a rule to *report*, not a filter.
+ */
+const adrFiles = files.filter((f) => f.startsWith(ADRS + path.sep) && path.basename(f) !== "README.md");
 const numbers = new Map();
 const chains = [];
 for (const file of adrFiles) {
+	if (!/^\d{4}-[a-z0-9-]+\.md$/.test(path.basename(file))) fail(file, "ADR filename is not `NNNN-slug.md`");
 	const text = texts.get(file);
 	const fm = frontmatter(text);
 	if (!fm) {
@@ -210,11 +219,17 @@ for (const file of adrFiles) {
 	for (const field of ["adr", "title", "status", "date", "area"]) {
 		if (fm.field(field) === null) fail(file, `ADR has no ${field}`);
 	}
-	const number = Number(fm.field("adr"));
-	if (numbers.has(number)) fail(file, `ADR number ${number} is already used by ${numbers.get(number)}`);
-	numbers.set(number, file);
-	if (!path.basename(file).startsWith(String(number).padStart(4, "0") + "-")) {
-		fail(file, `filename does not match adr: ${number}`);
+	// A missing or non-numeric `adr` is already reported; registering it as 0 would invent
+	// a duplicate and a numbering gap on top of the real problem.
+	const number = adrNumber(fm.field("adr"));
+	if (number === null) {
+		if (fm.field("adr") !== null) fail(file, `adr: "${fm.field("adr")}" is not a number`);
+	} else {
+		if (numbers.has(number)) fail(file, `ADR number ${number} is already used by ${numbers.get(number)}`);
+		numbers.set(number, file);
+		if (!path.basename(file).startsWith(String(number).padStart(4, "0") + "-")) {
+			fail(file, `filename does not match adr: ${number}`);
+		}
 	}
 	const status = fm.field("status");
 	if (status && !ADR_STATUSES.has(status)) fail(file, `status "${status}" is not one of ${[...ADR_STATUSES]}`);
@@ -256,7 +271,6 @@ for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {
  * required to agree, because a one-sided link is how a chain rots — the superseded record
  * still looks current from the successor's side.
  */
-const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : null);
 for (const link of chains) {
 	// Both directions, from one table — checking only one of them is the asymmetry that
 	// let a half-declared chain through, and it let it through in the worse direction.
@@ -279,6 +293,7 @@ for (const link of chains) {
 			continue;
 		}
 		const partner = chains.find((c) => c.number === target);
+		if (link.number === null) continue; // reciprocity needs our own number; the missing `adr` is already reported
 		if (adrNumber(partner?.[mirror] ?? null) !== link.number) {
 			fail(link.file, `says ${field}: ${target}, but ADR ${target} does not say ${mirrorField}: ${link.number}`);
 		}

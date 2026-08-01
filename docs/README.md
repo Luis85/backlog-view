@@ -82,7 +82,10 @@ can run is worse than none, because it invites trust it has not earned:
    order, **naming a step the main flow actually has**. Validating only the bullets that
    already look like labels would let a mistyped one vanish and leave the rest looking well
    ordered; validating only shape and order would let `**99a — ` depart from nowhere.
-6. Every ADR: frontmatter complete, number matching its filename, unique, no gaps in the
+6. Every ADR — meaning **every note under `adrs/` except the index**, found by where it
+   lives rather than by whether its name looks right, so a malformed filename is *reported*
+   instead of quietly opting out of the checks below. Frontmatter complete, number matching
+   its filename, unique, no gaps in the
    sequence, a known status and area, relative links resolving, and every record listed in
    the ADR index. `supersedes` and `superseded-by` must name a record that **exists**, and
    both ends must agree — checked **from both directions**, since a chain half-declared
@@ -99,7 +102,9 @@ keys — the six generated per type included — and `onload()` for the commands
 so a second one is discovered rather than remembered. Teaching this script to learn them instead meant regex-scanning
 TypeScript, and ten review rounds found ten ways that can be fooled. A script over markdown
 checks markdown; a test that can load the module asks the module. A record naming a surface
-in passing does not specify it, so that search reads `requirements/` alone. Menu items and
+in passing does not specify it, so that search reads `requirements/` alone — and reads only
+the **code spans** in them, matched whole, because an id is never prose: "backlog" is a word
+on nearly every page and must not vouch for a command called `backlog`. Menu items and
 toolbar controls are display text and stay a hand sweep — see
 [[Sweep the register against the code]].
 

@@ -279,6 +279,38 @@ The same round found the ADR check testing that each heading is *present* while
 `docs/adrs/README.md` requires them *in order*. Heading positions are compared now —
 swapping Decision and Consequences fails.
 
+The round after that found the two halves of the split each carrying one last version of
+the shape they were built to remove — a **filter standing in for a check**, and a
+**boundary missing one of its characters**:
+
+| Planted | Reported |
+| --- | --- |
+| `docs/adrs/not-numbered.md` | `ADR filename is not NNNN-slug.md`, `ADR has no frontmatter`, `README.md does not list not-numbered.md` |
+| `adr: eight`; the `adr` line deleted | `adr: "eight" is not a number` / `ADR has no adr`, each with the gap it leaves |
+| `create-backlog` renamed to `backlog` | `["backlog"]` — the command id no requirement names |
+| `showCounts` renamed to `tree` | `["tree"]` |
+
+ADRs were collected by matching `adrs/NNNN-`, so a record whose filename came out wrong was
+excluded from **every ADR check** — frontmatter, numbering, sections, index membership — and
+the run stayed green. A malformed name is the moment those checks are most wanted, and it
+was the one moment they did not run. An ADR is anything under `adrs/` that is not the index
+now, found by where it lives; the filename is a rule to *report*. The numbering pass had to
+learn to hold its tongue in turn: a record with no `adr` field is one problem, not also a
+duplicate ADR 0. Discovery over enumeration, in the last place still enumerating.
+
+And `named()` matched on `(?<![\w.])…(?![\w.])`, which leaves out the third character an id
+here is built from. `create-backlog` therefore vouched for `backlog`. Membership in a token
+set replaces the boundary, because a set has no ends to get wrong.
+
+That fix alone did not catch the rename, which is the more useful half of the finding: the
+requirements say "backlog" in prose on nearly every page, so an id renamed to an English
+word was *named* by the letter of the check and specified by nobody. An identifier in this
+register is always written as code, so the corpus is now the **code spans** of
+`requirements/` rather than their prose — the same narrowing as reading `requirements/`
+instead of all of `docs/`, one level in. Every key in `viewOptions.ts` happens to be a
+compound name today, which is luck rather than a rule: `showCounts` renamed to `tree` was
+accepted before this change and is reported after it.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.
