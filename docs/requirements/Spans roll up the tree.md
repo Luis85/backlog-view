@@ -45,7 +45,11 @@ it.
    exactly those; one that supplied only a start or only a target keeps that end as
    stated while the empty end fills from the subtree, carrying the inferred styling on
    that end alone. An end neither the parent nor its results supply stays open, as any
-   single-dated bar's does.
+   single-dated bar's does — and an inferred end never crosses a stated one: where the
+   subtree's envelope falls on the wrong side of the parent's own date, the empty end
+   stays open instead, because an inference may extend a statement and never
+   contradict it. The children's bars then sit visibly outside, the same rendered
+   disagreement as below.
 4. The inferred span updates as children change, because it is derived, never stored.
 
 **Extensions**
@@ -72,7 +76,9 @@ it.
 - A parent's own dates always win endpoint by endpoint: a supplied end renders as
   stated even when children overflow it, an end left empty fills from the results-only
   subtree and carries the inferred styling alone, and an end neither supplies stays
-  open; the disagreement renders rather than resolves.
+  open; the disagreement renders rather than resolves. An inferred end never crosses a
+  stated one — where the envelope falls on the wrong side of the parent's own date,
+  that end stays open rather than drawing a reversed span.
 - Context rows' dates never contribute to any span, and a context parent's inferred
   span describes its visible results only.
 - A subtree with no dates at all shelves.

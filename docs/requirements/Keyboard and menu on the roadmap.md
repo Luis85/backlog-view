@@ -68,7 +68,9 @@ rather than deferred behind it.
   left it — the failure is announced where the keyboard user is, not on a pointer they
   are not holding.
 - **4a — the menu's removal actions.** Unschedule and clear horizon remove keys, the
-  shelf's rule, so returning an item to the shelf needs no pointer either.
+  shelf's rule, landing the item wherever the placement rules put it next — the shelf
+  only when nothing beneath still supplies a date or value — so un-placing needs no
+  pointer either.
 
 ## Acceptance criteria
 

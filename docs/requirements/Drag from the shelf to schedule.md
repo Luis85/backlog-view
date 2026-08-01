@@ -41,8 +41,13 @@ the keys rather than blanking them.
 2. The drop writes start and target spanning that one cell — the zoom's unit, the
    default-length rule — in one batch.
 3. The item leaves the shelf and renders as a bar on the write's own refresh.
-4. Dragging a bar onto the shelf removes both date keys in one batch: unscheduled is a
-   state a note returns to, not a pair of blank strings.
+4. Dragging a bar onto the shelf removes the configured date keys in one batch:
+   unscheduled is a state a note returns to, not a pair of blank strings. Where the
+   item renders next follows the placement rules — the shelf for a wholly dateless
+   subtree, an inferred bar where descendants still supply dates — and the indicator
+   says which before the release: clearing a parent's own dates hands its span back
+   to the rollup, the date-side mirror of clearing a parent link to hand structure
+   back to folder inference.
 
 **Extensions**
 
@@ -72,7 +77,10 @@ the keys rather than blanking them.
   one batch, one undo; the highlight states the dates before the drop commits them,
   and nothing is ever written to an unconfigured key.
 - Grid to shelf removes the configured date keys — never blanks them — and undo
-  restores them.
+  restores them. Where the item renders next follows the placement rules — the shelf
+  only when its whole subtree is dateless, an inferred bar otherwise — and the drop
+  indicator says which before release; the write is real either way, so it rightly
+  takes the undo slot.
 - A drop nowhere meaningful writes nothing and keeps the previous undo.
 - Context rows can never be scheduled or unscheduled: never shelved, never draggable,
   and any batch naming one is refused whole.
