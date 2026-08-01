@@ -111,9 +111,49 @@ toolbar controls are display text and stay a hand sweep — see
 Each rule was verified the way this project verifies its lint rules: by planting the
 violation and watching the check reject it.
 
-## Every PBI is a use case
+## What each kind of note holds
 
-A `PBI` here is not a title with a checklist under it. It is a **use case**, in one shape:
+Seven note kinds, each answering a different question. The **type is a promise about the
+content**, so choosing it is the first editorial decision: a defect written as a Task loses
+the lesson, and a limitation written as a Bug reads as something someone is about to fix.
+
+| Kind | Answers | Sections |
+| --- | --- | --- |
+| `Epic` | Why this body of work exists, and what "done" means beneath it | Prose · why it exists · definition of done |
+| `Feature` | What outcome one coherent slice delivers | Prose · **Outcome** · Use cases |
+| `PBI` | What someone does, step by step, and every way it can go otherwise | The use-case shape below — **enforced** |
+| `Task` | A piece of engineering work, and the evidence that justified it | Evidence · Why it matters · Approach · Acceptance criteria · Risks · Outcome |
+| `Issue` | A question, a decision taken, or a limitation accepted | Varies by which — see below |
+| `Bug` | What went wrong, what fixed it, and what it taught | What happened · Fix · Lesson |
+| ADR | What was chosen to build it, what that cost, what would change it | Context · Decision · Consequences · Alternatives · Revisit when — **in that order** |
+
+Only the PBI shape and the ADR shape are gated by `npm run docs`; the other four rest on
+whoever writes them. That is the honest division rather than an omission: a checker can see
+whether a heading is present, never whether the paragraph under it says anything. What
+follows is what "says something" means for each kind.
+
+### `Epic` — why the work exists
+
+An Epic is not a folder with a title. It says **why this body of work exists at all**, and
+what "done" means for everything beneath it, so a use case three levels down can be argued
+against something. [[Product Backlog]] names the gap it fills (Obsidian has queryable tables
+and no tree with a rank) and then states three conditions every item under it must satisfy.
+
+The failure mode is an Epic that only restates its own name. If it could be deleted without
+any child becoming harder to judge, it was a heading.
+
+### `Feature` — one outcome, and its use cases
+
+A Feature states an **outcome** — one sentence, in the user's terms, about what is true
+once the feature exists — and then indexes the use cases that deliver it. Nothing else
+belongs here: detail written at feature level is detail no use case owns.
+
+Keep the index complete. A Feature whose list has drifted from its actual children is worse
+than one with no list, because the list is what a reader trusts instead of the tree.
+
+### `PBI` — a use case
+
+A `PBI` is not a title with a checklist under it. It is a **use case**, in one shape:
 
 | Section | Answers |
 | --- | --- |
@@ -130,18 +170,102 @@ tag edit racing a refresh, a base whose identity cannot be resolved. Writing the
 extensions puts each one beside the step it complicates, so the rule and its reason arrive
 together instead of the rule surviving alone in a list of criteria.
 
-A `Feature` states its **outcome** and indexes its use cases. An `Epic` states why it
-exists and what "done" means for anything under it.
+Three habits make the difference between a use case and a paraphrased implementation:
 
-`Issue`, `Bug` and `Task` notes are not use cases — they are records of a question, a
-defect or a piece of work — and keep their own shapes.
+- **The guarantee is what survives every branch**, not what the main flow achieves. "The
+  tree is never left in a shape the model cannot represent" holds down the refused-drop path
+  too; "the item moves" does not.
+- **Extensions carry their reason.** `1a — the quick filter is active` is a rule; adding
+  *"under a filter, visual neighbours are not siblings"* is why it will still be there after
+  the next refactor.
+- **Acceptance criteria are testable.** Each one should map to something a test asserts or a
+  human can check in a vault in under a minute. "Feels responsive" is not a criterion.
+
+### `Task` — engineering work, with its evidence
+
+Tasks are the work that keeps the plugin maintainable, and they open with **Evidence**
+rather than with a proposal: a measurement, a review finding, a line count. `Approach` is
+ordered when order matters — [[Split the view test suite]] cannot split anything until the
+shared harness moves, and says so as step 1. `Risks` appears when there is one worth naming.
+
+`Outcome` is written **after** the work and says what actually happened, including what the
+task did not anticipate. That last part is the most valuable paragraph in the folder: it is
+where a decision nobody planned to make gets recorded at the moment it was made.
+
+### `Issue` — a question, a decision, or a limitation
+
+An Issue is the widest kind, and its shape follows which of three things it is. Say which
+in the first heading rather than making a reader infer it:
+
+- **A decision taken** — `The decision` · `Why` · `What a real fix would look like` ·
+  `Acceptance criteria`. [[Write batches are refused not queued]] records a rule that is
+  correct and looks like a bug, so nobody "fixes" it twice.
+- **A limitation accepted** — `The limitation` · `Why it is deliberate` ·
+  `What would lift it` · `Impact`. The point is the cost, stated plainly enough that a
+  reader can disagree with it.
+- **A verification to run** — `Why this exists` · `How to check` · `Acceptance criteria` ·
+  `Outcome`. Written as a checklist someone can execute, because appearance and base identity
+  cannot be tested here.
+
+An Issue may legitimately have **no acceptance criteria**, and should say so out loud
+("None; recorded so the trade-off is re-decided knowingly rather than rediscovered"). A
+blank criteria section reads as an oversight; an explicit "none" reads as a decision.
+
+### `Bug` — what happened, the fix, the lesson
+
+Three sections, and the third is the reason the note is kept after the fix ships.
+`What happened` describes the **observed** behaviour and the mechanism — not the symptom
+alone. `Fix` names the change *and the test that fails without it*. `Lesson` generalises to
+the rule that was missing, which is what stops the same defect arriving somewhere else:
+[[Nested extra type lost its pinned rank]] ends at "a rule that pins a rank has to hold
+wherever that type appears", and that sentence is worth more than the diff. Drop the lesson
+only when the fix genuinely generalises to nothing — and notice that being rare.
+
+A bug that turns out to be a limitation gets rewritten into the limitation shape above
+rather than closed quietly.
+
+### ADR — what was chosen, and what it cost
+
+Full conventions live in [`adrs/README.md`](adrs/README.md); the essentials are that an ADR
+carries `adr`, `title`, `status`, `date`, `area` and no work-item fields, and that its five
+headings appear in the documented order — Context before Decision before Consequences is an
+argument, and the same five sections rearranged are a different one.
+
+**An ADR earns its place when an alternative was genuinely available.** A record that could
+only ever have gone one way is documentation, and belongs in a `CLAUDE.md` beside the code.
+Two sections do the work: `Consequences` must include what got *harder* — one with only good
+consequences has not been thought about — and `Alternatives` must give the specific reason
+each was rejected, where "simpler" is not a reason and "cost N and bought a rename" is.
 
 ## Conventions
 
-- Frontmatter is the plugin's own: `type`, `parent` (a wikilink), `order`, plus `status` and
-  whatever else is useful (`priority`, `area`, `closed`, `source`).
+- Frontmatter is the plugin's own vocabulary, so the register is a working example of it:
+
+  | Field | On | Holds |
+  | --- | --- | --- |
+  | `type` | every backlog note | One of the six names. ADRs carry none |
+  | `parent` | everything but an Epic | A wikilink, `"[[Note name]]"`, quoted so YAML keeps it |
+  | `order` | every backlog note | The rank among siblings. Unique within a group — the register must not demonstrate the one ranking limitation the plugin has |
+  | `status` | every backlog note | `Open`, `Active` or `Done` |
+  | `priority` | Tasks, Issues, Bugs | `P1`–`P3`. Absent means nobody has judged it |
+  | `area` | Tasks, Issues, Bugs | Where the work sits: `testing`, `design`, `verification`, … |
+  | `created` / `closed` | Tasks, Issues, Bugs | Dates, `YYYY-MM-DD` |
+  | `source` | Tasks, Issues, Bugs | **Where the evidence came from** — a PR number, a review, a vault run |
+  | `files` | Tasks, Issues, Bugs | The paths the note is about, so a reader lands in the code |
+
+  The last five belong to record notes because that is where they earn their keep, not
+  because a requirement may not carry one — a few do, where the same need arose.
+
 - **Every note states the evidence it rests on.** A note that cannot say what it observed is
-  a guess, and guesses are the thing this register exists to keep out of the code.
+  a guess, and guesses are the thing this register exists to keep out of the code. That is
+  what `source` and the `Evidence` heading are for, and why a Task opens with a measurement
+  rather than an opinion.
+- **Write it when it is decided, not when it is convenient.** Half of what is worth keeping
+  here — an asymmetry nobody chose, a rule that only holds by luck — was noticed in passing
+  while doing something else, and would have been unrecoverable an hour later.
+- **Record what was rejected, and why.** An Issue that says only what was done leaves the
+  next reader to re-derive the alternatives; naming them is what makes a decision arguable
+  rather than merely historical.
 - A closed note is not deleted: its outcome is the record of why the code looks as it does.
   Several are checklists to **re-run** rather than history — appearance and base identity
   cannot be tested in this repository, so those two are reopened, not rewritten.
