@@ -65,7 +65,9 @@ can run is worse than none, because it invites trust it has not earned:
 
 1. Every note outside `adrs/` carries a `type`, every parent link resolves, and every
    parent/child pair is legal. A note that lost its frontmatter is reported rather than
-   skipped — a skipped file is checked for nothing and says so to nobody.
+   skipped — a skipped file is checked for nothing and says so to nobody. Two notes may not
+   share a **basename**, in any folders: the register addresses work items by name, so a
+   collision makes every `[[wikilink]]` and `parent:` to either one ambiguous.
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
 3. Every wikilink resolves to a note, and **every relative markdown link resolves to a
@@ -78,7 +80,9 @@ can run is worse than none, because it invites trust it has not earned:
    falsify the record — so their stale paths are **listed rather than failed**. Being
    listed is the point: visible, not silently exempt.
 5. Every use case has all its sections — including **all four rows** of the use-case
-   table, not just `Actor` — and **every** extension bullet is labelled `**Na — `, in step
+   table, not just `Actor` — **in the documented order**, which is also what keeps each
+   marker inside its own block: the table rows sit between `## Use case` and `**Main flow**`
+   or they are out of order. And **every** extension bullet is labelled `**Na — `, in step
    order, **naming a step the main flow actually has**. Validating only the bullets that
    already look like labels would let a mistyped one vanish and leave the rest looking well
    ordered; validating only shape and order would let `**99a — ` depart from nowhere.
@@ -91,7 +95,9 @@ can run is worse than none, because it invites trust it has not earned:
    both ends must agree — checked **from both directions**, since a chain half-declared
    from either side rots the same way: the predecessor goes on reading as current. An ADR
    naming a successor must also carry the `Superseded` status, which is that same failure
-   inside one record.
+   inside one record. Its five headings are checked for presence **and order**, by the same
+   code that checks a use case's sections — they are one rule, and the round that found one
+   of them un-ordered found the other still asking only whether the heading was somewhere.
 7. Every module in `src/` and every file under `test/` — helpers included — is named by at
    least one note. This is the check that finds *missing* notes rather than wrong ones.
 

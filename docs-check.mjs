@@ -60,6 +60,37 @@ const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
 const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : null);
 
+/**
+ * Sections present AND in the documented order — for use cases and for ADRs alike, from
+ * one function, because they are the same rule and the round that found one of them
+ * un-ordered found the other still checking `includes`.
+ *
+ * A substring search verifies the *vocabulary*, not the shape. Since each list is in
+ * reading order, the order check also puts every marker inside the block it belongs to:
+ * a use case's four table rows fall between `## Use case` and `**Main flow**` or they are
+ * out of order, so a `| **Guarantee** |` deleted from the table and re-appended at the end
+ * of the note cannot pass as a use case that has one.
+ *
+ * Both ends of an inversion are named. A monotonic walk blames whichever section follows
+ * the displaced one, which points at the innocent party.
+ */
+function checkSections(file, text, sections, what) {
+	const found = [];
+	for (const section of sections) {
+		const at = text.indexOf(section);
+		if (at === -1) fail(file, `${what} has no ${section}`);
+		else found.push([section, at]);
+	}
+	checkOrder(file, found, what);
+}
+
+/** Both ends of an inversion are named; see above for why the following one is the wrong one. */
+function checkOrder(file, found, what) {
+	for (let i = 1; i < found.length; i++) {
+		if (found[i][1] < found[i - 1][1]) fail(file, `${what} has ${found[i][0]} before ${found[i - 1][0]}`);
+	}
+}
+
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
 	return text.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
@@ -112,7 +143,18 @@ for (const file of files) {
 		continue;
 	}
 	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
-	notes.set(path.basename(file, ".md"), { type, parent, order: Number(fm.field("order") ?? 0), file });
+	// The register addresses work items by **basename** — that is what a `[[wikilink]]` and
+	// a `parent:` resolve against — so two notes sharing one is an ambiguity the whole tree
+	// is built on. It is also a silent skip in this very loop: `set` would replace the
+	// first, and the replaced note would be checked for no parent, no order and no use-case
+	// shape while the counts below still looked plausible. Index pages and ADRs are addressed
+	// by *path* (`adrs/README.md`, `0013-….md`), which is why their names are not in question.
+	const name = path.basename(file, ".md");
+	if (notes.has(name)) {
+		fail(file, `basename is already used by ${notes.get(name).file} — a wikilink to either is ambiguous`);
+		continue;
+	}
+	notes.set(name, { type, parent, order: Number(fm.field("order") ?? 0), file });
 }
 
 const siblings = new Map();
@@ -165,9 +207,7 @@ for (const file of files) {
 for (const [, note] of notes) {
 	if (note.type !== "PBI") continue;
 	const text = texts.get(note.file);
-	for (const section of USE_CASE_SECTIONS) {
-		if (!text.includes(section)) fail(note.file, `use case has no ${section}`);
-	}
+	checkSections(note.file, text, USE_CASE_SECTIONS, "use case");
 	// Extensions are numbered against the step they depart from, in step order. Three
 	// things are checked, and the third is what makes the label mean anything: EVERY
 	// bullet is labelled (a mistyped `**3 —` would otherwise drop out silently and leave
@@ -248,18 +288,9 @@ for (const file of adrFiles) {
 	const area = fm.field("area");
 	if (area && !ADR_AREAS.has(area)) fail(file, `area "${area}" is not one of ${[...ADR_AREAS]}`);
 	if (!/^date:\s*\d{4}-\d{2}-\d{2}\s*$/m.test(fm.raw)) fail(file, "date is not YYYY-MM-DD");
-	// Present AND in order: `docs/adrs/README.md` says "four headings, in this order",
-	// and a record that answers Consequences before Decision is a different document.
-	let previous = -1;
-	for (const section of ADR_SECTIONS) {
-		const at = text.indexOf(section);
-		if (at === -1) {
-			fail(file, `ADR has no ${section}`);
-			continue;
-		}
-		if (at < previous) fail(file, `ADR has ${section} out of order`);
-		previous = at;
-	}
+	// `docs/adrs/README.md` says "four headings, in this order", and a record that answers
+	// Consequences before Decision is a different document.
+	checkSections(file, text, ADR_SECTIONS, "ADR");
 }
 for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {
 	if (!numbers.has(n)) fail("docs/adrs", `no ADR ${String(n).padStart(4, "0")} — numbering has a gap`);

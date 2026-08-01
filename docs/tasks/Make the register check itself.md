@@ -311,6 +311,34 @@ instead of all of `docs/`, one level in. Every key in `viewOptions.ts` happens t
 compound name today, which is luck rather than a rule: `showCounts` renamed to `tree` was
 accepted before this change and is reported after it.
 
+The round after **that** found the ordering fix landing in one of two places — the shape
+this list has now recorded five times — and one silent skip left in the first loop of all:
+
+| Planted | Reported |
+| --- | --- |
+| A Task copied to `docs/tasks/Quick filter.md` | `basename is already used by docs/requirements/Quick filter.md — a wikilink to either is ambiguous` |
+| A `\| **Guarantee** \|` row deleted from the table and re-appended at the end | `use case has **Main flow** before \| **Guarantee** \|` |
+| `**Extensions**` moved above `**Main flow**` | `use case has **Extensions** before **Main flow**` |
+| `## Consequences` moved above `## Decision` | `ADR has ## Consequences before ## Decision` |
+
+Notes were collected into a `Map` keyed by basename, so two sharing one — which a vault
+permits and Obsidian resolves arbitrarily — meant `set` **replaced** the first. The replaced
+note was then checked for no parent, no order and no use-case shape, while the counts
+printed at the end still looked plausible. It is the same ambiguity the register runs on:
+`[[wikilink]]` and `parent:` address a note by name, so a collision has no right answer.
+Index pages and ADRs are addressed by *path*, which is why their names are not in question —
+a rule, not an exemption.
+
+And the ADR headings had been taught to check their order one round earlier while the
+use-case sections were still a bag of `includes` — so a `| **Guarantee** |` cut from the
+table and pasted at the foot of the note passed as a use case that had one. Both go through
+`checkSections` now, which is the only version of this that stays fixed: **the round that
+finds one of two symmetric things wrong has found both.**
+
+It names both ends of an inversion, too. A monotonic walk blames whichever section follows
+the displaced one, so the first draft reported `**Main flow**` for a misplaced `Guarantee`
+row — the innocent party, and a reader would have gone looking in the wrong place.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.
