@@ -152,7 +152,12 @@ construction — which is the pairing this exists for.
   one of them under inference, and creation writes the new note only — never a sibling.
   Naming a folder should be a deliberate act, not a side effect of typing a title that
   happens to match.
-- A creation that fails leaves no empty folder behind.
+- A creation that fails cleans up **only the folder this attempt created**. A folder reused
+  because it was already there and empty belongs to the user, not to the plugin, and
+  removing it would be the one destructive thing this flow is capable of. Nor does the
+  container chain `ensureFolder` walks (`docs/requirements`) belong to the attempt — only
+  the per-item folder does. "Leaves no empty folder behind" was too broad a rule for a step
+  that reuses what it finds.
 
 ### What it does not do
 
@@ -179,11 +184,16 @@ construction — which is the pairing this exists for.
   top-level marker widens here in **both** writers — `createBacklogItem` and `applyWrites`
   — off one shared predicate over the settings *and* the file, leaving `removeParentKey`
   alone.
-- `inferFolder` must count **container** folders. With the option on every item has a
-  folder of its own, so every count is 1 and the "where do most items live" fallback would
-  aim a new top-level item into some other item's folder. Count a folder note's parent
-  folder instead. Reached only when no folder is configured for any offered type, which is
-  why it is easy to miss and worth stating.
+- With the option on, `inferFolder` must answer from **root items**, not from every item.
+  Counting each folder note's container is not enough: `docs/Epic/Epic.md` with ten
+  `docs/Epic/Feature N/Feature N.md` under it counts `docs/Epic` ten times against `docs`
+  once, so the next parentless Epic is created *inside* the existing Epic's folder. The
+  top-level marker would keep the tree right and the file explorer wrong — the exact
+  disagreement this option exists to remove. Count the containers of `model.realRoots`,
+  which `domain/CLAUDE.md` already names as the collection every data operation takes,
+  since `model.roots` is the rendered forest. Flat creation keeps today's count over every
+  item. Reached only when no folder is configured for any offered type, which is why it is
+  easy to miss and worth stating.
 
 ## Evidence
 
