@@ -54,7 +54,10 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   inferred span is display ([[Spans roll up the tree]]), and dragging it would write an
   inference. The path to a real plan on a parent is stating real dates — the menu
   offers it on any row ([[Keyboard and menu on the roadmap]]). A grip exists exactly
-  where a write can land on the note's own configured key, and never on display.
+  where a write can land on the note's own configured key, and never on display. The
+  body hold follows the same rule: it exists while the note states at least one date
+  of its own, moves exactly the dates it states, and never materializes an
+  inference — a fully inferred bar takes no hold at all.
 - **1d — the drag crosses a lane as well as time.** The gesture leaves this PBI:
   reparent and dates travel as the one combined batch [[Lanes on the roadmap]]
   specifies — previewed together, applied together, undone together — so the two notes
