@@ -377,9 +377,17 @@ for (const [name, note] of notes) {
 	// The cost is that a sub-bullet indented two spaces reads as an entry. No regex can tell
 	// that from a legally indented top-level bullet without tracking list context, and a
 	// nested sub-list is not the shape a flat index has.
-	const entries = [...(index ?? "").matchAll(/^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]{1,4}\[\[([^\]|#]+)/gm)].map(
-		([, t]) => t.trim(),
-	);
+	// The link must CLOSE. `[[Name]` captures a name from a prefix match while rendering as
+	// literal text, so a bullet with a lost bracket indexes nothing and must not read as an
+	// entry — the child is then reported missing, which is exactly what it is. An alias or a
+	// heading may sit between the name and the `]]`, since `[[Name|shown]]` still indexes
+	// Name. (The repository-wide wikilink scan matches the same permissive prefix, and
+	// deliberately keeps it: there a bare `[[Name]` must still resolve, and requiring `]]`
+	// would make the typo invisible rather than caught. Opposite defaults, because one asks
+	// "is this a link that works" and the other "does this bullet index a child".)
+	const entries = [
+		...(index ?? "").matchAll(/^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]{1,4}\[\[([^\]|#\n]+)(?:[|#][^\]\n]*)?\]\]/gm),
+	].map(([, t]) => t.trim());
 	const listed = new Set(entries);
 	// Before the Set collapses them: a use case bulleted twice renders twice, and an index
 	// that claims to name the children *exactly* cannot be silent about it.

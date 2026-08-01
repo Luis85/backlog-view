@@ -147,7 +147,20 @@ reopen what the previous rounds closed:
 | --- | --- |
 | `-  [[Name]]`, `-⇥[[Name]]`, `* [[Name]]`, `1. [[Name]]`, `   -  [[Name]]` | all five |
 
-The pattern across all six rounds: every hole was the check answering a slightly different
+A seventh round: `[[Name]` with a lost bracket matched the permissive prefix and read as an
+entry, though it renders as literal text and indexes nothing. The entry link must **close**,
+with an alias or a heading allowed between the name and the `]]`. The repository-wide
+wikilink scan keeps the permissive prefix on purpose — there a bare `[[Name]` must still
+resolve, and requiring `]]` would make the typo invisible instead of caught. Opposite
+defaults from one question each: *is this a link that works* against *does this bullet index
+a child*.
+
+| Planted | Reported |
+| --- | --- |
+| `- [[Scaffolding a backlog]` | `… does not list [[Scaffolding a backlog]]` |
+| `- [[Name\|alias]]` and `- [[Name#Heading]]` | *(nothing — both still index Name)* |
+
+The pattern across all seven rounds: every hole was the check answering a slightly different
 question than the rule does. The rule is about the list a reader sees; the code variously
 asked about the section, about every child, about text a reader never sees, about every link
 in a bullet, about a bullet's first link wherever it sat, and about bullets in one exact
