@@ -52,6 +52,15 @@ extensions are where the epic's hard parts are already settled — what a filter
 does to a WIP signal, what happens to a card created into a state the base excludes —
 and every one of those was a paragraph of prose before the shape asked the question.
 
+**Cross-cutting concerns** is the fourth kind: properties that have to be true of
+everything, or they are true of nothing. Two features — `Multilang` (every string comes
+out of a per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's
+design tokens, from a stylesheet organised like the rest of the codebase). They are
+siblings because they meet at the layout: translated text is longer, shorter and
+sometimes right-to-left, and the stylesheet is what absorbs it. Specification only —
+nothing under this epic is built yet, and what it asks for applies to the board as much
+as to the tree.
+
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
 Epic, a Feature or a PBI alike.
