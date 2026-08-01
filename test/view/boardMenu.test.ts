@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { flush, key, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { boardDrag } from '../helpers/dnd';
 import { announced, boardVault, cardByTitle, columnByName, columnNames, makeBoard } from '../helpers/board';
 
@@ -273,6 +273,30 @@ describe('announcing every board move', () => {
 
 		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'No state'));
 		expect(await announced()).toBe('Moved "Epic A" from New to No state');
+	});
+
+	it('names the columns the move happened on, not the ones left after it', async () => {
+		vi.useFakeTimers();
+		const vault = boardVault();
+		// "Blocked" names no workflow state, so it is an observed stray column — and
+		// this is its only card, so the column goes when the card does.
+		vault.addFile('Feature B3.md', {
+			frontmatter: { type: 'Feature', order: 30, status: 'Blocked' },
+			parentLink: 'Epic B',
+		});
+		const { containerEl, view } = makeBoard(vault);
+		// Bases notices the write while the batch is still running. The view defers
+		// that update and rebuilds on the way out — before the awaited move resolves.
+		vault.afterWrite = () => refresh(view, vault);
+		select(containerEl, 'Feature B3');
+
+		key(treeOf(containerEl), 'ArrowLeft', { altKey: true });
+
+		// The card came from Blocked, whatever the board looks like now: reading the
+		// vocabulary after the rebuild would report a column the user never touched.
+		// (`announced` drives the timers, which settles the write on the way.)
+		expect(await announced()).toBe('Moved "Feature B3" from Blocked to Done');
+		expect(vault.fm('Feature B3.md')['status']).toBe('Done');
 	});
 
 	it('announces nothing for a move that writes nothing', async () => {

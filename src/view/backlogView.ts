@@ -427,12 +427,18 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// undo of the change before it. Nothing is announced either: "moved from
 		// Active to Active" reports a change that did not happen.
 		if (writes.length === 0) return false;
-		// Read before the write, while the model still holds the state being left.
+		// Read before the write, while the model still holds the state being left —
+		// and take the column vocabulary with it, for the same reason. A Bases update
+		// arriving mid-batch is rebuilt into `this.board` the instant the batch ends,
+		// which is BEFORE the await below resolves: by then the column just vacated
+		// may be gone (a stray column loses its last card), and naming the move from
+		// the new board would report a column the user never touched.
 		const from = item.stateValue;
+		const columns = this.board?.board;
 		if (!(await this.applyMove(item, writes))) return false;
 		// Every board move says what changed, whichever input made it — a drag, an
 		// Alt+arrow and the card menu all arrive here.
-		announceBoardMove(this.board?.board, item.title, from, state);
+		announceBoardMove(columns, item.title, from, state);
 		return true;
 	}
 

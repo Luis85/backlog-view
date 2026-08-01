@@ -219,6 +219,14 @@ free of runtime code so imports stay cycle-free.
 
 ## Lifecycle
 
+- Anything an awaited write reports on has to be **captured before the await**. The
+  Bases update that arrives mid-batch is deferred and then flushed in
+  `runExclusively`'s `finally` — synchronously, before the awaited write resolves — so
+  code reading view state after the await already sees the rebuilt model.
+  `performBoardMove` takes both the state being left and the column vocabulary up
+  front for that reason: afterwards the stray column the card just vacated may be gone
+  with its last card, and naming the move from the new board reports a column the user
+  never touched.
 - A Bases view is handed its `app` **after** construction, so nothing in the
   `ProductBacklogView` constructor may read `this.app`. This has bitten twice — the
   collapse controller and the rename listener — and the jsdom tests catch it instantly,
