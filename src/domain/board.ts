@@ -46,6 +46,16 @@ export interface BoardModel {
 
 /** The label of the leading column for items without the state property. */
 export const NO_STATE_LABEL = 'No state';
+/**
+ * Its label when a real state claims the natural name: state values are the
+ * user's own strings, so a workflow can legitimately contain one called
+ * "No state" — and two identically named columns with opposite drop semantics
+ * (remove the key vs write that string) would make targeting a coin toss. The
+ * synthetic column yields, because the real one's name is user data and this
+ * one's is not. (A vocabulary containing both strings at once is a collision
+ * this cannot untangle, accepted as vanishingly unlikely.)
+ */
+export const NO_STATE_COLLISION_LABEL = 'Unset';
 
 /**
  * Project the model onto columns. `visible` is the view's own row-visibility rule
@@ -90,6 +100,7 @@ export function boardColumns(
 		byValue.set(value.toLowerCase(), col);
 		columns.push(col);
 	}
+	if (byValue.has(NO_STATE_LABEL.toLowerCase())) noState.label = NO_STATE_COLLISION_LABEL;
 
 	const cards = (model.focused ? model.roots : model.results).filter(visible);
 	const sortIndex = new Map<BacklogItem, number>();

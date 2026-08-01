@@ -102,6 +102,10 @@ function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean
 		);
 	}
 	if (strip) setTooltip(colEl, 'Drop a card here to clear its state');
+	// The full column says what the strip says: same target, different size — and
+	// the one column whose drop REMOVES rather than writes has to say so somewhere
+	// a real state named like it cannot.
+	else if (col.state === null) setTooltip(colEl, 'Items without the state property — dropping a card here removes it');
 }
 
 function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dnd: BoardDragController): void {

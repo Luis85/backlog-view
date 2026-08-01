@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boardColumns, NO_STATE_LABEL } from '../../src/domain/board';
+import { boardColumns, NO_STATE_COLLISION_LABEL, NO_STATE_LABEL } from '../../src/domain/board';
 import { buildModel } from '../../src/domain/model';
 import { computeStateDropWrites } from '../../src/domain/writePlan';
 import { defaultSettings, resolveSettings } from '../../src/domain/settings';
@@ -75,6 +75,23 @@ describe('boardColumns', () => {
 		const doneCol = board.columns.find((c) => c.label === 'Done');
 		expect(doneCol?.cards.map((c) => c.title)).toEqual(['A']);
 		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done']);
+	});
+
+	it('yields the unset column’s label when a real state claims “No state”', () => {
+		const clashing = { ...settings, states: ['No state', 'Done'] };
+		const vault = new FakeVault();
+		vault.addFile('Named.md', { frontmatter: { type: 'Epic', order: 10, status: 'No state' } });
+		vault.addFile('Bare.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const model = buildModel(vault.app, vault.entries(), clashing);
+
+		const board = boardColumns(model, clashing, everything);
+
+		// Two columns with the same name and opposite drop semantics would make
+		// targeting a coin toss; the synthetic one yields, the user's stays.
+		expect(labels(board)).toEqual([NO_STATE_COLLISION_LABEL, 'No state', 'Done']);
+		expect(board.columns[0].state).toBeNull();
+		expect(board.columns[0].cards.map((c) => c.title)).toEqual(['Bare']);
+		expect(board.columns[1].cards.map((c) => c.title)).toEqual(['Named']);
 	});
 
 	it('gathers items without the state property in the leading no-state column', () => {
