@@ -80,26 +80,74 @@ one level up.
 
 Stop classifying literals. Make the *destination* refuse them.
 
-1. `t()` returns a **branded** type — `Translated`, not `string`. Only the catalog
-   produces one.
-2. A thin set of plugin-local UI helpers takes `Translated` where Obsidian's API takes
-   `string`. The repo already wraps Obsidian this way where a decision needs one place to
-   live: `iconButton` wraps button creation, `showMenuForClick` wraps menu anchoring after
-   the un-anchored version shipped as a bug.
+1. Two **branded** types, by provenance. `t()` returns `Translated`; the vault-read
+   boundary returns `VaultText`. Only the catalog produces the first, only a note produces
+   the second, and a literal produces neither.
+2. A thin set of plugin-local UI helpers takes the union — call it `Displayable` — where
+   Obsidian's API takes `string`. The repo already wraps Obsidian this way where a
+   decision needs one home: `iconButton` wraps button creation, `showMenuForClick` wraps
+   menu anchoring after the un-anchored version shipped as a bug.
 3. Lint bans the **raw** Obsidian text setters inside the UI layers, so the wrappers are
-   the only route. That is a short, genuinely closed list of *APIs* — and it is the
-   repository's existing idiom, the same `no-restricted-syntax` shape that bans
-   `processFrontMatter` and `vault.create` outside `storage/` and `showAtMouseEvent`
-   outside `menu.ts`.
+   the only route. That is a short, genuinely closed list of *APIs* — the repository's
+   existing idiom, the same `no-restricted-syntax` shape that bans `processFrontMatter`
+   and `vault.create` outside `storage/` and `showAtMouseEvent` outside `menu.ts`.
+
+### Why two brands and not one
+
+A single `Translated` brand makes the plugin unable to render the vault. Most of what
+reaches a text sink today is **user data**, and it is not translatable by definition:
+
+| Site | Renders |
+| --- | --- |
+| `prompts.ts:63` | `folder.path` |
+| `prompts.ts:86` | a tag |
+| `rows.ts:215-220` | the note title, split around the filter match |
+| `columns.ts:201` | a property value |
+| `columns.ts:137` | the property's display name |
+
+With one brand, every one of those has to either cast — turning the documented escape
+hatch into the normal path, which also lets literals back in — or go through `t()`, which
+files vault data as catalog text and contradicts this feature's own `text is not data`
+invariant. Neither is acceptable, so the invariant the types encode is **provenance**,
+not translation: a string reaching the UI came from the catalog *or* from the vault, and
+a literal came from neither.
+
+Two sites make the case better than the argument does, because they render **either** in
+one expression:
+
+```ts
+chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });   // columns.ts:319
+btn.createSpan({ text: active || 'All types' });                      // toolbar.ts:211
+```
+
+A state value or a literal; a type name or a literal. These do not typecheck under one
+brand at all — and the union resolves them the right way round rather than papering over
+them, because those fallback literals *are* UI text: they become `value ?? t('state.unset')`
+and `active || t('focus.allTypes')`. The union stops user data being misfiled; it does not
+let a literal through.
 
 What this buys is that the indirection hole closes *by type* rather than by pattern
 matching. `syncBusy` can build its label wherever it likes; the moment it passes a plain
-`string` to `setLabel`, the compiler objects, because the parameter is `Translated`. No
+`string` to `setLabel`, the compiler objects, because the parameter is `Displayable`. No
 taint analysis, no allowlist, and all 615 structural literals stay exactly as they are —
 they were never going near a UI helper.
 
-The residual risk is a cast (`as Translated`), which is visible in review and greppable,
-in the way a missing lint rule is not.
+Both brands are minted at a boundary that already exists and is already narrow.
+`Translated` comes from the catalog; `VaultText` comes from where note fields are read —
+`domain/noteFields.ts` and the Bases entry API — which is the same choke point
+`Persisted keys stay as written` relies on. Neither brand needs a new concept, only a type
+on a boundary that was already the one place that data crosses.
+
+The residual risk is a cast, which is visible in review and greppable, in the way a
+missing lint rule is not.
+
+## Cost, and the order to land it in
+
+Two brands plus a helper layer is the expensive half of this PBI, and the lint ban is the
+cheap half. They can land in that order — ban the raw setters first, brand afterwards —
+but only with the ordering understood: **lint alone leaves the indirection hole open**,
+which is the hole that started this. Shipping step 3 and calling the PBI done would
+reproduce the first design under a different name.
 
 ## The pattern, now that it has been corrected three times
 
@@ -117,9 +165,13 @@ needed three rounds of review to abandon.
 - Both indirection patterns above fail. `syncBusy` building a label into a local, and
   `emptyHint` returning one from a helper, are the acceptance test — a mechanism that
   catches only a literal sitting inside `setText(…)` has not met this criterion.
-- `t()` returns a branded type, and every UI helper that renders text takes it. A plain
-  `string` reaching one is a **compile** error, not a lint error, so it cannot be
-  suppressed inline.
+- `t()` returns `Translated`, the vault-read boundary returns `VaultText`, and every UI
+  helper that renders text takes the union. A plain `string` reaching one is a **compile**
+  error, not a lint error, so it cannot be suppressed inline.
+- Rendering vault data needs **no cast and no `t()` call**. Note titles, folder paths,
+  tags, state values and property values render as directly as they do today. A design in
+  which showing a note title requires either is the single-brand design, and has failed
+  this criterion.
 - The raw Obsidian text setters are banned in the UI layers by `no-restricted-syntax`,
   scoped and messaged like the existing bans on `processFrontMatter`, `vault.create` and
   `showAtMouseEvent`. That list is of APIs, is short, and is closed.
