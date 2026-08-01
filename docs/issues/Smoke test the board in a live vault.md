@@ -23,8 +23,10 @@ carries states.
 
 ## What to look at
 
-- **The toggle** — mode survives an Obsidian restart, and two saved views of this one
-  base hold different modes at once.
+- **The toggle** — mode survives an Obsidian restart on the same device (it is UI
+  state in vault-scoped localStorage, never the `.base` — confirm the `.base` file is
+  untouched by toggling), and two saved views of this one base hold different modes at
+  once.
 - **Drag, on a desktop** — the column highlight is the only drop signal; auto-scroll
   engages near the pane edges only while moving toward them; the drag preview stays
   legible over both themes; with reduced motion set, nothing slides and the landed

@@ -55,7 +55,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 	// Expand and collapse drive the tree's rows; the board has nothing collapsible
 	// yet, and a control that visibly does nothing is worse than none.
-	if (!host.settings.boardMode) {
+	if (!host.boardMode) {
 		collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
 			for (const item of model.items) host.setCollapsed(item.file.path, false);
 		});
@@ -131,6 +131,23 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: bo
 	// slot holds something — which the batch that just finished usually ensures.
 	const undoBtn = barEl.querySelector<HTMLButtonElement>('.pbl-undo-btn');
 	if (undoBtn) undoBtn.disabled = busy !== null || !canUndo;
+}
+
+/**
+ * The filter can be cleared from outside the toolbar (Escape in the tree, the
+ * no-match state); keep the input and its clear affordance in sync. A filter change
+ * re-renders only the content pane, so the collapse controls are updated here too:
+ * they are focusable buttons, and while collapse state is overridden they have to
+ * actually refuse the press, not just look dimmed.
+ */
+export function syncFilterUi(host: BacklogViewHost, barEl: HTMLElement): void {
+	const input = barEl.querySelector<HTMLInputElement>('.pbl-filter-input');
+	if (input && input.value !== host.filterText) input.value = host.filterText;
+	input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', host.filterText !== '');
+	const filtering = host.isFiltering();
+	barEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
+		btn.disabled = filtering;
+	});
 }
 
 /**
@@ -278,13 +295,13 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 }
 
 /**
- * The projection toggle — one view, read as a tree or as a board. The mode is a
- * persisted view option exactly as the focus level is: set here, stored in the
- * `.base` per saved view, absent from the options menu because it lives where its
- * effect is. Bases persists the change and refreshes the view.
+ * The projection toggle — one view, read as a tree or as a board. The mode is
+ * working position, not configuration: base settings are saved on the view, UI
+ * state in vault-scoped localStorage, so the choice persists beside the collapse
+ * state — per saved view, per device — and never touches the `.base`.
  */
 function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
-	const board = host.settings.boardMode;
+	const board = host.boardMode;
 	const btn = iconButton(
 		barEl,
 		board ? 'list-tree' : 'square-kanban',
@@ -292,7 +309,7 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	);
 	btn.addClass('pbl-mode-toggle');
 	btn.toggleClass('is-active', board);
-	btn.addEventListener('click', () => host.config.set('viewMode', board ? 'backlog' : 'board'));
+	btn.addEventListener('click', () => host.setBoardMode(!board));
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */

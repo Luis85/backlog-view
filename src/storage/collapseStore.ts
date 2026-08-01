@@ -1,14 +1,17 @@
 import { App, FileView } from 'obsidian';
 
 /**
- * Persistence for the one piece of state that is purely the user's view of the
- * tree: which rows are open and which are shut.
+ * Persistence for the state that is purely the user's working position: which
+ * rows are open and which are shut, and which projection — tree or board — the
+ * view is showing.
  *
- * This deliberately does NOT go in the `.base` file — a path per collapsed row is
- * exactly the growth that file should not take, and it is shared state, while this
- * is one person's working position. It goes to vault-scoped localStorage through
- * Obsidian's own `loadLocalStorage`/`saveLocalStorage`, under a single key holding
- * one entry per base view.
+ * This deliberately does NOT go in the `.base` file. The rule: base settings are
+ * saved on the view (the options in the `.base`); UI state is saved here, in
+ * vault-scoped localStorage through Obsidian's own
+ * `loadLocalStorage`/`saveLocalStorage`, under a single key holding one entry per
+ * base view. The `.base` is shared configuration, while a collapsed row or a
+ * chosen projection is one person's working position on one device — and a path
+ * per collapsed row is exactly the growth that shared file should not take.
  */
 
 /** One vault-scoped entry holds every Product Backlog view's collapse state. */
@@ -21,10 +24,15 @@ const STORE_KEY = 'product-backlog:collapse';
  */
 const MAX_PATHS = 4000;
 
-/** The rows a view has settled: shut, and explicitly opened. */
+/** The value the `mode` field holds while the view is a board. */
+export const BOARD_MODE = 'board';
+
+/** One view's working position: the rows it has settled, and its projection. */
 export interface CollapseSnapshot {
 	collapsed: Set<string>;
 	expanded: Set<string>;
+	/** `BOARD_MODE` while the view is a board; null or absent means the tree. */
+	mode?: string | null;
 }
 
 /** Which base view an entry belongs to. */
@@ -45,6 +53,8 @@ interface StoredEntry {
 	base: string;
 	collapsed: string[];
 	expanded: string[];
+	/** Absent while the view is a tree — the default needs no entry at all. */
+	mode?: string;
 }
 
 type StoredMap = Record<string, StoredEntry>;
@@ -142,6 +152,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 	return {
 		collapsed: new Set(entry?.collapsed ?? []),
 		expanded: new Set(entry?.expanded ?? []),
+		mode: entry?.mode ?? null,
 	};
 }
 
@@ -155,8 +166,13 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	const key = mapKey(id);
 	const collapsed = [...snapshot.collapsed].slice(0, MAX_PATHS);
 	const expanded = [...snapshot.expanded].slice(0, MAX_PATHS - collapsed.length);
-	if (collapsed.length === 0 && expanded.length === 0) delete map[key];
-	else map[key] = { base: id.base, collapsed, expanded };
+	const mode = snapshot.mode ?? null;
+	// A view at its defaults — nothing settled, the tree — needs no entry at all.
+	if (collapsed.length === 0 && expanded.length === 0 && mode === null) delete map[key];
+	else {
+		map[key] = { base: id.base, collapsed, expanded };
+		if (mode !== null) map[key].mode = mode;
+	}
 	pruneMissingBases(app, map, key);
 	writeMap(app, map);
 }
@@ -215,8 +231,10 @@ function readEntry(value: unknown): StoredEntry | null {
 	// forever; dropping it costs one view's collapse state and is self-healing.
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
-	const entry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
-	return entry.collapsed.length > 0 || entry.expanded.length > 0 ? entry : null;
+	const entry: StoredEntry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
+	// The one mode this plugin has ever written; anything else is not trusted.
+	if (record.mode === BOARD_MODE) entry.mode = BOARD_MODE;
+	return entry.collapsed.length > 0 || entry.expanded.length > 0 || entry.mode !== undefined ? entry : null;
 }
 
 function readPaths(value: unknown): string[] {

@@ -8,7 +8,7 @@ import { cardByTitle, cardTitles, columnByName, columnsOf, countOf } from '../he
 
 useViewHarness();
 
-const BOARD = { viewMode: 'board', stateProperty: 'note.status', stateValues: 'New, Active, Done' };
+const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Active, Done' };
 
 function boardVault(): FakeVault {
 	const vault = new FakeVault();
@@ -20,7 +20,11 @@ function boardVault(): FakeVault {
 }
 
 function board(vault: FakeVault, extra: Record<string, unknown> = {}) {
-	return makeView(vault, { ...BOARD, ...extra }, { collapsed: true });
+	// The mode is UI state, not a base setting: flipped through the host, as the
+	// toolbar does, never through the config.
+	const harness = makeView(vault, { ...WORKFLOW, ...extra }, { collapsed: true });
+	harness.view.setBoardMode(true);
+	return harness;
 }
 
 describe('dragging a card to a new state', () => {
@@ -105,7 +109,7 @@ describe('dragging a card to a new state', () => {
 		const a = board(vaultA);
 		// A second saved board in a split pane — the register's own advertised setup.
 		const vaultB = boardVault();
-		const b = makeView(vaultB, { ...BOARD }, { collapsed: true });
+		const b = board(vaultB);
 
 		// The adapter's registry is document-global; without the instance token this
 		// drop would write B's state key for a gesture made on A's board.
@@ -277,13 +281,12 @@ describe('the board keyboard', () => {
 	it('switching back to the tree releases the column stop', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
-		const { containerEl, view, config } = board(vault);
+		const { containerEl, view } = board(vault);
 		const tree = treeOf(containerEl);
 		key(tree, 'ArrowRight');
 		expect(view.selectedBoardColumn).toBe(0);
 
-		config.values['viewMode'] = 'backlog';
-		refresh(view, vault);
+		view.setBoardMode(false);
 
 		// Board state must not point at a projection no longer on screen.
 		expect(view.selectedBoardColumn).toBeNull();
@@ -326,12 +329,11 @@ describe('the quick filter on the board', () => {
 
 	it('carries over a projection switch instead of clearing', () => {
 		const vault = boardVault();
-		const treeSide = makeView(vault, { stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+		const treeSide = makeView(vault, { ...WORKFLOW });
 		treeSide.view.setFilter('Epic A');
 
-		// The toggle persists the mode; Bases hands the view a refresh.
-		treeSide.config.values['viewMode'] = 'board';
-		treeSide.view.onDataUpdated();
+		// The toggle switches in place — the filter is session state in both projections.
+		treeSide.view.setBoardMode(true);
 
 		expect(cardTitles(treeSide.containerEl)).toEqual(['Epic A']);
 		const input = treeSide.containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');

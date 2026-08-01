@@ -144,3 +144,37 @@ describe('rekeyBase across a folder move', () => {
 		expect(bases).toEqual(['Archive/A.base', 'Workshop/B.base']);
 	});
 });
+
+describe('the persisted view mode', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+
+	it('round-trips beside the collapse sets, and clears with the tree default', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, mode: 'board' });
+		expect(loadCollapseState(vault.app, id).mode).toBe('board');
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ mode: 'board' });
+
+		// The tree is the default and needs no entry at all.
+		saveCollapseState(vault.app, id, { ...none, mode: null });
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+		expect(loadCollapseState(vault.app, id).mode).toBeNull();
+	});
+
+	it('rides a base rename with the rest of the entry', () => {
+		vault.addFile('New.base');
+		saveCollapseState(vault.app, { ...id, base: 'Old.base' }, { ...none, mode: 'board' });
+		rekeyBase(vault.app, 'Old.base', 'New.base');
+		expect(loadCollapseState(vault.app, { ...id, base: 'New.base' }).mode).toBe('board');
+	});
+
+	it('drops a stored mode it does not recognize', () => {
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: ['Epic.md'], expanded: [], mode: 'sideways' },
+		});
+		const snapshot = loadCollapseState(vault.app, id);
+		// The paths survive; the unrecognized mode does not.
+		expect(snapshot.collapsed.has('Epic.md')).toBe(true);
+		expect(snapshot.mode).toBeNull();
+	});
+});

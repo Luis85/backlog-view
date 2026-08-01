@@ -169,6 +169,10 @@ free of runtime code so imports stay cycle-free.
   `listbox` and the keydown dispatched to `handleBoardKeydown`. The column-fit ladder
   (`pbl-hide-*`) is the tree's — entering board mode clears its stale verdicts, or a
   narrow-pane decision from tree mode would hide card cells.
+- The mode is `host.boardMode`, backed by the collapse store (UI state, per saved view,
+  per device) — never `settings` and never the `.base`: base settings are saved on the
+  view, working position in localStorage. `setBoardMode` re-renders itself, because no
+  config was set and no Bases refresh is coming.
 - `BoardDragController` collects every adapter registration's cleanup and runs them at
   the top of each render pass: the board is rebuilt wholesale, and pragmatic listeners
   left on detached elements would fire against a board that no longer exists. Its

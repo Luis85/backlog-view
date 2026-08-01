@@ -321,13 +321,13 @@ describe('write safety with context rows, across the board’s entry points', ()
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({
-			viewMode: 'board',
 			stateProperty: 'note.status',
 			stateValues: 'New, Active, Done',
 			focusLevel: 'PBI',
 		});
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
+		view.setBoardMode(true);
 		return { view, containerEl, vault };
 	}
 

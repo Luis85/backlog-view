@@ -3,7 +3,9 @@
 Obsidian plugin registering a custom **Bases view** (`product-backlog`): a drag-and-drop
 work-item tree (Epic → Feature → PBI → Task) over notes in a flat folder, driven by
 `parent`/`order`/`type` frontmatter — with a second projection, a kanban **board** whose
-columns are the configured workflow states, toggled per saved view (`viewMode`).
+columns are the configured workflow states, toggled per saved view. The mode is UI
+state (vault-scoped localStorage, beside the collapse state), never a `.base` setting:
+base settings are saved on the view, working position on the device.
 Requires Obsidian 1.10.2+ (Bases custom view API).
 
 ## Definition of done
@@ -59,12 +61,12 @@ mirrors the same directories.
 | **`storage/`** | **The only place anything is persisted.** | |
 | `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |
 | `storage/baseFile.ts` | Writing the `.base` file itself | node tests |
-| `storage/collapseStore.ts` | Collapse state in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
+| `storage/collapseStore.ts` | Per-view UI state (collapse sets + board mode) in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
 | **`view/`** | **DOM and interaction.** | |
 | `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch, write gate | jsdom tests |
 | `view/selection.ts` | The one selection either projection holds — row/card by path, or a board column stop — and its aria bookkeeping | jsdom tests |
-| `view/collapseState.ts` | Which rows are shut, the once-only default, and the debounced save | jsdom tests |
+| `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
 | `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
 | `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages | jsdom tests |
 | `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done | jsdom tests |

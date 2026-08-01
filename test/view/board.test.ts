@@ -8,8 +8,23 @@ import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf 
 
 useViewHarness();
 
-/** Board mode over a configured three-state workflow. */
-const BOARD = { viewMode: 'board', stateProperty: 'note.status', stateValues: 'New, Active, Done' };
+/** A configured three-state workflow; the mode itself is not a config key. */
+const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Active, Done' };
+
+/**
+ * A view flipped to the board through the toolbar's own path. The mode is UI
+ * state in the collapse store, not a base setting, so tests set it the way the
+ * user does — through the host — never through the config.
+ */
+function boardView(
+	vault: FakeVault,
+	cfg: Record<string, unknown> = { ...WORKFLOW },
+	opts: { base?: string } = {},
+) {
+	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
+	harness.view.setBoardMode(true);
+	return harness;
+}
 
 /** Two epics; B has a done feature and an untyped-state feature. */
 function boardVault(): FakeVault {
@@ -23,7 +38,7 @@ function boardVault(): FakeVault {
 
 describe('the board projection', () => {
 	it('renders one column per configured state in order, the no-state column leading', () => {
-		const { containerEl } = makeView(boardVault(), { ...BOARD }, { collapsed: true });
+		const { containerEl } = boardView(boardVault());
 
 		expect(columnNames(containerEl)).toEqual(['No state', 'New', 'Active', 'Done']);
 		// Feature B2 has no state property: gathered, never lost.
@@ -38,7 +53,7 @@ describe('the board projection', () => {
 	it('styles the done column as finished, and appends observed strays after the workflow', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Blocked' } });
-		const { containerEl } = makeView(vault, { ...BOARD }, { collapsed: true });
+		const { containerEl } = boardView(vault);
 
 		// Configured states keep their columns, cards or none; the stray is appended,
 		// visibly outside the workflow.
@@ -52,7 +67,7 @@ describe('the board projection', () => {
 	});
 
 	it('shows guidance instead of a board when no state property is configured', () => {
-		const { containerEl } = makeView(boardVault(), { viewMode: 'board' }, { collapsed: true });
+		const { containerEl } = boardView(boardVault(), {});
 
 		expect(columnsOf(containerEl)).toHaveLength(0);
 		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
@@ -66,13 +81,13 @@ describe('the board projection', () => {
 	it('falls back to the observed states when no list is configured', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });
-		const { containerEl } = makeView(vault, { viewMode: 'board', stateProperty: 'note.status' }, { collapsed: true });
+		const { containerEl } = boardView(vault, { stateProperty: 'note.status' });
 
 		expect(columnNames(containerEl)).toEqual(['No state', 'Doing', 'Done']);
 	});
 
 	it('a card carries its badge, its parent as context, and its rollup', () => {
-		const { containerEl } = makeView(boardVault(), { ...BOARD }, { collapsed: true });
+		const { containerEl } = boardView(boardVault());
 
 		const done = cardByTitle(containerEl, 'Feature B1');
 		expect(done.querySelector('.pbl-badge-text')?.textContent).toBe('Feature');
@@ -87,7 +102,7 @@ describe('the board projection', () => {
 	it('a card carries the row’s tag controls — the board’s one tag surface until its menu lands', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New', tags: ['a'] } });
-		const harness = makeView(vault, { ...BOARD }, { collapsed: true });
+		const harness = boardView(vault);
 		harness.config.order = ['note.tags'];
 		refresh(harness.view, vault);
 
@@ -103,8 +118,7 @@ describe('the board projection', () => {
 		const vault = new FakeVault();
 		vault.addFile('Named.md', { frontmatter: { type: 'Epic', order: 10, status: 'No state' } });
 		vault.addFile('Bare.md', { frontmatter: { type: 'Epic', order: 20 } });
-		const clashing = { ...BOARD, stateValues: 'No state, Done' };
-		const { containerEl } = makeView(vault, clashing, { collapsed: true });
+		const { containerEl } = boardView(vault, { ...WORKFLOW, stateValues: 'No state, Done' });
 
 		// The visible label yielded to "Unset"; the accessible name must follow, or
 		// speech input cannot target the column by the name on screen.
@@ -115,7 +129,7 @@ describe('the board projection', () => {
 
 	it('activating a card opens its note, exactly as activating a row does', () => {
 		const vault = boardVault();
-		const { containerEl } = makeView(vault, { ...BOARD }, { collapsed: true });
+		const { containerEl } = boardView(vault);
 
 		cardByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(vault.opened.map((o) => o.path)).toEqual(['Epic A.md']);
@@ -125,40 +139,60 @@ describe('the board projection', () => {
 	});
 
 	it('an empty base still renders every stage, with the advisory beside the columns', () => {
-		const { containerEl } = makeView(new FakeVault(), { ...BOARD }, { collapsed: true });
+		const { containerEl } = boardView(new FakeVault());
 
 		// An empty board is empty stages, never no stages.
 		expect(columnNames(containerEl)).toEqual(['No state', 'New', 'Active', 'Done']);
 		const advisory = containerEl.querySelector('.pbl-board-advisory');
 		expect(advisory?.querySelector('.pbl-empty-title')?.textContent).toBe('No backlog items');
 	});
+});
 
-	it('treats any stored mode other than board as the tree', () => {
-		const { containerEl } = makeView(boardVault(), { ...BOARD, viewMode: 'sideways' });
+describe('the projection toggle', () => {
+	function storedEntries(vault: FakeVault): Record<string, { mode?: string }> {
+		return (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, { mode?: string }>;
+	}
+
+	it('persists in localStorage per saved view — never in the base file', () => {
+		const vault = boardVault();
+		const first = makeView(vault, { ...WORKFLOW }, { base: 'Backlog.base' });
+		const toggle = first.containerEl.querySelector<HTMLButtonElement>('.pbl-mode-toggle');
+		expect(toggle?.getAttribute('aria-label')).toBe('Show as kanban board');
+
+		// The click flips the projection in place — no config write, no Bases refresh.
+		toggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(columnsOf(first.containerEl).length).toBeGreaterThan(0);
+		// The rule itself: base settings go on the view; UI state never touches it.
+		expect(first.config.setCalls.some((c) => c.key === 'viewMode')).toBe(false);
+		first.view.onunload();
+		expect(storedEntries(vault)['Backlog.base#Backlog']?.mode).toBe('board');
+
+		// A fresh view over the same saved view restores the board from the store.
+		document.body.empty();
+		const second = makeView(vault, { ...WORKFLOW }, { base: 'Backlog.base', collapsed: true });
+		expect(columnsOf(second.containerEl).length).toBeGreaterThan(0);
+		const back = second.containerEl.querySelector<HTMLButtonElement>('.pbl-mode-toggle');
+		expect(back?.getAttribute('aria-label')).toBe('Show as backlog tree');
+
+		// And toggling back to the tree clears the field rather than storing a default.
+		back?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		second.view.onunload();
+		expect(storedEntries(vault)['Backlog.base#Backlog']?.mode).toBeUndefined();
+	});
+
+	it('treats a stored mode it does not recognize as the tree', () => {
+		const vault = boardVault();
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], mode: 'sideways' },
+		});
+		const { containerEl } = makeView(vault, { ...WORKFLOW }, { base: 'Backlog.base' });
 
 		expect(columnsOf(containerEl)).toHaveLength(0);
 		expect(containerEl.querySelectorAll('.pbl-row').length).toBeGreaterThan(0);
 	});
-});
-
-describe('the projection toggle', () => {
-	it('persists the mode per saved view from the toolbar', () => {
-		const treeSide = makeView(boardVault(), { stateProperty: 'note.status' });
-		const toggle = treeSide.containerEl.querySelector<HTMLButtonElement>('.pbl-mode-toggle');
-		expect(toggle?.getAttribute('aria-label')).toBe('Show as kanban board');
-		toggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(treeSide.config.setCalls).toContainEqual({ key: 'viewMode', value: 'board' });
-
-		document.body.empty();
-		const boardSide = makeView(boardVault(), { ...BOARD }, { collapsed: true });
-		const back = boardSide.containerEl.querySelector<HTMLButtonElement>('.pbl-mode-toggle');
-		expect(back?.getAttribute('aria-label')).toBe('Show as backlog tree');
-		back?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(boardSide.config.setCalls).toContainEqual({ key: 'viewMode', value: 'backlog' });
-	});
 
 	it('drops the tree-only collapse controls in board mode', () => {
-		const { containerEl } = makeView(boardVault(), { ...BOARD }, { collapsed: true });
+		const { containerEl } = boardView(boardVault());
 		expect(containerEl.querySelector('.pbl-collapse-ctl')).toBeNull();
 		// The rest of the toolbar survives the projection: creation, undo, the filter.
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
@@ -167,7 +201,7 @@ describe('the projection toggle', () => {
 	});
 
 	it('marks the content pane as a listbox in board mode, a tree otherwise', () => {
-		const board = makeView(boardVault(), { ...BOARD }, { collapsed: true });
+		const board = boardView(boardVault());
 		expect(board.containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
 
 		document.body.empty();
@@ -191,11 +225,12 @@ describe('focus on the board', () => {
 		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		view.setBoardMode(true);
 		return { view, config, containerEl, vault };
 	}
 
 	it('makes the focused level the cards', () => {
-		const { containerEl } = focusedView({ ...BOARD, focusLevel: 'Feature' });
+		const { containerEl } = focusedView({ ...WORKFLOW, focusLevel: 'Feature' });
 
 		expect(cardTitles(columnByName(containerEl, 'New'))).toEqual(['F2']);
 		expect(cardTitles(columnByName(containerEl, 'Active'))).toEqual(['F1']);
@@ -203,7 +238,7 @@ describe('focus on the board', () => {
 	});
 
 	it('renders an excluded focus-level item as an inert context card that places its results', async () => {
-		const { containerEl, vault } = focusedView({ ...BOARD, focusLevel: 'Epic' });
+		const { containerEl, vault } = focusedView({ ...WORKFLOW, focusLevel: 'Epic' });
 
 		// The Epic is outside the filter, but the results beneath it still need a board.
 		const card = cardByTitle(containerEl, 'Epic');

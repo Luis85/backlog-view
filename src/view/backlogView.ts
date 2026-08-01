@@ -12,7 +12,7 @@ import { computeDropWrites, computeStateDropWrites, ItemWrite } from '../domain/
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
-import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel } from './render/toolbar';
+import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { renderBoard } from './render/board';
 import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
 import { renderBoardNoWorkflowState, renderLoadingState } from './render/emptyStates';
@@ -98,7 +98,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.dnd.setupRootDropZone();
 		this.boardDnd = new BoardDragController(this, this.viewEl);
 		this.treeEl.addEventListener('keydown', (evt) =>
-			this.settings.boardMode ? handleBoardKeydown(this, evt) : handleTreeKeydown(this, evt),
+			this.boardMode ? handleBoardKeydown(this, evt) : handleTreeKeydown(this, evt),
 		);
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
@@ -158,10 +158,25 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return max;
 	}
 
+	/**
+	 * True while this view shows the board. UI state, not a base setting: it lives
+	 * beside the collapse state — per saved view, per device — never in the `.base`.
+	 */
+	get boardMode(): boolean {
+		return this.collapse.boardMode();
+	}
+
+	setBoardMode(on: boolean): void {
+		if (on === this.boardMode) return;
+		this.collapse.setBoardMode(on);
+		// No config was set, so no Bases refresh is coming: this render is the switch.
+		this.render();
+	}
+
 	/** Re-measure after a resize, and rebuild only if a column came or went. */
 	private onResize(): void {
 		// Board columns scroll horizontally instead of dropping; the fit ladder is the tree's.
-		if (this.settings.boardMode) return;
+		if (this.boardMode) return;
 		if (this.syncColumnFit()) this.renderTreeContent();
 	}
 
@@ -219,23 +234,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	focusFilter(): void {
 		this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
-	}
-
-	/**
-	 * The filter can be cleared from outside the toolbar (Escape in the tree, the
-	 * no-match state); keep the input and its clear affordance in sync.
-	 */
-	private syncFilterUi(): void {
-		const input = this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-		if (input && input.value !== this.filterText) input.value = this.filterText;
-		input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', this.filterText !== '');
-		// A filter change re-renders only the tree, so the toolbar's collapse controls
-		// are updated here. They are focusable buttons: while collapse state is
-		// overridden, they have to actually refuse the press, not just look dimmed.
-		const filtering = this.isFiltering();
-		this.toolbarEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
-			btn.disabled = filtering;
-		});
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
@@ -376,10 +374,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	/** Re-render only the content pane — used by the filter so the toolbar input keeps focus. */
 	private renderTreeContent(): void {
-		this.syncFilterUi();
+		syncFilterUi(this, this.toolbarEl);
 		const model = this.model;
 		if (!model) return;
-		const board = this.settings.boardMode;
+		const board = this.boardMode;
 		this.viewEl.toggleClass('pbl-board-mode', board);
 		// The listbox role is a promise of options. The no-workflow guidance renders
 		// none, so it presents as a plain labelled region rather than an empty

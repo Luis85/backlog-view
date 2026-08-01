@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { boardColumns, NO_STATE_COLLISION_LABEL, NO_STATE_LABEL } from '../../src/domain/board';
 import { buildModel } from '../../src/domain/model';
 import { computeStateDropWrites } from '../../src/domain/writePlan';
-import { defaultSettings, resolveSettings } from '../../src/domain/settings';
+import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
-import { FakeViewConfig } from '../helpers/vault';
-import { BasesViewConfig } from 'obsidian';
 
 /** Progress tracking on, with a configured workflow — the board's home ground. */
 const settings = {
@@ -273,19 +271,3 @@ describe('computeStateDropWrites', () => {
 	});
 });
 
-describe('the persisted view mode', () => {
-	function resolved(values: Record<string, unknown>) {
-		return resolveSettings(new FakeViewConfig(values) as unknown as BasesViewConfig);
-	}
-
-	it('reads board mode from the viewMode key', () => {
-		expect(resolved({ viewMode: 'board' }).boardMode).toBe(true);
-		expect(resolved({ viewMode: ' Board ' }).boardMode).toBe(true);
-	});
-
-	it('treats anything else — including nothing — as the tree', () => {
-		expect(resolved({}).boardMode).toBe(false);
-		expect(resolved({ viewMode: 'backlog' }).boardMode).toBe(false);
-		expect(resolved({ viewMode: 42 }).boardMode).toBe(false);
-	});
-});

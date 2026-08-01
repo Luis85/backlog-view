@@ -81,6 +81,14 @@ export interface BacklogViewHost {
 	/** Returns true when the state actually changed. */
 	setCollapsed(path: string, collapsed: boolean): boolean;
 
+	/**
+	 * True while this view shows the board projection. UI state, not a base
+	 * setting: it lives beside the collapse state in vault-scoped localStorage —
+	 * per saved view, per device — and never in the `.base`.
+	 */
+	readonly boardMode: boolean;
+	/** Flip the projection and re-render; the collapse store persists the choice. */
+	setBoardMode(on: boolean): void;
 	/** The board of the last render, or null while the view is a tree (or has no workflow). */
 	readonly board: BoardSnapshot | null;
 	/**

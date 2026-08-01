@@ -4,7 +4,7 @@ import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './
 import { renderBadge, renderTitleText } from './rows';
 import { BoardSnapshot } from '../host';
 import { BoardDragController } from '../interactions/boardDrag';
-import { boardColumns, BoardColumn, BoardModel, NO_STATE_LABEL } from '../../domain/board';
+import { boardColumns, BoardColumn, BoardModel } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 
 /**

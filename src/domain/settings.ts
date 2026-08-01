@@ -37,13 +37,6 @@ export interface BacklogSettings {
 	typeFolders: Record<string, string>;
 	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
 	focusLevel: string;
-	/**
-	 * Render the board projection instead of the tree. Persisted per saved view under
-	 * the `viewMode` key — set from the toolbar toggle, absent from the options menu,
-	 * exactly as the focus level is. One model feeds both projections; this only
-	 * decides which one draws it.
-	 */
-	boardMode: boolean;
 	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
 	stateKey: string;
 	/**
@@ -164,7 +157,6 @@ export function defaultSettings(): BacklogSettings {
 		homeFolder: DEFAULT_HOME_FOLDER,
 		typeFolders: typeFoldersFor(ALL_TYPES, (t) => defaultTypeFolder(t)),
 		focusLevel: '',
-		boardMode: false,
 		stateKey: '',
 		tagsKey: 'tags',
 		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
@@ -344,10 +336,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		showCounts: bool('showCounts', fallback.showCounts),
 		...folders,
 		focusLevel: str('focusLevel').trim(),
-		// Any value other than 'board' — including the '' of a view that never
-		// toggled — is the tree: an unrecognized mode must fall back to the
-		// projection that always works, not to a blank pane.
-		boardMode: str('viewMode').trim().toLowerCase() === 'board',
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
