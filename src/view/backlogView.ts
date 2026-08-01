@@ -503,6 +503,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			// slot (and any stash pointed at it) simply stays for the retry.
 			this.lastUndo = this.recovery.failed(restores, batch, tracker.finished, this.lastUndo);
 		}
+		// The gate's closing sync ran before this bookkeeping settled the slot — a
+		// consumed retry re-arms the carried redo AFTER setBusy(null) disabled the
+		// button — so publish the settled answer.
+		syncBusy(this.toolbarEl, this.busy, this.canUndo());
 		return ok;
 	}
 

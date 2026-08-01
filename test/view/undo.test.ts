@@ -201,8 +201,11 @@ describe('undoing the last change', () => {
 		expect(Notice.messages).toContain('Undo: 2 values were edited since and kept.');
 		expect(orders()).toEqual([99, 99, undefined]);
 
-		// The one thing the undo DID do is still reversible: redo brings C back.
-		key(tree, 'z', { ctrlKey: true });
+		// The one thing the undo DID do is still reversible — and the BUTTON knows:
+		// the gate's closing sync ran while the slot was momentarily empty, so the
+		// re-armed carried redo must publish itself, not wait for the next render.
+		expect(undoButton(containerEl).disabled).toBe(false);
+		undoButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 		expect(orders()).toEqual([99, 99, 30]);
 	});
