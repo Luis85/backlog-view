@@ -28,6 +28,13 @@ free of runtime code so imports stay cycle-free.
   tick would reintroduce exactly the jank the deferral removes. The indicator is
   rendered always and hidden in CSS, with an animation delay so a single-file write
   never flashes it.
+- The undo slot (`lastUndo`) installs on the first EFFECTIVE inverse of a batch, not
+  when the batch starts — so a no-op batch keeps the previous undo, and a batch that
+  fails partway has installed exactly the applied prefix. `undoLast` replays through
+  the same `runExclusively` gate minus the context-row check: authorization came at
+  capture time (see the root context-row rule). The toolbar undo button re-enables to
+  `canUndo()`, not to "idle" — which is why `syncBusy` takes it as a parameter rather
+  than treating undo as one more `.pbl-write-ctl`.
 
 ## What is rendered, and what is merely hidden
 

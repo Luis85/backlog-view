@@ -137,7 +137,13 @@ The view NEVER writes to a note the Base excluded — enforced structurally in
 `applySafely`, which refuses the WHOLE batch (loudly) if any write targets an
 `outsideFilter` item, so a new write path cannot reopen the hole by omission. It rejects
 rather than filters: dropping the offending write alone would apply the rest and leave
-the hierarchy half-updated. The UI withholds every control that would produce one: the
+the hierarchy half-updated. The one write path without that replay-time check is undo
+(`undoLast`), deliberately: its authorization came at capture time — an undo batch can
+only name files its forward batch wrote while they were results, and the write being
+undone may itself be what moved one out of the filter (a parent marked done in a base
+that excludes done items). The rule both paths keep is *never write to a note the user
+could not act on*; `test/view/contextRowWrites.test.ts` drives undo across that
+boundary too. The UI withholds every control that would produce one: the
 state chip renders as a static `.pbl-state-static` div (and not at all when unset), and
 the context menu drops Set type, Set state and the parent-link actions. `New <child>`
 stays — it writes a *different* note — but it must not land that note outside the filter
@@ -149,10 +155,14 @@ results.
 
 ### The write path
 
-Writes go through `applySafely`: serialized (`applying` flag), blocked when
-`configProblems` is non-empty, and refused whole if any write targets an `outsideFilter`
-item. Everything it applies was planned by `domain/writePlan.ts`, which touches nothing,
-and applied by `storage/frontmatter.ts`, which is the only module that may.
+Writes go through `applySafely` (forward batches) or `undoLast` (replaying the last
+batch's inverses), both over one gate (`runExclusively`): serialized (`applying` flag)
+and blocked when `configProblems` is non-empty; forward batches are additionally
+refused whole if any write targets an `outsideFilter` item. Everything applied was
+planned by `domain/writePlan.ts`, which touches nothing, and applied by
+`storage/frontmatter.ts`, which is the only module that may — and which captures each
+write's inverse as it lands, so the last effective batch can always be taken back
+(`applyRestores`, compare-and-swap per key).
 
 
 ## Gotchas

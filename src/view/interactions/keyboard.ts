@@ -29,6 +29,13 @@ export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): vo
 	const model = host.model;
 	if (!model || model.items.length === 0) return;
 	if (handleFilterKey(host, evt)) return;
+	// Before the visibility math: undo needs no selection, and the change being
+	// undone may be exactly what emptied the visible list (everything marked done).
+	if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key.toLowerCase() === 'z') {
+		evt.preventDefault();
+		void host.undoLast();
+		return;
+	}
 	const visible = visibleItems(host, model);
 	if (visible.length === 0) return;
 

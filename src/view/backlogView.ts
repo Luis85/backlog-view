@@ -7,7 +7,7 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { computeDropWrites, ItemWrite } from '../domain/writePlan';
-import { applyWrites } from '../storage/frontmatter';
+import { applyRestores, applyWrites, RestoreOutcome, RestoreWrite } from '../storage/frontmatter';
 import { renderToolbar, syncBusy } from './render/toolbar';
 import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
 import { refreshRowChildren, renderLoadingState, renderTree } from './render/rows';
@@ -42,6 +42,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** Paths visible under the active filter; null when no filter is set. */
 	private filterVisible: Set<string> | null = null;
 	private applying = false;
+	/**
+	 * Inverses of the most recent effective batch, in write order — the single-level,
+	 * session-only undo. Replaced only by a batch that actually changed something.
+	 */
+	private lastUndo: RestoreWrite[] | null = null;
 	/** A data update that arrived mid-batch and is waiting for it to finish. */
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
@@ -386,7 +391,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (!this.model) return;
 		renderToolbar(this, this.toolbarEl);
 		// The toolbar was just rebuilt; a batch may still be running behind it.
-		syncBusy(this.toolbarEl, this.busy);
+		syncBusy(this.toolbarEl, this.busy, this.canUndo());
 		this.renderTreeContent();
 	}
 
@@ -460,6 +465,48 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			new Notice('That change would edit a note outside this base’s filter, so nothing was written.');
 			return false;
 		}
+		return this.runExclusively(writes.length, (onProgress, onInverse) =>
+			applyWrites(this.app, this.settings, writes, onProgress, onInverse),
+		);
+	}
+
+	canUndo(): boolean {
+		return this.lastUndo !== null && this.lastUndo.length > 0;
+	}
+
+	async undoLast(): Promise<boolean> {
+		const restores = this.lastUndo;
+		if (!restores || restores.length === 0) {
+			new Notice('Nothing to undo.');
+			return false;
+		}
+		// No context-row check here, deliberately: authorization came at capture time.
+		// This batch can only name files its forward batch wrote while they were
+		// results — and the write being undone may itself have moved one out of the
+		// filter, which is exactly the change the user is taking back. The current
+		// model's verdict on those files answers a different question.
+		const batch = [...restores].reverse();
+		return this.runExclusively(batch.length, async (onProgress, onInverse) => {
+			const outcome = await applyRestores(this.app, batch, onProgress, onInverse);
+			reportRestoreOutcome(outcome);
+		});
+	}
+
+	/**
+	 * The write gate every batch passes: config validation, one batch at a time,
+	 * progress publication, and the single-level undo slot. Inverses install on the
+	 * first EFFECTIVE write — a batch that changes nothing (a state re-set to
+	 * itself) emits none and leaves the previous undo in place, while a batch that
+	 * fails partway has already installed the applied prefix, which is exactly the
+	 * part that still needs to be undoable.
+	 */
+	private async runExclusively(
+		total: number,
+		run: (
+			onProgress: (done: number, total: number) => void,
+			onInverse: (inverse: RestoreWrite) => void,
+		) => Promise<void>,
+	): Promise<boolean> {
 		const problems = configProblems(this.settings);
 		if (problems.length > 0) {
 			// Writing with e.g. parent and order on the same key would corrupt notes.
@@ -471,9 +518,18 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			return false;
 		}
 		this.applying = true;
-		this.setBusy({ done: 0, total: writes.length });
+		this.setBusy({ done: 0, total });
+		const inverses: RestoreWrite[] = [];
+		let installed = false;
+		const onInverse = (inverse: RestoreWrite) => {
+			if (!installed) {
+				installed = true;
+				this.lastUndo = inverses;
+			}
+			inverses.push(inverse);
+		};
 		try {
-			await applyWrites(this.app, this.settings, writes, (done, total) => this.setBusy({ done, total }));
+			await run((done, tot) => this.setBusy({ done, total: tot }), onInverse);
 			return true;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
@@ -495,9 +551,21 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** Publish batch progress to the toolbar without re-rendering anything. */
 	private setBusy(state: BusyState | null): void {
 		this.busy = state;
-		syncBusy(this.toolbarEl, state);
+		syncBusy(this.toolbarEl, state, this.canUndo());
 		// The tree's content is mid-change; say so once, rather than per row.
 		if (state) this.treeEl.setAttribute('aria-busy', 'true');
 		else this.treeEl.removeAttribute('aria-busy');
 	}
+}
+
+/** Say what an undo could not put back; a clean undo shows in the tree itself. */
+function reportRestoreOutcome(outcome: RestoreOutcome): void {
+	const parts: string[] = [];
+	if (outcome.conflicts > 0) {
+		parts.push(`${outcome.conflicts} value${outcome.conflicts === 1 ? ' was' : 's were'} edited since and kept`);
+	}
+	if (outcome.missing > 0) {
+		parts.push(`${outcome.missing} note${outcome.missing === 1 ? '' : 's'} no longer exist`);
+	}
+	if (parts.length > 0) new Notice(`Undo: ${parts.join('; ')}.`);
 }

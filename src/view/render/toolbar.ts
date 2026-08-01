@@ -39,6 +39,14 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	initBtn.addEventListener('click', () => {
 		void runInit(host);
 	});
+	// Not a plain write control: it re-enables to the undo slot's state, not to
+	// "idle" — before the first effective batch there is nothing to go back to.
+	const undoBtn = iconButton(barEl, 'undo-2', 'Undo last backlog change');
+	undoBtn.addClass('pbl-undo-btn');
+	undoBtn.disabled = !host.canUndo();
+	undoBtn.addEventListener('click', () => {
+		void host.undoLast();
+	});
 	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
 		for (const item of model.items) host.setCollapsed(item.file.path, false);
 	});
@@ -94,7 +102,7 @@ function renderBusyIndicator(barEl: HTMLElement): void {
  * flags — never structure. Controls that would be refused mid-batch go `disabled`
  * with it, so the busy state is something a user reads rather than discovers.
  */
-export function syncBusy(barEl: HTMLElement, busy: BusyState | null): void {
+export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
 	if (el) {
 		el.toggleClass('pbl-busy-on', busy !== null);
@@ -106,6 +114,10 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null): void {
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
 		btn.disabled = busy !== null;
 	});
+	// Undo pauses with every other write control, but comes back only when the
+	// slot holds something — which the batch that just finished usually ensures.
+	const undoBtn = barEl.querySelector<HTMLButtonElement>('.pbl-undo-btn');
+	if (undoBtn) undoBtn.disabled = busy !== null || !canUndo;
 }
 
 /**
