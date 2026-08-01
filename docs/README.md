@@ -26,8 +26,12 @@ is the honest report.
 
 ## The trees
 
-**Product Backlog** is the product: seven features covering the hierarchy, moving items,
-creating them, progress, finding work, safe writes and view state — 24 use cases in all.
+**Product Backlog** is the product: eight features covering the hierarchy, moving items,
+creating them, progress, finding work, safe writes and view state — 24 use cases in all —
+plus **User manual**, the one feature specified rather than built: an in-view help surface
+whose sections explain the types, moving, creating, finding, undo and configuration. Its
+six use cases describe a manual, so each is also a statement of what that part of the
+plugin is *for*.
 
 **Codebase health** is the engineering work — three features and four use cases saying what
 "healthy" means here, with the tasks that got it done underneath. Its actor is whoever
