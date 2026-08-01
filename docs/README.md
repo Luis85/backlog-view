@@ -52,18 +52,35 @@ Every pair holds:
 The plugin does not *enforce* this — the rules decide what is offered, never what is
 refused — which is exactly why the register has to hold to it by hand.
 
-Six things are checked by script rather than by reading, because each is the kind of error
-that survives review indefinitely:
+So it is checked, by a command anyone can run:
+
+```bash
+npm run docs   # and as part of npm run check, and in CI
+```
+
+`docs-check.mjs` enforces everything this file claims — an advertised invariant nobody
+can run is worse than none, because it invites trust it has not earned:
 
 1. Every parent link resolves, and every parent/child pair is legal.
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
-3. Every wikilink resolves to a note.
-4. Every `src/` or `test/` path a note names exists.
-5. Every use case has all six of its sections, and its extensions are in step order.
-6. Every module in `src/` and every test file is named by at least one note — the check
+3. Every wikilink resolves to a note. Links inside code spans are examples, not
+   references, and are skipped.
+4. Every `src/` or `test/` path named by a note in **`requirements/` or `adrs/`** exists.
+   Those two describe the code as it is now. `tasks/`, `issues/` and `bugs/` are records
+   of a moment and may legitimately name a file since split away — rewriting them would
+   falsify the record — so their stale paths are **listed rather than failed**. Being
+   listed is the point: visible, not silently exempt.
+5. Every use case has all seven of its sections, and its extensions are in step order.
+6. Every ADR: frontmatter complete, number matching its filename, unique, no gaps in the
+   sequence, a known status and area, `Superseded` naming its successor, relative links
+   resolving, and every record listed in the ADR index.
+7. Every module in `src/` and every test file is named by at least one note — the check
    that finds *missing* notes rather than wrong ones. See
    [[Sweep the register against the code]] for how that sweep is run and what it found.
+
+Each rule was verified the way this project verifies its lint rules: by planting the
+violation and watching the check reject it.
 
 ## Every PBI is a use case
 

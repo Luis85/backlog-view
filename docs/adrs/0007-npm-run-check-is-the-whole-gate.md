@@ -21,10 +21,10 @@ each step passes for someone and the combination has never passed for anyone.
 ## Decision
 
 ```bash
-npm run check   # build + lint + coverage-thresholded tests + fallow static analysis
+npm run check   # build + lint + coverage-thresholded tests + fallow + docs register
 ```
 
-All four must pass before committing. CI runs the identical four steps, in the same order.
+All five must pass before committing. CI runs the identical five steps, in the same order.
 
 Each step gates something different:
 
@@ -34,6 +34,7 @@ Each step gates something different:
 | `lint` | The Obsidian ruleset, plus **this project's structural rules**: layer direction, the write boundary, ranking over real roots, menu anchoring, level maths, and size budgets |
 | `test:coverage` | The suite, under thresholds that **only ever go up** |
 | `analyze` | fallow: dead code, duplication, complexity/CRAP fed by the coverage file, dependency hygiene |
+| `docs` | The register and the ADRs: hierarchy, sibling orders, wikilinks, source paths, use-case shape, ADR frontmatter, and every module being named by some note |
 
 ## Consequences
 
@@ -41,8 +42,12 @@ Each step gates something different:
   [ADR 0004](0004-one-write-boundary-planning-separate-from-applying.md) are enforced by a
   command rather than by review. A rule that lives only in prose is followed until someone
   is in a hurry.
-- Each mechanical rule is **verified by planting the violation** and watching lint reject
-  it. A check nobody has seen fail is a check nobody knows works.
+- Each mechanical rule is **verified by planting the violation** and watching the check
+  reject it. A check nobody has seen fail is a check nobody knows works.
+- The `docs` step was added late, and for the reason this ADR exists: `docs/README.md`
+  had begun *advertising* integrity checks that lived only in whatever ad-hoc script last
+  ran, and one of them had already quietly gone false. An invariant a reader cannot run
+  is worse than none, because it invites trust it has not earned.
 - Coverage thresholds sit just below measured, and rise. That makes deleting a test a
   visible act rather than a quiet one.
 - fallow's complexity signal is fed by the coverage file, so "complex and untested" is one
