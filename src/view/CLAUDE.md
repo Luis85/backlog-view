@@ -28,6 +28,27 @@ free of runtime code so imports stay cycle-free.
   tick would reintroduce exactly the jank the deferral removes. The indicator is
   rendered always and hidden in CSS, with an animation delay so a single-file write
   never flashes it.
+- The undo slot (`lastUndo`) installs on the first EFFECTIVE inverse of a batch, not
+  when the batch starts — so a no-op batch keeps the previous undo, and a batch that
+  fails partway has installed exactly the applied prefix. `undoLast` replays through
+  the same `runExclusively` gate minus the context-row check: authorization came at
+  capture time (see the root context-row rule). The toolbar undo button re-enables to
+  `canUndo()`, not to "idle" — which is why `syncBusy` takes it as a parameter rather
+  than treating undo as one more `.pbl-write-ctl`. A replay that COMPLETED but
+  restored nothing consumes the slot (its conflicts stay conflicted, its missing
+  notes stay missing — the same dead batch must not be offered forever); a forward
+  no-op keeps it. A replay that FAILED partway swaps the slot to its unfinished
+  remainder, so the next undo finishes taking the change back — the restored prefix
+  already installed its redo, and leaving that would make the next undo re-apply the
+  prefix while the rest stays forward. That stranded prefix redo is not lost either:
+  `UndoRecovery` stashes it against the remainder and rejoins it when the retry
+  completes, so redo re-applies the whole recovered batch and never only its tail —
+  chained failures accumulate into the same stash, and a retry consumed whole by
+  conflicts or missing notes leaves the carried redo AS the slot, since the prefix
+  the failed attempt did restore is still the one coherently reversible thing.
+  The Ctrl/Cmd+Z chord is handled
+  before the empty-model return in `handleTreeKeydown`: the change being undone may
+  be exactly what emptied the tree.
 
 ## What is rendered, and what is merely hidden
 

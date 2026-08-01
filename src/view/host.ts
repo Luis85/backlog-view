@@ -92,4 +92,11 @@ export interface BacklogViewHost {
 	 */
 	applySafely(writes: ItemWrite[]): Promise<boolean>;
 	performDrop(dragged: BacklogItem, target: DropTarget): Promise<void>;
+	/** True when a batch has landed this session and its inverses are held. */
+	canUndo(): boolean;
+	/**
+	 * Replay the last batch's inverses through the same gate. Authorized at capture
+	 * time: the batch can only name files its forward batch wrote as results.
+	 */
+	undoLast(): Promise<boolean>;
 }

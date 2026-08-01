@@ -10,21 +10,66 @@ import { ItemWrite, TagDelta } from '../domain/writePlan';
  * true is what makes the write-safety rules checkable by reading one file.
  */
 
+/** A raw frontmatter value, or its absence — undo must tell the two apart. */
+export type RawValue = { present: true; value: unknown } | { present: false };
+
+/**
+ * One key's before/after, captured as a write landed. `prior` is what undo puts
+ * back; `written` is the compare of the restore's compare-and-swap. Raw values,
+ * not planner shapes: an aliased or unresolved parent link, a string-typed order
+ * and an absent key all have to come back exactly as they were.
+ */
+export interface KeyRestore {
+	key: string;
+	prior: RawValue;
+	written: RawValue;
+}
+
+/** The inverse of one applied write. Only keys the write effectively changed appear. */
+export interface RestoreWrite {
+	file: TFile;
+	keys: KeyRestore[];
+	/**
+	 * Reverses the effective tag delta. Tags stay a delta rather than a snapshot —
+	 * the list is shared with the user's own edits, and a delta composes with
+	 * changes made between the write and the undo instead of clobbering them.
+	 */
+	tags?: { key: string; delta: TagDelta };
+}
+
+/** What a restore batch could not put back, for the undo notice. */
+export interface RestoreOutcome {
+	/** Keys whose live value no longer matched what the batch wrote; left as they are. */
+	conflicts: number;
+	/** Notes gone from the vault since the write; skipped whole. */
+	missing: number;
+}
+
 /**
  * Apply writes sequentially so concurrent edits of the same file cannot race.
  * `onProgress` reports after each file so a long batch — a backfill over a whole
  * backlog is hundreds of notes — can show how far along it is. Each await yields
  * to the event loop, so the view stays interactive throughout.
+ *
+ * `onInverse` receives each write's inverse as it lands — incrementally, not as a
+ * return value, because a batch that fails partway leaves its earlier writes
+ * applied, and those are exactly the ones that still need to be undoable. A write
+ * that changed nothing emits no inverse, so a no-op batch cannot cost the caller
+ * the undo of the change before it.
  */
 export async function applyWrites(
 	app: App,
 	settings: BacklogSettings,
 	writes: ItemWrite[],
 	onProgress?: (done: number, total: number) => void,
+	onInverse?: (inverse: RestoreWrite) => void,
 ): Promise<void> {
 	let done = 0;
 	for (const write of writes) {
+		let inverse: RestoreWrite | null = null;
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
+			const keys = touchedKeys(settings, write);
+			const before = keys.map((key) => rawValueOf(fm, key));
 			if (write.removeParentKey) {
 				delete fm[settings.parentKey];
 			} else if (write.parent !== undefined) {
@@ -38,10 +83,121 @@ export async function applyWrites(
 			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
 			// The stateKey may be unset (progress tracking off) — never write to an empty key.
 			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
-			if (write.tags !== undefined && settings.tagsKey) applyTagDelta(fm, settings.tagsKey, write.tags);
+			const applied =
+				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
+			// The stored delta is the one that UNDOES what was applied.
+			const tags = applied ? { key: settings.tagsKey, delta: { add: applied.remove, remove: applied.add } } : null;
+			inverse = captureInverse(write.file, keys, before, fm, tags);
 		});
+		if (inverse) onInverse?.(inverse);
 		onProgress?.(++done, writes.length);
 	}
+}
+
+/** The frontmatter keys this write will touch, in the order they are written. */
+function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
+	const keys: string[] = [];
+	if (write.removeParentKey || write.parent !== undefined) keys.push(settings.parentKey);
+	if (write.order !== undefined) keys.push(settings.orderKey);
+	if (write.typeName !== undefined) keys.push(settings.typeKey);
+	if (write.state !== undefined && settings.stateKey) keys.push(settings.stateKey);
+	return keys;
+}
+
+/**
+ * The inverse of the write that just mutated `fm`: the keys whose value it
+ * effectively changed, prior and written both. Null when nothing changed — a
+ * state re-set to itself must not consume the caller's single undo slot.
+ */
+function captureInverse(
+	file: TFile,
+	keys: string[],
+	before: RawValue[],
+	fm: Record<string, unknown>,
+	tags: RestoreWrite['tags'] | null,
+): RestoreWrite | null {
+	const changed: KeyRestore[] = [];
+	keys.forEach((key, i) => {
+		const written = rawValueOf(fm, key);
+		if (!sameRaw(before[i], written)) changed.push({ key, prior: before[i], written });
+	});
+	if (changed.length === 0 && !tags) return null;
+	return { file, keys: changed, tags: tags ?? undefined };
+}
+
+/**
+ * Replay captured inverses. Restoring is a compare-and-swap, never a blind write:
+ * a key goes back to its prior value only where the note still holds what the
+ * batch wrote — undo is not the only editor, and a key hand-edited since is newer
+ * than the undo. A note deleted since the write is skipped whole; the rest of the
+ * batch still restores. `onInverse` records each restore's own inverse the same
+ * way `applyWrites` does, which is what makes undoing an undo redo.
+ */
+export async function applyRestores(
+	app: App,
+	restores: RestoreWrite[],
+	onProgress?: (done: number, total: number) => void,
+	onInverse?: (inverse: RestoreWrite) => void,
+): Promise<RestoreOutcome> {
+	const outcome: RestoreOutcome = { conflicts: 0, missing: 0 };
+	let done = 0;
+	for (const restore of restores) {
+		// The same NOTE, not merely the same path: a note deleted and recreated at
+		// this path is a different file, and restoring into it would write history
+		// that was never its own. Obsidian keeps one TFile per file, so instance
+		// identity is the test — a path-only check would pass the replacement.
+		if (app.vault.getAbstractFileByPath(restore.file.path) !== restore.file) {
+			outcome.missing++;
+			onProgress?.(++done, restores.length);
+			continue;
+		}
+		let inverse: RestoreWrite | null = null;
+		await app.fileManager.processFrontMatter(restore.file, (fm: Record<string, unknown>) => {
+			inverse = restoreInto(fm, restore, outcome);
+		});
+		if (inverse) onInverse?.(inverse);
+		onProgress?.(++done, restores.length);
+	}
+	return outcome;
+}
+
+/** Apply one file's restore into its live frontmatter; returns the redo inverse. */
+function restoreInto(
+	fm: Record<string, unknown>,
+	restore: RestoreWrite,
+	outcome: RestoreOutcome,
+): RestoreWrite | null {
+	const changed: KeyRestore[] = [];
+	for (const entry of restore.keys) {
+		if (!sameRaw(rawValueOf(fm, entry.key), entry.written)) {
+			outcome.conflicts++;
+			continue;
+		}
+		if (entry.prior.present) fm[entry.key] = entry.prior.value;
+		else delete fm[entry.key];
+		changed.push({ key: entry.key, prior: entry.written, written: entry.prior });
+	}
+	let tags: RestoreWrite['tags'];
+	if (restore.tags) {
+		const applied = applyTagDelta(fm, restore.tags.key, restore.tags.delta);
+		if (applied) tags = { key: restore.tags.key, delta: { add: applied.remove, remove: applied.add } };
+	}
+	if (changed.length === 0 && !tags) return null;
+	return { file: restore.file, keys: changed, tags };
+}
+
+function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
+	// Own properties only: 'toString' is a legal frontmatter name on a note that
+	// lacks it, and `in` would report the inherited function as a prior value.
+	return Object.prototype.hasOwnProperty.call(fm, key)
+		? { present: true, value: fm[key] }
+		: { present: false };
+}
+
+/** Equality on raw frontmatter values — plain YAML data, so structural compare is sound. */
+function sameRaw(a: RawValue, b: RawValue): boolean {
+	if (!a.present || !b.present) return a.present === b.present;
+	return a.value === b.value || JSON.stringify(a.value) === JSON.stringify(b.value);
 }
 
 /**
@@ -49,21 +205,29 @@ export async function applyWrites(
  * so the list a click was rendered from cannot overwrite a change made since. Always
  * written back as a YAML list (the shape Obsidian's own property editor writes), and
  * the key goes when the last tag does rather than leaving an empty array behind.
+ * Returns the delta that actually changed the note — adds already present and removes
+ * already absent drop out — or null when nothing did and the note was left alone.
  */
-function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta): void {
+function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta): TagDelta | null {
 	const current = readTags(fm[key]);
 	const removals = delta.remove ?? [];
+	const removed = current.filter((tag) => hasTag(removals, tag));
 	const next = current.filter((tag) => !hasTag(removals, tag));
 	// Normalizing here rather than at the call site is what makes "every tag on disk is
 	// one Obsidian will read" true of the write path itself, not of one caller.
+	const added: string[] = [];
 	for (const tag of (delta.add ?? []).map(normalizeTag)) {
-		if (tag.length > 0 && !hasTag(next, tag)) next.push(tag);
+		if (tag.length > 0 && !hasTag(next, tag)) {
+			next.push(tag);
+			added.push(tag);
+		}
 	}
 	// A delta that changes nothing leaves the note alone, rather than rewriting the
 	// value into a different shape for no reason.
-	if (next.length === current.length && next.every((tag, i) => tag === current[i])) return;
+	if (added.length === 0 && removed.length === 0) return null;
 	if (next.length > 0) fm[key] = next;
 	else delete fm[key];
+	return { add: added, remove: removed };
 }
 
 export interface NewItemSpec {

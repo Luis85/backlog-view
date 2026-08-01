@@ -95,6 +95,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Change an item's state | Click the state chip on the row, or right-click → Set state |
 | Add a tag | Click the **+** in the row's tag column, or right-click → Edit tags |
 | Remove a tag | Hover the row and click the **✕** on the tag |
+| Undo the last change | Click the **↩** toolbar button, or press <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree |
 | Hide finished work | Click the eye button in the toolbar (or toggle **Show completed items** in the view options) |
 | Open in a new tab or split | Middle-click, Ctrl/Cmd-click, or right-click → Open in new tab / Open to the right |
 | Find items | Type in the toolbar filter (or press <kbd>/</kbd> in the tree) — matches keep their ancestors and subtrees, Escape clears |
@@ -251,9 +252,31 @@ Once in the tree (mirroring Azure DevOps backlog shortcuts where sensible):
 | <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down among its siblings |
 | <kbd>Alt</kbd>+<kbd>←</kbd> | Outdent — make it a sibling of its parent |
 | <kbd>Alt</kbd>+<kbd>→</kbd> | Indent — nest it under the previous sibling |
+| <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> | Undo the last backlog change (again to redo) |
 | <kbd>/</kbd> | Jump to the filter box |
 | <kbd>Escape</kbd> | Clear the filter, then the selection |
 | <kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the context menu for the selected item |
+
+### Undo
+
+Every property change the view writes — a drop, a move, a state or tag change, the ✨
+backfill — can be taken back right afterwards: click the **↩** toolbar button or press
+<kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree. Undoing the undo redoes. One level is
+kept, per view and per session, and quick no-ops don't spend it — re-picking an item's
+current state won't cost you the undo of the drop before it. A batch that failed
+partway can still take back the part that landed.
+
+Creating an item is the one exception: undo never deletes a note, so a new item stays —
+and the undo button still points at the last property change from before it. Delete the
+note itself to take a creation back.
+
+Undo puts back exactly what was there before, and only where the note still holds what
+the view wrote: a property you edited by hand in the meantime is kept rather than
+overwritten, and a note deleted since is skipped — a notice says when either happened.
+It also works when the change itself moved an item out of the base's filter (marking a
+parent done in a base that hides done items): taking that change back is exactly what
+undo is for. Tags are undone as an add/remove of the same tags rather than as a
+snapshot, so tags you added yourself in between stay.
 
 ### Filtered bases keep their tree
 

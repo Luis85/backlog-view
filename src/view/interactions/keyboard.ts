@@ -26,6 +26,14 @@ export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): vo
 	// Keys bubbling out of a focused row control (the state chip) drive that
 	// control alone — Enter there must not also open the selected item.
 	if (evt.target !== evt.currentTarget) return;
+	// Before everything model-shaped: undo needs no selection and no rows, and the
+	// change being undone may be exactly what emptied the tree — the sole item
+	// marked done under a filter that excludes done items.
+	if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key.toLowerCase() === 'z') {
+		evt.preventDefault();
+		void host.undoLast();
+		return;
+	}
 	const model = host.model;
 	if (!model || model.items.length === 0) return;
 	if (handleFilterKey(host, evt)) return;

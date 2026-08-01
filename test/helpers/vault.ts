@@ -37,6 +37,8 @@ export class FakeVault {
 	leaves: { view: unknown }[] = [];
 	/** Vault-scoped localStorage, as Obsidian's load/saveLocalStorage present it. */
 	localStorage = new Map<string, unknown>();
+	/** Paths whose processFrontMatter throws — how tests make a batch fail partway. */
+	failWrites = new Set<string>();
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 
@@ -103,6 +105,8 @@ export class FakeVault {
 		},
 		fileManager: {
 			processFrontMatter: async (file: TFile, fn: (fm: Record<string, unknown>) => void) => {
+				// Injected failure, for the partial-batch paths a real vault produces.
+				if (this.failWrites.has(file.path)) throw new Error(`write failed: ${file.path}`);
 				const fm = this.frontmatter.get(file.path) ?? {};
 				fn(fm);
 				this.frontmatter.set(file.path, fm);

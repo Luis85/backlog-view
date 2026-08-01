@@ -10,10 +10,29 @@ can be checked by reading one directory.
 
 ## Writing the vault
 
-- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `createBacklogItem`),
-  and every write path — including creation — goes through the `configProblems` gate.
+- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores` /
+  `createBacklogItem`), and every write path — including creation — goes through the
+  `configProblems` gate.
 - `applyWrites` is serialized but not transactional: a mid-batch failure leaves the
   earlier writes applied (orders self-correct on the next renumbering drop).
+- `applyWrites` hands each write's inverse to `onInverse` AS IT LANDS — incrementally,
+  because a mid-batch failure leaves the earlier writes applied, and those are exactly
+  the ones still needing undo. A write that changed nothing emits no inverse: a state
+  re-picked to itself still calls `applySafely`, and it must not cost the caller's
+  single undo slot.
+- Inverses are raw (`RestoreWrite`): per key, the prior and written value with absence
+  a first-class state. `ItemWrite` cannot carry them — `parent` is `TFile | null`
+  (no room for an aliased or unresolved prior link), `order` is a `number` (a string
+  on disk survives `readNumber` but not a replay) — and a replay through the planner
+  would re-normalize rather than restore. `applyRestores` compare-and-swaps: a key
+  goes back only where the note still holds what the batch wrote, hand edits since
+  are kept and counted, deleted notes are skipped whole and counted — by TFile
+  IDENTITY, not path, because a note recreated at the captured path is a different
+  file that must not inherit the original's history — and each restore
+  emits its own inverse, which is what makes undoing an undo redo. Tags restore by
+  *effective* delta, never snapshot, so they compose with edits made in between —
+  at the price that a scalar-shaped prior comes back as the list the writer writes
+  anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
 

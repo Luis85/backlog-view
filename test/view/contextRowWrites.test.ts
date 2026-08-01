@@ -268,11 +268,57 @@ describe('write safety with context rows, across every entry point', () => {
 			.querySelectorAll<HTMLElement>('.pbl-icon-btn')[0]
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
+		// Undo is a write path too: replay whatever the stress installed, repeatedly.
+		// Its batches can only name files a forward batch wrote — so never these rows.
+		for (let i = 0; i < 3; i++) {
+			key(tree, 'z', { ctrlKey: true });
+			await flush();
+		}
+		containerEl.querySelector<HTMLElement>('.pbl-undo-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
 
 		const touched = [...new Set(vault.writeLog.map((w) => w.path))];
 		expect(touched.filter((p) => CONTEXT_PATHS.includes(p))).toEqual([]);
 		// Not vacuous: the result rows really were written to along the way
 		expect(touched.length).toBeGreaterThan(0);
+	});
+});
+
+describe('undo across the filter boundary', () => {
+	it('still undoes a write that moved its own target out of the filter', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Parent' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		anyView.data = { data: vault.entries() };
+		view.onDataUpdated();
+		expandAll(containerEl);
+
+		// Mark the parent done through its chip — an ordinary write to a result row.
+		rowByTitle(containerEl, 'Parent')
+			.querySelector<HTMLElement>('.pbl-state-chip')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		Menu.lastShown?.item('Done')?.clickHandler?.();
+		await flush();
+		expect(vault.fm('Parent.md')['status']).toBe('Done');
+
+		// The base's filter excludes done items, so the requery demotes the parent
+		// to a context row above its still-open child.
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Parent.md') };
+		view.onDataUpdated();
+		expect(view.model?.byPath.get('Parent.md')?.outsideFilter).toBe(true);
+
+		// The replay-time context-row verdict would refuse exactly this restore;
+		// authorization is decided at capture time, when the row was a result the
+		// user acted on — so the change that demoted it can be taken back.
+		key(treeOf(containerEl), 'z', { ctrlKey: true });
+		await flush();
+
+		expect(vault.fm('Parent.md')['status']).toBe('Active');
 	});
 });
 
