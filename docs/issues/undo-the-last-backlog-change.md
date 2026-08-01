@@ -46,14 +46,29 @@ each write lands:
    record the prior **raw** value, including "key absent". Absent vs empty parent is a
    live distinction in folder mode (`explicitRoot` pin vs `removeParentKey`), so the
    inverse restores exactly what was there, never a re-planned equivalent.
-2. `applyWrites` returns the inverse batch; the view keeps the most recent one —
-   single level, session-only, in memory.
-3. An **Undo last backlog change** affordance replays the inverse through
-   `applySafely`, the same gate as every other write, so config problems, the
-   `applying` flag and the context-row refusal apply unchanged. Undoing an undo is
-   redo for free: the replay produces its own inverse.
-4. Tag inverses are already delta-shaped (`TagDelta`), so an undo composes with edits
-   made in between instead of clobbering them.
+2. The inverse is therefore its **own write shape**, not an `ItemWrite`: a per-file
+   map of key → prior raw value or "absent". `ItemWrite` cannot carry it — `parent`
+   is `TFile | null`, which has no room for an aliased or *unresolved* prior link
+   (and `wikilinkTo` would normalize whatever it was given), `order` is a `number`
+   while `readNumber` tolerates a string on disk — and a replay through the planner's
+   shape would re-normalize rather than restore. A dedicated restore function in
+   `storage/frontmatter.ts` applies it: same module, same boundary, and the batch
+   still goes through `applySafely`, so config problems, the `applying` flag and the
+   context-row refusal apply unchanged.
+3. Inverses are handed over **incrementally as each write lands** (a collector beside
+   `onProgress`), not returned at the end: `applyWrites` is deliberately not
+   transactional (see `src/storage/CLAUDE.md`), and a batch that fails partway leaves
+   its earlier writes applied — which is exactly when undo is wanted most. The view
+   keeps the most recent batch — single level, session-only, in memory.
+4. An **Undo last backlog change** affordance replays that batch. Undoing an undo is
+   redo for free: the replay records its own inverses the same way.
+5. Tags are the one key restored by **effective delta** rather than raw value: the
+   list is shared with the user's own edits, so undo must compose with changes made
+   in between instead of clobbering them (`TagDelta` already has the right shape) —
+   at the accepted price that a scalar-shaped prior value comes back as the YAML list
+   the write path writes anyway. Capture the delta that actually changed the note,
+   inside `processFrontMatter`, so undoing an add that was already present cannot
+   remove it.
 
 Out of scope: creation. The inverse of `createBacklogItem` is deleting a note, and
 this feature must never delete.
@@ -64,6 +79,10 @@ this feature must never delete.
   change, tag add/remove, backfill, "Use folder position", "Clear parent link" — is
   undoable immediately afterwards, and frontmatter the batch never touched is
   byte-identical after write + undo.
+- Restored keys round-trip in their raw shape: an aliased parent link, an unresolved
+  parent link, a string-typed order and the absent-vs-empty parent distinction all
+  come back exactly; tags restore by effective delta, per the decision above.
+- A batch that fails partway leaves its applied prefix undoable.
 - The undo is a write path like any other: driven as an entry point in
   `test/view/contextRowWrites.test.ts`, refused under the same conditions.
 - A note deleted between write and undo does not corrupt the rest of the batch; the
@@ -72,6 +91,7 @@ this feature must never delete.
 
 ## Risks
 
-Contained: the feature adds no new write *shapes*, only replays recorded ones through
-the existing gate. The real risk is snapshot fidelity — absent vs empty vs value —
-which is exactly what the acceptance criteria pin.
+Contained, with one addition to the write surface: a raw-restore write shape beside
+`ItemWrite`, living in the same module and replayed through the same gate — no new
+write *paths*. The real risk is snapshot fidelity — absent vs empty vs value, link
+and scalar shapes — which is exactly what the acceptance criteria pin.
