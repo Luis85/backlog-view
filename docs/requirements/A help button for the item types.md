@@ -42,8 +42,10 @@ Plus the three rules that are invisible on screen and decide what the view does:
 - **A move does not re-type anything.** Drag a PBI under an Epic and it stays a PBI;
   `Assign item type when moving` (off by default) is what turns the rewrite on, and even
   then `Issue` and `Bug` keep their pinned rank and are never re-typed.
-- The rules are **advisory**: they decide what is offered, never what is refused. Any drag
-  is allowed, and a deliberate structure is kept.
+- The rules are **advisory**: they decide what is offered, never what is refused. No drop
+  is rejected because the types do not fit — put a Task under an Epic and it stays there.
+  (Drops *are* refused for other reasons — onto an item's own descendant, into a group
+  with no shared ranking — which the moving section covers; none of them is about type.)
 
 ## Acceptance criteria
 
@@ -56,6 +58,9 @@ Plus the three rules that are invisible on screen and decide what the view does:
   entry saying otherwise would contradict the **+** button on the row beside it.
 - The section states the pinned rank of the extra types and the advisory rule, since both
   are places a user's mental model would otherwise be wrong rather than merely incomplete.
+- "Advisory" is scoped to **type compatibility**, not to drops in general: `isInvalidParent`
+  and the reorderable-group checks do refuse drops, and an unqualified "any drag is
+  allowed" contradicts [[Help for moving and ranking]] as well as the view.
 - The **displayed level** and the **written `type`** are kept apart: position implies the
   first and, with re-typing off by default, never rewrites the second. Conflating them
   here would contradict [[Help for moving and ranking]] and teach the wrong default.

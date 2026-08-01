@@ -29,9 +29,15 @@ section that decides whether a new user trusts it.
   is kept, a note deleted since is skipped, and a notice says when either happened.
 - **Creating an item is the exception**: undo never deletes a note. Delete the note to
   take a creation back — and the undo slot still points at the change before it.
-- **The view never writes to a note your Base excluded.** A context row is not a write
-  target, and a batch naming one is refused **before any of it is written** rather than
-  applied in part.
+- **No new change writes to a note your Base excluded.** A context row is not a write
+  target, and a forward batch naming one is refused **before any of it is written** rather
+  than applied in part.
+- **Undo is the one exception, and deliberately so.** It may write to a note that has
+  since left the filter, because that is often exactly what the change did — marking a
+  parent done in a base that hides done items. Its authorization came when the batch was
+  captured: an undo can only name files its own forward batch wrote while they were
+  results. The rule both paths keep is *never write to a note you could not have acted
+  on*, which is not the same as *never write outside the filter*.
 - **A misconfigured view writes nothing at all.** `Check view options` in the toolbar
   means the write gate is closed until the configuration is valid.
 - **A batch that fails partway leaves what it already wrote.** Files are written one at a

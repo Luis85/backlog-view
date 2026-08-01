@@ -19,9 +19,12 @@ lands, the three ways to make the same move, and where `order` comes from.
 
 ## What the section says
 
-- **Between two rows re-orders; onto the middle of a row re-parents.** One gesture, two
-  outcomes, distinguished only by a few pixels and an indicator — which is the single
-  thing about this view most worth stating in words.
+- **Between two rows places the item as their sibling; onto the middle of a row makes it
+  a child.** One gesture, two outcomes, distinguished only by a few pixels and an
+  indicator — which is the single thing about this view most worth stating in words. A
+  between-drop is a *reorder* only when the item is already in that group; drop it between
+  two rows under a different parent and it is reparented too, which is the fastest way to
+  move an item and rank it in one gesture.
 - **The strip at the bottom makes an item top-level**, and dropping a stale-link item
   there is also how a broken `parent` gets cleared.
 - **The same moves without a mouse**: <kbd>Alt</kbd>+arrows move, indent and outdent in
@@ -35,21 +38,26 @@ lands, the three ways to make the same move, and where `order` comes from.
   they landed — untyped descendants are left untyped, a custom type keeps its name,
   `Issue` and `Bug` keep their pinned rank, and the cascade stops at a context row rather
   than retyping across a branch the Base excluded.
-- **What is refused, and why it is not a rule about types**: while the quick filter is
-  active drag and drop is off (visual neighbours are not real siblings), and in a focused
-  view the top row has no shared ranking, so reordering, indent/outdent and the top-level
-  strip are disabled there.
+- **What is refused, and why none of it is about types**: a row cannot be dropped onto
+  itself or into its own subtree; a group with no shared ranking takes no between-drop
+  (the top row of a focused view, and a context row, whose real siblings were never
+  loaded); and while the quick filter is active dragging is off entirely, because visual
+  neighbours are not real siblings. Indent/outdent and the top-level strip are disabled in
+  a focused view for the same ranking reason.
 
 ## Acceptance criteria
 
-- The re-order/re-parent distinction is stated first, with the drop indicator named as
-  the cue to read.
+- The between-versus-onto distinction is stated first, with the drop indicator named as
+  the cue to read, and **between** is described as sibling placement rather than as
+  reordering: `siblingPosition` takes the hovered row's parent, so a cross-parent
+  between-drop reparents as well as ranks.
 - Every move is listed in all three forms — drag, keyboard, menu — so the section doubles
   as the keyboard reference at the moment someone wants it.
-- The section names the two states where dragging is deliberately unavailable, so an
-  absent gesture reads as a rule rather than a bug.
-- No claim about a move being refused for hierarchy reasons: the rules are advisory, and
-  saying otherwise here would contradict [[A help button for the item types]].
+- The section names every state where a drop is deliberately unavailable, so an absent
+  gesture reads as a rule rather than a bug.
+- No claim about a move being refused for **type** reasons — those rules are advisory —
+  and no claim that nothing is refused at all. Both would contradict
+  [[A help button for the item types]], in opposite directions.
 - The re-typing cascade is described by what it **skips** — untyped, custom-typed, extra
   types, and anything past a context row — rather than as a whole-subtree rewrite.
   `README.md` currently says "the whole moved subtree"; the manual must not inherit that

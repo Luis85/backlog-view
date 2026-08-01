@@ -34,8 +34,12 @@ Three controls narrow the tree, and each one hides differently:
 
 And the two things on screen that explain an absence rather than a match:
 
-- **`N notes ignored`** — notes the Base returned that are not backlog items (no
-  supported `type`, no parent). The option that brings them back is named in the tooltip.
+- **`N notes ignored`** — notes the Base returned that are not backlog items. The test is
+  per **subtree**, not per note: a whole root and everything under it is skipped only when
+  nothing in it qualifies (no declared `type`, no parent, no parent link at all). So an
+  untyped container above a typed Epic is kept and shown, and an untyped child of a typed
+  item is kept too — which is why a note can be plain and still render. The option that
+  brings the rest back is named in the tooltip.
 - **A context row** (`↳`) — an ancestor the Base's filter excluded, loaded so matches keep
   their place. It renders and it parents; it is never counted, never written to, and the
   view withholds the controls that would try.
@@ -51,6 +55,11 @@ And the two things on screen that explain an absence rather than a match:
   view does not keep.
 - The context row is explained by its marker, so the `↳` on screen is answerable without
   leaving the view.
+- The ignored-notes rule is given as `pruneOutsideHierarchy`'s **subtree** predicate, not
+  as the per-note shorthand: a section whose job is diagnosing a missing row must predict
+  the same rows the view does, and the per-note version wrongly predicts an untyped
+  container above a typed item would be dropped. The toolbar tooltip carries the
+  shorthand today and is worth aligning with whatever this section settles on.
 - The section states that the filter is session state and reaches no file, because "will
   this change my notes" is the question a first-time user actually has.
 - Empty states point here: no match, all done and empty backlog are three different
