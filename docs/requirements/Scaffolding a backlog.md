@@ -45,15 +45,18 @@ file I have to learn the syntax of before anything renders.
 - **5a — the user later moves the whole backlog.** Changing the home folder moves every
   type folder that was left at its default, because they are derived from it rather than
   copied out of it.
-- **6a — the write fails.** A notice says so and points at the console; nothing is left
-  half-created that the user has to find and clean up.
+- **6a — the write fails.** A notice says so and points at the console. The `.base` file
+  is written in one call, so it never exists half-configured — but a folder created at
+  step 3 is left behind. See [[Failed creation leaves its folder behind]].
 
 ## Acceptance criteria
 
 - One command produces a folder, a configured `.base` file, and an open working view.
 - The scaffolded base's `homeFolder` is the folder it created, so the first item created
   lands inside its own filter.
-- An existing base of the same name is never overwritten.
+- An existing base of the same name is never overwritten, and no existing folder is
+  touched.
+- The `.base` file is written in one call: it never exists without its view configuration.
 - Folder names that are legal in Obsidian but hostile to YAML round-trip into a filter
   that still means what it says.
 - The `.base` file is written from `storage/`, like every other byte this plugin puts in

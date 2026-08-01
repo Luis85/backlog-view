@@ -13,6 +13,14 @@ demonstrating itself:
 | `tasks/` | Engineering work done to keep it maintainable | `Task` |
 | `issues/` | Open questions, verifications and recorded decisions | `Issue` |
 | `bugs/` | Defects, with what was learned from them | `Bug` |
+| [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
+
+The backlog says what the product does and why someone wants it. The
+[ADRs](adrs/README.md) say what was chosen to make that possible, what it cost, and what
+would make us choose again. They are deliberately **not** work items: no `parent`, and a
+`type` the view does not recognise, so the register's own scope rule
+([[What counts as a work item]]) leaves them out of the tree. That is the plugin's
+behaviour applied to itself, and the toolbar's advisory counting them is the honest report.
 
 ## The trees
 

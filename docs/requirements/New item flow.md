@@ -30,7 +30,11 @@ instead of being spent on which folder, which type and which order number.
    user changes it ([[Where new items are filed]]).
 5. The user types a title and confirms.
 6. The view creates the note with `type`, `parent` and an `order` that puts it at the end
-   of its new siblings, then opens it.
+   of its new siblings.
+7. The parent row is expanded — collapsed or not — so the new row is visible where it
+   landed, and a notice confirms the title. The note is **not** opened: adding several
+   items in a row is the common case, and being pulled into each one would interrupt it.
+   [[Opening the work]] is one click away.
 
 **Extensions**
 
@@ -43,8 +47,14 @@ instead of being spent on which folder, which type and which order number.
   explicit parent link keeps the hierarchy right wherever the note lands.
 - **3a — the row can hold only one kind of item** (a `Task`'s parent, an `Issue`, a `Bug`).
   Nothing is asked; the modal goes straight to the title.
-- **5a — the title names a note that already exists in that folder.** The modal says so
-  before creating, rather than the write failing afterwards.
+- **5a — the title names a note that already exists in that folder.** A number is
+  appended (`Checkout 2`) rather than the write failing or the existing note being
+  touched. Two items in a backlog may legitimately share a name.
+- **6a — the folder does not exist.** It is created, the whole chain of it.
+- **6b — the write fails.** A notice says so and points at the console. The **note** is
+  never half-made — the frontmatter goes in with the file in one `create`, not as a
+  create-then-update pair that could fail in between — but a folder created for it at
+  step 6a is left behind. See [[Failed creation leaves its folder behind]].
 
 ## Acceptance criteria
 
@@ -53,7 +63,10 @@ instead of being spent on which folder, which type and which order number.
 - A row with one option asks nothing.
 - The modal says where the item will land before it is created.
 - Creation goes through the same config gate as every other write.
-- The new note is created and opened; nothing else in the tree is written.
+- Exactly one note is created and nothing else in the tree is written — the new item's
+  `order` places it after its siblings rather than renumbering them.
+- The new row is visible where it landed, and the note is not opened.
+- The note is written atomically: it never exists without its hierarchy properties.
 
 ## Where it lives
 

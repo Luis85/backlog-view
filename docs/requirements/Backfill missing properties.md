@@ -33,10 +33,18 @@ this view costs a click rather than an afternoon of hand-editing.
 **Extensions**
 
 - **2a — nothing is missing.** No writes at all, and the existing undo slot is kept.
-- **3a — the item's parent is outside the Base's filter.** No type is guessed for it. The
-  parent's own level is not this base's to know, so the implied level would be a guess
-  about a guess.
-- **3b — the item already has the property.** Skipped. This is the rule the whole feature
+- **2b — the note came from outside the Base's filter.** Never written to — but the walk
+  descends **through** it, so results below one are still backfilled. Its `order` is still
+  *read* for the sibling maximum, because it is on screen: a backfill that fills in blanks
+  must not reorder the tree by placing an item above a row the user can see.
+- **3a — the item is an orphan**, its parent link resolving to nothing. `order` is written;
+  `type` is not. Its real level is unknowable, so an implied one would be derived from the
+  provisional top-level position the broken link put it in — a guess about a guess.
+- **3b — the item's parent is a context row.** `type` **is** written, from that parent's
+  own level. The parent was loaded from the vault, so its level is known and is the one
+  already rendering; the value written is the badge the user is looking at. What the rule
+  forbids is *writing to* an excluded note, not *reading* one.
+- **3c — the item already has the property.** Skipped. This is the rule the whole feature
   turns on.
 - **4a — a write fails partway.** The prefix that landed stays applied and stays undoable,
   and the view still refreshes — the notes already written are on disk and the tree has to
@@ -45,7 +53,8 @@ this view costs a click rather than an afternoon of hand-editing.
 ## Acceptance criteria
 
 - Existing values are never overwritten.
-- No type is guessed for an item whose parent is outside the view.
+- No type is guessed for an **orphan** — an item whose parent link resolves to nothing.
+- A note the Base excluded is never written to, and a result below one is still backfilled.
 - The whole batch is one refresh and one undo, with progress shown while it runs.
 - The values written are the ones that were already on screen, so the tree does not move
   when the button is pressed.
