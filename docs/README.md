@@ -34,6 +34,13 @@ creating them, progress, finding work, safe writes and view state — 24 use cas
 changes the plugin, which is the honest way to write an architectural rule as a use case:
 someone has to be trying to do something for the rule to be worth having.
 
+**Product Kanban** is the next increment, and it is design only: a board projection of
+the same backlog, specified across four features — the backlog/board toggle, columns
+from the workflow the view options define, card moves as gated state writes, and the
+hierarchy showing through on the board. Nothing under it is built; every note states
+the precedent or the codebase seam it rests on, from a survey of the Kanban Guide, the
+major trackers and the Obsidian ecosystem run on 2026-08-01.
+
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
 Epic, a Feature or a PBI alike.
