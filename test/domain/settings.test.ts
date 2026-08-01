@@ -44,19 +44,26 @@ describe('resolveSettings', () => {
 		expect(resolveSettings(fakeConfig({ levels: ' , ' })).levels).toEqual(DEFAULT_LEVELS);
 	});
 
-	it('reads toggles and normalizes the folder', () => {
+	it('reads toggles and normalizes the home folder', () => {
 		const settings = resolveSettings(
 			fakeConfig({
-				autoAssignType: false,
+				autoAssignType: true,
 				showProperties: false,
 				showCounts: false,
-				newItemFolder: '/Backlog/Items/',
+				homeFolder: '/Backlog/Items/',
 			}),
 		);
-		expect(settings.autoType).toBe(false);
+		expect(settings.autoType).toBe(true);
 		expect(settings.showChips).toBe(false);
 		expect(settings.showCounts).toBe(false);
-		expect(settings.newItemFolder).toBe('Backlog/Items');
+		expect(settings.homeFolder).toBe('Backlog/Items');
+	});
+
+	it('leaves re-typing on move switched off unless it is asked for', () => {
+		// A move is a move, not a re-classification. The option is for people who want
+		// the ladder enforced on every drag, and it waits to be asked.
+		expect(defaultSettings().autoType).toBe(false);
+		expect(resolveSettings(fakeConfig()).autoType).toBe(false);
 	});
 
 	it('scopes the view to the hierarchy unless the toggle is turned off', () => {

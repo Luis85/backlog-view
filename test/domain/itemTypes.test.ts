@@ -7,7 +7,7 @@ import {
 	folderForType,
 	isExtraType,
 } from '../../src/domain/itemTypes';
-import { defaultSettings, parseTypeFolders, resolveSettings } from '../../src/domain/settings';
+import { defaultSettings, resolveSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -181,8 +181,7 @@ describe('extra types and the hierarchy scope', () => {
 });
 
 describe('folders by type', () => {
-	it('files each shipped type in its own folder, under the home folder', () => {
-		expect(settings.homeFolder).toBe('docs');
+	it('files each shipped type in its own folder', () => {
 		expect(folderForType('Epic', settings)).toBe('docs/requirements');
 		expect(folderForType('Feature', settings)).toBe('docs/requirements');
 		expect(folderForType('PBI', settings)).toBe('docs/requirements');
@@ -193,9 +192,27 @@ describe('folders by type', () => {
 		expect(folderForType('bug', settings)).toBe('docs/bugs');
 	});
 
-	it('answers null for a type with no folder, so the caller falls through', () => {
+	it('reads one option per type, so each folder is picked rather than typed', () => {
+		const resolved = resolveSettings(fakeConfig({ 'typeFolder.bug': 'triage/inbox' }));
+		expect(folderForType('Bug', resolved)).toBe('triage/inbox');
+		// Every other type keeps its own default: one input cannot disturb another,
+		// which is the whole reason these are separate options.
+		expect(folderForType('Epic', resolved)).toBe('docs/requirements');
+	});
+
+	it('answers null for a type with no folder, so the caller falls back to home', () => {
 		expect(folderForType('Bugfix', settings)).toBeNull();
 		expect(folderForType('Epic', { ...settings, typeFolders: {} })).toBeNull();
+		// Cleared means cleared, not "never set".
+		expect(folderForType('Bug', resolveSettings(fakeConfig({ 'typeFolder.bug': '' })))).toBeNull();
+	});
+
+	it('gives a renamed level no folder of its own', () => {
+		// This plugin never chose that name, so it has no opinion about where it goes —
+		// the home folder is the honest answer rather than a guess.
+		const resolved = resolveSettings(fakeConfig({ levels: 'Theme, Story, Chore' }));
+		expect(folderForType('Theme', resolved)).toBeNull();
+		expect(resolved.homeFolder).toBe('docs');
 	});
 
 	it('does not read a type name off Object.prototype', () => {
@@ -206,51 +223,15 @@ describe('folders by type', () => {
 			expect(folderForType(name, settings)).toBeNull();
 			expect(folderForType(name, { ...settings, typeFolders: {} })).toBeNull();
 		}
-		// And such a name can still be MAPPED, rather than silently doing nothing.
-		const mapped = resolveSettings(fakeConfig({ typeFolders: 'constructor: made-up, __proto__: weird' }));
-		expect(folderForType('constructor', mapped)).toBe('docs/made-up');
-		expect(folderForType('__proto__', mapped)).toBe('docs/weird');
+		// And such a name can still be MAPPED, rather than being a hole the other way.
+		const mapped = resolveSettings(fakeConfig({ extraTypes: 'constructor', 'typeFolder.constructor': 'odd' }));
+		expect(folderForType('constructor', mapped)).toBe('odd');
 	});
 
-	it('parses pairs, trims trailing slashes and drops entries without a folder', () => {
-		const parsed = parseTypeFolders(' Epic : reqs/ , Bug: nested/bugs , Task: , : nope ');
-		expect(parsed).toEqual({ epic: 'reqs', bug: 'nested/bugs' });
-	});
-
-	it('moves the whole backlog with the home folder, and lets a type escape it', () => {
-		// One setting relocates every type...
-		const moved = resolveSettings(fakeConfig({ homeFolder: 'Roadmap' }));
-		expect(folderForType('Bug', moved)).toBe('Roadmap/bugs');
-		expect(folderForType('Epic', moved)).toBe('Roadmap/requirements');
-
-		// ...and a leading slash is the way out for a type that belongs elsewhere,
-		// so the home folder is a default rather than a cage.
-		const escaped = resolveSettings(fakeConfig({ homeFolder: 'Roadmap', typeFolders: 'Bug: /triage' }));
-		expect(folderForType('Bug', escaped)).toBe('triage');
-
-		// With no home folder the names stand on their own, at the vault root.
-		const rootless = resolveSettings(fakeConfig({ homeFolder: '' }));
-		expect(folderForType('Bug', rootless)).toBe('bugs');
-	});
-
-	it('treats a cleared mapping as off, not as unset', () => {
-		// Same rule as the extra types: the option defaults to something real, so
-		// clearing it has to be able to mean "no type folders".
-		expect(resolveSettings(fakeConfig({ typeFolders: '' })).typeFolders).toEqual({});
-	});
-
-	it('defaults to the shipped mapping when never set', () => {
-		expect(resolveSettings(fakeConfig()).typeFolders).toEqual(defaultSettings().typeFolders);
-		// Stored relative; the home folder is applied when it is resolved.
-		expect(resolveSettings(fakeConfig()).typeFolders['bug']).toBe('bugs');
-		expect(folderForType('Bug', resolveSettings(fakeConfig()))).toBe('docs/bugs');
-	});
-
-	it('honours a reconfigured mapping', () => {
-		const resolved = resolveSettings(fakeConfig({ typeFolders: 'Bug: triage, Epic: plan' }));
-		expect(folderForType('Bug', resolved)).toBe('docs/triage');
-		expect(folderForType('Epic', resolved)).toBe('docs/plan');
-		// Types left out of the mapping fall through, whatever the default said.
-		expect(folderForType('Task', resolved)).toBeNull();
+	it('keeps the home folder as the one general fallback', () => {
+		expect(resolveSettings(fakeConfig()).homeFolder).toBe('docs');
+		expect(resolveSettings(fakeConfig({ homeFolder: '/Roadmap/' })).homeFolder).toBe('Roadmap');
+		// Cleared means "nothing configured", which sends creation back to inference.
+		expect(resolveSettings(fakeConfig({ homeFolder: '' })).homeFolder).toBe('');
 	});
 });

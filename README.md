@@ -31,8 +31,9 @@ Azure DevOps Boards.
     of the **extra types** (`Issue`, `Bug`) that sit beside the ladder rather than on it.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
-  - Dragging an item writes its new `parent` and `order` (and, optionally, its new `type` —
-    including consistent types for the explicitly-typed items of a moved subtree).
+  - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
+    you turn on **Assign item type when moving**, which then re-types the whole moved
+    subtree to match where it landed.
   - Items without a `type` show a level implied from their parent's type (a child of a
     Feature reads as a PBI, wherever that Feature sits).
   - The toolbar's ✨ **Assign missing properties** button backfills `type` and `order` for
@@ -74,18 +75,20 @@ views:
   - type: product-backlog
     name: Backlog
     homeFolder: "docs"
-    newItemFolder: "docs"
+    typeFolder.epic: "docs/requirements"
+    typeFolder.bug: "docs/bugs"
     order:
       - note.status
       - note.points
 ```
 
-**Keep `homeFolder` and the filter pointing at the same place.** New items are filed under
-the home folder, and the view can only show what the Base returns — a base filtering
-`Backlog/` while the home folder is left at its `docs` default creates items you will not
-see afterwards. Backlogging into `Roadmap/` means `file.inFolder("Roadmap")` and
-`homeFolder: "Roadmap"`. The **Create backlog** command writes both from the one folder it
-asks you for, which is the whole reason it asks.
+**Keep these folders and the filter pointing at the same place.** New items are filed in
+the folder configured for their type (falling back to the home folder), and the view can
+only show what the Base returns — a base filtering `Backlog/` while the folders are left at
+their `docs/…` defaults creates items you will not see afterwards. Backlogging into
+`Roadmap/` means `file.inFolder("Roadmap")` with the folders under `Roadmap/`. The
+**Create backlog** command writes all of them from the one folder it asks you for, which is
+the whole reason it asks.
 
 Any properties you enable under **Properties** in the Bases toolbar (the `order` list
 above) are shown as chips on each row — handy for `status`, story points, assignee, etc.
@@ -100,8 +103,8 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
 | Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
 | Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
-| Create any level at the top | Toolbar **New** button, or the **▾** menu next to it for other levels |
-| Focus one backlog level | Toolbar level button next to **New** → pick a level (**All levels** returns) |
+| Create any type at the top | Toolbar **New** button, or the **▾** menu next to it for every other type |
+| Focus one type | Toolbar focus button next to **New** → pick a level or an extra type (**All levels** returns) |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type (every level, plus the extra types) |
 | Change an item's state | Click the state chip on the row, or right-click → Set state |
@@ -117,11 +120,13 @@ While the filter is active the tree ignores collapsed state and drag and drop is
 disabled (visual neighbors aren't necessarily real siblings); keyboard navigation and
 the context menu keep working on the filtered rows.
 
-### Focus on one backlog level
+### Focus on one type
 
-Like the separate Epics / Features / Stories backlogs in Azure DevOps, the focus level
-re-roots the tree at any level: pick *Feature* from the level button next to **New** in the
-toolbar and every feature becomes a top-level row with its PBIs and tasks below it. While
+Like the separate Epics / Features / Stories backlogs in Azure DevOps, focus re-roots the
+tree at any type: pick *Feature* from the button next to **New** in the toolbar and every
+feature becomes a top-level row with its PBIs and tasks below it. Extra types are on that
+menu too — focusing *Bug* gives you a list of every bug, which is the same kind of view.
+Focusing the level an extra type ranks with (*PBI*, by default) shows both together. While
 focused, that button shows the level, accented, with a `✕` beside it that returns to all
 levels in one click (so does picking *All levels*). Items keep their real parents —
 re-parenting by dropping *into* a row still works — but the top row of a focused view has
@@ -321,41 +326,33 @@ rule: drag a Bug wherever the work actually belongs.
 
 ### Where new items are filed
 
-Everything the view creates lives under one **home folder** (`docs` by default), and each
-type gets a folder under it — so a Bug is filed with the bugs wherever in the tree it
-hangs. **Folders by type** takes `Type: folder` pairs and ships as:
+Each type gets **its own folder picker** in the view options — `Folder for Epic items`,
+`Folder for Bug items`, and so on, one per type you have configured. A Bug is filed with
+the bugs wherever in the tree it hangs. The shipped defaults are `docs/requirements` for
+the three upper levels, `docs/tasks`, `docs/issues` and `docs/bugs`.
 
-```text
-Epic: requirements, Feature: requirements, PBI: requirements,
-Task: tasks, Issue: issues, Bug: bugs
-```
-
-With the default home folder that gives `docs/requirements`, `docs/tasks`, `docs/issues`
-and `docs/bugs`. **Moving a whole backlog is one setting**: point the home folder at
-`Roadmap` and every type follows. A type folder beginning with `/` opts out and is read
-from the vault root, so one type can live outside the home without abandoning it.
+Types you rename or invent get no default: this plugin has no opinion about where a
+`Theme` belongs, so it falls back to the **home folder** — the one general answer to
+"where does this go", `docs` unless you change it.
 
 The new-item modal names the folder before you commit, and the line follows the type
 picker — switch from PBI to Bug and it re-reads `docs/bugs`.
 
-**Keep the home folder inside what your Base returns.** The view creates a note and then
-shows it only if the Base's filter matches, so a base filtered to `Backlog/` with the home
-folder left at `docs` creates items you will not see afterwards. They are not lost — they
-are notes in your vault with their `parent` links intact — but they are not where you were
-looking. The **Create backlog** command sets the home folder to the folder it scaffolds,
-so a backlog made that way is consistent from the start.
+**Keep these folders inside what your Base returns.** The view creates a note and then
+shows it only if the Base's filter matches, so a base filtered to `Backlog/` with the
+folders left at their `docs/…` defaults creates items you will not see afterwards. They
+are not lost — they are notes with their `parent` links intact — but they are not where
+you were looking. The **Create backlog** command writes every one of these folders under
+the folder it scaffolds, so a backlog made that way is consistent from the start.
 
 Full resolution order, first match wins:
 
 1. In **folder mode**, beside the parent's folder note — that mode makes folders the
    hierarchy, and a filing default should not quietly overrule it.
-2. The type's own folder, under the home folder.
-3. **Folder for new items**, if set (a real vault path, not relative to the home).
+2. The folder configured for the type being created.
+3. The **home folder**.
 4. The folder most existing items live in.
-5. Otherwise the modal asks, and remembers the answer.
-
-A folder name containing a comma cannot be written in the type mapping — the separator
-wins. Use **Folder for new items** for those.
+5. Otherwise the modal asks, and remembers the answer as the home folder.
 
 ### Filtered bases keep their tree
 
@@ -480,12 +477,11 @@ Open the view options in the Bases toolbar to configure:
 | Extra types | `Issue, Bug` | Types that sit beside the ladder: they hold the lowest level as children wherever they hang, and are never re-typed by a move. Clear it to turn them off |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
-| Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
+| Assign item type when moving | **off** | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
-| Home folder | `docs` | The folder everything the view creates lives under; **Folders by type** are relative to it |
-| Folder for new items | *(inferred)* | Where the view creates new notes when the type has no folder of its own; defaults to the folder most items live in |
-| Folders by type | `Epic: requirements, Feature: requirements, PBI: requirements, Task: tasks, Issue: issues, Bug: bugs` | `Type: folder` pairs under the home folder. A leading `/` means the vault root instead |
+| Home folder | `docs` | Where new items go when their type has no folder of its own |
+| Folder for *&lt;type&gt;* items | `docs/requirements`, `docs/tasks`, `docs/issues`, `docs/bugs` | **One folder picker per configured type**, so each is chosen rather than typed |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |

@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
-import { allTypeChoices, childLevelIndex, extraTypeRank, isExtraType } from './itemTypes';
+import { allTypeChoices, childLevelIndex, extraTypeRank, focusTarget, isExtraType } from './itemTypes';
 import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
@@ -145,13 +145,15 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
 	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
-	const focusIdx = settings.focusLevel
-		? settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase())
-		: -1;
+	const focus = focusTarget(settings);
+	const focusIdx = focus ? settings.levels.findIndex((l) => l.toLowerCase() === focus.toLowerCase()) : -1;
+	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
+	// match, and "show me the bugs" is the same question as "show me the PBIs".
+	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
 	const rest = { realRoots: roots, byPath, observedStates, observedTags, ignoredCount };
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
-	if (focusIdx >= 0) {
-		const focusRoots = collectFocusRoots(roots, focusIdx, settings);
+	if (focusIdx >= 0 || focusExtra) {
+		const focusRoots = collectFocusRoots(roots, focusIdx, focusExtra, settings);
 		return { ...rest, ...shown(assignVisualDepth(focusRoots)), roots: focusRoots, focused: true };
 	}
 	return { ...rest, ...shown(items), roots, focused: false };
@@ -523,15 +525,25 @@ function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 }
 
 /** The topmost items whose level matches the focus level; nested matches stay children. */
-function collectFocusRoots(roots: BacklogItem[], focusIdx: number, settings: BacklogSettings): BacklogItem[] {
+function collectFocusRoots(
+	roots: BacklogItem[],
+	focusIdx: number,
+	focusExtra: string,
+	settings: BacklogSettings,
+): BacklogItem[] {
 	const focusRoots: BacklogItem[] = [];
-	// An extra type has no levelIndex but does occupy a rung, so focusing that rung has
+	// An extra type has no levelIndex but does occupy a rung, so focusing that RUNG has
 	// to show it — otherwise a Bug simply vanishes from a focused view rather than
-	// ranking beside the level it sits level with.
-	const extraFocused = extraTypeRank(settings.levels) === focusIdx;
+	// ranking beside the level it sits level with. Focusing the type by NAME shows only
+	// that type.
+	const extraFocused = focusIdx >= 0 && extraTypeRank(settings.levels) === focusIdx;
+	const matches = (item: BacklogItem): boolean => {
+		if (focusExtra) return item.typeName?.toLowerCase() === focusExtra;
+		return item.levelIndex === focusIdx || (extraFocused && isExtraType(item.typeName, settings));
+	};
 	const collect = (list: BacklogItem[]) => {
 		for (const item of list) {
-			if (item.levelIndex === focusIdx || (extraFocused && isExtraType(item.typeName, settings))) {
+			if (matches(item)) {
 				item.focusRoot = true;
 				focusRoots.push(item);
 			} else {

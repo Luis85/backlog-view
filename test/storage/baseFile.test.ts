@@ -20,23 +20,24 @@ describe('baseFileContent', () => {
 		expect(content).toContain('file.ext == "md"');
 		expect(content).toContain('type: product-backlog');
 		// The creation folder is pre-wired so the first item lands inside the filter
-		expect(content).toContain('newItemFolder: "Backlog"');
-		// The type folders outrank the line above and are relative to the home folder,
-		// so pointing home at the scaffolded folder is what keeps the first Bug inside
-		// the filter this command just wrote.
+		// Every folder the view files into is pre-wired under the folder just filtered
+		// for. The type folders outrank the home folder and default to a docs/ layout,
+		// so writing the home folder alone would still send the first Bug outside.
 		expect(content).toContain('homeFolder: "Backlog"');
+		expect(content).toContain('typeFolder.epic: "Backlog/requirements"');
+		expect(content).toContain('typeFolder.bug: "Backlog/bugs"');
 	});
 
 	it('quotes the filter as a YAML scalar so hash folder names survive', () => {
 		// In a plain scalar, " #" would start a YAML comment and truncate the filter
 		const content = baseFileContent('Roadmap #1');
 		expect(content).toContain('- "file.inFolder(\\"Roadmap #1\\")"');
-		expect(content).toContain('newItemFolder: "Roadmap #1"');
+		expect(content).toContain('homeFolder: "Roadmap #1"');
 	});
 
 	it('escapes quotes in the folder name through both layers', () => {
 		expect(baseFileContent('A"B')).toContain('"file.inFolder(\\"');
-		expect(baseFileContent('A"B')).toContain('newItemFolder: "A\\"B"');
+		expect(baseFileContent('A"B')).toContain('homeFolder: "A\\"B"');
 	});
 });
 
@@ -66,5 +67,6 @@ describe('createBacklogBase', () => {
 		const content = baseFileContent('Roadmap');
 		expect(content).toContain('- "file.inFolder(\\"Roadmap\\")"');
 		expect(content).toContain('homeFolder: "Roadmap"');
+		expect(content).toContain('typeFolder.bug: "Roadmap/bugs"');
 	});
 });

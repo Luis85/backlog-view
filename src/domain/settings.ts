@@ -30,19 +30,16 @@ export interface BacklogSettings {
 	autoType: boolean;
 	showChips: boolean;
 	showCounts: boolean;
-	newItemFolder: string;
 	/**
-	 * The folder everything this plugin creates lives under — the parent of the
-	 * backlog. `typeFolders` are named relative to it, so moving a whole backlog is
-	 * one setting rather than one per type.
+	 * Where new items go when their type has no folder of its own — the one general
+	 * answer to "where does this plugin put things".
 	 */
 	homeFolder: string;
 	/**
-	 * Folder per item type, keyed by LOWERCASED type name and resolved RELATIVE to
-	 * `homeFolder` — `Bug: bugs` files itself in `docs/bugs` wherever it sits in the
-	 * tree. A leading `/` escapes the home folder and means the vault root. Takes
-	 * precedence over `newItemFolder` and over inference, but not over folder mode's
-	 * "beside the parent" rule.
+	 * Folder per item type, keyed by LOWERCASED type name. Each is its own option in
+	 * the view options rather than a line of a mapping, so it is picked rather than
+	 * typed. Takes precedence over `homeFolder`, but not over folder mode's "beside
+	 * the parent" rule.
 	 */
 	typeFolders: Record<string, string>;
 	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
@@ -71,31 +68,44 @@ export const DEFAULT_EXTRA_TYPES = ['Issue', 'Bug'];
  * parsed one cannot drift: `defaultSettings` parses this very string.
  */
 export const DEFAULT_HOME_FOLDER = 'docs';
-export const DEFAULT_TYPE_FOLDERS =
-	'Epic: requirements, Feature: requirements, PBI: requirements, ' +
-	'Task: tasks, Issue: issues, Bug: bugs';
+/**
+ * Where each of the DEFAULT types is filed, under the home folder. Only the shipped
+ * vocabulary has an opinion — a level someone renames has no default and falls through
+ * to the home folder, which is the honest answer for a name this plugin never chose.
+ */
+const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = {
+	epic: 'requirements',
+	feature: 'requirements',
+	pbi: 'requirements',
+	task: 'tasks',
+	issue: 'issues',
+	bug: 'bugs',
+};
 
 /**
- * Parse `Type: folder` pairs. Folder names containing a comma cannot be expressed here —
- * the separator wins — which is the price of a one-line option; the generic
- * `newItemFolder` picker handles any name and is the way out.
+ * The persisted option key for one type's folder. Shared by the schema that declares
+ * these options and the resolver that reads them back, because a key spelled twice is
+ * a key that can differ — and these are user data in the `.base` file.
  */
-export function parseTypeFolders(text: string): Record<string, string> {
-	// Null-prototype: type names are user data, so a mapping for `constructor` must be
-	// a plain key rather than a collision with something inherited, and one for
-	// `__proto__` must be storable at all.
+export function typeFolderKey(typeName: string): string {
+	return `typeFolder.${typeName.toLowerCase()}`;
+}
+
+/** The shipped folder for a type, or '' for one this plugin did not name. */
+export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FOLDER): string {
+	const sub = DEFAULT_TYPE_SUBFOLDERS[typeName.toLowerCase()];
+	if (!sub) return '';
+	return homeFolder ? `${homeFolder}/${sub}` : sub;
+}
+
+/** Folders for every given type, keyed lowercase, skipping the ones with none. */
+function typeFoldersFor(types: string[], read: (type: string) => string): Record<string, string> {
+	// Null-prototype: type names are user data, so a type called `constructor` must be
+	// a plain key rather than a collision with something inherited off Object.
 	const folders: Record<string, string> = Object.create(null) as Record<string, string>;
-	for (const entry of text.split(',')) {
-		const idx = entry.indexOf(':');
-		if (idx <= 0) continue;
-		const type = entry.substring(0, idx).trim().toLowerCase();
-		// A single leading slash survives: it is the marker for "from the vault root",
-		// the way out of the home folder for a type that belongs elsewhere.
-		const raw = entry.substring(idx + 1).trim().replace(/\/+$/, '');
-		const folder = raw.startsWith('/') ? `/${raw.replace(/^\/+/, '')}` : raw;
-		// An entry with no folder is a typo rather than a request for the vault root,
-		// so it is dropped and that type falls through to the usual resolution.
-		if (type && folder) folders[type] = folder;
+	for (const type of types) {
+		const folder = read(type);
+		if (folder) folders[type.toLowerCase()] = folder;
 	}
 	return folders;
 }
@@ -115,12 +125,11 @@ export function defaultSettings(): BacklogSettings {
 		hierarchyOnly: true,
 		showOutsideParents: true,
 		folderHierarchy: false,
-		autoType: true,
+		autoType: false,
 		showChips: true,
 		showCounts: true,
-		newItemFolder: '',
 		homeFolder: DEFAULT_HOME_FOLDER,
-		typeFolders: parseTypeFolders(DEFAULT_TYPE_FOLDERS),
+		typeFolders: typeFoldersFor([...DEFAULT_LEVELS, ...DEFAULT_EXTRA_TYPES], (t) => defaultTypeFolder(t)),
 		focusLevel: '',
 		stateKey: '',
 		tagsKey: 'tags',
@@ -252,6 +261,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	};
 
 	const levels = list('levels');
+	const resolvedLevels = levels.length > 0 ? levels : fallback.levels;
 	const doneValues = list('doneValues');
 	/**
 	 * Like the tags key, this one defaults to something real, so "cleared" has to differ
@@ -261,8 +271,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	 * would turn a working view read-only.
 	 */
 	const extraTypes = (): string[] => {
-		const resolved = levels.length > 0 ? levels : fallback.levels;
-		const taken = new Set(resolved.map((l) => l.toLowerCase()));
+		const taken = new Set(resolvedLevels.map((l) => l.toLowerCase()));
 		const declared = clearable('extraTypes', fallback.extraTypes, () => dedupe(list('extraTypes')));
 		return declared.filter((t) => !taken.has(t.toLowerCase()));
 	};
@@ -273,6 +282,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	 * editing would be unreachable. Resolving it to "off" here keeps that one fact
 	 * in one place instead of a collision report that would gate unrelated writes.
 	 */
+	const resolvedExtras = extraTypes();
+	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => folderPath(str('homeFolder')));
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [
@@ -288,17 +299,22 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		parentKey: propKey('parentProperty', fallback.parentKey),
 		orderKey: propKey('orderProperty', fallback.orderKey),
 		typeKey: propKey('typeProperty', fallback.typeKey),
-		levels: levels.length > 0 ? levels : fallback.levels,
-		extraTypes: extraTypes(),
+		levels: resolvedLevels,
+		extraTypes: resolvedExtras,
 		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
 		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
 		autoType: bool('autoAssignType', fallback.autoType),
 		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
-		newItemFolder: folderPath(str('newItemFolder')),
-		homeFolder: clearable('homeFolder', fallback.homeFolder, () => folderPath(str('homeFolder'))),
-		typeFolders: clearable('typeFolders', fallback.typeFolders, () => parseTypeFolders(str('typeFolders'))),
+		homeFolder,
+		// One option per type, so a folder is picked rather than typed into a mapping.
+		// Each defaults to the shipped layout under the DEFAULT home folder, not under
+		// this view's: the value in the box is the value that applies, which is the
+		// whole point of giving each type its own input.
+		typeFolders: typeFoldersFor([...resolvedLevels, ...resolvedExtras], (type) =>
+			clearable(typeFolderKey(type), defaultTypeFolder(type), () => folderPath(str(typeFolderKey(type)))),
+		),
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		tagsKey: tagsKey(),

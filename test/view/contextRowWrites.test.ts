@@ -5,6 +5,15 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Modal } from '../helpers/obsidian-mock';
 import { drag, expandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 
+/**
+ * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
+ * go: a type's own folder answers first, and the home folder answers next.
+ */
+const NO_TYPE_FOLDERS: Record<string, string> = {
+	homeFolder: '',
+	...Object.fromEntries(['epic', 'feature', 'pbi', 'task', 'issue', 'bug'].map((t) => [`typeFolder.${t}`, ''])),
+};
+
 useViewHarness();
 
 describe('moves in a group that holds an outside-filter row', () => {
@@ -21,7 +30,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 		anyView.app = vault.app;
 		// Inference is what this test is about, so the type folders that would answer
 		// first are turned off.
-		anyView.config = new FakeViewConfig({ typeFolders: '' });
+		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
 		anyView.data = {
 			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
 		};
@@ -76,7 +85,7 @@ describe('new-item folder inference with context rows', () => {
 		anyView.app = vault.app;
 		// Inference is what this test is about, so the type folders that would answer
 		// first are turned off.
-		anyView.config = new FakeViewConfig({ typeFolders: '' });
+		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
 		anyView.data = {
 			data: vault.entries().filter((e) => e.file.path.startsWith('Backlog/')),
 		};
@@ -103,7 +112,7 @@ describe('creating a child under a context parent', () => {
 		anyView.app = vault.app;
 		// Type folders off: the rule under test is where a child of a CONTEXT parent
 		// lands, which only comes up when the folder is being inferred at all.
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, typeFolders: '' });
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
 		view.onDataUpdated();
 		expandAll(containerEl);
@@ -144,7 +153,7 @@ describe('creating a child under a context parent', () => {
 		anyView.app = vault.app;
 		// Type folders off: the rule under test is where a child of a CONTEXT parent
 		// lands, which only comes up when the folder is being inferred at all.
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, typeFolders: '' });
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS });
 		anyView.data = { data: vault.entries() };
 		view.onDataUpdated();
 

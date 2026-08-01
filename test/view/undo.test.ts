@@ -15,7 +15,7 @@ const undoButton = (containerEl: HTMLElement): HTMLButtonElement => {
 describe('undoing the last change', () => {
 	it('restores a drop whole: parent, order and type all come back', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, { autoAssignType: true });
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
 		await flush();
@@ -57,7 +57,7 @@ describe('undoing the last change', () => {
 
 	it('undoing an undo redoes', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, { autoAssignType: true });
 		const tree = treeOf(containerEl);
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
@@ -110,7 +110,7 @@ describe('undoing the last change', () => {
 
 	it('a spent undo is consumed: a replay that restored nothing disables instead of retrying', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, { autoAssignType: true });
 		const tree = treeOf(containerEl);
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');

@@ -93,9 +93,9 @@ export function allTypeChoices(settings: BacklogSettings): string[] {
  * own and the caller should fall through to its usual resolution. Type-first filing:
  * a Bug goes to the bug folder wherever in the tree it hangs.
  *
- * Resolved under `homeFolder`, so the whole backlog moves with one setting. A leading
- * `/` is the way out for a type that belongs elsewhere — without it the home folder
- * would be a cage rather than a default.
+ * Each type's folder is picked whole in the view options, so what is stored is what
+ * applies — no joining, no relative-path rule to remember. `homeFolder` is what a type
+ * without one falls back to.
  */
 export function folderForType(typeName: string, settings: BacklogSettings): string | null {
 	const configured = settings.typeFolders[typeName.toLowerCase()];
@@ -103,9 +103,18 @@ export function folderForType(typeName: string, settings: BacklogSettings): stri
 	// what makes this total for any record a caller hands over — a level named
 	// `constructor` or `toString` otherwise reads an inherited function off a plain
 	// object, and the creation flow would take it for a path and fail on `.trim()`.
-	if (typeof configured !== 'string' || !configured) return null;
-	if (configured.startsWith('/')) return configured.substring(1);
-	return settings.homeFolder ? `${settings.homeFolder}/${configured}` : configured;
+	return typeof configured === 'string' && configured ? configured : null;
+}
+
+/**
+ * The type a focused view is showing at its top: a configured level, or an extra type
+ * named directly. Extra types are focusable because they are types a user files work
+ * under — "show me the bugs" is the same question as "show me the PBIs".
+ */
+export function focusTarget(settings: BacklogSettings): string {
+	const focus = settings.focusLevel.trim().toLowerCase();
+	if (!focus) return '';
+	return allTypeChoices(settings).find((t) => t.toLowerCase() === focus) ?? '';
 }
 
 /** The level name to show on an item's badge. */

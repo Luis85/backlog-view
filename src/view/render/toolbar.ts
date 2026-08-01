@@ -4,7 +4,7 @@ import { newItemLevel, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogModel } from '../../domain/model';
-import { displayType } from '../../domain/itemTypes';
+import { allTypeChoices, displayType, focusTarget } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settings';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
@@ -23,9 +23,12 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	pickBtn.addClass('pbl-new-pick');
 	pickBtn.addEventListener('click', (evt) => {
 		const menu = new Menu();
-		for (const level of host.settings.levels) {
+		// Every declared type, extras included: this menu is the one place a top-level
+		// item of any type can be made, and an Issue raised against nothing in
+		// particular is a real thing to want.
+		for (const type of allTypeChoices(host.settings)) {
 			menu.addItem((mi) =>
-				mi.setTitle(`New ${level}`).setIcon('plus').onClick(() => promptCreateItem(host, [level], null)),
+				mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
 			);
 		}
 		showMenuForClick(menu, evt);
@@ -192,8 +195,8 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
  * shows the active level, accented, with a one-click way back to all levels.
  */
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	// A focus level naming no configured level re-roots nothing — report all levels.
-	const active = model.focused ? newItemLevel(host.settings, model) : '';
+	// A focus naming no configured type re-roots nothing — report all levels.
+	const active = model.focused ? focusTarget(host.settings) : '';
 	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 	wrap.toggleClass('pbl-focus-active', active !== '');
 	// Bases persists the change and refreshes the view.
@@ -202,7 +205,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
 	btn.createSpan({ text: active || 'All levels' });
-	setTooltip(btn, 'Focus level — show one level as the top of the tree');
+	setTooltip(btn, 'Focus — show one type as the top of the tree');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		const choice = (level: string, title: string) =>
@@ -214,6 +217,9 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 			);
 		choice('', 'All levels');
 		for (const level of host.settings.levels) choice(level, level);
+		// Extra types are focusable too: they rank with a level, so a view of just the
+		// bugs is the same kind of view as one of just the PBIs.
+		for (const extra of host.settings.extraTypes) choice(extra, extra);
 		showMenuForClick(menu, evt);
 	});
 

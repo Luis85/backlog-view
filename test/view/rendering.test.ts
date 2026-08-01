@@ -83,7 +83,7 @@ describe('rendering', () => {
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 
 		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All levels', 'Epic', 'Feature', 'PBI', 'Task']);
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All levels', 'Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
 		expect(Menu.lastShown?.item('All levels')?.checked).toBe(true);
 		Menu.lastShown?.item('Feature')?.click();
 		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === 'Feature')).toBe(true);

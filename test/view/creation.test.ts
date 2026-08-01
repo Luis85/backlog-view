@@ -4,6 +4,15 @@ import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
 import { fixture, flush, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
 
+/**
+ * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
+ * go: a type's own folder answers first, and the home folder answers next.
+ */
+const NO_TYPE_FOLDERS: Record<string, string> = {
+	homeFolder: '',
+	...Object.fromEntries(['epic', 'feature', 'pbi', 'task', 'issue', 'bug'].map((t) => [`typeFolder.${t}`, ''])),
+};
+
 useViewHarness();
 
 describe('item creation', () => {
@@ -13,7 +22,7 @@ describe('item creation', () => {
 		vault.addFile('Backlog/Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
 		// Folders by type off: this is the inference path, which only runs when the
 		// type being created has no folder of its own.
-		const { containerEl } = makeView(vault, { typeFolders: '' });
+		const { containerEl } = makeView(vault, { ...NO_TYPE_FOLDERS });
 
 		rowByTitle(containerEl, 'Epic A')
 			.querySelector<HTMLElement>('.pbl-add')
@@ -52,7 +61,7 @@ describe('item creation', () => {
 	it('creates the extra type picked in the modal, under a parent three rungs up', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
-		const { containerEl } = makeView(vault, { typeFolders: '' });
+		const { containerEl } = makeView(vault, { ...NO_TYPE_FOLDERS });
 
 		rowByTitle(containerEl, 'Epic A')
 			.querySelector<HTMLElement>('.pbl-add')
@@ -135,7 +144,7 @@ describe('creation flows', () => {
 		const vault = new FakeVault();
 		// The prompt only asks when the type being created has nowhere to go: no folder
 		// of its own, none configured, and no items to infer from.
-		const { containerEl, config } = makeView(vault, { typeFolders: '' });
+		const { containerEl, config } = makeView(vault, { ...NO_TYPE_FOLDERS });
 
 		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		// With the folder still a user choice there is no landing spot to announce
@@ -143,14 +152,14 @@ describe('creation flows', () => {
 		submitPrompt({ title: 'First Epic', folder: 'Backlog' });
 		await flush();
 
-		expect(config.values['newItemFolder']).toBe('Backlog');
+		expect(config.values['homeFolder']).toBe('Backlog');
 		expect(vault.folders.has('Backlog')).toBe(true);
 		expect(vault.fm('Backlog/First Epic.md')['type']).toBe('Epic');
 	});
 
 	it('describes the vault root as the landing spot for rootless backlogs', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { typeFolders: '' });
+		const { containerEl } = makeView(vault, { ...NO_TYPE_FOLDERS });
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe('In the vault root');
@@ -161,7 +170,7 @@ describe('creation flows', () => {
 		vault.addFile('Epic 1.md', { frontmatter: { type: 'Epic', order: 100 } });
 		vault.addFile('Epic 2.md', { frontmatter: { type: 'Epic', order: 200 } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic 1' });
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature', typeFolders: '' });
+		const { containerEl } = makeView(vault, { focusLevel: 'Feature', ...NO_TYPE_FOLDERS });
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		submitPrompt({ title: 'Fresh Feature' });
@@ -175,7 +184,7 @@ describe('creation flows', () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		// Focused on Feature, nothing matches — but the full tree knows the folder
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature', typeFolders: '' });
+		const { containerEl } = makeView(vault, { focusLevel: 'Feature', ...NO_TYPE_FOLDERS });
 		expect(containerEl.querySelector('.pbl-empty')).not.toBeNull();
 
 		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

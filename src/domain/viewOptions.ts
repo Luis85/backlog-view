@@ -1,14 +1,19 @@
-import { BasesAllOptions, BasesPropertyId } from 'obsidian';
+import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import {
+	BacklogSettings,
 	DEFAULT_DONE_VALUES,
 	DEFAULT_EXTRA_TYPES,
 	DEFAULT_HOME_FOLDER,
 	DEFAULT_LEVELS,
-	DEFAULT_TYPE_FOLDERS,
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
+	defaultSettings,
+	defaultTypeFolder,
+	resolveSettings,
+	typeFolderKey,
 } from './settings';
+import { allTypeChoices } from './itemTypes';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
@@ -27,8 +32,12 @@ const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
  * deliberately absent: it lives in the view's own toolbar, next to the New button
  * whose level it changes.
  */
-export function getViewOptions(): BasesAllOptions[] {
-	return [hierarchyGroup(), progressGroup(), newItemsGroup(), displayGroup()];
+export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
+	// Bases hands the view's own config to this callback, which is what lets the folder
+	// options be one per CONFIGURED type rather than one text field holding a mapping:
+	// a vault running Theme/Story gets a picker per name it actually uses.
+	const settings = config ? resolveSettings(config) : defaultSettings();
+	return [hierarchyGroup(), progressGroup(), newItemsGroup(settings), displayGroup()];
 }
 
 function hierarchyGroup(): BasesAllOptions {
@@ -138,7 +147,7 @@ function progressGroup(): BasesAllOptions {
 	};
 }
 
-function newItemsGroup(): BasesAllOptions {
+function newItemsGroup(settings: BacklogSettings): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'New items',
@@ -148,21 +157,19 @@ function newItemsGroup(): BasesAllOptions {
 				key: 'homeFolder',
 				displayName: 'Home folder',
 				default: DEFAULT_HOME_FOLDER,
-				placeholder: DEFAULT_HOME_FOLDER,
-			},
-			{
-				type: 'folder',
-				key: 'newItemFolder',
-				displayName: 'Folder for new items',
 				placeholder: 'Same folder as existing items',
 			},
-			{
-				type: 'text',
-				key: 'typeFolders',
-				displayName: 'Folders by type',
-				default: DEFAULT_TYPE_FOLDERS,
-				placeholder: DEFAULT_TYPE_FOLDERS,
-			},
+			// A picker per type, in ladder order then the extras. One input each is the
+			// difference between choosing a folder and spelling a mapping correctly.
+			...allTypeChoices(settings).map(
+				(type): BasesOptions => ({
+					type: 'folder',
+					key: typeFolderKey(type),
+					displayName: `Folder for ${type} items`,
+					default: defaultTypeFolder(type),
+					placeholder: settings.homeFolder || 'Home folder',
+				}),
+			),
 		],
 	};
 }

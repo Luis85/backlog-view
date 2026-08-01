@@ -71,7 +71,8 @@ describe('context menu', () => {
 
 	it('indents under the previous sibling and moves to the bottom', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		// Indenting re-types only when re-typing on move is asked for.
+		const { containerEl } = makeView(vault, { autoAssignType: true });
 
 		rowByTitle(containerEl, 'Feature B2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Indent under "Feature B1"')?.click();
@@ -124,7 +125,7 @@ describe('context menu', () => {
 			frontmatter: { type: 'Feature' },
 			parentLink: 'Alpha',
 		});
-		const { containerEl } = makeView(vault, { inferFolderHierarchy: true });
+		const { containerEl } = makeView(vault, { autoAssignType: true, inferFolderHierarchy: true });
 
 		rowByTitle(containerEl, 'Fast path').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Use folder position')?.click();
@@ -140,7 +141,7 @@ describe('context menu', () => {
 		const vault = new FakeVault();
 		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Orphan.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Missing' });
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, { autoAssignType: true });
 
 		rowByTitle(containerEl, 'Orphan').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Clear parent link')?.click();

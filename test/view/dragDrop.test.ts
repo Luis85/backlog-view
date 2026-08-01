@@ -57,7 +57,8 @@ describe('drag and drop', () => {
 
 	it('re-parents and re-types when dropping into a row', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		// Re-typing on move is opt-in; this test is about what it does when asked for.
+		const { containerEl } = makeView(vault, { autoAssignType: true });
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Feature B2'), 'inside');
 		await flush();

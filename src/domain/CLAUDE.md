@@ -77,22 +77,26 @@ in the root `CLAUDE.md` because it spans every layer.
   level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
   OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
   guided rather than refused.
-- `homeFolder` is the parent of everything the view creates, and `typeFolders` are named
-  RELATIVE to it (`folderForType` joins them), so relocating a backlog is one setting
-  rather than one per type. A leading `/` in a type folder escapes to the vault root —
-  without it the home folder would be a cage rather than a default. `newItemFolder` is
-  NOT relative: it is a folder picker naming a real path, where the type mapping is free
-  text naming children of the home. Type folders rank ahead of `newItemFolder` and
-  inference but behind folder mode's "beside the parent's folder note" rule — that mode
-  makes folders the hierarchy, and a filing default must not quietly overrule an opt-in
-  structural mode. Two consequences to know before debugging them: with every type mapped
-  (the shipped default), inference and the folder prompt never run unless the option is
-  cleared, which is why several creation tests pass `typeFolders: ''` to reach those
-  paths; and because the folder depends on the chosen type, and the type is chosen INSIDE
-  the modal, the prompt's detail line is a function of the type rather than a string.
-  `baseFileContent` writes `homeFolder` alongside `newItemFolder` for the same reason the
-  latter was pre-wired: the type folders outrank it, so pointing home at the scaffolded
-  folder is what keeps the first Bug inside the filter the command just wrote.
+- Each type's folder is **its own option** (`typeFolder.<lowercased type>`), generated
+  from the view's own config — `getViewOptions` receives it, which is what lets the
+  schema depend on the vocabulary a vault actually uses. `typeFolderKey` is shared by
+  the schema and the resolver, because a persisted key spelled twice is a key that can
+  differ. Only the SHIPPED types have a default folder; a renamed level gets none and
+  falls back to `homeFolder`, which is the honest answer for a name this plugin never
+  chose. Type folders rank ahead of `homeFolder` and inference but behind folder mode's
+  "beside the parent's folder note" rule — that mode makes folders the hierarchy, and a
+  filing default must not quietly overrule an opt-in structural mode. Two consequences
+  to know before debugging them: with every type mapped (the shipped default), inference
+  and the folder prompt never run unless the folders are cleared, which is why several
+  creation tests clear both layers; and because the folder depends on the chosen type,
+  and the type is chosen INSIDE the modal, the prompt's detail line is a function of the
+  type rather than a string. `baseFileContent` writes every one of these keys under the
+  folder it scaffolds — the type folders outrank the home folder, so writing the home
+  folder alone would still file the first Bug outside the filter just written for it.
+- `autoType` is OFF by default. Re-typing a whole moved subtree is a strong action to
+  take on a drag, and the ladder is advisory everywhere else; the option is for people
+  who want it enforced. Tests that assert a cascade opt in (`autoTyped`), which also
+  keeps them honest about what is default behaviour and what is not.
 - Options whose default is a REAL value need `clearable` (or `clearablePropKey` for
   property ids): `config.get` reports "never set" and "cleared" identically, so without
   it the home folder, the extra types and the type folders could never be turned off.
