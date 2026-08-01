@@ -23,5 +23,9 @@ re-roots, on the board it decides which rung becomes cards.
 - With no focus level, every result is a card, and each card's type badge carries the
   difference.
 - Changing focus is a render decision and writes nothing.
+- Focus narrows the board and its counts together, and nothing falls silently: results
+  below the focused level surface in card rollups, ancestors as context. The epic's
+  every-result-has-a-column invariant is stated at full scope, and clearing focus
+  restores it.
 - The same toolbar control drives both projections and persists the same way it does
   today.

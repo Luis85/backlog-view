@@ -24,8 +24,11 @@ it on the transition, into properties the user names.
 - The view options may name a started-date and a finished-date property, and which
   states count as started; nothing configured, nothing written.
 - Entering a started state writes the started date once — the earliest start survives
-  rework. Entering a done state writes the finished date; leaving done removes it, so
-  a reopened item never claims a finish it no longer has.
+  rework.
+- The finished date is written only when a change crosses from not-done into done, and
+  kept unchanged across done-to-done moves — re-labelling Done as Dropped is not a new
+  finish, and must not shift the item's history forward. Leaving done removes it, so a
+  reopened item never claims a finish it no longer has.
 - Stamps ride the same batch as the state write: one undo takes back the state and its
   dates together.
 - The stamp properties join the key-collision checks that gate every write, so a stamp

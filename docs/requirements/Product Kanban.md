@@ -64,8 +64,11 @@ them:
 
 - The two projections never disagree: one model, one result set, one write gate, one
   undo history. A change made on the board is the change the tree shows.
-- The board never loses a result: every item the Base returned renders in exactly one
-  column, and column counts sum to the result count.
+- The board never loses a result: at full scope, every item the Base returned renders
+  in exactly one column, and column counts sum to the result count. A focus level
+  narrows the card set the same way it narrows the tree — descendants surface in card
+  rollups, ancestors as context — and the narrowing belongs to the focus control,
+  never to the board: clearing focus always restores every result to a column.
 - No second source of truth: no board-only rank property, no board-only state, no
   state string written that the user did not configure or observe.
 - A row outside the Base's filter obeys the context-row rule on the board exactly as
