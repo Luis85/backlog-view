@@ -122,12 +122,28 @@ spaces as a top-level list item, and the pattern demanded column zero, so a lega
 entry read as a missing one. This file already holds that a check blocking a legitimate
 note is the more expensive direction to get wrong.
 
-The pattern across all four rounds: every hole was the check answering a slightly different
+A fifth round closed the same hole a third time. The first link in a bullet was found
+*anywhere* in it, so `- See also [[Scaffolding a backlog]]` counted as that use case's
+entry while its real bullet was gone:
+
+| Planted | Reported |
+| --- | --- |
+| An entry replaced by a bullet that only mentions it | `… does not list [[Scaffolding a backlog]]` |
+
+The rule, finally stated as a position rather than as a search: **an entry is a link
+immediately after a bullet marker.** Only the position distinguishes an entry from a
+mention, so only the position can be checked — and all 69 index bullets in the register
+already sit that way, so the anchoring narrows the check without moving the corpus.
+
+The pattern across all five rounds: every hole was the check answering a slightly different
 question than the rule does. The rule is about the list a reader sees; the code variously
 asked about the section, about every child, about text a reader never sees, about every link
-in a bullet, and about bullets in one exact column. Each fix narrowed the question, and
-twice the narrowed version was still not the rule — which is the argument for planting the
-case rather than reasoning about the regex.
+in a bullet, about a bullet's first link wherever it sat, and about bullets in one exact
+column. Each fix narrowed the question and three times the narrowed version was still not
+the rule — the same masking bug surviving two rewrites of the thing meant to kill it. That
+is the argument for planting the case rather than reasoning about the regex, and for
+stating a rule as the property that makes it true rather than as the search that usually
+finds it.
 
 ## Risks
 
