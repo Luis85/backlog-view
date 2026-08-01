@@ -57,7 +57,7 @@ construction — which is the pairing this exists for.
 | **Actor** | Backlog owner |
 | **Trigger** | Creating an item while `Create items in their own folder` is on |
 | **Preconditions** | The option is on, and creation is otherwise gated exactly as it is today — a valid configuration, through the same write gate |
-| **Guarantee** | Nothing already on disk changes. The option decides only what is written next: no note is moved, no folder is converted, and turning it off reproduces today's behaviour exactly. |
+| **Guarantee** | Nothing already on disk changes: no note is moved and no folder is converted. Turning the option off restores today's **creation layout** exactly — not every later write, since a note already created as a folder note keeps its top-level marker whatever the option then says (**5a**). |
 
 **Main flow**
 
@@ -107,8 +107,11 @@ construction — which is the pairing this exists for.
 
 ### The option
 
-- Default off, and off reproduces today's behaviour exactly. The default is not a real
-  value, so it needs no `clearable` treatment (see `resolveSettings`).
+- Default off, and off reproduces today's **creation** behaviour exactly. The one thing it
+  does not restore is the top-level marker for a note already written as a folder note,
+  which is pinned by the note's own layout rather than by the option — see
+  **The top-level marker** below, where that is the deliberate point. The default is not a
+  real value, so it needs no `clearable` treatment (see `resolveSettings`).
 - Turning it on or off never touches a note already on disk. Flat and foldered items
   coexist in one tree and nothing downstream distinguishes them — a folder note is an
   ordinary note.
