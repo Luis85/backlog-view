@@ -102,9 +102,18 @@ group always match, so every link resolved to the empty string and was skipped, 
 accept cases stayed green while a reject case went red. A mutation that does not reproduce
 the bug proves nothing about the test, and the shape of the failure is what said so.
 
-### The suite's own version of the bug it was written about
+### The suite's own version of the bug it was written about — twice
 
-Review found it, which is the right outcome and an uncomfortable one. Every accept case
+Review found both, which is the right outcome and an uncomfortable one. The second is
+recorded first because it is the smaller and makes the shape obvious: the case named
+*"accepts an angle-bracket destination carrying an anchor"* used
+`](<A slice.md>#outcome)`, which is not that link. A bracketed destination **ends at
+`>`**, so the anchor was invalid trailing content and CommonMark reads no link there at
+all. It passed because the gate skips to `)` with `[^)]*` — so the case asserted that the
+checker tolerates a *malformed* link while its name claimed a legal one. Removing anchor
+handling from `docs-check.mjs` entirely left all sixteen cases green.
+
+The first is the same shape and worse. Every accept case
 asserts an **empty problem list**, and the list is parsed out of the gate's report — so a
 run that died before printing one contributes exactly that. Green would have meant "the
 gate said nothing", which is what acceptance looks like and equally what a crash looks
@@ -120,6 +129,17 @@ exited non-zero without reporting, so a new call site cannot reopen it by omissi
 `expectAccepted` asserts the exit as well as the list, so the claim is stated where it is
 made. A case plants the crash directly — a tree with no `src/`, which makes `collectTs`
 throw — and removing either guard was checked to fail it.
+
+**The generalisation is the part worth keeping.** Every case in the accept corpus asserts
+an *absence* — no problems — which is the weakest thing a test can claim, because almost
+anything produces it. Building the corpus is no protection against writing a vacuous case
+into it, and the corpus cannot catch that class in itself: both defects were found by a
+reader, not by a run. So the file now states the check that does catch it, as an
+instruction for adding a case rather than as a rule anything enforces: **break the rule the
+case is named after, and watch that case fail.** If it stays green it is testing something
+else. That is a hand check, and saying so is more honest than implying the suite is
+self-guarding — this is the same limit `docs/README.md` already states about the register,
+arriving one level down.
 
 What this does **not** do is close the enumeration: the constructs worth covering come from
 Markdown, and the Issue is right that enumerating them exhaustively is the trap this

@@ -21,6 +21,25 @@ import { adr, baseRegister, checkRegister, note, useCase } from '../helpers/regi
  * So each case below is a **legal form the register does not itself use**, and each
  * expects a green run. The register avoiding a construct is not evidence the construct is
  * wrong; it is the reason nothing would notice if the gate started refusing it.
+ *
+ * ---
+ *
+ * **Adding a case: green is not the assertion.** Every case here asserts an *absence* —
+ * no problems — which is the weakest thing a test can claim, because almost anything
+ * produces it. Review found two cases in the first draft of this file that were green for
+ * reasons unrelated to what they were named after:
+ *
+ * - one that would have read a **crashed** checker as acceptance, since a run that never
+ *   printed a report contributes an empty problem list; and
+ * - `](<A slice.md>#outcome)`, which is not an anchored bracketed link at all — a
+ *   bracketed destination ends at `>` — so the case passed on the gate ignoring trailing
+ *   junk while claiming to cover a legal form. Anchors go **inside** the brackets.
+ *
+ * Writing this corpus is therefore no protection against writing a vacuous case into it,
+ * and the corpus cannot catch that class in itself. The check that does is cheap and has
+ * to be run by hand: **break the rule the case is named after, and watch this case fail.**
+ * If it stays green, the case is testing something else. Both defects above were found
+ * that way once someone thought to look, and neither would have been found by reading it.
  */
 
 describe('the gate accepts valid documents', () => {
