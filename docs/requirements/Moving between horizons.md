@@ -64,6 +64,12 @@ one undo.
 - **3a — the write is refused** (configuration problems, or a batch naming an excluded
   note). Refused whole and loudly; nothing half-moves, and the board renders what the
   notes still say.
+- **3b — the new value takes the note outside the Base's filter.** The write stands —
+  it is exactly what the user asked — and the card leaves the view on the refresh,
+  announced with a notice naming what happened and offering to open the note: the
+  answer [[New cards in place]] already gives a card created into a state the base
+  excludes. Undo still takes it back, the boundary rule the epic states for every
+  write.
 
 ## Acceptance criteria
 
@@ -77,6 +83,9 @@ one undo.
   nothing to it and can never be moved or written.
 - Menu and keyboard produce the identical batch the drag produces.
 - A refused batch is refused whole, loudly, changing nothing.
+- A move whose value takes the note outside the Base's filter applies, is announced
+  with an open path, and stays undoable — the card leaving the view is the filter
+  speaking, not the write failing.
 
 ## Where it lives
 

@@ -64,6 +64,11 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   write one.
 - **3a — the write is refused.** Refused whole and loudly; indicators clear, the bar
   renders where the note still says, nothing half-slides.
+- **3b — the written dates take the note outside the Base's filter.** The write stands
+  and the bar leaves the view on the refresh, announced with an open path — the filter
+  speaking, not the write failing — and undo still takes it back across the boundary,
+  the epic's rule for every write ([[Moving between horizons]] states the same for the
+  horizon axis).
 
 ## Acceptance criteria
 

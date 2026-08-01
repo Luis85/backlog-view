@@ -34,11 +34,10 @@ it.
 
 **Main flow**
 
-1. The walk that computes rollups also gathers each subtree's date envelope — the
-   earliest and the latest of every date its results state, which is earliest start to
-   latest target when children carry both ends, and which cannot run backwards when
-   they carry one — results only, traversing through context rows without counting
-   them.
+1. The walk that computes rollups gathers each subtree's date evidence by kind — the
+   earliest known start and the latest known target among its results, starts only
+   ever standing for starts and targets only for targets — results only, traversing
+   through context rows without counting them.
 2. A dateless parent over dated descendants renders the gathered span, styled as
    inferred so a reader can tell a plan somebody made from a summary the view drew.
 3. A parent's supplied dates win endpoint by endpoint: a parent with both renders
@@ -62,17 +61,24 @@ it.
   drawn into the pixels rather than a number pretending to be complete.
 - **2b — no descendant carries a date.** The parent is unplaced like any other dateless
   item: the shelf, with its subtree beside it in the count.
+- **2c — the subtree supplies only one kind of date.** The end with no evidence of its
+  kind stays open, exactly as a single-dated bar's does: an all-target subtree infers
+  a finish and no beginning, never a closed span nobody stated.
+- **2d — the two kinds cross** (an earliest start after a latest target, from
+  single-ended children). Neither bounds the other: the bar covers the known dates
+  with both ends open — evidence bracketing activity without claiming to bound it —
+  never a reversed span, and never a date repurposed across kinds.
 - **3a — the parent's own dates disagree with its children.** Both render as stated — a
   child's bar may overflow its parent's — because resolving the disagreement silently
   would overwrite a decision with an inference. The visible conflict is the feature.
 
 ## Acceptance criteria
 
-- A dateless parent renders its results-only date envelope — the earliest to the
-  latest of every date the subtree states; earliest start to latest target with
-  both-ended children, and never a reversed span whatever mix of single-ended
-  children it holds — styled as inferred, faded where partly unknown, recomputed
-  each render, written nowhere.
+- A dateless parent renders its results-only inference by kind — earliest known start
+  to latest known target, an end without evidence of its kind staying open, and never
+  a reversed span or a date repurposed across kinds, whatever mix of single-ended
+  children it holds — styled as inferred, faded where partly unknown, recomputed each
+  render, written nowhere.
 - A parent's own dates always win endpoint by endpoint: a supplied end renders as
   stated even when children overflow it, an end left empty fills from the results-only
   subtree and carries the inferred styling alone, and an end neither supplies stays
