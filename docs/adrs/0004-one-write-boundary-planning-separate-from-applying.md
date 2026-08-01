@@ -11,9 +11,21 @@ area: architecture
 ## Context
 
 This plugin edits the user's notes as a side effect of dragging things. That is its whole
-pitch and its whole risk. Nine interactions produce writes — drop, four move commands,
-indent, outdent, state, tags, backfill, creation — and every one of them is a place a
-write-safety rule could be forgotten.
+pitch and its whole risk. The gestures that write are spread across four interaction
+modules, and every one of them is a place a write-safety rule could be forgotten:
+
+| Module | Gestures |
+| --- | --- |
+| `interactions/structure.ts` | drop · move up · move down · move to top · move to bottom · indent · outdent · backfill |
+| `interactions/menu.ts` | Set state · Set type · Clear parent link · Use folder position |
+| `interactions/tags.ts` | add tag · remove tag |
+| `interactions/create.ts` | new item — the one that creates rather than edits |
+
+Plus undo, which replays inverses of any of them.
+
+The list is greppable rather than remembered: every forward path above is a call to
+`applySafely`, so `grep -rn 'applySafely(' src/` is the inventory, and a new one that
+does not appear there is a write that skipped the gate.
 
 Write safety cannot be a property each caller remembers. It has to be a property of the
 place writes happen.

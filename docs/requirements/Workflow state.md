@@ -53,8 +53,10 @@ click instead of opening the note.
 
 ## Where it lives
 
-`src/view/render/columns.ts` (the chip) · `src/view/interactions/menu.ts`
-(`showStateMenu`) · `src/view/backlogView.ts` (`observedStates`, `stateMenuValues`) ·
+`src/domain/model.ts` (`collectObservedStates` — result-only vocabulary) ·
+`src/domain/settings.ts` (`stateMenuValues`: the configured list, else observed ∪ a done
+value) · `src/view/render/columns.ts` (the chip) ·
+`src/view/interactions/menu.ts` (`showStateMenu`, which composes those two) ·
 `src/storage/frontmatter.ts` (the write, dropped without a `stateKey`).
 Tests: `test/view/state.test.ts`, `test/view/menu.test.ts`,
 `test/view/contextRowWrites.test.ts`.
