@@ -230,6 +230,37 @@ function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta
 	return { add: added, remove: removed };
 }
 
+/**
+ * Every creation that may make a folder runs to completion — including its rollback —
+ * before the next one starts.
+ *
+ * `ensureFolder` decides what to create by looking at what is there, and
+ * `removeCreatedFolders` decides what to remove the same way. Two attempts interleaving
+ * between those two looks disagree about who owns a folder: the second sees it missing,
+ * loses the `createFolder` race, tolerates the collision and proceeds believing the
+ * folder is there — while recording nothing, because it created nothing. The first then
+ * fails, finds the folder empty (the second has not written its note yet) and takes it
+ * out from under it, so an otherwise-valid creation fails for having had its parent
+ * removed. Nothing upstream prevents that: `createFromPrompt` calls straight into here
+ * rather than through the view's write gate, so two modals, two views or a creation
+ * beside the scaffold command are all unserialized.
+ *
+ * Serializing removes the interleaving instead of coordinating across it — each attempt
+ * observes the vault, acts and unwinds before the next one looks, so "empty" means what
+ * the rollback needs it to mean. It is what the rest of this module already does
+ * (`applyWrites` is sequential for the same reason), and creations are user-initiated
+ * one at a time, so the queue is never a wait anybody sees.
+ */
+let creations: Promise<unknown> = Promise.resolve();
+
+export function serializeCreation<T>(attempt: () => Promise<T>): Promise<T> {
+	// Queued behind the previous attempt FINISHING, not succeeding — a failed creation
+	// must not stall every later one, and its rollback is part of what has to finish.
+	const next = creations.then(attempt, attempt);
+	creations = next.catch(() => undefined);
+	return next;
+}
+
 export interface NewItemSpec {
 	folder: string;
 	title: string;
@@ -239,7 +270,11 @@ export interface NewItemSpec {
 }
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
-export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
+export function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
+	return serializeCreation(() => createItem(app, settings, spec));
+}
+
+async function createItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
 	const trimmed = spec.folder.trim().replace(/^\/+|\/+$/g, '');
 	const folder = trimmed ? normalizePath(trimmed) : '';
 	const created = await ensureFolder(app, folder);

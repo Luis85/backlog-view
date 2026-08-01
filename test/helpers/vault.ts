@@ -85,6 +85,11 @@ export class FakeVault {
 			create: async (path: string, content: string) => {
 				if (this.failCreates.has(path)) throw new Error(`create failed: ${path}`);
 				if (this.files.has(path)) throw new Error(`File already exists: ${path}`);
+				// Obsidian refuses a note whose folder is not there, and the rollback of a
+				// failed creation is precisely a thing that can take a folder away — so a
+				// fake that created regardless would let that race pass unnoticed.
+				const parent = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '/';
+				if (!this.folders.has(parent)) throw new Error(`Folder does not exist: ${parent}`);
 				const file = new TFile(path);
 				this.files.set(path, file);
 				const fm = parseMockFrontmatter(content);

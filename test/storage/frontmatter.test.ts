@@ -210,6 +210,42 @@ describe('createBacklogItem', () => {
 		expect(vault.folders.has('Roadmap')).toBe(true);
 	});
 
+	it('does not take the folder out from under a creation running beside it', async () => {
+		const vault = new FakeVault();
+		vault.failCreates.add('Roadmap/First.md');
+
+		// Started together, which nothing upstream prevents: `createFromPrompt` calls
+		// straight into storage rather than through the view's write gate, so two modals,
+		// two views, or a creation beside the scaffold command all reach here at once.
+		const first = createBacklogItem(vault.app, settings, {
+			folder: 'Roadmap',
+			title: 'First',
+			typeName: 'Task',
+			parent: null,
+			order: 10,
+		});
+		const second = createBacklogItem(vault.app, settings, {
+			folder: 'Roadmap',
+			title: 'Second',
+			typeName: 'Task',
+			parent: null,
+			order: 20,
+		});
+
+		await expect(first).rejects.toThrow('create failed');
+		expect((await second).path).toBe('Roadmap/Second.md');
+		expect(vault.folders.has('Roadmap')).toBe(true);
+		// And each attempt answered for its own folder. Unserialized, the two interleave
+		// between the look that decides what to create and the look that decides what to
+		// remove: the second sees the folder already there, records nothing, and is left
+		// depending on a folder the first still believes is its own to unwind. Whichever
+		// way that lands is wrong — the second loses its parent mid-write, or the first
+		// silently keeps a folder it should have taken back because the second's note made
+		// it look occupied. Serialized, the first unwinds its own and the second makes its
+		// own, which is this one line.
+		expect(vault.trashed).toEqual(['Roadmap']);
+	});
+
 	it('falls back to Untitled for empty titles and supports the vault root', async () => {
 		const vault = new FakeVault();
 		const file = await createBacklogItem(vault.app, settings, {

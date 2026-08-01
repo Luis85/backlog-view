@@ -46,6 +46,17 @@ can be checked by reading one directory.
   for the ancestors, since a parent cannot be empty while the child that failed to go is
   still standing in it. Never a recursive delete, and it goes through
   `fileManager.trashFile` so the user's own trash setting decides where it lands.
+- **Creation is serialized** (`serializeCreation`), and that is what makes the ownership
+  above mean anything. `ensureFolder` decides what to create by looking at what is there
+  and the rollback decides what to remove the same way, so two attempts interleaving
+  between those two looks disagree about who owns a folder: the second sees it present,
+  records nothing, and depends on a folder the first still believes is its own to unwind.
+  Nothing upstream prevents that — `createFromPrompt` calls straight into here rather than
+  through the view's write gate, so two modals, two views, or a creation beside the
+  scaffold command are all unserialized. Both creators share the one queue, since they
+  share `ensureFolder`. Queued behind the previous attempt **finishing**, not succeeding:
+  a failed creation must not stall the next one, and its rollback is part of what has to
+  finish first.
 
 ## Collapse state
 

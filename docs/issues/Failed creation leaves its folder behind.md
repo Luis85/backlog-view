@@ -86,6 +86,28 @@ kept, and a folder that gained a file in between is kept along with everything a
 which is the same assertion twice, because a parent cannot be empty while the child that
 failed to go is still standing in it.
 
+### What the fix cost that the recipe did not mention
+
+Rolling back makes a creation's *ownership* of a folder load-bearing, and review of the
+change found the recipe silent on who else might be holding one. `ensureFolder` decides
+what to create by looking at what is there, and the rollback decides what to remove the
+same way; two attempts interleaving between those two looks disagree. The second sees the
+folder present, tolerates its `createFolder` collision, records nothing — and is left
+depending on a folder the first still believes is its own to unwind. Whichever way that
+lands is wrong: the second loses its parent mid-write, or the first silently keeps a
+folder it should have taken back because the second's note made it look occupied.
+
+Nothing upstream prevented it. `createFromPrompt` calls into storage directly rather than
+through the view's write gate, so two modals, two views, or a creation beside the scaffold
+command all arrive unserialized — the one write path that was not.
+
+Fixed by removing the interleaving rather than coordinating across it: creation now runs
+through a queue, so each attempt observes the vault, acts and unwinds before the next one
+looks. That is what `applyWrites` already does, for the same reason. Worth recording as a
+cost of this Issue rather than a separate one: **the residue was safe to leave precisely
+because leaving it needed no notion of ownership**, and taking it back is what created the
+question.
+
 **It was not the trigger this note named that fired.** No user report exists, and
 [[Backlog as folder notes]] is still unbuilt. What changed is the reading of this note's
 own reasoning: the case against was never a safety case. Point (a) called the bookkeeping
