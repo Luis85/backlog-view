@@ -49,12 +49,12 @@ Azure DevOps Boards.
 ## Setup
 
 The fast way: run the **Product Backlog: Create backlog** command. It asks for a folder
-(default `Backlog`), creates it together with a fully configured `Product Backlog.base`
+(default `docs`), creates it together with a fully configured `Product Backlog.base`
 inside, and opens the view — from empty vault to working backlog in one step.
 
 Manually, the equivalent is:
 
-1. Create a folder for your backlog, e.g. `Backlog/`.
+1. Create a folder for your backlog, e.g. `docs/`.
 2. Create a Base (e.g. `Product Backlog.base`) and add a filter such as
    `file.inFolder("Backlog")`.
 3. In the view switcher of the Base, add a new view and pick **Product Backlog**.
@@ -312,36 +312,41 @@ rule: drag a Bug wherever the work actually belongs.
 
 ### Where new items are filed
 
-Each type can have its own folder, so a Bug is filed with the bugs wherever in the tree
-it hangs. **Folders by type** in the view options takes `Type: folder` pairs and ships as:
+Everything the view creates lives under one **home folder** (`docs` by default), and each
+type gets a folder under it — so a Bug is filed with the bugs wherever in the tree it
+hangs. **Folders by type** takes `Type: folder` pairs and ships as:
 
 ```text
-Epic: docs/requirements, Feature: docs/requirements, PBI: docs/requirements,
-Task: docs/tasks, Issue: docs/issues, Bug: docs/bugs
+Epic: requirements, Feature: requirements, PBI: requirements,
+Task: tasks, Issue: issues, Bug: bugs
 ```
+
+With the default home folder that gives `docs/requirements`, `docs/tasks`, `docs/issues`
+and `docs/bugs`. **Moving a whole backlog is one setting**: point the home folder at
+`Roadmap` and every type follows. A type folder beginning with `/` opts out and is read
+from the vault root, so one type can live outside the home without abandoning it.
 
 The new-item modal names the folder before you commit, and the line follows the type
 picker — switch from PBI to Bug and it re-reads `docs/bugs`.
 
-**Point these at folders your Base's filter matches.** The view creates a note and then
-shows it only if the Base returns it, so with a base filtered to `Backlog/` and the
-defaults above, a new Epic lands in `docs/requirements` and is not in the tree
-afterwards. It is not lost — it is a note in your vault, with its `parent` link intact —
-but it is not where you were looking. Either point the folders inside your backlog, or
-clear the option to get the old behaviour back. The **Create backlog** command writes
-`typeFolders: ''` into the base it scaffolds for exactly this reason.
+**Keep the home folder inside what your Base returns.** The view creates a note and then
+shows it only if the Base's filter matches, so a base filtered to `Backlog/` with the home
+folder left at `docs` creates items you will not see afterwards. They are not lost — they
+are notes in your vault with their `parent` links intact — but they are not where you were
+looking. The **Create backlog** command sets the home folder to the folder it scaffolds,
+so a backlog made that way is consistent from the start.
 
 Full resolution order, first match wins:
 
 1. In **folder mode**, beside the parent's folder note — that mode makes folders the
    hierarchy, and a filing default should not quietly overrule it.
-2. The type's own folder, from this option.
-3. **Folder for new items**, if set.
+2. The type's own folder, under the home folder.
+3. **Folder for new items**, if set (a real vault path, not relative to the home).
 4. The folder most existing items live in.
 5. Otherwise the modal asks, and remembers the answer.
 
-A folder name containing a comma cannot be written here — the separator wins. Use
-**Folder for new items** for those.
+A folder name containing a comma cannot be written in the type mapping — the separator
+wins. Use **Folder for new items** for those.
 
 ### Filtered bases keep their tree
 
@@ -469,8 +474,9 @@ Open the view options in the Bases toolbar to configure:
 | Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
+| Home folder | `docs` | The folder everything the view creates lives under; **Folders by type** are relative to it |
 | Folder for new items | *(inferred)* | Where the view creates new notes when the type has no folder of its own; defaults to the folder most items live in |
-| Folders by type | `Epic: docs/requirements, Feature: docs/requirements, PBI: docs/requirements, Task: docs/tasks, Issue: docs/issues, Bug: docs/bugs` | `Type: folder` pairs. **Point these at folders your Base's filter matches**, or clear the option |
+| Folders by type | `Epic: requirements, Feature: requirements, PBI: requirements, Task: tasks, Issue: issues, Bug: bugs` | `Type: folder` pairs under the home folder. A leading `/` means the vault root instead |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |

@@ -92,9 +92,20 @@ export function allTypeChoices(settings: BacklogSettings): string[] {
  * Where a new item of this type is filed, or null when the type has no folder of its
  * own and the caller should fall through to its usual resolution. Type-first filing:
  * a Bug goes to the bug folder wherever in the tree it hangs.
+ *
+ * Resolved under `homeFolder`, so the whole backlog moves with one setting. A leading
+ * `/` is the way out for a type that belongs elsewhere — without it the home folder
+ * would be a cage rather than a default.
  */
 export function folderForType(typeName: string, settings: BacklogSettings): string | null {
-	return settings.typeFolders[typeName.toLowerCase()] || null;
+	const configured = settings.typeFolders[typeName.toLowerCase()];
+	// A folder is a non-empty STRING; anything else means unmapped. That type test is
+	// what makes this total for any record a caller hands over — a level named
+	// `constructor` or `toString` otherwise reads an inherited function off a plain
+	// object, and the creation flow would take it for a path and fail on `.trim()`.
+	if (typeof configured !== 'string' || !configured) return null;
+	if (configured.startsWith('/')) return configured.substring(1);
+	return settings.homeFolder ? `${settings.homeFolder}/${configured}` : configured;
 }
 
 /** The level name to show on an item's badge. */

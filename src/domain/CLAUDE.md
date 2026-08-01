@@ -77,18 +77,25 @@ in the root `CLAUDE.md` because it spans every layer.
   level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
   OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
   guided rather than refused.
-- `typeFolders` files new items by TYPE (`folderForType`), ahead of `newItemFolder` and
+- `homeFolder` is the parent of everything the view creates, and `typeFolders` are named
+  RELATIVE to it (`folderForType` joins them), so relocating a backlog is one setting
+  rather than one per type. A leading `/` in a type folder escapes to the vault root —
+  without it the home folder would be a cage rather than a default. `newItemFolder` is
+  NOT relative: it is a folder picker naming a real path, where the type mapping is free
+  text naming children of the home. Type folders rank ahead of `newItemFolder` and
   inference but behind folder mode's "beside the parent's folder note" rule — that mode
   makes folders the hierarchy, and a filing default must not quietly overrule an opt-in
-  structural mode. It ships non-empty (`docs/requirements`, `docs/tasks`, `docs/issues`,
-  `docs/bugs`), which has a consequence worth knowing before debugging it: with every
-  type mapped, inference and the folder prompt never run unless the option is cleared —
-  which is why several creation tests pass `typeFolders: ''` to reach those paths. The
-  same default is why `baseFileContent` writes `typeFolders: ''` into a scaffolded base:
-  it outranks the `newItemFolder` written beside it, so leaving it set would file the
-  first Bug outside the filter the command had just written for it. Because the folder
-  depends on the chosen type and the type is chosen INSIDE the modal, the prompt's detail
-  line is a function of the type, not a string.
+  structural mode. Two consequences to know before debugging them: with every type mapped
+  (the shipped default), inference and the folder prompt never run unless the option is
+  cleared, which is why several creation tests pass `typeFolders: ''` to reach those
+  paths; and because the folder depends on the chosen type, and the type is chosen INSIDE
+  the modal, the prompt's detail line is a function of the type rather than a string.
+  `baseFileContent` writes `homeFolder` alongside `newItemFolder` for the same reason the
+  latter was pre-wired: the type folders outrank it, so pointing home at the scaffolded
+  folder is what keeps the first Bug inside the filter the command just wrote.
+- Options whose default is a REAL value need `clearable` (or `clearablePropKey` for
+  property ids): `config.get` reports "never set" and "cleared" identically, so without
+  it the home folder, the extra types and the type folders could never be turned off.
 - Scope (`settings.hierarchyOnly`, on by default): a base filtered by folder returns
   every note living there, so `pruneOutsideHierarchy` drops the ones that are not work
   items — a note belongs when it has a *supported* type (matching a configured level) or

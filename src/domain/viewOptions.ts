@@ -2,6 +2,7 @@ import { BasesAllOptions, BasesPropertyId } from 'obsidian';
 import {
 	DEFAULT_DONE_VALUES,
 	DEFAULT_EXTRA_TYPES,
+	DEFAULT_HOME_FOLDER,
 	DEFAULT_LEVELS,
 	DEFAULT_TYPE_FOLDERS,
 	DEFAULT_PROP_COLUMN_WIDTH,
@@ -142,6 +143,13 @@ function newItemsGroup(): BasesAllOptions {
 		type: 'group',
 		displayName: 'New items',
 		items: [
+			{
+				type: 'folder',
+				key: 'homeFolder',
+				displayName: 'Home folder',
+				default: DEFAULT_HOME_FOLDER,
+				placeholder: DEFAULT_HOME_FOLDER,
+			},
 			{
 				type: 'folder',
 				key: 'newItemFolder',

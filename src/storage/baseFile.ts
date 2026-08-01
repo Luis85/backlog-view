@@ -8,7 +8,7 @@ import { ensureFolder } from './frontmatter';
  * without an exception to remember.
  */
 
-export const DEFAULT_BACKLOG_FOLDER = 'Backlog';
+export const DEFAULT_BACKLOG_FOLDER = 'docs';
 const BASE_FILE_NAME = 'Product Backlog';
 
 /**
@@ -31,12 +31,12 @@ export function baseFileContent(folder: string): string {
 		// Pre-wire the creation folder so the first "New Epic" cannot land
 		// outside the filter — the view reads this option via config.get.
 		`    newItemFolder: ${yamlQuote(folder)}`,
-		// And clear the per-type folders, which default to a docs/ layout this base
-		// knows nothing about: they take precedence over the line above, so leaving
-		// them set would file the first Bug outside the filter that was just written
-		// for it. A scaffolded backlog keeps everything in its own folder; anyone who
-		// wants type folders can set them, having a backlog to look at while they do.
-		"    typeFolders: ''",
+		// And point the home folder at the same place, so the per-type folders — which
+		// outrank the line above and are named relative to the home — resolve INSIDE
+		// the filter this command just wrote. Scaffolding into `Roadmap` therefore
+		// files bugs in `Roadmap/bugs`, not in some `docs/` tree the base knows
+		// nothing about.
+		`    homeFolder: ${yamlQuote(folder)}`,
 		'',
 	].join('\n');
 }

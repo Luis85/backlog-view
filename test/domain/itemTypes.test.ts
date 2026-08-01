@@ -181,7 +181,8 @@ describe('extra types and the hierarchy scope', () => {
 });
 
 describe('folders by type', () => {
-	it('files each shipped type in its own folder', () => {
+	it('files each shipped type in its own folder, under the home folder', () => {
+		expect(settings.homeFolder).toBe('docs');
 		expect(folderForType('Epic', settings)).toBe('docs/requirements');
 		expect(folderForType('Feature', settings)).toBe('docs/requirements');
 		expect(folderForType('PBI', settings)).toBe('docs/requirements');
@@ -197,9 +198,39 @@ describe('folders by type', () => {
 		expect(folderForType('Epic', { ...settings, typeFolders: {} })).toBeNull();
 	});
 
-	it('parses pairs, normalizes the folder and drops entries without one', () => {
-		const parsed = parseTypeFolders(' Epic : /docs/reqs/ , Bug: docs/bugs , Task: , : nope ');
-		expect(parsed).toEqual({ epic: 'docs/reqs', bug: 'docs/bugs' });
+	it('does not read a type name off Object.prototype', () => {
+		// A level or extra type named `constructor` finds a function on a plain record,
+		// which is truthy — the creation flow would take it for a path and fail on
+		// `.trim()`. Unmapped means unmapped, whatever the name.
+		for (const name of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) {
+			expect(folderForType(name, settings)).toBeNull();
+			expect(folderForType(name, { ...settings, typeFolders: {} })).toBeNull();
+		}
+		// And such a name can still be MAPPED, rather than silently doing nothing.
+		const mapped = resolveSettings(fakeConfig({ typeFolders: 'constructor: made-up, __proto__: weird' }));
+		expect(folderForType('constructor', mapped)).toBe('docs/made-up');
+		expect(folderForType('__proto__', mapped)).toBe('docs/weird');
+	});
+
+	it('parses pairs, trims trailing slashes and drops entries without a folder', () => {
+		const parsed = parseTypeFolders(' Epic : reqs/ , Bug: nested/bugs , Task: , : nope ');
+		expect(parsed).toEqual({ epic: 'reqs', bug: 'nested/bugs' });
+	});
+
+	it('moves the whole backlog with the home folder, and lets a type escape it', () => {
+		// One setting relocates every type...
+		const moved = resolveSettings(fakeConfig({ homeFolder: 'Roadmap' }));
+		expect(folderForType('Bug', moved)).toBe('Roadmap/bugs');
+		expect(folderForType('Epic', moved)).toBe('Roadmap/requirements');
+
+		// ...and a leading slash is the way out for a type that belongs elsewhere,
+		// so the home folder is a default rather than a cage.
+		const escaped = resolveSettings(fakeConfig({ homeFolder: 'Roadmap', typeFolders: 'Bug: /triage' }));
+		expect(folderForType('Bug', escaped)).toBe('triage');
+
+		// With no home folder the names stand on their own, at the vault root.
+		const rootless = resolveSettings(fakeConfig({ homeFolder: '' }));
+		expect(folderForType('Bug', rootless)).toBe('bugs');
 	});
 
 	it('treats a cleared mapping as off, not as unset', () => {
@@ -210,13 +241,15 @@ describe('folders by type', () => {
 
 	it('defaults to the shipped mapping when never set', () => {
 		expect(resolveSettings(fakeConfig()).typeFolders).toEqual(defaultSettings().typeFolders);
-		expect(resolveSettings(fakeConfig()).typeFolders['bug']).toBe('docs/bugs');
+		// Stored relative; the home folder is applied when it is resolved.
+		expect(resolveSettings(fakeConfig()).typeFolders['bug']).toBe('bugs');
+		expect(folderForType('Bug', resolveSettings(fakeConfig()))).toBe('docs/bugs');
 	});
 
 	it('honours a reconfigured mapping', () => {
 		const resolved = resolveSettings(fakeConfig({ typeFolders: 'Bug: triage, Epic: plan' }));
-		expect(folderForType('Bug', resolved)).toBe('triage');
-		expect(folderForType('Epic', resolved)).toBe('plan');
+		expect(folderForType('Bug', resolved)).toBe('docs/triage');
+		expect(folderForType('Epic', resolved)).toBe('docs/plan');
 		// Types left out of the mapping fall through, whatever the default said.
 		expect(folderForType('Task', resolved)).toBeNull();
 	});

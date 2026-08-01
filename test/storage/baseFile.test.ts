@@ -21,10 +21,10 @@ describe('baseFileContent', () => {
 		expect(content).toContain('type: product-backlog');
 		// The creation folder is pre-wired so the first item lands inside the filter
 		expect(content).toContain('newItemFolder: "Backlog"');
-		// The per-type folders default to a docs/ layout this base knows nothing about,
-		// and they outrank the line above — left set, the first Bug would be filed
-		// outside the filter that was just written for it.
-		expect(content).toContain("typeFolders: ''");
+		// The type folders outrank the line above and are relative to the home folder,
+		// so pointing home at the scaffolded folder is what keeps the first Bug inside
+		// the filter this command just wrote.
+		expect(content).toContain('homeFolder: "Backlog"');
 	});
 
 	it('quotes the filter as a YAML scalar so hash folder names survive', () => {
@@ -50,12 +50,21 @@ describe('createBacklogBase', () => {
 		expect(vault.contents.get(file.path)).toContain('- "file.inFolder(\\"Backlog\\")"');
 	});
 
-	it('defaults an empty folder input to Backlog and dedupes the file name', async () => {
+	it('defaults an empty folder input to the home folder and dedupes the file name', async () => {
 		const vault = new FakeVault();
 		const first = await createBacklogBase(vault.app, '');
 		const second = await createBacklogBase(vault.app, '');
 
-		expect(first.path).toBe('Backlog/Product Backlog.base');
-		expect(second.path).toBe('Backlog/Product Backlog 1.base');
+		expect(first.path).toBe('docs/Product Backlog.base');
+		expect(second.path).toBe('docs/Product Backlog 1.base');
+	});
+
+	it('files a scaffolded backlog inside its own filter, wherever it is scaffolded', () => {
+		// The home folder follows the folder the user picked, so the per-type folders —
+		// relative to home, and outranking newItemFolder — cannot land outside the
+		// filter written in the same breath.
+		const content = baseFileContent('Roadmap');
+		expect(content).toContain('- "file.inFolder(\\"Roadmap\\")"');
+		expect(content).toContain('homeFolder: "Roadmap"');
 	});
 });
