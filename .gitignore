@@ -2,6 +2,9 @@
 main.js
 *.js.map
 
+# the test vault `npm run test-build` writes into this repository
+.obsidian/
+
 # dependencies
 node_modules/
 

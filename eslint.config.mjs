@@ -99,7 +99,14 @@ const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selec
 
 export default defineConfig([
 	{
-		ignores: ['main.js', 'node_modules/**', 'esbuild.config.mjs', 'version-bump.mjs', 'vitest.config.ts'],
+		ignores: [
+			'main.js',
+			'node_modules/**',
+			'esbuild.config.mjs',
+			'test-build.mjs',
+			'version-bump.mjs',
+			'vitest.config.ts',
+		],
 	},
 	...pluginRules,
 	forbidden(

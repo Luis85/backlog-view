@@ -18,6 +18,12 @@ framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
 test harness below is the substitute; say so honestly when a change still needs a
 live-vault smoke test.
 
+`npm run test-build` is the handover for exactly those cases: it bundles into
+`.obsidian/plugins/<id>/` in the repository root (gitignored), so the human can open
+this repository as a vault and look. Name it when a change needs eyes — it is a shorter
+ask than "please set up a vault", and `docs/issues/` is already a backlog to point a
+Base at.
+
 ## Architecture (one file per concern, 400-line max enforced by lint)
 
 Four layers, outermost first. **Each may reach anything below it and nothing above** —
