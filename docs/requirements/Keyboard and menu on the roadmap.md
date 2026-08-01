@@ -68,8 +68,11 @@ rather than deferred behind it.
 - **2a — the item is a context row.** Nothing lifts — Enter still opens it, as
   everywhere — and the menu withholds every write action, offering navigation alone:
   the rule the board's menu already keeps for excluded items.
-- **2b — the item is on the shelf.** The lift carries it onto the axis: the drop writes
-  the same schedule-or-horizon batch the shelf drag writes, so triage needs no pointer.
+- **2b — the item is on the shelf.** The lift carries it onto the axis — entering the
+  timeline at today's cell, the anchor the menu default already uses, or the horizon
+  axis at its first bucket — and arrows move from there. The drop writes the same
+  schedule-or-horizon batch the shelf drag writes, so triage needs no pointer and
+  starts where the reader is oriented.
 - **3a — the commit is refused.** Loud, nothing written, selection stays where the user
   left it — the failure is announced where the keyboard user is, not on a pointer they
   are not holding.
@@ -78,6 +81,11 @@ rather than deferred behind it.
   horizon always shelves, because buckets read the note's own frontmatter alone and
   nothing rolls a horizon up, while unscheduling shelves only a wholly dateless
   subtree, an inferred span standing otherwise. Un-placing needs no pointer either.
+- **4b — an axis is not configured.** Its actions are absent, not inert: schedule and
+  unschedule appear only while a date property is configured, set and clear horizon
+  only while a horizon property is — the state chip's own render-only-when-configured
+  rule, applied per axis. With one date property configured, schedule's entry offers
+  the one end there is.
 
 ## Acceptance criteria
 
@@ -94,7 +102,8 @@ rather than deferred behind it.
   lane under the drag's own cycle rules, each writing the batch shape the gestures
   write — one dimension and one small undoable batch each, the combined
   lane-plus-axis move's non-pointer path being the lift; on context rows it offers
-  no write action.
+  no write action, and each action appears only while its axis property is
+  configured — never inert, never writing an unconfigured key.
 - No write on the roadmap is reachable only by pointer.
 - A refused commit is announced at the selection, which does not move.
 

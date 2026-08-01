@@ -32,7 +32,7 @@ the keys rather than blanking them.
 | **Actor** | Backlog owner |
 | **Trigger** | Dropping a shelf item onto the timeline grid, or a bar onto the shelf |
 | **Preconditions** | Roadmap mode is on with the timeline axis |
-| **Guarantee** | The drop writes only the configured date properties of the dropped note — one batch, one undo — and a drop nowhere meaningful writes nothing. |
+| **Guarantee** | What a drop writes is exactly what its target means: the configured date properties, within the item's own lane — plus the reparent, in the same one batch, when the drop lands in another lane — one undo either way, and a drop nowhere meaningful writes nothing. |
 
 **Main flow**
 
@@ -63,6 +63,9 @@ the keys rather than blanking them.
   placement at the cell, rendered as the open-ended bar a single date makes
   ([[Bars from two dates]]). Nothing is ever written to an unconfigured key — the state
   write's rule, which the date writes join.
+- **2d — lanes are on and the drop lands in another lane's row.** The reparent rides the
+  same batch as the dates — the combined write [[Lanes on the roadmap]] specifies — one
+  gate, one undo, and one notice if the destination leaves the filter.
 - **4a — the note carries transition stamps.** Untouched. Plan and record are different
   keys, deliberately: unscheduling a note does not unhappen its history, and no
   scheduling write may ever reach the stamped keys.
@@ -75,7 +78,8 @@ the keys rather than blanking them.
 - Shelf to grid writes exactly the configured date properties — both, spanning the
   drop cell at the current zoom, or the single one configured as a point placement —
   one batch, one undo; the highlight states the dates before the drop commits them,
-  and nothing is ever written to an unconfigured key.
+  and nothing is ever written to an unconfigured key. A drop into another lane's row
+  carries the reparent in the same batch ([[Lanes on the roadmap]]).
 - Grid to shelf removes the configured date keys — never blanks them — and undo
   restores them. Where the item renders next follows the placement rules — the shelf
   only when its whole subtree is dateless, an inferred bar otherwise — and the drop
