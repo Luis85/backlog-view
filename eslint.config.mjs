@@ -72,6 +72,16 @@ const RENDERED_ROOTS = {
 };
 
 /**
+ * `depth` is VISUAL — focus mode re-roots it — so a level derived from it is a level
+ * derived from where a row happens to be drawn. Scoped to the files that decide types:
+ * `rows.ts` reads depth for `aria-level`, where visual depth IS the answer.
+ */
+const VISUAL_DEPTH = {
+	selector: "MemberExpression[property.name='depth']",
+	message: 'Level math chains down the parent levels (nextLevelIndex / childLevelIndex). depth is visual and focus mode re-roots it.',
+};
+
+/**
  * Flat config sets a rule wholesale per file: a narrower block REPLACES the wider one's
  * options rather than adding to them, so two blocks matching the same file would leave
  * it with only the later one's selectors — silently dropping the rest.
@@ -125,9 +135,10 @@ export default defineConfig([
 		rules: syntaxRules([...WRITE_BOUNDARY]),
 	},
 	{
-		// Ranking code: what it writes is an order among real siblings.
+		// Ranking code: what it writes is an order among real siblings, and a type is
+		// the rung its parent chain puts it on — never the depth it is drawn at.
 		files: RANKING,
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS]),
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH]),
 	},
 	{
 		files: ['src/**/*.ts'],

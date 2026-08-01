@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 90
-status: Open
+status: Done
 priority: P3
 area: refactor
+closed: 2026-08-01
 created: 2026-07-31
 source: PR #14 maintainability review
 files:
@@ -51,3 +52,27 @@ it. `settings.ts` keeps `BacklogSettings`, `defaultSettings`, `resolveSettings`,
 Low, with one sharp edge: the keys in the schema (`inferFolderHierarchy`,
 `autoAssignType`, `showProperties`, …) are read back by `resolveSettings` and are user
 data. Diff them explicitly rather than trusting the move.
+
+---
+
+## Outcome
+
+Done. `src/domain/viewOptions.ts` holds `getViewOptions`, the four group builders and
+`notePropsOnly`; `settings.ts` keeps the type, the defaults, `resolveSettings`,
+`stateMenuValues` and `configProblems`, and went 392 lines to 229. `main.ts` takes
+`getViewOptions` from the new module.
+
+The dependency runs schema → settings, not the reverse: `DEFAULT_DONE_VALUES`,
+`DEFAULT_PROP_COLUMN_WIDTH` and the two width bounds are now exported from `settings.ts`
+and imported by the schema. The bounds matter twice — the slider offers that range and
+`resolveSettings` clamps to it — so they stay single-valued rather than being restated
+beside the slider.
+
+The sharp edge was handled as the issue asked, mechanically rather than by eye: the 17
+option keys were extracted from the file before the move and compared to the 17 extracted
+after. Byte-identical, same order.
+
+`test/domain/settings.test.ts` split along the same seam into `viewOptions.test.ts`. The
+two one-line "declares the new progress/display option keys" cases became a single test
+asserting all four keys, so the file is 22 tests rather than 23 with no assertion lost —
+the only deliberate change to the tests.

@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	configProblems,
-	DEFAULT_LEVELS,
-	defaultSettings,
-	getViewOptions,
-	resolveSettings,
-	stateMenuValues,
-} from '../../src/domain/settings';
+import { configProblems, DEFAULT_LEVELS, defaultSettings, resolveSettings, stateMenuValues } from '../../src/domain/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -72,44 +65,6 @@ describe('resolveSettings', () => {
 	});
 });
 
-describe('getViewOptions', () => {
-	it('declares every config key the view reads', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
-		const keys = flat.map((o) => o.key);
-		expect(keys).toEqual(
-			expect.arrayContaining([
-				'parentProperty',
-				'orderProperty',
-				'typeProperty',
-				'levels',
-				'hierarchyOnly',
-				'inferFolderHierarchy',
-				'autoAssignType',
-				'stateProperty',
-				'doneValues',
-				'newItemFolder',
-				'showProperties',
-				'showCounts',
-			]),
-		);
-	});
-
-	it('leaves the focus level to the view toolbar', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
-		expect(flat.some((o) => o.key === 'focusLevel')).toBe(false);
-	});
-
-	it('limits the property pickers to note properties', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
-		const parent = flat.find((o) => o.key === 'parentProperty') as {
-			filter: (prop: string) => boolean;
-		};
-		expect(parent.filter('note.parent')).toBe(true);
-		expect(parent.filter('file.name')).toBe(false);
-		expect(parent.filter('formula.x')).toBe(false);
-	});
-});
-
 describe('resolveSettings progress options', () => {
 	it('parses done values and falls back to the defaults', () => {
 		const custom = resolveSettings(fakeConfig({ stateProperty: 'note.status', doneValues: 'Shipped, Won’t do' }));
@@ -130,11 +85,6 @@ describe('resolveSettings progress options', () => {
 	it('reads the completed-items toggle, defaulting to shown', () => {
 		expect(resolveSettings(fakeConfig()).showCompleted).toBe(true);
 		expect(resolveSettings(fakeConfig({ showCompleted: false })).showCompleted).toBe(false);
-	});
-
-	it('declares the new progress option keys', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
-		expect(flat.map((o) => o.key)).toEqual(expect.arrayContaining(['stateValues', 'showCompleted']));
 	});
 });
 
@@ -179,11 +129,6 @@ describe('resolveSettings display options', () => {
 		expect(width(9999)).toBe(280);
 		expect(width('160')).toBe(160);
 		expect(width('wide')).toBe(defaultSettings().propColumnWidth);
-	});
-
-	it('declares the new display option keys', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
-		expect(flat.map((o) => o.key)).toEqual(expect.arrayContaining(['tagsProperty', 'propertyColumnWidth']));
 	});
 });
 

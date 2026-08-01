@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 40
-status: Open
+status: Done
 priority: P2
 area: correctness
+closed: 2026-08-01
 created: 2026-07-31
 source: PR #14 maintainability review
 files:
@@ -58,3 +59,45 @@ So this needs:
 - A test covers a subtree deeper than the configured ladder, either way.
 - Once true everywhere, add a `no-restricted-syntax` rule banning `.depth` arithmetic
   outside `domain/model.ts` — see [enforce-and-colocate-invariants](enforce-and-colocate-invariants.md).
+
+---
+
+## Outcome
+
+Done, and the product question the plan reserved turned out not to exist.
+
+The swap the plan warned against — `child.effectiveLevelIndex - dragged.effectiveLevelIndex`
+— really is not equivalent, and it is also not the right shape. The cascade is planning
+types for a subtree *that has not been written yet*, so the levels to descend by are the
+new ones, not the stale ones. It now carries the parent's **new** level down the walk:
+
+```ts
+const walk = (node, nodeLevel) => {
+  const childLevel = nextLevelIndex(nodeLevel, settings.levels);
+  ...
+  walk(child, childLevel);
+};
+walk(dragged, newBaseIdx);
+```
+
+That is the same chain `computeLevel` runs once the writes land, so the plan and the
+model it produces cannot disagree — and it is *provably* what the depth arithmetic
+computed, since `min(min(x + 1, L) + 1, L) = min(x + 2, L)`. Chaining clamps at every
+rung; the old form clamped once at the end; the results are identical. So there was no
+behaviour change to decide about, and the 131 domain tests passed untouched.
+
+The clamp is now stated once, in `nextLevelIndex` — `childLevelIndex` is that rule
+applied to an item, and the cascade is the same rule applied to a level still being
+planned. Three tests were added anyway, because the equivalence is an argument and the
+tests are evidence: a five-deep subtree against the four-level ladder (the case the plan
+asked for, where the two deepest notes are already `Task` and are not written at all), a
+`Task` nested straight under an `Epic` (tree distance 1, declared distance 3 — retyped by
+the rung it occupies), and a custom `Bugfix` that keeps its type while still consuming a
+rung for its children.
+
+**The lint rule is live.** `VISUAL_DEPTH` bans `.depth` in the two ranking files, and was
+verified the way this repo verifies such rules — plant the violation, watch lint reject
+it (2 errors), restore, clean. It is scoped rather than global because `rows.ts` reads
+`depth` for `aria-level`, where visual depth is exactly the right answer. This closes the
+last item deferred by
+[enforce-and-colocate-invariants](enforce-and-colocate-invariants.md).

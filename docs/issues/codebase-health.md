@@ -18,6 +18,13 @@ Nothing here is a user-facing bug in shipped behaviour. Two items (`verify-base-
 `smoke-test-the-visual-changes`) are verification tasks that gate confidence in code
 already merged; the rest are structure, coverage and documented limitations.
 
+As of 2026-08-01 the tractable work is done: the test suite is split and budgeted, the
+drag-and-drop coverage gap is closed, the invariants that could become checks have,
+levels no longer derive from depth, both refactor seams are cut — and undo, the one gap
+the review found that was a missing *feature* rather than debt, is in. What remains is
+the two live-vault verifications, one refactor that wants its own pull request, and
+three recorded decisions.
+
 ## Reading this as a backlog
 
 These notes carry the plugin's own frontmatter vocabulary, so the plugin can display
