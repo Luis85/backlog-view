@@ -1,5 +1,5 @@
 import { Plugin } from 'obsidian';
-import { promptCreateBacklogBase } from './commands/scaffold';
+import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { rekeyBase } from './storage/collapseStore';
 import { getViewOptions } from './domain/viewOptions';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
@@ -20,7 +20,7 @@ export default class ProductBacklogPlugin extends Plugin {
 		// rekeyBase already ignores a rename that no entry sits under.
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => rekeyBase(this.app, oldPath, file.path)));
 		this.addCommand({
-			id: 'create-backlog',
+			id: CREATE_BACKLOG_COMMAND_ID,
 			// Obsidian prefixes command names with the plugin name in the palette.
 			name: 'Create backlog',
 			callback: () => promptCreateBacklogBase(this.app),

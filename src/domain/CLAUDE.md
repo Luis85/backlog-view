@@ -71,7 +71,7 @@ in the root `CLAUDE.md` because it spans every layer.
 - **Extra types** (`EXTRA_TYPES`, `Issue` and `Bug`) are declared types that are
   NOT rungs — `itemTypes.ts` owns them. The ladder cannot express "a Bug holds Tasks
   wherever it hangs", because every ladder rule is "one rung below the parent", so an
-  extra type's rank is a property of the TYPE: `extraTypeRank` (the rung whose children
+  extra type's rank is a property of the TYPE: `EXTRA_TYPE_RANK` (the rung whose children
   are the deepest level), pinned, never inherited. Everything else follows from that plus
   `levelIndex === -1`: its children imply the deepest level under an Epic as under a PBI,
   the cascade already leaves it alone, and `computeTypeChanges` must not retype the
@@ -107,7 +107,7 @@ in the root `CLAUDE.md` because it spans every layer.
   it the home folder, the extra types and the type folders could never be turned off.
 - Scope (`settings.hierarchyOnly`, on by default): a base filtered by folder returns
   every note living there, so `pruneOutsideHierarchy` drops the ones that are not work
-  items — a note belongs when it has a *supported* type (matching a configured level) or
+  items — a note belongs when it has a *supported* type (matching a level or an extra type) or
   a parent (explicit, empty-marker, folder-inferred, or unresolvable). "Supported" means
   every DECLARED type — `allTypeChoices`, levels AND extra types — because an extra type
   is a work item by the same argument a level is; reading only the ladder dropped a

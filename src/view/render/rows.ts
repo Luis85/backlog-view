@@ -4,8 +4,8 @@ import { promptCreateItem } from '../interactions/create';
 import { showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { BacklogItem } from '../../domain/model';
-import { childTypeChoices, displayType, isExtraType } from '../../domain/itemTypes';
-import { byTypeName, EXTRA_TYPES, LEVELS } from '../../domain/settings';
+import { childTypeChoices, displayType } from '../../domain/itemTypes';
+import { byTypeName } from '../../domain/settings';
 import {
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
@@ -15,21 +15,19 @@ import {
 	STATE_COL_WIDTH,
 } from './columns';
 
-const BADGE_COLOR_COUNT = 8;
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
 /**
- * Icon and badge colour for the extra types this plugin ships, keyed lowercase. Only the
- * shipped names get an opinion — the same rule their folders follow — because an icon for
- * a type someone invented cannot be guessed. Anything else falls back to a neutral icon
- * and the colour rotation, which is still distinct from every level.
+ * Icon and badge colour per extra type, keyed lowercase. The vocabulary is fixed, so this
+ * covers ALL of it — there is no fallback for a declared type, because there is no declared
+ * type this file has not been told about. A test renders one of each and asserts every
+ * badge got an icon and a colour the stylesheet defines, which is what makes that safe to
+ * rely on rather than something to remember.
  */
 const EXTRA_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
 };
-/** For an extra type this plugin did not name: a mark, without claiming to know what it means. */
-const EXTRA_TYPE_ICON = 'circle-dot';
 
 /** Render the tree content (or the empty state) into the tree element. */
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
@@ -224,23 +222,22 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	const badgeText = displayType(item);
 	if (!badgeText) return;
 	const badge = row.createSpan({ cls: 'pbl-badge' });
-	// A declared extra type is a first-class type, so it gets a badge like a level's
-	// rather than the bare-text treatment reserved for a type this view knows nothing
-	// about — its own icon and colour where this plugin named it, and a slot past the
-	// end of the ladder where it did not, so it always reads as beside the levels.
-	const extra = isExtraType(item.typeName);
-	const style = extra ? byTypeName(EXTRA_TYPE_STYLE, badgeText) : undefined;
-	const extraIdx = extra ? EXTRA_TYPES.findIndex((t) => t.toLowerCase() === badgeText.toLowerCase()) : -1;
-	if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
+	// A declared extra type is a first-class type, so it gets a badge like a level's: its
+	// own icon and colour, decided here in one place rather than by two chains that have
+	// to agree. Anything outside the six keeps its name and takes the bare-text treatment,
+	// which is the honest look for a type this view knows nothing about — it is carried
+	// through the ladder, not styled as though it were understood.
+	const style = byTypeName(EXTRA_TYPE_STYLE, item.typeName);
+	if (item.levelIndex >= 0) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
-	} else if (extra) {
-		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style?.icon ?? EXTRA_TYPE_ICON);
+		badge.addClass(`pbl-lvl-${item.levelIndex}`);
+	} else if (style) {
+		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
+		badge.addClass(style.badge);
+	} else {
+		badge.addClass('pbl-lvl-unknown');
 	}
 	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-	if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
-	else if (style) badge.addClass(style.badge);
-	else if (extraIdx >= 0) badge.addClass(`pbl-lvl-${(LEVELS.length + extraIdx) % BADGE_COLOR_COUNT}`);
-	else badge.addClass('pbl-lvl-unknown');
 	const implied = item.impliedType
 		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'
 		: '';

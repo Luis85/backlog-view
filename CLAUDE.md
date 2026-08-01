@@ -7,16 +7,19 @@ work-item tree (Epic → Feature → PBI → Task) over notes in a flat folder, 
 ## Definition of done
 
 ```bash
-npm run check   # build + lint + coverage-thresholded tests + fallow static analysis
+npm run check   # build + lint + coverage-thresholded tests + fallow + docs register
 ```
 
-All four must pass before committing; CI runs the same steps. Coverage thresholds
+All five must pass before committing; CI runs the same steps. Coverage thresholds
 (vitest.config.ts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
 duplication, complexity/CRAP (fed by the vitest coverage file) and dependency hygiene —
 framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
-`usedClassMembers`, not suppressed inline. Obsidian itself cannot run here — the jsdom
-test harness below is the substitute; say so honestly when a change still needs a
-live-vault smoke test.
+`usedClassMembers`, not suppressed inline. `docs-check.mjs` gates `docs/` the same way:
+the register's hierarchy and sibling orders, every wikilink, every source path a current
+note names, the use-case shape, the ADR frontmatter — and the check that finds *missing*
+notes, since every module and test file must be named by at least one. Obsidian itself
+cannot run here — the jsdom test harness below is the substitute; say so honestly when a
+change still needs a live-vault smoke test.
 
 `npm run test-build` is the handover for exactly those cases: it bundles into
 `.obsidian/plugins/<id>/` in the repository root (gitignored), so the human can open
