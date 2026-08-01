@@ -60,9 +60,14 @@ describe('the gate accepts valid documents', () => {
 	});
 
 	it('accepts an angle-bracket destination carrying an anchor', async () => {
+		// The anchor goes INSIDE the brackets. A bracketed destination ends at `>`, so
+		// `](<A slice.md>#outcome)` is not this link with an anchor — it is a malformed
+		// link whose trailing junk the gate happens to skip, and asserting on it protects
+		// nothing. Written the legal way, the fixture exercises the path that splits the
+		// anchor off before resolving.
 		const files = baseRegister();
 		files['docs/requirements/Doing the thing.md'] = useCase({
-			whereItLives: '`src/thing.ts`, `test/thing.test.ts`, and [the slice](<A slice.md>#outcome).',
+			whereItLives: '`src/thing.ts`, `test/thing.test.ts`, and [the slice](<A slice.md#outcome>).',
 		});
 
 		await expectAccepted(files);
