@@ -37,7 +37,9 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 1. Dragging the body slides the bar by whole-cell steps, previewed live: the start
    takes the calendar step and the target follows at the bar's own day count, so a
    slide never changes duration.
-2. Dragging an end moves that date alone, previewed live.
+2. Dragging an end moves that date alone, previewed live, landing on the anchor its
+   kind means in the cell it is dropped in — a start takes the cell's first day, a
+   target its last, the shelf drop's own rule ([[Drag from the shelf to schedule]]).
 3. Release writes what the preview showed, one batch through the gate.
 4. Undo restores both prior values together.
 
@@ -92,8 +94,10 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 - Body drags slide the bar by whole-cell steps — the start takes the calendar step,
   clamped at month end rather than overflowing, and the target follows at the bar's
-  own day count, so a slide never changes duration; end drags move one date;
-  everything snaps to the zoom's grid, and release writes exactly the preview. Deltas
+  own day count, so a slide never changes duration; end drags move one date, landing
+  on the anchor its kind means — the cell's first day for a start, its last for a
+  target, the shelf drop's rule; everything snaps to the zoom's grid, and release
+  writes exactly the preview. Deltas
   preserve the value's own precision: a datetime keeps its time of day and its shape
   on disk.
 - Within its lane, a bar gesture is a single-note write: no sibling renumbering, no
