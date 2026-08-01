@@ -460,6 +460,32 @@ is not a style to apply uniformly — it is whichever the rule is actually about
 them. Both directions are planted: a bare `parent:` is caught, and a bare `superseded-by:`
 is still caught.
 
+## A parser that gave up quietly, and two rules that stopped short
+
+| Planted | Reported |
+| --- | --- |
+| `**Extensions**` with one newline, holding a `- **3 — ` label | `extension is not labelled \`**Na — \`` — the label, not the skip |
+| ADR 0013 set to `Proposed` while 0012 stays `Superseded` | `supersedes 12 while still Proposed — nothing would be in force` |
+| A nested `requirements/board/` note naming a missing module | `names src/view/render/board.ts, which does not exist` |
+
+The extensions block was matched with a literal `\n\n`, so a section with one blank line
+parsed as nothing and `continue` skipped **the entire extension contract** — every rule
+three rounds were spent building — on a note that still had the heading three lines above
+it. Tolerant of the blank line and loud when it cannot read the block now, plus an error
+for a block with no bullets, since that is where the next silent skip would have gone.
+
+Supersession had been checked from both directions and in both records, and still stopped
+one step short: nothing said the **successor** had to be a decision anybody had made. A
+`Proposed` record superseding an `Accepted` one retires the predecessor and puts nothing in
+its place. `Superseded` remains fine there — a record that replaced one and was later
+replaced itself is an ordinary link in a longer chain.
+
+And "living folders" was `path.basename(path.dirname(file))`, which is the *immediate*
+parent — so `requirements/board/Foo.md` read as folder `board` and its stale source paths
+would have been listed rather than failed. `walk` deliberately recurses; the rule that
+consumes it did not. Nothing is nested today, which is exactly why it would have been
+found the hard way.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.

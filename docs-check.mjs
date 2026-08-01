@@ -54,7 +54,9 @@ const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "tes
  * exist. The others (`tasks/`, `issues/`, `bugs/`) are records of a moment and may name
  * a file that has since been split or removed — rewriting them would falsify the record.
  */
-const LIVING = new Set(["requirements", "adrs"]);
+const LIVING = [path.join(DOCS, "requirements"), path.join(DOCS, "adrs")];
+/** Anywhere beneath one of them: `walk` finds nested notes, so the rule has to reach them. */
+const isLiving = (file) => LIVING.some((dir) => file.startsWith(dir + path.sep));
 /** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
 const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 
@@ -224,7 +226,7 @@ for (const file of files) {
 	for (const [, target] of withoutCode(text).matchAll(/\[\[([^\]|#]+)/g)) {
 		if (!stems.has(target.trim())) fail(file, `unresolved wikilink [[${target.trim()}]]`);
 	}
-	const living = LIVING.has(path.basename(path.dirname(file)));
+	const living = isLiving(file);
 	for (const [, referenced] of text.matchAll(/`((?:src|test)\/[\w./-]+\.ts)`/g)) {
 		if (await exists(referenced)) continue;
 		if (living) fail(file, `names ${referenced}, which does not exist`);
@@ -273,13 +275,24 @@ for (const [, note] of notes) {
 	// bullet is labelled (a mistyped `**3 —` would otherwise drop out silently and leave
 	// the rest looking well ordered), the labels are ordered, and each names a step the
 	// **Main flow** actually has — a `**99a —` departs from nowhere.
-	const block = /\*\*Extensions\*\*\n\n([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
-	if (!block) continue;
-	const flow = /\*\*Main flow\*\*\n\n([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
+	//
+	// The block is tolerant of the blank line and **loud when it cannot be read**. Requiring
+	// exactly `\n\n` meant a section with one newline parsed as nothing and `continue`
+	// skipped every rule below — the whole extension contract, silently, on a note that
+	// still had an `**Extensions**` heading three lines up. A parser that gives up quietly
+	// is the same failure as a filter standing in for a check.
+	const block = /\*\*Extensions\*\*\n+([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
+	if (!block) {
+		fail(note.file, "**Extensions** block could not be parsed");
+		continue;
+	}
+	const bullets = [...block[1].matchAll(/^- .*/gm)];
+	if (bullets.length === 0) fail(note.file, "**Extensions** has no bullets");
+	const flow = /\*\*Main flow\*\*\n+([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
 	const steps = new Set([...(flow?.[1] ?? "").matchAll(/^(\d+)\. /gm)].map(([, n]) => Number(n)));
 	if (steps.size === 0) fail(note.file, "main flow has no numbered steps");
 	const labels = [];
-	for (const [bullet] of block[1].matchAll(/^- .*/gm)) {
+	for (const [bullet] of bullets) {
 		const label = /^- \*\*(\d+)([a-z]) — /.exec(bullet);
 		if (!label) {
 			fail(note.file, `extension is not labelled \`**Na — \`: ${bullet.slice(0, 60)}`);
@@ -407,6 +420,14 @@ for (const link of chains) {
 	// one record instead of two: the record reads as current and is not.
 	if (link.supersededBy !== null && link.status !== "Superseded") {
 		fail(link.file, `names superseded-by but its status is "${link.status}", not Superseded`);
+	}
+	// And the mirror of that, on the successor's side. `Proposed` means "written down, not
+	// yet acted on", so it is the one status that cannot retire another record: a Proposed
+	// successor leaves the predecessor marked Superseded with nothing in force in its place.
+	// Superseded is fine here — a record that replaced one and was later replaced itself is
+	// an ordinary link in a longer chain, not a decision nobody made.
+	if (link.supersedes !== null && link.status === "Proposed") {
+		fail(link.file, `supersedes ${link.supersedes} while still Proposed — nothing would be in force`);
 	}
 }
 // Code stripped: the index's job is to *link* every record, and a filename quoted inside
