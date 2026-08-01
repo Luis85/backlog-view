@@ -473,10 +473,15 @@ npm run check          # everything in one shot — the pre-commit gate
 
 `npm run test-build` bundles the plugin into `.obsidian/plugins/product-backlog-view/`
 **inside this repository**, so the repository root can be opened as an Obsidian vault
-with the plugin already installed and enabled — no second checkout, no symlink, no
-copying three files by hand after every edit. The bundle is unminified with an inline
-sourcemap, so a stack trace in the developer console points back at the TypeScript. The
-vault folder is gitignored.
+with the plugin already installed and listed as enabled — no second checkout, no
+symlink, no copying three files by hand after every edit. The bundle is unminified with
+an inline sourcemap, so a stack trace in the developer console points back at the
+TypeScript. The vault folder is gitignored.
+
+A vault opened for the first time is in **Restricted Mode**, which loads no community
+plugin whatever the enabled list says: turn it off once under *Settings → Community
+plugins*. The script deliberately doesn't do that for you — it's a security decision that
+belongs to whoever opens the vault.
 
 There is a backlog waiting in it: `docs/issues/` carries this plugin's own frontmatter
 vocabulary, so pointing a Base at that folder shows the project's issues in the view that

@@ -34,17 +34,30 @@ for (const file of VAULT_FILES) {
 	await copyFile(file, path.join(pluginDir, file));
 }
 
-await enablePlugin(manifest.id);
+const listed = await enablePlugin(manifest.id);
 
 console.log(`\n${manifest.name} ${manifest.version} → ${pluginDir}`);
 console.log("Open this folder as a vault in Obsidian (or reload it if it is already open).");
-console.log("The plugin is enabled; Bases is a core plugin and must be on for the view to appear.");
+if (listed) {
+	// Said once, on the run that creates the list — which is the run that is opening a
+	// vault for the first time, and the only one where this is news.
+	console.log("First open: Settings → Community plugins → turn off Restricted Mode.");
+}
+console.log("The plugin is in the vault's enabled list. Bases is a core plugin and must be on too.");
 
 /**
  * Add the plugin to the vault's enabled list, so opening the vault does not also mean
  * finding it in settings first. Additive on purpose: the file is read back and merged
  * rather than written wholesale, since a real test vault accumulates other plugins and
- * this script has no business dropping them.
+ * this script has no business dropping them. Returns true when this run added it.
+ *
+ * The list is as far as this goes. A vault opened for the first time is in Restricted
+ * Mode, and NO entry here loads a plugin until that is turned off — which is a security
+ * decision belonging to the person opening the vault, not to a build script. It is also
+ * the kind of claim this repository refuses to make on trust: the setting is Obsidian's
+ * own, it cannot be exercised here, and a script that wrote it and was wrong would leave
+ * a plugin that silently never loads with a message saying it had. So the run that
+ * creates the list says the step out loud instead.
  */
 async function enablePlugin(id) {
 	const listPath = path.join(vaultDir, "community-plugins.json");
@@ -57,7 +70,8 @@ async function enablePlugin(id) {
 	} catch {
 		// No vault config yet: this run is creating it.
 	}
-	if (enabled.includes(id)) return;
+	if (enabled.includes(id)) return false;
 	enabled.push(id);
 	await writeFile(listPath, `${JSON.stringify(enabled, null, 2)}\n`);
+	return true;
 }
