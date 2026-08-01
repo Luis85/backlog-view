@@ -156,7 +156,7 @@ describe('toolbar controls are reachable without a mouse', () => {
 		// single tab stop — one stop per row would bury the tree itself.
 		expect(add?.tagName).toBe('BUTTON');
 		expect(add?.getAttribute('tabindex')).toBe('-1');
-		expect(add?.getAttribute('aria-label')).toBe('New Feature');
+		expect(add?.getAttribute('aria-label')).toBe('New child item');
 	});
 });
 

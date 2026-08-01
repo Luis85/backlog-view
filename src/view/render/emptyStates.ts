@@ -33,7 +33,7 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): vo
 	const btn = empty.createEl('button', { cls: 'mod-cta' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	btn.createSpan({ text: `New ${topLevel}` });
-	btn.addEventListener('click', () => promptCreateItem(host, topLevel, null));
+	btn.addEventListener('click', () => promptCreateItem(host, [topLevel], null));
 }
 
 /**

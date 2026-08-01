@@ -54,6 +54,11 @@ order properties** over a backlog large enough to take a moment: the toolbar sho
 **Row add button** — hover a row; `+` appears. It is now a `<button>` with
 `tabindex="-1"`, so it must not appear in the `Tab` order.
 
+**Extra-type badges** (added after this note was first closed) — a row typed `Issue` or
+`Bug` renders a badge with the `circle-dot` icon and a colour taken from past the end of
+the ladder. Check it reads as a peer of the level badges rather than as an error state,
+and that the colour does not collide with the level beside it in either theme.
+
 **Reduced motion** — with the OS setting on, spinners should step rather than spin and
 the busy chip should appear without a fade.
 

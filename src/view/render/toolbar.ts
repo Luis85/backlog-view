@@ -3,7 +3,8 @@ import { BacklogViewHost, BusyState } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
-import { BacklogModel, displayType } from '../../domain/model';
+import { BacklogModel } from '../../domain/model';
+import { displayType } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settings';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
@@ -16,7 +17,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn' });
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	newBtn.createSpan({ text: `New ${newLevel}` });
-	newBtn.addEventListener('click', () => promptCreateItem(host, newLevel, null));
+	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
 
 	const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
 	pickBtn.addClass('pbl-new-pick');
@@ -24,7 +25,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		const menu = new Menu();
 		for (const level of host.settings.levels) {
 			menu.addItem((mi) =>
-				mi.setTitle(`New ${level}`).setIcon('plus').onClick(() => promptCreateItem(host, level, null)),
+				mi.setTitle(`New ${level}`).setIcon('plus').onClick(() => promptCreateItem(host, [level], null)),
 			);
 		}
 		showMenuForClick(menu, evt);

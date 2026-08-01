@@ -1,6 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
-import { BacklogItem, BacklogModel, childLevelIndex, nextLevelIndex } from './model';
+import { BacklogItem, BacklogModel } from './model';
+import { childLevelIndex, extraTypeRank, isExtraType, nextLevelIndex } from './itemTypes';
 import { BacklogSettings } from './settings';
 
 /**
@@ -111,11 +112,18 @@ export function computeTypeChanges(
 	const cascade: ItemWrite[] = [];
 	if (!parentChanged || !settings.autoType) return { cascade };
 
-	const newBaseIdx = childLevelIndex(parent, settings.levels);
-	const implied = settings.levels[newBaseIdx];
+	// A declared extra type is never re-typed by position — dropping a Bug under an Epic
+	// leaves a Bug — and its subtree descends from ITS rung rather than from where it
+	// landed, which is exactly what pinning that rank is for: the Tasks under a Bug stay
+	// Tasks whether the Bug hangs from an Epic or from a PBI.
+	const draggedIsExtra = isExtraType(dragged.typeName, settings);
+	const newBaseIdx = draggedIsExtra ? extraTypeRank(settings.levels) : childLevelIndex(parent, settings.levels);
 	let typeField: string | undefined;
-	if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
-		typeField = implied;
+	if (!draggedIsExtra) {
+		const implied = settings.levels[newBaseIdx];
+		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
+			typeField = implied;
+		}
 	}
 
 	// Chained down the parent levels, never derived from depth: each child sits one

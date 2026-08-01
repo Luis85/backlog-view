@@ -10,6 +10,12 @@ export interface BacklogSettings {
 	typeKey: string;
 	levels: string[];
 	/**
+	 * Declared types that are not rungs on the ladder (Issue, Bug): they hold the
+	 * deepest level as children wherever they hang, and are never re-typed by position.
+	 * See `itemTypes.ts` for why the ladder cannot express them.
+	 */
+	extraTypes: string[];
+	/**
 	 * Only treat notes that belong to the work-item hierarchy as items: a supported
 	 * type (one of `levels`) or a parent. When off, every note the base returns is an item.
 	 */
@@ -45,6 +51,7 @@ export interface BacklogSettings {
 }
 
 export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
+export const DEFAULT_EXTRA_TYPES = ['Issue', 'Bug'];
 export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
 /** Property columns are fixed-width so values line up across rows; this is that width. */
 export const DEFAULT_PROP_COLUMN_WIDTH = 132;
@@ -57,6 +64,7 @@ export function defaultSettings(): BacklogSettings {
 		orderKey: 'order',
 		typeKey: 'type',
 		levels: [...DEFAULT_LEVELS],
+		extraTypes: [...DEFAULT_EXTRA_TYPES],
 		hierarchyOnly: true,
 		showOutsideParents: true,
 		folderHierarchy: false,
@@ -188,6 +196,19 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	const levels = list('levels');
 	const doneValues = list('doneValues');
 	/**
+	 * Like the tags key, this one defaults to something real, so "cleared" has to differ
+	 * from "never set" or the extra types could not be turned off. A name that is already
+	 * a level yields rather than being reported: the level wins wherever both are read, so
+	 * the declaration is merely inert, and gating every write over an inert duplicate
+	 * would turn a working view read-only.
+	 */
+	const extraTypes = (): string[] => {
+		const resolved = levels.length > 0 ? levels : fallback.levels;
+		const taken = new Set(resolved.map((l) => l.toLowerCase()));
+		const declared = config.get('extraTypes') === undefined ? fallback.extraTypes : dedupe(list('extraTypes'));
+		return declared.filter((t) => !taken.has(t.toLowerCase()));
+	};
+	/**
 	 * The tags column is the only one whose property is also *editable*, so it gives
 	 * way to every other role: a key already spoken for by parent, order, type or
 	 * state is that feature's, and `chipProps` skips such a property anyway, so tag
@@ -210,6 +231,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		orderKey: propKey('orderProperty', fallback.orderKey),
 		typeKey: propKey('typeProperty', fallback.typeKey),
 		levels: levels.length > 0 ? levels : fallback.levels,
+		extraTypes: extraTypes(),
 		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
 		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),

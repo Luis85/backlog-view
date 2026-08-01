@@ -1,6 +1,7 @@
 import { BasesAllOptions, BasesPropertyId } from 'obsidian';
 import {
 	DEFAULT_DONE_VALUES,
+	DEFAULT_EXTRA_TYPES,
 	DEFAULT_LEVELS,
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
@@ -63,6 +64,13 @@ function hierarchyGroup(): BasesAllOptions {
 				displayName: 'Levels (top → bottom)',
 				default: DEFAULT_LEVELS.join(', '),
 				placeholder: DEFAULT_LEVELS.join(', '),
+			},
+			{
+				type: 'text',
+				key: 'extraTypes',
+				displayName: 'Extra types',
+				default: DEFAULT_EXTRA_TYPES.join(', '),
+				placeholder: DEFAULT_EXTRA_TYPES.join(', '),
 			},
 			{
 				type: 'toggle',

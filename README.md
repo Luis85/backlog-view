@@ -27,7 +27,8 @@ Azure DevOps Boards.
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
-  - **`type`** — the hierarchy level (`Epic`, `Feature`, `PBI`, `Task`, … configurable).
+  - **`type`** — the hierarchy level (`Epic`, `Feature`, `PBI`, `Task`, … configurable), or one
+    of the **extra types** (`Issue`, `Bug`) that sit beside the ladder rather than on it.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order` (and, optionally, its new `type` —
@@ -89,11 +90,11 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Re-order among siblings | Drag a row and drop it **between** two rows |
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
 | Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
-| Create a child item | Hover a row and click **+**, or use the context menu |
+| Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
 | Create any level at the top | Toolbar **New** button, or the **▾** menu next to it for other levels |
 | Focus one backlog level | Toolbar level button next to **New** → pick a level (**All levels** returns) |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
-| Change an item's type | Right-click → Set type |
+| Change an item's type | Right-click → Set type (every level, plus the extra types) |
 | Change an item's state | Click the state chip on the row, or right-click → Set state |
 | Add a tag | Click the **+** in the row's tag column, or right-click → Edit tags |
 | Remove a tag | Hover the row and click the **✕** on the tag |
@@ -280,6 +281,35 @@ parent done in a base that hides done items): taking that change back is exactly
 undo is for. Tags are undone as an add/remove of the same tags rather than as a
 snapshot, so tags you added yourself in between stay.
 
+### Issues and bugs sit beside the ladder
+
+`Epic → Feature → PBI → Task` is a ladder: each level's children are the level below.
+Some work does not fit a rung. A **Bug** breaks down into Tasks whether it was raised
+against an Epic, a Feature or a PBI — its position says nothing about what it contains.
+
+So `Issue` and `Bug` are **extra types** rather than a fifth level, and two things follow:
+
+- **They hang from any level above the lowest.** Add one under an Epic, a Feature or a
+  PBI. Their own children are always Tasks, so nothing is offered under a Bug but a Task.
+- **A move never re-types them.** Dropping a Bug under an Epic leaves a Bug — where
+  dropping a *PBI* there would make it a Feature. Their Tasks stay Tasks too, because the
+  subtree follows the Bug rather than the rung it landed on.
+
+Where a row can hold more than one kind of thing, **the + button asks**: the new-item
+modal offers a type, defaulting to the ladder's own child. The context menu lists the
+choices directly (`New PBI`, `New Issue`, `New Bug`), and `Set type` offers every
+declared type. A row with only one option — a Task, or a Bug, which holds only Tasks —
+asks nothing and creates it straight away.
+
+Rename them, add your own (`Defect, Spike`), or clear the option to turn the whole idea
+off, under **Extra types** in the view options. A name that is already a level is ignored,
+since the level would win anyway. They rank with the second-lowest level, so focusing that
+level shows them beside it rather than hiding them.
+
+None of this is enforced. The ladder has always guided what the view *offers* and what it
+*writes* without refusing a move you make deliberately, and extra types follow the same
+rule: drag a Bug wherever the work actually belongs.
+
 ### Filtered bases keep their tree
 
 A Base filtered to one level, one state or one tag returns matching items but not their
@@ -400,6 +430,7 @@ Open the view options in the Bases toolbar to configure:
 | Order property | `order` | Numeric sibling rank |
 | Item type property | `type` | Hierarchy level of the item |
 | Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors and icons |
+| Extra types | `Issue, Bug` | Types that sit beside the ladder: they hold the lowest level as children wherever they hang, and are never re-typed by a move. Clear it to turn them off |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
 | Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |

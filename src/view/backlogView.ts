@@ -4,7 +4,8 @@ import { BacklogViewHost, BusyState, ChipProp, PRODUCT_BACKLOG_VIEW_TYPE } from 
 import { DragDropController } from './interactions/dragDrop';
 import { handleTreeKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
-import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from '../domain/model';
+import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
+import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
 import { computeDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
@@ -358,8 +359,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
-		const childLevel = this.settings.levels[childLevelIndex(item, this.settings.levels)];
-		const menu = buildItemMenu(this, item, childLevel);
+		const childTypes = childTypeChoices(item, this.settings);
+		const menu = buildItemMenu(this, item, childTypes);
 		if (!menu) return;
 		const rect = this.rowElFor(item)?.getBoundingClientRect();
 		menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });

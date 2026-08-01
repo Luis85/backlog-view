@@ -61,6 +61,22 @@ in the root `CLAUDE.md` because it spans every layer.
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - The autoType cascade retypes only descendants whose type matches a configured
   level; custom types outside the ladder are deliberate user data.
+- **Extra types** (`settings.extraTypes`, default `Issue, Bug`) are declared types that are
+  NOT rungs — `itemTypes.ts` owns them. The ladder cannot express "a Bug holds Tasks
+  wherever it hangs", because every ladder rule is "one rung below the parent", so an
+  extra type's rank is a property of the TYPE: `extraTypeRank` (the rung whose children
+  are the deepest level), pinned, never inherited. Everything else follows from that plus
+  `levelIndex === -1`: its children imply the deepest level under an Epic as under a PBI,
+  the cascade already leaves it alone, and `computeTypeChanges` must not retype the
+  *dragged* item either — it descends the subtree from the extra rank rather than from
+  where the item landed, or a Bug's Tasks would become PBIs on a drop. The contrast that
+  keeps this honest: an UNKNOWN custom type still takes `childSlot`, so it continues the
+  ladder (Feature > Bugfix > implied Task). Declared pins, undeclared inherits.
+  `collectFocusRoots` has to know about them too — an extra type has no `levelIndex` to
+  match, so focusing its rank would otherwise make it vanish rather than rank beside the
+  level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
+  OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
+  guided rather than refused.
 - Scope (`settings.hierarchyOnly`, on by default): a base filtered by folder returns
   every note living there, so `pruneOutsideHierarchy` drops the ones that are not work
   items — a note belongs when it has a *supported* type (matching a configured level) or

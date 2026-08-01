@@ -1,5 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
+import { childLevelIndex, extraTypeRank, isExtraType } from './itemTypes';
 import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
@@ -150,36 +151,10 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const rest = { realRoots: roots, byPath, observedStates, observedTags, ignoredCount };
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
 	if (focusIdx >= 0) {
-		const focusRoots = collectFocusRoots(roots, focusIdx);
+		const focusRoots = collectFocusRoots(roots, focusIdx, settings);
 		return { ...rest, ...shown(assignVisualDepth(focusRoots)), roots: focusRoots, focused: true };
 	}
 	return { ...rest, ...shown(items), roots, focused: false };
-}
-
-/** The level name to show on an item's badge. */
-export function displayType(item: BacklogItem, settings: BacklogSettings): string {
-	if (item.levelIndex >= 0) return settings.levels[item.levelIndex];
-	return item.typeName ?? '';
-}
-
-/**
- * Level index a child of `parent` should get: one below the parent's effective
- * level, clamped to the deepest configured level. Top-level items get level 0.
- */
-export function childLevelIndex(parent: BacklogItem | null, levels: string[]): number {
-	if (!parent) return 0;
-	return nextLevelIndex(parent.effectiveLevelIndex, levels);
-}
-
-/**
- * One rung below `levelIndex`, clamped at the deepest configured level — the
- * single statement of "what a child's level is". Exported so a walk that has a
- * level in hand rather than an item (the autoType cascade, planning types for a
- * subtree that has not been written yet) descends by the same rule the model
- * will apply afterwards, instead of re-deriving it from tree depth.
- */
-export function nextLevelIndex(levelIndex: number, levels: string[]): number {
-	return Math.min(levelIndex + 1, levels.length - 1);
 }
 
 // ------------------------------------------------------------- build phases
@@ -545,11 +520,15 @@ function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 }
 
 /** The topmost items whose level matches the focus level; nested matches stay children. */
-function collectFocusRoots(roots: BacklogItem[], focusIdx: number): BacklogItem[] {
+function collectFocusRoots(roots: BacklogItem[], focusIdx: number, settings: BacklogSettings): BacklogItem[] {
 	const focusRoots: BacklogItem[] = [];
+	// An extra type has no levelIndex but does occupy a rung, so focusing that rung has
+	// to show it — otherwise a Bug simply vanishes from a focused view rather than
+	// ranking beside the level it sits level with.
+	const extraFocused = extraTypeRank(settings.levels) === focusIdx;
 	const collect = (list: BacklogItem[]) => {
 		for (const item of list) {
-			if (item.levelIndex === focusIdx) {
+			if (item.levelIndex === focusIdx || (extraFocused && isExtraType(item.typeName, settings))) {
 				item.focusRoot = true;
 				focusRoots.push(item);
 			} else {
@@ -568,9 +547,13 @@ function computeLevel(item: BacklogItem, settings: BacklogSettings): void {
 		const name = item.typeName.toLowerCase();
 		const idx = settings.levels.findIndex((l) => l.toLowerCase() === name);
 		item.levelIndex = idx;
-		// Unknown types occupy the slot below their parent so their children
-		// continue the ladder correctly (Feature > Bugfix > implied Task).
-		item.effectiveLevelIndex = idx >= 0 ? idx : childSlot;
+		// A declared extra type holds the deepest level wherever it hangs, so its rung is
+		// its own rather than one below its parent's — that pinning is what separates a
+		// Bug (Tasks under it, under an Epic or a PBI alike) from an unknown custom type,
+		// which occupies the slot below its parent so its children continue the ladder
+		// correctly (Feature > Bugfix > implied Task).
+		const offLadder = isExtraType(item.typeName, settings) ? extraTypeRank(settings.levels) : childSlot;
+		item.effectiveLevelIndex = idx >= 0 ? idx : offLadder;
 		item.impliedType = false;
 	} else {
 		item.levelIndex = childSlot;

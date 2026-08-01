@@ -246,6 +246,25 @@ export class ButtonComponent {
 	}
 }
 
+export class DropdownComponent {
+	selectEl: HTMLSelectElement;
+	constructor(containerEl: HTMLElement) {
+		this.selectEl = containerEl.createEl('select') as HTMLSelectElement;
+	}
+	addOption(value: string, display: string): this {
+		this.selectEl.createEl('option', { value, text: display });
+		return this;
+	}
+	setValue(value: string): this {
+		this.selectEl.value = value;
+		return this;
+	}
+	onChange(cb: (value: string) => unknown): this {
+		this.selectEl.addEventListener('change', () => cb(this.selectEl.value));
+		return this;
+	}
+}
+
 export class Setting {
 	settingEl: HTMLElement;
 	constructor(containerEl: HTMLElement) {
@@ -266,6 +285,10 @@ export class Setting {
 	}
 	addButton(cb: (btn: ButtonComponent) => unknown): this {
 		cb(new ButtonComponent(this.settingEl));
+		return this;
+	}
+	addDropdown(cb: (drop: DropdownComponent) => unknown): this {
+		cb(new DropdownComponent(this.settingEl));
 		return this;
 	}
 }

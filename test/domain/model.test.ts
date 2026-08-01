@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildModel, childLevelIndex, displayType } from '../../src/domain/model';
+import { buildModel } from '../../src/domain/model';
+import { childLevelIndex, displayType } from '../../src/domain/itemTypes';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -385,6 +386,19 @@ describe('buildModel with a focus level', () => {
 		vault.addFile('Loose Feature.md', { frontmatter: { type: 'Feature', order: 5 } });
 		return vault;
 	}
+
+	it('re-roots extra types alongside the level they rank with', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
+		// A Bug ranks with the PBI rung, so focusing that rung has to surface it —
+		// otherwise it does not render at all, having no PBI above it to hang from.
+		vault.addFile('Bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
+		const model = buildModel(vault.app, vault.entries(), { ...defaultSettings(), focusLevel: 'PBI' });
+		expect(model.focused).toBe(true);
+		expect(model.roots.map((r) => r.title).sort()).toEqual(['Bug', 'PBI']);
+	});
 
 	it('re-roots the tree at the topmost items of the focus level', () => {
 		const vault = focusVault();

@@ -3,7 +3,8 @@ import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
 import { showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
-import { BacklogItem, childLevelIndex, displayType } from '../../domain/model';
+import { BacklogItem } from '../../domain/model';
+import { childTypeChoices, displayType, isExtraType } from '../../domain/itemTypes';
 import {
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
@@ -16,6 +17,8 @@ import {
 const BADGE_COLOR_COUNT = 8;
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
+/** One icon for every extra type: they are named by the user, so nothing else generalizes. */
+const EXTRA_TYPE_ICON = 'circle-dot';
 
 /** Render the tree content (or the empty state) into the tree element. */
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
@@ -97,7 +100,7 @@ function renderItem(
 	// into an empty group would be a lie (its progress bar tells the story).
 	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
 	const collapsed = host.isCollapsed(item.file.path);
-	const childLevel = host.settings.levels[childLevelIndex(item, host.settings.levels)];
+	const childTypes = childTypeChoices(item, host.settings);
 
 	const selected = host.selectedPath === item.file.path;
 	const row = containerEl.createDiv({
@@ -121,8 +124,8 @@ function renderItem(
 	ctx.rows.set(item.file.path, row);
 
 	renderRowLead(ctx, row, item, { hasChildren, collapsed });
-	renderRowTrailing(ctx, row, item, childLevel);
-	wireRowEvents(ctx, row, item, childLevel);
+	renderRowTrailing(ctx, row, item, childTypes);
+	wireRowEvents(ctx, row, item, childTypes);
 	ctx.dnd.wireRow(row, item);
 
 	if (hasChildren && !collapsed) {
@@ -210,11 +213,20 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	const badgeText = displayType(item, host.settings);
 	if (!badgeText) return;
 	const badge = row.createSpan({ cls: 'pbl-badge' });
+	// A declared extra type is a first-class type, so it gets a badge like a level's
+	// rather than the bare-text treatment reserved for a type this view knows nothing
+	// about. Its colour is taken from past the end of the ladder, so it reads as beside
+	// the levels rather than as one of them.
+	const extra = isExtraType(item.typeName, host.settings);
+	const extraIdx = extra ? host.settings.extraTypes.findIndex((t) => t.toLowerCase() === badgeText.toLowerCase()) : -1;
 	if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
+	} else if (extra) {
+		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), EXTRA_TYPE_ICON);
 	}
 	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
+	else if (extraIdx >= 0) badge.addClass(`pbl-lvl-${(host.settings.levels.length + extraIdx) % BADGE_COLOR_COUNT}`);
 	else badge.addClass('pbl-lvl-unknown');
 	const implied = item.impliedType
 		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'
@@ -233,7 +245,7 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 }
 
 /** The fixed trailing columns, then the row's own add button. */
-function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem, childLevel: string): void {
+function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem, childTypes: string[]): void {
 	renderRowColumns(ctx, row, item);
 
 	// A native button so assistive tech can activate it, with no Tab stop — the same
@@ -241,17 +253,22 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 	// context menu carries the documented keyboard path (New <child>).
 	const addBtn = row.createEl('button', {
 		cls: 'pbl-add clickable-icon',
-		attr: { type: 'button', tabindex: '-1', 'aria-label': `New ${childLevel}` },
+		attr: { type: 'button', tabindex: '-1', 'aria-label': addLabel(childTypes) },
 	});
 	setIcon(addBtn, 'plus');
-	setTooltip(addBtn, `New ${childLevel}`);
+	setTooltip(addBtn, addLabel(childTypes));
 	addBtn.addEventListener('click', (evt) => {
 		evt.stopPropagation();
-		promptCreateItem(ctx.host, childLevel, item);
+		promptCreateItem(ctx.host, childTypes, item);
 	});
 }
 
-function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childLevel: string): void {
+/** A row that can hold only one type says so; one with a choice cannot promise which. */
+function addLabel(childTypes: string[]): string {
+	return childTypes.length > 1 ? 'New child item' : `New ${childTypes[0]}`;
+}
+
+function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childTypes: string[]): void {
 	row.addEventListener('click', (evt) => {
 		ctx.host.selectItem(item, false);
 		ctx.host.openItem(item, evt);
@@ -259,5 +276,5 @@ function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, chi
 	row.addEventListener('auxclick', (evt) => {
 		if (evt.button === 1) ctx.host.openItemInNewTab(item);
 	});
-	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childLevel));
+	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypes));
 }

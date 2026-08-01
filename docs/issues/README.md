@@ -13,12 +13,16 @@ work-item schema — so the backlog can be read in the plugin it describes (see
 | [verify-base-identity-in-a-live-vault](verify-base-identity-in-a-live-vault.md) | P1 | verification | Done | Confirmed live: a `.base` leaf is a `FileView` with `.file` set, so rows persist |
 | [smoke-test-the-visual-changes](smoke-test-the-visual-changes.md) | P2 | verification | Done | Checked live in both themes; `styles.css` needed no adjustment |
 | [undo-the-last-backlog-change](undo-the-last-backlog-change.md) | P2 | feature | Done | Batch writes were irreversible; now inverse-captured and replayable, with redo |
+| [extra-item-types](extra-item-types.md) | P2 | feature | Done | Issue and Bug hold Tasks wherever they hang, which the ladder cannot express |
 | [phase-typed-backlog-item](phase-typed-backlog-item.md) | P2 | design | Done | The build's three phases are three types; adding a field now means choosing one |
 | [stop-deriving-levels-from-depth](stop-deriving-levels-from-depth.md) | P2 | correctness | Done | The cascade chains down parent levels; `.depth` is now a lint rule |
 | [enforce-and-colocate-invariants](enforce-and-colocate-invariants.md) | P2 | tooling | Done | Two invariants became lint rules; the rest moved beside the layer they govern |
 | [lift-empty-states-out-of-rows](lift-empty-states-out-of-rows.md) | P3 | refactor | Done | Pure motion into `render/emptyStates.ts`; `rows.ts` 325 → 263 lines |
 | [split-the-view-options-schema](split-the-view-options-schema.md) | P3 | refactor | Done | Pure motion into `domain/viewOptions.ts`; the 17 persisted keys diffed |
 | [cover-the-drag-and-drop-branches](cover-the-drag-and-drop-branches.md) | P3 | testing | Done | 21 uncovered branches, the largest gap, in the hardest code to drive |
+
+[extra-item-types](extra-item-types.md) is the first note opened by new evidence rather
+than by the review — a user request — and it is done.
 
 **Every actionable issue from the PR #14 review is now closed.** What is still open is
 three notes with no acceptance criteria: two documented limitations and one recorded

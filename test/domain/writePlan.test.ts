@@ -233,6 +233,28 @@ describe('computeDropWrites', () => {
 		expect(byPath.get('Under.md')).toBe('Task');
 	});
 
+	it('never re-types a dragged extra type, and keeps its subtree at the deepest level', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 } });
+		vault.addFile('Bug.md', { frontmatter: { type: 'Bug', order: 10 }, parentLink: 'Feature B' });
+		vault.addFile('Bug Task.md', { frontmatter: { type: 'Task' }, parentLink: 'Bug' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.byPath.get('Bug.md') as BacklogItem;
+		const epicA = model.roots.find((r) => r.title === 'Epic A') as BacklogItem;
+
+		// Dropped a rung higher, where the ladder would have said "Feature".
+		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, settings);
+
+		const bug = writes.find((w) => w.file.path === 'Bug.md');
+		expect(bug?.parent?.path).toBe('Epic A.md');
+		// A Bug stays a Bug wherever it lands: it is a type, not a rung.
+		expect(bug?.typeName).toBeUndefined();
+		// And its Tasks stay Tasks — the subtree descends from the Bug's own pinned rung,
+		// not from the rung it was dropped on, which would have made them PBIs.
+		expect(writes.some((w) => w.file.path === 'Bug Task.md')).toBe(false);
+	});
+
 	it('cascade skips untyped descendants and does not fire without autoType', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });

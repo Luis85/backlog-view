@@ -18,7 +18,12 @@ describe('item creation', () => {
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('prompt not opened');
-		expect(modal.titleEl.textContent).toBe('New Feature');
+		// An Epic can hold a Feature, an Issue or a Bug, so the modal asks which — and
+		// the heading cannot name the type it is in the middle of asking about.
+		expect(modal.titleEl.textContent).toBe('New item');
+		const typePicker = modal.contentEl.querySelector('select');
+		expect([...(typePicker?.options ?? [])].map((o) => o.value)).toEqual(['Feature', 'Issue', 'Bug']);
+		expect(typePicker?.value).toBe('Feature');
 		// The prompt says where the item will land before anything is written
 		expect(modal.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe(
 			'Under "Epic A" · in folder "Backlog"',
@@ -40,6 +45,50 @@ describe('item creation', () => {
 		expect(fm['parent']).toBe('[[Epic A]]');
 		expect(fm['order']).toBe(20);
 		expect(Notice.messages.some((m) => m.startsWith('Created'))).toBe(true);
+	});
+
+	it('creates the extra type picked in the modal, under a parent three rungs up', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Epic A')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('prompt not opened');
+
+		const picker = modal.contentEl.querySelector('select');
+		if (!picker) throw new Error('type picker missing');
+		picker.value = 'Bug';
+		picker.dispatchEvent(new Event('change', { bubbles: true }));
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('title input missing');
+		input.value = 'Login times out';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// The chosen type is written, not the ladder's own child.
+		const fm = vault.fm('Backlog/Login times out.md');
+		expect(fm['type']).toBe('Bug');
+		expect(fm['parent']).toBe('[[Epic A]]');
+	});
+
+	it('asks nothing when the row can hold only one type', () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Backlog/Bug A.md', { frontmatter: { type: 'Bug', order: 10 }, parentLink: 'Epic A' });
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Bug A')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('prompt not opened');
+		// A Bug holds only Tasks, so there is no question to ask and the heading says so.
+		expect(modal.titleEl.textContent).toBe('New Task');
+		expect(modal.contentEl.querySelector('select')).toBeNull();
 	});
 });
 

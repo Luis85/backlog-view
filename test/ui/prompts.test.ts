@@ -7,12 +7,13 @@ import { TFolder } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 
-function openModal(options: { askFolder?: boolean; detail?: string } = {}) {
+function openModal(options: { askFolder?: boolean; detail?: string; types?: string[] } = {}) {
 	const vault = new FakeVault();
-	const results: { title: string; folder?: string }[] = [];
+	const results: { title: string; folder?: string; typeName?: string }[] = [];
 	const modal = new TitlePromptModal(vault.app as never, {
 		heading: 'New Epic',
 		detail: options.detail,
+		types: options.types ?? ['Epic'],
 		askFolder: options.askFolder,
 		onSubmit: (result) => results.push(result),
 	});
@@ -38,7 +39,7 @@ describe('TitlePromptModal', () => {
 		expect(inputs).toHaveLength(1);
 		type(inputs[0], '  My Epic  ');
 		createBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(results).toEqual([{ title: 'My Epic', folder: undefined }]);
+		expect(results).toEqual([{ title: 'My Epic', folder: undefined, typeName: 'Epic' }]);
 	});
 
 	it('asks for a folder when requested and normalizes it', () => {
@@ -47,7 +48,7 @@ describe('TitlePromptModal', () => {
 		type(inputs[0], 'My Epic');
 		type(inputs[1], '/Backlog/');
 		inputs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-		expect(results).toEqual([{ title: 'My Epic', folder: 'Backlog' }]);
+		expect(results).toEqual([{ title: 'My Epic', folder: 'Backlog', typeName: 'Epic' }]);
 	});
 
 	it('does not submit an empty title', () => {

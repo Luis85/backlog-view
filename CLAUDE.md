@@ -44,6 +44,7 @@ mirrors the same directories.
 | **`domain/`** | **The backlog itself. Reads the vault, never writes it; never touches the DOM.** | |
 | `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation | node tests |
 | `domain/viewOptions.ts` | The declarative Bases view-options schema (its `key`s are persisted user data) | node tests |
+| `domain/itemTypes.ts` | The type vocabulary: the level ladder, and the extra types that sit beside it | node tests |
 | `domain/noteFields.ts` | Reading a work item's fields off a note: wikilink/bare/alias/list parents, tolerant numbers | node tests |
 | `domain/model.ts` | Tree building in three typed phases: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
 | `domain/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |

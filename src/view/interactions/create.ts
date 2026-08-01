@@ -15,8 +15,13 @@ export function newItemLevel(settings: BacklogSettings, model: BacklogModel): st
 	return settings.levels[0];
 }
 
-/** Ask for a title (and folder, when nothing is configured) and create the note. */
-export function promptCreateItem(host: BacklogViewHost, levelName: string, parentItem: BacklogItem | null): void {
+/**
+ * Ask for a title (and folder, when nothing is configured) and create the note.
+ *
+ * `choices` is what this parent may hold — one type under a Task, several under a rung
+ * that also takes the extra types. The modal only asks when there is something to ask.
+ */
+export function promptCreateItem(host: BacklogViewHost, choices: string[], parentItem: BacklogItem | null): void {
 	// Creation writes frontmatter too — the same config guard as applySafely.
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
@@ -41,12 +46,15 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 	const askFolder = parentFolder === null && !hasItems && host.settings.newItemFolder === '';
 
 	new TitlePromptModal(host.app, {
-		heading: `New ${levelName}`,
+		// With a choice to make the heading cannot name the type, since the type is the
+		// thing being chosen; without one it still says exactly what is being created.
+		heading: choices.length > 1 ? 'New item' : `New ${choices[0]}`,
 		detail: askFolder ? undefined : promptDetail(parentItem, inferredFolder),
+		types: choices,
 		askFolder,
-		onSubmit: ({ title, folder }) => {
+		onSubmit: ({ title, folder, typeName }) => {
 			void createFromPrompt(host, {
-				levelName,
+				levelName: typeName,
 				parentItem,
 				title,
 				folder: askFolder ? folder ?? '' : inferredFolder,
