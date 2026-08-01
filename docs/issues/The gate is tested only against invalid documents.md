@@ -116,10 +116,11 @@ The one number worth stating is the one a test pins: **every place the gate can 
 problem has at least one planted case**, and a rule added to `docs-check.mjs` moves the
 count `checkerRejects.test.ts` asserts, so it goes red until somebody plants a case.
 
-*(An earlier draft of this section gave case totals per file. They were stale inside a
-week — the ADR cases moved to their own file and fourteen more were added — which is the
-same drift `docs/README.md` removed its epic counts for. Corrected by deleting them rather
-than by updating them: `npm run test` is the current inventory.)*
+*(An earlier draft of this section gave case totals per file. They were wrong **before the
+pull request that wrote them had merged** — the ADR cases moved to their own file and
+fourteen more were added, hours later — which is the same drift `docs/README.md` removed
+its epic counts for. Corrected by deleting them rather than by updating them: `npm run
+test` is the current inventory.)*
 
 **Nothing new was found in the gate.** Every case passed on the first run, which is worth
 stating plainly: this note predicted the *class* correctly and the sweep it asked for
