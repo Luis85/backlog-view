@@ -67,21 +67,21 @@ dropped somewhere becomes a `Feature`.
 
 The two tests are different, and only one of them was written as a rule:
 
-| | Exempt from retyping | Test |
+| | Retyped when — the `if` as written | So what is exempt |
 | --- | --- | --- |
-| The dragged item | Declared extra types only | `isExtraType(dragged.typeName)` |
-| Any descendant | Extra types **and** unknown custom types | `child.levelIndex !== -1` |
+| The dragged item | `!isExtraType(dragged.typeName)` | declared extra types only |
+| Any descendant | `child.typeName !== null && child.levelIndex !== -1` | extra types **and** unknown custom types |
 
 There is a defensible reading — the dragged item is the one the user just acted on, so
 taking its new position as an instruction is stronger there than three levels down. But
 `src/domain/CLAUDE.md` states the principle without that qualification: *"custom types
 outside the ladder are deliberate user data"*, and `Spike` is either that or it is not.
 
-**Recorded, not resolved.** No evidence yet that anyone has hit it, and it is only
-reachable with `autoType` on, which is off by default. What would settle it is a report,
-or a decision that the dragged item is genuinely a special case — at which point the
-principle in `CLAUDE.md` should say so. Found by review of this note against the code,
-which is the whole reason the note now says where it lives.
+**Recorded, not resolved**, and now filed:
+[[The dragged item is retyped, its descendants are not]] holds the argument, what would
+settle it, and what leaving it undocumented already cost. This section stays because a use
+case has to describe what the code does; the issue is where the open question lives, so the
+behaviour is stated once and pointed at rather than restated in a fifth place.
 
 ## Acceptance criteria
 
