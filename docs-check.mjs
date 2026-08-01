@@ -27,23 +27,23 @@ const LEGAL_CHILDREN = {
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
 };
-/**
- * Sections every use case carries — the shape documented in `docs/README.md`, including
- * all four rows of the table. Checking only `Actor` would let a use case ship without the
- * trigger or the guarantee, which are the two rows that do the most work.
- */
+/** The headings every use case carries, in the order `docs/README.md` documents. */
 const USE_CASE_SECTIONS = [
 	"**As**",
 	"## Use case",
-	"| **Actor** |",
-	"| **Trigger** |",
-	"| **Preconditions** |",
-	"| **Guarantee** |",
 	"**Main flow**",
 	"**Extensions**",
 	"## Acceptance criteria",
 	"## Where it lives",
 ];
+/**
+ * The four fields of the use-case table, checked as **rows of that table** rather than as
+ * four more strings in the sequence above. Ordering constrains where a marker sits and not
+ * what it is: `| **Guarantee** |` on a line of its own between the table and the main flow
+ * satisfies every position rule and is not a row of anything. What the README requires is
+ * the table, so the table is what gets parsed.
+ */
+const USE_CASE_ROWS = ["Actor", "Trigger", "Preconditions", "Guarantee"];
 const ADR_SECTIONS = ["## Context", "## Decision", "## Consequences", "## Alternatives", "## Revisit when"];
 const ADR_STATUSES = new Set(["Accepted", "Superseded", "Proposed"]);
 const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "testing", "tooling"]);
@@ -89,6 +89,13 @@ function checkOrder(file, found, what) {
 	for (let i = 1; i < found.length; i++) {
 		if (found[i][1] < found[i - 1][1]) fail(file, `${what} has ${found[i][0]} before ${found[i - 1][0]}`);
 	}
+}
+
+/** The slice a block occupies, or "" when its bounds are missing — already reported. */
+function between(text, start, end) {
+	const from = text.indexOf(start);
+	const to = text.indexOf(end);
+	return from === -1 || to <= from ? "" : text.slice(from, to);
 }
 
 /** Wikilinks and paths inside code spans are examples, not references. */
@@ -154,7 +161,16 @@ for (const file of files) {
 		fail(file, `basename is already used by ${notes.get(name).file} — a wikilink to either is ambiguous`);
 		continue;
 	}
-	notes.set(name, { type, parent, order: Number(fm.field("order") ?? 0), file });
+	// `Number(field ?? 0)` manufactured a rank for a note that has none: a missing `order`
+	// became 0, which is a legal-looking value that no sibling had claimed, so the note
+	// passed the uniqueness check by being unranked. The register's conventions say every
+	// backlog note carries a rank; a default invented by the checker is the checker
+	// deciding what the note meant.
+	const raw = fm.field("order");
+	const order = raw === null ? null : Number(raw);
+	if (order === null) fail(file, "backlog note has no `order`");
+	else if (!Number.isFinite(order)) fail(file, `order "${raw}" is not a number`);
+	notes.set(name, { type, parent, order, file });
 }
 
 const siblings = new Map();
@@ -170,7 +186,10 @@ for (const [name, note] of notes) {
 			fail(note.file, `${note.type} under ${parentType} is not a legal pair`);
 		}
 	}
-	// The register must not demonstrate the one ranking limitation the plugin has.
+	// The register must not demonstrate the one ranking limitation the plugin has. An
+	// unusable order is skipped here rather than compared: it is already reported above, and
+	// two notes missing one are not "the same rank taken twice".
+	if (!Number.isFinite(note.order)) continue;
 	const group = siblings.get(note.parent) ?? new Map();
 	if (group.has(note.order)) fail(note.file, `order ${note.order} is already taken by "${group.get(note.order)}"`);
 	group.set(note.order, name);
@@ -208,6 +227,13 @@ for (const [, note] of notes) {
 	if (note.type !== "PBI") continue;
 	const text = texts.get(note.file);
 	checkSections(note.file, text, USE_CASE_SECTIONS, "use case");
+	// Inside the block the table occupies, and shaped like a row of it — see USE_CASE_ROWS.
+	const table = between(text, "## Use case", "**Main flow**");
+	for (const row of USE_CASE_ROWS) {
+		if (!new RegExp(String.raw`^\|\s*\*\*${row}\*\*\s*\|.*\|\s*$`, "m").test(table)) {
+			fail(note.file, `use-case table has no | **${row}** | row`);
+		}
+	}
 	// Extensions are numbered against the step they depart from, in step order. Three
 	// things are checked, and the third is what makes the label mean anything: EVERY
 	// bullet is labelled (a mistyped `**3 —` would otherwise drop out silently and leave

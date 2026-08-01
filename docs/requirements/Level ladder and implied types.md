@@ -33,8 +33,12 @@ first and tidy the properties afterwards, rather than the other way round.
 
 - **2a — `type` names something that is not a rung** (`Spike`, `Chore`). The item keeps
   its own name on the badge and occupies its parent's next slot, so the ladder carries
-  on beneath it. It is never rewritten: the view does not know what the user meant, and a
-  view that renames unrecognised things is worse than one that carries them.
+  on beneath it. Rendering never rewrites it: the view does not know what the user meant,
+  and a view that renames unrecognised things is worse than one that carries them. One
+  write path does, and only one — with `autoType` on, an unknown type is preserved
+  everywhere *except* on the item the user just dragged, which is retyped to its new
+  parent's rung. That asymmetry is recorded rather than defended in
+  [[Assigning type on a move]].
 - **3a — the item has no parent.** It is an `Epic`: the top of the ladder is the only
   level a root can imply.
 
@@ -48,8 +52,9 @@ first and tidy the properties afterwards, rather than the other way round.
 
 - Level maths chains down the parent levels, never down visual depth (focus mode re-roots
   depth) — enforced by lint.
-- An unknown custom type keeps its name, occupies its parent's next slot, and is never
-  rewritten.
+- An unknown custom type keeps its name and occupies its parent's next slot. Rendering
+  never rewrites it; the one path that can is a move with `autoType` on, and only for the
+  dragged item itself ([[Assigning type on a move]]).
 - The ladder is **not configurable**, on purpose: every rule here would otherwise have
   to hold for any list a user could type, and the reward was a rename.
 - An implied level is visibly implied, and says how to make it real.

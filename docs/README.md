@@ -35,11 +35,18 @@ changes the plugin, which is the honest way to write an architectural rule as a 
 someone has to be trying to do something for the rule to be worth having.
 
 **Product Kanban** is the next increment, and it is design only: a board projection of
-the same backlog, specified across four features — the backlog/board toggle, columns
-from the workflow the view options define, card moves as gated state writes, and the
-hierarchy showing through on the board. Nothing under it is built; every note states
-the precedent or the codebase seam it rests on, from a survey of the Kanban Guide, the
-major trackers and the Obsidian ecosystem run on 2026-08-01.
+the same backlog, specified across four features and 15 use cases — the backlog/board
+toggle, columns from the workflow the view options define, card moves as gated state
+writes, and the hierarchy showing through on the board. Nothing under it is built; every
+note states the precedent or the codebase seam it rests on, from a survey of the Kanban
+Guide, the major trackers and the Obsidian ecosystem run on 2026-08-01.
+
+Those 15 are the argument for writing a PBI as a use case *before* building it rather
+than after. Their `Where it lives` sections say **nothing yet** and then name the module
+the work will extend, which is a design claim a reader can disagree with; their
+extensions are where the epic's hard parts are already settled — what a filtered board
+does to a WIP signal, what happens to a card created into a state the base excludes —
+and every one of those was a paragraph of prose before the shape asked the question.
 
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an

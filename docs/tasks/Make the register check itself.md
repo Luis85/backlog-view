@@ -339,6 +339,45 @@ It names both ends of an inversion, too. A monotonic walk blames whichever secti
 the displaced one, so the first draft reported `**Main flow**` for a misplaced `Guarantee`
 row — the innocent party, and a reader would have gone looking in the wrong place.
 
+The round after that took the ordering rule one level further down, and found the last
+place the checker was inventing data rather than reading it:
+
+| Planted | Reported |
+| --- | --- |
+| The `\| **Guarantee** \|` row deleted and the marker put back as a standalone line before the main flow | `use-case table has no \| **Guarantee** \| row` |
+| `order:` deleted from a note | `backlog note has no \`order\`` |
+| `order: high` | `order "high" is not a number` |
+
+Ordering constrains *where* a marker sits and not *what* it is: a table row on a line of
+its own, between the table and the main flow, satisfies every position rule and is a row
+of nothing. The four fields are parsed as rows of the block the table occupies now, and the
+section list is the six headings. The README requires the table, so the table is what gets
+parsed.
+
+And `Number(fm.field("order") ?? 0)` manufactured a rank for a note that has none: a
+missing `order` became `0`, a legal-looking value no sibling had claimed, so an unranked
+note passed the uniqueness check *because* it was unranked. A default invented by the
+checker is the checker deciding what the note meant.
+
+## When the gate met a branch that predated it
+
+`main` merged a 20-note Kanban epic while this branch was in review, and CI went red on the
+merge rather than on either side: 15 new PBIs, written in the shape this branch replaced.
+
+That is the gate working. The alternative — an exemption for notes that arrived from
+elsewhere, or a rule that only new files must conform — is the by-name carve-out this whole
+list is a record of removing. So the 15 were written as use cases, and the conversion paid
+for itself immediately: the shape asks questions prose does not have to answer. What a
+quick filter does to a WIP signal, what happens to a card created into a state the base
+excludes, why dragging stays enabled on a board and must not in a tree — all were
+one-line consequences buried in acceptance criteria, and all are extensions now, beside the
+step they complicate.
+
+Their `Where it lives` sections say **nothing yet** and name the module the work will
+extend. That is worth keeping as a form: it makes the seam a claim a reviewer can argue
+with before any code exists, and it stays honest with the check that every source path a
+requirement names must exist.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.
