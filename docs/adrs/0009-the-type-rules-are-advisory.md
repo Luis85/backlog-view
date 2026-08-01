@@ -36,9 +36,14 @@ not the user's to act on here.
 - A backlog that does not match the ladder still works. That is the common case during
   adoption, and a tool that refuses to show you your data until you fix it is a tool nobody
   finishes adopting.
-- An unrecognised custom type (`Spike`, `Chore`) keeps its name, occupies its parent's next
-  slot, and is **never rewritten**. The view does not know what the user meant; carrying it
-  through is the only honest option.
+- An unrecognised custom type (`Spike`, `Chore`) keeps its name and occupies its parent's
+  next slot. The view does not know what the user meant; carrying it through is the only
+  honest option. **With one exception, and it is not one this decision chose**: the
+  auto-type cascade — opt-in, off by default — leaves such a type alone as a *descendant*
+  and rewrites it on the *dragged item itself*. Two different predicates, only one of them
+  ever written down as a rule. Recorded under *The asymmetry* in
+  [[Assigning type on a move]]; this ADR states the intent, and the intent is not what the
+  dragged-item branch does.
 - Every feature is additive rather than a new veto. Adding `Issue` and `Bug`
   ([ADR 0014](0014-rank-extra-types-by-type-not-by-position.md)) touched inference and
   offering, and needed no validation in the drop maths, the four move commands, the menu,

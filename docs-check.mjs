@@ -166,10 +166,21 @@ for (const [, note] of notes) {
 	for (const section of USE_CASE_SECTIONS) {
 		if (!text.includes(section)) fail(note.file, `use case has no ${section}`);
 	}
-	// Extensions are numbered against the step they depart from, in step order.
+	// Extensions are numbered against the step they depart from, in step order. EVERY
+	// bullet is validated, not only the ones already shaped like a label: a mistyped
+	// `**3 —` or `**3A —` would otherwise drop out of the list silently and leave the
+	// rest looking well ordered.
 	const block = /\*\*Extensions\*\*\n\n([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
 	if (!block) continue;
-	const labels = [...block[1].matchAll(/^- \*\*(\d+)([a-z]) /gm)].map(([, step, letter]) => [Number(step), letter]);
+	const labels = [];
+	for (const [bullet] of block[1].matchAll(/^- .*/gm)) {
+		const label = /^- \*\*(\d+)([a-z]) — /.exec(bullet);
+		if (!label) {
+			fail(note.file, `extension is not labelled \`**Na — \`: ${bullet.slice(0, 60)}`);
+			continue;
+		}
+		labels.push([Number(label[1]), label[2]]);
+	}
 	const ordered = [...labels].sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1]));
 	if (labels.some(([step, letter], i) => ordered[i][0] !== step || ordered[i][1] !== letter)) {
 		fail(note.file, "extensions are not in step order");
@@ -303,6 +314,40 @@ const surfaces = [
 for (const [kind, file, pattern] of surfaces) {
 	for (const [, name] of (await readFile(file, "utf8")).matchAll(pattern)) {
 		if (!allText.includes(name)) fail("docs", `no note names the ${kind} "${name}"`);
+	}
+}
+
+/**
+ * One option is *generated* — a folder picker per type, `key: typeFolderKey(type)` — so a
+ * literal scan cannot see any of the six keys it produces. They are persisted in the
+ * user's `.base` file exactly like the literal ones, so they are derived here instead.
+ *
+ * And a `key:` expression this file cannot resolve **fails**, rather than being passed
+ * over. A scan that silently ignores what it does not understand is the shape of gate
+ * that reports success for the thing it never looked at.
+ */
+const optionsSrc = await readFile("src/domain/viewOptions.ts", "utf8");
+const settingsSrc = await readFile("src/domain/settings.ts", "utf8");
+const KNOWN_GENERATOR = /\bkey: typeFolderKey\(/g;
+for (const [expr] of optionsSrc.matchAll(/\bkey: ([^,\n]+)/g)) {
+	if (/\bkey: '[^']+'/.test(expr) || /\bkey: typeFolderKey\(/.test(expr)) continue;
+	fail("docs-check", `cannot resolve the option key expression \`${expr.trim()}\` in viewOptions.ts`);
+}
+if (KNOWN_GENERATOR.test(optionsSrc)) {
+	const template = /function typeFolderKey\([^)]*\)[^{]*\{\s*return `([^$`]*)\$\{\s*\w+\.toLowerCase\(\)\s*\}`/.exec(
+		settingsSrc,
+	);
+	const vocabulary = ["LEVELS", "EXTRA_TYPES"].flatMap((name) => {
+		const list = new RegExp(`const ${name} = \\[([^\\]]*)\\]`).exec(settingsSrc);
+		return list ? [...list[1].matchAll(/'([^']+)'/g)].map(([, t]) => t) : [];
+	});
+	if (!template || vocabulary.length === 0) {
+		fail("docs-check", "typeFolderKey or the type vocabulary no longer has the shape this check derives keys from");
+	} else {
+		for (const type of vocabulary) {
+			const key = `${template[1]}${type.toLowerCase()}`;
+			if (!allText.includes(key)) fail("docs", `no note names the generated view option "${key}"`);
+		}
 	}
 }
 

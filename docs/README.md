@@ -76,7 +76,9 @@ can run is worse than none, because it invites trust it has not earned:
    falsify the record — so their stale paths are **listed rather than failed**. Being
    listed is the point: visible, not silently exempt.
 5. Every use case has all its sections — including **all four rows** of the use-case
-   table, not just `Actor` — and its extensions are in step order.
+   table, not just `Actor` — and **every** extension bullet is labelled `**Na — `, in step
+   order. Validating only the bullets that already look like labels would let a mistyped
+   one vanish and leave the rest looking well ordered.
 6. Every ADR: frontmatter complete, number matching its filename, unique, no gaps in the
    sequence, a known status and area, relative links resolving, and every record listed in
    the ADR index. `supersedes` and `superseded-by` must name a record that **exists**, and
@@ -86,9 +88,11 @@ can run is worse than none, because it invites trust it has not earned:
    inside one record.
 7. Every module in `src/`, every test file, **every view-option key and every command id**
    is named by at least one note — the check that finds *missing* notes rather than wrong
-   ones. Option keys and command ids are literal strings in the source, so they can be
-   checked; menu items and toolbar controls are display text and stay a hand sweep. See
-   [[Sweep the register against the code]] for which is which, and what the sweep found.
+   ones. That includes the six keys *generated* per type, derived from the vocabulary and
+   the key template rather than scanned for; a key expression the check cannot resolve
+   fails rather than being passed over. Menu items and toolbar controls are display text
+   and stay a hand sweep. See [[Sweep the register against the code]] for which is which,
+   and what the sweep found.
 
 Each rule was verified the way this project verifies its lint rules: by planting the
 violation and watching the check reject it.

@@ -23,8 +23,10 @@ can move the whole backlog later by changing one setting.
 **Main flow**
 
 1. A **home folder** (default `docs`) is the parent of everything the view creates.
-2. Each type has its **own folder picker**, defaulting to a subfolder of the home folder:
-   `requirements` for `Epic`/`Feature`/`PBI`, `tasks`, `issues`, `bugs`.
+2. Each type has its **own folder picker** — `typeFolder.epic`, `typeFolder.feature`,
+   `typeFolder.pbi`, `typeFolder.task`, `typeFolder.issue`, `typeFolder.bug`, one per name
+   in the vocabulary — each defaulting to a subfolder of the home folder: `requirements`
+   for the three planning levels, then `tasks`, `issues`, `bugs`.
 3. The modal resolves the folder for the chosen type and shows it.
 4. Changing the type in the modal changes the folder shown, immediately.
 5. The note is created there.
@@ -64,8 +66,10 @@ the folder most results live in → ask.
 
 ## Where it lives
 
-`src/domain/settings.ts` (`defaultTypeFolder`, `byTypeName`, folder resolution) ·
-`src/domain/viewOptions.ts` (one picker per type) ·
+`src/domain/settings.ts` (`defaultTypeFolder`, `byTypeName`, folder resolution, and
+`typeFolderKey` — which builds the persisted key and is shared with the schema, because a
+key spelled twice is a key that can differ) ·
+`src/domain/viewOptions.ts` (`homeFolder`, and one generated picker per type) ·
 `src/domain/itemTypes.ts` (`folderForType`) ·
 `src/view/interactions/create.ts` (`inferFolder`) ·
 `src/commands/scaffold.ts` (the Create backlog command).

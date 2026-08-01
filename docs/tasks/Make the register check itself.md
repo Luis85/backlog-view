@@ -132,6 +132,31 @@ already were for wikilinks, and for the same reason: inside backticks nothing re
 link, so it is an example being quoted rather than a reference being made. The same
 example in prose still fails, which is the line worth holding.
 
+A sixth round found two more places the gate looked without seeing, plus one note the
+gate could never have caught:
+
+| Planted | Reported |
+| --- | --- |
+| `**2 — ` and `**2A — ` extension labels | both reported as not labelled |
+| `key: countsKey()` in `viewOptions.ts` | `cannot resolve the option key expression` |
+| A third extra type, `Risk` | `no note names the generated view option "typeFolder.risk"` |
+
+The extension check matched only bullets **already shaped like a label**, so a mistyped one
+dropped out of the list and left the rest looking well ordered. Every bullet in the block
+is validated now.
+
+The option scan read literals only, so `key: typeFolderKey(type)` — six persisted keys,
+one per type — was invisible, and the register named none of them. They are derived now,
+from the vocabulary and the key template in `settings.ts`, and the derivation **fails
+loudly if either changes shape** rather than quietly stopping. So does any `key:`
+expression the scan cannot resolve: a scan that ignores what it does not understand is the
+shape of gate that reports success for the thing it never looked at.
+
+The third finding needed a reader, not a checker: ADR 0009 still said an unrecognised
+custom type is "never rewritten" while the use case, in the same commit, documented the
+dragged-item exception. Nothing mechanical connects a decision record to a use case — the
+ADR now carries the exception and says the intent is not what that branch does.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 
