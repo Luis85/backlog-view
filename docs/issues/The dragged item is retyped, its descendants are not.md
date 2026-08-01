@@ -32,7 +32,7 @@ inverts one of them, which is how this table first shipped.
 So a `Spike` nested inside a moved subtree survives; the same `Spike` dropped somewhere
 becomes a `Feature`.
 
-## Why it is deliberate
+## Why it stays unresolved
 
 Nobody chose it. `src/domain/CLAUDE.md` states the principle without the exception —
 *"custom types outside the ladder are deliberate user data"* — and the descendant branch
