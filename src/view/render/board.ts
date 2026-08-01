@@ -76,7 +76,11 @@ function renderColumn(
 }
 
 function columnLabel(col: BoardColumn): string {
-	const label = col.state === null ? `${NO_STATE_LABEL} — dropping here clears the state` : col.label;
+	// Always col.label, never the constant: the synthetic column yields its name
+	// when a real state claims it, and an accessible name that kept the old text
+	// would disagree with the screen — unreachable by the very speech input that
+	// targets columns by their visible name.
+	const label = col.state === null ? `${col.label} — dropping here clears the state` : col.label;
 	return `${label}, ${col.count} card${col.count === 1 ? '' : 's'}`;
 }
 

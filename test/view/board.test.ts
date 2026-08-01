@@ -99,6 +99,20 @@ describe('the board projection', () => {
 		expect(card.querySelector('.pbl-tag-add')).not.toBeNull();
 	});
 
+	it('speaks the yielded label when a real state claims “No state”', () => {
+		const vault = new FakeVault();
+		vault.addFile('Named.md', { frontmatter: { type: 'Epic', order: 10, status: 'No state' } });
+		vault.addFile('Bare.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const clashing = { ...BOARD, stateValues: 'No state, Done' };
+		const { containerEl } = makeView(vault, clashing, { collapsed: true });
+
+		// The visible label yielded to "Unset"; the accessible name must follow, or
+		// speech input cannot target the column by the name on screen.
+		const unset = columnByName(containerEl, 'Unset');
+		expect(unset.getAttribute('aria-label')).toBe('Unset — dropping here clears the state, 1 card');
+		expect(columnByName(containerEl, 'No state').getAttribute('aria-label')).toBe('No state, 1 card');
+	});
+
 	it('activating a card opens its note, exactly as activating a row does', () => {
 		const vault = boardVault();
 		const { containerEl } = makeView(vault, { ...BOARD }, { collapsed: true });

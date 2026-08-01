@@ -208,6 +208,20 @@ describe('the board keyboard', () => {
 		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
 	});
 
+	it('reserves modified arrows for the moves to come', () => {
+		const { containerEl } = board(boardVault());
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowRight');
+		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
+
+		// Alt+arrow is the deferred card-move shortcut; navigating on it instead
+		// would teach exactly the wrong reflex. Other chords are not ours to swallow.
+		key(tree, 'ArrowRight', { altKey: true });
+		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
+		key(tree, 'ArrowRight', { shiftKey: true });
+		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
+	});
+
 	it('slash reaches the quick filter', () => {
 		const { containerEl } = board(boardVault());
 

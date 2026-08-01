@@ -193,6 +193,11 @@ interface BoardPosition {
 export function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	if (evt.target !== evt.currentTarget) return;
 	if (handleBoardChromeKey(host, evt)) return;
+	// Navigation is unmodified keys only. Alt+arrows are the MOVE shortcuts this
+	// increment defers — a modified arrow that silently moved the selection instead
+	// of the card would teach the wrong reflex, and other chords are not this
+	// handler's to swallow.
+	if (evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
 	const snapshot = host.board;
 	if (!snapshot || snapshot.board.columns.length === 0) return;
 	const pos = boardPosition(host, snapshot);
