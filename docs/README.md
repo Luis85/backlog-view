@@ -26,8 +26,12 @@ is the honest report.
 
 ## The trees
 
-**Product Backlog** is the product: seven features covering the hierarchy, moving items,
-creating them, progress, finding work, safe writes and view state — 24 use cases in all.
+**Product Backlog** is the product: eight features covering the hierarchy, moving items,
+creating them, progress, finding work, safe writes and view state — 24 use cases in all —
+plus **User manual**, the one feature specified rather than built: an in-view help surface
+whose sections explain the types, moving, creating, finding, undo and configuration. Its
+six use cases describe a manual, so each is also a statement of what that part of the
+plugin is *for*.
 
 **Codebase health** is the engineering work — three features and four use cases saying what
 "healthy" means here, with the tasks that got it done underneath. Its actor is whoever
@@ -47,6 +51,15 @@ the work will extend, which is a design claim a reader can disagree with; their
 extensions are where the epic's hard parts are already settled — what a filtered board
 does to a WIP signal, what happens to a card created into a state the base excludes —
 and every one of those was a paragraph of prose before the shape asked the question.
+
+**Cross-cutting concerns** is the fourth kind: properties that have to be true of
+everything, or they are true of nothing. Two features — `Multilang` (every string comes
+out of a per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's
+design tokens, from a stylesheet organised like the rest of the codebase). They are
+siblings because they meet at the layout: translated text is longer, shorter and
+sometimes right-to-left, and the stylesheet is what absorbs it. Specification only —
+nothing under this epic is built yet, and what it asks for applies to the board as much
+as to the tree.
 
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
@@ -95,8 +108,8 @@ can run is worse than none, because it invites trust it has not earned:
    of a moment and may legitimately name a file since split away — rewriting them would
    falsify the record — so their stale paths are **listed rather than failed**. Being
    listed is the point: visible, not silently exempt.
-5. Every use case has all its sections **in the documented order**; the whole
-   `**As** … **I want** … **so that** …` opening, not just its first word; and the four
+5. Every use case has all its sections **exactly once and in the documented order**; the
+   whole `**As** … **I want** … **so that** …` opening, not just its first word; and the four
    table fields as **rows of the table**, parsed inside the block it occupies — ordering
    says where a marker sits, never that it is a row of anything. And **every** extension
    bullet is labelled `**Na — `, in step order, **naming a step the main flow actually
@@ -122,6 +135,13 @@ can run is worse than none, because it invites trust it has not earned:
    Sections, in both shapes, are matched as **lines, with code stripped first**. A heading
    deleted and quoted in a sentence is not a heading, and an example inside a fence is not
    the document's own structure.
+
+   They are also **counted**, not merely found. Two branches once converted the same note
+   to a use case at the same time; neither edit conflicted, the merge kept both, and the
+   note landed on `main` with two openings, two tables, two main flows and two
+   `## Where it lives` — passing every rule above, because "is it there" and "is it in
+   order" are each satisfied twice over. The two halves then disagreed about what the
+   feature guarantees, which is what a document that says a thing twice eventually does.
 7. Every module in `src/` and every file under `test/` — helpers included — is named by at
    least one note, **as a whole path**. This is the check that finds *missing* notes rather
    than wrong ones, and matching by substring let a mistyped `src/main.tsx` stand in for the
@@ -160,10 +180,11 @@ the lesson, and a limitation written as a Bug reads as something someone is abou
 | `Bug` | What went wrong, what fixed it, and what it taught | What happened · Fix · Lesson |
 | ADR | What was chosen to build it, what that cost, what would change it | Context · Decision · Consequences · Alternatives · Revisit when — **in that order** |
 
-Only the PBI shape and the ADR shape are gated by `npm run docs`; the other four rest on
-whoever writes them. That is the honest division rather than an omission: a checker can see
-whether a heading is present, never whether the paragraph under it says anything. What
-follows is what "says something" means for each kind.
+The PBI shape and the ADR shape are gated by `npm run docs`, and so is the one part of the
+Feature shape that is a fact rather than a judgement: that its use-case index names exactly
+its own children. The rest rests on whoever writes them. That is the honest division rather
+than an omission: a checker can see whether a heading is present, never whether the
+paragraph under it says anything. What follows is what "says something" means for each kind.
 
 ### `Epic` — why the work exists
 
@@ -182,7 +203,11 @@ once the feature exists — and then indexes the use cases that deliver it. Noth
 belongs here: detail written at feature level is detail no use case owns.
 
 Keep the index complete. A Feature whose list has drifted from its actual children is worse
-than one with no list, because the list is what a reader trusts instead of the tree.
+than one with no list, because the list is what a reader trusts instead of the tree. This
+one is checked: `npm run docs` reports a PBI child the list omits and an entry the list
+names that is no longer a child. It had already gone false — two pull requests that never
+saw each other, one writing an index and one adding a child — which is why it is a check
+and no longer a request.
 
 ### `PBI` — a use case
 

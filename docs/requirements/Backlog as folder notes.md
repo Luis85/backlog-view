@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Creating items]]"
-order: 45
+order: 60
 status: Open
 priority: P2
 created: 2026-08-01
@@ -16,11 +16,6 @@ files:
 
 # Backlog as folder notes
 
-**As** someone who wants each work item to own a place for its attachments and notes,
-**I want** new items written as their own folder note, **so that** the folder tree in the
-file explorer is the same hierarchy the view shows — instead of a layout the plugin can
-read and has no way to produce.
-
 The write-side counterpart of [[Folder note hierarchy]]. That PBI taught the view to
 *read* `Checkout/Checkout.md`; it deliberately never made one, so the mode only works on a
 folder tree somebody built by hand. This one lets the backlog be *stored* that way: one
@@ -30,6 +25,11 @@ view option, and a new item is written as `<folder>/<Title>/<Title>.md` instead 
 Flat stays the default and stays the shipped layout. This is a choice about how a backlog
 is filed, not a claim that folders are better.
 
+
+**As** someone who wants a work item to own the folder its attachments and notes live in,
+**I want** new items written as `<folder>/<Title>/<Title>.md`, **so that** the file tree
+and the item tree are the same hierarchy instead of two views that only agree by hand.
+
 ## Why it exists
 
 - Reading and writing the layout are two halves of one feature and only one shipped.
@@ -38,61 +38,6 @@ is filed, not a claim that folders are better.
   a spec, a design — which is the whole reason folder notes are a convention.
 - The folder tree becomes navigable in the file explorer as the same hierarchy the view
   shows, for the people who work outside the view as well as in it.
-
-## Use case
-
-| | |
-| --- | --- |
-| **Actor** | Backlog owner |
-| **Trigger** | Creating an item while `createFolderNotes` is on |
-| **Preconditions** | The config-problems gate is clear; the option is a property of the view, so it is already answered before the modal opens |
-| **Guarantee** | Nothing already on disk changes. The option decides what is *written next* — no note is moved, no folder is made around an existing note, and turning it off does not alter the meaning of anything it created. |
-
-**Main flow**
-
-1. The user turns on **Create items in their own folder** in the New items group.
-2. They create an item, from the toolbar, a row's **+**, the menu or the keyboard.
-3. The container folder is resolved exactly as it is today — folder mode's parent folder,
-   the type's folder, the home folder, where most items live, then ask.
-4. The note is written as `<container>/<Title>/<Title>.md`: the folder and the note carry
-   the identical sanitized name, from one sanitize used for both.
-5. A parentless item is pinned with an explicit empty `parent`, so a folder note above its
-   container cannot adopt it the day inference is switched on.
-
-**Extensions**
-
-- **2a — the item is a child of an existing item.** It lands *inside* the parent's folder,
-  which means widening the rule that today applies only under `folderHierarchy`. Without
-  that widening the mode files every new item as a **sibling** of the folder it belongs
-  inside, and buys nothing at all.
-- **2b — the parent is not itself a folder note.** Its children go **beside** it, never
-  under it: the container is the parent note's own folder. The plugin does not move the
-  parent to make a folder for it, and must not create `Checkout/` around a `Checkout.md`
-  living outside it — `nearestFolderNote` could not read that, so inference would silently
-  miss the parent it was told to nest under.
-- **2c — the parent is a context row.** The context-row rule is unchanged and must not be
-  weakened: an `outsideFilter` parent still does not lend its folder, and its child is
-  still placed by the explicit link alone.
-- **3a — nothing is configured to infer from.** The prompt asks for the **container**, and
-  persists that to `homeFolder` — not the item's own folder. A backlog whose home folder is
-  `docs/requirements/Checkout` is the failure this prevents.
-- **4a — the folder name already exists.** Disambiguation happens on the **folder**:
-  `Checkout 1/Checkout 1.md`, never `Checkout/Checkout 1.md`, because a folder has exactly
-  one folder note and the second spelling makes a note its own folder does not predict.
-- **4b — the existing folder is not empty.** It is not reused. Writing a folder note into a
-  populated folder re-parents every note in it under inference, and creation writes the new
-  note only.
-- **4c — the creation fails.** Cleanup removes **only the folder this attempt created**,
-  and only while it is still empty. A reused folder belongs to the user; the container
-  chain belongs to nobody in particular; and a delete that races a sync or an attachment
-  write takes real content with it.
-- **5a — the item is later moved to the root.** The marker is written from the item's own
-  layout as well as the options in force: a note that *is* a folder note is pinned whatever
-  the settings currently say. Otherwise turning the option off would change the meaning of
-  notes already on disk, after the fact.
-- **5b — the user asks for "Use folder position" or "Clear parent link".** Those still
-  delete the key, handing the item back to inference. They exist only when inference is on,
-  so widening the marker must not widen them.
 
 ## What the user chooses
 
@@ -106,12 +51,70 @@ is *written*; that one decides how the tree is *read*. Creation writes the expli
 `parent` link either way, so each does its job alone, and used together they agree by
 construction — which is the pairing this exists for.
 
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Creating an item while `Create items in their own folder` is on |
+| **Preconditions** | The option is on, and creation is otherwise gated exactly as it is today — a valid configuration, through the same write gate |
+| **Guarantee** | Nothing already on disk changes: no note is moved and no folder is converted. Turning the option off restores today's **creation layout** exactly — not every later write, since a note already created as a folder note keeps its top-level marker whatever the option then says (**5a**). |
+
+**Main flow**
+
+1. The user turns on `Create items in their own folder` in the **New items** option group.
+2. The user creates an item — the row's **+**, its context menu, or the toolbar.
+3. The **container** folder is resolved exactly as it is today: folder mode's parent
+   folder, the type's folder, the home folder, where most items live, then ask.
+4. The item is written as `<container>/<Title>/<Title>.md`, the folder and the note
+   carrying the identical sanitized name.
+5. A parentless creation is pinned with an **explicit empty `parent`**, so no folder note
+   above the container can adopt it the day inference is switched on.
+6. Children created under that item land **inside** its folder, so the folder tree and the
+   item tree agree by construction.
+
+**Extensions**
+
+- **1a — the option is off.** The default, and the shipped layout: items are written flat
+  as `<container>/<Title>.md`. This is a choice about filing, not a claim that folders are
+  better.
+- **2a — the item is created on the board.** [[New cards in place]] inherits this by going
+  through the same gated flow, with no rule of its own.
+- **3a — nothing is configured and nothing can be inferred.** The prompt asks for a folder
+  and persists the **container** to `homeFolder` — never the item's own folder, or the
+  backlog's home becomes `docs/requirements/Checkout`. `inferFolder` counts the topmost
+  rows **in the results** rather than every item, or a nested Epic's own folder outvotes
+  the container it sits in.
+- **3b — the parent is a context row.** It still does not lend its folder, and its child is
+  still placed by the explicit link alone. The context-row rule needs no new code here and
+  must not be weakened.
+- **4a — a folder of that name exists and holds notes.** The new item gets `Checkout 1/`
+  rather than a folder note written into somebody else's folder, which would re-parent
+  everything in it under inference. Disambiguation happens on the **folder**, never as
+  `Checkout/Checkout 1.md`.
+- **4b — a folder of that name exists and is empty.** It is reused. It belongs to the user,
+  which is why the failure path below will not delete it.
+- **4c — the creation fails.** Cleanup removes only the folder *this attempt* created, and
+  only while it is still empty: a reused folder is the user's, the container chain is not
+  part of the attempt, and sync or another plugin can drop a file in between.
+- **5a — a later move sends the item to the top level.** The item's own layout decides as
+  well as the options in force: a note that *is* a folder note is pinned on a move to the
+  root whatever the options currently say, so turning this option back off cannot change
+  the meaning of notes already on disk.
+- **6a — the parent is not itself a folder note.** Its children land **beside** it, never
+  under it. The plugin never moves a note to make a folder for it, and must not create
+  `Checkout/` around a `Checkout.md` that lives elsewhere — a folder whose folder note sits
+  outside it is one inference cannot read.
+
 ## Acceptance criteria
 
 ### The option
 
-- Default off, and off reproduces today's behaviour exactly. The default is not a real
-  value, so it needs no `clearable` treatment (see `resolveSettings`).
+- Default off, and off reproduces today's **creation** behaviour exactly. The one thing it
+  does not restore is the top-level marker for a note already written as a folder note,
+  which is pinned by the note's own layout rather than by the option — see
+  **The top-level marker** below, where that is the deliberate point. The default is not a
+  real value, so it needs no `clearable` treatment (see `resolveSettings`).
 - Turning it on or off never touches a note already on disk. Flat and foldered items
   coexist in one tree and nothing downstream distinguishes them — a folder note is an
   ordinary note.
@@ -234,22 +237,8 @@ construction — which is the pairing this exists for.
 - Converting an existing flat backlog into folders is out of scope for the same reason.
   This option changes what is created next, not what is already there.
 
-## Where it lives
+### What creation infers from
 
-**Nothing yet — this note is design.** Every module below exists and gains a part of this;
-no new file is needed, which is most of the argument that the option is small:
-
-- `src/domain/itemTypes.ts` answers "does this type get a folder", beside `folderForType`.
-  Node-testable, no new module.
-- `src/domain/settings.ts` and `src/domain/viewOptions.ts`: one boolean, in the New items group,
-  under the folder pickers it modifies.
-- `src/view/interactions/create.ts`: widen the parent-folder condition, resolve the flag, pass
-  it down. The folder resolution itself is untouched.
-- `src/storage/frontmatter.ts`: `NewItemSpec` gains the flag; path building and the collision
-  search move up one level to the folder. Still the only module that creates a note. The
-  top-level marker widens here in **both** writers — `createBacklogItem` and `applyWrites`
-  — off one shared predicate over the settings *and* the file, leaving `removeParentKey`
-  alone.
 - With the option on, `inferFolder` must answer from **root items**, not from every item.
   Counting each folder note's container is not enough: `docs/Epic/Epic.md` with ten
   `docs/Epic/Feature N/Feature N.md` under it counts `docs/Epic` ten times against `docs`
@@ -302,3 +291,15 @@ switch `Infer hierarchy from folder notes` on and off and confirm the tree is un
 that last one is the check the parentless pin exists for. The jsdom harness covers the
 paths written and the choices made; it cannot say the result looks like a backlog in the
 file explorer.
+
+## Where it lives
+
+**Nothing yet — this note is design.** Every module it names exists; none of them does
+this yet.
+
+`src/domain/itemTypes.ts` answers whether a type gets a folder, beside `folderForType` ·
+`src/domain/settings.ts` and `src/domain/viewOptions.ts` carry the one new boolean ·
+`src/domain/folderNotes.ts` holds `folderNotePath`, the convention both halves spell ·
+`src/view/interactions/create.ts` widens the parent-folder condition and `inferFolder` ·
+`src/storage/frontmatter.ts` builds the path, searches for collisions and writes the
+top-level marker in both `createBacklogItem` and `applyWrites`.

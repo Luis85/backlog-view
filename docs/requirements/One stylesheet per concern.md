@@ -1,0 +1,210 @@
+---
+type: PBI
+parent: "[[Theming and styling]]"
+order: 10
+status: Open
+---
+
+# One stylesheet per concern
+
+`styles.css` splits into one file per concern, mirroring the modules it styles, and the
+build assembles them into the single file Obsidian loads.
+
+
+**As** someone changing how one part of the view looks, **I want** to open a file about
+that part, **so that** I am not reading 1143 lines to find the forty that matter.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever changes the plugin |
+| **Trigger** | Editing any style, or adding a new one |
+| **Preconditions** | None — this lands first among the styling PBIs |
+| **Guarantee** | The assembled stylesheet is equivalent to today's. A reorganisation that changes what the user sees has failed, and nothing here can see a stylesheet. |
+
+**Main flow**
+
+1. The stylesheet splits into one partial per concern, mirroring the modules it styles.
+2. An entry file imports them in a stated, load-bearing order.
+3. The build assembles the entry into the single file Obsidian loads.
+4. `npm run dev` rebuilds it on change, so a symlinked vault stays current.
+
+**Extensions**
+
+- **1a — the banner does not bound the concern.** The `tags` banner runs to 975 and only
+  its first hundred lines are tags; the state chip and the indent guide move to the files
+  that own them.
+- **1b — the rules are cross-cutting.** The two media queries restyle elements owned by
+  three partials, so they get a stated home and a stated reason rather than being filed
+  under whichever section they sat in.
+- **1c — a `@keyframes` is used outside the partial defining it.** Colocate with its only
+  user, or hoist the shared ones; the `pbl-` prefix means nothing collides either way.
+- **2a — two rules of equal specificity depend on their order.** That order is behaviour,
+  not organisation, so the entry file states it and stays stable.
+- **3a — the assembled output is compared against today's.** Not byte-for-byte: moving the
+  state chip into the columns partial necessarily moves it relative to the badge and tag
+  blocks. The comparison is over the **resolved cascade** — every selector's winning
+  declarations — so a reordering that changes nothing observable passes and one that
+  changes a winner fails.
+- **4a — the root file is now generated.** Three comments and `RELEASING.md` say it is
+  hand-edited source; all four become false together and change in the same commit.
+
+## Why this one is not optional
+
+The root `CLAUDE.md` opens its architecture section with *"one file per concern, 400-line
+max enforced by lint"*, and `eslint.config.mjs:161` makes it real for every TypeScript
+file. `styles.css` is **1143 lines** — 2.8× a cap the rest of the codebase cannot exceed
+— and it is exempt for exactly one reason: `eslint src test` does not read CSS. It is the
+only file in the repository that escapes the rule the repository is built on, and it
+escapes it by accident rather than by argument.
+
+`Module structure` closed `One file per concern` for `src/`. This is the same PBI for the
+half that was not looked at.
+
+## The seam is *mostly* drawn, and one banner lies
+
+The stylesheet is already sectioned by hand with banner comments, and most of those
+sections mirror the source tree:
+
+| Section | Lines | Styles |
+| --- | --- | --- |
+| toolbar | 14-306 | `view/render/toolbar.ts` |
+| tree | 307-454 | `view/render/rows.ts` |
+| columns | 455-576 | `view/render/columns.ts` |
+| badges | 577-646 | `view/render/rows.ts` |
+| property columns | 647-732 | `view/render/columns.ts` |
+| tags | 733-**838** | `view/render/columns.ts`, `view/interactions/tags.ts` |
+| drag & drop | 976-1095 | `view/interactions/dragDrop.ts` |
+| empty state | 1096-1135 | `view/render/emptyStates.ts` |
+| modals | 1136-1143 | `ui/prompts.ts` |
+
+**The `tags` banner runs to 975 and only its first hundred lines are about tags.** After
+`.pbl-tag-add` ends at 838 it carries three unrelated things, and following the banner
+mechanically would file all of them under a tags partial:
+
+| Lines | Actually | Belongs with |
+| --- | --- | --- |
+| 839-894 | `.pbl-state-chip` and its variants | columns |
+| 900-914 | `.pbl-children` and the indent guide | tree |
+| 915-939 | `@media (prefers-reduced-motion)` — spinners, grips, chevrons | **nothing below it** |
+| 940-975 | `@media (hover: none)` — touch affordances | **nothing below it** |
+
+So the earlier claim that this is a mechanical split needing no judgement was wrong. Two
+sections need moving, and the two media queries are genuinely **cross-cutting**: they
+restyle elements owned by the toolbar, the tree and the tags partial alike, so they belong
+to no component file. Filing accessibility rules under `tags.css` would leave the next
+reduced-motion change owned by a file nobody would think to open.
+
+That is the one real design decision here, and this PBI has to make it rather than inherit
+it: either a shared partial per *condition* (`motion.css`, `touch.css`) that every
+component's overrides live in, or each partial carrying its own `@media` block for the
+rules it owns. The second keeps a concern in one file and costs a repeated query; the
+first keeps the query in one place and splits each component across two files. Whichever
+is chosen, the reason goes in the note — because the next contributor adding a
+reduced-motion rule needs to know where it goes without re-deriving this.
+
+Every resulting partial is **well under 400 lines** — the largest is the toolbar at 293 —
+so the cap is met on the first pass either way. `test/` mirrors `src/` already; this makes
+the styles do the same.
+
+## There is already a CSS build step
+
+`esbuild.config.mjs` runs esbuild over `styles.css` in production and writes a minified
+`dist/styles.css`, which is what the release uploads (`RELEASING.md`, and
+`.github/workflows/release.yml:72`). What is missing is not a build — it is *sources for
+the build to assemble*. esbuild resolves `@import` in CSS natively, so an entry file
+importing nine partials is a small change to an existing step rather than a new one.
+
+## What this inverts
+
+Three places currently assert the opposite, in comments written on purpose:
+
+- `esbuild.config.mjs`: *"styles.css is hand-edited source and stays readable at the
+  repository root — a dev vault symlinked at the repo reads it directly."*
+- `test-build.mjs`: *"styles.css is hand-edited source rather than a build artifact — the
+  readable copy is the one worth debugging against, so it is copied as it stands."*
+- `RELEASING.md`: *"The `styles.css` at the repository root stays readable and is the file
+  to edit."*
+
+All three become false together, and all three have to change in the same commit. The
+symlinked dev vault is the real constraint hiding in them: it reads the root
+`styles.css` directly, so once that file is generated, **`npm run dev` has to rebuild it
+on change** or the vault silently goes stale — the failure mode being a developer
+debugging a stylesheet the browser is not using.
+
+## Two hazards CSS has and TypeScript does not
+
+**Order is semantics.** Modules can be imported in any order; stylesheets cannot. Two
+rules of equal specificity are decided by which came last, so the `@import` order in the
+entry file is behaviour, not organisation. It has to be explicit, commented as
+load-bearing, and stable.
+
+**`@keyframes` are global.** There are four (`pbl-busy-in`, `pbl-spin`,
+`pbl-pending-pulse`, `pbl-expand-nudge`) at lines 216, 238, 345 and 1033, spread across
+three sections, and `pbl-spin` is used by more than the section that defines it. The
+`pbl-` prefix already namespaces them, so nothing collides — but a keyframe defined in
+one partial and used from another makes the file boundary a half-truth, and that is a
+decision (colocate with the only user, or hoist the shared ones) rather than an accident
+to carry over.
+
+## Acceptance criteria
+
+- One partial per **concern**, each named for the module it styles, under a directory that
+  makes the mirror obvious. Each is under the 400-line cap. The banners are the starting
+  point, not the answer: the state chip and the indent guide move out of the `tags` span
+  to the files that own them.
+- The two cross-cutting media queries have a stated home and a stated reason. A
+  `prefers-reduced-motion` rule for the spinner must be findable by someone who has never
+  read this note.
+- An entry file that imports them in an order that is **stated to be load-bearing**, and
+  the build assembles it. `npm run build` and `npm run test-build` both produce a
+  stylesheet, and the release keeps shipping the minified one.
+- **The assembled output is proven equivalent to today's file**, not eyeballed. Nothing in
+  this repository can see a stylesheet, so a refactor that "looks the same" is a claim with
+  no evidence behind it.
+- Equivalence is over the **resolved cascade**, not the bytes. Byte-identity is not merely
+  strict here, it is unsatisfiable: moving `.pbl-state-chip` into the columns partial and
+  `.pbl-children` into the tree partial — which this PBI requires — necessarily moves them
+  relative to the badge, property and tag blocks. A comparison that rejects the
+  reorganisation it mandates is a contradiction, not a high bar. Compare every selector's
+  winning declarations, so a reordering that changes nothing observable passes and one that
+  changes a winner fails.
+- `npm run dev` rebuilds the stylesheet on change, or the symlinked-vault workflow that
+  `RELEASING.md` documents is updated to say what replaces it.
+- The three comments above are corrected in the same commit. A comment asserting a file
+  is hand-edited, sitting next to the code that generates it, is worse than no comment.
+- Whether the assembled `styles.css` is committed or gitignored is decided and written
+  down. `main.js` is gitignored today and the release builds it, which is the precedent —
+  but the dev-vault symlink reads the root file, so this is a real question and not a
+  formality.
+- `max-lines` for the partials is enforced, not just satisfied. Splitting a file that
+  nothing measures leaves it split until someone appends to it — see
+  `Styling rules are checks`, which is where the stylesheet stops being invisible to
+  `npm run check`.
+
+## The consequence for its sibling notes
+
+Every line number cited anywhere in this register points into the file this PBI deletes.
+`Layout survives translated text` cites 96, 336 and 748-749; `One bound, not two` cites
+324, 909, 986 and 1008; `Light, dark and reduced motion` cites 915 and 940.
+
+The fix is not to renumber them afterwards. It is to **cite by file and selector**, which
+survives a split, a re-order and an edit alike — `.pbl-row.pbl-selected`'s inset shadow is
+findable forever, `styles.css:336` is findable until the next insertion above it. This
+PBI re-cites its siblings on that basis, and the register prefers selectors from here on.
+
+That also settles the sequencing: this lands **first** among the styling PBIs. The
+tokenization sweep and the bound audit both edit the stylesheet extensively, and doing
+them in nine small files against stable addresses is the difference between a reviewable
+diff and a 1143-line one.
+
+## Where it lives
+
+`styles.css` is the file that splits · `esbuild.config.mjs` already runs esbuild over it
+and writes the minified `dist/styles.css` the release uploads, so the build step exists and
+gains sources rather than being new · `test-build.mjs` copies the root file into a vault
+and says in a comment that it is hand-edited · `eslint.config.mjs` carries the 400-line cap
+the partials must meet.
+`.github/workflows/release.yml` uploads the built asset; `RELEASING.md` documents the
+hand-edited claim that stops being true.

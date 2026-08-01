@@ -78,23 +78,47 @@ const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(ra
  *
  * Both ends of an inversion are named. A monotonic walk blames whichever section follows
  * the displaced one, which points at the innocent party.
+ *
+ * Present and ordered is not enough: each section must also appear **exactly once**. Two
+ * branches converted the same note to a use case at the same time, neither edit conflicted
+ * textually, and the merge kept both — two openings, two tables, two main flows, two
+ * `## Where it lives`. Every rule here passed it, because "is it there" and "is it in
+ * order" are both satisfied twice over, so the register was blessed while the note
+ * contradicted itself: one guarantee said the option never touches a note on disk, the
+ * other said what actually happens. A document that says a thing twice says it in two
+ * versions eventually, and the checker is what has to notice.
  */
 function checkSections(file, text, sections, what) {
 	const prose = withoutCode(text);
 	const found = [];
 	for (const section of sections) {
-		// Bounded at both ends. A line-start anchor alone is a prefix match, so `## Contextual`
-		// satisfied `## Context` — the same prefix hole as `showCounts` vouching for
-		// `showCount`, in the third place it has turned up. A `##` heading is a whole line and
-		// is anchored as one; a `**Bold**` marker opens a sentence and is bounded by its own
-		// closing `**`, so it needs only to not run straight into more word.
-		const bound = section.startsWith("#") ? String.raw`\s*$` : String.raw`(?=\s|$)`;
-		const at = prose.search(new RegExp(`^${escapeRe(section)}${bound}`, "m"));
-		if (at === -1) fail(file, `${what} has no ${section}`);
-		else found.push([section, at]);
+		const hits = sectionHits(prose, section);
+		if (hits.length !== 1) fail(file, countProblem(what, section, hits.length));
+		// The first index is what the order walk needs, and it is recorded even when the
+		// count was wrong: a note reported for saying `## Use case` twice should not also
+		// be reported for an inversion it does not have.
+		if (hits.length > 0) found.push([section, hits[0].index]);
 	}
 	checkOrder(file, found, what);
 }
+
+/**
+ * Every occurrence of one section marker, in document order.
+ *
+ * Bounded at both ends. A line-start anchor alone is a prefix match, so `## Contextual`
+ * satisfied `## Context` — the same prefix hole as `showCounts` vouching for `showCount`,
+ * in the third place it has turned up. A `##` heading is a whole line and is anchored as
+ * one; a `**Bold**` marker opens a sentence and is bounded by its own closing `**`, so it
+ * needs only to not run straight into more word.
+ */
+function sectionHits(prose, section) {
+	const bound = section.startsWith("#") ? String.raw`\s*$` : String.raw`(?=\s|$)`;
+	return [...prose.matchAll(new RegExp(`^${escapeRe(section)}${bound}`, "gm"))];
+}
+
+/** Missing and duplicated are one question — "how many" — so they are one message. */
+const countProblem = (what, section, n) =>
+	n === 0 ? `${what} has no ${section}` : `${what} has ${n} ${section} sections, expected one`;
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -114,7 +138,13 @@ function between(text, start, end) {
 
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
-	return text.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+	// Both fence characters. CommonMark fences with ``` or ~~~, and stripping only the
+	// first left every structural question in this file — headings, sections, index
+	// entries — readable inside a tilde fence, where nothing renders and nothing is real.
+	return text
+		.replace(/```[\s\S]*?```/g, "")
+		.replace(/~~~[\s\S]*?~~~/g, "")
+		.replace(/`[^`\n]*`/g, "");
 }
 
 /**
@@ -325,6 +355,128 @@ for (const [, note] of notes) {
 	if (labels.some(([step, letter], i) => ordered[i][0] !== step || ordered[i][1] !== letter)) {
 		fail(note.file, "extensions are not in step order");
 	}
+}
+
+// ------------------------------------------------------------------ feature indexes
+/**
+ * A Feature indexes the use cases that deliver its outcome, and `docs/README.md` states
+ * the rule this enforces: *"Keep the index complete. A Feature whose list has drifted from
+ * its actual children is worse than one with no list, because the list is what a reader
+ * trusts instead of the tree."*
+ *
+ * That was an advertised invariant nobody could run — the failure this whole file exists
+ * to end — and it had already gone false: two PRs that never saw each other, one writing
+ * the index from the children it branched with and one adding a child, both merging clean.
+ * Neither could have caught it alone, which is the argument for checking it here rather
+ * than in review.
+ *
+ * Both directions, because drift has two shapes: a PBI child missing from the list, and a
+ * listed entry that is not one of this Feature's use cases — a note that has moved away, or
+ * a child of a type that was never a use case to begin with. The index is compared against
+ * the PBI children exactly: an `Issue` or a `Bug` may legally hang from a Feature, and
+ * accepting it in the list let "may hang here" quietly mean "may be indexed here".
+ */
+for (const [name, note] of notes) {
+	if (note.type !== "Feature") continue;
+	const index = useCaseIndex(withoutCode(texts.get(note.file)));
+	// Asked of the heading itself, not inferred from the comparison below. A Feature with
+	// no use cases YET has an empty index that matches its empty child set exactly, so
+	// without this the section is only required from the first PBI onwards — the gate
+	// arriving after the shape it is meant to establish.
+	if (index === null) fail(note.file, "feature has no `## Use cases` section");
+	// An entry is a link **immediately after a bullet marker** — the whole of
+	// `- [[Name]] — what it delivers.` up to the name. That anchoring is the rule, and it
+	// took three tries to state, each one the same hole one step in: reading the section let
+	// a PBI named in a passing sentence count as listed; reading every link in a bullet let
+	// `- [[A]] — see also [[B]]` list B; reading a bullet's first link *anywhere* let
+	// `- See also [[B]]` do it again. Only the position after the marker distinguishes an
+	// entry from a mention, so only the position can be checked.
+	//
+	// A bullet that does not start with a link therefore contributes nothing, which is
+	// correct twice over: it is not an entry, and the use case it names still has to have a
+	// bullet of its own. Descriptions stay free to link wherever they like.
+	//
+	// The marker is matched as CommonMark defines a **list item**, not as the one spelling
+	// this register happens to use: up to three leading spaces, a bullet (`-`, `*`, `+`) or
+	// an ordered marker, then one to four spaces or a tab. Every part of that is a legal
+	// entry that a tighter pattern reports as a MISSING child — a false failure, which this
+	// file already treats as the more expensive direction to get wrong, and which would
+	// block a contributor over whitespace. Written as the whole family at once rather than
+	// per variant, because each variant found separately is another round of the same bug.
+	//
+	// The cost is that a sub-bullet indented two spaces reads as an entry. No regex can tell
+	// that from a legally indented top-level bullet without tracking list context, and a
+	// nested sub-list is not the shape a flat index has.
+	// The link must CLOSE. `[[Name]` captures a name from a prefix match while rendering as
+	// literal text, so a bullet with a lost bracket indexes nothing and must not read as an
+	// entry — the child is then reported missing, which is exactly what it is. An alias or a
+	// heading may sit between the name and the `]]`, since `[[Name|shown]]` still indexes
+	// Name. (The repository-wide wikilink scan matches the same permissive prefix, and
+	// deliberately keeps it: there a bare `[[Name]` must still resolve, and requiring `]]`
+	// would make the typo invisible rather than caught. Opposite defaults, because one asks
+	// "is this a link that works" and the other "does this bullet index a child".)
+	const entries = [
+		...(index ?? "").matchAll(/^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]{1,4}\[\[([^\]|#\n]+)(?:[|#][^\]\n]*)?\]\]/gm),
+	].map(([, t]) => t.trim());
+	const listed = new Set(entries);
+	// Before the Set collapses them: a use case bulleted twice renders twice, and an index
+	// that claims to name the children *exactly* cannot be silent about it.
+	for (const entry of listed) {
+		const times = entries.filter((e) => e === entry).length;
+		if (times > 1) fail(note.file, `## Use cases lists [[${entry}]] ${times} times`);
+	}
+	const children = [...notes].filter(([, c]) => c.parent === name);
+	// Ranked, so the report reads in the order the note should list them in.
+	const missing = children
+		.filter(([child, c]) => c.type === "PBI" && !listed.has(child))
+		.sort(([, a], [, b]) => a.order - b.order)
+		.map(([child]) => child);
+	if (missing.length > 0) fail(note.file, `## Use cases does not list ${missing.map((m) => `[[${m}]]`).join(", ")}`);
+	// Compared against the PBI children, not against every child. An `Issue` or a `Bug` may
+	// legally hang from a Feature and is NOT a use case, so a list naming one is not merely
+	// untidy — it is the index asserting something the type system says is false. Comparing
+	// against all children accepted exactly that, which made "may hang here" quietly mean
+	// "may be indexed here".
+	const useCases = new Set(children.filter(([, c]) => c.type === "PBI").map(([child]) => child));
+	for (const entry of listed) {
+		if (useCases.has(entry)) continue;
+		// The two ways an entry can be wrong read differently to whoever fixes it: a note
+		// that moved away, and a note that is here but is not a use case.
+		const kind = notes.get(entry);
+		const why =
+			kind && children.some(([child]) => child === entry)
+				? `is a child of type ${kind.type}, not a use case`
+				: "is not a child of this feature";
+		fail(note.file, `## Use cases lists [[${entry}]], which ${why}`);
+	}
+}
+
+/**
+ * The body of the `## Use cases` section: everything up to the next heading of the same
+ * level, or the end of the note. **null** when the heading is absent, which the caller
+ * reports in its own right and then reads as an empty index — so a Feature with no section
+ * is told both that the heading is gone and which children go in it, rather than being let
+ * off because an empty list matches an empty subtree.
+ *
+ * HTML comments are stripped first, and this is the whole question the section asks:
+ * completeness is about what a READER sees, and `<!-- -->` hides a bullet from the rendered
+ * note while leaving its wikilink here to be counted. That is the deletion case the check
+ * exists to catch, passing green — so a commented-out entry has to read as an absent one.
+ * Stripped here rather than in `withoutCode`, which every other check shares: a wikilink
+ * inside a comment should still have to resolve, and widening that helper would quietly
+ * relax rules this change is not about.
+ */
+function useCaseIndex(text) {
+	text = text.replace(/<!--[\s\S]*?-->/g, "");
+	// Up to three leading spaces on the heading, at both ends of the section — the same
+	// CommonMark rule the entry matcher follows for list items. Demanding column zero on
+	// the closing boundary is the worse half: the section would run past an indented
+	// `## Something else` and count its bullets as entries.
+	const start = /^ {0,3}## Use cases\s*$/m.exec(text);
+	if (!start) return null;
+	const rest = text.slice(start.index + start[0].length);
+	const end = /^ {0,3}## /m.exec(rest);
+	return end ? rest.slice(0, end.index) : rest;
 }
 
 // ----------------------------------------------------------------------------- ADRs

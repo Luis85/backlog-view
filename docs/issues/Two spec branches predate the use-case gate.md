@@ -1,6 +1,6 @@
 ---
 type: Issue
-order: 70
+order: 80
 parent: "[[Invariants as checks, not conventions]]"
 status: Open
 priority: P1
