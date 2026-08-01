@@ -18,7 +18,10 @@ are its contents.
 
 - Filtering shows the cards the tree would show: a card stays while it, an ancestor,
   or anything in the subtree it represents matches — the tree's match-path contract,
-  so switching projections mid-filter never changes what is found. Every column still
+  so switching projections mid-filter never changes what is found. A card kept only
+  by a descendant's match names those matching descendants on its face while the
+  filter is active, each opening its note — a rollup number alone would leave the
+  search's own result unreachable. Every column still
   renders, its header showing matches against the full count while the filter is
   active. The WIP signal keeps reading the full population — a filter must never make
   an over-limit column look under its limit.

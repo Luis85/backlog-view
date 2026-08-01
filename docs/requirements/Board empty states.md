@@ -19,8 +19,10 @@ in it, and both are different from a workflow with no states.
 
 - With no state property configured, the board names the option to set and where,
   instead of rendering nothing.
-- With no results, the tree's own empty state renders unchanged — including its
-  ignored-notes honesty and its create button.
+- With no results but a configured workflow, the columns still render — every stage a
+  creation target — and the tree's empty-state honesty (the ignored-notes count, the
+  create path) renders as an advisory beside them, not as their replacement: an empty
+  board is empty stages, never no stages.
 - A configured state with no cards still renders its column. Boards that derive
   columns from observed values lose exactly this — an empty stage vanishing is the
   most repeated complaint against them — and a workflow stage exists whether or not
