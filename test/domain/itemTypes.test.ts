@@ -248,6 +248,17 @@ describe('folders by type', () => {
 		expect(folderForType('Epic', pinned)).toBe('Roadmap/requirements');
 	});
 
+	it('knows whether a base has named a folder at all', () => {
+		// The distinction the creation flow needs: a folder someone chose is a decision,
+		// and one nobody chose is this plugin's guess, which must not beat evidence.
+		expect(resolveSettings(fakeConfig()).foldersConfigured).toBe(false);
+		expect(resolveSettings(fakeConfig({ homeFolder: 'X' })).foldersConfigured).toBe(true);
+		expect(resolveSettings(fakeConfig({ newItemFolder: 'X' })).foldersConfigured).toBe(true);
+		expect(resolveSettings(fakeConfig({ 'typeFolder.bug': 'X' })).foldersConfigured).toBe(true);
+		// Cleared counts as named: turning a folder off is a decision too.
+		expect(resolveSettings(fakeConfig({ homeFolder: '' })).foldersConfigured).toBe(true);
+	});
+
 	it('keeps a base configured before the home folder existed filing where it filed', () => {
 		// The old key means what the home folder means. Without this, upgrading moves
 		// every new item into docs/ — most likely outside the filter that view was built

@@ -45,26 +45,35 @@ export function promptCreateItem(host: BacklogViewHost, choices: string[], paren
 		host.settings.folderHierarchy && parentItem && !parentItem.outsideFilter
 			? normalizeFolder(parentItem.file.parent?.path)
 			: null;
-	// Walked once, not per type: the fallback does not depend on which type is chosen.
-	const fallbackFolder = host.settings.homeFolder || (hasItems ? inferFolder(host.model) : '');
+	// Walked once, not per type: where the backlog already lives does not depend on
+	// which type is being created.
+	const inferred = hasItems ? inferFolder(host.model) : '';
 	/**
 	 * Where a new item of this type lands. Folder mode's "beside the parent's folder
 	 * note" rule stays on top — there the folder tree IS the hierarchy, and an opt-in
 	 * mode should not be quietly overruled by a filing default. Below it the type's own
 	 * folder wins over the home folder, so a Bug files itself under `docs/bugs` even in
 	 * a base whose items otherwise live together.
+	 *
+	 * **A guess must not outrank evidence.** When this base names no folder at all, the
+	 * folders below are this plugin's defaults, and a backlog whose items already live
+	 * in `Backlog/` is telling us something a default cannot know. Inference therefore
+	 * comes first in that case and only in that case — which is what keeps a base built
+	 * before any of these options existed filing exactly where it always did, instead of
+	 * creating notes into `docs/` that its own filter does not return.
 	 */
-	const folderFor = (typeName: string): string =>
-		parentFolder ?? folderForType(typeName, host.settings) ?? fallbackFolder;
+	const chosen = (typeName: string): string => folderForType(typeName, host.settings) || host.settings.homeFolder;
+	const folderFor = (typeName: string): string => {
+		if (parentFolder !== null) return parentFolder;
+		return host.settings.foldersConfigured ? chosen(typeName) || inferred : inferred || chosen(typeName);
+	};
 	// Without items or a configured folder there is nothing to infer from, and a note
 	// in the vault root would most likely fall outside this base's filter — ask instead.
 	// A type that files itself needs no asking, so this only fires when one of the
 	// offered types would have nowhere to go.
-	const askFolder =
-		parentFolder === null &&
-		!hasItems &&
-		host.settings.homeFolder === '' &&
-		choices.some((type) => folderForType(type, host.settings) === null);
+	// Only when nothing at all can answer: no parent folder, no items to learn from, and
+	// no folder configured or defaulted for any type on offer.
+	const askFolder = parentFolder === null && !hasItems && choices.every((type) => chosen(type) === '');
 
 	new TitlePromptModal(host.app, {
 		// With a choice to make the heading cannot name the type, since the type is the

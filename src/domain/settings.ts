@@ -42,6 +42,13 @@ export interface BacklogSettings {
 	 * the parent" rule.
 	 */
 	typeFolders: Record<string, string>;
+	/**
+	 * True when this base actually names a folder — any of the per-type options, the
+	 * home folder, or the `newItemFolder` that preceded it. False means every folder
+	 * above is this plugin's GUESS, which matters because a guess must not outrank
+	 * evidence: see `folderFor` in `interactions/create.ts`.
+	 */
+	foldersConfigured: boolean;
 	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
 	focusLevel: string;
 	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
@@ -138,6 +145,7 @@ export function defaultSettings(): BacklogSettings {
 		showChips: true,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
+		foldersConfigured: false,
 		typeFolders: typeFoldersFor([...DEFAULT_LEVELS, ...DEFAULT_EXTRA_TYPES], (t) => defaultTypeFolder(t)),
 		focusLevel: '',
 		stateKey: '',
@@ -201,6 +209,62 @@ export function configProblems(settings: BacklogSettings): string[] {
 	return problems;
 }
 
+/** The readers `resolveFolders` borrows, so it can be its own function without repeating them. */
+interface ConfigReaders {
+	str: (key: string) => string;
+	clearable: <T>(key: string, def: T, parse: () => T) => T;
+	config: BasesViewConfig;
+}
+
+/** A user-typed folder path, trimmed and stripped of surrounding slashes. */
+function folderPath(value: string): string {
+	return value.trim().replace(/^\/+|\/+$/g, '');
+}
+
+/**
+ * Everything about where new items are filed, resolved together because the three answers
+ * depend on each other: each type folder defaults under the home folder, the home folder
+ * falls back to the `newItemFolder` that preceded it, and whether ANY of them was named
+ * decides if they are choices or this plugin's guesses.
+ */
+function resolveFolders(
+	read: ConfigReaders,
+	types: string[],
+	fallback: BacklogSettings,
+): Pick<BacklogSettings, 'homeFolder' | 'foldersConfigured' | 'typeFolders'> {
+	const { str, clearable, config } = read;
+	// A base configured before the home folder existed carries the old `newItemFolder`,
+	// and it means exactly what the home folder means: reading it keeps such a view
+	// filing where it already filed.
+	const legacyFolder = folderPath(str('newItemFolder'));
+	const homeFolder = clearable('homeFolder', legacyFolder || fallback.homeFolder, () =>
+		folderPath(str('homeFolder')),
+	);
+	/**
+	 * Has this base named a folder at all? A base predating these options has named none
+	 * — and it is not a fresh install, it is a backlog already living somewhere. Answering
+	 * "no" is what lets creation prefer where the items already are over a default this
+	 * plugin picked. Reading `newItemFolder` alone missed most of them, since it was
+	 * optional and most such bases left it unset.
+	 */
+	const foldersConfigured =
+		config.get('homeFolder') !== undefined ||
+		config.get('newItemFolder') !== undefined ||
+		types.some((type) => config.get(typeFolderKey(type)) !== undefined);
+	return {
+		homeFolder,
+		foldersConfigured,
+		// One option per type, so a folder is picked rather than typed into a mapping,
+		// and each default sits under the resolved home folder — the value in the box is
+		// the value that applies, and moving the home folder moves every untouched one.
+		typeFolders: typeFoldersFor(types, (type) =>
+			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
+				folderPath(str(typeFolderKey(type))),
+			),
+		),
+	};
+}
+
 /** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */
 export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	const fallback = defaultSettings();
@@ -251,8 +315,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		if (!Number.isFinite(n)) return def;
 		return Math.min(Math.max(Math.round(n), MIN_PROP_COLUMN_WIDTH), MAX_PROP_COLUMN_WIDTH);
 	};
-	/** A user-typed folder path, trimmed and stripped of surrounding slashes. */
-	const folderPath = (value: string): string => value.trim().replace(/^\/+|\/+$/g, '');
 	const list = (key: string): string[] =>
 		str(key)
 			.split(',')
@@ -292,18 +354,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	 * in one place instead of a collision report that would gate unrelated writes.
 	 */
 	const resolvedExtras = extraTypes();
-	/**
-	 * A base configured before the home folder existed carries the old `newItemFolder`,
-	 * and it means exactly what the home folder means. Reading it keeps such a view
-	 * filing where it already filed — without this, upgrading silently moves every new
-	 * item into `docs/`, most likely outside the filter that view was built around, so
-	 * the note is created and then not there. That failure is invisible, which is why
-	 * this one migration is worth its two lines.
-	 */
-	const legacyFolder = folderPath(str('newItemFolder'));
-	const homeFolder = clearable('homeFolder', legacyFolder || fallback.homeFolder, () =>
-		folderPath(str('homeFolder')),
-	);
+	const folders = resolveFolders({ str, clearable, config }, [...resolvedLevels, ...resolvedExtras], fallback);
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [
@@ -327,16 +378,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		autoType: bool('autoAssignType', fallback.autoType),
 		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
-		homeFolder,
-		// One option per type, so a folder is picked rather than typed into a mapping.
-		// Each defaults to the shipped layout under the DEFAULT home folder, not under
-		// this view's: the value in the box is the value that applies, which is the
-		// whole point of giving each type its own input.
-		typeFolders: typeFoldersFor([...resolvedLevels, ...resolvedExtras], (type) =>
-			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
-				folderPath(str(typeFolderKey(type))),
-			),
-		),
+		...folders,
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		tagsKey: tagsKey(),
