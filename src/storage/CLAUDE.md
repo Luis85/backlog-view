@@ -26,7 +26,9 @@ can be checked by reading one directory.
   on disk survives `readNumber` but not a replay) — and a replay through the planner
   would re-normalize rather than restore. `applyRestores` compare-and-swaps: a key
   goes back only where the note still holds what the batch wrote, hand edits since
-  are kept and counted, deleted notes are skipped whole and counted, and each restore
+  are kept and counted, deleted notes are skipped whole and counted — by TFile
+  IDENTITY, not path, because a note recreated at the captured path is a different
+  file that must not inherit the original's history — and each restore
   emits its own inverse, which is what makes undoing an undo redo. Tags restore by
   *effective* delta, never snapshot, so they compose with edits made in between —
   at the price that a scalar-shaped prior comes back as the list the writer writes

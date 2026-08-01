@@ -132,6 +132,23 @@ describe('applyRestores', () => {
 		expect(vault.fm('Kept.md')).toEqual({ order: 2 });
 	});
 
+	it('treats a note recreated at the captured path as missing, not as a match', async () => {
+		const vault = new FakeVault();
+		const original = vault.addFile('Item.md', { frontmatter: { parent: '[[Somewhere]]' } });
+
+		// The forward write deletes the key, so the inverse's compare side is
+		// "absent" — which a fresh, unrelated note at this path would satisfy.
+		const inverses = await writeCapturing(vault, [{ file: original, removeParentKey: true }]);
+		vault.files.delete('Item.md');
+		vault.addFile('Item.md', { frontmatter: { own: 'note' } });
+
+		const outcome = await applyRestores(vault.app, inverses);
+
+		// The replacement is a different file; it must not inherit the original's history.
+		expect(outcome.missing).toBe(1);
+		expect(vault.fm('Item.md')).toEqual({ own: 'note' });
+	});
+
 	it('records its own inverses, so undoing an undo is redo', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { order: 1 } });

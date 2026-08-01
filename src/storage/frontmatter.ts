@@ -142,7 +142,11 @@ export async function applyRestores(
 	const outcome: RestoreOutcome = { conflicts: 0, missing: 0 };
 	let done = 0;
 	for (const restore of restores) {
-		if (app.vault.getAbstractFileByPath(restore.file.path) === null) {
+		// The same NOTE, not merely the same path: a note deleted and recreated at
+		// this path is a different file, and restoring into it would write history
+		// that was never its own. Obsidian keeps one TFile per file, so instance
+		// identity is the test — a path-only check would pass the replacement.
+		if (app.vault.getAbstractFileByPath(restore.file.path) !== restore.file) {
 			outcome.missing++;
 			onProgress?.(++done, restores.length);
 			continue;

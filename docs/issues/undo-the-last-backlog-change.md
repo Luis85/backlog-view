@@ -153,5 +153,13 @@ Done as designed, the three review rounds' amendments included:
   conflict keeps, deleted notes, redo, effective tag deltas, and the
   filter-demotion case. Coverage held at 98.7% statements / 94.1% branches.
 
+A fourth review round on the implementation tightened three edges, each now
+pinned by a test: the Ctrl/Cmd+Z chord runs before the empty-model return, so it
+works when the change being undone is what emptied the tree; a note recreated at
+a captured path counts as missing (TFile identity, not path — a replacement must
+not inherit the original's history); and a replay that completed but restored
+nothing consumes the slot instead of re-offering a dead batch forever, while a
+failed replay keeps it for the retry a transient error deserves.
+
 Not verifiable here, as ever: the button's look in a live vault — the standing
 jsdom limit recorded in [smoke-test-the-visual-changes](smoke-test-the-visual-changes.md).

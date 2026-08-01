@@ -34,7 +34,13 @@ free of runtime code so imports stay cycle-free.
   the same `runExclusively` gate minus the context-row check: authorization came at
   capture time (see the root context-row rule). The toolbar undo button re-enables to
   `canUndo()`, not to "idle" — which is why `syncBusy` takes it as a parameter rather
-  than treating undo as one more `.pbl-write-ctl`.
+  than treating undo as one more `.pbl-write-ctl`. A replay that COMPLETED but
+  restored nothing consumes the slot (its conflicts stay conflicted, its missing
+  notes stay missing — the same dead batch must not be offered forever); a forward
+  no-op keeps it, and so does a replay that failed, since a transient write error
+  deserves its retry. The Ctrl/Cmd+Z chord is handled before the empty-model return
+  in `handleTreeKeydown`: the change being undone may be exactly what emptied the
+  tree.
 
 ## What is rendered, and what is merely hidden
 

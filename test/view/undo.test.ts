@@ -88,6 +88,48 @@ describe('undoing the last change', () => {
 		expect(Notice.messages).toContain('Undo: 1 value was edited since and kept.');
 	});
 
+	it('stays reachable from an emptied tree, where the change removed the last row', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Only.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { view, containerEl } = makeView(vault, { stateProperty: 'note.status' });
+
+		rowByTitle(containerEl, 'Only')
+			.querySelector<HTMLElement>('.pbl-state-chip')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		Menu.lastShown?.item('Done')?.clickHandler?.();
+		await flush();
+		// The base's filter excludes done items; the requery now returns nothing.
+		(view as unknown as Record<string, unknown>).data = { data: [] };
+		view.onDataUpdated();
+
+		key(treeOf(containerEl), 'z', { ctrlKey: true });
+		await flush();
+
+		expect(vault.fm('Only.md')['status']).toBe('New');
+	});
+
+	it('a spent undo is consumed: a replay that restored nothing disables instead of retrying', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
+		await flush();
+		// Every key the batch wrote is hand-edited afterwards, so nothing can restore.
+		Object.assign(vault.fm('Epic A.md'), { parent: '[[Elsewhere]]', order: 1, type: 'Custom' });
+
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect(Notice.messages).toContain('Undo: 3 values were edited since and kept.');
+		expect(vault.fm('Epic A.md')).toEqual({ parent: '[[Elsewhere]]', order: 1, type: 'Custom' });
+
+		// The batch is spent — conflicts stay conflicted — so it is not offered again.
+		expect(undoButton(containerEl).disabled).toBe(true);
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect(Notice.messages).toContain('Nothing to undo.');
+	});
+
 	it('a no-op write does not cost the slot: re-picking the checked state keeps the real undo', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });

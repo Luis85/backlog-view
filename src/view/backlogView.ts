@@ -486,10 +486,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// filter, which is exactly the change the user is taking back. The current
 		// model's verdict on those files answers a different question.
 		const batch = [...restores].reverse();
-		return this.runExclusively(batch.length, async (onProgress, onInverse) => {
-			const outcome = await applyRestores(this.app, batch, onProgress, onInverse);
-			reportRestoreOutcome(outcome);
-		});
+		return this.runExclusively(
+			batch.length,
+			async (onProgress, onInverse) => {
+				const outcome = await applyRestores(this.app, batch, onProgress, onInverse);
+				reportRestoreOutcome(outcome);
+			},
+			restores,
+		);
 	}
 
 	/**
@@ -506,6 +510,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			onProgress: (done: number, total: number) => void,
 			onInverse: (inverse: RestoreWrite) => void,
 		) => Promise<void>,
+		replaying?: RestoreWrite[],
 	): Promise<boolean> {
 		const problems = configProblems(this.settings);
 		if (problems.length > 0) {
@@ -521,6 +526,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.setBusy({ done: 0, total });
 		const inverses: RestoreWrite[] = [];
 		let installed = false;
+		let completed = false;
 		const onInverse = (inverse: RestoreWrite) => {
 			if (!installed) {
 				installed = true;
@@ -530,12 +536,22 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		};
 		try {
 			await run((done, tot) => this.setBusy({ done, total: tot }), onInverse);
+			completed = true;
 			return true;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
 			new Notice('Failed to update backlog items. See the developer console for details.');
 			return false;
 		} finally {
+			// A replay that completed but restored nothing is SPENT, not retryable:
+			// its conflicts stay conflicted and its missing notes stay missing, so
+			// re-offering the same dead batch would make the undo button lie forever.
+			// A forward batch that changed nothing keeps the slot (the whole point of
+			// effective-only inverses), and so does a replay that FAILED — a
+			// transient write error deserves its retry.
+			if (replaying && completed && !installed && this.lastUndo === replaying) {
+				this.lastUndo = null;
+			}
 			this.applying = false;
 			this.setBusy(null);
 			// Whatever landed while the batch ran gets one rebuild, now, against the
