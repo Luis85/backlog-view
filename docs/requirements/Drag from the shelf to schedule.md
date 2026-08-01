@@ -38,8 +38,8 @@ the keys rather than blanking them.
 
 1. The user drags a shelf card over the grid; the cell under the pointer highlights and
    shows the dates it means.
-2. The drop writes start and target spanning that one cell — the zoom's unit, the
-   default-length rule — in one batch.
+2. The drop writes start and target spanning that one cell — its first day and its
+   last, the zoom's unit read as whole days, the default-length rule — in one batch.
 3. The item leaves the shelf and renders as a bar on the write's own refresh.
 4. Dragging a bar onto the shelf removes the configured date keys in one batch:
    unscheduled is a state a note returns to, not a pair of blank strings. Where the
@@ -59,8 +59,10 @@ the keys rather than blanking them.
 - **2b — a configured date property collides with a key the plugin owns.** The collision
   is a configuration problem and the gate blocks writes until it is fixed — the stamps'
   rule ([[Stamp when work starts and finishes]]), which these properties join.
-- **2c — only one date property is configured.** The drop writes the one it has: a point
-  placement at the cell, rendered as the open-ended bar a single date makes
+- **2c — only one date property is configured.** The drop writes the one it has,
+  anchored at the end its kind means — a start takes the cell's first day, a target its
+  last, the deadline reading the ecosystem's vocabulary already gives those names — a
+  point placement rendered as the open-ended bar a single date makes
   ([[Bars from two dates]]). Nothing is ever written to an unconfigured key — the state
   write's rule, which the date writes join.
 - **2d — lanes are on and the drop lands in another lane's row.** The reparent rides the
@@ -76,10 +78,11 @@ the keys rather than blanking them.
 ## Acceptance criteria
 
 - Shelf to grid writes exactly the configured date properties — both, spanning the
-  drop cell at the current zoom, or the single one configured as a point placement —
-  one batch, one undo; the highlight states the dates before the drop commits them,
-  and nothing is ever written to an unconfigured key. A drop into another lane's row
-  carries the reparent in the same batch ([[Lanes on the roadmap]]).
+  drop cell from its first day to its last, or the single one configured anchored at
+  the end its kind means: first day for a start, last day for a target — one batch,
+  one undo; the highlight states the dates before the drop commits them, and nothing
+  is ever written to an unconfigured key. A drop into another lane's row carries the
+  reparent in the same batch ([[Lanes on the roadmap]]).
 - Grid to shelf removes the configured date keys — never blanks them — and undo
   restores them. Where the item renders next follows the placement rules — the shelf
   only when its whole subtree is dateless, an inferred bar otherwise — and the drop

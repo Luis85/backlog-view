@@ -65,6 +65,10 @@ and the placeholders suggest the ecosystem's own names (the Tasks plugin's `star
 - **2b — only one of the two date properties is named.** The timeline still renders:
   one date is enough to place an item at a point, and spans simply need both. An axis
   requiring both names would refuse a milestone-only roadmap that is perfectly coherent.
+- **3a — the picked axis loses its configuration.** The roadmap renders the axis that
+  remains — a configured axis always beats guidance, and guidance appears only when
+  none is left — while the stored pick is retained, not rewritten: a persisted key is
+  user data, and restoring the cleared property restores the saved choice with it.
 - **4a — an item is outside the Base's filter.** It never places as a result on either
   axis: context rows render only in the context forms the epic names — a lane header, a
   breadcrumb, an inert context row — never counted, never written.
@@ -74,6 +78,8 @@ and the placeholders suggest the ecosystem's own names (the Tasks plugin's `star
 - The axis is exactly what the options declare: horizon property and values make
   buckets; date properties make the timeline; with both, a persisted toolbar control
   picks, and the horizons render until it is first set; with neither, guidance renders.
+  A pick whose axis is no longer configured yields to the axis that remains and is
+  retained rather than rewritten, so restoring the configuration restores the choice.
 - No property is ever chosen by name-matching, and no date is ever read as a horizon —
   the two guesses the prior art makes are the two this view refuses.
 - Reconfiguring the axis rewrites nothing on any note.

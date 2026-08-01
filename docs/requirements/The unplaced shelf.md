@@ -32,7 +32,7 @@ evidence that undated ordering is a real need.
 | **Actor** | Backlog owner |
 | **Trigger** | The roadmap renders while some results carry no placement on the active axis |
 | **Preconditions** | Roadmap mode is on and an axis is configured |
-| **Guarantee** | Every result renders exactly once — on the axis or on the shelf — and the counts agree: placed plus shelved equals the results the narrowing controls admit. |
+| **Guarantee** | Every result admitted as a row renders exactly once — on the axis or on the shelf — and the counts agree: placed plus shelved equals that row set. What focus aggregates below the rows surfaces through its ancestors' rollups, never silently ([[Focus level picks the rows]]). |
 
 **Main flow**
 
@@ -64,8 +64,10 @@ evidence that undated ordering is a real need.
 
 ## Acceptance criteria
 
-- Placed plus shelved equals the results the narrowing controls admit; no result is
-  ever silently omitted — the stated contrast with the prior art that drops them.
+- Placed plus shelved equals the row set the narrowing controls admit — with focus
+  set, that level's rows, everything beneath surfacing through their rollups — and no
+  result is ever silently omitted: the stated contrast with the prior art that drops
+  them.
 - The shelf keeps sibling order — the order property's rank, not arrival order — and
   names its count.
 - An empty shelf takes no space except as a live drop target during a drag.
