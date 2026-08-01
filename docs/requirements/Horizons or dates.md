@@ -52,10 +52,13 @@ and the placeholders suggest the ecosystem's own names (the Tasks plugin's `star
 - **1a — neither axis is configured.** Roadmap mode is guidance naming both ways to get
   one ([[Roadmap empty states]]); there is no axis to draw, so drawing nothing and saying
   why is the honest render.
-- **1b — an axis property names a key the plugin already owns.** Refused by the same
-  key-collision checks that gate every write — an axis must never overwrite the parent,
-  order, type, state or tags key, the rule the transition stamps already follow
-  ([[Stamp when work starts and finishes]]).
+- **1b — an axis property names a key the plugin already owns, or another configured
+  write target.** Refused by the same key-collision checks that gate every write — an
+  axis key must never overwrite the parent, order, type, state or tags key; never a
+  transition stamp ([[Stamp when work starts and finishes]]), or a plan that could
+  reach the record would falsify it; and never another axis key, since start and
+  target sharing one key cannot store a span, and a horizon sharing either is two
+  semantics on one field. One rule over the whole set of configured write targets.
 - **2a — the horizon property is set but its values list is cleared.** The bucket axis is
   unconfigured — a board without stages — and the guidance names the half that is
   missing rather than inventing a vocabulary.
@@ -74,8 +77,9 @@ and the placeholders suggest the ecosystem's own names (the Tasks plugin's `star
 - No property is ever chosen by name-matching, and no date is ever read as a horizon —
   the two guesses the prior art makes are the two this view refuses.
 - Reconfiguring the axis rewrites nothing on any note.
-- An axis property colliding with a key the plugin owns is a configuration problem that
-  gates writes, like every other collision.
+- An axis property colliding with a key the plugin owns, with a transition stamp, or
+  with another configured axis key is a configuration problem that gates writes, like
+  every other collision.
 - Context rows never place as results on either axis.
 
 ## Where it lives

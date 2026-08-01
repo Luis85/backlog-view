@@ -59,8 +59,10 @@ date on a roadmap is indistinguishable from a decision.
 ## Acceptance criteria
 
 - Both dates make a bar; one date makes an open-ended, cell-wide bar at that date;
-  equal dates make a milestone diamond; absent, unreadable or reversed dates shelve
-  the item with the reason visible.
+  equal dates make a milestone diamond; unreadable or reversed dates shelve the item
+  with the reason visible. Absence alone does not shelve a parent: one whose subtree
+  supplies dates renders the inferred span ([[Spans roll up the tree]]), and only a
+  wholly dateless subtree shelves.
 - Reads are tolerant of frontmatter's shapes; nothing is invented, swapped or written
   by rendering.
 - The properties are user-named with placeholders matching the Tasks plugin's

@@ -32,7 +32,7 @@ rather than deferred behind it.
 | **Actor** | Backlog owner |
 | **Trigger** | Arrows, Enter or Escape on a selected roadmap item, or its context menu |
 | **Preconditions** | Roadmap mode is on |
-| **Guarantee** | Every write a drag can produce exists as a keyboard path and as a menu action writing the same batch shape through the same gate; no roadmap write is reachable only by pointer, and Escape always leaves nothing written. |
+| **Guarantee** | Every write a drag can produce has a non-pointer path — single-dimension changes as menu actions, combined moves through the pick-up — writing the same batch shapes through the same gate; no roadmap write is reachable only by pointer, and Escape always leaves nothing written. |
 
 **Main flow**
 
@@ -49,11 +49,13 @@ rather than deferred behind it.
 3. Enter commits the batch the drag would write; Escape cancels with nothing written.
 4. The context menu offers the moves in words — set horizon, schedule, unschedule,
    clear horizon, and, with lanes on, move to lane, offering every legal lane under
-   the drag's own cycle rules — beside the item's existing actions. Schedule opens the
-   dates for
-   entry, prefilled with the item's current dates or, for an unscheduled item, with
-   today spanning one zoom cell — the shelf drop's own default — and confirming writes
-   the same shaped batch the gestures write.
+   the drag's own cycle rules — beside the item's existing actions. Schedule opens
+   the dates for entry, prefilled with the item's current dates or, for an
+   unscheduled item, with today spanning one zoom cell — the shelf drop's own
+   default — and confirming writes the same shaped batch the gestures write. Each
+   menu action is one dimension and one small undoable batch; the combined
+   lane-plus-axis move's non-pointer path is the pick-up, which holds both dimensions
+   before one commit.
 
 **Extensions**
 
@@ -79,7 +81,9 @@ rather than deferred behind it.
   date entry prefilled with the current dates, or with today spanning one zoom cell
   for an unscheduled item — unschedule, clear horizon and, with lanes on, move to
   lane under the drag's own cycle rules, each writing the batch shape the gestures
-  write; on context rows it offers no write action.
+  write — one dimension and one small undoable batch each, the combined
+  lane-plus-axis move's non-pointer path being the pick-up; on context rows it offers
+  no write action.
 - No write on the roadmap is reachable only by pointer.
 - A refused commit is announced at the selection, which does not move.
 
