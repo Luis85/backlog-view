@@ -88,14 +88,29 @@ construction — which is the pairing this exists for.
 - The modal still says where the item lands, and says the item gets its own folder there.
   The line names the container; the per-item level is stated, not interpolated from a
   half-typed title.
-- **A parentless item is pinned with an explicit empty `parent`** whenever this option is
-  on — not only when `folderHierarchy` is, which is the sole condition `createBacklogItem`
-  writes the marker under today. A top-level item written to `<container>/<Title>/<Title>.md`
-  now sits one folder deeper than it used to, under whatever the container is, so a folder
-  note anywhere above it (`Backlog/Backlog.md` over `Backlog/Epic/Epic.md`) would adopt it
-  the day inference is switched on. This layout's promise is that it produces a structure
-  inference reads back unchanged, and a note whose top-level-ness is only implied by a
-  missing key does not carry that promise.
+- A parentless creation is pinned with an explicit empty `parent` — see **The top-level
+  marker** below, which is one rule this option shares with every other write.
+
+### The top-level marker
+
+- **Top level is written as an explicit empty `parent`, never as a missing key, whenever
+  this option is on** — not only when `folderHierarchy` is. That is the sole condition
+  both writers use today: `createBacklogItem` for a parentless creation, and `applyWrites`
+  for a move or outdent that sets `parent` to null. With the layout on, an item sits a
+  folder deeper than it used to, so a folder note anywhere above its container
+  (`Backlog/Backlog.md` over `Backlog/Epic/Epic.md`) adopts it the day inference is
+  switched on — silently undoing the move, or re-parenting a root. A note whose
+  top-level-ness is only implied by an absent key cannot carry this layout's promise that
+  the structure it writes is the structure inference reads back.
+- **Both writers take the condition from one predicate**, not from the same boolean
+  expression spelled twice in `storage/frontmatter.ts`. Three places already decide
+  something from `folderHierarchy`, and a rule spelled per call site is one that can
+  differ per call site.
+- `ItemWrite.removeParentKey` keeps its current meaning and its current gate: it is the
+  deliberate opposite — delete the key to hand the item *back* to folder inference ("Use
+  folder position", "Clear parent link"). Those actions exist only when inference is on,
+  so widening the marker must not widen them. The distinction to hold: this option changes
+  what "no parent" is *written as*, never what asks to be inferred.
 
 ### Which items get a folder
 
@@ -130,9 +145,11 @@ construction — which is the pairing this exists for.
 
 - Moving an item in the tree does not move its folder. Re-parenting writes a link, as it
   always has, so a foldered backlog can end up with a folder tree that disagrees with the
-  item tree until someone tidies it. The item tree stays right regardless: explicit links
-  beat inference. Making a move move the files is a different feature — a whole subtree on
-  disk, link updates, and a write path that is not frontmatter — and is out of scope.
+  item tree until someone tidies it. The item tree stays right regardless, because an
+  explicit link beats inference **and** a move to the root writes the marker rather than
+  an absence — the two halves of that guarantee, and the second is the one this PBI adds.
+  Making a move move the files is a different feature — a whole subtree on disk, link
+  updates, and a write path that is not frontmatter — and is out of scope.
 - Converting an existing flat backlog into folders is out of scope for the same reason.
   This option changes what is created next, not what is already there.
 
@@ -145,7 +162,9 @@ construction — which is the pairing this exists for.
 - `view/interactions/create.ts`: widen the parent-folder condition, resolve the flag, pass
   it down. The folder resolution itself is untouched.
 - `storage/frontmatter.ts`: `NewItemSpec` gains the flag; path building and the collision
-  search move up one level to the folder. Still the only module that creates a note.
+  search move up one level to the folder. Still the only module that creates a note. The
+  top-level marker widens here in **both** writers — `createBacklogItem` and `applyWrites`
+  — off one shared predicate, leaving `removeParentKey` alone.
 - `inferFolder` must count **container** folders. With the option on every item has a
   folder of its own, so every count is 1 and the "where do most items live" fallback would
   aim a new top-level item into some other item's folder. Count a folder note's parent
@@ -174,9 +193,13 @@ Read on 2026-08-01, in this repository:
 - `childLevelIndex` clamps at the deepest rung, so `childTypeChoices` under a `Task`
   returns `['Task']`: nested Tasks are creatable today, which is what rules out an
   exception for the bottom of the ladder.
-- `createBacklogItem` writes the empty-parent marker under `settings.folderHierarchy`
-  alone — the second condition this PBI widens. `noteFields` already carries the marker as
-  a first-class state ("parent key present but empty"), so the pin costs no new vocabulary.
+- The empty-parent marker is written under `settings.folderHierarchy` alone in **two**
+  places — `createBacklogItem` for a parentless creation and `applyWrites` for a move that
+  sets `parent` to null — and both are conditions this PBI widens. A third site,
+  `menu.ts`, reads the same boolean to offer "Use folder position", and must NOT widen:
+  it hands an item back to inference, which only exists when inference is on.
+  `noteFields` already carries the marker as a first-class state ("parent key present but
+  empty"), so the pin costs no new vocabulary.
 
 Obsidian cannot run here, so the layout needs one live-vault pass (`npm run test-build`):
 create into a fresh folder, create a child and a nested Task and confirm both nest, then
