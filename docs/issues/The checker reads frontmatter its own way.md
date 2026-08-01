@@ -35,8 +35,13 @@ edit leaves behind. Found by a reviewer reading both files and comparing them; i
 from inside either.
 
 That instance is fixed (`fm.has` tests the key, `fm.field` tests the value, and the
-distinction is documented between them). The **class** is not: any other place the two
-parsers disagree has the same shape and the same invisibility.
+distinction is documented between them), and it is now **held by a test** rather than by a
+comment: `test/docs/checkerRejects.test.ts` plants a bare `parent:` on an ADR and asserts
+it is the *only* problem the document produces, so the prohibition cannot silently go back
+to reading values. That closes the regression risk on the one known instance and moves
+nothing else — the **class** is untouched, because a test that plants what we already know
+to look for is the same instrument as the fix it guards. Any other place the two parsers
+disagree has the same shape and the same invisibility.
 
 ## Why it is deliberate
 

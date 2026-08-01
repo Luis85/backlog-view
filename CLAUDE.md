@@ -17,7 +17,11 @@ framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
 `usedClassMembers`, not suppressed inline. `docs-check.mjs` gates `docs/` the same way:
 the register's hierarchy and sibling orders, every wikilink, every source path a current
 note names, the use-case shape, the ADR frontmatter — and the check that finds *missing*
-notes, since every module and test file must be named by at least one. Obsidian itself
+notes, since every module and test file must be named by at least one. That gate has a
+gate: `test/docs/checkerAccepts.test.ts` and `test/docs/checkerRejects.test.ts` run it over
+planted trees in both directions, so a rule quietly lost fails a test, and a legal form it
+starts refusing does too — the direction that blocks a contributor rather than letting one
+through. Obsidian itself
 cannot run here — the jsdom test harness below is the substitute; say so honestly when a
 change still needs a live-vault smoke test.
 
@@ -100,6 +104,13 @@ depend on the effectful one.
   `makeView`, `refresh`, `fixture`, the row/tree accessors, `drag`, `key`, `stubRect`,
   `flush`, `submitPrompt`, and `useViewHarness()` for the per-test reset. Call
   `useViewHarness()` at the top of the file; the helper installs no hooks by itself.
+- `test/helpers/register.ts` — a whole miniature repository (`docs/`, `src/`, `test/`)
+  written to a throwaway directory and handed to the REAL `docs-check.mjs` as a subprocess.
+  The gate is a script — top-level await, paths relative to the working directory,
+  `process.exit` for its verdict — so it is run the way CI runs it rather than refactored
+  into something importable; a seam built for the test is the thing that would get tested.
+  `baseRegister()` is one valid tree and every case is a single delta against it, so a
+  failure names a rule rather than a document.
 - View tests (`test/view/*.test.ts`, one file per subject) drive REAL interactions: dispatch
   `dragstart`/`dragover`/`drop` (stub `getBoundingClientRect` for drop zones — jsdom returns
   zeros, and `dataTransfer` is absent unless the test supplies one), `keydown`, `click`,
