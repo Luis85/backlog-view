@@ -1,5 +1,6 @@
 import { BacklogItem } from '../domain/model';
 import {
+	BOARD_MODE,
 	collapseStoreIdentity,
 	dropCollapseState,
 	loadCollapseState,
@@ -10,7 +11,10 @@ import {
 import { BacklogViewHost } from './host';
 
 /**
- * Which rows are shut, and remembering that across sessions.
+ * The view's working position, remembered across sessions: which rows are shut,
+ * and which projection — tree or board — the view is showing. Both are UI state,
+ * so both go to the collapse store's vault-scoped localStorage and never to the
+ * `.base`: base settings are saved on the view, working position on the device.
  *
  * Two sets, not one: `collapsed` is what is shut right now, and `settled` is every
  * path the user has ruled on either way. A parent that is in neither has never been
@@ -25,6 +29,8 @@ export class CollapseState {
 	private collapsed = new Set<string>();
 	/** Paths already ruled on, so the initial state is applied to each exactly once. */
 	private settled = new Set<string>();
+	/** The persisted projection: `BOARD_MODE`, or null for the tree. */
+	private mode: string | null = null;
 	private id: ViewIdentity | null = null;
 	private restored = false;
 	/** Kept so the identity can be re-resolved when the base is renamed under us. */
@@ -40,6 +46,15 @@ export class CollapseState {
 
 	isCollapsed(path: string): boolean {
 		return this.collapsed.has(path);
+	}
+
+	boardMode(): boolean {
+		return this.mode === BOARD_MODE;
+	}
+
+	setBoardMode(on: boolean): void {
+		this.mode = on ? BOARD_MODE : null;
+		this.scheduleSave();
 	}
 
 	/** Returns true when the state actually changed. */
@@ -106,6 +121,7 @@ export class CollapseState {
 		this.collapsed = snapshot.collapsed;
 		// Both sets settle a path; only the collapsed ones are shut.
 		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
+		this.mode = snapshot.mode ?? null;
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -169,6 +185,6 @@ export class CollapseState {
 			this.collapsed.delete(path);
 		}
 		const expanded = new Set([...this.settled].filter((path) => !this.collapsed.has(path)));
-		saveCollapseState(this.host.app, id, { collapsed: this.collapsed, expanded });
+		saveCollapseState(this.host.app, id, { collapsed: this.collapsed, expanded, mode: this.mode });
 	}
 }

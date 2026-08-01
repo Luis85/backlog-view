@@ -1,7 +1,7 @@
 ---
 type: Epic
 order: 30
-status: Open
+status: Active
 created: 2026-08-01
 source: user request
 ---
@@ -92,9 +92,11 @@ The layers keep their jobs. Deriving columns from the model and the settings is 
 `view/interactions/` files beside the tree's, under the same one-file-per-concern
 budgets, with Atlassian's Pragmatic drag and drop as the drag layer
 ([[Pragmatic drag and drop for the board]]); the only writer stays `storage/frontmatter.ts`, gaining a remove-the-state-key
-write (the mirror of `removeParentKey`) and the optional transition stamps; the mode
-itself is one persisted view option toggled from the toolbar, exactly as the focus
-level already is. Column collapse goes to the collapse store, never the `.base`.
+write (the mirror of `removeParentKey`) and the optional transition stamps; and the
+mode itself is working position, toggled from the toolbar and held per saved view in
+the collapse store's vault-scoped localStorage — the rule throughout: base settings
+are saved on the view, UI state in localStorage. Column collapse goes to the same
+store, never the `.base`.
 
 ## Evidence
 

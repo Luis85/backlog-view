@@ -8,6 +8,7 @@ created: 2026-08-01
 files:
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
+  - src/view/selection.ts
 ---
 
 # Keyboard, menu and touch
@@ -92,7 +93,11 @@ The menu is the answer on every platform either way.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The board's navigation joins the tree's in
-`src/view/interactions/keyboard.ts`, which already owns the one-tab-stop rule and the
-shortcuts; the board's Set state joins `src/view/interactions/menu.ts`, which is where
-the tree's state menu and its context-row omissions already live.
+**Partly built.** The navigation slice shipped with the board: `handleBoardKeydown` in
+`src/view/interactions/keyboard.ts` (one tab stop, arrows across cards and columns,
+Home/End, Enter, `/`, undo, the empty column as a stop) over the selection state in
+`src/view/selection.ts`, driven in `test/view/boardMoves.test.ts`. Still design: the
+Alt+arrow moves, the board's Set state vocabulary in
+`src/view/interactions/menu.ts`, the live-region announcements for keyboard and menu
+moves, and the touch verdict — which belongs to
+[[Smoke test the board in a live vault]].

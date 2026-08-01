@@ -1,4 +1,5 @@
 import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
+import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { ItemWrite } from '../domain/writePlan';
@@ -23,6 +24,16 @@ export interface ChipProp {
 export interface BusyState {
 	done: number;
 	total: number;
+}
+
+/**
+ * The board as last rendered: the derived columns and their elements, in column
+ * order. The keyboard needs both — the columns to know where a selection can go,
+ * the elements to put the focus outline and `aria-activedescendant` there.
+ */
+export interface BoardSnapshot {
+	board: BoardModel;
+	colEls: HTMLElement[];
 }
 
 /**
@@ -69,6 +80,30 @@ export interface BacklogViewHost {
 	isCollapsed(path: string): boolean;
 	/** Returns true when the state actually changed. */
 	setCollapsed(path: string, collapsed: boolean): boolean;
+
+	/**
+	 * True while this view shows the board projection. UI state, not a base
+	 * setting: it lives beside the collapse state in vault-scoped localStorage —
+	 * per saved view, per device — and never in the `.base`.
+	 */
+	readonly boardMode: boolean;
+	/** Flip the projection and re-render; the collapse store persists the choice. */
+	setBoardMode(on: boolean): void;
+	/** The board of the last render, or null while the view is a tree (or has no workflow). */
+	readonly board: BoardSnapshot | null;
+	/**
+	 * The column the board selection rests on when no card is selected — an empty
+	 * column is still a keyboard stop, or an empty board could not be driven at all.
+	 * Null whenever a card (or nothing) is selected instead.
+	 */
+	readonly selectedBoardColumn: number | null;
+	selectBoardColumn(index: number | null): void;
+	/**
+	 * Plan and apply the state write a drop on a board column means — the canonical
+	 * value, or key removal for the no-state column. A drop on the card's own column
+	 * plans nothing and resolves false, leaving the undo slot untouched.
+	 */
+	performBoardDrop(item: BacklogItem, state: string | null): Promise<boolean>;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;

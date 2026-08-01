@@ -337,7 +337,8 @@
 }
 
 /* A move has been written and the view is waiting for the Bases refresh */
-.pbl-row.pbl-pending {
+.pbl-row.pbl-pending,
+.pbl-card.pbl-pending {
 	opacity: 0.45;
 	animation: pbl-pending-pulse 900ms ease-in-out infinite alternate;
 }
@@ -788,7 +789,8 @@
 	cursor: pointer;
 }
 
-.pbl-row:hover .pbl-tag-remove {
+.pbl-row:hover .pbl-tag-remove,
+.pbl-card:hover .pbl-tag-remove {
 	display: inline-flex;
 }
 
@@ -819,7 +821,8 @@
 	cursor: pointer;
 }
 
-.pbl-row:hover .pbl-tag-add {
+.pbl-row:hover .pbl-tag-add,
+.pbl-card:hover .pbl-tag-add {
 	display: inline-flex;
 }
 
@@ -919,6 +922,7 @@
 	}
 
 	.pbl-row.pbl-pending,
+	.pbl-card.pbl-pending,
 	.pbl-row.pbl-hover-expanding .pbl-chevron {
 		animation: none;
 	}
@@ -1138,4 +1142,265 @@
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	margin-bottom: var(--size-4-3);
+}
+
+/* -------------------------------------------------------------------- board */
+
+/* The tree's "move to top level" strip has no meaning between columns. */
+.pbl-board-mode .pbl-root-drop {
+	display: none;
+}
+
+/* The same scroller the tree uses, scrolling sideways instead: columns never
+   shrink or drop — a workflow stage exists whether or not the pane is narrow. */
+.pbl-board-mode .pbl-tree {
+	overflow-x: auto;
+}
+
+.pbl-board-cols {
+	display: flex;
+	align-items: stretch;
+	gap: var(--size-4-3);
+	min-height: 220px;
+	height: 100%;
+}
+
+.pbl-board-col {
+	flex: 0 0 260px;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	max-height: 100%;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+.pbl-board-col-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: var(--size-4-2) var(--size-4-3);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-board-col-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-board-col-count {
+	margin-left: auto;
+	flex: 0 0 auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+	border-radius: var(--radius-l);
+	padding: 0 var(--size-4-2);
+	min-width: 20px;
+	text-align: center;
+}
+
+.pbl-board-col-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.pbl-board-col-icon .svg-icon,
+.pbl-board-col-stray .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* Finished is a property of the state, wherever in the order the user put it. */
+.pbl-col-done .pbl-board-col-header {
+	color: var(--text-muted);
+}
+
+.pbl-col-done .pbl-board-col-icon {
+	color: var(--color-green);
+}
+
+/* A value the configured workflow does not name: present — never a dropped
+   card — but visibly outside the agreement, in more than colour alone. */
+.pbl-col-outside {
+	border-style: dashed;
+}
+
+.pbl-board-col-stray {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.pbl-board-col-cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2);
+	overflow-y: auto;
+	flex: 1 1 auto;
+	min-height: var(--size-4-8);
+}
+
+/* The empty no-state column shrinks to a leading drop strip: clearing a state by
+   drag stays possible without a permanently empty column taking a column's room. */
+.pbl-board-strip {
+	flex: 0 0 44px;
+	background-color: transparent;
+	border-style: dashed;
+}
+
+.pbl-board-strip .pbl-board-col-header {
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-3) 0;
+}
+
+.pbl-board-strip .pbl-board-col-name {
+	writing-mode: vertical-rl;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+/* The column highlight is the only drop signal — within-column order is derived,
+   so there is no between-cards edge to indicate. */
+.pbl-board-col.pbl-col-drop-over {
+	border-color: var(--interactive-accent);
+	border-style: solid;
+	box-shadow: 0 0 0 1px var(--interactive-accent) inset;
+	background-color: hsla(var(--interactive-accent-hsl), 0.08);
+}
+
+/* The keyboard stop an empty column still is. */
+.pbl-board-col.pbl-col-selected {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent) inset;
+}
+
+/* ----- cards */
+
+.pbl-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+	cursor: pointer;
+}
+
+.pbl-card:hover {
+	border-color: var(--background-modifier-border-hover);
+}
+
+.pbl-card.pbl-selected {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.pbl-card.pbl-drag-source {
+	opacity: 0.5;
+}
+
+.pbl-card-head {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+}
+
+.pbl-card-title {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	overflow-wrap: anywhere;
+}
+
+/* Done dims, exactly as the tree's rows dim — styling is not hiding. */
+.pbl-card.pbl-done .pbl-card-title {
+	color: var(--text-faint);
+}
+
+.pbl-card.pbl-done .pbl-badge {
+	opacity: 0.65;
+}
+
+/* An excluded focus-level item placing its results: readable, never writable. */
+.pbl-card.pbl-card-context {
+	border-style: dashed;
+	cursor: default;
+}
+
+.pbl-card.pbl-card-context .pbl-card-title {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.pbl-card-parent {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	min-width: 0;
+	white-space: nowrap;
+}
+
+.pbl-card-parent > span:last-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pbl-card-parent-icon {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.pbl-card-parent-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* The row lays its columns out fixed-width so values align across rows; a card
+   stacks the same cells instead. The card is the exception, so the card opts out. */
+.pbl-card .pbl-props {
+	width: auto;
+	flex-wrap: wrap;
+	row-gap: var(--size-4-1);
+	overflow: visible;
+}
+
+.pbl-card .pbl-prop {
+	flex: 0 1 auto;
+	width: auto;
+	max-width: 100%;
+}
+
+.pbl-card .pbl-meta-col {
+	width: auto;
+	justify-content: flex-start;
+}
+
+.pbl-card .pbl-progress {
+	width: 100%;
+}
+
+/* The board never drops columns for room the way the tree does — stale verdicts
+   from tree mode must not hide a card's cells. */
+.pbl-view.pbl-board-mode .pbl-card .pbl-props,
+.pbl-view.pbl-board-mode .pbl-card .pbl-meta-col {
+	display: flex;
+}
+
+/* ----- why the board is empty, said beside the columns, never instead of them */
+
+.pbl-board-advisory {
+	margin-top: var(--size-4-4);
+	border-top: 1px solid var(--background-modifier-border);
 }

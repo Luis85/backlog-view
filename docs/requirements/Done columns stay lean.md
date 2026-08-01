@@ -85,6 +85,9 @@ filter, not a place cards are moved to.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** Column and lane collapse belong in
-`src/storage/collapseStore.ts` with the tree's row collapse — vault-scoped, per device,
-pruned — and explicitly not in the `.base`, for the reason ADR 0011 gives.
+**Partly built.** The hiding slice shipped with the board: "Show completed items" off
+hides `subtreeDone` cards through the same row-visibility rule the tree uses, the
+column always renders, and the quick filter overrides — driven in
+`test/view/boardMoves.test.ts`. Still design: column collapse itself, which belongs in
+`src/storage/collapseStore.ts` with the tree's row collapse — vault-scoped, per
+device, pruned — and explicitly not in the `.base`, for the reason ADR 0011 gives.

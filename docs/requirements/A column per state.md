@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[Columns from the workflow]]"
 order: 10
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 files:
+  - src/domain/board.ts
   - src/domain/settings.ts
-  - src/domain/viewOptions.ts
 ---
 
 # A column per state
@@ -67,7 +67,7 @@ belongs in the vocabulary, not in a board-side mapping of it.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The vocabulary and its done-matching already live
-in `src/domain/settings.ts`, and the options that hold them in
-`src/domain/viewOptions.ts`; deriving columns from them is pure domain work, so it can be
-tested without a board existing.
+`boardColumns` in `src/domain/board.ts` — pure domain work beside the vocabulary it
+reads (`stateMenuValues` and the done values in `src/domain/settings.ts`), so every
+rule here is asserted in `test/domain/board.test.ts` without a board existing. The
+rendering of what it derives is `src/view/render/board.ts`.

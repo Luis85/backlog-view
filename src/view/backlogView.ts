@@ -1,25 +1,25 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
-import { BacklogViewHost, BusyState, ChipProp, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
+import { BacklogViewHost, BoardSnapshot, BusyState, ChipProp, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
+import { BoardDragController } from './interactions/boardDrag';
 import { DragDropController } from './interactions/dragDrop';
-import { handleTreeKeydown } from './interactions/keyboard';
+import { handleBoardKeydown, handleTreeKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
-import { computeDropWrites, ItemWrite } from '../domain/writePlan';
+import { computeDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
-import { renderToolbar, syncBusy } from './render/toolbar';
+import { SelectionController } from './selection';
+import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
+import { renderBoard } from './render/board';
 import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
-import { renderLoadingState } from './render/emptyStates';
+import { renderBoardNoWorkflowState, renderLoadingState } from './render/emptyStates';
 import { refreshRowChildren, renderTree } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
-
-/** Source of unique row ids for aria-activedescendant, shared across view instances. */
-let rowIdCounter = 0;
 
 /**
  * The Bases view: owns the durable state (settings, model, collapse set,
@@ -35,10 +35,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private treeEl: HTMLElement;
 	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
+	private boardDnd: BoardDragController;
+	/** The board of the last render; null while the view is a tree. */
+	board: BoardSnapshot | null = null;
+	/** Selection state and its DOM bookkeeping, for both projections. */
+	private readonly selection: SelectionController;
 
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
-	selectedPath: string | null = null;
 	filterText = '';
 	groupingIgnored = false;
 	private readonly collapse: CollapseState;
@@ -62,7 +66,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * wasteful at six hundred — every selection change would walk the whole DOM.
 	 */
 	private rowEls = new Map<string, HTMLElement>();
-	private selectedRowEl: HTMLElement | null = null;
 	private resizeObserver: ResizeObserver | null = null;
 	/** The Base's visible properties as columns, resolved once per data update. */
 	chips: ChipProp[] = [];
@@ -85,6 +88,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		setIcon(this.rootDropEl.createSpan({ cls: 'pbl-root-drop-icon' }), 'corner-left-up');
 		this.rootDropEl.createSpan({ text: 'Move to top level' });
 
+		this.selection = new SelectionController(this.treeEl, this.rowEls, () => this.board?.colEls ?? []);
 		this.collapse = new CollapseState(this);
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
@@ -92,7 +96,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			rootDropEl: this.rootDropEl,
 		});
 		this.dnd.setupRootDropZone();
-		this.treeEl.addEventListener('keydown', (evt) => handleTreeKeydown(this, evt));
+		this.boardDnd = new BoardDragController(this, this.viewEl);
+		this.treeEl.addEventListener('keydown', (evt) =>
+			this.boardMode ? handleBoardKeydown(this, evt) : handleTreeKeydown(this, evt),
+		);
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
@@ -107,6 +114,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.resizeObserver?.disconnect();
 		this.collapse.dispose();
 		this.dnd.dispose();
+		this.boardDnd.dispose();
 		this.viewEl.detach();
 	}
 
@@ -150,8 +158,25 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return max;
 	}
 
+	/**
+	 * True while this view shows the board. UI state, not a base setting: it lives
+	 * beside the collapse state — per saved view, per device — never in the `.base`.
+	 */
+	get boardMode(): boolean {
+		return this.collapse.boardMode();
+	}
+
+	setBoardMode(on: boolean): void {
+		if (on === this.boardMode) return;
+		this.collapse.setBoardMode(on);
+		// No config was set, so no Bases refresh is coming: this render is the switch.
+		this.render();
+	}
+
 	/** Re-measure after a resize, and rebuild only if a column came or went. */
 	private onResize(): void {
+		// Board columns scroll horizontally instead of dropping; the fit ladder is the tree's.
+		if (this.boardMode) return;
 		if (this.syncColumnFit()) this.renderTreeContent();
 	}
 
@@ -176,7 +201,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// here rather than per render — and once, so the rows and the tag menu cannot
 		// disagree about what is on screen.
 		this.chips = chipProps(this);
-		this.groupingIgnored = this.detectIgnoredGrouping();
+		this.groupingIgnored = detectIgnoredGrouping(this.data);
 		// Restore before the defaults are applied, or a restored session would be
 		// overwritten by the very pass that is meant to honor it.
 		this.collapse.restore(this.viewEl);
@@ -199,17 +224,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		);
 	}
 
-	/** The hierarchy is this view's grouping; surface that a configured group-by has no effect. */
-	private detectIgnoredGrouping(): boolean {
-		try {
-			const groups = this.data?.groupedData;
-			if (!groups || groups.length === 0) return false;
-			return groups.length > 1 || groups[0].hasKey();
-		} catch {
-			return false;
-		}
-	}
-
 	// ------------------------------------------------------------- quick filter
 
 	setFilter(text: string): void {
@@ -220,23 +234,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	focusFilter(): void {
 		this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
-	}
-
-	/**
-	 * The filter can be cleared from outside the toolbar (Escape in the tree, the
-	 * no-match state); keep the input and its clear affordance in sync.
-	 */
-	private syncFilterUi(): void {
-		const input = this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-		if (input && input.value !== this.filterText) input.value = this.filterText;
-		input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', this.filterText !== '');
-		// A filter change re-renders only the tree, so the toolbar's collapse controls
-		// are updated here. They are focusable buttons: while collapse state is
-		// overridden, they have to actually refuse the press, not just look dimmed.
-		const filtering = this.isFiltering();
-		this.toolbarEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
-			btn.disabled = filtering;
-		});
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
@@ -302,48 +299,24 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	// -------------------------------------------------------- selection, opening
 
+	get selectedPath(): string | null {
+		return this.selection.selectedPath;
+	}
+
+	get selectedBoardColumn(): number | null {
+		return this.selection.selectedBoardColumn;
+	}
+
 	selectItem(item: BacklogItem, scroll = true): void {
-		this.selectedPath = item.file.path;
-		this.deselectRows();
-		const row = this.rowElFor(item);
-		this.selectedRowEl = row;
-		this.syncActiveDescendant(row);
-		if (row) {
-			row.classList.add('pbl-selected');
-			row.setAttribute('aria-selected', 'true');
-			if (scroll) row.scrollIntoView({ block: 'nearest' });
-		}
+		this.selection.selectItem(item, scroll);
 	}
 
 	clearSelection(): void {
-		this.selectedPath = null;
-		this.deselectRows();
-		this.syncActiveDescendant(null);
+		this.selection.clearSelection();
 	}
 
-	/** Only one row is ever selected, so the tracked element is the whole search. */
-	private deselectRows(): void {
-		const row = this.selectedRowEl;
-		this.selectedRowEl = null;
-		if (!row) return;
-		row.classList.remove('pbl-selected');
-		row.setAttribute('aria-selected', 'false');
-	}
-
-	/**
-	 * Focus stays on the tree element; this tells assistive tech which row is active.
-	 * The class says the same thing to CSS, which needs it to decide whether the tree
-	 * or the selected row carries the focus ring — a `:has()` selector would answer
-	 * that too, at the price of invalidating on every subtree change.
-	 */
-	private syncActiveDescendant(row: HTMLElement | null): void {
-		this.treeEl.toggleClass('pbl-has-selection', row !== null);
-		if (!row) {
-			this.treeEl.removeAttribute('aria-activedescendant');
-			return;
-		}
-		if (!row.id) row.id = `pbl-row-${++rowIdCounter}`;
-		this.treeEl.setAttribute('aria-activedescendant', row.id);
+	selectBoardColumn(index: number | null): void {
+		this.selection.selectBoardColumn(index);
 	}
 
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void {
@@ -386,8 +359,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// room the columns have left — in both directions.
 		if (this.syncColumnFit()) this.renderTreeContent();
 		// The selection may have been inside the subtree that just collapsed.
-		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
-		this.syncActiveDescendant(this.selectedRowEl);
+		this.selection.resyncAfterRender();
 	}
 
 	// ------------------------------------------------------------------- render
@@ -400,24 +372,46 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.renderTreeContent();
 	}
 
-	/** Re-render only the tree — used by the filter so the toolbar input keeps focus. */
+	/** Re-render only the content pane — used by the filter so the toolbar input keeps focus. */
 	private renderTreeContent(): void {
-		this.syncFilterUi();
+		syncFilterUi(this, this.toolbarEl);
 		const model = this.model;
 		if (!model) return;
+		const board = this.boardMode;
+		this.viewEl.toggleClass('pbl-board-mode', board);
+		// The listbox role is a promise of options. The no-workflow guidance renders
+		// none, so it presents as a plain labelled region rather than an empty
+		// listbox a screen reader may announce as nothing at all — a board with
+		// columns always has options, because an empty column's stop is one.
+		const role = board ? (this.settings.stateKey ? 'listbox' : 'region') : 'tree';
+		this.treeEl.setAttribute('role', role);
+		this.treeEl.setAttribute('aria-label', board ? 'Product backlog board' : 'Product backlog');
 		this.dnd.onRenderStart();
+		this.boardDnd.onRenderStart();
 		this.viewEl.toggleClass('pbl-focused', model.focused);
 		// Collapse controls and drag grips are inert while a filter is active.
 		this.viewEl.toggleClass('pbl-filtering', this.isFiltering());
 
 		const scrollTop = this.treeEl.scrollTop;
+		const scrollLeft = this.treeEl.scrollLeft;
 		this.treeEl.empty();
 		this.rowEls.clear();
-		renderTree(this.rowCtx(), this.treeEl);
+		if (board) {
+			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
+			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-state');
+			this.renderBoardContent();
+		} else {
+			this.board = null;
+			// A column stop is board state; carrying it into the tree would leave the
+			// selection pointing at a projection that is no longer on screen.
+			this.selectBoardColumn(null);
+			renderTree(this.rowCtx(), this.treeEl);
+		}
 		this.treeEl.scrollTop = scrollTop;
-		this.selectedRowEl = this.selectedPath ? this.rowEls.get(this.selectedPath) ?? null : null;
-		this.syncActiveDescendant(this.selectedRowEl);
-		this.updateCountLabel(model);
+		this.treeEl.scrollLeft = scrollLeft;
+		this.selection.resyncAfterRender();
+		syncCountLabel(this, this.toolbarEl);
+		if (board) return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.
@@ -428,25 +422,47 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		}
 	}
 
+	/**
+	 * The board projection of the same model. Without a state property there is no
+	 * workflow to project, so board mode is guidance instead of columns — the one
+	 * case with no board, and never a blank pane.
+	 */
+	private renderBoardContent(): void {
+		if (!this.settings.stateKey) {
+			this.board = null;
+			// A held column stop is board state, and there is no board: releasing it
+			// here keeps the guidance screen from carrying a dangling active position.
+			this.selectBoardColumn(null);
+			renderBoardNoWorkflowState(this.treeEl);
+			return;
+		}
+		this.board = renderBoard(this.rowCtx(), this.treeEl, this.boardDnd);
+		// The selection may rest on a column rather than a card; carry it across the
+		// rebuild the way the card selection is carried, clamped to the columns left.
+		if (this.selectedBoardColumn !== null) {
+			this.selectBoardColumn(Math.min(this.selectedBoardColumn, this.board.colEls.length - 1));
+		}
+	}
+
 	/** The per-pass render state: the row index plus the hoisted config lookups. */
 	private rowCtx(): RowContext {
 		return rowContext(this, this.dnd, this.rowEls);
 	}
 
-	/** The toolbar survives filter renders; keep its count in sync imperatively. */
-	private updateCountLabel(model: BacklogModel): void {
-		const label = this.toolbarEl.querySelector<HTMLElement>('.pbl-count-label');
-		if (!label) return;
-		// The Base's own results: ancestors loaded for context are not items of this
-		// base and must not inflate its count. Collapsed rows still count as shown —
-		// only filtering and hiding narrow the number, which isRowHidden covers both of.
-		const total = model.results.length;
-		const shown = model.results.filter((item) => !this.isRowHidden(item)).length;
-		if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
-		else label.setText(`${shown} of ${total}`);
-	}
-
 	// -------------------------------------------------------------------- writes
+
+	async performBoardDrop(item: BacklogItem, state: string | null): Promise<boolean> {
+		const writes = computeStateDropWrites(item, state);
+		// A drop on the card's own column: no write at all, and the undo slot keeps
+		// the batch it had — a batch that writes nothing must not cost the user the
+		// undo of the change before it.
+		if (writes.length === 0) return false;
+		const card = this.rowEls.get(item.file.path);
+		card?.classList.add('pbl-pending');
+		const applied = await this.applySafely(writes);
+		if (!applied) card?.classList.remove('pbl-pending');
+		return applied;
+	}
 
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
 		// Dropping into a collapsed parent reveals where the item landed.

@@ -84,3 +84,4 @@ record itself changes. Open a record for its current status, area and any
 - [0015 — Undo by captured inverses, not snapshots](0015-undo-by-captured-inverses.md)
 - [0016 — Break compatibility freely before 1.0](0016-break-compatibility-freely-before-1-0.md)
 - [0017 — Bounded undo history with an explicit redo](0017-bounded-undo-history-with-an-explicit-redo.md)
+- [0018 — Admit runtime dependencies by exception, starting with Pragmatic drag and drop](0018-admit-runtime-dependencies-by-exception.md)

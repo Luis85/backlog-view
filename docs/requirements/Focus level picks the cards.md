@@ -2,10 +2,11 @@
 type: PBI
 parent: "[[Hierarchy on the board]]"
 order: 10
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
+  - src/domain/board.ts
   - src/domain/itemTypes.ts
 ---
 
@@ -90,7 +91,11 @@ re-roots, on the board it decides which rung becomes cards.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** Which types rank beside a level is
-`src/domain/itemTypes.ts`, and focus re-rooting is already in the model; the board's
-version asks the same question of the same code and answers it with a card set rather
-than a new root.
+`boardColumns` in `src/domain/board.ts` asks the model's own focus roots — which types
+rank beside a level stays `src/domain/itemTypes.ts`, and the re-rooting stays the
+model's — and answers with a card set rather than a new root: results as cards, an
+excluded focus-level item as an inert context card sorted where its first placed
+result would sort, in no count. The view's row-visibility rule is passed in whole, so
+the two projections cannot disagree about what is hidden. Asserted in
+`test/domain/board.test.ts`; the inert card is driven end to end in
+`test/view/board.test.ts`.

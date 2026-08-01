@@ -31,6 +31,11 @@ export interface ItemWrite {
 	/** New value for the state property; ignored when no state property is configured. */
 	state?: string;
 	/**
+	 * Remove the state property entirely — the no-state column's drop. The mirror of
+	 * `removeParentKey`: absence is a value here, never written as an empty string.
+	 */
+	removeStateKey?: boolean;
+	/**
 	 * Tags to add and remove (without '#'). A delta rather than the new list,
 	 * because the row it came from can be a refresh behind the note: two removals
 	 * in a row would otherwise both compute from the same stale list, and the
@@ -163,6 +168,22 @@ export function computeTypeChanges(
 	};
 	walk(dragged, newBaseIdx);
 	return { typeField, cascade };
+}
+
+/**
+ * The write a board drop plans: the target column's canonical value, byte for byte —
+ * nothing transforms it on the way to disk. Dropping on the card's own column
+ * (case-insensitively, the same matching that placed it there) plans nothing, so the
+ * batch that follows cannot cost the caller's undo slot; dropping on the no-state
+ * column removes the key rather than writing an empty string.
+ */
+export function computeStateDropWrites(item: BacklogItem, state: string | null): ItemWrite[] {
+	const current = item.stateValue;
+	if (state === null) {
+		return current === null ? [] : [{ file: item.file, removeStateKey: true }];
+	}
+	if (current !== null && current.toLowerCase() === state.toLowerCase()) return [];
+	return [{ file: item.file, state }];
 }
 
 /** The order value for the insertion slot, or null when the group needs renumbering. */

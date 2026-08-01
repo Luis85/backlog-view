@@ -52,6 +52,25 @@ function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): s
 	return `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`;
 }
 
+/**
+ * Board mode without a state property: there is no workflow to draw, so this is
+ * guidance rather than a board — a board here would be a lie about a workflow that
+ * does not exist. The one board case with no columns, and it names the option to
+ * set and where, never a blank pane.
+ */
+export function renderBoardNoWorkflowState(treeEl: HTMLElement): void {
+	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
+	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'square-kanban');
+	empty.createDiv({ cls: 'pbl-empty-title', text: 'No workflow to show' });
+	empty.createDiv({
+		cls: 'pbl-empty-hint',
+		text:
+			'The board is a projection of your workflow, and this view has no state property yet. ' +
+			'Set "State property" in the view options — and optionally "Workflow states (in order)" — ' +
+			'and the board will draw one column per state.',
+	});
+}
+
 export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const empty = treeEl.createDiv({ cls: 'pbl-empty-filter' });
 	setIcon(empty.createDiv({ cls: 'pbl-empty-filter-icon' }), 'search-x');

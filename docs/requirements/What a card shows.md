@@ -2,10 +2,11 @@
 type: PBI
 parent: "[[Backlog and board]]"
 order: 20
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 files:
+  - src/view/render/board.ts
   - src/view/render/columns.ts
 ---
 
@@ -68,7 +69,10 @@ on a board, the hierarchy has to travel on the card.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The chips, tag pills, state chip and rollup a card
-needs are already built for the tree in `src/view/render/columns.ts`; a card is a second
-layout over the same pieces, so what this PBI adds is a renderer, not a second answer to
-what an item contains.
+`renderCard` in `src/view/render/board.ts` — a renderer, not a second answer to what an
+item contains: the badge and highlighted title come from `src/view/render/rows.ts`
+(`renderBadge`, `renderTitleText`), the property cells and the rollup from
+`src/view/render/columns.ts` (`renderPropCells`, `renderRollup`), all reading the same
+resolved `host.chips`. The state chip control is deliberately absent — the column
+already says the state, and its write affordance is the board menu's, still to come.
+Driven in `test/view/board.test.ts` through the accessors in `test/helpers/board.ts`.

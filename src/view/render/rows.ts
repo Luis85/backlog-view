@@ -206,7 +206,7 @@ function renderRowLead(
 }
 
 /** While filtering, the matching substring lights up so hits are scannable. */
-function renderTitleText(host: BacklogViewHost, titleEl: HTMLElement, text: string): void {
+export function renderTitleText(host: BacklogViewHost, titleEl: HTMLElement, text: string): void {
 	const needle = host.filterText.trim().toLowerCase();
 	const idx = needle.length > 0 ? text.toLowerCase().indexOf(needle) : -1;
 	if (idx === -1) {
@@ -218,7 +218,8 @@ function renderTitleText(host: BacklogViewHost, titleEl: HTMLElement, text: stri
 	titleEl.appendText(text.substring(idx + needle.length));
 }
 
-function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
+/** Shared with the board's cards: one badge chain, so a type cannot look different per projection. */
+export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
 	const badgeText = displayType(item);
 	if (!badgeText) return;
 	const badge = row.createSpan({ cls: 'pbl-badge' });

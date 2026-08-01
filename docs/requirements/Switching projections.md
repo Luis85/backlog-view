@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[Backlog and board]]"
 order: 10
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 files:
-  - src/domain/settings.ts
+  - src/storage/collapseStore.ts
   - src/view/backlogView.ts
   - src/view/render/toolbar.ts
 ---
@@ -17,15 +17,19 @@ files:
 board, **so that** I can ask "what exists, under what" and "where is everything in the
 flow" of one set of notes without maintaining two of anything.
 
-A toolbar toggle switches the view between backlog and board. The mode is a persisted
-view option the way the focus level already is: set from the toolbar, stored in the
-`.base` per saved view, absent from the options menu because it lives where its effect
-is.
+A toolbar toggle switches the view between backlog and board. The mode is working
+position, not configuration — the rule that splits the two: base settings are saved on
+the view (the options in the `.base`), UI state in vault-scoped localStorage. So the
+choice persists beside the collapse state, keyed per saved view and held per device,
+and never touches the `.base` (ADR 0011's reasoning, applied again: the `.base` is
+shared configuration, and which projection I am looking at is mine).
 
-The precedent is uniform: Linear toggles list and board on the same view and keeps the
-choice per view, GitHub Projects and Notion make layout a property of each saved view,
-and no surveyed tool treats layout as transient state. Persisting per view also means
-one base can keep a saved backlog view beside a saved board view of the same notes.
+The precedent is uniform on the granularity: Linear toggles list and board on the same
+view and keeps the choice per view, GitHub Projects and Notion make layout a property
+of each saved view. The store's key is the base plus the view name, so that per-view
+granularity holds here too — what this plugin deliberately gives up is syncing the
+choice across devices, which is the price of keeping one person's working position out
+of a shared file.
 
 ## Use case
 
@@ -39,20 +43,23 @@ one base can keep a saved backlog view beside a saved board view of the same not
 **Main flow**
 
 1. The user clicks the toggle.
-2. The view stores the new mode as a view option — the same mechanism the focus level
-   uses — and re-renders.
+2. The view stores the new mode in the collapse store — vault-scoped localStorage,
+   under the same per-view identity the collapse state uses — and re-renders.
 3. The board renders from the model already in hand: same results, same undo slot, same
    quick filter, no re-query.
-4. The choice survives a restart, and belongs to that saved view alone.
+4. The choice survives a restart on this device, and belongs to that saved view alone.
 
 **Extensions**
 
 - **1a — no state property is configured.** Board mode shows guidance naming the option
   to set and where, never a blank pane. A board is the projection of a workflow, and
   without a state property there is no workflow to project.
-- **2a — the base holds a second saved view.** The mode is stored per saved view, so one
-  base can carry a backlog view beside a board view over the same notes. That is why it
-  is not stored per base.
+- **2a — the base holds a second saved view.** The store keys by base plus view name,
+  so one base can carry a backlog view beside a board view over the same notes. That is
+  why the mode is keyed per saved view, not per base.
+- **2b — the view has no resolvable identity** (an embedded base, or no leaf). The mode
+  is session-only, exactly as the collapse state is: falling back to a shared key would
+  make two bases inherit each other's projection.
 - **3a — a quick filter is active.** It carries over rather than clearing: the filter is
   session state in both projections, and dropping it on a switch would make the toggle
   destructive.
@@ -62,8 +69,10 @@ one base can keep a saved backlog view beside a saved board view of the same not
 
 ## Acceptance criteria
 
-- The toggle persists in the `.base` per saved view and survives a restart; nothing
-  else about the mode is stored anywhere.
+- The toggle persists per saved view in the collapse store's vault-scoped
+  localStorage and survives a restart on the same device. Nothing about the mode is
+  ever written to the `.base`: base settings are saved on the view, UI state in
+  localStorage.
 - Switching is a render decision: same model, same results, same undo slot, no
   re-query. The quick filter carries over.
 - With no state property configured, board mode shows guidance instead of a board —
@@ -73,6 +82,12 @@ one base can keep a saved backlog view beside a saved board view of the same not
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The mode will be one more option in
-`src/domain/settings.ts` and its schema entry, toggled from `src/view/render/toolbar.ts`
-and read by `src/view/backlogView.ts` at render time, beside the focus level it copies.
+The mode is the `mode` field of the collapse store's per-view entry
+(`src/storage/collapseStore.ts`), restored and debounce-saved by
+`src/view/collapseState.ts` with the collapse sets it lives beside — so base renames
+and view renames migrate it for free. The toolbar toggle (`renderModeToggle` in
+`src/view/render/toolbar.ts`) flips it through `setBoardMode` on the host, and
+`src/view/backlogView.ts` dispatches the render on `boardMode`, swapping the scroller
+between tree and listbox roles over the same model, undo slot and filter state. Driven
+in `test/view/board.test.ts` (the store round-trip in
+`test/storage/collapseStore.test.ts`).

@@ -2,13 +2,14 @@
 type: PBI
 parent: "[[Moving cards]]"
 order: 10
-status: Open
+status: Active
 priority: P1
 created: 2026-08-01
 files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
+  - src/view/interactions/boardDrag.ts
 ---
 
 # Drag a card to a new state
@@ -82,7 +83,16 @@ exists to make impossible. The drag engine is decided:
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The plan is `src/domain/writePlan.ts` work beside
-the drop plans it already builds; the remove-state write joins `removeParentKey` in
-`src/storage/frontmatter.ts`, the only module that may write; and the batch goes through
-the same `applySafely` in `src/view/backlogView.ts` that every other gesture uses.
+The plan is `computeStateDropWrites` in `src/domain/writePlan.ts`, beside the drop
+plans it already builds; the remove-state write (`removeStateKey`) joined
+`removeParentKey` in `src/storage/frontmatter.ts`, the only module that may write; the
+batch goes through the same `applySafely` in `src/view/backlogView.ts`
+(`performBoardDrop`) that every other gesture uses; and the gesture itself is
+`src/view/interactions/boardDrag.ts`, wiring the Pragmatic element adapter with
+live-region announcements and edge auto-scroll. Driven by synthetic drag events in
+`test/view/boardMoves.test.ts` (helpers in `test/helpers/dnd.ts`), the storage
+round-trip in `test/storage/frontmatter.test.ts`, and the context-row invariant across
+the board's entry points in `test/view/contextRowWrites.test.ts`.
+
+Still Active, not Done, on one honest technicality: the over-limit acceptance
+criterion cannot be *exercised* until [[WIP limits]] exists to put a column over one.

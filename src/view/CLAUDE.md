@@ -163,6 +163,36 @@ free of runtime code so imports stay cycle-free.
   `syncFilterUi` because a filter change re-renders only the tree and leaves the
   toolbar's DOM in place.
 
+## The board projection
+
+- One scroller, two projections: board mode reuses `.pbl-tree` with its role swapped to
+  `listbox` and the keydown dispatched to `handleBoardKeydown`. The column-fit ladder
+  (`pbl-hide-*`) is the tree's — entering board mode clears its stale verdicts, or a
+  narrow-pane decision from tree mode would hide card cells.
+- The mode is `host.boardMode`, backed by the collapse store (UI state, per saved view,
+  per device) — never `settings` and never the `.base`: base settings are saved on the
+  view, working position in localStorage. `setBoardMode` re-renders itself, because no
+  config was set and no Bases refresh is coming.
+- `BoardDragController` collects every adapter registration's cleanup and runs them at
+  the top of each render pass: the board is rebuilt wholesale, and pragmatic listeners
+  left on detached elements would fire against a board that no longer exists. Its
+  `dispose` also clears the live region, a shared singleton on `document.body`.
+- The whole column is the drop target and the highlight is the only drop signal —
+  within-column order is derived from the Base's sort, so there is no between-cards
+  edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
+- Context cards are never wired as draggables, and `performBoardDrop` still rides
+  `applySafely`, whose outside-filter refusal is the structural backstop — the board
+  block in `test/view/contextRowWrites.test.ts` drives both. Column counts are result
+  cards only; a context card is placement, not population.
+- The selection is ONE thing across projections: a row/card by path, or — board only —
+  a column stop (`SelectionController`), because an empty column must stay reachable
+  by keyboard. Anything that takes the card selection releases the column stop, and
+  render passes re-point via `resyncAfterRender` — column stops are reapplied by the
+  board render (they live on elements it just rebuilt), which runs BEFORE the resync,
+  so the resync leaves a held column alone rather than stripping the active
+  descendant it just set. Rendering the tree releases any held column stop: board
+  state must not outlive the projection it points into.
+
 ## Lifecycle
 
 - A Bases view is handed its `app` **after** construction, so nothing in the

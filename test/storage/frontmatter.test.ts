@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyWrites, createBacklogItem } from '../../src/storage/frontmatter';
+import { applyRestores, applyWrites, createBacklogItem, RestoreWrite } from '../../src/storage/frontmatter';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -48,6 +48,36 @@ describe('applyWrites', () => {
 		// Without a configured state property the write is dropped, not misfiled.
 		await applyWrites(vault.app, settings, [{ file: item, state: 'Open' }]);
 		expect(vault.fm('Item.md')).toEqual({ status: 'Done' });
+	});
+
+	it('removeStateKey deletes the key, and the captured inverse puts the value back', async () => {
+		const vault = new FakeVault();
+		const stated = { ...settings, stateKey: 'status' };
+		const item = vault.addFile('Item.md', { frontmatter: { status: 'Active', order: 5 } });
+		const inverses: RestoreWrite[] = [];
+
+		// The no-state column's drop: absence, never an empty string.
+		await applyWrites(vault.app, stated, [{ file: item, removeStateKey: true }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+		expect(vault.fm('Item.md')).toEqual({ order: 5 });
+
+		// Absence is first-class in the restore machinery: undo restores the value.
+		expect(inverses).toHaveLength(1);
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Item.md')).toEqual({ status: 'Active', order: 5 });
+
+		// Removing an already absent key changes nothing and emits no inverse —
+		// it must not cost the caller's single undo slot.
+		const again: RestoreWrite[] = [];
+		await applyWrites(
+			vault.app,
+			stated,
+			[{ file: vault.addFile('Bare.md'), removeStateKey: true }],
+			undefined,
+			(inv) => again.push(inv),
+		);
+		expect(again).toHaveLength(0);
 	});
 
 	it('applies tag deltas to what the note holds, and drops the key when it empties', async () => {

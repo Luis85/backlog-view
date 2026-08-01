@@ -36,11 +36,15 @@ can be checked by reading one directory.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
 
-## Collapse state
+## Collapse state, and the view mode beside it
 
-- It persists to vault-scoped localStorage (`collapseStore.ts`) and is still NEVER
-  written to the `.base` file: a path per collapsed row is exactly the growth that file
-  should not take, and it is shared state where this is one person's working position.
+- The rule that decides where anything persists: **base settings are saved on the view
+  (the `.base` options); UI state is saved in vault-scoped localStorage.** The collapse
+  sets and the board/tree projection (`mode` on the same per-view entry) are UI state —
+  one person's working position on one device — and are NEVER written to the `.base`:
+  a path per collapsed row is exactly the growth that shared file should not take, and
+  a projection choice forced on everyone the base syncs to would be the same mistake.
+  The price, accepted knowingly: working position does not sync across devices.
 - The store's key only has to be UNIQUE, never parsed: each entry carries its own
   `base`, because a view name may contain anything a user can type ("Sprint #3" is an
   ordinary name) and splitting the key on a separator misreads the base path — which

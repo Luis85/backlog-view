@@ -76,7 +76,9 @@ are its contents.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The filter's session state and its match-path
-contract are already in `src/view/backlogView.ts`; the board reuses the matching and
-answers the two questions that are its own — what a kept card names, and why dragging
-stays enabled here.
+**Partly built.** The narrowing shipped with the board: the filter's session state and
+match-path contract stay in `src/view/backlogView.ts`, the board reads them through
+the same row-visibility rule the tree uses, columns keep rendering, and dragging stays
+enabled while filtering — driven in `test/view/boardMoves.test.ts`. Still design: the
+match-against-full header counts, and a kept card naming its matching descendants on
+its face.

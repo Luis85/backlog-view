@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Backlog and board]]"
 order: 30
-status: Open
+status: Active
 priority: P2
 created: 2026-08-01
 files:
@@ -71,6 +71,9 @@ in it, and both are different from a workflow with no states.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** `src/view/render/emptyStates.ts` already holds the
-tree's four answers and the reasoning behind separating them; the board's cases join it
-there rather than growing a second vocabulary of explanations somewhere else.
+`renderBoardNoWorkflowState` joined the tree's answers in
+`src/view/render/emptyStates.ts`, and the advisory beside the columns
+(`renderBoardAdvisory` in `src/view/render/board.ts`) *reuses* those answers rather
+than growing a second vocabulary: the no-items, no-match and all-done states render
+into the aside unchanged. Driven in `test/view/board.test.ts`. Still open: every empty
+stage as a *creation* target, which waits for [[New cards in place]].
