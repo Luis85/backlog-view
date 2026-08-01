@@ -1,4 +1,4 @@
-import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
+import { App, normalizePath, stringifyYaml, TFile, TFolder } from 'obsidian';
 import { hasTag, normalizeTag, readTags } from '../domain/noteFields';
 import { BacklogSettings } from '../domain/settings';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
@@ -242,7 +242,7 @@ export interface NewItemSpec {
 export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
 	const trimmed = spec.folder.trim().replace(/^\/+|\/+$/g, '');
 	const folder = trimmed ? normalizePath(trimmed) : '';
-	await ensureFolder(app, folder);
+	const created = await ensureFolder(app, folder);
 
 	const base = sanitizeTitle(spec.title);
 	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
@@ -259,7 +259,14 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// intentionally top-level note — pin it with an explicitly empty parent.
 	else if (settings.folderHierarchy) fm[settings.parentKey] = '';
 	fm[settings.orderKey] = spec.order;
-	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
+	try {
+		return await app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
+	} catch (error) {
+		// The notice the caller shows explains the failure; this is so the attempt does
+		// not also leave a folder named after the item the user did not get.
+		await removeCreatedFolders(app, created);
+		throw error;
+	}
 }
 
 /**
@@ -280,18 +287,58 @@ function sanitizeTitle(title: string): string {
 	return cleaned.length > 0 ? cleaned : 'Untitled';
 }
 
-export async function ensureFolder(app: App, folder: string): Promise<void> {
-	if (!folder) return;
+/**
+ * Create every missing segment of `folder`, and report **which ones this call made**.
+ *
+ * The list is what makes a failed creation cleanable. `ensureFolder` walks a chain and
+ * some of it usually already exists, so "what is under this path" cannot answer the
+ * question a rollback has to ask — only the segments this attempt created are ours to
+ * remove. Returning them is the whole of that bookkeeping; deciding what to do with
+ * them is `removeCreatedFolders`.
+ */
+export async function ensureFolder(app: App, folder: string): Promise<string[]> {
+	if (!folder) return [];
 	const parts = folder.split('/');
+	const created: string[] = [];
 	let current = '';
 	for (const part of parts) {
 		current = current ? `${current}/${part}` : part;
 		if (app.vault.getAbstractFileByPath(current) === null) {
 			try {
 				await app.vault.createFolder(current);
+				created.push(current);
 			} catch {
 				// Folder may have been created concurrently; creation of the note will surface real errors.
 			}
+		}
+	}
+	return created;
+}
+
+/**
+ * Remove the folders a failed creation left behind, deepest first.
+ *
+ * Three restrictions, and each is the difference between a cleanup and a data loss:
+ * only folders **this attempt created**, only while each is **still empty**, and never
+ * recursively. A creation failure is precisely the moment the vault's state is least
+ * certain — a sync client, another plugin or the user may have put something in the
+ * folder between the two calls — so anything unexpected stops the walk instead of being
+ * cleared. Deleting more than we made is a far worse outcome than a stray empty folder,
+ * which is why the first surprise ends the loop rather than skipping past it.
+ *
+ * Stopping is also the only correct move for the ancestors: a parent cannot be empty
+ * while the child that failed to go is still standing in it.
+ */
+export async function removeCreatedFolders(app: App, created: string[]): Promise<void> {
+	for (const path of [...created].reverse()) {
+		const folder = app.vault.getAbstractFileByPath(path);
+		if (!(folder instanceof TFolder) || folder.children.length > 0) return;
+		try {
+			// The user's own trash preference decides where it goes; this is their vault,
+			// and the folder is only *probably* unwanted.
+			await app.fileManager.trashFile(folder);
+		} catch {
+			return;
 		}
 	}
 }

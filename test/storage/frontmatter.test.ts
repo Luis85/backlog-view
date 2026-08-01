@@ -147,6 +147,69 @@ describe('createBacklogItem', () => {
 		expect(vault.fm(file.path)['parent']).toBe('');
 	});
 
+	it('removes the folders it made when the note itself cannot be written', async () => {
+		const vault = new FakeVault();
+		vault.folders.add('Backlog');
+		vault.failCreates.add('Backlog/bugs/Fix.md');
+
+		await expect(
+			createBacklogItem(vault.app, settings, {
+				folder: 'Backlog/bugs',
+				title: 'Fix',
+				typeName: 'Bug',
+				parent: null,
+				order: 10,
+			}),
+		).rejects.toThrow('create failed');
+
+		// Only what this attempt made. `Backlog` was already there and is not ours to take.
+		expect(vault.trashed).toEqual(['Backlog/bugs']);
+		expect(vault.folders.has('Backlog')).toBe(true);
+	});
+
+	it('unwinds a whole created chain, deepest first', async () => {
+		const vault = new FakeVault();
+		vault.failCreates.add('Roadmap/work/open/Thing.md');
+
+		await expect(
+			createBacklogItem(vault.app, settings, {
+				folder: 'Roadmap/work/open',
+				title: 'Thing',
+				typeName: 'Task',
+				parent: null,
+				order: 10,
+			}),
+		).rejects.toThrow('create failed');
+
+		// Deepest first is the only order in which each one is empty when it is reached.
+		expect(vault.trashed).toEqual(['Roadmap/work/open', 'Roadmap/work', 'Roadmap']);
+		expect([...vault.folders]).toEqual(['/']);
+	});
+
+	it('keeps a created folder that is no longer empty, and everything above it', async () => {
+		const vault = new FakeVault();
+		// Something else put a note here between the folder being made and the write
+		// failing — a sync client, another plugin, the user. The rollback is not entitled
+		// to it, and a folder holding it is not empty.
+		vault.addFile('Roadmap/work/Someone else.md');
+		vault.failCreates.add('Roadmap/work/Thing.md');
+
+		await expect(
+			createBacklogItem(vault.app, settings, {
+				folder: 'Roadmap/work',
+				title: 'Thing',
+				typeName: 'Task',
+				parent: null,
+				order: 10,
+			}),
+		).rejects.toThrow('create failed');
+
+		// And `Roadmap` stays too: it cannot be empty while `work` is still standing in it.
+		expect(vault.trashed).toEqual([]);
+		expect(vault.folders.has('Roadmap/work')).toBe(true);
+		expect(vault.folders.has('Roadmap')).toBe(true);
+	});
+
 	it('falls back to Untitled for empty titles and supports the vault root', async () => {
 		const vault = new FakeVault();
 		const file = await createBacklogItem(vault.app, settings, {

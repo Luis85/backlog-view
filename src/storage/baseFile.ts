@@ -1,5 +1,5 @@
 import { App, normalizePath, TFile } from 'obsidian';
-import { ensureFolder } from './frontmatter';
+import { ensureFolder, removeCreatedFolders } from './frontmatter';
 
 /**
  * Writing the `.base` file itself — the one vault write that is not a work item.
@@ -45,11 +45,18 @@ function yamlQuote(value: string): string {
 export async function createBacklogBase(app: App, folderInput: string): Promise<TFile> {
 	const trimmed = folderInput.trim().replace(/^\/+|\/+$/g, '');
 	const folder = trimmed ? normalizePath(trimmed) : DEFAULT_BACKLOG_FOLDER;
-	await ensureFolder(app, folder);
+	const created = await ensureFolder(app, folder);
 
 	let path = normalizePath(`${folder}/${BASE_FILE_NAME}.base`);
 	for (let i = 1; app.vault.getAbstractFileByPath(path) !== null; i++) {
 		path = normalizePath(`${folder}/${BASE_FILE_NAME} ${i}.base`);
 	}
-	return app.vault.create(path, baseFileContent(folder));
+	try {
+		return await app.vault.create(path, baseFileContent(folder));
+	} catch (error) {
+		// A scaffold that fails has made a folder the user never asked for by name — they
+		// asked for a backlog. Leaving it behind offers an empty folder as the outcome.
+		await removeCreatedFolders(app, created);
+		throw error;
+	}
 }

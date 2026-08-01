@@ -35,6 +35,17 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
+- `ensureFolder` returns the segments **it** created — pushed only after a `createFolder`
+  that succeeded — and both creators pass that list to `removeCreatedFolders` from their
+  own `catch` before rethrowing. The distinction the rollback turns on is *created, not
+  merely present*: a folder that was already there is never a candidate, however empty.
+  Two further restrictions, and each is the difference between a cleanup and a data loss —
+  deepest first and only while `children` is empty, and the **first surprise ends the
+  walk** rather than being skipped. A creation failure is precisely when the vault's state
+  is least certain, so anything unexpected stops it; stopping is also the only correct move
+  for the ancestors, since a parent cannot be empty while the child that failed to go is
+  still standing in it. Never a recursive delete, and it goes through
+  `fileManager.trashFile` so the user's own trash setting decides where it lands.
 
 ## Collapse state
 

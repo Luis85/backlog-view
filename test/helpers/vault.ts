@@ -39,6 +39,10 @@ export class FakeVault {
 	localStorage = new Map<string, unknown>();
 	/** Paths whose processFrontMatter throws — how tests make a batch fail partway. */
 	failWrites = new Set<string>();
+	/** Paths whose vault.create throws — a permission problem or a sync lock, as far as the caller can tell. */
+	failCreates = new Set<string>();
+	/** Paths passed to fileManager.trashFile, in order. */
+	trashed: string[] = [];
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 
@@ -76,15 +80,10 @@ export class FakeVault {
 		},
 		vault: {
 			getAbstractFileByPath: (path: string) =>
-				this.files.get(path) ?? (this.folders.has(path) ? { path } : null),
-			getAllLoadedFiles: () =>
-				[...this.folders].map((path) => {
-					const folder = new TFolder();
-					folder.path = path;
-					folder.name = path.split('/').pop() ?? path;
-					return folder;
-				}),
+				this.files.get(path) ?? (this.folders.has(path) ? this.folderAt(path) : null),
+			getAllLoadedFiles: () => [...this.folders].map((path) => this.folderAt(path)),
 			create: async (path: string, content: string) => {
+				if (this.failCreates.has(path)) throw new Error(`create failed: ${path}`);
 				if (this.files.has(path)) throw new Error(`File already exists: ${path}`);
 				const file = new TFile(path);
 				this.files.set(path, file);
@@ -104,6 +103,11 @@ export class FakeVault {
 			},
 		},
 		fileManager: {
+			trashFile: async (entry: { path: string }) => {
+				this.trashed.push(entry.path);
+				this.folders.delete(entry.path);
+				this.files.delete(entry.path);
+			},
 			processFrontMatter: async (file: TFile, fn: (fm: Record<string, unknown>) => void) => {
 				// Injected failure, for the partial-batch paths a real vault produces.
 				if (this.failWrites.has(file.path)) throw new Error(`write failed: ${file.path}`);
@@ -114,6 +118,24 @@ export class FakeVault {
 			},
 		},
 	};
+
+	/**
+	 * A folder as Obsidian hands one over, `children` included — computed on the way out
+	 * rather than stored, so a note created a moment ago is inside its folder without
+	 * anything having had to remember to put it there. That matters for the rollback of a
+	 * failed creation, whose whole question is whether a folder is still empty *now*.
+	 */
+	private folderAt(path: string): TFolder {
+		const folder = new TFolder();
+		folder.path = path;
+		folder.name = path.split('/').pop() ?? path;
+		const parentOf = (p: string) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '/');
+		folder.children = [
+			...[...this.files.values()].filter((f) => parentOf(f.path) === path),
+			...[...this.folders].filter((f) => f !== '/' && f !== path && parentOf(f) === path),
+		];
+		return folder;
+	}
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	renameFile(oldPath: string, newPath: string): TFile {

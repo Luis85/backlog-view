@@ -43,6 +43,12 @@ export function normalizePath(path: string): string {
 export class TFolder {
 	path = '';
 	name = '';
+	/**
+	 * Direct entries, as Obsidian presents them. This is what "is the folder still
+	 * empty" asks before a failed creation removes what it made, so a stand-in without
+	 * it would let that rollback pass by never having anything to find.
+	 */
+	children: unknown[] = [];
 }
 
 export class TFile {
