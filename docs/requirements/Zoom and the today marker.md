@@ -37,7 +37,10 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 
 1. The timeline opens scrolled so today is in view, marked by a line.
 2. The toolbar offers week, month and quarter zoom — discrete scales, each with the
-   grid cell drags will snap to.
+   grid cell drags will snap to. A week cell runs Monday through Sunday, ISO 8601's
+   week — the standard the register's own date format already follows — one boundary
+   on every device, never a locale guess that would let the same drop write different
+   plans.
 3. Panning scrolls the timeline horizontally inside the view; the pane itself never
    scrolls sideways.
 4. Jump-to-today returns in one action, and the zoom choice is remembered per device —
@@ -62,7 +65,7 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 - The timeline opens with today visible and marked; jump-to-today is one action and
   works from any scroll position.
 - Zoom offers exactly the discrete scales, and each declares the grid cell that drags
-  snap to.
+  snap to; a week cell runs Monday through Sunday (ISO 8601) on every device.
 - Horizontal scrolling is contained inside the view; the pane never scrolls sideways,
   and a narrow or embedded pane degrades by yielding decoration, not by clipping — the
   shelf compacts to its labelled count, one action from open, and never disappears.

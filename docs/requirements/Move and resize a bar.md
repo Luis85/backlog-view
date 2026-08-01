@@ -34,7 +34,9 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 **Main flow**
 
-1. Dragging the body shifts both dates by the same whole-cell delta, previewed live.
+1. Dragging the body slides the bar by whole-cell steps, previewed live: the start
+   takes the calendar step and the target follows at the bar's own day count, so a
+   slide never changes duration.
 2. Dragging an end moves that date alone, previewed live.
 3. Release writes what the preview showed, one batch through the gate.
 4. Undo restores both prior values together.
@@ -85,12 +87,12 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 ## Acceptance criteria
 
-- Body drags shift both dates by one whole-cell delta; end drags move one date;
+- Body drags slide the bar by whole-cell steps — the start takes the calendar step,
+  clamped at month end rather than overflowing, and the target follows at the bar's
+  own day count, so a slide never changes duration; end drags move one date;
   everything snaps to the zoom's grid, and release writes exactly the preview. Deltas
-  are calendar units that preserve the value's own precision: a datetime keeps its
-  time of day and its shape on disk. A step clamps at month end rather than
-  overflowing, and a body drag preserves the bar's duration — the start takes the
-  step, the target follows at the same day count.
+  preserve the value's own precision: a datetime keeps its time of day and its shape
+  on disk.
 - Within its lane, a bar gesture is a single-note write: no sibling renumbering, no
   cascade to children, nothing else touched. A drag that also crosses a lane is the
   combined batch [[Lanes on the roadmap]] specifies, never a second write path.

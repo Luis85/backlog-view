@@ -57,7 +57,10 @@ names the option or the action it points at.
   the note lands on the shelf until it is scheduled. A grid cell is a pair of dates
   picked by pointer position, and a creation that routes through the naming prompt no
   longer means them; create-then-schedule keeps both acts specified, and the shelf is
-  one drag from the plan ([[Drag from the shelf to schedule]]).
+  one drag from the plan ([[Drag from the shelf to schedule]]). Where the filter
+  itself excludes a dateless note — a base admitting only dated items — the creation
+  is announced with an open path rather than claimed on the shelf, the answer
+  [[New cards in place]] gives a card created into a state the base excludes.
 - **3a — the base returned notes that are not work items.** They are counted in the
   advisory rather than shown, the same report the tree and board make — and it renders
   beside the frame, never instead of it. An empty roadmap is an empty frame, never no
@@ -70,7 +73,8 @@ names the option or the action it points at.
 - With an axis and no placements, the frame still renders — every region a drop
   target, every bucket a creation target — beside the shelf and the ignored-notes
   advisory, never replaced by them; a note created while the timeline shows lands on
-  the shelf until it is scheduled.
+  the shelf until it is scheduled — or, where the filter excludes it dateless, is
+  announced with an open path instead of claimed on the shelf.
 - A declared bucket with nothing in it still renders its column.
 - The all-shelved state renders the empty frame beside the full shelf and lets the
   count speak; the view suggests no placement the user has not made.
