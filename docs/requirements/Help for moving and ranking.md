@@ -30,8 +30,11 @@ lands, the three ways to make the same move, and where `order` comes from.
   backlog stays navigable.
 - **`order` ranks siblings, and the view maintains it.** Items without an `order` sort
   last, in whatever the Base's own sort produces, until they are ranked.
-- **A move does not re-type.** `Assign item type when moving` is off by default; turned
-  on it rewrites the whole moved subtree to match where it landed.
+- **A move does not re-type.** `Assign item type when moving` is off by default. Turned
+  on, it re-types the dragged item and the **ladder-typed** items below it to match where
+  they landed — untyped descendants are left untyped, a custom type keeps its name,
+  `Issue` and `Bug` keep their pinned rank, and the cascade stops at a context row rather
+  than retyping across a branch the Base excluded.
 - **What is refused, and why it is not a rule about types**: while the quick filter is
   active drag and drop is off (visual neighbours are not real siblings), and in a focused
   view the top row has no shared ranking, so reordering, indent/outdent and the top-level
@@ -47,6 +50,10 @@ lands, the three ways to make the same move, and where `order` comes from.
   absent gesture reads as a rule rather than a bug.
 - No claim about a move being refused for hierarchy reasons: the rules are advisory, and
   saying otherwise here would contradict [[A help button for the item types]].
+- The re-typing cascade is described by what it **skips** — untyped, custom-typed, extra
+  types, and anything past a context row — rather than as a whole-subtree rewrite.
+  `README.md` currently says "the whole moved subtree"; the manual must not inherit that
+  wording, and the README is worth correcting with it.
 
 ## Evidence
 

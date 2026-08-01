@@ -28,14 +28,15 @@ One entry per type, generated from the vocabulary rather than retyped beside it:
 | `Epic` | The outcome — a body of work with no parent above it | Top of the ladder; a root |
 | `Feature` | A capability under an Epic | One rung down |
 | `PBI` | A deliverable slice a team can finish | One rung down |
-| `Task` | The engineering step that gets a PBI done | Deepest rung; holds nothing |
+| `Task` | The engineering step that gets a PBI done | The deepest rung — the ladder ends here, so the only child offered under a Task is another Task |
 | `Issue` | A question, verification or decision to record | Beside the ladder, under any rung above the deepest; holds Tasks |
 | `Bug` | A defect raised against something that exists | The same |
 
 Plus the three rules that are invisible on screen and decide what the view does:
 
-- A child's level is **one rung below its parent's** — that is what the ladder means, and
-  it is the level an untyped item is shown as.
+- A child's level is **one rung below its parent's**, clamped at the deepest — that is
+  what the ladder means, it is the level an untyped item is shown as, and the clamp is
+  why a Task's **+** offers another Task rather than nothing.
 - An item with **no `type`** shows the level its position implies, and nothing is written
   until you ask for it.
 - **A move does not re-type anything.** Drag a PBI under an Epic and it stays a PBI;
@@ -50,6 +51,9 @@ Plus the three rules that are invisible on screen and decide what the view does:
   toolbar control, opening the manual with keyboard and mouse alike.
 - Every type in `ALL_TYPES` has an entry, enforced by a test that reads the vocabulary —
   a seventh type cannot ship without its explanation.
+- Each entry's "what can go under this" agrees with `childTypeChoices`, not with the
+  ladder read literally: the clamp at the deepest rung means a Task offers a Task, and an
+  entry saying otherwise would contradict the **+** button on the row beside it.
 - The section states the pinned rank of the extra types and the advisory rule, since both
   are places a user's mental model would otherwise be wrong rather than merely incomplete.
 - The **displayed level** and the **written `type`** are kept apart: position implies the
