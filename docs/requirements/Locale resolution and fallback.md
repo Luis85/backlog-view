@@ -30,3 +30,9 @@ the view name and the command name at `onload` and could not react anyway.
   the source catalog, so a gap there is a bug rather than an untranslated string.
 - Lookup is a pure function of (key, locale, params) with no module-level mutable state
   beyond the resolved locale, so a test can drive any locale without a reload.
+- **Both locales are exposed, not just the resolved one.** Resolution narrows the
+  Obsidian language code to a shipped catalog, and that narrowing is right for messages
+  and wrong for everything else — `Intl` handles far more locales than this plugin will
+  ever ship catalogs for. The raw `getLanguage()` code stays available for collation and
+  number formatting, so a French user with no French catalog still sorts and counts in
+  French. See `Locale-aware sorting and formatting`, which states the dividing line.

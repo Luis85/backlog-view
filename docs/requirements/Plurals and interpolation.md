@@ -35,18 +35,26 @@ a catalog can key on.
 ## Acceptance criteria
 
 - A counted message is one key with a form per plural category, selected by
-  `Intl.PluralRules` for the active locale. A locale supplies only the categories it
-  has; English supplies `one` and `other`.
+  `Intl.PluralRules` for the **catalog** locale — not the user's requested one. The forms
+  that exist are the ones the catalog was written with, so asking `Intl.PluralRules('ru')`
+  for categories while reading the English catalog requests a `few` form English does not
+  have. A locale supplies only the categories it has; English supplies `one` and `other`.
+- `Intl.ListFormat` follows the catalog locale for the same reason: it is producing
+  grammar inside a sentence, and a French joiner in an English sentence is a worse result
+  than an English one. This is the grammar half of the rule in
+  `Locale-aware sorting and formatting` — grammar follows the catalog, data presentation
+  follows the user.
 - All nine inline ternaries are gone, and a new one cannot be added — a bare `? '' : 's'`
   in `src/` is the kind of thing `A bare string cannot reach the UI` should catch.
 - Parameters are **named**, not positional, so a translation can reorder them. Word order
   is not universal and a message assembled by `+` or by template literal at the call site
   cannot be reordered at all.
-- Lists rendered into a sentence go through `Intl.ListFormat`. `configProblems`
-  (`domain/settings.ts:206`) joins with a literal `' and '` today.
-- Numbers shown to the user are formatted for the locale. `columns.ts:276` renders
-  `${done}/${total}` and `columns.ts:280` a bare count; the digits and separators are
-  not the same everywhere.
+- Lists rendered into a sentence go through `Intl.ListFormat` rather than a literal
+  joiner — `configProblems` (`domain/settings.ts:206`) uses `' and '` today.
+- Numbers **inside a message** are formatted rather than interpolated raw. The counts
+  rendered outside any sentence (`columns.ts:276`, `columns.ts:280`) belong to
+  `Locale-aware sorting and formatting`, since they are data presentation rather than
+  grammar.
 - Interpolating a *type name* (`New ${newLevel}` in `toolbar.ts:20`, `New ${type}` in
   `toolbar.ts:32`, `New <child>` in the context menu) passes it as a parameter to a whole
   message, never concatenates a translated word onto a data value. See

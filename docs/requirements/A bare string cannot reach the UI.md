@@ -18,52 +18,85 @@ caught in review or not at all.
 why — *"a new write path cannot appear by accident."* `VISUAL_DEPTH` is the same idea
 applied to level math, scoped to the two files that decide types.
 
-The translation rule is the same shape with a different selector: a string literal as the
-argument of `setTitle`, `setName`, `setDesc`, `setTooltip`, `setPlaceholder`,
-`setButtonText`, `setText`, `new Notice`, `setAttribute` (for a user-facing attribute),
-or as a `text:` / `aria-label` / `displayName:` / `placeholder:` property. Those are the
-twelve forms the ~141 sites already take.
+The translation rule wants to be the same shape. The obvious form is a selector over the
+places a string reaches the screen — the argument of `setTitle`, `setName`, `setDesc`,
+`setTooltip`, `setPlaceholder`, `setButtonText`, `setText`, `new Notice` or
+`setAttribute` for a user-facing attribute, and the `text:` / `aria-label` /
+`displayName:` / `placeholder:` properties. Those are the twelve forms the ~141 sites
+take today.
 
-`setText` earns its place by example rather than by symmetry: `ui/prompts.ts:110` is
-`this.titleEl.setText('Add tag')`, and `backlogView.ts:445` builds the count label the
-same way. A selector list assembled from the *other* setters would leave both passing
-lint after the sweep, which is the exact failure this PBI exists to prevent — the rule
-has to cover the APIs this codebase actually reaches for, not the ones that came to mind.
+That list is worth having, because it is what the sweep works through. It is **not**
+sufficient as the rule, for the reason below.
 
-`setAttribute` is the twelfth form, and it is the subtlest: `aria-label` appears in the
-list above as an object *property* (`attr: { 'aria-label': … }`), which is how most of the
-code writes it — but `columns.ts:216` writes the same attribute through
-`valueEl.setAttribute('aria-label', described)`, and a selector matching only the object
-form lets a literal through there. The rule covers `setAttribute`'s **second** argument
-when its first is a user-facing attribute: `aria-label`, `title`, `placeholder`, `alt`.
+One distinction from it is worth keeping either way. `setAttribute` belongs in the list
+only for user-facing attributes — `aria-label`, `title`, `placeholder`, `alt`. The other
+five `setAttribute` calls in `src/` write `aria-expanded`, `aria-selected`,
+`aria-activedescendant` and `aria-busy`, whose `'true'`/`'false'` and element-id literals
+are correct and must stay literals. A rule keyed on the *call* rather than on the
+attribute would produce five false positives on day one and be switched off by the second
+contributor to hit it.
 
-It must not cover the rest. The other five `setAttribute` calls write `aria-expanded`,
-`aria-selected`, `aria-activedescendant` and `aria-busy` — ARIA *state*, whose values are
-`'true'`/`'false'` and element ids. Those literals are correct and must stay literals, so
-a rule keyed on the call rather than on the attribute would produce five false positives
-on day one and be switched off.
+## Why the sink list is the wrong shape
 
-The companion form is `appendText` (`rows.ts:218`), and it makes the boundary concrete:
-every call site of `setText`, `appendText` and `setAttribute('aria-label', …)` today
-passes a **value** — a folder path, a note title, a state name, a described property. The
-rule bans *literals* in these positions, so data-carrying calls are unaffected by
-construction, and that is the property to preserve rather than a special case to write.
+Two forms were added by review rather than found by the sweep — `setText`, then
+`setAttribute` — and patching the list twice hid the real problem, which is that **the
+list cannot be made complete, because the literal does not have to be at the sink.**
 
-Two forms have now been added by review rather than found by the sweep — `setText`, then
-`setAttribute`. A list of APIs assembled by recall is short by however many the codebase
-happens to use elsewhere, so the population is not final until it has been **derived**
-from the code: enumerate every call that can put a string on screen, then subtract the
-ones that cannot carry text. Built the other way round, it is short and nobody can say
-by how much.
+Both patterns are already in the code:
+
+```ts
+// toolbar.ts — syncBusy
+const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
+el.querySelector<HTMLElement>('.pbl-busy-label')?.setText(busy ? label : '');
+
+// emptyStates.ts — emptyHint returns English, and the caller renders it
+empty.createDiv({ cls: 'pbl-empty-hint', text: emptyHint(host, focused, topLevel) });
+```
+
+A rule matching literals *inside* `setText(…)` or a `text:` property sees a variable and
+a call. Both pass. Assigning to a local first, or returning from a helper, defeats sink
+matching entirely — and these are not exotic workarounds, they are the two most ordinary
+things a contributor does when a string needs a conditional or a helper needs to build
+one. After the sweep, either pattern reintroduces English and lints clean.
+
+So the rule is inverted. Rather than *"no literal at these sinks"*, it is **"no
+user-facing string literal anywhere in the UI layers"**, with a narrow allowlist of the
+literal kinds that are not text:
+
+| Allowed | Because |
+| --- | --- |
+| Icon ids (`'plus'`, `'chevron-down'`) | A lucide name, not words |
+| CSS classes and selectors | Structure |
+| Attribute *names*, and ARIA *state* values (`'true'`, `'false'`) | Not read by a human as prose |
+| Frontmatter and config keys | Data — see `Persisted keys stay as written` |
+
+That is a whitelist over a known-finite set of shapes, rather than a blacklist over an
+open set of sinks, and it is why it can actually hold. It also flags
+`` `Updating ${busy.done} of ${busy.total}…` `` where it is *written*, which is where a
+contributor can still see what to do about it.
+
+The belt-and-braces half is at the other end: `t()` returns a **branded** string type
+rather than `string`, so a value that never came from the catalog is visible in the type
+system as well as to the linter. The Obsidian setters take `string` and cannot be
+changed, so branding alone does not close the hole — but the two together mean a literal
+has to survive both a lint rule at its construction site and a type at the boundary.
+
+The pattern worth naming, since this PBI has now been corrected three times: **a rule
+enumerated against examples grows one entry per review; a rule stated against a
+property closes the whole class.** Both corrections here were symptoms of the first kind.
 
 ## Acceptance criteria
 
-- A literal in any of those positions in `src/` is a lint **error**. Adding one fails CI.
-- The population is **derived from the code before the rule is written**, not taken from
-  the list above. That list is the starting point and has already been wrong twice; the
-  deliverable is the enumeration that makes it complete.
-- The rule permits what is genuinely not text: an icon id (`'plus'`, `'chevron-down'`),
-  a CSS class, an `attr` like `tabindex`, and a value that is user data.
+- A user-facing string literal anywhere in the UI layers is a lint **error**, wherever it
+  is written — at a sink, assigned to a local, or returned from a helper. The two
+  patterns above are the acceptance test: both must fail, and a rule that only catches
+  the sink form has not met this criterion.
+- The allowlist is of literal **kinds**, enumerated and closed: icon ids, CSS classes and
+  selectors, attribute names, ARIA state values, frontmatter and config keys. Anything
+  outside it is text until someone argues otherwise.
+- `t()` returns a branded type, so an unbranded string reaching a message parameter is a
+  type error as well as a lint error. Neither mechanism is sufficient alone — the setters
+  take `string` and cannot be changed — which is why both are here.
 - Permitting is **explicit and narrow** — a named allowance, not a blanket exemption on
   the file. The root `CLAUDE.md` already sets this standard for framework-invoked members:
   they are *"declared in `usedClassMembers`, not suppressed inline."*
