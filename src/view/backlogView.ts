@@ -427,6 +427,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private renderBoardContent(): void {
 		if (!this.settings.stateKey) {
 			this.board = null;
+			// A held column stop is board state, and there is no board: releasing it
+			// here keeps the guidance screen from carrying a dangling active position.
+			this.selectBoardColumn(null);
 			renderBoardNoWorkflowState(this.treeEl);
 			return;
 		}

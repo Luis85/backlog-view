@@ -86,6 +86,20 @@ describe('dragging a card to a new state', () => {
 		expect(vault.fm('Epic B.md')['status']).toBe('Active');
 	});
 
+	it('an out-of-workflow column is a drop target like any other, writing the observed value', async () => {
+		const vault = boardVault();
+		vault.addFile('Stray.md', { frontmatter: { type: 'Epic', order: 30, status: 'Blocked' } });
+		const { containerEl } = board(vault);
+
+		// The board's targets are the configured states, the observed out-of-workflow
+		// values, and no-state ([[Keyboard, menu and touch]]): "Blocked" is observed,
+		// so consolidating another card into it is a legitimate, reversible write —
+		// the value written is the observed string, exactly.
+		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Blocked'));
+		await flush();
+		expect(vault.fm('Epic A.md')['status']).toBe('Blocked');
+	});
+
 	it('config problems block a board move, exactly as every other write', async () => {
 		const vault = boardVault();
 		// Parent and order share a key: the gate must refuse everything.
@@ -185,6 +199,25 @@ describe('the board keyboard', () => {
 		expect(tree.hasClass('pbl-has-selection')).toBe(true);
 		expect(strip.id).not.toBe('');
 		expect(tree.getAttribute('aria-activedescendant')).toBe(strip.id);
+	});
+
+	it('losing the workflow releases the column stop with the board it belonged to', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view, config } = board(vault);
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowRight');
+		expect(view.selectedBoardColumn).toBe(0);
+
+		// Clearing the state property turns board mode into guidance — no columns
+		// exist for a stop to rest on, and none may linger for assistive tech.
+		delete config.values['stateProperty'];
+		refresh(view, vault);
+
+		expect(columnsOf(containerEl)).toHaveLength(0);
+		expect(view.selectedBoardColumn).toBeNull();
+		expect(tree.getAttribute('aria-activedescendant')).toBeNull();
+		expect(tree.hasClass('pbl-has-selection')).toBe(false);
 	});
 
 	it('switching back to the tree releases the column stop', () => {
