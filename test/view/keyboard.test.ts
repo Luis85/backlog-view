@@ -153,7 +153,7 @@ describe('keyboard expand and collapse', () => {
 describe('keyboard structure shortcuts', () => {
 	it('moves up, outdents and indents with Alt+arrows', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, { autoAssignType: true });
 		const tree = treeOf(containerEl);
 
 		key(tree, 'ArrowDown');

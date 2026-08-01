@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 120
+type: Issue
+order: 10
+parent: "[[The write gate]]"
 status: Open
 priority: P3
 area: design

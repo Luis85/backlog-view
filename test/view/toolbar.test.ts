@@ -40,13 +40,22 @@ describe('toolbar backfill', () => {
 });
 
 describe('toolbar controls', () => {
-	it('offers every level in the New picker and opens the right prompt', () => {
+	it('offers every type in the New picker and opens the right prompt', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		const picker = Menu.lastShown;
-		expect(picker?.items.map((i) => i.titleText)).toEqual(['New Epic', 'New Feature', 'New PBI', 'New Task']);
+		// Every declared type: this menu is the one place a top-level item of any type
+		// can be made.
+		expect(picker?.items.map((i) => i.titleText)).toEqual([
+			'New Epic',
+			'New Feature',
+			'New PBI',
+			'New Task',
+			'New Issue',
+			'New Bug',
+		]);
 
 		picker?.item('New PBI')?.click();
 		expect(Modal.lastOpened?.titleEl.textContent).toBe('New PBI');
@@ -97,7 +106,7 @@ describe('toolbar controls are reachable without a mouse', () => {
 			'Collapse all',
 			'Hide completed items',
 			'Filter items',
-			'Show all levels',
+			'Show all types',
 		]) {
 			const el = controls.get(label);
 			expect(el, `no toolbar control labelled "${label}"`).toBeDefined();
@@ -156,7 +165,7 @@ describe('toolbar controls are reachable without a mouse', () => {
 		// single tab stop — one stop per row would bury the tree itself.
 		expect(add?.tagName).toBe('BUTTON');
 		expect(add?.getAttribute('tabindex')).toBe('-1');
-		expect(add?.getAttribute('aria-label')).toBe('New Feature');
+		expect(add?.getAttribute('aria-label')).toBe('New child item');
 	});
 });
 

@@ -21,12 +21,25 @@ export interface NewItemPromptResult {
 	title: string;
 	/** Only present when the prompt asked for a folder. */
 	folder?: string;
+	/** The chosen type; the only offered one when there was no choice to make. */
+	typeName: string;
 }
 
 export interface NewItemPromptOptions {
 	heading: string;
-	/** Context line under the heading: where the new item will land. */
-	detail?: string;
+	/**
+	 * Context line under the heading: where the new item will land. A function of the
+	 * chosen type, because the folder can depend on it — a Bug and a PBI created from
+	 * the same row may be filed in different places, and a line that said otherwise
+	 * would be telling the user something untrue at the moment they confirm.
+	 */
+	detail?: (typeName: string) => string;
+	/**
+	 * Types this row may hold, most expected first. One entry asks nothing and creates
+	 * that type; more than one adds a picker, because which of them is wanted is a
+	 * question only the user can answer.
+	 */
+	types: string[];
 	/** Ask where to create the item because no folder is configured or inferable. */
 	askFolder?: boolean;
 	onSubmit: (result: NewItemPromptResult) => void;
@@ -175,12 +188,14 @@ export class TitlePromptModal extends Modal {
 
 	onOpen(): void {
 		this.titleEl.setText(this.options.heading);
-		if (this.options.detail) {
-			this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.detail });
-		}
 		let title = '';
 		let folder = '';
 		let createBtn: ButtonComponent | null = null;
+		let typeName = this.options.types[0];
+
+		const detailEl = this.options.detail ? this.contentEl.createDiv({ cls: 'pbl-modal-detail' }) : null;
+		const syncDetail = () => detailEl?.setText(this.options.detail?.(typeName) ?? '');
+		syncDetail();
 
 		const submit = () => {
 			const trimmed = title.trim();
@@ -189,8 +204,24 @@ export class TitlePromptModal extends Modal {
 			this.options.onSubmit({
 				title: trimmed,
 				folder: this.options.askFolder ? folder.trim().replace(/^\/+|\/+$/g, '') : undefined,
+				typeName,
 			});
 		};
+
+		// Asked first: the type decides what the item IS, and it is the one field with a
+		// default worth reviewing. A single choice is not a question — it stays out.
+		if (this.options.types.length > 1) {
+			new Setting(this.contentEl).setName('Type').addDropdown((drop) => {
+				for (const type of this.options.types) drop.addOption(type, type);
+				drop.setValue(typeName);
+				drop.onChange((v) => {
+					typeName = v;
+					// The landing spot follows the type, so the line saying where it lands
+					// has to follow it too.
+					syncDetail();
+				});
+			});
+		}
 
 		new Setting(this.contentEl).setName('Title').addText((text) => {
 			text.setPlaceholder('Item title');

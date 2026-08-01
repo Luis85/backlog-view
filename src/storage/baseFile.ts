@@ -8,7 +8,7 @@ import { ensureFolder } from './frontmatter';
  * without an exception to remember.
  */
 
-export const DEFAULT_BACKLOG_FOLDER = 'Backlog';
+export const DEFAULT_BACKLOG_FOLDER = 'docs';
 const BASE_FILE_NAME = 'Product Backlog';
 
 /**
@@ -28,9 +28,11 @@ export function baseFileContent(folder: string): string {
 		'views:',
 		'  - type: product-backlog',
 		'    name: Backlog',
-		// Pre-wire the creation folder so the first "New Epic" cannot land
-		// outside the filter — the view reads this option via config.get.
-		`    newItemFolder: ${yamlQuote(folder)}`,
+		// One line files everything inside the filter written above: the per-type folders
+		// default to subfolders of the home folder, so `Roadmap` gives `Roadmap/bugs`
+		// without this command having to name each of them — and they keep following if
+		// the home folder is moved later.
+		`    homeFolder: ${yamlQuote(folder)}`,
 		'',
 	].join('\n');
 }

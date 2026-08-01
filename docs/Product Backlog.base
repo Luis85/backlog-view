@@ -1,0 +1,15 @@
+filters:
+  and:
+    - "file.inFolder(\"docs\")"
+    - file.ext == "md"
+views:
+  - type: product-backlog
+    name: Backlog
+    homeFolder: "docs"
+    stateProperty: note.status
+    stateValues: "Open, Active, Done"
+    doneValues: "Done, Dropped"
+    order:
+      - note.status
+      - note.priority
+      - note.area

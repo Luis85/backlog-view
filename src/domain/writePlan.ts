@@ -1,7 +1,8 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
-import { BacklogItem, BacklogModel, childLevelIndex, nextLevelIndex } from './model';
-import { BacklogSettings } from './settings';
+import { BacklogItem, BacklogModel } from './model';
+import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
+import { BacklogSettings, LEVELS } from './settings';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -111,11 +112,29 @@ export function computeTypeChanges(
 	const cascade: ItemWrite[] = [];
 	if (!parentChanged || !settings.autoType) return { cascade };
 
-	const newBaseIdx = childLevelIndex(parent, settings.levels);
-	const implied = settings.levels[newBaseIdx];
+	/**
+	 * The rung an item occupies after the move. A declared extra type carries its own,
+	 * pinned — that is what makes a Bug's children Tasks under an Epic as under a PBI —
+	 * and everything else takes the rung its position gives it.
+	 *
+	 * This applies at EVERY node, not just the dragged one. An extra type nested inside
+	 * a moved subtree is skipped by the retyping below (it has no `levelIndex`), but the
+	 * walk still has to descend from its rank rather than from the position it inherited,
+	 * or moving a Feature that contains a Bug rewrites that Bug's Tasks to PBIs — the
+	 * item left alone, its children silently corrupted.
+	 */
+	const extraRank = EXTRA_TYPE_RANK;
+	const rankOf = (item: BacklogItem, positional: number): number =>
+		isExtraType(item.typeName) ? extraRank : positional;
+
+	const newBaseIdx = rankOf(dragged, childLevelIndex(parent));
 	let typeField: string | undefined;
-	if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
-		typeField = implied;
+	// An extra type is never re-typed by position: dropping a Bug under an Epic leaves a Bug.
+	if (!isExtraType(dragged.typeName)) {
+		const implied = LEVELS[newBaseIdx];
+		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
+			typeField = implied;
+		}
 	}
 
 	// Chained down the parent levels, never derived from depth: each child sits one
@@ -123,7 +142,7 @@ export function computeTypeChanges(
 	// once these writes land, so the plan and the model it produces cannot disagree —
 	// and it holds under focus mode, where visual depth is re-rooted.
 	const walk = (node: BacklogItem, nodeLevel: number) => {
-		const childLevel = nextLevelIndex(nodeLevel, settings.levels);
+		const childLevel = nextLevelIndex(nodeLevel);
 		for (const child of node.children) {
 			// The cascade stops at a note the Base excluded — a filter can leave one
 			// *between* two results (Epic and PBI returned, the Feature between them
@@ -131,7 +150,7 @@ export function computeTypeChanges(
 			// leave a worse ladder than leaving that branch as it stands.
 			if (child.outsideFilter) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
-				const targetLevel = settings.levels[childLevel];
+				const targetLevel = LEVELS[childLevel];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
 					cascade.push({ file: child.file, typeName: targetLevel });
 				}
@@ -139,7 +158,7 @@ export function computeTypeChanges(
 			// A custom type outside the ladder is left alone but still occupies this
 			// rung, exactly as `computeLevel` treats an unknown type — so its own
 			// children carry on from here rather than restarting.
-			walk(child, childLevel);
+			walk(child, rankOf(child, childLevel));
 		}
 	};
 	walk(dragged, newBaseIdx);
@@ -219,7 +238,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 			// don't write a type derived from its provisional top-level position.
 			const levelUnknown = item.parent === null && item.hasParentValue;
 			if (item.typeName === null && !levelUnknown) {
-				write.typeName = settings.levels[childLevelIndex(item.parent, settings.levels)];
+				write.typeName = LEVELS[childLevelIndex(item.parent)];
 				needed = true;
 			}
 			if (needed) writes.push(write);

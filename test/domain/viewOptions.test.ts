@@ -1,12 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { getViewOptions } from '../../src/domain/viewOptions';
+import { defaultTypeFolder } from '../../src/domain/settings';
+
 
 /**
  * The schema is persisted user data: every `key` here is written into a `.base`
  * file and read back by `resolveSettings`, so these tests are a rename alarm as
  * much as a coverage exercise.
  */
+/** Stand-in for BasesViewConfig backed by a plain object. */
+function fakeConfig(values: Record<string, unknown> = {}) {
+	return { get: (key: string) => values[key], getAsPropertyId: () => null } as never;
+}
+
 describe('getViewOptions', () => {
+	it('shows each type folder default under THIS view home folder', () => {
+		const flat = getViewOptions(fakeConfig({ homeFolder: 'Roadmap' })).flatMap((o) =>
+			'items' in o ? o.items : [o],
+		);
+		const shown = (key: string) => flat.find((o) => o.key === key) as { default?: string };
+		// The box must advertise what creation will actually do, or restoring the shown
+		// default silently moves the type back to the shipped layout.
+		expect(shown('typeFolder.epic').default).toBe('Roadmap/requirements');
+		expect(shown('typeFolder.bug').default).toBe('Roadmap/bugs');
+		expect(shown('typeFolder.epic').default).toBe(defaultTypeFolder('Epic', 'Roadmap'));
+	});
+
 	it('declares every config key the view reads', () => {
 		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		const keys = flat.map((o) => o.key);
@@ -15,13 +34,12 @@ describe('getViewOptions', () => {
 				'parentProperty',
 				'orderProperty',
 				'typeProperty',
-				'levels',
 				'hierarchyOnly',
 				'inferFolderHierarchy',
 				'autoAssignType',
 				'stateProperty',
 				'doneValues',
-				'newItemFolder',
+				'homeFolder',
 				'showProperties',
 				'showCounts',
 			]),
@@ -33,6 +51,24 @@ describe('getViewOptions', () => {
 		expect(flat.some((o) => o.key === 'focusLevel')).toBe(false);
 	});
 
+	it('declares a folder option per type, not one mapping to typo', () => {
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const keys = flat.map((o) => o.key);
+		// The vocabulary is fixed, so the schema is static and names every type it has.
+		expect(keys).toEqual(
+			expect.arrayContaining([
+				'typeFolder.epic',
+				'typeFolder.feature',
+				'typeFolder.pbi',
+				'typeFolder.task',
+				'typeFolder.issue',
+				'typeFolder.bug',
+			]),
+		);
+		// And no option offers the vocabulary itself for editing.
+		expect(keys).not.toContain('levels');
+		expect(keys).not.toContain('extraTypes');
+	});
 	it('declares the progress and display option keys', () => {
 		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		expect(flat.map((o) => o.key)).toEqual(

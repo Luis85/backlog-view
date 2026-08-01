@@ -8,7 +8,6 @@ export interface BacklogSettings {
 	parentKey: string;
 	orderKey: string;
 	typeKey: string;
-	levels: string[];
 	/**
 	 * Only treat notes that belong to the work-item hierarchy as items: a supported
 	 * type (one of `levels`) or a parent. When off, every note the base returns is an item.
@@ -24,7 +23,18 @@ export interface BacklogSettings {
 	autoType: boolean;
 	showChips: boolean;
 	showCounts: boolean;
-	newItemFolder: string;
+	/**
+	 * Where new items go when their type has no folder of its own — the one general
+	 * answer to "where does this plugin put things".
+	 */
+	homeFolder: string;
+	/**
+	 * Folder per item type, keyed by LOWERCASED type name. Each is its own option in
+	 * the view options rather than a line of a mapping, so it is picked rather than
+	 * typed. Takes precedence over `homeFolder`, but not over folder mode's "beside
+	 * the parent" rule.
+	 */
+	typeFolders: Record<string, string>;
 	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
 	focusLevel: string;
 	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
@@ -44,7 +54,89 @@ export interface BacklogSettings {
 	showCompleted: boolean;
 }
 
-export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
+/**
+ * The work-item vocabulary, fixed. This plugin is opinionated about it on purpose: a
+ * configurable ladder means every level rule has to hold for any list a user can type,
+ * and the reward was a rename. What it cost was real — collision rules between levels
+ * and extra types, defaults that could not be stated for a name nobody chose, and a
+ * schema that had to be generated per view.
+ *
+ * `LEVELS` is the ladder, top to bottom; `EXTRA_TYPES` sit beside it (see `itemTypes.ts`).
+ */
+export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
+export const EXTRA_TYPES = ['Issue', 'Bug'];
+/** Every declared type, ladder first — the whole vocabulary in one list. */
+export const ALL_TYPES = [...LEVELS, ...EXTRA_TYPES];
+/**
+ * The default mapping, kept as the text the option shows so the shipped default and the
+ * parsed one cannot drift: `defaultSettings` parses this very string.
+ */
+export const DEFAULT_HOME_FOLDER = 'docs';
+/**
+ * Where each of the DEFAULT types is filed, under the home folder. Only the shipped
+ * vocabulary has an opinion — a level someone renames has no default and falls through
+ * to the home folder, which is the honest answer for a name this plugin never chose.
+ */
+const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.create(null) as Record<string, string>, {
+	epic: 'requirements',
+	feature: 'requirements',
+	pbi: 'requirements',
+	task: 'tasks',
+	issue: 'issues',
+	bug: 'bugs',
+});
+
+/**
+ * Look a user-supplied type name up in a table keyed by lowercased type name.
+ *
+ * Type names are user data, so `table[name]` is not safe: `constructor`, `toString`,
+ * `valueOf` and `__proto__` all find something inherited from `Object`, and every one of
+ * those hits is truthy — so a guard like `if (!found)` passes and a function ends up
+ * being used as a folder path or a CSS class. This has now been shipped three times, on
+ * three different tables, so it is a function rather than a rule to remember: reach for
+ * this instead of a bare index whenever the key came from the user.
+ *
+ * It lives here rather than in `itemTypes.ts`, which is where it reads more naturally,
+ * because that module imports this one and the dependency cannot run both ways.
+ */
+export function byTypeName<T>(table: Record<string, T>, typeName: string | null): T | undefined {
+	if (typeName === null) return undefined;
+	const key = typeName.toLowerCase();
+	return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
+/**
+ * The persisted option key for one type's folder. Shared by the schema that declares
+ * these options and the resolver that reads them back, because a key spelled twice is
+ * a key that can differ — and these are user data in the `.base` file.
+ */
+export function typeFolderKey(typeName: string): string {
+	return `typeFolder.${typeName.toLowerCase()}`;
+}
+
+/**
+ * The shipped folder for a type, under the given home folder, or '' for a type this
+ * plugin did not name. Derived from the home folder rather than fixed, so relocating a
+ * backlog stays ONE setting even though each type has its own picker: the options are
+ * generated per view, so the default in each box follows the home folder above it.
+ */
+export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FOLDER): string {
+	const sub = byTypeName(DEFAULT_TYPE_SUBFOLDERS, typeName);
+	if (!sub) return '';
+	return homeFolder ? `${homeFolder}/${sub}` : sub;
+}
+
+/** Folders for every given type, keyed lowercase, skipping the ones with none. */
+function typeFoldersFor(types: string[], read: (type: string) => string): Record<string, string> {
+	// Null-prototype: type names are user data, so a type called `constructor` must be
+	// a plain key rather than a collision with something inherited off Object.
+	const folders: Record<string, string> = Object.create(null) as Record<string, string>;
+	for (const type of types) {
+		const folder = read(type);
+		if (folder) folders[type.toLowerCase()] = folder;
+	}
+	return folders;
+}
 export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
 /** Property columns are fixed-width so values line up across rows; this is that width. */
 export const DEFAULT_PROP_COLUMN_WIDTH = 132;
@@ -56,14 +148,14 @@ export function defaultSettings(): BacklogSettings {
 		parentKey: 'parent',
 		orderKey: 'order',
 		typeKey: 'type',
-		levels: [...DEFAULT_LEVELS],
 		hierarchyOnly: true,
 		showOutsideParents: true,
 		folderHierarchy: false,
-		autoType: true,
+		autoType: false,
 		showChips: true,
 		showCounts: true,
-		newItemFolder: '',
+		homeFolder: DEFAULT_HOME_FOLDER,
+		typeFolders: typeFoldersFor(ALL_TYPES, (t) => defaultTypeFolder(t)),
 		focusLevel: '',
 		stateKey: '',
 		tagsKey: 'tags',
@@ -114,16 +206,43 @@ export function configProblems(settings: BacklogSettings): string[] {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
 		}
 	}
-	const seen = new Set<string>();
-	for (const level of settings.levels) {
-		const name = level.toLowerCase();
-		if (seen.has(name)) {
-			problems.push(`The level "${level}" is listed more than once.`);
-			break;
-		}
-		seen.add(name);
-	}
 	return problems;
+}
+
+/** The readers `resolveFolders` borrows, so it can be its own function without repeating them. */
+interface ConfigReaders {
+	str: (key: string) => string;
+	clearable: <T>(key: string, def: T, parse: () => T) => T;
+}
+
+/** A user-typed folder path, trimmed and stripped of surrounding slashes. */
+function folderPath(value: string): string {
+	return value.trim().replace(/^\/+|\/+$/g, '');
+}
+
+/**
+ * Where new items are filed, resolved together because the two answers depend on each
+ * other: every type folder defaults to a subfolder of the home folder, so moving the
+ * home folder moves each one that has not been picked by hand.
+ */
+function resolveFolders(
+	read: ConfigReaders,
+	types: string[],
+	fallback: BacklogSettings,
+): Pick<BacklogSettings, 'homeFolder' | 'typeFolders'> {
+	const { str, clearable } = read;
+	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => folderPath(str('homeFolder')));
+	return {
+		homeFolder,
+		// One option per type, so a folder is picked rather than typed into a mapping,
+		// and each default sits under the resolved home folder — the value in the box is
+		// the value that applies, and moving the home folder moves every untouched one.
+		typeFolders: typeFoldersFor(types, (type) =>
+			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
+				folderPath(str(typeFolderKey(type))),
+			),
+		),
+	};
 }
 
 /** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */
@@ -153,6 +272,13 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// property this view cannot write, like file.tags) as off.
 		return config.get(key) === undefined ? def : propKey(key, '');
 	};
+	/**
+	 * An option whose default is a REAL value has to tell "never set" from "cleared",
+	 * or it can never be turned off — the same distinction `clearablePropKey` draws for
+	 * property ids, and now shared by the home folder, the extra types and the type
+	 * folders rather than spelled out three times.
+	 */
+	const clearable = <T>(key: string, def: T, parse: () => T): T => (config.get(key) === undefined ? def : parse());
 	const str = (key: string): string => {
 		const v = config.get(key);
 		return typeof v === 'string' ? v : '';
@@ -185,15 +311,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		});
 	};
 
-	const levels = list('levels');
 	const doneValues = list('doneValues');
-	/**
-	 * The tags column is the only one whose property is also *editable*, so it gives
-	 * way to every other role: a key already spoken for by parent, order, type or
-	 * state is that feature's, and `chipProps` skips such a property anyway, so tag
-	 * editing would be unreachable. Resolving it to "off" here keeps that one fact
-	 * in one place instead of a collision report that would gate unrelated writes.
-	 */
+	const folders = resolveFolders({ str, clearable }, ALL_TYPES, fallback);
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [
@@ -209,14 +328,13 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		parentKey: propKey('parentProperty', fallback.parentKey),
 		orderKey: propKey('orderProperty', fallback.orderKey),
 		typeKey: propKey('typeProperty', fallback.typeKey),
-		levels: levels.length > 0 ? levels : fallback.levels,
 		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
 		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
 		autoType: bool('autoAssignType', fallback.autoType),
 		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
-		newItemFolder: str('newItemFolder').trim().replace(/^\/+|\/+$/g, ''),
+		...folders,
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		tagsKey: tagsKey(),

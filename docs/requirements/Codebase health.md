@@ -1,7 +1,7 @@
 ---
 type: Epic
+order: 20
 status: Open
-order: 10
 area: meta
 created: 2026-07-31
 ---

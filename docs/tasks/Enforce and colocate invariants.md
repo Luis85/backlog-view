@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 50
+type: Task
+order: 10
+parent: "[[Invariants as checks, not conventions]]"
 status: Done
 priority: P2
 area: tooling
@@ -44,10 +44,10 @@ Candidates, in order of value:
 
 - **"Never derive levels from depth"** — `no-restricted-syntax` on `.depth` arithmetic
   outside `domain/model.ts`. Note this currently *would* flag `computeTypeChanges`; fix
-  [stop-deriving-levels-from-depth](stop-deriving-levels-from-depth.md) first.
+  [stop-deriving-levels-from-depth](Stop%20deriving%20levels%20from%20depth.md) first.
 - **"Data operations use `realRoots`, not `roots`"** — harder, but a rule banning
   `model.roots` inside `domain/writePlan.ts` would cover the paths that matter.
-- **Test file size** — see [split-the-view-test-suite](split-the-view-test-suite.md).
+- **Test file size** — see [split-the-view-test-suite](Split%20the%20view%20test%20suite.md).
 
 ### 2. Co-locate the remainder
 
@@ -107,7 +107,7 @@ the one that started this: `processFrontMatter` in `menu.ts` still fails despite
 ban on `.depth` would be wrong: `rows.ts` uses it for `aria-level`, where visual depth is
 the correct answer. Scoped to `domain/writePlan.ts` it would flag exactly the known
 offender, so it waits on
-[stop-deriving-levels-from-depth](stop-deriving-levels-from-depth.md). The selector is
+[stop-deriving-levels-from-depth](Stop%20deriving%20levels%20from%20depth.md). The selector is
 ready: `MemberExpression[property.name='depth']`.
 
 A `model.roots` ban in `dropTargets.ts` and `structure.ts` was also considered and

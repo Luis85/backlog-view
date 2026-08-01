@@ -61,10 +61,57 @@ in the root `CLAUDE.md` because it spans every layer.
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - The autoType cascade retypes only descendants whose type matches a configured
   level; custom types outside the ladder are deliberate user data.
+- The vocabulary is **fixed**: `LEVELS` and `EXTRA_TYPES` in `settings.ts` are constants,
+  not options. Making them configurable cost collision rules between the two lists, a
+  "what folder does a name nobody chose get" question with no good answer, and a schema
+  that had to be generated per view; what it bought was a rename. Being opinionated
+  deletes all of that, and every level rule now has exactly one list to hold for. A note
+  typed something else is still handled — it keeps its name and carries the ladder through,
+  the `Bugfix` case below.
+- **Extra types** (`EXTRA_TYPES`, `Issue` and `Bug`) are declared types that are
+  NOT rungs — `itemTypes.ts` owns them. The ladder cannot express "a Bug holds Tasks
+  wherever it hangs", because every ladder rule is "one rung below the parent", so an
+  extra type's rank is a property of the TYPE: `extraTypeRank` (the rung whose children
+  are the deepest level), pinned, never inherited. Everything else follows from that plus
+  `levelIndex === -1`: its children imply the deepest level under an Epic as under a PBI,
+  the cascade already leaves it alone, and `computeTypeChanges` must not retype the
+  *dragged* item either — it descends the subtree from the extra rank rather than from
+  where the item landed, or a Bug's Tasks would become PBIs on a drop. The contrast that
+  keeps this honest: an UNKNOWN custom type still takes `childSlot`, so it continues the
+  ladder (Feature > Bugfix > implied Task). Declared pins, undeclared inherits.
+  `collectFocusRoots` has to know about them too — an extra type has no `levelIndex` to
+  match, so focusing its rank would otherwise make it vanish rather than rank beside the
+  level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
+  OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
+  guided rather than refused.
+- Each type's folder is **its own option** (`typeFolder.<lowercased type>`), one per type
+  in the fixed vocabulary, so a folder is picked rather than spelled into a mapping.
+  `typeFolderKey` is shared by the schema and the resolver, because a persisted key
+  spelled twice is a key that can differ.
+  Type folders rank ahead of `homeFolder` and inference but behind folder mode's
+  "beside the parent's folder note" rule — that mode makes folders the hierarchy, and a
+  filing default must not quietly overrule an opt-in structural mode. Two consequences
+  to know before debugging them: with every type mapped (the shipped default), inference
+  and the folder prompt never run unless the folders are cleared, which is why several
+  creation tests clear both layers; and because the folder depends on the chosen type,
+  and the type is chosen INSIDE the modal, the prompt's detail line is a function of the
+  type rather than a string. `baseFileContent` writes every one of these keys under the
+  folder it scaffolds — the type folders outrank the home folder, so writing the home
+  folder alone would still file the first Bug outside the filter just written for it.
+- `autoType` is OFF by default. Re-typing a whole moved subtree is a strong action to
+  take on a drag, and the ladder is advisory everywhere else; the option is for people
+  who want it enforced. Tests that assert a cascade opt in (`autoTyped`), which also
+  keeps them honest about what is default behaviour and what is not.
+- Options whose default is a REAL value need `clearable` (or `clearablePropKey` for
+  property ids): `config.get` reports "never set" and "cleared" identically, so without
+  it the home folder, the extra types and the type folders could never be turned off.
 - Scope (`settings.hierarchyOnly`, on by default): a base filtered by folder returns
   every note living there, so `pruneOutsideHierarchy` drops the ones that are not work
   items — a note belongs when it has a *supported* type (matching a configured level) or
-  a parent (explicit, empty-marker, folder-inferred, or unresolvable). The test runs per
+  a parent (explicit, empty-marker, folder-inferred, or unresolvable). "Supported" means
+  every DECLARED type — `allTypeChoices`, levels AND extra types — because an extra type
+  is a work item by the same argument a level is; reading only the ladder dropped a
+  parentless Bug out of the model, the note vanishing moments after being typed. The test runs per
   root subtree, so one participant keeps the whole component (untyped children, untyped
   containers of typed items). Pruned notes leave `model.byPath`/`items` entirely, so
   backfill and rollups never see them; `model.ignoredCount` carries the number for the
@@ -115,7 +162,7 @@ in the root `CLAUDE.md` because it spans every layer.
   orders fall back to `entryIndex` and the group self-corrects on the next renumbering
   drop. Fixing it properly needs the complete child set (backlinks + folder scan), which
   `computeDropWrites` cannot reach without giving up its purity. Recorded in
-  `docs/issues/duplicate-orders-in-a-partially-filtered-group.md`.
+  `docs/bugs/Duplicate orders in a partially filtered group.md`.
 - `breakCycles` re-roots `cycleEntry(item)`, the node that actually closes the loop, not the
   first unreachable item found: with outside-filter ancestors the unreachable item is usually
   a healthy match hanging below a cycle, and re-rooting it would strand a valid parent link.

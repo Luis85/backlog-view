@@ -6,17 +6,18 @@ import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
+import { ALL_TYPES } from '../../domain/settings';
 import { addTagItems, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
-export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childLevel: string): void {
+export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childTypes: string[]): void {
 	evt.preventDefault();
-	const menu = buildItemMenu(host, item, childLevel);
+	const menu = buildItemMenu(host, item, childTypes);
 	menu?.showAtMouseEvent(evt);
 }
 
 /** Assemble the row menu; the caller decides where to show it. */
-export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLevel: string): Menu | null {
+export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: string[]): Menu | null {
 	const model = host.model;
 	if (!model) return null;
 	const menu = new Menu();
@@ -25,12 +26,16 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 	// still fair game on an ancestor the Base excluded. Everything that would edit
 	// the row's own frontmatter is withheld: it is context, not a result.
 	const editable = !item.outsideFilter;
-	menu.addItem((mi) =>
-		mi
-			.setTitle(`New ${childLevel}`)
-			.setIcon('plus')
-			.onClick(() => promptCreateItem(host, childLevel, item)),
-	);
+	// One entry per type rather than one entry that then asks: a menu is already a list
+	// of choices, so naming them here is a click shorter than a picker in the modal.
+	for (const type of childTypes) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(`New ${type}`)
+				.setIcon('plus')
+				.onClick(() => promptCreateItem(host, [type], item)),
+		);
+	}
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
 		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
@@ -234,7 +239,7 @@ function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	menu.addItem((mi) => {
 		mi.setTitle('Set type').setIcon('tag');
 		const submenu = submenuOf(mi);
-		for (const level of host.settings.levels) {
+		for (const level of ALL_TYPES) {
 			submenu.addItem((si) => {
 				si.setTitle(level).onClick(() => apply(level));
 				if (item.typeName !== null && item.typeName.toLowerCase() === level.toLowerCase()) {

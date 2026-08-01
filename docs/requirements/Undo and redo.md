@@ -1,6 +1,7 @@
 ---
-type: Feature
-order: 20
+type: PBI
+order: 10
+parent: "[[Safe writes]]"
 status: Done
 priority: P2
 area: feature
@@ -174,4 +175,4 @@ missing notes leaves the carried redo as the slot, so the prefix the failed
 attempt did restore stays redoable even when nothing else does.
 
 Not verifiable here, as ever: the button's look in a live vault — the standing
-jsdom limit recorded in [smoke-test-the-visual-changes](smoke-test-the-visual-changes.md).
+jsdom limit recorded in [smoke-test-the-visual-changes](../issues/Smoke%20test%20the%20visual%20changes.md).

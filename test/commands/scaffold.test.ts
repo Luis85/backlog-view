@@ -26,7 +26,7 @@ describe('promptCreateBacklogBase', () => {
 
 		const input = modal.contentEl.querySelector('input');
 		if (!input) throw new Error('folder input missing');
-		expect(input.value).toBe('Backlog');
+		expect(input.value).toBe('docs');
 
 		input.value = 'Roadmap';
 		input.dispatchEvent(new Event('input', { bubbles: true }));

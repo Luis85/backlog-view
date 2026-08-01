@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { baseFileContent, createBacklogBase } from '../../src/storage/baseFile';
+import { defaultTypeFolder } from '../../src/domain/settings';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
@@ -20,19 +21,21 @@ describe('baseFileContent', () => {
 		expect(content).toContain('file.ext == "md"');
 		expect(content).toContain('type: product-backlog');
 		// The creation folder is pre-wired so the first item lands inside the filter
-		expect(content).toContain('newItemFolder: "Backlog"');
+		// One line is enough: the per-type folders default to subfolders of the home
+		// folder, so everything this view files lands inside the filter above.
+		expect(content).toContain('homeFolder: "Backlog"');
 	});
 
 	it('quotes the filter as a YAML scalar so hash folder names survive', () => {
 		// In a plain scalar, " #" would start a YAML comment and truncate the filter
 		const content = baseFileContent('Roadmap #1');
 		expect(content).toContain('- "file.inFolder(\\"Roadmap #1\\")"');
-		expect(content).toContain('newItemFolder: "Roadmap #1"');
+		expect(content).toContain('homeFolder: "Roadmap #1"');
 	});
 
 	it('escapes quotes in the folder name through both layers', () => {
 		expect(baseFileContent('A"B')).toContain('"file.inFolder(\\"');
-		expect(baseFileContent('A"B')).toContain('newItemFolder: "A\\"B"');
+		expect(baseFileContent('A"B')).toContain('homeFolder: "A\\"B"');
 	});
 });
 
@@ -46,12 +49,23 @@ describe('createBacklogBase', () => {
 		expect(vault.contents.get(file.path)).toContain('- "file.inFolder(\\"Backlog\\")"');
 	});
 
-	it('defaults an empty folder input to Backlog and dedupes the file name', async () => {
+	it('defaults an empty folder input to the home folder and dedupes the file name', async () => {
 		const vault = new FakeVault();
 		const first = await createBacklogBase(vault.app, '');
 		const second = await createBacklogBase(vault.app, '');
 
-		expect(first.path).toBe('Backlog/Product Backlog.base');
-		expect(second.path).toBe('Backlog/Product Backlog 1.base');
+		expect(first.path).toBe('docs/Product Backlog.base');
+		expect(second.path).toBe('docs/Product Backlog 1.base');
+	});
+
+	it('files a scaffolded backlog inside its own filter, wherever it is scaffolded', () => {
+		// The home folder follows the folder the user picked, so the per-type folders —
+		// relative to home — cannot land outside the
+		// filter written in the same breath.
+		const content = baseFileContent('Roadmap');
+		expect(content).toContain('- "file.inFolder(\\"Roadmap\\")"');
+		expect(content).toContain('homeFolder: "Roadmap"');
+		// And the type folders follow it without being named.
+		expect(defaultTypeFolder('Bug', 'Roadmap')).toBe('Roadmap/bugs');
 	});
 });

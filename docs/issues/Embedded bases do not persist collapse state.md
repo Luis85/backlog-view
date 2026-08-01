@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 110
+type: Issue
+order: 20
+parent: "[[Collapse persistence]]"
 status: Open
 priority: P3
 area: limitation

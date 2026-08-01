@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 40
+type: Task
+order: 20
+parent: "[[Invariants as checks, not conventions]]"
 status: Done
 priority: P2
 area: correctness
@@ -58,7 +58,7 @@ So this needs:
 - Level maths in `writePlan.ts` no longer reads `.depth`.
 - A test covers a subtree deeper than the configured ladder, either way.
 - Once true everywhere, add a `no-restricted-syntax` rule banning `.depth` arithmetic
-  outside `domain/model.ts` — see [enforce-and-colocate-invariants](enforce-and-colocate-invariants.md).
+  outside `domain/model.ts` — see [enforce-and-colocate-invariants](Enforce%20and%20colocate%20invariants.md).
 
 ---
 
@@ -100,4 +100,4 @@ verified the way this repo verifies such rules — plant the violation, watch li
 it (2 errors), restore, clean. It is scoped rather than global because `rows.ts` reads
 `depth` for `aria-level`, where visual depth is exactly the right answer. This closes the
 last item deferred by
-[enforce-and-colocate-invariants](enforce-and-colocate-invariants.md).
+[enforce-and-colocate-invariants](Enforce%20and%20colocate%20invariants.md).

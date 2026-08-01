@@ -133,6 +133,8 @@ describe('context rows are read-only', () => {
 		expect(titles).not.toContain('Clear parent link');
 		// Creating a child writes a new note, not this one — still offered
 		expect(titles).toContain('New Feature');
+		// A context row can still take a new child of any type its rung allows.
+		expect(titles).toContain('New Issue');
 		expect(titles).toContain('Open in new tab');
 	});
 

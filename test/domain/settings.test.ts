@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { configProblems, DEFAULT_LEVELS, defaultSettings, resolveSettings, stateMenuValues } from '../../src/domain/settings';
+import { configProblems, defaultSettings, resolveSettings, stateMenuValues } from '../../src/domain/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -35,28 +35,26 @@ describe('resolveSettings', () => {
 		expect(settings.parentKey).toBe('parent');
 	});
 
-	it('parses the levels list, trimming blanks', () => {
-		const settings = resolveSettings(fakeConfig({ levels: ' Theme , Initiative ,, Story ' }));
-		expect(settings.levels).toEqual(['Theme', 'Initiative', 'Story']);
-	});
-
-	it('uses the default levels when the list is empty', () => {
-		expect(resolveSettings(fakeConfig({ levels: ' , ' })).levels).toEqual(DEFAULT_LEVELS);
-	});
-
-	it('reads toggles and normalizes the folder', () => {
+	it('reads toggles and normalizes the home folder', () => {
 		const settings = resolveSettings(
 			fakeConfig({
-				autoAssignType: false,
+				autoAssignType: true,
 				showProperties: false,
 				showCounts: false,
-				newItemFolder: '/Backlog/Items/',
+				homeFolder: '/Backlog/Items/',
 			}),
 		);
-		expect(settings.autoType).toBe(false);
+		expect(settings.autoType).toBe(true);
 		expect(settings.showChips).toBe(false);
 		expect(settings.showCounts).toBe(false);
-		expect(settings.newItemFolder).toBe('Backlog/Items');
+		expect(settings.homeFolder).toBe('Backlog/Items');
+	});
+
+	it('leaves re-typing on move switched off unless it is asked for', () => {
+		// A move is a move, not a re-classification. The option is for people who want
+		// the ladder enforced on every drag, and it waits to be asked.
+		expect(defaultSettings().autoType).toBe(false);
+		expect(resolveSettings(fakeConfig()).autoType).toBe(false);
 	});
 
 	it('scopes the view to the hierarchy unless the toggle is turned off', () => {

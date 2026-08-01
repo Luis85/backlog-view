@@ -1,10 +1,14 @@
-import { BasesAllOptions, BasesPropertyId } from 'obsidian';
+import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import {
+	ALL_TYPES,
 	DEFAULT_DONE_VALUES,
-	DEFAULT_LEVELS,
+	DEFAULT_HOME_FOLDER,
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
+	defaultTypeFolder,
+	resolveSettings,
+	typeFolderKey,
 } from './settings';
 
 /**
@@ -24,8 +28,13 @@ const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
  * deliberately absent: it lives in the view's own toolbar, next to the New button
  * whose level it changes.
  */
-export function getViewOptions(): BasesAllOptions[] {
-	return [hierarchyGroup(), progressGroup(), newItemsGroup(), displayGroup()];
+export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
+	// The type list is fixed, but each type's DEFAULT folder sits under this view's home
+	// folder — so the callback still reads the config. Declaring the shipped `docs/…`
+	// here regardless would make every picker in a `Roadmap` base advertise a folder the
+	// creation flow does not use, and restoring that shown default would move the type.
+	const homeFolder = config ? resolveSettings(config).homeFolder : DEFAULT_HOME_FOLDER;
+	return [hierarchyGroup(), progressGroup(), newItemsGroup(homeFolder), displayGroup()];
 }
 
 function hierarchyGroup(): BasesAllOptions {
@@ -58,13 +67,6 @@ function hierarchyGroup(): BasesAllOptions {
 				filter: notePropsOnly,
 			},
 			{
-				type: 'text',
-				key: 'levels',
-				displayName: 'Levels (top → bottom)',
-				default: DEFAULT_LEVELS.join(', '),
-				placeholder: DEFAULT_LEVELS.join(', '),
-			},
-			{
 				type: 'toggle',
 				key: 'hierarchyOnly',
 				displayName: 'Ignore notes outside the hierarchy',
@@ -86,7 +88,9 @@ function hierarchyGroup(): BasesAllOptions {
 				type: 'toggle',
 				key: 'autoAssignType',
 				displayName: 'Assign item type when moving',
-				default: true,
+				// Must match `defaultSettings().autoType`: the toggle showing on while
+				// moves changed nothing would be the UI lying about the behaviour.
+				default: false,
 			},
 		],
 	};
@@ -128,17 +132,30 @@ function progressGroup(): BasesAllOptions {
 	};
 }
 
-function newItemsGroup(): BasesAllOptions {
+function newItemsGroup(homeFolder: string): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'New items',
 		items: [
 			{
 				type: 'folder',
-				key: 'newItemFolder',
-				displayName: 'Folder for new items',
+				key: 'homeFolder',
+				displayName: 'Home folder',
+				default: DEFAULT_HOME_FOLDER,
 				placeholder: 'Same folder as existing items',
 			},
+			// A picker per type, in ladder order then the extras. One input each is the
+			// difference between choosing a folder and spelling a mapping correctly.
+			...ALL_TYPES.map(
+				(type): BasesOptions => ({
+					type: 'folder',
+					key: typeFolderKey(type),
+					displayName: `Folder for ${type} items`,
+					// Tracks the home folder above: the value shown is the value that applies.
+					default: defaultTypeFolder(type, homeFolder),
+					placeholder: homeFolder || 'Home folder',
+				}),
+			),
 		],
 	};
 }

@@ -1,7 +1,8 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
+import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isExtraType } from './itemTypes';
 import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
-import { BacklogSettings } from './settings';
+import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
 
 /**
  * The model is built in three phases, and each has its own type. A field exists only
@@ -144,42 +145,18 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
 	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
-	const focusIdx = settings.focusLevel
-		? settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase())
-		: -1;
+	const focus = focusTarget(settings);
+	const focusIdx = focus ? LEVELS.findIndex((l) => l.toLowerCase() === focus.toLowerCase()) : -1;
+	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
+	// match, and "show me the bugs" is the same question as "show me the PBIs".
+	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
 	const rest = { realRoots: roots, byPath, observedStates, observedTags, ignoredCount };
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
-	if (focusIdx >= 0) {
-		const focusRoots = collectFocusRoots(roots, focusIdx);
+	if (focusIdx >= 0 || focusExtra) {
+		const focusRoots = collectFocusRoots(roots, focusIdx, focusExtra, settings);
 		return { ...rest, ...shown(assignVisualDepth(focusRoots)), roots: focusRoots, focused: true };
 	}
 	return { ...rest, ...shown(items), roots, focused: false };
-}
-
-/** The level name to show on an item's badge. */
-export function displayType(item: BacklogItem, settings: BacklogSettings): string {
-	if (item.levelIndex >= 0) return settings.levels[item.levelIndex];
-	return item.typeName ?? '';
-}
-
-/**
- * Level index a child of `parent` should get: one below the parent's effective
- * level, clamped to the deepest configured level. Top-level items get level 0.
- */
-export function childLevelIndex(parent: BacklogItem | null, levels: string[]): number {
-	if (!parent) return 0;
-	return nextLevelIndex(parent.effectiveLevelIndex, levels);
-}
-
-/**
- * One rung below `levelIndex`, clamped at the deepest configured level — the
- * single statement of "what a child's level is". Exported so a walk that has a
- * level in hand rather than an item (the autoType cascade, planning types for a
- * subtree that has not been written yet) descends by the same rule the model
- * will apply afterwards, instead of re-deriving it from tree depth.
- */
-export function nextLevelIndex(levelIndex: number, levels: string[]): number {
-	return Math.min(levelIndex + 1, levels.length - 1);
 }
 
 // ------------------------------------------------------------- build phases
@@ -394,7 +371,10 @@ function breakCycles({ all, roots }: LinkedTree): void {
  */
 function pruneOutsideHierarchy(tree: LinkedTree, settings: BacklogSettings): number {
 	const { byPath, roots } = tree;
-	const levels = new Set(settings.levels.map((l) => l.toLowerCase()));
+	// Every DECLARED type, not just the ladder: an extra type is a work item by the same
+	// argument a level is, and counting only levels drops a parentless Bug out of the
+	// model entirely — the note vanishing from the view moments after being typed.
+	const supported = new Set(ALL_TYPES.map((t) => t.toLowerCase()));
 	const belongs = (item: LinkedItem): boolean =>
 		item.parent !== null ||
 		item.hasParentValue ||
@@ -402,7 +382,7 @@ function pruneOutsideHierarchy(tree: LinkedTree, settings: BacklogSettings): num
 		// The anchor may be a folder note the filter excluded and the options chose
 		// not to load; the note is still part of the hierarchy either way.
 		item.parentExists ||
-		(item.typeName !== null && levels.has(item.typeName.toLowerCase()));
+		(item.typeName !== null && supported.has(item.typeName.toLowerCase()));
 	const subtreeBelongs = (item: LinkedItem): boolean => belongs(item) || item.children.some(subtreeBelongs);
 
 	const dropped = new Set<LinkedItem>();
@@ -545,11 +525,25 @@ function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 }
 
 /** The topmost items whose level matches the focus level; nested matches stay children. */
-function collectFocusRoots(roots: BacklogItem[], focusIdx: number): BacklogItem[] {
+function collectFocusRoots(
+	roots: BacklogItem[],
+	focusIdx: number,
+	focusExtra: string,
+	settings: BacklogSettings,
+): BacklogItem[] {
 	const focusRoots: BacklogItem[] = [];
+	// An extra type has no levelIndex but does occupy a rung, so focusing that RUNG has
+	// to show it — otherwise a Bug simply vanishes from a focused view rather than
+	// ranking beside the level it sits level with. Focusing the type by NAME shows only
+	// that type.
+	const extraFocused = focusIdx >= 0 && EXTRA_TYPE_RANK === focusIdx;
+	const matches = (item: BacklogItem): boolean => {
+		if (focusExtra) return item.typeName?.toLowerCase() === focusExtra;
+		return item.levelIndex === focusIdx || (extraFocused && isExtraType(item.typeName));
+	};
 	const collect = (list: BacklogItem[]) => {
 		for (const item of list) {
-			if (item.levelIndex === focusIdx) {
+			if (matches(item)) {
 				item.focusRoot = true;
 				focusRoots.push(item);
 			} else {
@@ -563,14 +557,18 @@ function collectFocusRoots(roots: BacklogItem[], focusIdx: number): BacklogItem[
 
 function computeLevel(item: BacklogItem, settings: BacklogSettings): void {
 	// The parent is processed first (pre-order), so its effective level is resolved.
-	const childSlot = childLevelIndex(item.parent, settings.levels);
+	const childSlot = childLevelIndex(item.parent);
 	if (item.typeName !== null) {
 		const name = item.typeName.toLowerCase();
-		const idx = settings.levels.findIndex((l) => l.toLowerCase() === name);
+		const idx = LEVELS.findIndex((l) => l.toLowerCase() === name);
 		item.levelIndex = idx;
-		// Unknown types occupy the slot below their parent so their children
-		// continue the ladder correctly (Feature > Bugfix > implied Task).
-		item.effectiveLevelIndex = idx >= 0 ? idx : childSlot;
+		// A declared extra type holds the deepest level wherever it hangs, so its rung is
+		// its own rather than one below its parent's — that pinning is what separates a
+		// Bug (Tasks under it, under an Epic or a PBI alike) from an unknown custom type,
+		// which occupies the slot below its parent so its children continue the ladder
+		// correctly (Feature > Bugfix > implied Task).
+		const offLadder = isExtraType(item.typeName) ? EXTRA_TYPE_RANK : childSlot;
+		item.effectiveLevelIndex = idx >= 0 ? idx : offLadder;
 		item.impliedType = false;
 	} else {
 		item.levelIndex = childSlot;

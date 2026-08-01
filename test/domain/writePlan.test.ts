@@ -8,6 +8,8 @@ import { FakeVault } from '../helpers/vault';
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
 const unscoped = { ...settings, hierarchyOnly: false };
+/** Re-typing on move is OFF by default, so every cascade test opts into it. */
+const autoTyped = { ...settings, autoType: true };
 
 /** Standard fixture: two epics, the second with two features. */
 function fixture() {
@@ -124,7 +126,7 @@ describe('computeDropWrites', () => {
 		const writes = computeDropWrites(
 			dragged,
 			{ parent: newParent, siblings: [], insertIndex: 0 },
-			settings,
+			autoTyped,
 		);
 
 		expect(writes).toHaveLength(1);
@@ -139,7 +141,7 @@ describe('computeDropWrites', () => {
 		const dragged = get('Epic B'); // has children Feature B1, Feature B2
 		const newParent = get('Epic A');
 
-		const writes = computeDropWrites(dragged, { parent: newParent, siblings: [], insertIndex: 0 }, settings);
+		const writes = computeDropWrites(dragged, { parent: newParent, siblings: [], insertIndex: 0 }, autoTyped);
 
 		expect(writes).toHaveLength(3);
 		expect(writes[0].file.path).toBe('Epic B.md');
@@ -159,11 +161,11 @@ describe('computeDropWrites', () => {
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
 		vault.addFile('Bugfix Child.md', { frontmatter: { type: 'Bugfix' }, parentLink: 'Epic B' });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
 		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
 		const epicA = model.roots.find((r) => r.title === 'Epic A') as BacklogItem;
 
-		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, settings);
+		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, autoTyped);
 
 		// Only the dragged epic is retyped; the deliberate Bugfix type stays.
 		expect(writes).toHaveLength(1);
@@ -180,11 +182,11 @@ describe('computeDropWrites', () => {
 		vault.addFile('L2.md', { frontmatter: { type: 'PBI' }, parentLink: 'L1' });
 		vault.addFile('L3.md', { frontmatter: { type: 'Task' }, parentLink: 'L2' });
 		vault.addFile('L4.md', { frontmatter: { type: 'Task' }, parentLink: 'L3' });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
 		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
 		const host = model.roots.find((r) => r.title === 'Host') as BacklogItem;
 
-		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, settings);
+		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, autoTyped);
 
 		// Each rung shifts down one and the ladder's floor absorbs the rest: the two
 		// deepest notes are already Task and stay, so they are not written at all.
@@ -203,11 +205,11 @@ describe('computeDropWrites', () => {
 		vault.addFile('Host.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
 		vault.addFile('Straggler.md', { frontmatter: { type: 'Task' }, parentLink: 'Epic B' });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
 		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
 		const host = model.roots.find((r) => r.title === 'Host') as BacklogItem;
 
-		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, settings);
+		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, autoTyped);
 
 		const byPath = new Map(writes.map((w) => [w.file.path, w.typeName]));
 		expect(byPath.get('Epic B.md')).toBe('Feature');
@@ -222,15 +224,64 @@ describe('computeDropWrites', () => {
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
 		vault.addFile('Bugfix.md', { frontmatter: { type: 'Bugfix' }, parentLink: 'Epic B' });
 		vault.addFile('Under.md', { frontmatter: { type: 'Epic' }, parentLink: 'Bugfix' });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
 		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
 		const host = model.roots.find((r) => r.title === 'Host') as BacklogItem;
 
-		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, settings);
+		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, autoTyped);
 
 		const byPath = new Map(writes.map((w) => [w.file.path, w.typeName]));
 		expect(byPath.has('Bugfix.md')).toBe(false);
 		expect(byPath.get('Under.md')).toBe('Task');
+	});
+
+	it('never re-types a dragged extra type, and keeps its subtree at the deepest level', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 } });
+		vault.addFile('Bug.md', { frontmatter: { type: 'Bug', order: 10 }, parentLink: 'Feature B' });
+		vault.addFile('Bug Task.md', { frontmatter: { type: 'Task' }, parentLink: 'Bug' });
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
+		const dragged = model.byPath.get('Bug.md') as BacklogItem;
+		const epicA = model.roots.find((r) => r.title === 'Epic A') as BacklogItem;
+
+		// Dropped a rung higher, where the ladder would have said "Feature".
+		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, autoTyped);
+
+		const bug = writes.find((w) => w.file.path === 'Bug.md');
+		expect(bug?.parent?.path).toBe('Epic A.md');
+		// A Bug stays a Bug wherever it lands: it is a type, not a rung.
+		expect(bug?.typeName).toBeUndefined();
+		// And its Tasks stay Tasks — the subtree descends from the Bug's own pinned rung,
+		// not from the rung it was dropped on, which would have made them PBIs.
+		expect(writes.some((w) => w.file.path === 'Bug Task.md')).toBe(false);
+	});
+
+	it('keeps a NESTED extra type pinned, so a moved subtree cannot corrupt its children', () => {
+		const vault = new FakeVault();
+		// The dragged item is an ordinary rung; the Bug is inside the subtree it moves.
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('Bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Feature' });
+		vault.addFile('Bug Task.md', { frontmatter: { type: 'Task' }, parentLink: 'Bug' });
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
+		const dragged = model.byPath.get('Feature.md') as BacklogItem;
+
+		// Feature → top level, so the walk below it shifts up a rung.
+		const writes = computeDropWrites(
+			dragged,
+			{ parent: null, siblings: siblingsWithout(model.realRoots, dragged), insertIndex: 1 },
+			autoTyped,
+		);
+
+		const byPath = new Map(writes.map((w) => [w.file.path, w.typeName]));
+		expect(byPath.get('Feature.md')).toBe('Epic');
+		// The Bug is skipped, as any non-rung is...
+		expect(byPath.has('Bug.md')).toBe(false);
+		// ...but the walk must descend from the Bug's OWN pinned rank, not from the
+		// position it inherited: otherwise its Task is rewritten to PBI while the Bug
+		// itself looks untouched.
+		expect(byPath.has('Bug Task.md')).toBe(false);
 	});
 
 	it('cascade skips untyped descendants and does not fire without autoType', () => {
@@ -243,16 +294,21 @@ describe('computeDropWrites', () => {
 		const epicA = model.roots.find((r) => r.title === 'Epic A') as BacklogItem;
 
 		// Untyped child self-heals through implication — no cascade write for it
-		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, settings);
+		const writes = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, autoTyped);
 		expect(writes).toHaveLength(1);
 
-		const writesOff = computeDropWrites(
-			dragged,
-			{ parent: epicA, siblings: [], insertIndex: 0 },
-			{ ...settings, autoType: false },
-		);
+		const writesOff = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, settings);
 		expect(writesOff).toHaveLength(1);
 		expect(writesOff[0].typeName).toBeUndefined();
+	});
+
+	it('leaves types alone by default: re-typing on move is opt-in', () => {
+		// A move that changes the parent is a move, not a re-classification — the option
+		// exists for people who want the ladder enforced, and is off until they say so.
+		expect(defaultSettings().autoType).toBe(false);
+		const { get } = fixture();
+		const writes = computeDropWrites(get('Epic B'), { parent: get('Epic A'), siblings: [], insertIndex: 0 }, settings);
+		expect(writes.every((w) => w.typeName === undefined)).toBe(true);
 	});
 
 	it('does not rewrite the type when autoType is off or already correct', () => {
@@ -265,7 +321,7 @@ describe('computeDropWrites', () => {
 		expect(writesOff[0].typeName).toBeUndefined();
 
 		// autoType on, but the item is already a Feature moving under another Epic
-		const writesOn = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, settings);
+		const writesOn = computeDropWrites(dragged, { parent: epicA, siblings: [], insertIndex: 0 }, autoTyped);
 		expect(writesOn[0].typeName).toBeUndefined();
 		expect(writesOn[0].parent).toBe(epicA.file);
 	});

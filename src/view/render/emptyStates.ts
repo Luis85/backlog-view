@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { newItemLevel, promptCreateItem } from '../interactions/create';
+import { newItemType, promptCreateItem } from '../interactions/create';
+import { LEVELS } from '../../domain/settings';
 
 /**
  * What the tree shows when it has no rows to show. Each of these runs at most once
@@ -22,7 +23,7 @@ export function renderLoadingState(treeEl: HTMLElement): void {
 export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const model = host.model;
 	const focused = model?.focused ?? false;
-	const topLevel = focused && model ? newItemLevel(host.settings, model) : host.settings.levels[0];
+	const topLevel = focused && model ? newItemType(host.settings, model) : LEVELS[0];
 	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
 	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'list-tree');
 	empty.createDiv({
@@ -33,7 +34,7 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): vo
 	const btn = empty.createEl('button', { cls: 'mod-cta' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	btn.createSpan({ text: `New ${topLevel}` });
-	btn.addEventListener('click', () => promptCreateItem(host, topLevel, null));
+	btn.addEventListener('click', () => promptCreateItem(host, [topLevel], null));
 }
 
 /**
@@ -42,7 +43,7 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): vo
  */
 function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): string {
 	if (focused) {
-		return `Nothing at the "${topLevel}" level matches this view. Switch the level button in the toolbar back to "All levels", or create a ${topLevel}.`;
+		return `Nothing typed "${topLevel}" matches this view. Switch the focus button in the toolbar back to "All types", or create a ${topLevel}.`;
 	}
 	const ignored = host.model?.ignoredCount ?? 0;
 	if (ignored > 0) {

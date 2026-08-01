@@ -2,21 +2,32 @@ import { Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { TitlePromptModal } from '../../ui/prompts';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { focusTarget, folderForType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/frontmatter';
-import { BacklogSettings, configProblems } from '../../domain/settings';
+import { BacklogSettings, configProblems, LEVELS } from '../../domain/settings';
 
-/** Level for the primary New button: the focus level when active, else the top level. */
-export function newItemLevel(settings: BacklogSettings, model: BacklogModel): string {
-	if (model.focused && settings.focusLevel) {
-		const idx = settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase());
-		if (idx >= 0) return settings.levels[idx];
+/**
+ * Type for the primary New button: whatever the view is focused on when it is focused —
+ * a level or an extra type, since both can be focused — else the top level. Named for
+ * the TYPE it returns rather than the level it used to, because focusing a Bug is now
+ * as ordinary as focusing a PBI.
+ */
+export function newItemType(settings: BacklogSettings, model: BacklogModel): string {
+	if (model.focused) {
+		const focus = focusTarget(settings);
+		if (focus) return focus;
 	}
-	return settings.levels[0];
+	return LEVELS[0];
 }
 
-/** Ask for a title (and folder, when nothing is configured) and create the note. */
-export function promptCreateItem(host: BacklogViewHost, levelName: string, parentItem: BacklogItem | null): void {
+/**
+ * Ask for a title (and folder, when nothing is configured) and create the note.
+ *
+ * `choices` is what this parent may hold — one type under a Task, several under a rung
+ * that also takes the extra types. The modal only asks when there is something to ask.
+ */
+export function promptCreateItem(host: BacklogViewHost, choices: string[], parentItem: BacklogItem | null): void {
 	// Creation writes frontmatter too — the same config guard as applySafely.
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
@@ -34,22 +45,41 @@ export function promptCreateItem(host: BacklogViewHost, levelName: string, paren
 		host.settings.folderHierarchy && parentItem && !parentItem.outsideFilter
 			? normalizeFolder(parentItem.file.parent?.path)
 			: null;
-	const inferredFolder =
-		parentFolder ?? (host.settings.newItemFolder || (hasItems ? inferFolder(host.model) : ''));
+	// Walked once, not per type: where the backlog already lives does not depend on
+	// which type is being created.
+	const inferred = hasItems ? inferFolder(host.model) : '';
+	/**
+	 * Where a new item of this type lands. Folder mode's "beside the parent's folder
+	 * note" rule stays on top — there the folder tree IS the hierarchy, and an opt-in
+	 * mode should not be quietly overruled by a filing default. Below it the type's own
+	 * folder wins over the home folder, so a Bug files itself under `docs/bugs` even in
+	 * a base whose items otherwise live together. Where the existing items live is the
+	 * last resort before asking, since both folders above are configurable and a
+	 * configured folder is an answer where a guess from the vault is not.
+	 */
+	const chosen = (typeName: string): string => folderForType(typeName, host.settings) || host.settings.homeFolder;
+	const folderFor = (typeName: string): string => parentFolder ?? (chosen(typeName) || inferred);
 	// Without items or a configured folder there is nothing to infer from, and a note
 	// in the vault root would most likely fall outside this base's filter — ask instead.
-	const askFolder = parentFolder === null && !hasItems && host.settings.newItemFolder === '';
+	// A type that files itself needs no asking, so this only fires when one of the
+	// offered types would have nowhere to go.
+	// Only when nothing at all can answer: no parent folder, no items to learn from, and
+	// no folder configured or defaulted for any type on offer.
+	const askFolder = parentFolder === null && !hasItems && choices.every((type) => chosen(type) === '');
 
 	new TitlePromptModal(host.app, {
-		heading: `New ${levelName}`,
-		detail: askFolder ? undefined : promptDetail(parentItem, inferredFolder),
+		// With a choice to make the heading cannot name the type, since the type is the
+		// thing being chosen; without one it still says exactly what is being created.
+		heading: choices.length > 1 ? 'New item' : `New ${choices[0]}`,
+		detail: askFolder ? undefined : (typeName: string) => promptDetail(parentItem, folderFor(typeName)),
+		types: choices,
 		askFolder,
-		onSubmit: ({ title, folder }) => {
+		onSubmit: ({ title, folder, typeName }) => {
 			void createFromPrompt(host, {
-				levelName,
+				levelName: typeName,
 				parentItem,
 				title,
-				folder: askFolder ? folder ?? '' : inferredFolder,
+				folder: askFolder ? folder ?? '' : folderFor(typeName),
 				persistFolder: askFolder,
 			});
 		},
@@ -73,7 +103,7 @@ interface CreateRequest {
 async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): Promise<void> {
 	if (request.persistFolder && request.folder) {
 		try {
-			host.config.set('newItemFolder', request.folder);
+			host.config.set('homeFolder', request.folder);
 		} catch (e) {
 			console.error('Product Backlog: could not save folder to the view options', e);
 		}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildModel, childLevelIndex, displayType } from '../../src/domain/model';
-import { defaultSettings } from '../../src/domain/settings';
+import { buildModel } from '../../src/domain/model';
+import { childLevelIndex, displayType } from '../../src/domain/itemTypes';
+import { LEVELS, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -212,12 +213,12 @@ describe('buildModel', () => {
 		vault.addFile('L3.md', { parentLink: 'L2' });
 		vault.addFile('L4.md', { parentLink: 'L3' });
 
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), defaultSettings());
 		let item = model.roots[0];
 		while (item.children.length > 0) item = item.children[0];
 
 		expect(item.depth).toBe(4);
-		expect(item.levelIndex).toBe(settings.levels.length - 1);
+		expect(item.levelIndex).toBe(LEVELS.length - 1);
 		expect(displayType(item, settings)).toBe('Task');
 	});
 });
@@ -385,6 +386,19 @@ describe('buildModel with a focus level', () => {
 		vault.addFile('Loose Feature.md', { frontmatter: { type: 'Feature', order: 5 } });
 		return vault;
 	}
+
+	it('re-roots extra types alongside the level they rank with', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
+		// A Bug ranks with the PBI rung, so focusing that rung has to surface it —
+		// otherwise it does not render at all, having no PBI above it to hang from.
+		vault.addFile('Bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
+		const model = buildModel(vault.app, vault.entries(), { ...defaultSettings(), focusLevel: 'PBI' });
+		expect(model.focused).toBe(true);
+		expect(model.roots.map((r) => r.title).sort()).toEqual(['Bug', 'PBI']);
+	});
 
 	it('re-roots the tree at the topmost items of the focus level', () => {
 		const vault = focusVault();
