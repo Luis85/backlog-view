@@ -511,6 +511,28 @@ was perfectly correct. **A split has two halves, and changing what one of them m
 change to both** — the same lesson as the checker and `resolveParent` disagreeing about
 what a `parent:` key is, one file further out.
 
+## A prefix, a third time — and the first check that blocked a valid note
+
+| Planted | Reported |
+| --- | --- |
+| `## Context` renamed `## Contextual` | `ADR has no ## Context` |
+| `[x](<The quick filter on the board.md>)` — valid, file exists | passes; the same form pointing at a missing note still fails |
+
+The heading matcher was anchored at the line start and nowhere else, so `## Contextual`
+satisfied `## Context`. That is the **prefix** hole for the third time in this file, after
+`showCounts` vouching for `showCount` and `src/main.tsx` for `src/main.ts` — three
+different subjects, one assumption, closed three times separately. A `##` heading is a whole
+line and is anchored as one now; a `**Bold**` marker opens a sentence and is already bounded
+by its own closing `**`.
+
+The link fix is the one that stands out in this whole list, because it is the **only false
+failure** among more than twenty findings. `<...>` is Markdown's way of putting a space in a
+destination, and every note in this register has spaces in its filename — so the one
+sanctioned way to link them was rejected, resolving `<The quick filter on the board.md>` to
+a file called `The`. Every other hole here let something wrong through; this one would have
+blocked something right, which is the more expensive direction and the harder one to
+discover, because nobody writes the link that fails and then argues with the gate.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.
