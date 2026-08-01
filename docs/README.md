@@ -167,7 +167,15 @@ toolbar controls are display text and stay a hand sweep — see
 [[Sweep the register against the code]].
 
 Each rule was verified the way this project verifies its lint rules: by planting the
-violation and watching the check reject it.
+violation and watching the check reject it. Those plantings now **re-run**, in both
+directions — `test/docs/checkerRejects.test.ts` holds the violations, and
+`test/docs/checkerAccepts.test.ts` holds the opposite and harder question: *does a valid
+document pass?* A false pass is found by someone hunting for holes; a false failure is
+found by someone who was doing something else, and their likely response is to change the
+document rather than suspect the checker. So the accept corpus is deliberately made of
+**legal forms this register does not itself use** — angle-bracket link destinations, `*`
+and `+` bullets, trailing whitespace after a heading — since a construct nobody writes here
+is exactly the one nothing would notice the gate refusing.
 
 ## What each kind of note holds
 

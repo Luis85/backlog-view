@@ -2,13 +2,16 @@
 type: Issue
 order: 70
 parent: "[[Invariants as checks, not conventions]]"
-status: Open
+status: Done
 priority: P2
 area: verification
+closed: 2026-08-01
 created: 2026-08-01
 source: 2026-08-01 review of PR #24, the last finding of the sequence
 files:
   - docs-check.mjs
+  - test/docs/checkerAccepts.test.ts
+  - test/docs/checkerRejects.test.ts
 ---
 
 # The gate is tested only against invalid documents
@@ -92,7 +95,44 @@ survives the person who asked it.
 
 ## Acceptance criteria
 
-- The spellings already planted by hand are captured somewhere that re-runs: a fixture
-  corpus of legal forms the register does not itself use, asserted green.
+- ~~The spellings already planted by hand are captured somewhere that re-runs: a fixture
+  corpus of legal forms the register does not itself use, asserted green.~~ Done — see the
+  Outcome.
 - Raise the priority the next time a tightening lands with its evidence in prose only. That
-  is the failure this note is now about.
+  is the failure this note was about, and it is the standing part: a corpus that exists is
+  not the same as a corpus anyone adds to.
+
+## Outcome
+
+`docs-check.mjs` has a test — [[Plant a corpus the register gate runs against]] — in the
+shape this note proposed and in both directions: `test/docs/checkerAccepts.test.ts` plants
+legal forms the register does not itself use and expects green, while
+`test/docs/checkerRejects.test.ts` and `test/docs/checkerRejectsAdrs.test.ts` plant
+violations and expect each to be named. The gate is run as a subprocess over a throwaway
+tree, so the file under test is the one `npm run docs` executes rather than a refactor of
+it.
+
+The one number worth stating is the one a test pins: **every place the gate can report a
+problem has at least one planted case**, and a rule added to `docs-check.mjs` moves the
+count `checkerRejects.test.ts` asserts, so it goes red until somebody plants a case.
+
+*(An earlier draft of this section gave case totals per file. They were wrong **before the
+pull request that wrote them had merged** — the ADR cases moved to their own file and
+fourteen more were added, hours later — which is the same drift `docs/README.md` removed
+its epic counts for. Corrected by deleting them rather than by updating them: `npm run
+test` is the current inventory.)*
+
+**Nothing new was found in the gate.** Every case passed on the first run, which is worth
+stating plainly: this note predicted the *class* correctly and the sweep it asked for
+turned up no instance. The value delivered is that the plantings re-run, not a defect
+caught.
+
+That claim was then checked instead of assumed. The historical angle-bracket bug was
+reintroduced into `docs-check.mjs` and both accept cases for it went red; a second rule was
+broken and its reject case went red. The suite has teeth against exactly the failure this
+note was filed about.
+
+What stays open is the second criterion, and it is not a smaller version of the first. The
+constructs worth covering come from Markdown, and enumerating them exhaustively is the
+enumeration trap named above — so the corpus is the forms someone thought of, and the next
+tightening still has to think of its own.

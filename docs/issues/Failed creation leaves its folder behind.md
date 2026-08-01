@@ -46,6 +46,38 @@ leaving it:
 The honest position is that this is a **documented limitation**, not an unnoticed bug. The
 two use cases now say so.
 
+## It was attempted, and reverted
+
+Written up because the reasoning above was **stronger than it looked**, and the only way
+that became clear was by ignoring it. The recipe at the end of this note was implemented
+in PR #40 and taken back out; review found three defects in it, in three rounds, each one
+inside the fix for the last.
+
+| Round | What the cleanup broke |
+| --- | --- |
+| 1 | It made a folder's *ownership* load-bearing, and nothing made ownership exclusive. A second creation that lost the `createFolder` race recorded nothing and was left depending on a folder the first still believed was its own to unwind. |
+| 2 | Reading `TFolder.children` and then deleting is a check followed by an unrelated act. `trashFile` takes a folder **and everything in it**, and `children` is a cache — so a note written by sync, or merely one the cache had not caught up with, was carried off by a cleanup that had just satisfied itself the folder was empty. |
+| 3 | The fix for round 2 (`adapter.rmdir(path, false)`, which the filesystem refuses on a non-empty folder) removes the directory **without updating Obsidian's index**. The next creation's `ensureFolder` sees the stale `TFolder`, skips `createFolder`, and its `vault.create` then fails for want of a parent. |
+
+Rounds 1 and 2 were fixable — a creation queue, and an atomic removal. Round 3 is not,
+and that is the finding worth keeping:
+
+> **No Obsidian API is both atomic-on-empty and index-consistent.**
+> `adapter.rmdir(path, false)` guarantees emptiness and desynchronizes the index.
+> `vault.delete` and `fileManager.trashFile` maintain the index and are recursive, with
+> no emptiness guarantee at the moment of deletion. There is no documented way to await
+> reconciliation.
+
+So the choice is between a cleanup that can delete a file it never made and a cleanup that
+can make the next creation fail — to avoid **an empty folder**. That is the trade the
+second bullet above predicted without being able to name the mechanism, and it is why the
+decision stands rather than merely surviving.
+
+The attempt also found a harness gap worth naming even though the code went back:
+`FakeVault.create` happily wrote notes into folders that did not exist, so no test could
+have observed a rollback removing a parent out from under a creation. Any future attempt
+at this needs that fixed first, or its tests prove nothing.
+
 ## What would lift it
 
 - A report of it happening in practice — the failure needs a `vault.create` that throws
@@ -71,3 +103,20 @@ two use cases now say so.
 Have `ensureFolder` return the segments it created, and delete them in reverse order in
 the caller's `catch` — **only** when each is still empty. Never a recursive delete. Both
 call sites already have the `catch`.
+
+**That recipe is necessary and not sufficient**, which the section above is the evidence
+for: it says nothing about how "still empty" is established, and every defect found lived
+in that gap. Anything picking this up again needs all four of
+
+- the segments this attempt created, as written above;
+- creation serialized, so two attempts cannot disagree about who owns a folder;
+- an emptiness test the filesystem makes **at the moment of removal**, not one the code
+  reads beforehand; and
+- an index that is correct immediately afterwards, or a creation path that does not
+  trust it.
+
+The fourth has no answer in today's API, so the honest trigger is **an Obsidian release
+that adds one** — a removal that is non-recursive, fails on non-empty, and updates the
+vault index. Failing that, a creation path that treats `getAbstractFileByPath` as a hint
+rather than an authority would close it from the other end, but only if `createFolder`
+consults the filesystem rather than the index, and that cannot be verified here.
