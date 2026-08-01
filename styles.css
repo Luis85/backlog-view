@@ -1419,9 +1419,11 @@
 }
 
 /* Time and buckets scroll sideways inside the same scroller the tree uses;
-   the pane itself never scrolls horizontally. */
+   the pane itself never scrolls horizontally. The scroller is also the query
+   container that hands the pinned strips below their scrollport width. */
 .pbl-roadmap-mode .pbl-tree {
 	overflow-x: auto;
+	container-type: inline-size;
 }
 
 .pbl-roadmap {
@@ -1429,6 +1431,20 @@
 	flex-direction: column;
 	gap: var(--size-4-3);
 	min-width: max-content;
+}
+
+/* Pinned to the scrollport: a pan across months must never scroll the unplaced
+   work, the context strip or the advisory out of reach. Sticky needs a box
+   narrower than its containing block — the lead column's own trick — so the
+   strips take the scrollport's width inside the max-content frame. */
+.pbl-roadmap .pbl-shelf,
+.pbl-roadmap .pbl-roadmap-context,
+.pbl-roadmap .pbl-board-advisory {
+	position: sticky;
+	left: 0;
+	width: 100cqw;
+	align-self: flex-start;
+	box-sizing: border-box;
 }
 
 /* The projection toggle and the axis picker are segmented button groups. */
