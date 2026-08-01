@@ -19,11 +19,34 @@ why — *"a new write path cannot appear by accident."* `VISUAL_DEPTH` is the sa
 applied to level math, scoped to the two files that decide types.
 
 The translation rule wants to be the same shape. The obvious form is a selector over the
-places a string reaches the screen — the argument of `setTitle`, `setName`, `setDesc`,
-`setTooltip`, `setPlaceholder`, `setButtonText`, `setText`, `new Notice` or
-`setAttribute` for a user-facing attribute, and the `text:` / `aria-label` /
-`displayName:` / `placeholder:` properties. Those are the twelve forms the ~141 sites
-take today.
+places a string reaches the screen, and that set is **derived from the code** rather than
+recalled — the earlier drafts of this note listed it from memory three times and were
+short by an entry each time.
+
+| Call | Sites | Guarded |
+| --- | --- | --- |
+| `setTooltip` | 23 | argument |
+| `setTitle` | 20 | argument |
+| `new Notice` | 14 | argument |
+| `setText` | 11 | argument |
+| `setAttribute` | 7 | second argument, for `aria-label` / `title` / `placeholder` / `alt` only |
+| `setName` | 5 | argument |
+| `setPlaceholder`, `setButtonText` | 3 each | argument |
+| `setDesc` | 2 | argument |
+| `appendText` | 2 | argument |
+| `addOption` | 1 | **second** argument only — the first is the persisted value |
+
+| Object field | Sites |
+| --- | --- |
+| `text:` | 30 |
+| `displayName:` | 21 |
+| `'aria-label':` | 10 |
+| `placeholder:` | 10 |
+| `name:` | 6 |
+
+That is the list the *sweep* works through, and the same set the ban in step 3 below
+covers. It is **not** sufficient as the rule, for the reason in the next section — but
+where a list is used at all, it is now one the code produced.
 
 That list is worth having, because it is what the sweep works through. It is **not**
 sufficient as the rule, for the reason below.
