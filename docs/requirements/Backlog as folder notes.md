@@ -157,7 +157,10 @@ construction — which is the pairing this exists for.
   removing it would be the one destructive thing this flow is capable of. Nor does the
   container chain `ensureFolder` walks (`docs/requirements`) belong to the attempt — only
   the per-item folder does. "Leaves no empty folder behind" was too broad a rule for a step
-  that reuses what it finds.
+  that reuses what it finds. Ownership is necessary and not sufficient: the folder must
+  also be **still empty when the cleanup runs**. Sync, an attachment write or another
+  plugin can drop a file in between creating the folder and the note failing, and a delete
+  that races them takes real content with it.
 
 ### What it does not do
 
@@ -189,11 +192,16 @@ construction — which is the pairing this exists for.
   `docs/Epic/Feature N/Feature N.md` under it counts `docs/Epic` ten times against `docs`
   once, so the next parentless Epic is created *inside* the existing Epic's folder. The
   top-level marker would keep the tree right and the file explorer wrong — the exact
-  disagreement this option exists to remove. Count the containers of `model.realRoots`,
-  which `domain/CLAUDE.md` already names as the collection every data operation takes,
-  since `model.roots` is the rendered forest. Flat creation keeps today's count over every
-  item. Reached only when no folder is configured for any offered type, which is why it is
-  easy to miss and worth stating.
+  disagreement this option exists to remove. Counting `model.realRoots` is not the answer
+  either: a real root can be an `outsideFilter` context row — a result whose explicitly
+  linked parent was loaded from outside the filter — and counting its container aims new
+  notes at the folder the filter *isn't*, re-opening the very exclusion `inferFolder`
+  already makes for context rows. The population is the topmost row **in the results** on
+  each branch: walk *through* a context row to the results below it, exactly as `assignAll`
+  does for rollups, and never count the context row itself. With no results at all there is
+  nothing to infer from and the prompt asks, as it does today. Flat creation keeps today's
+  count over every item. Reached only when no folder is configured for any offered type,
+  which is why it is easy to miss and worth stating.
 
 ## Evidence
 
