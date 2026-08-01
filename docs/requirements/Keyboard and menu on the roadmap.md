@@ -8,6 +8,7 @@ created: 2026-08-01
 files:
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
+  - src/ui/prompts.ts
 ---
 
 # Keyboard and menu on the roadmap
@@ -31,7 +32,7 @@ rather than deferred behind it.
 | **Actor** | Backlog owner |
 | **Trigger** | Arrows, Enter or Escape on a selected roadmap item, or its context menu |
 | **Preconditions** | Roadmap mode is on |
-| **Guarantee** | Every write a drag can produce exists as a keyboard path and as a menu action writing the identical batch; no roadmap write is reachable only by pointer, and Escape always leaves nothing written. |
+| **Guarantee** | Every write a drag can produce exists as a keyboard path and as a menu action writing the same batch shape through the same gate; no roadmap write is reachable only by pointer, and Escape always leaves nothing written. |
 
 **Main flow**
 
@@ -44,9 +45,11 @@ rather than deferred behind it.
    arrows resize as well as slide: the one-date write the edge drag plans, without the
    pointer.
 3. Enter commits the batch the drag would write; Escape cancels with nothing written.
-4. The context menu offers the moves in words — set horizon, schedule (start, target
-   or both), unschedule, clear horizon — each writing the drag's own batch, beside the
-   item's existing actions.
+4. The context menu offers the moves in words — set horizon, schedule, unschedule,
+   clear horizon — beside the item's existing actions. Schedule opens the dates for
+   entry, prefilled with the item's current dates or, for an unscheduled item, with
+   today spanning one zoom cell — the shelf drop's own default — and confirming writes
+   the same shaped batch the gestures write.
 
 **Extensions**
 
@@ -66,9 +69,10 @@ rather than deferred behind it.
 - Pick-up, move, commit, cancel work as specified on both axes — the grip reaching the
   whole bar and each writable end, so a resize is a keyboard move too — and the
   committed batch is identical to the drag's; Escape always exits with nothing written.
-- The context menu offers set horizon (declared plus observed values), schedule —
-  start, target or both — unschedule and clear horizon, each writing the drag's batch;
-  on context rows it offers no write action.
+- The context menu offers set horizon (declared plus observed values), schedule — a
+  date entry prefilled with the current dates, or with today spanning one zoom cell
+  for an unscheduled item — unschedule and clear horizon, each writing the batch shape
+  the gestures write; on context rows it offers no write action.
 - No write on the roadmap is reachable only by pointer.
 - A refused commit is announced at the selection, which does not move.
 
@@ -77,4 +81,5 @@ rather than deferred behind it.
 **Nothing yet — this note is design.** The pick-up state machine joins
 `src/view/interactions/keyboard.ts` beside the tree's navigation; the actions join the
 one context menu in `src/view/interactions/menu.ts`, which already decides what an
-excluded item is offered.
+excluded item is offered; the date entry is a prompt beside the new-item prompts in
+`src/ui/prompts.ts`.

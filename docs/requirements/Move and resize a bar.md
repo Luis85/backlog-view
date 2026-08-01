@@ -18,9 +18,10 @@ that** re-planning is a gesture on the thing that shows the plan.
 The convention is universal — Asana, GitHub and the Obsidian Gantt prior art all agree:
 the bar's body shifts both dates together, an end moves that date alone, and everything
 snaps to the zoom's grid so a drag means whole units. What is distinctive here is what
-the gesture does *not* do: a date write has no peers. Unlike a tree drop, it renumbers
-no siblings, cascades to no children, and touches exactly one note — which is what
-makes its preview an honest contract.
+the gesture does *not* do: a date write has no peers. Within its lane it renumbers no
+siblings, cascades to no children, and touches exactly one note — which is what makes
+its preview an honest contract. Crossing a lane is a different gesture with a stated
+owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 ## Use case
 
@@ -29,7 +30,7 @@ makes its preview an honest contract.
 | **Actor** | Backlog owner |
 | **Trigger** | Dragging a bar's body, or one of its ends |
 | **Preconditions** | Roadmap mode is on with the timeline axis |
-| **Guarantee** | A bar gesture writes only the dragged note's own date properties, exactly the dates the preview showed — one batch, one undo — and no other note is renumbered, retyped or touched. |
+| **Guarantee** | The preview is the contract: release writes exactly the dates it showed, one batch, one undo — and a gesture that stays in its lane writes only the dragged note's own date properties, with no other note renumbered, retyped or touched. |
 
 **Main flow**
 
@@ -54,6 +55,10 @@ makes its preview an honest contract.
   inference. The path to a real plan on a parent is stating real dates — the menu
   offers it on any row ([[Keyboard and menu on the roadmap]]). A grip exists exactly
   where a write can land on the note's own configured key, and never on display.
+- **1d — the drag crosses a lane as well as time.** The gesture leaves this PBI:
+  reparent and dates travel as the one combined batch [[Lanes on the roadmap]]
+  specifies — previewed together, applied together, undone together — so the two notes
+  cannot disagree about whose write it is.
 - **2a — an end is dragged past the other.** It clamps at equal — a milestone — and never
   crosses: a reversed span is unreadable ([[Bars from two dates]]), so no gesture may
   write one.
@@ -64,8 +69,9 @@ makes its preview an honest contract.
 
 - Body drags shift both dates by one whole-cell delta; end drags move one date;
   everything snaps to the zoom's grid, and release writes exactly the preview.
-- A bar gesture is a single-note write: no sibling renumbering, no cascade to
-  children, nothing else touched.
+- Within its lane, a bar gesture is a single-note write: no sibling renumbering, no
+  cascade to children, nothing else touched. A drag that also crosses a lane is the
+  combined batch [[Lanes on the roadmap]] specifies, never a second write path.
 - One-dated bars keep their open end on body drags, and dragging the open end writes
   the missing date where its property is configured — an unconfigured end offers no
   grip, and nothing is ever written to an unconfigured key; ends clamp at equal and

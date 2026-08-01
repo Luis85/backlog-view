@@ -28,7 +28,7 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
 | **Actor** | Backlog owner |
 | **Trigger** | Setting the focus level from the toolbar while the roadmap is showing |
 | **Preconditions** | Roadmap mode is on |
-| **Guarantee** | Focus is a render decision that writes nothing and loses nothing: below the level survives in rollups and inferred spans, above it as context, and clearing focus restores every result. |
+| **Guarantee** | Focus is a render decision that writes nothing to any note and loses nothing: below the level survives in rollups and inferred spans, above it as context, and clearing focus restores every result. |
 
 **Main flow**
 
@@ -71,7 +71,8 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
   placed only into a bucket that already exists or at the span its visible results
   give it, never one its own value or dates would add — never draggable, counted or
   written, and never part of the shelf's count.
-- Changing focus writes nothing, and bucket and shelf counts narrow with the rows.
+- Changing focus writes nothing to any note — the choice itself persists as the view
+  option it already is — and bucket and shelf counts narrow with the rows.
 - The same toolbar control drives all three projections and persists as it does today.
 
 ## Where it lives
