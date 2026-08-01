@@ -52,6 +52,13 @@ two use cases now say so.
   after a successful `createFolder`, which nobody has yet observed.
 - Evidence that it happens repeatedly in one session, since the folders would then
   accumulate rather than being a single stray.
+- **A change that makes folder creation routine rather than occasional.**
+  [[Backlog as folder notes]] is exactly that, and it settles this: with that option on,
+  every creation makes a folder, so a failure leaves one *per attempt*, named after the
+  item the user was trying to make — no longer a stray, and no longer rare. That PBI
+  therefore carries the cleanup as an acceptance criterion, using the recipe below
+  unchanged. The decision recorded here still stands for the flat layout it was written
+  about; it is the layout that changed, not the reasoning.
 
 ## If it is fixed
 

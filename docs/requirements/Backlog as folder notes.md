@@ -224,6 +224,17 @@ construction — which is the pairing this exists for.
   also be **still empty when the cleanup runs**. Sync, an attachment write or another
   plugin can drop a file in between creating the folder and the note failing, and a delete
   that races them takes real content with it.
+- That criterion **overturns a recorded decision, deliberately**.
+  [[Failed creation leaves its folder behind]] files the same residue as an accepted
+  limitation rather than a bug, on the reasoning that deleting on an error path is worse
+  than an empty folder — and it is right about today's behaviour, where a folder is only
+  ever created when a *type folder* is missing, which is rare and happens once. This option
+  changes the premise: with it on, **every** creation makes a folder, so the residue stops
+  being a stray and starts being one per failure, named after the item the user just tried
+  to make. That is the "it happens repeatedly" the Issue names as what would change its
+  own decision. The mechanism is the Issue's own — `ensureFolder` returns what it created,
+  the caller's `catch` removes those in reverse, each only while still empty, never a
+  recursive delete — so this is that recipe becoming required, not a different design.
 
 ### What it does not do
 
