@@ -16,8 +16,11 @@ demonstrating itself:
 
 ## The trees
 
-**Product Backlog** is the product: seven features covering the hierarchy, moving items,
-creating them, progress, finding work, safe writes and view state.
+**Product Backlog** is the product: eight features covering the hierarchy, moving items,
+creating them, progress, finding work, safe writes and view state — plus **User manual**,
+the one that is specified rather than built: an in-view help surface whose sections
+explain the types, moving, creating, finding, undo and configuration. Its PBIs describe a
+manual, so each one is also a statement of what that part of the plugin is *for*.
 
 **Codebase health** is the engineering work — three features, each with the PBIs that say
 what "healthy" means there, and the tasks that got it done underneath.
