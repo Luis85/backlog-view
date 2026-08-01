@@ -157,6 +157,23 @@ custom type is "never rewritten" while the use case, in the same commit, documen
 dragged-item exception. Nothing mechanical connects a decision record to a use case — the
 ADR now carries the exception and says the intent is not what that branch does.
 
+A seventh round found the same blind spot twice more, in the two places it had not been
+generalised:
+
+| Planted | Reported |
+| --- | --- |
+| `test/helpers/fixtures.ts`, undocumented | `no note names test/helpers/fixtures.ts` |
+| `id: "create-backlog"` (double quotes) | `cannot resolve the command \`id: "create-backlog"\`` |
+
+The module check collected `*.test.ts` only, so `test/helpers/` — including the harness
+every view test is written against — was outside a README guarantee that named it. All
+`.ts` under both trees now.
+
+And the fail-on-unresolvable rule had been applied to option keys and **not** to command
+ids, so a double-quoted id, or one lifted to a constant, matched nothing and reported
+nothing. Both surfaces go through one loop now, which is the point: exempting one of two
+symmetric things is how every one of these got here.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 

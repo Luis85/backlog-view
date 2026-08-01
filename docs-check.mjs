@@ -289,10 +289,9 @@ async function collectTs(dir, keep) {
 	return found;
 }
 
-const sources = [
-	...(await collectTs("src", (n) => n.endsWith(".ts"))),
-	...(await collectTs("test", (n) => n.endsWith(".test.ts"))),
-];
+// Every `.ts` under both trees, helpers included: `test/helpers/view.ts` is the harness
+// every view test is written against, so it is at least as worth naming as a suite.
+const sources = [...(await collectTs("src", (n) => n.endsWith(".ts"))), ...(await collectTs("test", (n) => n.endsWith(".ts")))];
 for (const file of sources) {
 	if (!allText.includes(file)) fail("docs", `no note names ${file}`);
 }
@@ -308,12 +307,22 @@ for (const file of sources) {
  * see `docs/issues/Sweep the register against the code.md`, which says which is which.
  */
 const surfaces = [
-	["view option", "src/domain/viewOptions.ts", /\bkey: '([^']+)'/g],
-	["command", "src/main.ts", /\bid: '([^']+)'/g],
+	{ kind: "view option", file: "src/domain/viewOptions.ts", field: "key", generator: /^typeFolderKey\(/ },
+	{ kind: "command", file: "src/main.ts", field: "id" },
 ];
-for (const [kind, file, pattern] of surfaces) {
-	for (const [, name] of (await readFile(file, "utf8")).matchAll(pattern)) {
-		if (!allText.includes(name)) fail("docs", `no note names the ${kind} "${name}"`);
+for (const { kind, file, field, generator } of surfaces) {
+	const src = await readFile(file, "utf8");
+	for (const [, expr] of src.matchAll(new RegExp(`\\b${field}: ([^,\\n]+)`, "g"))) {
+		const value = expr.trim().replace(/,$/, "");
+		const literal = /^'([^']*)'$/.exec(value);
+		if (literal) {
+			if (!allText.includes(literal[1])) fail("docs", `no note names the ${kind} "${literal[1]}"`);
+		} else if (!generator?.test(value)) {
+			// Double quotes, a constant, anything else: unresolvable is an error, never a
+			// pass. Both surfaces get the same treatment — exempting one is how the first
+			// blind spot got here.
+			fail("docs-check", `cannot resolve the ${kind} \`${field}: ${value}\` in ${file}`);
+		}
 	}
 }
 
@@ -328,12 +337,7 @@ for (const [kind, file, pattern] of surfaces) {
  */
 const optionsSrc = await readFile("src/domain/viewOptions.ts", "utf8");
 const settingsSrc = await readFile("src/domain/settings.ts", "utf8");
-const KNOWN_GENERATOR = /\bkey: typeFolderKey\(/g;
-for (const [expr] of optionsSrc.matchAll(/\bkey: ([^,\n]+)/g)) {
-	if (/\bkey: '[^']+'/.test(expr) || /\bkey: typeFolderKey\(/.test(expr)) continue;
-	fail("docs-check", `cannot resolve the option key expression \`${expr.trim()}\` in viewOptions.ts`);
-}
-if (KNOWN_GENERATOR.test(optionsSrc)) {
+if (/\bkey: typeFolderKey\(/.test(optionsSrc)) {
 	const template = /function typeFolderKey\([^)]*\)[^{]*\{\s*return `([^$`]*)\$\{\s*\w+\.toLowerCase\(\)\s*\}`/.exec(
 		settingsSrc,
 	);

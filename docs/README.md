@@ -86,7 +86,7 @@ can run is worse than none, because it invites trust it has not earned:
    from either side rots the same way: the predecessor goes on reading as current. An ADR
    naming a successor must also carry the `Superseded` status, which is that same failure
    inside one record.
-7. Every module in `src/`, every test file, **every view-option key and every command id**
+7. Every module in `src/`, every file under `test/` — helpers included — **every view-option key and every command id**
    is named by at least one note — the check that finds *missing* notes rather than wrong
    ones. That includes the six keys *generated* per type, derived from the vocabulary and
    the key template rather than scanned for; a key expression the check cannot resolve

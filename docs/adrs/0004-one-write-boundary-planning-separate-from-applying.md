@@ -23,9 +23,20 @@ modules, and every one of them is a place a write-safety rule could be forgotten
 
 Plus undo, which replays inverses of any of them.
 
-The list is greppable rather than remembered: every forward path above is a call to
-`applySafely`, so `grep -rn 'applySafely(' src/` is the inventory, and a new one that
-does not appear there is a write that skipped the gate.
+The list is greppable rather than remembered, but it takes **two** greps, because the last
+row is not like the others:
+
+```bash
+grep -rn 'applySafely('     src/   # the edit paths — the first three rows
+grep -rn 'createBacklog'    src/   # the creation paths — a note, and the .base file
+```
+
+Creation does not go through `applySafely`; it calls `createBacklogItem` directly, and is
+deliberately outside undo ([ADR 0015](0015-undo-by-captured-inverses.md)) because the
+inverse of creating a note is deleting one. Two greps rather than one is the honest
+statement, and the reason the completeness guarantee below is the **lint rule** rather than
+either of them: a grep enumerates the callers it knows to look for, while the rule catches
+a path nobody thought to grep for at all.
 
 Write safety cannot be a property each caller remembers. It has to be a property of the
 place writes happen.
