@@ -50,16 +50,52 @@ problem for worse ones:
 - It would invert the split this repository settled on: *a script over markdown checks
   markdown; a test that can load the module asks the module*. Frontmatter is markdown.
 
-## What would lift it
+## The obvious remedy does not reach it
 
-Move the frontmatter questions to the other side of the split — a test that imports
-`noteFields.ts` and asserts the register's notes parse the way the plugin would read them.
-That is the same move that retired the TypeScript-scanning half of this checker, and it is
-the right shape. It is filed rather than done because the one known divergence is closed
-and a second has not been observed: building a second corpus reader to find hypothetical
-disagreements is how a validator grows a maintenance burden nobody is paying for.
+This note first proposed "a test that imports `noteFields.ts` and asserts the register's
+notes parse the way the plugin would read them". **That would not detect this class**, and
+saying so is more useful than the proposal was.
+
+`resolveParent` takes an already-parsed `CachedMetadata` — it never sees YAML text. The
+harness hands it one built by hand: `FakeVault.addFile` assembles `cache.frontmatter` from
+a JavaScript object literal. So the test would assert *interpretation of synthetic cache
+data* and pass while the divergence stood, because the divergence lives one step earlier:
+
+| Step | Who does it | Covered by that test? |
+| --- | --- | --- |
+| `parent:` (bare) → `{ parent: null }` | Obsidian's frontmatter parser | **no** — the fake starts here |
+| `parent` key present → `explicitRoot: true` | `resolveParent` | yes |
+| `parent:` → "field absent" | `docs-check.mjs` | no |
+
+The bug was in step 1 meeting step 3. A test over step 2 proves the half nobody doubted.
+
+## What would actually lift it
+
+Something has to read the **raw YAML** the register is written in and compare it with what
+the checker concludes. Two honest options, neither free:
+
+- **A YAML parser as a devDependency.** `yaml` and `js-yaml` are both already in
+  `node_modules` transitively, so it costs a declaration, not a download — and it must be
+  declared, since fallow gates dependency hygiene and reaching into an undeclared
+  transitive is its own defect. Runtime dependencies stay empty either way
+  ([ADR 0005](../adrs/0005-ship-with-no-runtime-dependencies.md) is about what ships).
+- **A live-vault pass**, which is the only thing that can answer the question as asked.
+
+The distinction matters and is the reason this is not simply "add the parser": a
+third-party YAML parser is a **proxy for Obsidian's, not Obsidian's**. What a devDependency
+could verify is *"the checker's reading agrees with a conforming YAML parser"*. What it
+cannot verify is *"…agrees with Obsidian"*, and Obsidian is the reader that decides whether
+a note is a work item. That second question needs a vault, like every other appearance and
+identity check in this register.
 
 ## Acceptance criteria
 
-None yet. Raise the priority and take the test above if a second divergence is found — two
-would make it a pattern rather than an instance.
+- The register's own notes are parsed by a real YAML parser and the result compared against
+  what `docs-check.mjs` concludes about the same keys — at minimum `type`, `parent`,
+  `order`, `status`, and the ADR fields.
+- The note is explicit that this proves agreement with *a* parser, not with Obsidian's, and
+  names the live-vault check as the only thing that closes the remainder.
+
+Raise the priority if a second divergence is found; two would make it a pattern rather than
+an instance. Until then the cost is a devDependency and a corpus reader, against one closed
+bug — which is the trade, stated so it can be taken knowingly rather than by default.
