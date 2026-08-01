@@ -87,6 +87,28 @@ is the deletion case this task exists to catch, passing green. Both fixes stay i
 index: a wikilink in a comment must still resolve, so `withoutCode` was left alone rather
 than widened for one caller.
 
+A third round found two more, in the same family — the check was reading the section
+rather than the list:
+
+| Planted | Reported |
+| --- | --- |
+| The same use case bulleted twice | `… lists [[New item flow]] 2 times` |
+| A Feature with no children and no index section | `feature has no `## Use cases` section` |
+
+The first collapsed into a `Set` before anything was compared, so an index that renders a
+duplicate satisfied a check claiming it names the children *exactly*. Counting entries
+before the `Set` fixes it, and the same change stopped reading every link in the section in
+favour of the ones in **bullets** — an index is a list, and a PBI named in a passing
+sentence must not stand in for the entry that should list it.
+
+The second is the one that says most about writing checks: an empty index matches an empty
+child set, so the section was only required from the first PBI onwards — the gate arriving
+*after* the shape it exists to establish. The heading is now asked for in its own right.
+
+The pattern across all three rounds: every hole was the check answering a slightly different
+question than the rule does. The rule is about the list a reader sees; the code variously
+asked about the section, about every child, and about text a reader never sees.
+
 ## Risks
 
 The check reads structure, not sense — it cannot tell whether the sentence after the

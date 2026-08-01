@@ -348,9 +348,25 @@ for (const [, note] of notes) {
  */
 for (const [name, note] of notes) {
 	if (note.type !== "Feature") continue;
-	const listed = new Set(
-		[...useCaseIndex(withoutCode(texts.get(note.file))).matchAll(/\[\[([^\]|#]+)/g)].map(([, t]) => t.trim()),
+	const index = useCaseIndex(withoutCode(texts.get(note.file)));
+	// Asked of the heading itself, not inferred from the comparison below. A Feature with
+	// no use cases YET has an empty index that matches its empty child set exactly, so
+	// without this the section is only required from the first PBI onwards — the gate
+	// arriving after the shape it is meant to establish.
+	if (index === null) fail(note.file, "feature has no `## Use cases` section");
+	// The BULLETS, not every link in the section. An index is a list, and reading the whole
+	// section would let a PBI named in a passing sentence stand in for the entry that should
+	// list it — a missing bullet masked by prose about it.
+	const entries = [...(index ?? "").matchAll(/^[-*+] .*$/gm)].flatMap(([bullet]) =>
+		[...bullet.matchAll(/\[\[([^\]|#]+)/g)].map(([, t]) => t.trim()),
 	);
+	const listed = new Set(entries);
+	// Before the Set collapses them: a use case bulleted twice renders twice, and an index
+	// that claims to name the children *exactly* cannot be silent about it.
+	for (const entry of listed) {
+		const times = entries.filter((e) => e === entry).length;
+		if (times > 1) fail(note.file, `## Use cases lists [[${entry}]] ${times} times`);
+	}
 	const children = [...notes].filter(([, c]) => c.parent === name);
 	// Ranked, so the report reads in the order the note should list them in.
 	const missing = children
@@ -379,9 +395,10 @@ for (const [name, note] of notes) {
 
 /**
  * The body of the `## Use cases` section: everything up to the next heading of the same
- * level, or the end of the note. Absent entirely, it is '' rather than a special case —
- * a Feature with no index fails as one missing every child, which is what it is, and the
- * report then names them all rather than saying only that a heading is gone.
+ * level, or the end of the note. **null** when the heading is absent, which the caller
+ * reports in its own right and then reads as an empty index — so a Feature with no section
+ * is told both that the heading is gone and which children go in it, rather than being let
+ * off because an empty list matches an empty subtree.
  *
  * HTML comments are stripped first, and this is the whole question the section asks:
  * completeness is about what a READER sees, and `<!-- -->` hides a bullet from the rendered
@@ -394,7 +411,7 @@ for (const [name, note] of notes) {
 function useCaseIndex(text) {
 	text = text.replace(/<!--[\s\S]*?-->/g, "");
 	const start = /^## Use cases\s*$/m.exec(text);
-	if (!start) return "";
+	if (!start) return null;
 	const rest = text.slice(start.index + start[0].length);
 	const end = /^## /m.exec(rest);
 	return end ? rest.slice(0, end.index) : rest;
