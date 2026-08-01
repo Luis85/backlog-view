@@ -100,7 +100,8 @@ which is the whole reason the note now says where it lives.
 
 `src/domain/writePlan.ts` (`computeTypeChanges`) ·
 `src/domain/itemTypes.ts` (`nextLevelIndex`, `childLevelIndex`, `EXTRA_TYPE_RANK`) ·
-`src/domain/viewOptions.ts` (the toggle, whose schema default must match the runtime one).
+`src/domain/viewOptions.ts` (`autoAssignType` — the toggle, whose schema default must
+match the runtime one, or the options UI lies about the behaviour).
 Tests: `test/domain/writePlan.test.ts`, `test/domain/writePlanContextRows.test.ts`,
 `test/domain/itemTypes.test.ts`.
 Bugs it has produced: [[Nested extra type lost its pinned rank]].

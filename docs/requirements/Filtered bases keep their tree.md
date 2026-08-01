@@ -65,6 +65,7 @@ structure that makes the answer mean anything.
 
 ## Where it lives
 
+`src/domain/viewOptions.ts` (`showOutsideParents`, on by default) ·
 `src/domain/model.ts` (loading ancestors, the `outsideFilter` flag) ·
 `src/view/backlogView.ts` (`applySafely`'s refusal) · and every interaction module, which
 is the point.

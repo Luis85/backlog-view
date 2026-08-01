@@ -91,7 +91,8 @@ can run is worse than none, because it invites trust it has not earned:
    inside one record.
 7. Every module in `src/`, every file under `test/` — helpers included — **every view-option key and every command id**
    is named by at least one note — the check that finds *missing* notes rather than wrong
-   ones. That includes the six keys *generated* per type, derived from the vocabulary and
+   ones. Surface names must appear in **`requirements/`**, not anywhere in `docs/`: a
+   record that mentions one in passing, or quotes one as a test case, does not specify it. That includes the six keys *generated* per type, derived from the vocabulary and
    the key template rather than scanned for; a key expression the check cannot resolve
    fails rather than being passed over — and the number of keys found is cross-checked
    against the number the file should contain, so one the pattern cannot see at all makes

@@ -54,6 +54,7 @@ already said.
 
 ## Where it lives
 
+`src/domain/viewOptions.ts` (`inferFolderHierarchy`, off by default) ·
 `src/domain/folderNotes.ts` · `src/domain/writePlan.ts` (the `explicitRoot` marker) ·
 `src/view/interactions/create.ts` (children land beside the parent's folder note).
 Tests: `test/domain/model.test.ts`, `test/view/creation.test.ts`,

@@ -64,6 +64,7 @@ let one button write `type` and `order` into a document that is not a task.
 
 ## Where it lives
 
+`src/domain/viewOptions.ts` (`hierarchyOnly` — "Ignore notes outside the hierarchy") ·
 `src/domain/model.ts` (`pruneOutsideHierarchy`, `ignoredCount`) ·
 `src/view/render/toolbar.ts` (`renderIgnoredNote`) ·
 `src/view/render/emptyStates.ts` (`emptyHint`).

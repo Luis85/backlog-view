@@ -97,6 +97,17 @@ const files = (await walk(DOCS)).sort();
 const texts = new Map(await Promise.all(files.map(async (f) => [f, await readFile(f, "utf8")])));
 const stems = new Set(files.map((f) => path.basename(f, ".md")));
 const allText = [...texts.values()].join("\n");
+/**
+ * The specification notes alone — `requirements/` — for checks that ask "is this
+ * specified?". `tasks/`, `issues/` and `bugs/` are records, and a record naming a surface
+ * in passing (or quoting one as a test case) does not specify it.
+ */
+const specText = files
+	.filter((f) => path.basename(path.dirname(f)) === "requirements")
+	.map((f) => texts.get(f))
+	.join("\n");
+/** Set by the surface scan when it resolves the one generated key expression. */
+let generatorSeen = false;
 
 // ---------------------------------------------------------------- the backlog tree
 const notes = new Map();
@@ -352,8 +363,14 @@ for (const { kind, file, field, generator, expected, expectedFrom } of surfaces)
 		const value = expr.trim().replace(/,$/, "");
 		const literal = /^'([^']*)'$/.exec(value);
 		if (literal) {
-			if (!allText.includes(literal[1])) fail("docs", `no note names the ${kind} "${literal[1]}"`);
-		} else if (!generator?.test(value)) {
+			// Searched in the SPECIFICATION notes, not in all of `docs/`. This note's own
+			// record of planted test cases names `showBurndown` and `archive-backlog`, so a
+			// whole-corpus search would accept a real surface renamed to either — the
+			// documentation of the check weakening the check.
+			if (!specText.includes(literal[1])) fail("docs", `no requirement names the ${kind} "${literal[1]}"`);
+		} else if (generator?.test(value)) {
+			generatorSeen = true;
+		} else {
 			// Double quotes, a constant, anything else: unresolvable is an error, never a
 			// pass. Both surfaces get the same treatment — exempting one is how the first
 			// blind spot got here.
@@ -371,9 +388,11 @@ for (const { kind, file, field, generator, expected, expectedFrom } of surfaces)
  * over. A scan that silently ignores what it does not understand is the shape of gate
  * that reports success for the thing it never looked at.
  */
-const optionsSrc = await readFile("src/domain/viewOptions.ts", "utf8");
 const settingsSrc = await readFile("src/domain/settings.ts", "utf8");
-if (/\bkey: typeFolderKey\(/.test(optionsSrc)) {
+// Driven by what the scan above actually resolved, not by a second pattern over the same
+// file. Two regexes that must agree is how the first whitespace fix landed in one of them
+// and not the other, leaving the derivation silently skipped.
+if (generatorSeen) {
 	const template = /function typeFolderKey\([^)]*\)[^{]*\{\s*return `([^$`]*)\$\{\s*\w+\.toLowerCase\(\)\s*\}`/.exec(
 		settingsSrc,
 	);
@@ -386,7 +405,7 @@ if (/\bkey: typeFolderKey\(/.test(optionsSrc)) {
 	} else {
 		for (const type of vocabulary) {
 			const key = `${template[1]}${type.toLowerCase()}`;
-			if (!allText.includes(key)) fail("docs", `no note names the generated view option "${key}"`);
+			if (!specText.includes(key)) fail("docs", `no requirement names the generated view option "${key}"`);
 		}
 	}
 }

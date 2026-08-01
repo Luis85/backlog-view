@@ -219,6 +219,27 @@ That check earned itself on its first run by catching a wrong assumption in its 
 it reported 17 keys against 21 `displayName`s, because groups carry one too. The expected
 count is one minus the other, and the check said so before a human noticed.
 
+A tenth round found the check being weakened by its own documentation, and the whitespace
+fix landing in one of two places again:
+
+| Planted | Reported |
+| --- | --- |
+| `create-backlog` renamed to `archive-backlog` | `no requirement names the command "archive-backlog"` |
+| `key:` and `typeFolderKey(type)` on separate lines | the derivation still ran — a removed key was still caught |
+
+The surface names were searched across **all** of `docs/`, and this note's tables quote
+`showBurndown` and `archive-backlog` as planted examples — so a real surface renamed to
+either would have passed. The record of the test cases was weakening the test. They are
+searched in `requirements/` alone now: a record naming a surface in passing, or quoting one
+as an example, does not *specify* it. Four options turned out to be named only in records
+and are now named in the requirement each belongs to.
+
+And the generated-key derivation was gated by a **second** regex over the same file, still
+requiring exactly one space after the colon — so with the valid expression wrapped across
+lines, the general scan accepted it and the derivation never ran, leaving all six persisted
+keys unchecked. It is driven by what the scan resolved now, not by a pattern that has to
+agree with another pattern.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 
