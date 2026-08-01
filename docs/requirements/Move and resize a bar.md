@@ -66,6 +66,12 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   rides along untouched, and the write keeps the shape the note had — a drag re-plans
   a date, it does not re-format a value. Snapping decides where the bar lands on the
   grid, never that precision the note chose to keep is erased.
+- **1f — the step crosses a month end.** A calendar step lands on the same day of the
+  target unit, clamped to its last day when that day does not exist — January 31 moved
+  a month is the end of February, never an overflow into March — and a body drag keeps
+  the bar's duration: the start takes the step, the target follows at the bar's own
+  day count. Re-planning when is not re-planning how long; only an end drag changes
+  duration, because that is what a resize is.
 - **2a — an end is dragged past the other.** It clamps at equal — a milestone — and never
   crosses: a reversed span is unreadable ([[Bars from two dates]]), so no gesture may
   write one.
@@ -82,7 +88,9 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 - Body drags shift both dates by one whole-cell delta; end drags move one date;
   everything snaps to the zoom's grid, and release writes exactly the preview. Deltas
   are calendar units that preserve the value's own precision: a datetime keeps its
-  time of day and its shape on disk.
+  time of day and its shape on disk. A step clamps at month end rather than
+  overflowing, and a body drag preserves the bar's duration — the start takes the
+  step, the target follows at the same day count.
 - Within its lane, a bar gesture is a single-note write: no sibling renumbering, no
   cascade to children, nothing else touched. A drag that also crosses a lane is the
   combined batch [[Lanes on the roadmap]] specifies, never a second write path.
