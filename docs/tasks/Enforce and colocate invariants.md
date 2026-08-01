@@ -17,7 +17,7 @@ files:
 
 ## Evidence
 
-`CLAUDE.md` is 341 lines. The **"Invariants that bite" section is 135 of them — 40%** —
+`CLAUDE.md` is 317 lines. The **"Invariants that bite" section is 135 of them — 43%** —
 as a flat list of 46 bullets.
 
 ## Why it matters
