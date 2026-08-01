@@ -19,10 +19,10 @@ a new write path cannot appear by accident."* `showAtMouseEvent` became a lint r
 shipping as a bug once. `VISUAL_DEPTH` guards the two files that decide types.
 
 Styling has the same shape and none of the enforcement. The audit in
-`Theming and styling` found a nearly clean file — one literal colour, 0 `!important`,
+`Theming and styling` found a clean file — no reachable literal colour, 0 `!important`,
 every selector `.pbl`-scoped — and every one of those is a fact about an afternoon's grep,
-twice corrected. The rules are real, they are mostly followed, and they are written
-nowhere a contributor would meet them.
+twice corrected. The rules are real, they are followed, and they are written nowhere a
+contributor would meet them.
 
 Two things make the case sharper than it looks. `eslint src test` does not read
 `styles.css` at all, so *nothing* in the definition of done currently examines the file.
@@ -38,7 +38,7 @@ argue about.
 
 | Rule | Today |
 | --- | --- |
-| No literal **rendered** colour — `var(--…)` only | 1 violation (642), see below |
+| No literal **rendered** colour — `var(--…)` only | 1, and it is dead code (642) |
 | No `!important` | 0 |
 | Every selector inside the `.pbl` namespace | 0 outside it, keyframe steps aside |
 | No physical `left`/`right` property where a logical twin exists | 1 (line 96) |
@@ -54,22 +54,40 @@ file, not zero, and all 10 are correct code:
 | --- | --- | --- |
 | `transparent` ×8 | 53, 71, 595, 641, 782, 813, and twice in the mask | **Stays.** Not a colour — the *absence* of one, and no theme variable means "nothing" |
 | `black` ×2 | 748-749, the mask stops | **Stays.** A mask's channel is **alpha**. `black` there means fully opaque and is never rendered; tokenizing it would substitute a colour for an opacity |
-| `128, 128, 128` ×1 | 642, `rgba(var(--pbl-badge-rgb, 128, 128, 128), 0.4)` | **Fix.** A hard-coded grey that renders whenever the custom property is unset — which is a real case, not a defensive one |
+| `128, 128, 128` ×1 | 642, `rgba(var(--pbl-badge-rgb, 128, 128, 128), 0.4)` | **Delete the fallback.** It is unreachable — see below |
 
 So the rule is about **rendered** colour: a literal naming a colour the user sees. That is
 a narrowing by reason rather than an exception list, which matters because an exception
 list would have to be maintained and a reason does not — the next `transparent` is covered
 without anyone adding a row.
 
-The third row is a genuine violation and the only one. `.pbl-badge.pbl-implied` borders an
-implied-type badge, and `--pbl-badge-rgb` is set per level class — so a type **past the end
-of the ladder**, which `domain/CLAUDE.md` describes as ordinary user data (the `Bugfix`
-case), falls through to a grey no theme can reach. It should read a token.
+The third row is the only literal rendered colour in the file, and it is **dead**. Tracing
+the path settles it:
 
-### How the colour audit was wrong twice
+- `impliedType` is true in exactly one branch — the `else` at `model.ts:576`, reached only
+  when the note has **no** `typeName` at all. Any type name, known or not, takes the other
+  branch and sets it false.
+- That branch also sets `levelIndex = childSlot`, and `childLevelIndex` returns `0` for a
+  root or `min(x+1, LEVELS.length-1)` otherwise — so an implied item's `levelIndex` is
+  always in **0-3**.
+- `renderBadge` then adds `pbl-lvl-${levelIndex % 8}`, and `.pbl-lvl-0` through `.pbl-lvl-3`
+  each define `--pbl-badge-rgb` (styles.css:618-621).
 
-This claim has now been corrected twice, and both times the *search* was at fault rather
-than the reading of it:
+So `.pbl-badge.pbl-implied` never renders without the property set, and the grey can never
+appear. An earlier version of this note claimed the off-ladder `Bugfix` case reached it,
+which is wrong twice over: an unknown type *has* a `typeName`, so it is never implied, and
+it gets `pbl-lvl-unknown`, which line 635 explicitly excludes from the colour rules
+entirely.
+
+The right treatment is therefore neither "tokenize it" nor "exempt it" but **remove it**.
+An unreachable fallback is dead code, which this repository already gates with fallow, and
+deleting it leaves `rgba(var(--pbl-badge-rgb), 0.4)` — restoring the property the rest of
+this PBI depends on: a check added to a file that already passes.
+
+### How the colour audit was wrong three times
+
+This claim has now been corrected three times. The first two were the *search* at fault
+rather than the reading of it:
 
 1. The first audit matched `#hex` and bare `rgb()`/`hsl()`, and reported zero. True of the
    forms it searched for, not of the rule — CSS colour **keywords** are a third form.
@@ -81,8 +99,14 @@ than the reading of it:
 The second is the same failure as the icon enumeration in `Layout survives translated
 text`, and it happened *after* that note added **step 0 — verify the search finds what you
 think it finds**. The step was written for the icon audit and never applied back here. A
-method recorded in one note does not run itself in another, which is the last argument this
-register needed for putting the rule in `npm run check` instead.
+method recorded in one note does not run itself in another.
+
+The third correction is a different mistake and worth separating. Having accepted that 642
+was a violation, this note then *explained why* — reaching for the off-ladder `Bugfix` case
+without tracing whether that case sets `impliedType`. It does not. **The justification was
+invented to fit a conclusion already accepted**, which is a failure the previous two
+lessons do not cover: enumerating correctly says nothing about whether the reason attached
+to an entry is true. Read the path, or write down that you did not.
 
 The last two rows of the table are why this is not just "add stylelint and take the
 defaults".
@@ -110,16 +134,18 @@ instead. Neither rule comes out of a default config.
   violating it and watching it go red — the register has already recorded that a check
   which has never failed is a check nobody has tested.
 - The two **direction** violations are fixed by `Layout survives translated text`, so this
-  PBI either lands after it or lands with the direction rules staged. The colour violation
-  at 642 belongs to this PBI, since it is the rule's own first catch.
+  PBI either lands after it or lands with the direction rules staged. Deleting the dead
+  fallback at 642 belongs to this PBI — it is housekeeping the rule motivates, not a
+  defect it catches.
 - The colour rule is scoped to **rendered** colour. `transparent` and mask stops are
   outside it by reason, not by a suppression list — if the implementation needs eight
   `/* stylelint-disable */` comments to go green, the rule is wrong rather than the
   stylesheet.
-- It matches inside `var()` **fallbacks**, since `rgba(var(--x, 128, 128, 128), 0.4)`
-  renders a hard-coded grey whenever the property is unset. Line 642 is the one real
-  violation in the file and is fixed rather than exempted — an unset `--pbl-badge-rgb`
-  happens for any type past the end of the ladder, which is user data, not an edge case.
+- It matches inside `var()` **fallbacks**, since a literal there still renders if the
+  property is ever unset. The file's one instance (642) is **deleted rather than
+  tokenized**: the path that would show it does not exist, so it is dead code rather than
+  a wrong colour. Removing it is also what lets this PBI keep its central property — every
+  rule passing on the file as it stands.
 - Rule messages name the fix, not the violation. `Use var(--text-muted); a literal colour
   ignores the user's theme` teaches; `unexpected hex value` gets suppressed.
 - Exceptions are narrow and carry a reason inline, matching how `usedClassMembers`

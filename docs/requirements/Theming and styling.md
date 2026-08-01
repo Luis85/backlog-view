@@ -17,21 +17,21 @@ one stylesheet per concern, a build step, and rules that hold.
 
 ## What the theming half is not
 
-It is *nearly* not a cleanup. `styles.css` is disciplined on every axis but one, which the
-audit behind these PBIs establishes rather than assumes:
+It is not a cleanup. `styles.css` is disciplined on every axis, which the audit behind
+these PBIs establishes rather than assumes:
 
 | Checked | Result |
 | --- | --- |
-| Literal **rendered** colours | **1** — the grey `var()` fallback at 642. The 8 `transparent` and the 2 mask stops name an absence and an alpha, not a colour |
+| Literal **rendered** colours | **1**, and unreachable — the grey `var()` fallback at 642, which no render path can show. The 8 `transparent` and the 2 mask stops name an absence and an alpha, not a colour |
 | `!important` | **0** |
 | `var(--…)` uses | **202**, across 47 distinct variables |
 | Selectors outside the `.pbl` namespace | **0** — the only unscoped rules are `@keyframes` steps |
 | `prefers-reduced-motion` | Handled (line 915), and `hover: none` too (line 940) |
 | Inline styles | None — `setCssProps` throughout, already a marketplace rule in `CLAUDE.md` |
 
-So the plugin very nearly passes the styling bar today, and the one exception was found by
-review rather than by the audit. **The problem is that nothing holds any of it.** Every
-one of those numbers is a fact about the current file, established by
+So the plugin passes the styling bar today — the single literal colour is in a branch
+nothing can reach. **The problem is that nothing holds any of it.** Every one of those
+numbers is a fact about the current file, established by
 grep, on one afternoon. None of them is a check, none is written down where a
 contributor would meet it, and the one test harness this repository has renders nothing
 at all.
