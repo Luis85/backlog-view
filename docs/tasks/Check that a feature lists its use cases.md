@@ -87,6 +87,104 @@ is the deletion case this task exists to catch, passing green. Both fixes stay i
 index: a wikilink in a comment must still resolve, so `withoutCode` was left alone rather
 than widened for one caller.
 
+A third round found two more, in the same family — the check was reading the section
+rather than the list:
+
+| Planted | Reported |
+| --- | --- |
+| The same use case bulleted twice | `… lists [[New item flow]] 2 times` |
+| A Feature with no children and no index section | `feature has no `## Use cases` section` |
+
+The first collapsed into a `Set` before anything was compared, so an index that renders a
+duplicate satisfied a check claiming it names the children *exactly*. Counting entries
+before the `Set` fixes it, and the same change stopped reading every link in the section in
+favour of the ones in **bullets** — an index is a list, and a PBI named in a passing
+sentence must not stand in for the entry that should list it.
+
+The second is the one that says most about writing checks: an empty index matches an empty
+child set, so the section was only required from the first PBI onwards — the gate arriving
+*after* the shape it exists to establish. The heading is now asked for in its own right.
+
+A fourth round found that the bullets fix had *moved* the masking hole rather than closed
+it, and one false-failure case beside it:
+
+| Planted | Reported |
+| --- | --- |
+| A use case named only inside another bullet's description | `… does not list [[Scaffolding a backlog]]` |
+| A top-level bullet indented three spaces | *(nothing — it is a legal bullet and now reads as one)* |
+
+Reading every link in a bullet was the same hole one level in: `- [[A]] — see also [[B]]`
+marked B listed while B had no bullet of its own. The entry is now a bullet's **first**
+link, which is what the entry shape `- [[Name]] — what it delivers.` means and which leaves
+descriptions free to cross-reference. The second is the only finding in four rounds that
+was a false *failure* rather than a false pass: CommonMark renders up to three leading
+spaces as a top-level list item, and the pattern demanded column zero, so a legal index
+entry read as a missing one. This file already holds that a check blocking a legitimate
+note is the more expensive direction to get wrong.
+
+A fifth round closed the same hole a third time. The first link in a bullet was found
+*anywhere* in it, so `- See also [[Scaffolding a backlog]]` counted as that use case's
+entry while its real bullet was gone:
+
+| Planted | Reported |
+| --- | --- |
+| An entry replaced by a bullet that only mentions it | `… does not list [[Scaffolding a backlog]]` |
+
+The rule, finally stated as a position rather than as a search: **an entry is a link
+immediately after a bullet marker.** Only the position distinguishes an entry from a
+mention, so only the position can be checked — and all 69 index bullets in the register
+already sit that way, so the anchoring narrows the check without moving the corpus.
+
+A sixth round found the marker itself matched one spelling rather than the Markdown rule:
+`-  [[Name]]` with two spaces renders as a list item and was reported as a missing child.
+Rather than take that variant alone and wait for the next, the marker is now matched as
+CommonMark defines a **list item** — up to three leading spaces, a bullet or an ordered
+marker, then one to four spaces or a tab. Five spellings planted and all five accepted,
+with the mention-only and duplicate cases re-planted to confirm the widening did not
+reopen what the previous rounds closed:
+
+| Planted | Accepted |
+| --- | --- |
+| `-  [[Name]]`, `-⇥[[Name]]`, `* [[Name]]`, `1. [[Name]]`, `   -  [[Name]]` | all five |
+
+A seventh round: `[[Name]` with a lost bracket matched the permissive prefix and read as an
+entry, though it renders as literal text and indexes nothing. The entry link must **close**,
+with an alias or a heading allowed between the name and the `]]`. The repository-wide
+wikilink scan keeps the permissive prefix on purpose — there a bare `[[Name]` must still
+resolve, and requiring `]]` would make the typo invisible instead of caught. Opposite
+defaults from one question each: *is this a link that works* against *does this bullet index
+a child*.
+
+| Planted | Reported |
+| --- | --- |
+| `- [[Scaffolding a backlog]` | `… does not list [[Scaffolding a backlog]]` |
+| `- [[Name\|alias]]` and `- [[Name#Heading]]` | *(nothing — both still index Name)* |
+
+An eighth round closed the two boundaries of the section itself, both shared with the rest
+of the file rather than introduced here:
+
+| Planted | Reported |
+| --- | --- |
+| The real index replaced by a `~~~`-fenced example of one | all five children reported missing |
+| `  ## Related material` indented, with entries below it | the two below it reported missing |
+
+`withoutCode` stripped backtick fences only, so everything structural in this file —
+headings, sections, entries — was readable inside a tilde fence, where nothing renders.
+And `useCaseIndex` ended the section at a column-zero `## `, so an indented heading did not
+close it and the bullets beneath counted. Both now follow the same CommonMark rule the
+entry matcher does, which is the point: **one module, one idea of what a heading and a
+list item are.**
+
+The pattern across all eight rounds: every hole was the check answering a slightly different
+question than the rule does. The rule is about the list a reader sees; the code variously
+asked about the section, about every child, about text a reader never sees, about every link
+in a bullet, about a bullet's first link wherever it sat, and about bullets in one exact
+column. Each fix narrowed the question and three times the narrowed version was still not
+the rule — the same masking bug surviving two rewrites of the thing meant to kill it. That
+is the argument for planting the case rather than reasoning about the regex, and for
+stating a rule as the property that makes it true rather than as the search that usually
+finds it.
+
 ## Risks
 
 The check reads structure, not sense — it cannot tell whether the sentence after the

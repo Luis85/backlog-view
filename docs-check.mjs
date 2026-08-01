@@ -138,7 +138,13 @@ function between(text, start, end) {
 
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
-	return text.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+	// Both fence characters. CommonMark fences with ``` or ~~~, and stripping only the
+	// first left every structural question in this file — headings, sections, index
+	// entries — readable inside a tilde fence, where nothing renders and nothing is real.
+	return text
+		.replace(/```[\s\S]*?```/g, "")
+		.replace(/~~~[\s\S]*?~~~/g, "")
+		.replace(/`[^`\n]*`/g, "");
 }
 
 /**
@@ -372,9 +378,53 @@ for (const [, note] of notes) {
  */
 for (const [name, note] of notes) {
 	if (note.type !== "Feature") continue;
-	const listed = new Set(
-		[...useCaseIndex(withoutCode(texts.get(note.file))).matchAll(/\[\[([^\]|#]+)/g)].map(([, t]) => t.trim()),
-	);
+	const index = useCaseIndex(withoutCode(texts.get(note.file)));
+	// Asked of the heading itself, not inferred from the comparison below. A Feature with
+	// no use cases YET has an empty index that matches its empty child set exactly, so
+	// without this the section is only required from the first PBI onwards — the gate
+	// arriving after the shape it is meant to establish.
+	if (index === null) fail(note.file, "feature has no `## Use cases` section");
+	// An entry is a link **immediately after a bullet marker** — the whole of
+	// `- [[Name]] — what it delivers.` up to the name. That anchoring is the rule, and it
+	// took three tries to state, each one the same hole one step in: reading the section let
+	// a PBI named in a passing sentence count as listed; reading every link in a bullet let
+	// `- [[A]] — see also [[B]]` list B; reading a bullet's first link *anywhere* let
+	// `- See also [[B]]` do it again. Only the position after the marker distinguishes an
+	// entry from a mention, so only the position can be checked.
+	//
+	// A bullet that does not start with a link therefore contributes nothing, which is
+	// correct twice over: it is not an entry, and the use case it names still has to have a
+	// bullet of its own. Descriptions stay free to link wherever they like.
+	//
+	// The marker is matched as CommonMark defines a **list item**, not as the one spelling
+	// this register happens to use: up to three leading spaces, a bullet (`-`, `*`, `+`) or
+	// an ordered marker, then one to four spaces or a tab. Every part of that is a legal
+	// entry that a tighter pattern reports as a MISSING child — a false failure, which this
+	// file already treats as the more expensive direction to get wrong, and which would
+	// block a contributor over whitespace. Written as the whole family at once rather than
+	// per variant, because each variant found separately is another round of the same bug.
+	//
+	// The cost is that a sub-bullet indented two spaces reads as an entry. No regex can tell
+	// that from a legally indented top-level bullet without tracking list context, and a
+	// nested sub-list is not the shape a flat index has.
+	// The link must CLOSE. `[[Name]` captures a name from a prefix match while rendering as
+	// literal text, so a bullet with a lost bracket indexes nothing and must not read as an
+	// entry — the child is then reported missing, which is exactly what it is. An alias or a
+	// heading may sit between the name and the `]]`, since `[[Name|shown]]` still indexes
+	// Name. (The repository-wide wikilink scan matches the same permissive prefix, and
+	// deliberately keeps it: there a bare `[[Name]` must still resolve, and requiring `]]`
+	// would make the typo invisible rather than caught. Opposite defaults, because one asks
+	// "is this a link that works" and the other "does this bullet index a child".)
+	const entries = [
+		...(index ?? "").matchAll(/^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]{1,4}\[\[([^\]|#\n]+)(?:[|#][^\]\n]*)?\]\]/gm),
+	].map(([, t]) => t.trim());
+	const listed = new Set(entries);
+	// Before the Set collapses them: a use case bulleted twice renders twice, and an index
+	// that claims to name the children *exactly* cannot be silent about it.
+	for (const entry of listed) {
+		const times = entries.filter((e) => e === entry).length;
+		if (times > 1) fail(note.file, `## Use cases lists [[${entry}]] ${times} times`);
+	}
 	const children = [...notes].filter(([, c]) => c.parent === name);
 	// Ranked, so the report reads in the order the note should list them in.
 	const missing = children
@@ -403,9 +453,10 @@ for (const [name, note] of notes) {
 
 /**
  * The body of the `## Use cases` section: everything up to the next heading of the same
- * level, or the end of the note. Absent entirely, it is '' rather than a special case —
- * a Feature with no index fails as one missing every child, which is what it is, and the
- * report then names them all rather than saying only that a heading is gone.
+ * level, or the end of the note. **null** when the heading is absent, which the caller
+ * reports in its own right and then reads as an empty index — so a Feature with no section
+ * is told both that the heading is gone and which children go in it, rather than being let
+ * off because an empty list matches an empty subtree.
  *
  * HTML comments are stripped first, and this is the whole question the section asks:
  * completeness is about what a READER sees, and `<!-- -->` hides a bullet from the rendered
@@ -417,10 +468,14 @@ for (const [name, note] of notes) {
  */
 function useCaseIndex(text) {
 	text = text.replace(/<!--[\s\S]*?-->/g, "");
-	const start = /^## Use cases\s*$/m.exec(text);
-	if (!start) return "";
+	// Up to three leading spaces on the heading, at both ends of the section — the same
+	// CommonMark rule the entry matcher follows for list items. Demanding column zero on
+	// the closing boundary is the worse half: the section would run past an indented
+	// `## Something else` and count its bullets as entries.
+	const start = /^ {0,3}## Use cases\s*$/m.exec(text);
+	if (!start) return null;
 	const rest = text.slice(start.index + start[0].length);
-	const end = /^## /m.exec(rest);
+	const end = /^ {0,3}## /m.exec(rest);
 	return end ? rest.slice(0, end.index) : rest;
 }
 
