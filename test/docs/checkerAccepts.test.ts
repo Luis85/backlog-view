@@ -34,6 +34,20 @@ describe('the gate accepts valid documents', () => {
 		expect(result.ok).toBe(true);
 	});
 
+	it('does not read a crashed run as acceptance', async () => {
+		// The hole this file could most easily have had, and the one hardest to see: every
+		// case here asserts an EMPTY problem list, and a checker that died before printing
+		// its report contributes exactly that. Green would then mean "the gate said
+		// nothing", which is what acceptance looks like and also what a crash looks like.
+		//
+		// A tree with no `src/` at all makes `collectTs` throw, so the run exits non-zero
+		// having reported nothing. `checkRegister` refuses to return it as a verdict.
+		const files = baseRegister();
+		delete files['src/thing.ts'];
+
+		await expect(checkRegister(files)).rejects.toThrow('without reporting problems');
+	});
+
 	it('accepts an angle-bracket link destination, which is how a space is written', async () => {
 		// The defect this whole file exists for. `<…>` is CommonMark's destination form;
 		// the register happens to percent-encode everywhere, so it never met the bug.
@@ -42,7 +56,7 @@ describe('the gate accepts valid documents', () => {
 			whereItLives: 'Lives in `src/thing.ts` and `test/thing.test.ts`. See [the slice](<A slice.md>).',
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts an angle-bracket destination carrying an anchor', async () => {
@@ -51,7 +65,7 @@ describe('the gate accepts valid documents', () => {
 			whereItLives: '`src/thing.ts`, `test/thing.test.ts`, and [the slice](<A slice.md>#outcome).',
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts percent-encoded and anchored destinations, and skips external ones', async () => {
@@ -67,7 +81,7 @@ describe('the gate accepts valid documents', () => {
 			].join('\n'),
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts every Markdown bullet marker on an extension', async () => {
@@ -78,7 +92,7 @@ describe('the gate accepts valid documents', () => {
 			extensions: ['* **2a — one way it goes otherwise** — because.', '+ **2b — another** — because.'].join('\n'),
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts trailing whitespace after a heading', async () => {
@@ -88,7 +102,7 @@ describe('the gate accepts valid documents', () => {
 			.replace('## Use case', '## Use case  ')
 			.replace('## Acceptance criteria', '## Acceptance criteria   ');
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts an opening whose markers are broken across lines', async () => {
@@ -98,7 +112,7 @@ describe('the gate accepts valid documents', () => {
 			opening: '**As** a user, **I\nwant** the thing done **so\nthat** the work is visible.',
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts notes in a nested folder', async () => {
@@ -110,7 +124,7 @@ describe('the gate accepts valid documents', () => {
 			order: 20,
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts files that are not markdown sitting beside the notes', async () => {
@@ -119,7 +133,7 @@ describe('the gate accepts valid documents', () => {
 		files['docs/Product Backlog.base'] = 'views:\n  - type: product-backlog\n';
 		files['docs/requirements/diagram.svg'] = '<svg></svg>';
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts structure quoted inside a fence or a code span', async () => {
@@ -144,7 +158,7 @@ describe('the gate accepts valid documents', () => {
 			].join('\n'),
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts wikilinks carrying an alias or a heading', async () => {
@@ -153,7 +167,7 @@ describe('the gate accepts valid documents', () => {
 			whereItLives: '`src/thing.ts`, `test/thing.test.ts`, [[A slice|the slice]] and [[A slice#Outcome]].',
 		});
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts fractional and negative ranks', async () => {
@@ -163,7 +177,7 @@ describe('the gate accepts valid documents', () => {
 		files['docs/requirements/Thing.md'] = note('Epic', -5, null, '# Thing\n\nWhy this exists.\n');
 		files['docs/requirements/A slice.md'] = note('Feature', 12.5, 'Thing', '# A slice\n\n**Outcome** — it works.\n');
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('accepts the record kinds and the pairs the corpus does not use', async () => {
@@ -173,7 +187,7 @@ describe('the gate accepts valid documents', () => {
 		files['docs/bugs/A defect.md'] = note('Bug', 20, 'A slice', '# A defect\n\n## What happened\n\nIt broke.\n');
 		files['docs/tasks/Some work.md'] = note('Task', 10, 'A question', '# Some work\n\n## Evidence\n\nMeasured.\n');
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 
 	it('lists a stale path in a record note instead of failing it', async () => {
@@ -200,11 +214,25 @@ describe('the gate accepts valid documents', () => {
 		files['docs/adrs/README.md'] =
 			'# ADRs\n\n- [0001](0001-the-first-decision.md)\n- [0002](0002-the-second-decision.md)\n';
 
-		expect(await problemsFor(files)).toEqual([]);
+		await expectAccepted(files);
 	});
 });
 
-/** The problems alone — the assertion every case above makes is that there are none. */
-async function problemsFor(files: Record<string, string>): Promise<string[]> {
-	return (await checkRegister(files)).problems;
+/**
+ * The assertion every case above makes: the gate **accepted** the tree.
+ *
+ * Both halves, because they are not one claim. `problems` is parsed out of the report,
+ * so a run that never printed one contributes nothing to it — and "nothing" is exactly
+ * what an accepted document looks like from that angle. `checkRegister` now refuses to
+ * return such a run at all, and this asserts the exit as well, so the claim is stated
+ * where it is made rather than resting entirely on the helper. A suite whose green
+ * depends on a checker having run is a suite that has to say so twice.
+ *
+ * `result.output` rides along as the failure message: the interesting part of a failure
+ * here is what the gate said, not that an array was non-empty.
+ */
+async function expectAccepted(files: Record<string, string>): Promise<void> {
+	const result = await checkRegister(files);
+	expect(result.problems, result.output).toEqual([]);
+	expect(result.ok, result.output).toBe(true);
 }

@@ -102,6 +102,25 @@ group always match, so every link resolved to the empty string and was skipped, 
 accept cases stayed green while a reject case went red. A mutation that does not reproduce
 the bug proves nothing about the test, and the shape of the failure is what said so.
 
+### The suite's own version of the bug it was written about
+
+Review found it, which is the right outcome and an uncomfortable one. Every accept case
+asserts an **empty problem list**, and the list is parsed out of the gate's report — so a
+run that died before printing one contributes exactly that. Green would have meant "the
+gate said nothing", which is what acceptance looks like and equally what a crash looks
+like. Thirteen of the fifteen cases went through a helper that read the problems and
+discarded the exit code.
+
+That is this file's own subject one level up: a check passing for a reason nobody
+intended. It is also the more dangerous direction, because the corpus is *meant* to be
+green — a crash would have been invisible for as long as the fixtures stayed valid.
+
+Closed in two places rather than one. `checkRegister` now **refuses to return** a run that
+exited non-zero without reporting, so a new call site cannot reopen it by omission; and
+`expectAccepted` asserts the exit as well as the list, so the claim is stated where it is
+made. A case plants the crash directly — a tree with no `src/`, which makes `collectTs`
+throw — and removing either guard was checked to fail it.
+
 What this does **not** do is close the enumeration: the constructs worth covering come from
 Markdown, and the Issue is right that enumerating them exhaustively is the trap this
 checker keeps falling into. The corpus is the forms someone has thought of, held where the

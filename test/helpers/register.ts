@@ -65,7 +65,17 @@ async function execute(root: string): Promise<CheckResult> {
 		const failed = error as { stdout?: string; stderr?: string; code?: unknown };
 		if (typeof failed.code !== 'number') throw error;
 		const output = (failed.stdout ?? '') + (failed.stderr ?? '');
-		return { ok: false, problems: parseProblems(failed.stderr ?? ''), output };
+		const problems = parseProblems(failed.stderr ?? '');
+		// …but only when it actually reported. A run that exits non-zero WITHOUT printing
+		// the report has crashed — an unhandled rejection, or a tree this helper wrote
+		// wrong — and `parseProblems` finds nothing to read, so returning it as a verdict
+		// hands back "no problems" for a checker that never reached a verdict. Every
+		// accept case would then read a crash as acceptance. Thrown here rather than left
+		// to each assertion, so a new call site cannot reopen the hole by omission.
+		if (problems.length === 0) {
+			throw new Error(`docs-check.mjs exited ${failed.code} without reporting problems:\n${output}`);
+		}
+		return { ok: false, problems, output };
 	}
 }
 
