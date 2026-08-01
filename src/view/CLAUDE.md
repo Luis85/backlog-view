@@ -184,7 +184,10 @@ free of runtime code so imports stay cycle-free.
   a column stop (`SelectionController`), because an empty column must stay reachable
   by keyboard. Anything that takes the card selection releases the column stop, and
   render passes re-point via `resyncAfterRender` — column stops are reapplied by the
-  board render, since they live on elements it just rebuilt.
+  board render (they live on elements it just rebuilt), which runs BEFORE the resync,
+  so the resync leaves a held column alone rather than stripping the active
+  descendant it just set. Rendering the tree releases any held column stop: board
+  state must not outlive the projection it points into.
 
 ## Lifecycle
 

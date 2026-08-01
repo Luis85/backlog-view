@@ -399,6 +399,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			this.renderBoardContent();
 		} else {
 			this.board = null;
+			// A column stop is board state; carrying it into the tree would leave the
+			// selection pointing at a projection that is no longer on screen.
+			this.selectBoardColumn(null);
 			renderTree(this.rowCtx(), this.treeEl);
 		}
 		this.treeEl.scrollTop = scrollTop;

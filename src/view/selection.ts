@@ -76,9 +76,14 @@ export class SelectionController {
 	/**
 	 * Re-point the selection at the elements of a fresh render pass — the rows map
 	 * was rebuilt, so the tracked element is stale even when the path survived.
-	 * Column stops are the caller's to reapply: they live on the board it just drew.
+	 * Column stops are the caller's to reapply (they live on the board it just
+	 * drew), and it does so BEFORE this runs — so a held column is left alone here,
+	 * or the resync would strip the active descendant the reapply just set and
+	 * assistive tech would lose the board position while the column stayed
+	 * visually marked.
 	 */
 	resyncAfterRender(): void {
+		if (this.selectedPath === null && this.selectedBoardColumn !== null) return;
 		this.selectedRowEl = this.selectedPath ? this.rows.get(this.selectedPath) ?? null : null;
 		this.syncActiveDescendant(this.selectedRowEl);
 	}

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
-import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { boardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName, columnsOf, countOf } from '../helpers/board';
 
@@ -164,6 +164,44 @@ describe('the board keyboard', () => {
 
 		key(treeOf(containerEl), '/');
 		expect(document.activeElement?.classList.contains('pbl-filter-input')).toBe(true);
+	});
+
+	it('a held column stop survives a rerender, for assistive tech too', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view } = board(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowRight'); // the empty no-state strip is the first stop
+		expect(view.selectedBoardColumn).toBe(0);
+
+		// A data update rebuilds every column element; the stop must follow — the
+		// class on the new element AND the active descendant, or the column stays
+		// visually marked while assistive tech loses the board position.
+		refresh(view, vault);
+		const strip = columnsOf(containerEl)[0];
+		expect(view.selectedBoardColumn).toBe(0);
+		expect(strip.hasClass('pbl-col-selected')).toBe(true);
+		expect(tree.hasClass('pbl-has-selection')).toBe(true);
+		expect(strip.id).not.toBe('');
+		expect(tree.getAttribute('aria-activedescendant')).toBe(strip.id);
+	});
+
+	it('switching back to the tree releases the column stop', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view, config } = board(vault);
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowRight');
+		expect(view.selectedBoardColumn).toBe(0);
+
+		config.values['viewMode'] = 'backlog';
+		refresh(view, vault);
+
+		// Board state must not point at a projection no longer on screen.
+		expect(view.selectedBoardColumn).toBeNull();
+		expect(tree.getAttribute('aria-activedescendant')).toBeNull();
+		expect(tree.hasClass('pbl-has-selection')).toBe(false);
 	});
 });
 
