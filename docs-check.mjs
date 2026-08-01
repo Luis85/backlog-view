@@ -327,6 +327,55 @@ for (const [, note] of notes) {
 	}
 }
 
+// ------------------------------------------------------------------ feature indexes
+/**
+ * A Feature indexes the use cases that deliver its outcome, and `docs/README.md` states
+ * the rule this enforces: *"Keep the index complete. A Feature whose list has drifted from
+ * its actual children is worse than one with no list, because the list is what a reader
+ * trusts instead of the tree."*
+ *
+ * That was an advertised invariant nobody could run — the failure this whole file exists
+ * to end — and it had already gone false: two PRs that never saw each other, one writing
+ * the index from the children it branched with and one adding a child, both merging clean.
+ * Neither could have caught it alone, which is the argument for checking it here rather
+ * than in review.
+ *
+ * Both directions, because drift has two shapes: a child missing from the list, and a
+ * listed use case that is no longer a child. Only PBIs are required — an `Issue` or a
+ * `Bug` may hang from a Feature and is not a use case — but any listed note that is not a
+ * child of this Feature is reported whatever its type, since that is precisely the stale
+ * entry a reader would trust.
+ */
+for (const [name, note] of notes) {
+	if (note.type !== "Feature") continue;
+	const listed = new Set(
+		[...useCaseIndex(withoutCode(texts.get(note.file))).matchAll(/\[\[([^\]|#]+)/g)].map(([, t]) => t.trim()),
+	);
+	const children = [...notes].filter(([, c]) => c.parent === name);
+	// Ranked, so the report reads in the order the note should list them in.
+	const missing = children
+		.filter(([child, c]) => c.type === "PBI" && !listed.has(child))
+		.sort(([, a], [, b]) => a.order - b.order)
+		.map(([child]) => child);
+	const stale = [...listed].filter((entry) => !children.some(([child]) => child === entry));
+	if (missing.length > 0) fail(note.file, `## Use cases does not list ${missing.map((m) => `[[${m}]]`).join(", ")}`);
+	for (const entry of stale) fail(note.file, `## Use cases lists [[${entry}]], which is not a child of this feature`);
+}
+
+/**
+ * The body of the `## Use cases` section: everything up to the next heading of the same
+ * level, or the end of the note. Absent entirely, it is '' rather than a special case —
+ * a Feature with no index fails as one missing every child, which is what it is, and the
+ * report then names them all rather than saying only that a heading is gone.
+ */
+function useCaseIndex(text) {
+	const start = /^## Use cases\s*$/m.exec(text);
+	if (!start) return "";
+	const rest = text.slice(start.index + start[0].length);
+	const end = /^## /m.exec(rest);
+	return end ? rest.slice(0, end.index) : rest;
+}
+
 // ----------------------------------------------------------------------------- ADRs
 /**
  * An ADR is any note under `docs/adrs/` that is not the index — discovered by **where it

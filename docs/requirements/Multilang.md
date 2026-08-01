@@ -11,6 +11,27 @@ Every string this plugin puts on screen comes out of a catalog keyed by locale, 
 view reads in the language the user already set Obsidian to. Nothing about the backlog
 itself changes: the tree, the ranking and the frontmatter are the same in every language.
 
+## Use cases
+
+- [[Locale resolution and fallback]] — which locale is chosen, and what an untranslated
+  string falls back to.
+- [[The string catalog]] — every message in one typed place per locale.
+- [[Plurals and interpolation]] — counted and parameterised messages as whole sentences.
+- [[Every surface translated]] — every label, tooltip and notice comes from the catalog.
+- [[View options and config warnings]] — the options menu and its warnings, so the settings
+  are not the one English surface left.
+- [[Layout survives translated text]] — longer words and the other reading direction still
+  line up.
+- [[Type names are data]] — the stored type never changes with the locale, only its label.
+- [[Persisted keys stay as written]] — everything persisted is byte-identical across locales.
+- [[Locale-aware sorting and formatting]] — ordering, matching and numbers follow the
+  user's locale.
+- [[A bare string cannot reach the UI]] — an English literal on a UI path fails the build.
+- [[Catalogs stay complete]] — a missing or stale key fails the build.
+- [[Tests do not read English]] — the suite asserts behaviour rather than wording.
+- [[English ships alone]] — one reviewed catalog this round, with the machinery proven by
+  fixture locales instead.
+
 ## Why it exists
 
 Obsidian ships in about thirty languages and tells a plugin which one is active:
