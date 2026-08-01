@@ -60,6 +60,12 @@ crosses a lane and a column does.
 - **2a — the move would make the item its own ancestor.** Refused, exactly as in the
   tree and on the board. The cycle rule is a property of the hierarchy, not of the
   projection showing it.
+- **3a — the reparent takes the note outside the Base's filter.** The write stands and
+  the row leaves the view on the refresh, announced with a notice and an open path —
+  the rule every roadmap write shares ([[Moving between horizons]] states it for
+  horizons, [[Move and resize a bar]] for dates) — and undo still takes the whole
+  batch back across the boundary. A combined lane-plus-axis move carries one notice,
+  because it was one batch.
 
 ## Acceptance criteria
 
@@ -72,6 +78,8 @@ crosses a lane and a column does.
   write when the gesture crossed both — one batch, one gate, one undo; cycle-making
   moves are refused.
 - Menu and keyboard cross lanes with the same batch the drag writes.
+- A reparent whose destination the Base excludes applies, is announced with an open
+  path, and stays undoable — for lane-only and combined moves alike.
 
 ## Where it lives
 

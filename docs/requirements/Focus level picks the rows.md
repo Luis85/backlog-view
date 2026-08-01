@@ -60,6 +60,11 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
 - **3a — the counts.** Bucket counts and the shelf count narrow with the rows, so the
   roadmap and its numbers always agree — the same pairing the board keeps between its
   columns and their counts.
+- **3b — the quick filter's match sits below the focused level.** The row stays, by the
+  match-path contract every projection shares — and while the filter is active it
+  names its matching descendants, each opening its note, exactly as a kept card does
+  on the board ([[The quick filter on the board]]). A fill and a span alone would
+  leave the search's own result found, counted, and impossible to get to.
 
 ## Acceptance criteria
 
@@ -73,6 +78,9 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
   written, and never part of the shelf's count.
 - Changing focus writes nothing to any note — the choice itself persists as the view
   option it already is — and bucket and shelf counts narrow with the rows.
+- While the quick filter is active, a focused row kept only by a descendant's match
+  names those matching descendants, each opening its note — the board's rule,
+  unchanged on the roadmap.
 - The same toolbar control drives all three projections and persists as it does today.
 
 ## Where it lives
