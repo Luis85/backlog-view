@@ -25,9 +25,19 @@ in the root `CLAUDE.md` because it spans every layer.
 - `depth` is VISUAL only (focus mode re-roots it). Level math must use
   `effectiveLevelIndex`, which chains down the parent levels and carries unknown
   custom types through the ladder (see `childLevelIndex`). Never derive levels
-  from depth. **`computeTypeChanges` still does** — it is safe there because both
-  depths come from one pass over the same subtree, but it is the reason this rule is
-  not yet a lint rule. See `docs/issues/stop-deriving-levels-from-depth.md`.
+  from depth — now a lint rule (`VISUAL_DEPTH`) over the two files that decide
+  types, since `rows.ts` legitimately reads depth for `aria-level`. The last
+  exception was the autoType cascade, which now descends by `nextLevelIndex` from
+  the dragged item's NEW level: the same chain `computeLevel` walks once the writes
+  land, so a plan cannot disagree with the model it produces. `nextLevelIndex` is
+  the one statement of "a child sits one rung below, clamped at the deepest level";
+  `childLevelIndex` is it applied to an item, and the cascade is it applied to a
+  level it is still planning. Chaining is *provably* what the old
+  `newBaseIdx + (child.depth - dragged.depth)` computed — `min(min(x+1,L)+1,L) =
+  min(x+2,L)` — so removing depth changed no behaviour and needed no product
+  decision, which is not what the issue expected. Where it does bite is the reading:
+  a Task nested straight under an Epic is retyped by the rung it occupies, not by
+  the level it declares.
 - `model.roots` is the RENDERED forest (synthetic under focus); every data operation
   (backfill, ranking parentless items, root-level outdent) must use `model.realRoots`.
   Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that

@@ -1,6 +1,6 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
-import { BacklogItem, BacklogModel, childLevelIndex } from './model';
+import { BacklogItem, BacklogModel, childLevelIndex, nextLevelIndex } from './model';
 import { BacklogSettings } from './settings';
 
 /**
@@ -118,8 +118,12 @@ export function computeTypeChanges(
 		typeField = implied;
 	}
 
-	const lastIdx = settings.levels.length - 1;
-	const walk = (node: BacklogItem) => {
+	// Chained down the parent levels, never derived from depth: each child sits one
+	// rung below its parent's NEW level. That is the same walk `computeLevel` runs
+	// once these writes land, so the plan and the model it produces cannot disagree —
+	// and it holds under focus mode, where visual depth is re-rooted.
+	const walk = (node: BacklogItem, nodeLevel: number) => {
+		const childLevel = nextLevelIndex(nodeLevel, settings.levels);
 		for (const child of node.children) {
 			// The cascade stops at a note the Base excluded — a filter can leave one
 			// *between* two results (Epic and PBI returned, the Feature between them
@@ -127,15 +131,18 @@ export function computeTypeChanges(
 			// leave a worse ladder than leaving that branch as it stands.
 			if (child.outsideFilter) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
-				const targetLevel = settings.levels[Math.min(newBaseIdx + (child.depth - dragged.depth), lastIdx)];
+				const targetLevel = settings.levels[childLevel];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
 					cascade.push({ file: child.file, typeName: targetLevel });
 				}
 			}
-			walk(child);
+			// A custom type outside the ladder is left alone but still occupies this
+			// rung, exactly as `computeLevel` treats an unknown type — so its own
+			// children carry on from here rather than restarting.
+			walk(child, childLevel);
 		}
 	};
-	walk(dragged);
+	walk(dragged, newBaseIdx);
 	return { typeField, cascade };
 }
 

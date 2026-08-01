@@ -1,4 +1,4 @@
-import { BasesAllOptions, BasesPropertyId, BasesViewConfig, parsePropertyId } from 'obsidian';
+import { BasesViewConfig, parsePropertyId } from 'obsidian';
 
 /**
  * Resolved, ready-to-use configuration for one Product Backlog view.
@@ -45,11 +45,11 @@ export interface BacklogSettings {
 }
 
 export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
-const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
+export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
 /** Property columns are fixed-width so values line up across rows; this is that width. */
-const DEFAULT_PROP_COLUMN_WIDTH = 132;
-const MIN_PROP_COLUMN_WIDTH = 80;
-const MAX_PROP_COLUMN_WIDTH = 280;
+export const DEFAULT_PROP_COLUMN_WIDTH = 132;
+export const MIN_PROP_COLUMN_WIDTH = 80;
+export const MAX_PROP_COLUMN_WIDTH = 280;
 
 export function defaultSettings(): BacklogSettings {
 	return {
@@ -124,170 +124,6 @@ export function configProblems(settings: BacklogSettings): string[] {
 		seen.add(name);
 	}
 	return problems;
-}
-
-const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
-
-/**
- * Options shown in the Bases toolbar "view options" menu. The focus level is
- * deliberately absent: it lives in the view's own toolbar, next to the New button
- * whose level it changes.
- */
-export function getViewOptions(): BasesAllOptions[] {
-	return [hierarchyGroup(), progressGroup(), newItemsGroup(), displayGroup()];
-}
-
-function hierarchyGroup(): BasesAllOptions {
-	return {
-		type: 'group',
-		displayName: 'Hierarchy',
-		items: [
-			{
-				type: 'property',
-				key: 'parentProperty',
-				displayName: 'Parent property',
-				default: 'note.parent',
-				placeholder: 'parent',
-				filter: notePropsOnly,
-			},
-			{
-				type: 'property',
-				key: 'orderProperty',
-				displayName: 'Order property',
-				default: 'note.order',
-				placeholder: 'order',
-				filter: notePropsOnly,
-			},
-			{
-				type: 'property',
-				key: 'typeProperty',
-				displayName: 'Item type property',
-				default: 'note.type',
-				placeholder: 'type',
-				filter: notePropsOnly,
-			},
-			{
-				type: 'text',
-				key: 'levels',
-				displayName: 'Levels (top → bottom)',
-				default: DEFAULT_LEVELS.join(', '),
-				placeholder: DEFAULT_LEVELS.join(', '),
-			},
-			{
-				type: 'toggle',
-				key: 'hierarchyOnly',
-				displayName: 'Ignore notes outside the hierarchy',
-				default: true,
-			},
-			{
-				type: 'toggle',
-				key: 'showOutsideParents',
-				displayName: 'Show parents outside the filter',
-				default: true,
-			},
-			{
-				type: 'toggle',
-				key: 'inferFolderHierarchy',
-				displayName: 'Infer hierarchy from folder notes',
-				default: false,
-			},
-			{
-				type: 'toggle',
-				key: 'autoAssignType',
-				displayName: 'Assign item type when moving',
-				default: true,
-			},
-		],
-	};
-}
-
-function progressGroup(): BasesAllOptions {
-	return {
-		type: 'group',
-		displayName: 'Progress',
-		items: [
-			{
-				type: 'property',
-				key: 'stateProperty',
-				displayName: 'State property',
-				placeholder: 'status',
-				filter: notePropsOnly,
-			},
-			{
-				type: 'text',
-				key: 'stateValues',
-				displayName: 'Workflow states (in order)',
-				default: '',
-				placeholder: 'New, Active, Done',
-			},
-			{
-				type: 'text',
-				key: 'doneValues',
-				displayName: 'States that count as done',
-				default: DEFAULT_DONE_VALUES.join(', '),
-				placeholder: DEFAULT_DONE_VALUES.join(', '),
-			},
-			{
-				type: 'toggle',
-				key: 'showCompleted',
-				displayName: 'Show completed items',
-				default: true,
-			},
-		],
-	};
-}
-
-function newItemsGroup(): BasesAllOptions {
-	return {
-		type: 'group',
-		displayName: 'New items',
-		items: [
-			{
-				type: 'folder',
-				key: 'newItemFolder',
-				displayName: 'Folder for new items',
-				placeholder: 'Same folder as existing items',
-			},
-		],
-	};
-}
-
-function displayGroup(): BasesAllOptions {
-	return {
-		type: 'group',
-		displayName: 'Display',
-		items: [
-			{
-				type: 'toggle',
-				key: 'showProperties',
-				displayName: 'Show visible properties on rows',
-				default: true,
-			},
-			{
-				type: 'slider',
-				key: 'propertyColumnWidth',
-				displayName: 'Property column width',
-				default: DEFAULT_PROP_COLUMN_WIDTH,
-				min: MIN_PROP_COLUMN_WIDTH,
-				max: MAX_PROP_COLUMN_WIDTH,
-				step: 4,
-			},
-			{
-				type: 'property',
-				key: 'tagsProperty',
-				displayName: 'Tags property',
-				default: 'note.tags',
-				placeholder: 'tags',
-				filter: notePropsOnly,
-			},
-			{
-				type: 'toggle',
-				key: 'showCounts',
-				displayName: 'Show descendant counts',
-				default: true,
-			},
-		],
-	};
 }
 
 /** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */

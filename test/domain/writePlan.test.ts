@@ -171,6 +171,68 @@ describe('computeDropWrites', () => {
 		expect(writes[0].typeName).toBe('Feature');
 	});
 
+	it('clamps the cascade at the deepest level for a subtree deeper than the ladder', () => {
+		const vault = new FakeVault();
+		// Five levels of nesting against a four-level ladder, moved one rung down.
+		vault.addFile('Host.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('L1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic B' });
+		vault.addFile('L2.md', { frontmatter: { type: 'PBI' }, parentLink: 'L1' });
+		vault.addFile('L3.md', { frontmatter: { type: 'Task' }, parentLink: 'L2' });
+		vault.addFile('L4.md', { frontmatter: { type: 'Task' }, parentLink: 'L3' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
+		const host = model.roots.find((r) => r.title === 'Host') as BacklogItem;
+
+		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, settings);
+
+		// Each rung shifts down one and the ladder's floor absorbs the rest: the two
+		// deepest notes are already Task and stay, so they are not written at all.
+		const byPath = new Map(writes.map((w) => [w.file.path, w.typeName]));
+		expect(byPath.get('Epic B.md')).toBe('Feature');
+		expect(byPath.get('L1.md')).toBe('PBI');
+		expect(byPath.get('L2.md')).toBe('Task');
+		expect(byPath.has('L3.md')).toBe(false);
+		expect(byPath.has('L4.md')).toBe(false);
+	});
+
+	it('retypes a level-skipping descendant by its position, not by its declared level', () => {
+		const vault = new FakeVault();
+		// A Task nested directly under an Epic: tree distance 1, declared distance 3.
+		// Chaining down the parent levels answers 1 — the rung it actually occupies.
+		vault.addFile('Host.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Straggler.md', { frontmatter: { type: 'Task' }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
+		const host = model.roots.find((r) => r.title === 'Host') as BacklogItem;
+
+		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, settings);
+
+		const byPath = new Map(writes.map((w) => [w.file.path, w.typeName]));
+		expect(byPath.get('Epic B.md')).toBe('Feature');
+		expect(byPath.get('Straggler.md')).toBe('PBI');
+	});
+
+	it('carries a custom-typed ancestor through the ladder without retyping it', () => {
+		const vault = new FakeVault();
+		// The Bugfix keeps its type but still occupies a rung, so its child
+		// continues from there rather than restarting at the dragged item's level.
+		vault.addFile('Host.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Bugfix.md', { frontmatter: { type: 'Bugfix' }, parentLink: 'Epic B' });
+		vault.addFile('Under.md', { frontmatter: { type: 'Epic' }, parentLink: 'Bugfix' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.roots.find((r) => r.title === 'Epic B') as BacklogItem;
+		const host = model.roots.find((r) => r.title === 'Host') as BacklogItem;
+
+		const writes = computeDropWrites(dragged, { parent: host, siblings: [], insertIndex: 0 }, settings);
+
+		const byPath = new Map(writes.map((w) => [w.file.path, w.typeName]));
+		expect(byPath.has('Bugfix.md')).toBe(false);
+		expect(byPath.get('Under.md')).toBe('Task');
+	});
+
 	it('cascade skips untyped descendants and does not fire without autoType', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });

@@ -1,7 +1,7 @@
 import { Plugin } from 'obsidian';
 import { promptCreateBacklogBase } from './commands/scaffold';
 import { rekeyBase } from './storage/collapseStore';
-import { getViewOptions } from './domain/settings';
+import { getViewOptions } from './domain/viewOptions';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
 
 export default class ProductBacklogPlugin extends Plugin {

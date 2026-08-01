@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 80
-status: Open
+status: Done
 priority: P3
 area: refactor
+closed: 2026-08-01
 created: 2026-07-31
 source: PR #14 maintainability review
 files:
@@ -50,3 +51,15 @@ Takes `rows.ts` to roughly 320 lines and gives both files a single subject.
 This is a genuine seam, unlike the splits fallow proposes for `create.ts`,
 `structure.ts` and `dropTargets.ts` — those are 115–140 line modules that each do one
 thing, and were deliberately left alone.
+
+---
+
+## Outcome
+
+Done as pure motion. `src/view/render/emptyStates.ts` now holds `renderLoadingState`,
+`renderEmptyState`, `emptyHint`, `renderFilterEmptyState` and `renderAllDoneState`;
+`renderTree` still decides *which* state applies, because that decision reads the model.
+`rows.ts` went 325 raw lines to 263, and the whole edit outside the move was three import
+lines — `rows.ts` dropped `newItemLevel`, `backlogView.ts` takes `renderLoadingState`
+from the new module. All 210 view tests passed untouched, which is the evidence that
+nothing but the address changed.

@@ -37,6 +37,8 @@ Azure DevOps Boards.
   - The toolbar's ✨ **Assign missing properties** button backfills `type` and `order` for
     notes that don't have them yet, without overwriting existing values — and never
     guesses a type for items whose parent is outside the view.
+- **Any of those writes can be taken back** — <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> or the ↩
+  toolbar button, however many notes the change touched (see [Undo](#undo)).
 
 ## Requirements
 
@@ -235,7 +237,7 @@ state — and the view honors reduced-motion and right-to-left settings.
 ### Keyboard
 
 <kbd>Tab</kbd> walks the view's toolbar — new item, the type picker, the focus level,
-backfill, expand and collapse all, the completed-items toggle and the filter box — and
+backfill, undo, expand and collapse all, the completed-items toggle and the filter box — and
 then reaches the tree as a single stop. Inside the tree the selected row moves with the
 arrow keys rather than with <kbd>Tab</kbd>, so a long backlog never becomes a long tab
 sequence; the row's own controls are reachable through the context menu.
@@ -355,9 +357,12 @@ way. Nothing is frozen while that happens: you can scroll, filter, expand and se
 throughout. The toolbar shows how far along the batch is (`Updating 12 of 340…`), and the
 commands that would be refused mid-batch grey out until it's done.
 
+Undoing one is a batch in its own right, with the same progress indicator: a backfill over
+three hundred notes comes back in a single press.
+
 ### Where the view remembers things
 
-Two different kinds of state, kept in two different places on purpose:
+Three different kinds of state, kept in three different places on purpose:
 
 - **Everything in the view options** — the properties, the levels, the focus level, the
   folder for new items — lives in the **`.base` file**. It describes the view itself, so
@@ -366,6 +371,10 @@ Two different kinds of state, kept in two different places on purpose:
   and per view name. It is your working position rather than a property of the backlog:
   it would be noise in a shared file, and a path per collapsed row is growth that file
   should not take. So it survives restarts and stays out of everyone else's way.
+- **What undo would put back** lives only in **memory**, for as long as the view is
+  open. It describes a change you just made, not the backlog, and the notes it refers to
+  may be edited by anything in the vault meanwhile — so an undo offered after a restart
+  would be a promise the plugin can't keep. Close the tab and the slot goes with it.
 
 A row nobody has ruled on yet opens collapsed, so a large backlog starts as a readable
 list of top-level items rather than a wall of every task. Once you open or close a row,
@@ -464,19 +473,22 @@ nothing above:
 
 | | |
 | --- | --- |
-| `domain/` | What a backlog *is*: tree building, ranking, drop-target math, view options. Reads the vault, never writes it, never touches the DOM. |
-| `storage/` | The only place anything is persisted: frontmatter, new notes, the `.base` file, collapse state. |
-| `view/` | The Bases view itself — rendering, drag & drop, keyboard, menus. |
+| `domain/` | What a backlog *is*: tree building, ranking, drop-target math, the view-options schema. Reads the vault, never writes it, never touches the DOM. |
+| `storage/` | The only place anything is persisted: frontmatter and its inverses, new notes, the `.base` file, collapse state. |
+| `view/` | The Bases view itself — rendering, drag & drop, keyboard, menus, undo. |
 | `commands/`, `ui/` | The "Create backlog" command, and the shared prompts. |
 
 The direction is enforced, not just documented: `eslint.config.mjs` fails the build if
 `domain/` imports from `view/`, and bans `processFrontMatter`, `vault.create` and
 `load/saveLocalStorage` anywhere outside `storage/` — so a new write path can't appear
-by accident.
+by accident. Several of the subtler invariants are checks rather than prose for the same
+reason: ranking may not run over the rendered (focus-mode) roots, a menu opened from a
+button must anchor to that button, and a hierarchy level may never be derived from the
+depth a row happens to be drawn at.
 
 The pure logic — tree building, drop planning, ranking, property backfill, note
-creation — is covered by node unit tests, and the interaction layer (rendering, drag &
-drop, keyboard, menus, creation prompts) by jsdom tests that dispatch real DOM events
+creation, undo capture and restore — is covered by node unit tests, and the interaction
+layer (rendering, drag & drop, keyboard, menus, creation prompts) by jsdom tests that dispatch real DOM events
 against the actual view, all running against a small mock of the `obsidian` module
 (`test/helpers/obsidian-mock.ts`). Coverage (v8) is threshold-enforced. Linting uses Obsidian's
 official [`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin)

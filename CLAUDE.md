@@ -36,7 +36,8 @@ mirrors the same directories.
 | --- | --- | --- |
 | `src/main.ts` | Registers the view via `registerBasesView`, plus the command | — |
 | **`domain/`** | **The backlog itself. Reads the vault, never writes it; never touches the DOM.** | |
-| `domain/settings.ts` | View options schema, config resolution, `configProblems` validation | node tests |
+| `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation | node tests |
+| `domain/viewOptions.ts` | The declarative Bases view-options schema (its `key`s are persisted user data) | node tests |
 | `domain/noteFields.ts` | Reading a work item's fields off a note: wikilink/bare/alias/list parents, tolerant numbers | node tests |
 | `domain/model.ts` | Tree building: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
 | `domain/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
@@ -51,6 +52,7 @@ mirrors the same directories.
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
 | `view/collapseState.ts` | Which rows are shut, the once-only default, and the debounced save | jsdom tests |
 | `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
+| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done | jsdom tests |
 | `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |

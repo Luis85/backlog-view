@@ -11,7 +11,8 @@ import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { renderToolbar, syncBusy } from './render/toolbar';
 import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
-import { refreshRowChildren, renderLoadingState, renderTree } from './render/rows';
+import { renderLoadingState } from './render/emptyStates';
+import { refreshRowChildren, renderTree } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';

@@ -135,7 +135,18 @@ export function displayType(item: BacklogItem, settings: BacklogSettings): strin
  */
 export function childLevelIndex(parent: BacklogItem | null, levels: string[]): number {
 	if (!parent) return 0;
-	return Math.min(parent.effectiveLevelIndex + 1, levels.length - 1);
+	return nextLevelIndex(parent.effectiveLevelIndex, levels);
+}
+
+/**
+ * One rung below `levelIndex`, clamped at the deepest configured level — the
+ * single statement of "what a child's level is". Exported so a walk that has a
+ * level in hand rather than an item (the autoType cascade, planning types for a
+ * subtree that has not been written yet) descends by the same rule the model
+ * will apply afterwards, instead of re-deriving it from tree depth.
+ */
+export function nextLevelIndex(levelIndex: number, levels: string[]): number {
+	return Math.min(levelIndex + 1, levels.length - 1);
 }
 
 // ------------------------------------------------------------- build phases
