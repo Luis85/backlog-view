@@ -340,11 +340,11 @@ for (const [, note] of notes) {
  * Neither could have caught it alone, which is the argument for checking it here rather
  * than in review.
  *
- * Both directions, because drift has two shapes: a child missing from the list, and a
- * listed use case that is no longer a child. Only PBIs are required — an `Issue` or a
- * `Bug` may hang from a Feature and is not a use case — but any listed note that is not a
- * child of this Feature is reported whatever its type, since that is precisely the stale
- * entry a reader would trust.
+ * Both directions, because drift has two shapes: a PBI child missing from the list, and a
+ * listed entry that is not one of this Feature's use cases — a note that has moved away, or
+ * a child of a type that was never a use case to begin with. The index is compared against
+ * the PBI children exactly: an `Issue` or a `Bug` may legally hang from a Feature, and
+ * accepting it in the list let "may hang here" quietly mean "may be indexed here".
  */
 for (const [name, note] of notes) {
 	if (note.type !== "Feature") continue;
