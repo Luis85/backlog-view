@@ -28,6 +28,52 @@ bug that exists today and that this PBI is the natural place to fix.
 Formatting is the other half: `columns.ts:276` renders `${done}/${total}` and
 `columns.ts:280` a bare descendant count. Both are numbers shown to a person.
 
+## Case folding is the same split again
+
+`toLowerCase()` appears **41 times** in `src/`, and the locale question divides them the
+way `text is not data` divides everything else in this feature — except that here the
+*dangerous* direction is the sweep, not the omission.
+
+**Eight sites are user-facing matching, and are wrong today.** They fold a needle and a
+haystack to compare them, so they should use the **requested** locale:
+
+| Site | Matches |
+| --- | --- |
+| `backlogView.ts:269,280` | Quick filter against note titles |
+| `rows.ts:212-213` | The same match, to highlight it in the title |
+| `prompts.ts:51,54` | Folder suggest |
+| `prompts.ts:81-82` | Tag suggest |
+
+`toLowerCase()` is locale-independent by specification, so in Turkish or Azerbaijani it
+folds `I` to `i` when the language folds it to `ı`. A user types what their keyboard and
+their language produce, and the filter silently fails to find a note that is plainly on
+screen — the worst kind of bug, because nothing is broken enough to report.
+
+**The other thirty-three must not be touched, and three of them would corrupt vaults.**
+They are not matching user text; they are canonicalizing *identity*:
+
+- `settings.ts:114` — `typeFolder.${typeName.toLowerCase()}`, which is a **persisted
+  option key**. Under `toLocaleLowerCase('tr')` an `Issue` folder would key on
+  `typefolder.ıssue`, so every Turkish user's type-folder configuration would silently
+  reset, and a vault configured in one locale would read differently in another. This is
+  precisely what `Persisted keys stay as written` exists to prevent.
+- `noteFields.ts:75` — `tagKey`, which the file already describes as the one place "same
+  tag" is decided.
+- `itemTypes.ts:59-60,105-107`, `model.ts:562-563`, `writePlan.ts:135,154` — matching a
+  `type:` value against the vocabulary. Locale-aware folding here means an Obsidian set to
+  Turkish stops recognizing `Issue`.
+
+So the rule is: **fold with the locale when comparing what the user typed against what
+they can see; fold without it when deciding what something *is*.** A blanket sweep to
+`toLocaleLowerCase` is not a partial fix, it is a data-corruption bug — which makes this
+the one item in this feature where doing nothing is safer than doing it carelessly.
+
+Two sites are neither. `keyboard.ts:32` folds `evt.key` to compare against `'z'`, and a
+`KeyboardEvent.key` is a protocol value, not text. `create.ts:92` upper-cases the first
+character of a sentence for display — which stops being right the moment that sentence
+comes from a catalog, since the capitalized form belongs *in* the message and not every
+script has case at all. That one belongs to `Every surface translated`.
+
 ## Two locales, not one
 
 The obvious reading — "pass the resolved locale" — is wrong, and it would preserve the
@@ -65,6 +111,14 @@ presentation of the user's own data, and follow the user. See
   `processFrontMatter` outside `storage/` already is.
 - Counts and ratios shown to the user go through `Intl.NumberFormat` for the **requested**
   locale.
+- The **eight** matching sites fold with `toLocaleLowerCase(requested)`; the other
+  thirty-three keep `toLowerCase()`. A check distinguishes them, because the two look
+  identical and one of them is a vault-corruption bug — `typeFolderKey` alone would reset
+  every Turkish user's type-folder configuration.
+- The reverse is explicitly a failure: a PR that "fixes locale handling" by replacing every
+  `toLowerCase()` has not met this criterion, it has broken `Persisted keys stay as
+  written`. That is the one place in this feature where a careless fix is worse than no
+  fix.
 - Sorting affects **presentation only**. `order` is a fractional rank and
   `entryIndex` is the Bases result order; neither is touched by collation, and no write
   path may depend on a locale-sorted list. The state and tag vocabularies are sorted for

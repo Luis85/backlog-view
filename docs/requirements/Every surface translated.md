@@ -78,5 +78,9 @@ which is correct: Obsidian needs a restart to change language.
   tooltip, and any file name a notice quotes.
 - The plugin name is not translated — Obsidian prefixes command names with it in the
   palette, and it is the plugin's identity in the community list.
+- The modal's detail line stops capitalizing its own first character. `create.ts:92` does
+  `${where[0].toUpperCase()}${where.substring(1)}` to sentence-case a fragment it built —
+  which is wrong once the fragment comes from the catalog, since the capitalized form
+  belongs *in* the message and not every script has case at all.
 - No behaviour changes. This is a text move; anything else found on the way is its own
   note.
