@@ -34,8 +34,11 @@ it.
 
 **Main flow**
 
-1. The walk that computes rollups also gathers each subtree's earliest start and latest
-   target — results only, traversing through context rows without counting them.
+1. The walk that computes rollups also gathers each subtree's date envelope — the
+   earliest and the latest of every date its results state, which is earliest start to
+   latest target when children carry both ends, and which cannot run backwards when
+   they carry one — results only, traversing through context rows without counting
+   them.
 2. A dateless parent over dated descendants renders the gathered span, styled as
    inferred so a reader can tell a plan somebody made from a summary the view drew.
 3. A parent's supplied dates win endpoint by endpoint: a parent with both renders
@@ -61,9 +64,11 @@ it.
 
 ## Acceptance criteria
 
-- A dateless parent renders its results-only subtree span — earliest start to latest
-  target — styled as inferred, faded where partly unknown, recomputed each render,
-  written nowhere.
+- A dateless parent renders its results-only date envelope — the earliest to the
+  latest of every date the subtree states; earliest start to latest target with
+  both-ended children, and never a reversed span whatever mix of single-ended
+  children it holds — styled as inferred, faded where partly unknown, recomputed
+  each render, written nowhere.
 - A parent's own dates always win endpoint by endpoint: a supplied end renders as
   stated even when children overflow it, an end left empty fills from the results-only
   subtree and carries the inferred styling alone, and an end neither supplies stays

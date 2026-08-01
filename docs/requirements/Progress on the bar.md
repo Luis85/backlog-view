@@ -54,6 +54,10 @@ thing that drifts.
   estimate field, and the fill says what it counts. If estimates ever arrive, the
   fill's source is one derivation to widen — the reason the trackers make the
   calculation configurable — but a measure must never imply data nobody recorded.
+- **1c — no state property is configured.** There is no done to count, so no fill
+  renders and no percentage is implied: the bar carries the descendant count the
+  tree's rollup column shows in exactly this configuration. A fill without a workflow
+  would report every subtree as unstarted, which is a claim nobody made.
 - **2a — "Show completed items" is off and the subtree is done.** Bar, card and any
   context row that stood only for it hide together; restoring the option restores
   them — the two narrowings rule the board states.
@@ -63,7 +67,9 @@ thing that drifts.
 ## Acceptance criteria
 
 - A parent's fill and counts equal the tree's rollup for the same item — derived at
-  render, stored nowhere, identical across projections.
+  render, stored nowhere, identical across projections; with no state property
+  configured, no fill renders and the descendant count is the whole report, as in
+  the tree.
 - Leaves render no fill and no counts.
 - Progress is count-based and says so; no estimate machinery is invented, and no
   percentage is ever written to a note.
