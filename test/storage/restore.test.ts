@@ -49,6 +49,23 @@ describe('inverse capture', () => {
 		expect(inverses).toEqual([]);
 	});
 
+	it('captures absence by own property, so a prototype-named key round-trips', async () => {
+		const vault = new FakeVault();
+		const item = vault.addFile('Item.md');
+
+		// 'toString' is a legal property name; `in` would report the inherited
+		// function as present and undo would then "restore" it.
+		const inverses = await writeCapturing(vault, [{ file: item, order: 10 }], {
+			...settings,
+			orderKey: 'toString',
+		});
+		expect(vault.fm('Item.md')['toString']).toBe(10);
+
+		await applyRestores(vault.app, inverses);
+
+		expect(Object.prototype.hasOwnProperty.call(vault.fm('Item.md'), 'toString')).toBe(false);
+	});
+
 	it('tells an absent parent key from an empty one, both directions', async () => {
 		const vault = new FakeVault();
 		const folderMode = { ...settings, folderHierarchy: true };

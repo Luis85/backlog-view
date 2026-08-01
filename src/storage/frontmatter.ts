@@ -187,7 +187,11 @@ function restoreInto(
 }
 
 function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
-	return key in fm ? { present: true, value: fm[key] } : { present: false };
+	// Own properties only: 'toString' is a legal frontmatter name on a note that
+	// lacks it, and `in` would report the inherited function as a prior value.
+	return Object.prototype.hasOwnProperty.call(fm, key)
+		? { present: true, value: fm[key] }
+		: { present: false };
 }
 
 /** Equality on raw frontmatter values — plain YAML data, so structural compare is sound. */

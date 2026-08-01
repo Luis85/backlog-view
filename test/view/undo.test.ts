@@ -130,36 +130,46 @@ describe('undoing the last change', () => {
 		expect(Notice.messages).toContain('Nothing to undo.');
 	});
 
-	it('a replay that fails partway keeps the unfinished remainder, not the prefix redo', async () => {
+	it('a failed replay keeps the remainder, and redo covers the whole batch after recovery', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('B.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('C.md', { frontmatter: { type: 'Epic' } });
 		const { containerEl } = makeView(vault);
 		const tree = treeOf(containerEl);
+		const orders = () => ['A.md', 'B.md', 'C.md'].map((p) => vault.fm(p)['order']);
 
 		// One batch over three files: the backfill assigns the missing orders.
 		containerEl
 			.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
-		expect(vault.fm('C.md')['order']).toBe(30);
+		expect(orders()).toEqual([10, 20, 30]);
 
 		// The replay runs newest-first (C, B, A); B's write fails after C restored.
 		vault.failWrites.add('B.md');
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
-		expect('order' in vault.fm('C.md')).toBe(false);
-		expect(vault.fm('B.md')['order']).toBe(20);
-		expect(vault.fm('A.md')['order']).toBe(10);
+		expect(orders()).toEqual([10, 20, undefined]);
 
-		// The next undo finishes the job — it must not redo C instead.
+		// The retry must not redo C — and it fails one file later itself.
 		vault.failWrites.delete('B.md');
+		vault.failWrites.add('A.md');
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
-		expect('order' in vault.fm('A.md')).toBe(false);
-		expect('order' in vault.fm('B.md')).toBe(false);
-		expect('order' in vault.fm('C.md')).toBe(false);
+		expect(orders()).toEqual([10, undefined, undefined]);
+
+		// The third attempt finishes the undo.
+		vault.failWrites.delete('A.md');
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect(orders()).toEqual([undefined, undefined, undefined]);
+
+		// And redo re-applies the WHOLE batch — the prefixes stranded by both
+		// failures included, not just the file the last attempt restored.
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect(orders()).toEqual([10, 20, 30]);
 	});
 
 	it('a no-op write does not cost the slot: re-picking the checked state keeps the real undo', async () => {

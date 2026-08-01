@@ -4,7 +4,8 @@ import { applyRestores, RestoreOutcome, RestoreWrite } from '../../storage/front
 /**
  * The undo replay, packaged for the view's write gate. The view owns the slot
  * (which batch is undoable) and the gate (one batch at a time); this module owns
- * running a replay and telling the user what it could not put back.
+ * running a replay, telling the user what it could not put back, and the
+ * bookkeeping that keeps undo and redo coherent across a replay failing partway.
  */
 
 /** How far a replay got — the view turns this into the retry remainder on failure. */
@@ -35,9 +36,51 @@ export function replayRun(
 	};
 }
 
-/** The restores a failed replay never reached, back in write order for the slot. */
-export function unfinishedRemainder(batch: RestoreWrite[], finished: number): RestoreWrite[] {
-	return batch.slice(finished).reverse();
+/**
+ * What a failed replay strands: the redo inverses of the prefix it DID restore,
+ * keyed to the remainder that has to complete before they mean anything again.
+ * Without this, the retry's own redo would re-apply only the tail and leave the
+ * prefix restored — files pointing two ways, the exact state the remainder rule
+ * exists to prevent, just in the redo direction.
+ */
+export class UndoRecovery {
+	private stash: { forSlot: RestoreWrite[]; redo: RestoreWrite[] } | null = null;
+
+	/**
+	 * A replay of `restores` completed; `slot` is what the run installed. Returns
+	 * the slot to keep — any stashed prefix redo rejoined in front, so the next
+	 * undo re-applies the whole recovered batch. Settles the stash either way.
+	 */
+	completed(restores: RestoreWrite[], slot: RestoreWrite[] | null): RestoreWrite[] | null {
+		const carried = this.carried(restores);
+		if (this.stash?.forSlot === restores) this.stash = null;
+		if (carried.length === 0 || !slot || slot === restores) return slot;
+		return [...carried, ...slot];
+	}
+
+	/**
+	 * A replay of `restores` failed at `finished` of `batch` (newest-first).
+	 * Returns the unfinished remainder for the slot — the next undo finishes
+	 * taking the change back instead of redoing the prefix — and stashes the
+	 * prefix's redo (`installed`, when the failed run installed one) toward that
+	 * retry's completion. Chained failures accumulate into one stash.
+	 */
+	failed(
+		restores: RestoreWrite[],
+		batch: RestoreWrite[],
+		finished: number,
+		installed: RestoreWrite[] | null,
+	): RestoreWrite[] {
+		const remainder = batch.slice(finished).reverse();
+		const prefixRedo = installed && installed !== restores ? installed : [];
+		this.stash = { forSlot: remainder, redo: [...this.carried(restores), ...prefixRedo] };
+		return remainder;
+	}
+
+	/** The stashed redo waiting on `restores`; [] when the stash is for another batch. */
+	private carried(restores: RestoreWrite[]): RestoreWrite[] {
+		return this.stash?.forSlot === restores ? this.stash.redo : [];
+	}
 }
 
 /** Say what an undo could not put back; a clean undo shows in the tree itself. */

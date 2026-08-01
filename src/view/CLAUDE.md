@@ -40,10 +40,12 @@ free of runtime code so imports stay cycle-free.
   no-op keeps it. A replay that FAILED partway swaps the slot to its unfinished
   remainder, so the next undo finishes taking the change back — the restored prefix
   already installed its redo, and leaving that would make the next undo re-apply the
-  prefix while the rest stays forward. The prefix's redo is the price; redo returns
-  once an undo completes. The Ctrl/Cmd+Z chord is handled before the empty-model
-  return in `handleTreeKeydown`: the change being undone may be exactly what emptied
-  the tree.
+  prefix while the rest stays forward. That stranded prefix redo is not lost either:
+  `UndoRecovery` stashes it against the remainder and rejoins it when the retry
+  completes, so redo re-applies the whole recovered batch and never only its tail —
+  chained failures accumulate into the same stash. The Ctrl/Cmd+Z chord is handled
+  before the empty-model return in `handleTreeKeydown`: the change being undone may
+  be exactly what emptied the tree.
 
 ## What is rendered, and what is merely hidden
 

@@ -163,8 +163,12 @@ failed replay keeps it for the retry a transient error deserves. A fifth round
 sharpened that last rule: a replay that fails partway swaps the slot to its
 unfinished remainder, because the restored prefix had already installed its redo
 — retrying from that would re-apply the prefix while the rest stayed forward.
-The next undo now finishes the job; the prefix's redo is the accepted price, and
-redo returns once an undo completes.
+The next undo now finishes the job. A sixth closed the two ends of that story:
+the stranded prefix redo is stashed (`UndoRecovery`) and rejoined when the
+remainder's retry completes, so redo re-applies the whole recovered batch rather
+than only its tail, chained failures included — and key absence is captured with
+an own-property check, so a property named like an `Object.prototype` member
+(`toString`) round-trips instead of "restoring" the inherited function.
 
 Not verifiable here, as ever: the button's look in a live vault — the standing
 jsdom limit recorded in [smoke-test-the-visual-changes](smoke-test-the-visual-changes.md).

@@ -8,7 +8,7 @@ import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from '../domai
 import { DropTarget } from '../domain/dropTargets';
 import { computeDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
-import { ReplayTracker, replayRun, unfinishedRemainder } from './interactions/undo';
+import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { renderToolbar, syncBusy } from './render/toolbar';
 import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
 import { refreshRowChildren, renderLoadingState, renderTree } from './render/rows';
@@ -48,6 +48,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * session-only undo. Replaced only by a batch that actually changed something.
 	 */
 	private lastUndo: RestoreWrite[] | null = null;
+	/** Keeps undo and redo coherent when a replay fails partway — see UndoRecovery. */
+	private readonly recovery = new UndoRecovery();
 	/** A data update that arrived mid-batch and is waiting for it to finish. */
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
@@ -489,15 +491,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const batch = [...restores].reverse();
 		const tracker: ReplayTracker = { finished: 0 };
 		const ok = await this.runExclusively(batch.length, replayRun(this.app, batch, tracker), restores);
-		// A replay that failed partway holds its place: the slot gets the UNFINISHED
-		// remainder, so the next undo finishes taking the change back — the restored
-		// prefix has already swapped its redo in as lastUndo, and leaving that would
-		// make the next undo re-apply the prefix while the rest stays forward, files
-		// pointing two ways with no path out. The prefix's redo is the accepted
-		// price; redo returns once an undo completes. A throw on the FIRST file
-		// installed nothing, so the original slot is still in place for the retry.
-		if (!ok && tracker.finished > 0 && tracker.finished < batch.length) {
-			this.lastUndo = unfinishedRemainder(batch, tracker.finished);
+		if (ok) {
+			// Rejoin any redo stranded by the failure this replay just recovered
+			// from, so the next undo re-applies the WHOLE batch, not only the tail.
+			this.lastUndo = this.recovery.completed(restores, this.lastUndo);
+		} else if (tracker.finished > 0 && tracker.finished < batch.length) {
+			// A replay that failed partway holds its place: the slot gets the
+			// unfinished remainder, so the next undo finishes taking the change back
+			// rather than redoing the restored prefix — whose redo waits in the
+			// stash. A throw on the FIRST file installed nothing, so the original
+			// slot (and any stash pointed at it) simply stays for the retry.
+			this.lastUndo = this.recovery.failed(restores, batch, tracker.finished, this.lastUndo);
 		}
 		return ok;
 	}
