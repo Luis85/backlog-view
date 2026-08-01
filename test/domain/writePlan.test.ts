@@ -255,6 +255,33 @@ describe('computeDropWrites', () => {
 		expect(writes.some((w) => w.file.path === 'Bug Task.md')).toBe(false);
 	});
 
+	it('keeps a NESTED extra type pinned, so a moved subtree cannot corrupt its children', () => {
+		const vault = new FakeVault();
+		// The dragged item is an ordinary rung; the Bug is inside the subtree it moves.
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('Bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Feature' });
+		vault.addFile('Bug Task.md', { frontmatter: { type: 'Task' }, parentLink: 'Bug' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const dragged = model.byPath.get('Feature.md') as BacklogItem;
+
+		// Feature → top level, so the walk below it shifts up a rung.
+		const writes = computeDropWrites(
+			dragged,
+			{ parent: null, siblings: siblingsWithout(model.realRoots, dragged), insertIndex: 1 },
+			settings,
+		);
+
+		const byPath = new Map(writes.map((w) => [w.file.path, w.typeName]));
+		expect(byPath.get('Feature.md')).toBe('Epic');
+		// The Bug is skipped, as any non-rung is...
+		expect(byPath.has('Bug.md')).toBe(false);
+		// ...but the walk must descend from the Bug's OWN pinned rank, not from the
+		// position it inherited: otherwise its Task is rewritten to PBI while the Bug
+		// itself looks untouched.
+		expect(byPath.has('Bug Task.md')).toBe(false);
+	});
+
 	it('cascade skips untyped descendants and does not fire without autoType', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });

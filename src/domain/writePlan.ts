@@ -112,14 +112,25 @@ export function computeTypeChanges(
 	const cascade: ItemWrite[] = [];
 	if (!parentChanged || !settings.autoType) return { cascade };
 
-	// A declared extra type is never re-typed by position — dropping a Bug under an Epic
-	// leaves a Bug — and its subtree descends from ITS rung rather than from where it
-	// landed, which is exactly what pinning that rank is for: the Tasks under a Bug stay
-	// Tasks whether the Bug hangs from an Epic or from a PBI.
-	const draggedIsExtra = isExtraType(dragged.typeName, settings);
-	const newBaseIdx = draggedIsExtra ? extraTypeRank(settings.levels) : childLevelIndex(parent, settings.levels);
+	/**
+	 * The rung an item occupies after the move. A declared extra type carries its own,
+	 * pinned — that is what makes a Bug's children Tasks under an Epic as under a PBI —
+	 * and everything else takes the rung its position gives it.
+	 *
+	 * This applies at EVERY node, not just the dragged one. An extra type nested inside
+	 * a moved subtree is skipped by the retyping below (it has no `levelIndex`), but the
+	 * walk still has to descend from its rank rather than from the position it inherited,
+	 * or moving a Feature that contains a Bug rewrites that Bug's Tasks to PBIs — the
+	 * item left alone, its children silently corrupted.
+	 */
+	const extraRank = extraTypeRank(settings.levels);
+	const rankOf = (item: BacklogItem, positional: number): number =>
+		isExtraType(item.typeName, settings) ? extraRank : positional;
+
+	const newBaseIdx = rankOf(dragged, childLevelIndex(parent, settings.levels));
 	let typeField: string | undefined;
-	if (!draggedIsExtra) {
+	// An extra type is never re-typed by position: dropping a Bug under an Epic leaves a Bug.
+	if (!isExtraType(dragged.typeName, settings)) {
 		const implied = settings.levels[newBaseIdx];
 		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
 			typeField = implied;
@@ -147,7 +158,7 @@ export function computeTypeChanges(
 			// A custom type outside the ladder is left alone but still occupies this
 			// rung, exactly as `computeLevel` treats an unknown type — so its own
 			// children carry on from here rather than restarting.
-			walk(child, childLevel);
+			walk(child, rankOf(child, childLevel));
 		}
 	};
 	walk(dragged, newBaseIdx);
