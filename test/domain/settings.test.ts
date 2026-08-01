@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { configProblems, DEFAULT_LEVELS, defaultSettings, resolveSettings, stateMenuValues } from '../../src/domain/settings';
+import { configProblems, defaultSettings, resolveSettings, stateMenuValues } from '../../src/domain/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -33,15 +33,6 @@ describe('resolveSettings', () => {
 	it('ignores non-note properties and keeps the default key', () => {
 		const settings = resolveSettings(fakeConfig({ parentProperty: 'file.name' }));
 		expect(settings.parentKey).toBe('parent');
-	});
-
-	it('parses the levels list, trimming blanks', () => {
-		const settings = resolveSettings(fakeConfig({ levels: ' Theme , Initiative ,, Story ' }));
-		expect(settings.levels).toEqual(['Theme', 'Initiative', 'Story']);
-	});
-
-	it('uses the default levels when the list is empty', () => {
-		expect(resolveSettings(fakeConfig({ levels: ' , ' })).levels).toEqual(DEFAULT_LEVELS);
 	});
 
 	it('reads toggles and normalizes the home folder', () => {

@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import {
-	allTypeChoices,
-	childTypeChoices,
-	extraTypeRank,
-	folderForType,
-	isExtraType,
-} from '../../src/domain/itemTypes';
-import { defaultSettings, defaultTypeFolder, resolveSettings } from '../../src/domain/settings';
+import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, isExtraType } from '../../src/domain/itemTypes';
+import { ALL_TYPES, defaultSettings, defaultTypeFolder, LEVELS, resolveSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -46,7 +40,7 @@ describe('extra types on the ladder', () => {
 	it('ranks an extra type by its type, not by where it hangs', () => {
 		const { get } = fixture();
 		// Rank is pinned: the Bug sits under an Epic, which would imply a Feature.
-		expect(get('Bug').effectiveLevelIndex).toBe(extraTypeRank(settings.levels));
+		expect(get('Bug').effectiveLevelIndex).toBe(EXTRA_TYPE_RANK);
 		expect(get('Bug').effectiveLevelIndex).toBe(get('PBI').effectiveLevelIndex);
 		// It is not a rung, so nothing may re-type it by position.
 		expect(get('Bug').levelIndex).toBe(-1);
@@ -73,7 +67,7 @@ describe('extra types on the ladder', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const level = (title: string) => {
 			const item = model.items.find((i) => i.title === title);
-			return item ? settings.levels[item.effectiveLevelIndex] : '';
+			return item ? LEVELS[item.effectiveLevelIndex] : '';
 		};
 		expect(level('High Child.md'.replace('.md', ''))).toBe('Task');
 		expect(level('Low Child')).toBe('Task');
@@ -83,16 +77,16 @@ describe('extra types on the ladder', () => {
 describe('childTypeChoices', () => {
 	it('offers the extra types under every rung above the deepest', () => {
 		const { get } = fixture();
-		expect(childTypeChoices(get('Epic'), settings)).toEqual(['Feature', 'Issue', 'Bug']);
-		expect(childTypeChoices(get('Feature'), settings)).toEqual(['PBI', 'Issue', 'Bug']);
-		expect(childTypeChoices(get('PBI'), settings)).toEqual(['Task', 'Issue', 'Bug']);
+		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug']);
+		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug']);
+		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug']);
 	});
 
 	it('offers no extras under a Task or under an extra type', () => {
 		const { get } = fixture();
 		// Nothing hangs below a Task, and an extra type holds only the deepest level.
-		expect(childTypeChoices(get('Task'), settings)).toEqual(['Task']);
-		expect(childTypeChoices(get('Bug'), settings)).toEqual(['Task']);
+		expect(childTypeChoices(get('Task'))).toEqual(['Task']);
+		expect(childTypeChoices(get('Bug'))).toEqual(['Task']);
 	});
 
 	it('lets an unknown custom type carry on down the ladder, without extras', () => {
@@ -101,63 +95,29 @@ describe('childTypeChoices', () => {
 		// it occupies the slot below its Epic and its children are the slot below that —
 		// a Bug in the same place would offer Tasks. Neither offers the extra types,
 		// because neither is a rung this view can reason from.
-		expect(childTypeChoices(get('Bugfix'), settings)).toEqual(['PBI']);
+		expect(childTypeChoices(get('Bugfix'))).toEqual(['PBI']);
 	});
 
 	it('offers only the top level at the top level', () => {
 		// A Bug hangs from something; creating a parentless one would make an item whose
 		// own rule says it should have had a parent.
-		expect(childTypeChoices(null, settings)).toEqual(['Epic']);
+		expect(childTypeChoices(null)).toEqual(['Epic']);
 	});
 
 	it('offers the ladder then the extras for assignment by hand', () => {
-		expect(allTypeChoices(settings)).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
 	});
 
-	it('falls back to the ladder alone when the extra types are turned off', () => {
-		const { get } = fixture();
-		const none = { ...settings, extraTypes: [] };
-		expect(childTypeChoices(get('Epic'), none)).toEqual(['Feature']);
-		expect(allTypeChoices(none)).toEqual(['Epic', 'Feature', 'PBI', 'Task']);
-	});
-});
-
-describe('extra types in the view options', () => {
-	it('defaults to Issue and Bug, and matches case-insensitively', () => {
-		expect(resolveSettings(fakeConfig()).extraTypes).toEqual(['Issue', 'Bug']);
-		expect(isExtraType('bug', settings)).toBe(true);
-		expect(isExtraType('Bugfix', settings)).toBe(false);
-		expect(isExtraType(null, settings)).toBe(false);
+	it('is a fixed vocabulary, matched case-insensitively', () => {
+		// Not configurable on purpose: every level rule would otherwise have to hold for
+		// any list a user can type, and the reward was a rename.
+		expect(LEVELS).toEqual(['Epic', 'Feature', 'PBI', 'Task']);
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		expect(isExtraType('bug')).toBe(true);
+		expect(isExtraType('Bugfix')).toBe(false);
+		expect(isExtraType(null)).toBe(false);
 	});
 
-	it('treats a cleared list as off, not as unset', () => {
-		// Same rule as the tags property: this option defaults to something real, so
-		// clearing it has to be able to mean "none" or it could never be turned off.
-		expect(resolveSettings(fakeConfig({ extraTypes: '' })).extraTypes).toEqual([]);
-		expect(resolveSettings(fakeConfig({ extraTypes: ' , ' })).extraTypes).toEqual([]);
-	});
-
-	it('parses and dedupes the configured list', () => {
-		const resolved = resolveSettings(fakeConfig({ extraTypes: ' Defect , Spike ,, defect ' }));
-		expect(resolved.extraTypes).toEqual(['Defect', 'Spike']);
-	});
-
-	it('yields a name that is already a level instead of reporting a collision', () => {
-		// The level wins wherever both are read, so the declaration is merely inert —
-		// and gating every write in the view over an inert duplicate would be worse.
-		const resolved = resolveSettings(fakeConfig({ extraTypes: 'PBI, Bug' }));
-		expect(resolved.extraTypes).toEqual(['Bug']);
-	});
-
-	it('ranks extras against a reconfigured ladder', () => {
-		const resolved = resolveSettings(fakeConfig({ levels: 'Theme, Story, Chore' }));
-		// Always the rung whose children are the deepest level, whatever that ladder is.
-		expect(extraTypeRank(resolved.levels)).toBe(1);
-		expect(resolved.levels[extraTypeRank(resolved.levels)]).toBe('Story');
-	});
-});
-
-describe('extra types and the hierarchy scope', () => {
 	it('keeps a parentless extra type in the model', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
@@ -207,14 +167,6 @@ describe('folders by type', () => {
 		expect(folderForType('Bug', resolveSettings(fakeConfig({ 'typeFolder.bug': '' })))).toBeNull();
 	});
 
-	it('gives a renamed level no folder of its own', () => {
-		// This plugin never chose that name, so it has no opinion about where it goes —
-		// the home folder is the honest answer rather than a guess.
-		const resolved = resolveSettings(fakeConfig({ levels: 'Theme, Story, Chore' }));
-		expect(folderForType('Theme', resolved)).toBeNull();
-		expect(resolved.homeFolder).toBe('docs');
-	});
-
 	it('does not read a type name off Object.prototype', () => {
 		// A level or extra type named `constructor` finds a function on a plain record,
 		// which is truthy — the creation flow would take it for a path and fail on
@@ -223,16 +175,10 @@ describe('folders by type', () => {
 			expect(folderForType(name, settings)).toBeNull();
 			expect(folderForType(name, { ...settings, typeFolders: {} })).toBeNull();
 		}
-		// And such a name can still be MAPPED, rather than being a hole the other way.
-		const mapped = resolveSettings(fakeConfig({ extraTypes: 'constructor', 'typeFolder.constructor': 'odd' }));
-		expect(folderForType('constructor', mapped)).toBe('odd');
-
-		// The DEFAULT table is a second lookup and needs the same guard: unset, such a
-		// type must fall back to the home folder, not to `docs/function Object() {…}`.
+		// The DEFAULT table is a second lookup and needs the same guard: such a name must
+		// answer nothing, not `docs/function Object() {…}`.
 		expect(defaultTypeFolder('constructor')).toBe('');
-		const unset = resolveSettings(fakeConfig({ extraTypes: 'constructor, toString' }));
-		expect(folderForType('constructor', unset)).toBeNull();
-		expect(folderForType('toString', unset)).toBeNull();
+		expect(defaultTypeFolder('__proto__')).toBe('');
 	});
 
 	it('moves every untouched type folder with the home folder', () => {

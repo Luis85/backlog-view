@@ -169,7 +169,7 @@ describe('badges', () => {
 		badge.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
 
 		// Both: the name the cap hid, and why the badge is dashed
-		expect(badge.dataset.tooltip).toContain('Programme Increment');
+		expect(badge.dataset.tooltip).toContain('Epic');
 		expect(badge.dataset.tooltip).toContain('Type property not set');
 	});
 });

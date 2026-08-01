@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getViewOptions } from '../../src/domain/viewOptions';
 
-/** Stand-in for BasesViewConfig backed by a plain object. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return { get: (key: string) => values[key], getAsPropertyId: () => null } as never;
-}
 
 /**
  * The schema is persisted user data: every `key` here is written into a `.base`
@@ -13,20 +9,19 @@ function fakeConfig(values: Record<string, unknown> = {}) {
  */
 describe('getViewOptions', () => {
 	it('declares every config key the view reads', () => {
-		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		const keys = flat.map((o) => o.key);
 		expect(keys).toEqual(
 			expect.arrayContaining([
 				'parentProperty',
 				'orderProperty',
 				'typeProperty',
-				'levels',
 				'hierarchyOnly',
 				'inferFolderHierarchy',
 				'autoAssignType',
 				'stateProperty',
 				'doneValues',
-
+				'homeFolder',
 				'showProperties',
 				'showCounts',
 			]),
@@ -38,17 +33,24 @@ describe('getViewOptions', () => {
 		expect(flat.some((o) => o.key === 'focusLevel')).toBe(false);
 	});
 
-	it('declares a folder option per configured type, not one mapping to typo', () => {
-		// The option list is built from the view's own config, so a vault with a
-		// different vocabulary gets a picker per name it actually uses.
-		const flat = getViewOptions(fakeConfig({ levels: 'Theme, Story', extraTypes: 'Spike' })).flatMap((o) =>
-			'items' in o ? o.items : [o],
-		);
+	it('declares a folder option per type, not one mapping to typo', () => {
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		const keys = flat.map((o) => o.key);
-		expect(keys).toEqual(expect.arrayContaining(['typeFolder.theme', 'typeFolder.story', 'typeFolder.spike']));
-		expect(keys).not.toContain('typeFolder.epic');
+		// The vocabulary is fixed, so the schema is static and names every type it has.
+		expect(keys).toEqual(
+			expect.arrayContaining([
+				'typeFolder.epic',
+				'typeFolder.feature',
+				'typeFolder.pbi',
+				'typeFolder.task',
+				'typeFolder.issue',
+				'typeFolder.bug',
+			]),
+		);
+		// And no option offers the vocabulary itself for editing.
+		expect(keys).not.toContain('levels');
+		expect(keys).not.toContain('extraTypes');
 	});
-
 	it('declares the progress and display option keys', () => {
 		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		expect(flat.map((o) => o.key)).toEqual(

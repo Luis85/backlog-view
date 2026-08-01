@@ -5,7 +5,7 @@ import { showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType, isExtraType } from '../../domain/itemTypes';
-import { byTypeName } from '../../domain/settings';
+import { byTypeName, EXTRA_TYPES, LEVELS } from '../../domain/settings';
 import {
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
@@ -111,7 +111,7 @@ function renderItem(
 	// into an empty group would be a lie (its progress bar tells the story).
 	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
 	const collapsed = host.isCollapsed(item.file.path);
-	const childTypes = childTypeChoices(item, host.settings);
+	const childTypes = childTypeChoices(item);
 
 	const selected = host.selectedPath === item.file.path;
 	const row = containerEl.createDiv({
@@ -221,16 +221,16 @@ function renderTitleText(host: BacklogViewHost, titleEl: HTMLElement, text: stri
 }
 
 function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
-	const badgeText = displayType(item, host.settings);
+	const badgeText = displayType(item);
 	if (!badgeText) return;
 	const badge = row.createSpan({ cls: 'pbl-badge' });
 	// A declared extra type is a first-class type, so it gets a badge like a level's
 	// rather than the bare-text treatment reserved for a type this view knows nothing
 	// about — its own icon and colour where this plugin named it, and a slot past the
 	// end of the ladder where it did not, so it always reads as beside the levels.
-	const extra = isExtraType(item.typeName, host.settings);
+	const extra = isExtraType(item.typeName);
 	const style = extra ? byTypeName(EXTRA_TYPE_STYLE, badgeText) : undefined;
-	const extraIdx = extra ? host.settings.extraTypes.findIndex((t) => t.toLowerCase() === badgeText.toLowerCase()) : -1;
+	const extraIdx = extra ? EXTRA_TYPES.findIndex((t) => t.toLowerCase() === badgeText.toLowerCase()) : -1;
 	if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
 	} else if (extra) {
@@ -239,7 +239,7 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
 	else if (style) badge.addClass(style.badge);
-	else if (extraIdx >= 0) badge.addClass(`pbl-lvl-${(host.settings.levels.length + extraIdx) % BADGE_COLOR_COUNT}`);
+	else if (extraIdx >= 0) badge.addClass(`pbl-lvl-${(LEVELS.length + extraIdx) % BADGE_COLOR_COUNT}`);
 	else badge.addClass('pbl-lvl-unknown');
 	const implied = item.impliedType
 		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'

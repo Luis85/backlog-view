@@ -359,7 +359,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
-		const childTypes = childTypeChoices(item, this.settings);
+		const childTypes = childTypeChoices(item);
 		const menu = buildItemMenu(this, item, childTypes);
 		if (!menu) return;
 		const rect = this.rowElFor(item)?.getBoundingClientRect();

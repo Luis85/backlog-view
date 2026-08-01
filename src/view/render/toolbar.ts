@@ -4,7 +4,8 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogModel } from '../../domain/model';
-import { allTypeChoices, displayType, focusTarget } from '../../domain/itemTypes';
+import { displayType, focusTarget } from '../../domain/itemTypes';
+import { ALL_TYPES, EXTRA_TYPES, LEVELS } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
@@ -26,7 +27,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		// Every declared type, extras included: this menu is the one place a top-level
 		// item of any type can be made, and an Issue raised against nothing in
 		// particular is a real thing to want.
-		for (const type of allTypeChoices(host.settings)) {
+		for (const type of ALL_TYPES) {
 			menu.addItem((mi) =>
 				mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
 			);
@@ -219,10 +220,10 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 					.onClick(() => setLevel(level)),
 			);
 		choice('', 'All types');
-		for (const level of host.settings.levels) choice(level, level);
+		for (const level of LEVELS) choice(level, level);
 		// Extra types are focusable too: they rank with a level, so a view of just the
 		// bugs is the same kind of view as one of just the PBIs.
-		for (const extra of host.settings.extraTypes) choice(extra, extra);
+		for (const extra of EXTRA_TYPES) choice(extra, extra);
 		showMenuForClick(menu, evt);
 	});
 
@@ -240,7 +241,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
 	const byLevel = new Map<string, number>();
 	for (const item of model.results) {
-		const label = displayType(item, host.settings) || 'Untyped';
+		const label = displayType(item) || 'Untyped';
 		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
 	}
 	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');

@@ -1,8 +1,8 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, extraTypeRank, isExtraType, nextLevelIndex } from './itemTypes';
-import { BacklogSettings } from './settings';
+import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
+import { BacklogSettings, LEVELS } from './settings';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -123,15 +123,15 @@ export function computeTypeChanges(
 	 * or moving a Feature that contains a Bug rewrites that Bug's Tasks to PBIs — the
 	 * item left alone, its children silently corrupted.
 	 */
-	const extraRank = extraTypeRank(settings.levels);
+	const extraRank = EXTRA_TYPE_RANK;
 	const rankOf = (item: BacklogItem, positional: number): number =>
-		isExtraType(item.typeName, settings) ? extraRank : positional;
+		isExtraType(item.typeName) ? extraRank : positional;
 
-	const newBaseIdx = rankOf(dragged, childLevelIndex(parent, settings.levels));
+	const newBaseIdx = rankOf(dragged, childLevelIndex(parent));
 	let typeField: string | undefined;
 	// An extra type is never re-typed by position: dropping a Bug under an Epic leaves a Bug.
-	if (!isExtraType(dragged.typeName, settings)) {
-		const implied = settings.levels[newBaseIdx];
+	if (!isExtraType(dragged.typeName)) {
+		const implied = LEVELS[newBaseIdx];
 		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
 			typeField = implied;
 		}
@@ -142,7 +142,7 @@ export function computeTypeChanges(
 	// once these writes land, so the plan and the model it produces cannot disagree —
 	// and it holds under focus mode, where visual depth is re-rooted.
 	const walk = (node: BacklogItem, nodeLevel: number) => {
-		const childLevel = nextLevelIndex(nodeLevel, settings.levels);
+		const childLevel = nextLevelIndex(nodeLevel);
 		for (const child of node.children) {
 			// The cascade stops at a note the Base excluded — a filter can leave one
 			// *between* two results (Epic and PBI returned, the Feature between them
@@ -150,7 +150,7 @@ export function computeTypeChanges(
 			// leave a worse ladder than leaving that branch as it stands.
 			if (child.outsideFilter) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
-				const targetLevel = settings.levels[childLevel];
+				const targetLevel = LEVELS[childLevel];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
 					cascade.push({ file: child.file, typeName: targetLevel });
 				}
@@ -238,7 +238,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 			// don't write a type derived from its provisional top-level position.
 			const levelUnknown = item.parent === null && item.hasParentValue;
 			if (item.typeName === null && !levelUnknown) {
-				write.typeName = settings.levels[childLevelIndex(item.parent, settings.levels)];
+				write.typeName = LEVELS[childLevelIndex(item.parent)];
 				needed = true;
 			}
 			if (needed) writes.push(write);

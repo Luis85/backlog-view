@@ -6,7 +6,7 @@ import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
-import { allTypeChoices } from '../../domain/itemTypes';
+import { ALL_TYPES } from '../../domain/settings';
 import { addTagItems, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
@@ -239,7 +239,7 @@ function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	menu.addItem((mi) => {
 		mi.setTitle('Set type').setIcon('tag');
 		const submenu = submenuOf(mi);
-		for (const level of allTypeChoices(host.settings)) {
+		for (const level of ALL_TYPES) {
 			submenu.addItem((si) => {
 				si.setTitle(level).onClick(() => apply(level));
 				if (item.typeName !== null && item.typeName.toLowerCase() === level.toLowerCase()) {

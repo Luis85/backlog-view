@@ -27,8 +27,8 @@ Azure DevOps Boards.
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
-  - **`type`** — the hierarchy level (`Epic`, `Feature`, `PBI`, `Task`, … configurable), or one
-    of the **extra types** (`Issue`, `Bug`) that sit beside the ladder rather than on it.
+  - **`type`** — one of six: the ladder `Epic → Feature → PBI → Task`, or the **extra
+    types** `Issue` and `Bug` that sit beside it rather than on it.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
@@ -312,14 +312,14 @@ choices directly (`New PBI`, `New Issue`, `New Bug`), and `Set type` offers ever
 declared type. A row with only one option — a Task, or a Bug, which holds only Tasks —
 asks nothing and creates it straight away.
 
-`Issue` and `Bug` each get their own badge icon and colour — an alert in pink and a bug
-in red, distinct from the four level colours. A type you name yourself gets a neutral
-mark instead, since the plugin has no way to know what it means.
+`Issue` and `Bug` each get their own badge icon and colour — an alert in pink and a bug in
+red, distinct from the four level colours. They rank with `PBI`, so focusing that level
+shows them beside it rather than hiding them.
 
-Rename them, add your own (`Defect, Spike`), or clear the option to turn the whole idea
-off, under **Extra types** in the view options. A name that is already a level is ignored,
-since the level would win anyway. They rank with the second-lowest level, so focusing that
-level shows them beside it rather than hiding them.
+**The six types are fixed.** That is deliberate: a configurable vocabulary means every
+rule about levels has to hold for any list someone can type, and the reward is a rename.
+A note typed anything else keeps its own name on the badge and is carried through the
+ladder as before — nothing is rejected, it simply is not one of the six.
 
 None of this is enforced. The ladder has always guided what the view *offers* and what it
 *writes* without refusing a move you make deliberately, and extra types follow the same
@@ -478,8 +478,6 @@ Open the view options in the Bases toolbar to configure:
 | Parent property | `parent` | Note property that links to the parent item |
 | Order property | `order` | Numeric sibling rank |
 | Item type property | `type` | Hierarchy level of the item |
-| Levels (top → bottom) | `Epic, Feature, PBI, Task` | Comma-separated level names; also drives badge colors and icons |
-| Extra types | `Issue, Bug` | Types that sit beside the ladder: they hold the lowest level as children wherever they hang, and are never re-typed by a move. Clear it to turn them off |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
 | Assign item type when moving | off | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |

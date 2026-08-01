@@ -19,13 +19,10 @@ describe('rendering', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('An issue.md', { frontmatter: { type: 'Issue' }, parentLink: 'Epic' });
 		vault.addFile('A bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
-		// A type this plugin never named: it cannot be given a meaning, so it gets a
-		// neutral mark and a slot past the ladder rather than a guess.
+		// A type outside the vocabulary keeps its name and gets no icon at all — the
+		// bare-text treatment for something this view knows nothing about.
 		vault.addFile('A spike.md', { frontmatter: { type: 'Spike' }, parentLink: 'Epic' });
-		// A name that collides with Object.prototype must behave like any other unnamed
-		// extra type, not read a function off the style table.
-		vault.addFile('A ctor.md', { frontmatter: { type: 'constructor' }, parentLink: 'Epic' });
-		const { containerEl } = makeView(vault, { extraTypes: 'Issue, Bug, Spike, constructor' });
+		const { containerEl } = makeView(vault);
 
 		const badge = (title: string) => rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-badge');
 		const icon = (title: string) =>
@@ -33,16 +30,13 @@ describe('rendering', () => {
 
 		expect(icon('An issue')).toBe('circle-alert');
 		expect(icon('A bug')).toBe('bug');
-		expect(icon('A spike')).toBe('circle-dot');
+
 
 		// Colours are their own, not the next slot in the rotation, and distinct from
 		// each other and from every default level (0-3).
 		expect(badge('An issue')?.classList.contains('pbl-lvl-issue')).toBe(true);
 		expect(badge('A bug')?.classList.contains('pbl-lvl-bug')).toBe(true);
-		expect(badge('A spike')?.className).toMatch(/pbl-lvl-[4-7]\b/);
-		expect(icon('A ctor')).toBe('circle-dot');
-		expect(badge('A ctor')?.className).toMatch(/pbl-lvl-[4-7]\b/);
-		expect(badge('A ctor')?.className).not.toContain('undefined');
+		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
 	});
 
 	it('mutes a done row without striking its title through', () => {

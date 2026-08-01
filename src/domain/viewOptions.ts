@@ -1,19 +1,14 @@
-import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
+import { BasesAllOptions, BasesOptions, BasesPropertyId } from 'obsidian';
 import {
-	BacklogSettings,
+	ALL_TYPES,
 	DEFAULT_DONE_VALUES,
-	DEFAULT_EXTRA_TYPES,
 	DEFAULT_HOME_FOLDER,
-	DEFAULT_LEVELS,
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
-	defaultSettings,
 	defaultTypeFolder,
-	resolveSettings,
 	typeFolderKey,
 } from './settings';
-import { allTypeChoices } from './itemTypes';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
@@ -32,12 +27,8 @@ const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
  * deliberately absent: it lives in the view's own toolbar, next to the New button
  * whose level it changes.
  */
-export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
-	// Bases hands the view's own config to this callback, which is what lets the folder
-	// options be one per CONFIGURED type rather than one text field holding a mapping:
-	// a vault running Theme/Story gets a picker per name it actually uses.
-	const settings = config ? resolveSettings(config) : defaultSettings();
-	return [hierarchyGroup(), progressGroup(), newItemsGroup(settings), displayGroup()];
+export function getViewOptions(): BasesAllOptions[] {
+	return [hierarchyGroup(), progressGroup(), newItemsGroup(), displayGroup()];
 }
 
 function hierarchyGroup(): BasesAllOptions {
@@ -68,20 +59,6 @@ function hierarchyGroup(): BasesAllOptions {
 				default: 'note.type',
 				placeholder: 'type',
 				filter: notePropsOnly,
-			},
-			{
-				type: 'text',
-				key: 'levels',
-				displayName: 'Levels (top → bottom)',
-				default: DEFAULT_LEVELS.join(', '),
-				placeholder: DEFAULT_LEVELS.join(', '),
-			},
-			{
-				type: 'text',
-				key: 'extraTypes',
-				displayName: 'Extra types',
-				default: DEFAULT_EXTRA_TYPES.join(', '),
-				placeholder: DEFAULT_EXTRA_TYPES.join(', '),
 			},
 			{
 				type: 'toggle',
@@ -149,7 +126,7 @@ function progressGroup(): BasesAllOptions {
 	};
 }
 
-function newItemsGroup(settings: BacklogSettings): BasesAllOptions {
+function newItemsGroup(): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'New items',
@@ -163,15 +140,13 @@ function newItemsGroup(settings: BacklogSettings): BasesAllOptions {
 			},
 			// A picker per type, in ladder order then the extras. One input each is the
 			// difference between choosing a folder and spelling a mapping correctly.
-			...allTypeChoices(settings).map(
+			...ALL_TYPES.map(
 				(type): BasesOptions => ({
 					type: 'folder',
 					key: typeFolderKey(type),
 					displayName: `Folder for ${type} items`,
-					// Tracks the home folder above, so the value shown is the value that
-					// applies — and moving the home folder moves every untouched default.
-					default: defaultTypeFolder(type, settings.homeFolder),
-					placeholder: settings.homeFolder || 'Home folder',
+					default: defaultTypeFolder(type),
+					placeholder: 'Home folder',
 				}),
 			),
 		],

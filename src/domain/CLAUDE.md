@@ -61,7 +61,14 @@ in the root `CLAUDE.md` because it spans every layer.
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - The autoType cascade retypes only descendants whose type matches a configured
   level; custom types outside the ladder are deliberate user data.
-- **Extra types** (`settings.extraTypes`, default `Issue, Bug`) are declared types that are
+- The vocabulary is **fixed**: `LEVELS` and `EXTRA_TYPES` in `settings.ts` are constants,
+  not options. Making them configurable cost collision rules between the two lists, a
+  "what folder does a name nobody chose get" question with no good answer, and a schema
+  that had to be generated per view; what it bought was a rename. Being opinionated
+  deletes all of that, and every level rule now has exactly one list to hold for. A note
+  typed something else is still handled — it keeps its name and carries the ladder through,
+  the `Bugfix` case below.
+- **Extra types** (`EXTRA_TYPES`, `Issue` and `Bug`) are declared types that are
   NOT rungs — `itemTypes.ts` owns them. The ladder cannot express "a Bug holds Tasks
   wherever it hangs", because every ladder rule is "one rung below the parent", so an
   extra type's rank is a property of the TYPE: `extraTypeRank` (the rung whose children
@@ -77,16 +84,10 @@ in the root `CLAUDE.md` because it spans every layer.
   level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
   OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
   guided rather than refused.
-- Each type's folder is **its own option** (`typeFolder.<lowercased type>`), generated
-  from the view's own config — `getViewOptions` receives it, which is what lets the
-  schema depend on the vocabulary a vault actually uses. `typeFolderKey` is shared by
-  the schema and the resolver, because a persisted key spelled twice is a key that can
-  differ. Only the SHIPPED types have a default folder; a renamed level gets none and
-  falls back to `homeFolder`, which is the honest answer for a name this plugin never
-  chose. Each default is derived from the RESOLVED home folder, not from the constant, so
-  separate pickers did not cost "relocate a backlog in one setting" — the options are
-  generated per view, so the value shown in each box is the value that applies, and moving
-  the home folder moves every untouched one.
+- Each type's folder is **its own option** (`typeFolder.<lowercased type>`), one per type
+  in the fixed vocabulary, so a folder is picked rather than spelled into a mapping.
+  `typeFolderKey` is shared by the schema and the resolver, because a persisted key
+  spelled twice is a key that can differ.
   Type folders rank ahead of `homeFolder` and inference but behind folder mode's
   "beside the parent's folder note" rule — that mode makes folders the hierarchy, and a
   filing default must not quietly overrule an opt-in structural mode. Two consequences

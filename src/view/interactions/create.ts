@@ -5,7 +5,7 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/frontmatter';
-import { BacklogSettings, configProblems } from '../../domain/settings';
+import { BacklogSettings, configProblems, LEVELS } from '../../domain/settings';
 
 /**
  * Type for the primary New button: whatever the view is focused on when it is focused —
@@ -18,7 +18,7 @@ export function newItemType(settings: BacklogSettings, model: BacklogModel): str
 		const focus = focusTarget(settings);
 		if (focus) return focus;
 	}
-	return settings.levels[0];
+	return LEVELS[0];
 }
 
 /**

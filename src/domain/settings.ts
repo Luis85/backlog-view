@@ -8,13 +8,6 @@ export interface BacklogSettings {
 	parentKey: string;
 	orderKey: string;
 	typeKey: string;
-	levels: string[];
-	/**
-	 * Declared types that are not rungs on the ladder (Issue, Bug): they hold the
-	 * deepest level as children wherever they hang, and are never re-typed by position.
-	 * See `itemTypes.ts` for why the ladder cannot express them.
-	 */
-	extraTypes: string[];
 	/**
 	 * Only treat notes that belong to the work-item hierarchy as items: a supported
 	 * type (one of `levels`) or a parent. When off, every note the base returns is an item.
@@ -61,8 +54,19 @@ export interface BacklogSettings {
 	showCompleted: boolean;
 }
 
-export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
-export const DEFAULT_EXTRA_TYPES = ['Issue', 'Bug'];
+/**
+ * The work-item vocabulary, fixed. This plugin is opinionated about it on purpose: a
+ * configurable ladder means every level rule has to hold for any list a user can type,
+ * and the reward was a rename. What it cost was real — collision rules between levels
+ * and extra types, defaults that could not be stated for a name nobody chose, and a
+ * schema that had to be generated per view.
+ *
+ * `LEVELS` is the ladder, top to bottom; `EXTRA_TYPES` sit beside it (see `itemTypes.ts`).
+ */
+export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
+export const EXTRA_TYPES = ['Issue', 'Bug'];
+/** Every declared type, ladder first — the whole vocabulary in one list. */
+export const ALL_TYPES = [...LEVELS, ...EXTRA_TYPES];
 /**
  * The default mapping, kept as the text the option shows so the shipped default and the
  * parsed one cannot drift: `defaultSettings` parses this very string.
@@ -144,8 +148,6 @@ export function defaultSettings(): BacklogSettings {
 		parentKey: 'parent',
 		orderKey: 'order',
 		typeKey: 'type',
-		levels: [...DEFAULT_LEVELS],
-		extraTypes: [...DEFAULT_EXTRA_TYPES],
 		hierarchyOnly: true,
 		showOutsideParents: true,
 		folderHierarchy: false,
@@ -153,7 +155,7 @@ export function defaultSettings(): BacklogSettings {
 		showChips: true,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
-		typeFolders: typeFoldersFor([...DEFAULT_LEVELS, ...DEFAULT_EXTRA_TYPES], (t) => defaultTypeFolder(t)),
+		typeFolders: typeFoldersFor(ALL_TYPES, (t) => defaultTypeFolder(t)),
 		focusLevel: '',
 		stateKey: '',
 		tagsKey: 'tags',
@@ -203,15 +205,6 @@ export function configProblems(settings: BacklogSettings): string[] {
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
 		}
-	}
-	const seen = new Set<string>();
-	for (const level of settings.levels) {
-		const name = level.toLowerCase();
-		if (seen.has(name)) {
-			problems.push(`The level "${level}" is listed more than once.`);
-			break;
-		}
-		seen.add(name);
 	}
 	return problems;
 }
@@ -318,30 +311,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		});
 	};
 
-	const levels = list('levels');
-	const resolvedLevels = levels.length > 0 ? levels : fallback.levels;
 	const doneValues = list('doneValues');
-	/**
-	 * Like the tags key, this one defaults to something real, so "cleared" has to differ
-	 * from "never set" or the extra types could not be turned off. A name that is already
-	 * a level yields rather than being reported: the level wins wherever both are read, so
-	 * the declaration is merely inert, and gating every write over an inert duplicate
-	 * would turn a working view read-only.
-	 */
-	const extraTypes = (): string[] => {
-		const taken = new Set(resolvedLevels.map((l) => l.toLowerCase()));
-		const declared = clearable('extraTypes', fallback.extraTypes, () => dedupe(list('extraTypes')));
-		return declared.filter((t) => !taken.has(t.toLowerCase()));
-	};
-	/**
-	 * The tags column is the only one whose property is also *editable*, so it gives
-	 * way to every other role: a key already spoken for by parent, order, type or
-	 * state is that feature's, and `chipProps` skips such a property anyway, so tag
-	 * editing would be unreachable. Resolving it to "off" here keeps that one fact
-	 * in one place instead of a collision report that would gate unrelated writes.
-	 */
-	const resolvedExtras = extraTypes();
-	const folders = resolveFolders({ str, clearable }, [...resolvedLevels, ...resolvedExtras], fallback);
+	const folders = resolveFolders({ str, clearable }, ALL_TYPES, fallback);
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [
@@ -357,8 +328,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		parentKey: propKey('parentProperty', fallback.parentKey),
 		orderKey: propKey('orderProperty', fallback.orderKey),
 		typeKey: propKey('typeProperty', fallback.typeKey),
-		levels: resolvedLevels,
-		extraTypes: resolvedExtras,
 		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
 		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),

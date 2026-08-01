@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { childLevelIndex, displayType } from '../../src/domain/itemTypes';
-import { defaultSettings } from '../../src/domain/settings';
+import { LEVELS, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -213,12 +213,12 @@ describe('buildModel', () => {
 		vault.addFile('L3.md', { parentLink: 'L2' });
 		vault.addFile('L4.md', { parentLink: 'L3' });
 
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const model = buildModel(vault.app, vault.entries(), defaultSettings());
 		let item = model.roots[0];
 		while (item.children.length > 0) item = item.children[0];
 
 		expect(item.depth).toBe(4);
-		expect(item.levelIndex).toBe(settings.levels.length - 1);
+		expect(item.levelIndex).toBe(LEVELS.length - 1);
 		expect(displayType(item, settings)).toBe('Task');
 	});
 });

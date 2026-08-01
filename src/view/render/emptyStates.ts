@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
+import { LEVELS } from '../../domain/settings';
 
 /**
  * What the tree shows when it has no rows to show. Each of these runs at most once
@@ -22,7 +23,7 @@ export function renderLoadingState(treeEl: HTMLElement): void {
 export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const model = host.model;
 	const focused = model?.focused ?? false;
-	const topLevel = focused && model ? newItemType(host.settings, model) : host.settings.levels[0];
+	const topLevel = focused && model ? newItemType(host.settings, model) : LEVELS[0];
 	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
 	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'list-tree');
 	empty.createDiv({
