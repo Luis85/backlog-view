@@ -354,12 +354,26 @@ for (const [name, note] of notes) {
 	// without this the section is only required from the first PBI onwards — the gate
 	// arriving after the shape it is meant to establish.
 	if (index === null) fail(note.file, "feature has no `## Use cases` section");
-	// The BULLETS, not every link in the section. An index is a list, and reading the whole
-	// section would let a PBI named in a passing sentence stand in for the entry that should
-	// list it — a missing bullet masked by prose about it.
-	const entries = [...(index ?? "").matchAll(/^[-*+] .*$/gm)].flatMap(([bullet]) =>
-		[...bullet.matchAll(/\[\[([^\]|#]+)/g)].map(([, t]) => t.trim()),
-	);
+	// One entry per BULLET, and the entry is the bullet's FIRST link. Two narrowings, both
+	// closing the same hole from opposite sides — a link that is not an entry standing in
+	// for one that should be.
+	//
+	// Reading the whole section let a PBI named in a passing sentence count as listed.
+	// Reading every link in a bullet moved that hole rather than closing it: `- [[A]] — see
+	// also [[B]]` marked B listed while B had no bullet of its own. The first link is the
+	// entry because the shape of an index entry is `- [[Name]] — what it delivers.`, which
+	// leaves the description free to cross-reference — a freedom the register should have,
+	// and the reason this is a first-link rule rather than a one-link-per-bullet rule.
+	//
+	// Up to three leading spaces, because CommonMark renders those as a top-level list item
+	// and this pattern otherwise reports a legitimate entry as missing — a false FAILURE,
+	// which this file already treats as the more expensive direction to get wrong. It does
+	// mean a sub-bullet indented two spaces would read as an entry; no regex can tell those
+	// apart without tracking list context, and a nested sub-list is not the shape a flat
+	// index has.
+	const entries = [...(index ?? "").matchAll(/^ {0,3}[-*+] .*$/gm)]
+		.map(([bullet]) => /\[\[([^\]|#]+)/.exec(bullet)?.[1].trim())
+		.filter((entry) => entry !== undefined);
 	const listed = new Set(entries);
 	// Before the Set collapses them: a use case bulleted twice renders twice, and an index
 	// that claims to name the children *exactly* cannot be silent about it.

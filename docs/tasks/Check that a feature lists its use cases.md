@@ -105,9 +105,29 @@ The second is the one that says most about writing checks: an empty index matche
 child set, so the section was only required from the first PBI onwards — the gate arriving
 *after* the shape it exists to establish. The heading is now asked for in its own right.
 
-The pattern across all three rounds: every hole was the check answering a slightly different
+A fourth round found that the bullets fix had *moved* the masking hole rather than closed
+it, and one false-failure case beside it:
+
+| Planted | Reported |
+| --- | --- |
+| A use case named only inside another bullet's description | `… does not list [[Scaffolding a backlog]]` |
+| A top-level bullet indented three spaces | *(nothing — it is a legal bullet and now reads as one)* |
+
+Reading every link in a bullet was the same hole one level in: `- [[A]] — see also [[B]]`
+marked B listed while B had no bullet of its own. The entry is now a bullet's **first**
+link, which is what the entry shape `- [[Name]] — what it delivers.` means and which leaves
+descriptions free to cross-reference. The second is the only finding in four rounds that
+was a false *failure* rather than a false pass: CommonMark renders up to three leading
+spaces as a top-level list item, and the pattern demanded column zero, so a legal index
+entry read as a missing one. This file already holds that a check blocking a legitimate
+note is the more expensive direction to get wrong.
+
+The pattern across all four rounds: every hole was the check answering a slightly different
 question than the rule does. The rule is about the list a reader sees; the code variously
-asked about the section, about every child, and about text a reader never sees.
+asked about the section, about every child, about text a reader never sees, about every link
+in a bullet, and about bullets in one exact column. Each fix narrowed the question, and
+twice the narrowed version was still not the rule — which is the argument for planting the
+case rather than reasoning about the regex.
 
 ## Risks
 
