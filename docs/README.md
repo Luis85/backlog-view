@@ -77,11 +77,13 @@ npm run docs   # and as part of npm run check, and in CI
 `docs-check.mjs` enforces everything this file claims — an advertised invariant nobody
 can run is worse than none, because it invites trust it has not earned:
 
-1. Every note outside `adrs/` carries a `type`, every parent link resolves, and every
-   parent/child pair is legal. A note that lost its frontmatter is reported rather than
-   skipped — a skipped file is checked for nothing and says so to nobody. Two notes may not
-   share a **basename**, in any folders: the register addresses work items by name, so a
-   collision makes every `[[wikilink]]` and `parent:` to either one ambiguous.
+1. Every note outside `adrs/` carries a `type`, an `order` and a supported `status` —
+   the three fields the conventions table below calls required — every parent link
+   resolves, and every parent/child pair is legal. A note that lost its frontmatter is
+   reported rather than skipped: a skipped file is checked for nothing and says so to
+   nobody. Two notes may not share a **basename**, in any folders, because the register
+   addresses work items by name and a collision makes every `[[wikilink]]` and `parent:`
+   to either one ambiguous.
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
 3. Every wikilink resolves to a note, and **every relative markdown link resolves to a
@@ -113,9 +115,13 @@ can run is worse than none, because it invites trust it has not earned:
    inside one record. Its five headings are checked for presence **and order**, by the same
    code that checks a use case's sections — they are one rule, and the round that found one
    of them un-ordered found the other still asking only whether the heading was somewhere.
-   An ADR must also carry **neither** `parent` nor `type`: the runtime enrols a note with
-   either one in the backlog, so checking only the fields an ADR should have would never
-   notice a field it must not.
+   An ADR must also carry **neither** `parent` nor `type` — tested by **key**, since a bare
+   `parent:` with no value still reads as an explicit root and enrols the note. Checking
+   only the fields an ADR should have would never notice a field it must not.
+
+   Sections, in both shapes, are matched as **lines, with code stripped first**. A heading
+   deleted and quoted in a sentence is not a heading, and an example inside a fence is not
+   the document's own structure.
 7. Every module in `src/` and every file under `test/` — helpers included — is named by at
    least one note, **as a whole path**. This is the check that finds *missing* notes rather
    than wrong ones, and matching by substring let a mistyped `src/main.tsx` stand in for the

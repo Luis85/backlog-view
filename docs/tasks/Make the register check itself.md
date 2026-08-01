@@ -409,6 +409,31 @@ routinely split by the 100-column wrap — `**I\nwant**` is the real text of two
 so the markers are matched with `\s+` rather than as literals, and a check written the
 obvious way would have failed the corpus for a line break.
 
+The next round found the same *half a question* three more times, twice in code written
+minutes earlier:
+
+| Planted | Reported |
+| --- | --- |
+| `status:` deleted from a note; then `status: In progress` | `backlog note has no \`status\``; `status "In progress" is not one of Open,Active,Done` |
+| `## Context` deleted and the words kept in a sentence | `ADR has no ## Context` |
+| A bare `parent:` on an ADR, no value | `ADR carries a \`parent\` — an ADR is not a work item` |
+
+`status` sits in the same conventions table as `type` and `order`, and was the one of the
+three nothing checked — so the register could have violated its own documented schema in
+the field a reader scans first. Adding `order` and not `status` in the same edit is the
+one-of-two miss again, this time inside the fix for one of them.
+
+`checkSections` was `indexOf`, so a heading deleted and quoted in prose still counted, and
+an example in a fenced block counted as the document's own structure. Code is stripped
+first and markers match at the **start of a line** now. Three rounds have hit this one
+function, each adding a property the last had assumed: *present* → *present and ordered* →
+*present, ordered, and actually the structure it names.*
+
+And the ADR prohibition was written against `fm.field`, which wants a **value** — while
+`resolveParent` enrols a note on the **key**. A bare `parent:` with nothing after it is an
+explicit root to the runtime and an absent field to the checker, so the one form of the
+mistake that needs no typo at all was the form that passed. Prohibitions are about keys.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.

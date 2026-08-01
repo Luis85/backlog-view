@@ -44,6 +44,8 @@ const USE_CASE_SECTIONS = [
  * the table, so the table is what gets parsed.
  */
 const USE_CASE_ROWS = ["Actor", "Trigger", "Preconditions", "Guarantee"];
+/** The register's own status vocabulary, from the conventions table in `docs/README.md`. */
+const NOTE_STATUSES = new Set(["Open", "Active", "Done"]);
 const ADR_SECTIONS = ["## Context", "## Decision", "## Consequences", "## Alternatives", "## Revisit when"];
 const ADR_STATUSES = new Set(["Accepted", "Superseded", "Proposed"]);
 const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "testing", "tooling"]);
@@ -65,24 +67,28 @@ const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(ra
  * one function, because they are the same rule and the round that found one of them
  * un-ordered found the other still checking `includes`.
  *
- * A substring search verifies the *vocabulary*, not the shape. Since each list is in
- * reading order, the order check also puts every marker inside the block it belongs to:
- * a use case's four table rows fall between `## Use case` and `**Main flow**` or they are
- * out of order, so a `| **Guarantee** |` deleted from the table and re-appended at the end
- * of the note cannot pass as a use case that has one.
+ * A substring search verifies the *vocabulary*, not the shape — three ways, each closed by
+ * a round of review. It found the marker **anywhere**, so a heading deleted and quoted in a
+ * sentence still counted; it said nothing about **order**; and it said nothing about the
+ * marker being **part of the structure it names**. So: code stripped first (a `## Context`
+ * inside backticks or a fence is an example, not a heading), matched at the **start of a
+ * line**, and compared for order.
  *
  * Both ends of an inversion are named. A monotonic walk blames whichever section follows
  * the displaced one, which points at the innocent party.
  */
 function checkSections(file, text, sections, what) {
+	const prose = withoutCode(text);
 	const found = [];
 	for (const section of sections) {
-		const at = text.indexOf(section);
+		const at = prose.search(new RegExp(`^${escapeRe(section)}`, "m"));
 		if (at === -1) fail(file, `${what} has no ${section}`);
 		else found.push([section, at]);
 	}
 	checkOrder(file, found, what);
 }
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Both ends of an inversion are named; see above for why the following one is the wrong one. */
 function checkOrder(file, found, what) {
@@ -170,6 +176,12 @@ for (const file of files) {
 	const order = raw === null ? null : Number(raw);
 	if (order === null) fail(file, "backlog note has no `order`");
 	else if (!Number.isFinite(order)) fail(file, `order "${raw}" is not a number`);
+	// `status` is in the same conventions table as `type` and `order`, and was the one of
+	// the three nothing checked — so the register could have violated its own documented
+	// schema in the field a reader scans first.
+	const status = fm.field("status");
+	if (status === null) fail(file, "backlog note has no `status`");
+	else if (!NOTE_STATUSES.has(status)) fail(file, `status "${status}" is not one of ${[...NOTE_STATUSES]}`);
 	notes.set(name, { type, parent, order, file });
 }
 
@@ -298,8 +310,13 @@ for (const file of adrFiles) {
 	// with a `parent` OR a supported `type` as a work item, so either one silently enrols
 	// the ADR in the plugin's own backlog — against the invariant both index pages state.
 	// Checking the fields ADRs *should* have never notices a field they should not.
+	//
+	// By KEY, not by value: `resolveParent` reads a bare `parent:` with nothing after it as
+	// an explicit root, which enrols the note exactly as a filled one would, while
+	// `fm.field` — which wants a value — reports it as absent. The prohibition is on the
+	// key being there at all, so that is what is tested.
 	for (const field of ["parent", "type"]) {
-		if (fm.field(field) !== null) fail(file, `ADR carries a \`${field}\` — an ADR is not a work item`);
+		if (new RegExp(`^${field}:`, "m").test(fm.raw)) fail(file, `ADR carries a \`${field}\` — an ADR is not a work item`);
 	}
 	// A missing or non-numeric `adr` is already reported; registering it as 0 would invent
 	// a duplicate and a numbering gap on top of the real problem.
