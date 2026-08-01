@@ -38,7 +38,11 @@ it.
    target — results only, traversing through context rows without counting them.
 2. A dateless parent over dated descendants renders the gathered span, styled as
    inferred so a reader can tell a plan somebody made from a summary the view drew.
-3. A parent with its own dates renders exactly those, however its children sprawl.
+3. A parent's supplied dates win endpoint by endpoint: a parent with both renders
+   exactly those; one that supplied only a start or only a target keeps that end as
+   stated while the empty end fills from the subtree, carrying the inferred styling on
+   that end alone. An end neither the parent nor its results supply stays open, as any
+   single-dated bar's does.
 4. The inferred span updates as children change, because it is derived, never stored.
 
 **Extensions**
@@ -60,8 +64,10 @@ it.
 - A dateless parent renders its results-only subtree span — earliest start to latest
   target — styled as inferred, faded where partly unknown, recomputed each render,
   written nowhere.
-- A parent's own dates always win and render as stated, even when children overflow
-  them; the disagreement renders rather than resolves.
+- A parent's own dates always win endpoint by endpoint: a supplied end renders as
+  stated even when children overflow it, an end left empty fills from the results-only
+  subtree and carries the inferred styling alone, and an end neither supplies stays
+  open; the disagreement renders rather than resolves.
 - Context rows' dates never contribute to any span, and a context parent's inferred
   span describes its visible results only.
 - A subtree with no dates at all shelves.

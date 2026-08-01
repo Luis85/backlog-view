@@ -39,9 +39,10 @@ rather than deferred behind it.
    one-tab-stop rule unchanged, shelf included.
 2. Enter picks up the selected item; arrows preview the move — across buckets on the
    horizon axis, along the grid by whole cells on the timeline. On a bar, Tab shifts
-   the grip between the whole bar and each end, announced with the selection, so
-   arrows resize as well as slide — the one-date write the edge drag plans
-   ([[Move and resize a bar]]), without the pointer.
+   the grip between the whole bar and each end that can take a write — the same ends
+   the pointer may hold ([[Move and resize a bar]]) — announced with the selection, so
+   arrows resize as well as slide: the one-date write the edge drag plans, without the
+   pointer.
 3. Enter commits the batch the drag would write; Escape cancels with nothing written.
 4. The context menu offers the moves in words — set horizon, schedule (start, target
    or both), unschedule, clear horizon — each writing the drag's own batch, beside the
@@ -63,8 +64,8 @@ rather than deferred behind it.
 ## Acceptance criteria
 
 - Pick-up, move, commit, cancel work as specified on both axes — the grip reaching the
-  whole bar and each end, so a resize is a keyboard move too — and the committed batch
-  is identical to the drag's; Escape always exits with nothing written.
+  whole bar and each writable end, so a resize is a keyboard move too — and the
+  committed batch is identical to the drag's; Escape always exits with nothing written.
 - The context menu offers set horizon (declared plus observed values), schedule —
   start, target or both — unschedule and clear horizon, each writing the drag's batch;
   on context rows it offers no write action.

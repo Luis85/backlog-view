@@ -33,8 +33,8 @@ names the option or the action it points at.
 
 1. The roadmap resolves its axis from the view options.
 2. With an axis but nothing placed, the frame still renders — the declared buckets, or
-   the dated grid around today — each region a drop and creation target, with the shelf
-   beside it carrying everything unplaced.
+   the dated grid around today — every region a drop target and every bucket a creation
+   target, with the shelf beside it carrying everything unplaced.
 3. The tree's empty-state honesty renders as an advisory beside the frame: how many
    notes the Base returned that are not work items, and the path to creating one.
 4. The user acts on the named thing — configuring an axis, planning an item, creating
@@ -53,6 +53,11 @@ names the option or the action it points at.
 - **2b — a declared bucket holds nothing.** It renders anyway
   ([[Buckets from a horizon property]]): a horizon exists whether or not anything
   currently sits in it, the board's own empty-column rule.
+- **2c — the user creates while the timeline shows.** The New flow runs unchanged and
+  the note lands on the shelf until it is scheduled. A grid cell is a pair of dates
+  picked by pointer position, and a creation that routes through the naming prompt no
+  longer means them; create-then-schedule keeps both acts specified, and the shelf is
+  one drag from the plan ([[Drag from the shelf to schedule]]).
 - **3a — the base returned notes that are not work items.** They are counted in the
   advisory rather than shown, the same report the tree and board make — and it renders
   beside the frame, never instead of it. An empty roadmap is an empty frame, never no
@@ -62,9 +67,10 @@ names the option or the action it points at.
 
 - With no axis configured, the roadmap names the options to set and where, instead of
   rendering nothing.
-- With an axis and no placements, the frame still renders — buckets or grid, each
-  region a drop and creation target — beside the shelf and the ignored-notes advisory,
-  never replaced by them.
+- With an axis and no placements, the frame still renders — every region a drop
+  target, every bucket a creation target — beside the shelf and the ignored-notes
+  advisory, never replaced by them; a note created while the timeline shows lands on
+  the shelf until it is scheduled.
 - A declared bucket with nothing in it still renders its column.
 - The all-shelved state renders the empty frame beside the full shelf and lets the
   count speak; the view suggests no placement the user has not made.
