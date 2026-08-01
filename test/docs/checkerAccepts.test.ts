@@ -129,6 +129,25 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a register checked out with CRLF line endings', async () => {
+		// The other invisible character, and the one that is not the contributor's choice:
+		// Git for Windows checks out CRLF by default, so this is what `npm run docs` reads
+		// on an ordinary Windows clone of a repository whose files are LF in the object
+		// store. The gate's structural patterns are anchored on `\n` — `^---\n` opens the
+		// frontmatter, `\*\*Extensions\*\*\n+` opens the block — and none of them match
+		// `\r\n`, so the whole register read as typeless and the run reported 136 problems
+		// about documents that are correct. A false failure, on every note at once, in the
+		// direction this project holds is the more expensive one to get wrong.
+		//
+		// The whole corpus is converted rather than one note: the condition is a checkout,
+		// not a file, and a single CRLF note would leave the case passing on the LF ones.
+		const files = Object.fromEntries(
+			Object.entries(baseRegister()).map(([path, text]) => [path, text.replaceAll('\n', '\r\n')]),
+		);
+
+		await expectAccepted(files);
+	});
+
 	it('accepts an opening whose markers are broken across lines', async () => {
 		// The 100-column wrap does this routinely, and the marker is still the marker.
 		const files = baseRegister();
