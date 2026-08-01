@@ -56,7 +56,7 @@ Manually, the equivalent is:
 
 1. Create a folder for your backlog, e.g. `docs/`.
 2. Create a Base (e.g. `Product Backlog.base`) and add a filter such as
-   `file.inFolder("Backlog")`.
+   `file.inFolder("docs")`.
 3. In the view switcher of the Base, add a new view and pick **Product Backlog**.
 4. Drop existing notes into the folder, or use **+ New Epic** in the view to create items.
 5. If your notes don't have `type`/`order` yet, click the ✨ toolbar button once. Notes
@@ -69,14 +69,23 @@ Example `.base` file:
 ```yaml
 filters:
   and:
-    - file.inFolder("Backlog")
+    - file.inFolder("docs")
 views:
   - type: product-backlog
     name: Backlog
+    homeFolder: "docs"
+    newItemFolder: "docs"
     order:
       - note.status
       - note.points
 ```
+
+**Keep `homeFolder` and the filter pointing at the same place.** New items are filed under
+the home folder, and the view can only show what the Base returns — a base filtering
+`Backlog/` while the home folder is left at its `docs` default creates items you will not
+see afterwards. Backlogging into `Roadmap/` means `file.inFolder("Roadmap")` and
+`homeFolder: "Roadmap"`. The **Create backlog** command writes both from the one folder it
+asks you for, which is the whole reason it asks.
 
 Any properties you enable under **Properties** in the Bases toolbar (the `order` list
 above) are shown as chips on each row — handy for `status`, story points, assignee, etc.
