@@ -58,6 +58,23 @@ A report, or a decision written down. If it is decided that the dragged item is 
 special, `src/domain/CLAUDE.md` should say so beside the principle it qualifies — the
 exemption living only in a predicate is what let four documents claim the opposite.
 
+## Where this is stated
+
+Five sites describe this behaviour, each for a different reader, and **all five change
+together** if it is ever resolved. Nothing checks that, so the list is the mitigation:
+
+| Site | What it holds |
+| --- | --- |
+| [[Assigning type on a move]] | extensions 3b and 4b, *The asymmetry* with the predicate table, an acceptance criterion |
+| [[Level ladder and implied types]] | extension 2a — one sentence, and the link onward |
+| [ADR 0009](../adrs/0009-the-type-rules-are-advisory.md) | a consequence: the intent, and that the dragged branch is not it |
+| [ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) | the parenthesis after `Declared pins, undeclared inherits.` |
+| `src/domain/CLAUDE.md` | the principle, the exception, and where to record a decision |
+
+A list is a weaker instrument than a check and goes stale the same way — it is here because
+[[A claim in four notes and nothing to check it]] establishes that no check can reach a
+claim, and a checklist beside the behaviour is what remains.
+
 ## Acceptance criteria
 
 None. Recorded so the behaviour is known rather than rediscovered, and so a future change
