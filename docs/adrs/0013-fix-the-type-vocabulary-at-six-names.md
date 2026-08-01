@@ -31,8 +31,10 @@ Matched case-insensitively. The property *keys* stay configurable — pointing `
 different property is a different question, and a cheap one.
 
 A note typed anything else is still handled, and this is what makes the decision liveable:
-an **unknown custom type keeps its name**, occupies its parent's next slot so the ladder
-carries on beneath it, and is never rewritten. `Declared pins, undeclared inherits.`
+an **unknown custom type keeps its name** and occupies its parent's next slot so the
+ladder carries on beneath it. `Declared pins, undeclared inherits.` (It is never rewritten
+as a *descendant*; the opt-in auto-type cascade does rewrite one that is itself dragged —
+an asymmetry nobody chose, recorded in [[Assigning type on a move]].)
 
 ## Consequences
 

@@ -2,6 +2,13 @@ import { App, Notice } from 'obsidian';
 import { createBacklogBase, DEFAULT_BACKLOG_FOLDER } from '../storage/baseFile';
 import { FolderPromptModal } from '../ui/prompts';
 
+/**
+ * The command's id, beside the flow it runs. It is persisted in the user's hotkey
+ * assignments, so renaming it silently unbinds whatever they had — which is why it is a
+ * named value rather than a literal at the registration site.
+ */
+export const CREATE_BACKLOG_COMMAND_ID = 'create-backlog';
+
 /** Command entry point: ask for the folder, scaffold the Base, and open it. */
 export function promptCreateBacklogBase(app: App): void {
 	new FolderPromptModal(app, {

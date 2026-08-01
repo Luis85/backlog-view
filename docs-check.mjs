@@ -97,17 +97,6 @@ const files = (await walk(DOCS)).sort();
 const texts = new Map(await Promise.all(files.map(async (f) => [f, await readFile(f, "utf8")])));
 const stems = new Set(files.map((f) => path.basename(f, ".md")));
 const allText = [...texts.values()].join("\n");
-/**
- * The specification notes alone — `requirements/` — for checks that ask "is this
- * specified?". `tasks/`, `issues/` and `bugs/` are records, and a record naming a surface
- * in passing (or quoting one as a test case) does not specify it.
- */
-const specText = files
-	.filter((f) => path.basename(path.dirname(f)) === "requirements")
-	.map((f) => texts.get(f))
-	.join("\n");
-/** Set by the surface scan when it resolves the one generated key expression. */
-let generatorSeen = false;
 
 // ---------------------------------------------------------------- the backlog tree
 const notes = new Map();
@@ -314,100 +303,6 @@ async function collectTs(dir, keep) {
 const sources = [...(await collectTs("src", (n) => n.endsWith(".ts"))), ...(await collectTs("test", (n) => n.endsWith(".ts")))];
 for (const file of sources) {
 	if (!allText.includes(file)) fail("docs", `no note names ${file}`);
-}
-
-/**
- * The two feature surfaces that are literal strings in the source, and so can be checked
- * rather than swept: a persisted view-option key, and a command id. Both are promises to
- * the user — an option key is *stored in their `.base` file* — so one arriving with no
- * note naming it is a capability nobody specified.
- *
- * The other surfaces in the sweep (menu items, toolbar controls) are display text, and
- * the register describes them in prose rather than quoting them. Those stay a hand sweep;
- * see `docs/issues/Sweep the register against the code.md`, which says which is which.
- */
-const surfaces = [
-	{
-		kind: "view option",
-		file: "src/domain/viewOptions.ts",
-		field: "key",
-		// The ONE generated expression, matched exactly. A prefix would accept
-		// `typeFolderKey(type + 'Archive')` while the derivation below still produced the
-		// six unsuffixed keys — green, and wrong about which keys are persisted.
-		generator: /^typeFolderKey\(type\)$/,
-		// Every option carries a `displayName` and so does every GROUP, which has no key —
-		// so the expected count is one minus the other. This is the backstop for the whole
-		// scan: a `key` the pattern cannot see, for any reason nobody predicted, makes the
-		// counts diverge and fails, rather than quietly reducing what is checked.
-		expected: (src) => count(src, /\bdisplayName:\s*/g) - count(src, /\btype: 'group'/g),
-		expectedFrom: "`displayName:` minus `type: 'group'`",
-	},
-	{
-		kind: "command",
-		file: "src/main.ts",
-		field: "id",
-		expected: (src) => count(src, /\baddCommand\(/g),
-		expectedFrom: "`addCommand(`",
-	},
-];
-for (const { kind, file, field, generator, expected, expectedFrom } of surfaces) {
-	const src = await readFile(file, "utf8");
-	// `\s*` after the colon, and a value that may run to a line break: depending on one
-	// space was itself a way for a real surface to go unseen.
-	const found = [...src.matchAll(new RegExp(`\\b${field}:\\s*([^,\\n]+)`, "g"))];
-	const want = expected(src);
-	if (found.length !== want) {
-		fail("docs-check", `found ${found.length} \`${field}:\` in ${file}, expected ${want} from ${expectedFrom}`);
-	}
-	for (const [, expr] of found) {
-		const value = expr.trim().replace(/,$/, "");
-		const literal = /^'([^']*)'$/.exec(value);
-		if (literal) {
-			// Searched in the SPECIFICATION notes, not in all of `docs/`. This note's own
-			// record of planted test cases names `showBurndown` and `archive-backlog`, so a
-			// whole-corpus search would accept a real surface renamed to either — the
-			// documentation of the check weakening the check.
-			if (!specText.includes(literal[1])) fail("docs", `no requirement names the ${kind} "${literal[1]}"`);
-		} else if (generator?.test(value)) {
-			generatorSeen = true;
-		} else {
-			// Double quotes, a constant, anything else: unresolvable is an error, never a
-			// pass. Both surfaces get the same treatment — exempting one is how the first
-			// blind spot got here.
-			fail("docs-check", `cannot resolve the ${kind} \`${field}: ${value}\` in ${file}`);
-		}
-	}
-}
-
-/**
- * One option is *generated* — a folder picker per type, `key: typeFolderKey(type)` — so a
- * literal scan cannot see any of the six keys it produces. They are persisted in the
- * user's `.base` file exactly like the literal ones, so they are derived here instead.
- *
- * And a `key:` expression this file cannot resolve **fails**, rather than being passed
- * over. A scan that silently ignores what it does not understand is the shape of gate
- * that reports success for the thing it never looked at.
- */
-const settingsSrc = await readFile("src/domain/settings.ts", "utf8");
-// Driven by what the scan above actually resolved, not by a second pattern over the same
-// file. Two regexes that must agree is how the first whitespace fix landed in one of them
-// and not the other, leaving the derivation silently skipped.
-if (generatorSeen) {
-	const template = /function typeFolderKey\([^)]*\)[^{]*\{\s*return `([^$`]*)\$\{\s*\w+\.toLowerCase\(\)\s*\}`/.exec(
-		settingsSrc,
-	);
-	const vocabulary = ["LEVELS", "EXTRA_TYPES"].flatMap((name) => {
-		const list = new RegExp(`const ${name} = \\[([^\\]]*)\\]`).exec(settingsSrc);
-		return list ? [...list[1].matchAll(/'([^']+)'/g)].map(([, t]) => t) : [];
-	});
-	if (!template || vocabulary.length === 0) {
-		fail("docs-check", "typeFolderKey or the type vocabulary no longer has the shape this check derives keys from");
-	} else {
-		for (const type of vocabulary) {
-			const key = `${template[1]}${type.toLowerCase()}`;
-			if (!specText.includes(key)) fail("docs", `no requirement names the generated view option "${key}"`);
-		}
-	}
 }
 
 // --------------------------------------------------------------------------- report

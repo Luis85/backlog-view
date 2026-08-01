@@ -240,8 +240,37 @@ lines, the general scan accepted it and the derivation never ran, leaving all si
 keys unchecked. It is driven by what the scan resolved now, not by a pattern that has to
 agree with another pattern.
 
+## Where it stopped being a script's job
+
+Ten rounds in, the maintainer named the pattern: **regex is not the way to read
+TypeScript.** Five of those rounds were the same class — a missing space after a colon, a
+quoted property name, a changed argument to the generator, a value on the next line, a
+name that was a prefix of another. Each fix was correct and each one only closed the
+instance in front of it, because a pattern over source can always be fooled once more.
+
+So that half is gone. `test/docs/surfaces.test.ts` **imports** `getViewOptions()` and reads
+the keys the code actually produces — the six generated per type included, as ordinary array
+entries rather than something to derive — and imports `CREATE_BACKLOG_COMMAND_ID`, which is
+now a named export beside the flow it runs rather than a literal at the registration site.
+About 95 lines of scanner, derivation, unresolvable-expression handling and count backstop
+deleted, along with every bug class they existed to bound.
+
+What is left in `docs-check.mjs` is markdown checked against the filesystem, which is what
+a script over text is good at. The split is the rule: **a script over markdown checks
+markdown; a test that can load the module asks the module.**
+
+The last regex-era finding is worth keeping as the epitaph — `specText.includes(name)`
+accepted a rename to any prefix of a documented name, so `showCounts` vouched for
+`showCount`. The test matches whole names, and pins it:
+
+```js
+expect(named('showCounts')).toBe(true);
+expect(named('showCount')).toBe(false);
+```
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
-being taught to check that.
+being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
+note within a minute of its being written.
 
 It also caught a bug in its own first draft: the module count read the markdown walker
 instead of the TypeScript one and reported 3 modules where there are 59. A validator with

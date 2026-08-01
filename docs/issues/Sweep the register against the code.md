@@ -75,9 +75,12 @@ has to say where a behaviour lives cannot be written without checking.
 `docs-check.mjs` mechanises the parts of this sweep that are **literal strings in the
 source**, so those stop needing a human:
 
-- every **view-option key** in `viewOptions.ts` and every **command id** in `main.ts` must
-  be named by some note. Both are promises to the user — an option key is *stored in their
-  `.base` file* — so one arriving unnamed is a capability nobody specified;
+- every **view-option key** and every **command id** must be named by a *requirement*.
+  Both are promises that outlive a release — an option key is stored in the user's `.base`
+  file, a command id in their hotkeys — so one arriving unnamed is a capability nobody
+  specified, and one renamed is a setting silently lost. Checked in
+  `test/docs/surfaces.test.ts`, which **imports** `getViewOptions()` and reads the real
+  keys rather than scanning the source for them;
 - every module and test file must be named by some note;
 - every path and wikilink a note names must resolve.
 

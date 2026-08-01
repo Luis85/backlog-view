@@ -89,16 +89,18 @@ can run is worse than none, because it invites trust it has not earned:
    from either side rots the same way: the predecessor goes on reading as current. An ADR
    naming a successor must also carry the `Superseded` status, which is that same failure
    inside one record.
-7. Every module in `src/`, every file under `test/` — helpers included — **every view-option key and every command id**
-   is named by at least one note — the check that finds *missing* notes rather than wrong
-   ones. Surface names must appear in **`requirements/`**, not anywhere in `docs/`: a
-   record that mentions one in passing, or quotes one as a test case, does not specify it. That includes the six keys *generated* per type, derived from the vocabulary and
-   the key template rather than scanned for; a key expression the check cannot resolve
-   fails rather than being passed over — and the number of keys found is cross-checked
-   against the number the file should contain, so one the pattern cannot see at all makes
-   the counts diverge instead of quietly shrinking what is checked. Menu items and toolbar
-   controls are display text and stay a hand sweep. See [[Sweep the register against the code]] for which is which,
-   and what the sweep found.
+7. Every module in `src/` and every file under `test/` — helpers included — is named by at
+   least one note. This is the check that finds *missing* notes rather than wrong ones.
+
+**One check lives elsewhere, on purpose.** That every **view-option key** and **command id**
+is named by a *requirement* is verified in `test/docs/surfaces.test.ts`, because it needs to
+**import** `getViewOptions()` and read the keys the code actually produces — the six
+generated per type included. Teaching this script to learn them instead meant regex-scanning
+TypeScript, and ten review rounds found ten ways that can be fooled. A script over markdown
+checks markdown; a test that can load the module asks the module. A record naming a surface
+in passing does not specify it, so that search reads `requirements/` alone. Menu items and
+toolbar controls are display text and stay a hand sweep — see
+[[Sweep the register against the code]].
 
 Each rule was verified the way this project verifies its lint rules: by planting the
 violation and watching the check reject it.
