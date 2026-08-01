@@ -232,9 +232,13 @@ construction — which is the pairing this exists for.
   changes the premise: with it on, **every** creation makes a folder, so the residue stops
   being a stray and starts being one per failure, named after the item the user just tried
   to make. That is the "it happens repeatedly" the Issue names as what would change its
-  own decision. The mechanism is the Issue's own — `ensureFolder` returns what it created,
-  the caller's `catch` removes those in reverse, each only while still empty, never a
-  recursive delete — so this is that recipe becoming required, not a different design.
+  own decision. What becomes required is the **per-item folder** specifically — tracked as
+  its own thing, removed in the caller's `catch` while still empty, never a recursive
+  delete. The Issue's recipe returns everything `ensureFolder` created, which is the whole
+  container chain; taking it wholesale would contradict the criterion above and would
+  change *flat* creation and the scaffold command too, through a helper they share. What
+  the container chain deserves stays this Issue's open question, for both layouts, and is
+  not settled by an option about where one note goes.
 
 ### What it does not do
 
