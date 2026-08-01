@@ -74,7 +74,7 @@ kind of item to create, since a row can now hold more than one.
 
 ## Why this is not a fifth level
 
-`settings.levels` is a *ladder*: every level rule in the codebase is "one rung below the
+`LEVELS` is a *ladder*: every level rule in the codebase is "one rung below the
 parent" (`nextLevelIndex`), and each rung's children are the next rung down. That shape
 cannot express these two types, because their position and their contents are
 independent — a Bug holds Tasks whether it was raised against an Epic, a Feature or a
@@ -82,7 +82,7 @@ PBI. A fifth rung would have to be *three* rungs at once.
 
 So the rank belongs to the **type**, not to where the item sits:
 
-> An **extra type** is a declared type that is not a rung. It ranks at `extraTypeRank` —
+> An **extra type** is a declared type that is not a rung. It ranks at `EXTRA_TYPE_RANK` —
 > the rung whose children are the deepest level — always, and it has no `levelIndex`.
 
 Everything asked for falls out of those two properties, which is the reason to prefer
@@ -117,7 +117,7 @@ Two questions changed what got built, and both were the user's to answer:
 - `domain/itemTypes.ts` (new) — the vocabulary, and the ladder math moved out of
   `model.ts` (`childLevelIndex`, `nextLevelIndex`, `displayType`) so this could be a leaf
   the model imports while it is still building a tree.
-- `computeLevel` — one branch: an extra type takes `extraTypeRank` where an *unknown*
+- `computeLevel` — one branch: an extra type takes `EXTRA_TYPE_RANK` where an *unknown*
   custom type still takes `childSlot`. That contrast is the invariant worth keeping:
   **declared pins, undeclared inherits.**
 - `computeTypeChanges` — the dragged item is not re-typed when it is an extra type, and
@@ -178,7 +178,7 @@ worth recording because they are the same mistake at different depths:
    itself skipped and apparently untouched. The root and nested cases are now one rule
    (`rankOf`), applied at every step.
 2. **A parentless extra type was pruned** (P2). `pruneOutsideHierarchy` asked whether a
-   type was one of `settings.levels`, so a top-level Bug belonged to nothing and left the
+   type was one of the four levels, so a top-level Bug belonged to nothing and left the
    model — reachable both by `Set type` on a leaf and by dragging one to the top level,
    the rules being advisory. Membership now reads every declared type.
 
@@ -206,3 +206,13 @@ An extra type ranks with the second-lowest level, so `Show completed items`, rol
 the level breakdown all treat it as that level. This is right for a Bug beside a PBI and
 arbitrary for an extra type someone configures with a different intent in mind. No
 evidence yet that anyone wants otherwise — revisit if a report says so.
+
+## Where it lives
+
+`src/domain/itemTypes.ts` (`EXTRA_TYPE_RANK`, `isExtraType`, `childTypeChoices`,
+`folderForType`) · `src/domain/settings.ts` (`EXTRA_TYPES`, `ALL_TYPES`, `byTypeName`) ·
+`src/domain/model.ts` (`collectFocusRoots`, `pruneOutsideHierarchy`) ·
+`src/domain/writePlan.ts` (`computeTypeChanges` — the pinned rank in the cascade) ·
+`src/view/render/rows.ts` (icon and badge colour) · `styles.css`.
+Tests: `test/domain/itemTypes.test.ts`, `test/domain/writePlan.test.ts`,
+`test/view/rendering.test.ts`, `test/view/creation.test.ts`.

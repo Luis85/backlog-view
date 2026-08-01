@@ -51,8 +51,8 @@ change one behaviour.
 - A file that outgrows its cap is split along a real seam, not at a line number.
 - A type lives with the code that produces it, not the code that consumes it.
 - The layering fails the build when crossed, so it cannot erode quietly.
-- Modules reach view state only through `BacklogViewHost`, and `host.ts` holds no runtime
-  code, so imports stay cycle-free.
+- Modules reach view state only through `BacklogViewHost`, and `src/view/host.ts` holds no
+  runtime code, so imports stay cycle-free.
 - `test/` mirrors the same directories, with its own line budget.
 
 ## Where it lives

@@ -26,3 +26,7 @@ tidied a single property.
 - [[Types beside the ladder]] — `Issue` and `Bug`: pinned rank, any parent, Tasks only.
 - [[Folder note hierarchy]] — reading the hierarchy from folder notes, for vaults already
   organised that way.
+- [[What counts as a work item]] — which notes in a folder-scoped base are work
+  items at all.
+- [[Broken links still render]] — orphans and cycles stay visible and marked, never
+  hidden.

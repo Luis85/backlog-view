@@ -1,6 +1,6 @@
 ---
 type: Issue
-order: 20
+order: 80
 parent: "[[Product Backlog]]"
 status: Done
 priority: P2

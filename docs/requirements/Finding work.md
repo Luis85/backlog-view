@@ -19,3 +19,4 @@ losing the structure that gives them meaning.
 - [[Quick filter]] — type a word, keep the tree.
 - [[Focus level]] — start the tree at one level, the way separate backlogs do.
 - [[Filtered bases keep their tree]] — ancestors a Base filtered out are loaded as context.
+- [[Opening the work]] — every row is a note, one click from being open.

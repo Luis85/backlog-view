@@ -17,7 +17,7 @@ demonstrating itself:
 ## The trees
 
 **Product Backlog** is the product: seven features covering the hierarchy, moving items,
-creating them, progress, finding work, safe writes and view state — 19 use cases in all.
+creating them, progress, finding work, safe writes and view state — 24 use cases in all.
 
 **Codebase health** is the engineering work — three features and four use cases saying what
 "healthy" means here, with the tasks that got it done underneath. Its actor is whoever
@@ -42,8 +42,20 @@ Every pair holds:
 | `Issue` / `Bug` | `Epic`, `Feature` or `PBI` | `Task` |
 
 The plugin does not *enforce* this — the rules decide what is offered, never what is
-refused — which is exactly why the register has to hold to it by hand. It has been checked:
-every parent link resolves, and every parent/child pair is legal.
+refused — which is exactly why the register has to hold to it by hand.
+
+Six things are checked by script rather than by reading, because each is the kind of error
+that survives review indefinitely:
+
+1. Every parent link resolves, and every parent/child pair is legal.
+2. No two siblings share an `order` — the register must not demonstrate the one ranking
+   limitation the plugin has.
+3. Every wikilink resolves to a note.
+4. Every `src/` or `test/` path a note names exists.
+5. Every use case has all six of its sections, and its extensions are in step order.
+6. Every module in `src/` and every test file is named by at least one note — the check
+   that finds *missing* notes rather than wrong ones. See
+   [[Sweep the register against the code]] for how that sweep is run and what it found.
 
 ## Every PBI is a use case
 

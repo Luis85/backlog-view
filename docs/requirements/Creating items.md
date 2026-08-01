@@ -19,3 +19,4 @@ title and nothing else.
 - [[New item flow]] — add a child and only have to name it.
 - [[Where new items are filed]] — a home folder and one folder picker per type.
 - [[Backfill missing properties]] — one button turns a folder of plain notes into a backlog.
+- [[Scaffolding a backlog]] — one command produces a working backlog to add to.

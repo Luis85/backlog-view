@@ -221,3 +221,14 @@ attempt did restore stays redoable even when nothing else does.
 
 Not verifiable here, as ever: the button's look in a live vault — the standing
 jsdom limit recorded in [smoke-test-the-visual-changes](../issues/Smoke%20test%20the%20visual%20changes.md).
+
+## Where it lives
+
+`src/storage/frontmatter.ts` (`RestoreWrite` capture inside `processFrontMatter`,
+`applyRestores` with per-key compare-and-swap) ·
+`src/view/interactions/undo.ts` (`UndoRecovery`, the slot's state machine) ·
+`src/view/backlogView.ts` (`runExclusively`, `undoLast`, `canUndo`) ·
+`src/view/render/toolbar.ts` (the ↩ button) ·
+`src/view/interactions/keyboard.ts` (`Ctrl`/`Cmd`+`Z`).
+Tests: `test/storage/restore.test.ts`, `test/view/undo.test.ts`,
+`test/view/contextRowWrites.test.ts`.
