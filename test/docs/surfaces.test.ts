@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CREATE_BACKLOG_COMMAND_ID } from '../../src/commands/scaffold';
+import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
+import { FakeVault } from '../helpers/vault';
 
 /**
  * Every user-facing surface must be named by a requirement.
@@ -17,8 +18,9 @@ import { getViewOptions } from '../../src/domain/viewOptions';
  * declares meant regex-scanning TypeScript, and ten review rounds found ten different
  * ways a regex over source can be fooled: a missing space after a colon, a quoted property
  * name, a changed argument to the generator, a value on the next line. None of those exist
- * here. `getViewOptions()` returns the real objects, generated keys included, computed by
- * the same code the plugin runs.
+ * here. `getViewOptions()` returns the real objects, generated keys included, and
+ * `onload()` reports the commands it actually registers — both computed by the code the
+ * plugin runs, so a surface added anywhere is discovered rather than remembered.
  */
 
 const REQUIREMENTS = path.join('docs', 'requirements');
@@ -38,6 +40,19 @@ function named(name: string): boolean {
 	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	return new RegExp(`(?<![\\w.])${escaped}(?![\\w.])`).test(specText);
 }
+
+/** What `onload` registers, by running it against the mock `Plugin`. */
+function loadPlugin() {
+	const plugin = new ProductBacklogPlugin(new FakeVault().app) as unknown as {
+		onload: () => void;
+		commands: { id: string; name: string }[];
+		basesViews: { type: string; name: string }[];
+	};
+	plugin.onload();
+	return plugin;
+}
+const registeredCommands = () => loadPlugin().commands;
+const registeredViews = () => loadPlugin().basesViews;
 
 /** Every option, flattened out of its groups — the shape Bases is handed. */
 function optionKeys(): string[] {
@@ -70,8 +85,19 @@ describe('every user-facing surface is specified', () => {
 		}
 	});
 
-	it('names every command id in a requirement', () => {
-		expect(named(CREATE_BACKLOG_COMMAND_ID)).toBe(true);
+	it('names every registered command id in a requirement', () => {
+		// Discovered by running the registration, not by naming one constant: a second
+		// `addCommand` has to be specified too, and nothing here has to be told it exists.
+		const ids = registeredCommands().map((c) => c.id);
+		expect(ids.length).toBeGreaterThan(0);
+
+		expect(ids.filter((id) => !named(id))).toEqual([]);
+	});
+
+	it('registers the view type the plugin is built around', () => {
+		// The same registration pass, so the two cannot drift: if `onload` stops running
+		// here, this fails rather than the command check silently finding nothing.
+		expect(registeredViews().map((v) => v.type)).toContain('product-backlog');
 	});
 
 	it('rejects a name that is only a prefix of a documented one', () => {

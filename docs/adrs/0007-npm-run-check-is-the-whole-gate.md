@@ -34,7 +34,7 @@ Each step gates something different:
 | `lint` | The Obsidian ruleset, plus **this project's structural rules**: layer direction, the write boundary, ranking over real roots, menu anchoring, level maths, and size budgets |
 | `test:coverage` | The suite, under thresholds that **only ever go up** |
 | `analyze` | fallow: dead code, duplication, complexity/CRAP fed by the coverage file, dependency hygiene |
-| `docs` | The register and the ADRs: hierarchy, sibling orders, wikilinks, source paths, use-case shape, ADR frontmatter, and every module being named by some note. Surfaces that need the *code's* values — option keys, command ids — are checked in `test/docs/surfaces.test.ts` instead, by importing the module rather than scanning it |
+| `docs` | The register and the ADRs: hierarchy, sibling orders, wikilinks, source paths, use-case shape, ADR frontmatter, and every module being named by some note. ADR sections must be present *and in order*. Surfaces that need the *code's* values — option keys, command ids — are checked in `test/docs/surfaces.test.ts` instead, by importing the modules and running the registration rather than scanning the source |
 
 ## Consequences
 

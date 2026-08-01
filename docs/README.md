@@ -94,8 +94,9 @@ can run is worse than none, because it invites trust it has not earned:
 
 **One check lives elsewhere, on purpose.** That every **view-option key** and **command id**
 is named by a *requirement* is verified in `test/docs/surfaces.test.ts`, because it needs to
-**import** `getViewOptions()` and read the keys the code actually produces — the six
-generated per type included. Teaching this script to learn them instead meant regex-scanning
+**import** the modules and read what they actually produce: `getViewOptions()` for the
+keys — the six generated per type included — and `onload()` for the commands it registers,
+so a second one is discovered rather than remembered. Teaching this script to learn them instead meant regex-scanning
 TypeScript, and ten review rounds found ten ways that can be fooled. A script over markdown
 checks markdown; a test that can load the module asks the module. A record naming a surface
 in passing does not specify it, so that search reads `requirements/` alone. Menu items and

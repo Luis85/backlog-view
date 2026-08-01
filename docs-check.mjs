@@ -233,8 +233,17 @@ for (const file of adrFiles) {
 	const area = fm.field("area");
 	if (area && !ADR_AREAS.has(area)) fail(file, `area "${area}" is not one of ${[...ADR_AREAS]}`);
 	if (!/^date:\s*\d{4}-\d{2}-\d{2}\s*$/m.test(fm.raw)) fail(file, "date is not YYYY-MM-DD");
+	// Present AND in order: `docs/adrs/README.md` says "four headings, in this order",
+	// and a record that answers Consequences before Decision is a different document.
+	let previous = -1;
 	for (const section of ADR_SECTIONS) {
-		if (!text.includes(section)) fail(file, `ADR has no ${section}`);
+		const at = text.indexOf(section);
+		if (at === -1) {
+			fail(file, `ADR has no ${section}`);
+			continue;
+		}
+		if (at < previous) fail(file, `ADR has ${section} out of order`);
+		previous = at;
 	}
 }
 for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {

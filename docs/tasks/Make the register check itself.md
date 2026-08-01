@@ -268,6 +268,17 @@ expect(named('showCounts')).toBe(true);
 expect(named('showCount')).toBe(false);
 ```
 
+The first round after the rewrite found the half-measure in it: view-option keys were
+**discovered** by calling the schema, while commands were still one hand-picked constant —
+so a second `addCommand` would be specified by nobody and caught by nothing. The mock gained
+a minimal `Plugin`, and the test now runs `onload()` and asks what it registered. Adding an
+undocumented `purge-backlog` fails it. Discovering both surfaces the same way is the point;
+one discovered and one enumerated is the same asymmetry in a new place.
+
+The same round found the ADR check testing that each heading is *present* while
+`docs/adrs/README.md` requires them *in order*. Heading positions are compared now —
+swapping Decision and Consequences fails.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.
