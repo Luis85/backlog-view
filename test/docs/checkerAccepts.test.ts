@@ -142,10 +142,20 @@ describe('the gate accepts valid documents', () => {
 	it('accepts notes in a nested folder', async () => {
 		// `walk` recurses, so a note in `requirements/board/` is a requirement — and is
 		// held to every rule one at the top level is.
+		//
+		// The nested note is made **load-bearing**: it is the only note naming
+		// `src/board.ts`, so a `walk` that stopped recursing would leave that module
+		// unnamed and this case would fail with `no note names src/board.ts`. Added
+		// because the case did not previously observe the behaviour it claims — a note
+		// the gate never discovers is a note the gate never objects to, so ignoring it
+		// left the unchanged corpus green and the assertion passed either way. A fixture
+		// that survives the feature being removed is testing nothing.
 		const files = baseRegister();
+		files['src/board.ts'] = 'export const board = 1;\n';
 		files['docs/requirements/board/On the board.md'] = useCase({
 			title: 'On the board',
 			order: 20,
+			whereItLives: 'Lives in `src/board.ts`.',
 		});
 
 		await expectAccepted(files);

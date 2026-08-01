@@ -80,7 +80,19 @@ async function execute(root: string): Promise<CheckResult> {
 	}
 }
 
-/** The indented lines under the `✗ N problem(s):` header, which is the report's whole shape. */
+/**
+ * The indented lines under the `✗ N problem(s):` header, which is the report's whole shape.
+ *
+ * Separators are normalized to `/` because the gate builds every path it reports with
+ * `walk` and `path.join`, so on Windows it says `docs\adrs\0001-….md` where every
+ * expectation in these suites is written with forward slashes. That would fail the whole
+ * corpus on a Windows checkout for a verdict the checker got *right* — a false failure,
+ * which this project already holds is the more expensive direction to get wrong, and one
+ * CI cannot see because the workflow is Ubuntu-only. Normalized here rather than at each
+ * of the ~80 assertions: the separator is the OS's, never the checker's answer, and a
+ * per-case `path.join` would be eighty chances to forget one. Whole-line rather than just
+ * the `where:` prefix, since a message body carries a path too (`no note names src/x.ts`).
+ */
 function parseProblems(stderr: string): string[] {
 	const start = stderr.indexOf('problem(s):');
 	if (start === -1) return [];
@@ -89,7 +101,7 @@ function parseProblems(stderr: string): string[] {
 		.split('\n')
 		.slice(1)
 		.filter((line) => line.startsWith('  '))
-		.map((line) => line.trim());
+		.map((line) => line.trim().replaceAll('\\', '/'));
 }
 
 /**
