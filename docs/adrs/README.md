@@ -68,7 +68,7 @@ Four headings, in this order, plus one that is this project's own habit:
 | [0002](0002-keep-the-hierarchy-in-frontmatter.md) | Keep the hierarchy in frontmatter | Accepted | domain |
 | [0003](0003-four-layers-enforced-by-lint.md) | Four layers, enforced by lint | Accepted | architecture |
 | [0004](0004-one-write-boundary-planning-separate-from-applying.md) | One write boundary, planning separate from applying | Accepted | architecture |
-| [0005](0005-ship-with-no-runtime-dependencies.md) | Ship with no runtime dependencies | Accepted | tooling |
+| [0005](0005-ship-with-no-runtime-dependencies.md) | Ship with no runtime dependencies | **Superseded** by 0018 | tooling |
 | [0006](0006-jsdom-is-the-substitute-for-obsidian.md) | jsdom is the substitute for Obsidian | Accepted | testing |
 | [0007](0007-npm-run-check-is-the-whole-gate.md) | `npm run check` is the whole gate | Accepted | tooling |
 | [0008](0008-rank-siblings-with-fractional-orders.md) | Rank siblings with fractional orders | Accepted | domain |
@@ -81,3 +81,4 @@ Four headings, in this order, plus one that is this project's own habit:
 | [0015](0015-undo-by-captured-inverses.md) | Undo by captured inverses, not snapshots | Accepted | storage |
 | [0016](0016-break-compatibility-freely-before-1-0.md) | Break compatibility freely before 1.0 | Accepted | platform |
 | [0017](0017-bounded-undo-history-with-an-explicit-redo.md) | Bounded undo history with an explicit redo | **Proposed** | storage |
+| [0018](0018-admit-runtime-dependencies-by-exception.md) | Admit runtime dependencies by exception, starting with Pragmatic drag and drop | Accepted | tooling |

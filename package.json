@@ -40,5 +40,10 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "^2.0.1",
+    "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^3.0.0",
+    "@atlaskit/pragmatic-drag-and-drop-live-region": "^2.0.0"
   }
 }

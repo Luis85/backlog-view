@@ -1,4 +1,4 @@
-import { Menu, setIcon, setTooltip } from 'obsidian';
+import { BasesQueryResult, Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, BusyState } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
@@ -35,6 +35,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		showMenuForClick(menu, evt);
 	});
 	renderFocusPicker(host, barEl, model);
+	renderModeToggle(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	// The one command that routinely writes hundreds of notes: it carries the
@@ -52,14 +53,18 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	undoBtn.addEventListener('click', () => {
 		void host.undoLast();
 	});
-	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
-		for (const item of model.items) host.setCollapsed(item.file.path, false);
-	});
-	collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
-		for (const item of model.items) {
-			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
-		}
-	});
+	// Expand and collapse drive the tree's rows; the board has nothing collapsible
+	// yet, and a control that visibly does nothing is worse than none.
+	if (!host.settings.boardMode) {
+		collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
+			for (const item of model.items) host.setCollapsed(item.file.path, false);
+		});
+		collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
+			for (const item of model.items) {
+				if (item.children.length > 0) host.setCollapsed(item.file.path, true);
+			}
+		});
+	}
 	renderCompletedToggle(host, barEl, model);
 
 	renderFilterBox(host, barEl);
@@ -69,7 +74,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-grouping-note' });
 		setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'info');
 		note.createSpan({ text: 'Grouping ignored' });
-		setTooltip(note, 'The hierarchy is the grouping — the group by setting has no effect in this view.');
+		setTooltip(
+			note,
+			"The hierarchy is the tree's grouping and the workflow is the board's — the group by setting has no effect in this view.",
+		);
 	}
 	renderIgnoredNote(barEl, model);
 	const problems = configProblems(host.settings);
@@ -123,6 +131,38 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: bo
 	// slot holds something — which the batch that just finished usually ensures.
 	const undoBtn = barEl.querySelector<HTMLButtonElement>('.pbl-undo-btn');
 	if (undoBtn) undoBtn.disabled = busy !== null || !canUndo;
+}
+
+/**
+ * The hierarchy is the tree's grouping and the workflow is the board's; a group-by
+ * configured on the Base has no effect, and the toolbar note above says so. This
+ * detects that there is one to say it about.
+ */
+export function detectIgnoredGrouping(data: BasesQueryResult | null | undefined): boolean {
+	try {
+		const groups = data?.groupedData;
+		if (!groups || groups.length === 0) return false;
+		return groups.length > 1 || groups[0].hasKey();
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * The toolbar survives content-only renders (the filter keeps its input focus), so
+ * the count is synced imperatively per pass. The Base's own results: ancestors
+ * loaded for context are not items of this base and must not inflate the number.
+ * Collapsed rows still count as shown — only filtering and hiding narrow it,
+ * which `isRowHidden` covers both of, in both projections.
+ */
+export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void {
+	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
+	const model = host.model;
+	if (!label || !model) return;
+	const total = model.results.length;
+	const shown = model.results.filter((item) => !host.isRowHidden(item)).length;
+	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
+	else label.setText(`${shown} of ${total}`);
 }
 
 /**
@@ -235,6 +275,24 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	setIcon(clear, 'x');
 	setTooltip(clear, 'Show all types');
 	clear.addEventListener('click', () => setLevel(''));
+}
+
+/**
+ * The projection toggle — one view, read as a tree or as a board. The mode is a
+ * persisted view option exactly as the focus level is: set here, stored in the
+ * `.base` per saved view, absent from the options menu because it lives where its
+ * effect is. Bases persists the change and refreshes the view.
+ */
+function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
+	const board = host.settings.boardMode;
+	const btn = iconButton(
+		barEl,
+		board ? 'list-tree' : 'square-kanban',
+		board ? 'Show as backlog tree' : 'Show as kanban board',
+	);
+	btn.addClass('pbl-mode-toggle');
+	btn.toggleClass('is-active', board);
+	btn.addEventListener('click', () => host.config.set('viewMode', board ? 'backlog' : 'board'));
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */

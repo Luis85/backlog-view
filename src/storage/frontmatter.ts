@@ -82,7 +82,8 @@ export async function applyWrites(
 			if (write.order !== undefined) fm[settings.orderKey] = write.order;
 			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
 			// The stateKey may be unset (progress tracking off) — never write to an empty key.
-			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+			if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
+			else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
 			const applied =
 				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
 			// The stored delta is the one that UNDOES what was applied.
@@ -100,7 +101,7 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.removeParentKey || write.parent !== undefined) keys.push(settings.parentKey);
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
-	if (write.state !== undefined && settings.stateKey) keys.push(settings.stateKey);
+	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
 	return keys;
 }
 

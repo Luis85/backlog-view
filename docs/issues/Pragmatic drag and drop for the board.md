@@ -67,3 +67,23 @@ The facts that make it viable here, verified 2026-08-01:
 - [[Smoke test the board in a live vault]] gains the device answer: does
   pragmatic-powered drag work on Obsidian mobile, and does the long-press feel match
   the platform convention — or does touch stay menu-only.
+
+## Outcome, so far
+
+Two of the three are answered; the issue stays open for the device verdict alone.
+
+- **The spike passed, 2026-08-01**: jsdom drives the element adapter with the same
+  synthetic events the tree's tests dispatch, plus a supplied `dataTransfer` — no
+  seam. It is kept as the standing proof in `test/view/pragmaticSpike.test.ts`
+  (event helpers in `test/helpers/dnd.ts`), isolated from the board so a library
+  upgrade that breaks jsdom compatibility names itself before a board test muddies
+  it. One caveat: the library's dev builds warn that the board's scrollers are not
+  scrollable under jsdom (they have no layout there) — noise, silenced in the
+  release by the `NODE_ENV` define in `esbuild.config.mjs`.
+- **Bundled, with the decision recorded**: ADR 0018 supersedes ADR 0005 and carries
+  the license obligation and the measured before/after bundle size.
+  `@atlaskit/pragmatic-drag-and-drop` 2.0.1 (element adapter), `-auto-scroll` 3.0.0
+  and `-live-region` 2.0.0, all verified Apache-2.0 at install; the hitbox package
+  stayed out, as decided.
+- **Touch**: still a question for a device, owned by
+  [[Smoke test the board in a live vault]].

@@ -17,13 +17,13 @@ export default defineConfig({
 			// Registration glue that needs the real Obsidian Plugin runtime.
 			exclude: ['src/main.ts'],
 			reporter: ['text-summary', 'json', 'lcov'],
-			// Measured 98.5/94/99.5/98.5 — thresholds sit just below to catch regressions
+			// Measured 98.9/94.1/99.4/98.9 — thresholds sit just below to catch regressions
 			// without being brittle. Raise them as coverage grows, never lower.
 			thresholds: {
-				statements: 96,
+				statements: 97,
 				branches: 92,
 				functions: 98,
-				lines: 96,
+				lines: 97,
 			},
 		},
 	},

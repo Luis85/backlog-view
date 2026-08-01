@@ -1,7 +1,7 @@
 ---
 type: Epic
 order: 30
-status: Open
+status: Active
 created: 2026-08-01
 source: user request
 ---

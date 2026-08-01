@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[Columns from the workflow]]"
 order: 20
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 files:
-  - src/domain/noteFields.ts
+  - src/domain/board.ts
 ---
 
 # Every card has a column
@@ -75,6 +75,9 @@ has no authority to show less.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** Reading a note's state and matching it tolerantly
-is `src/domain/noteFields.ts` work, beside the tolerant parent and number reading it
-already does; assigning results to columns is pure and belongs with the column derivation.
+Assignment lives with the column derivation in `src/domain/board.ts`: the model already
+reads the state tolerantly, and `boardColumns` matches it against the workflow with the
+same lowercased comparison `doneValues` uses, gathers the stateless into the leading
+no-state column, and mints the appended stray columns. Counts are result cards only.
+Asserted in `test/domain/board.test.ts` and driven through the view in
+`test/view/board.test.ts`.

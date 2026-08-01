@@ -163,7 +163,8 @@ export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: Backlo
 	renderRollup(ctx.host, row, item);
 }
 
-function renderPropCells(ctx: RowContext, row: HTMLElement, item: BacklogItem): void {
+/** Shared with the board's cards — one resolved column list drives both projections. */
+export function renderPropCells(ctx: RowContext, row: HTMLElement, item: BacklogItem): void {
 	const props = row.createDiv({ cls: 'pbl-props' });
 	for (const chip of ctx.chips) {
 		const cell = props.createDiv({ cls: 'pbl-prop' });
@@ -258,7 +259,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 }
 
 /** Progress rollup or descendant count, in a column of its own so both align. */
-function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
+export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
 	const settings = host.settings;
 	if (!settings.stateKey && !settings.showCounts) return;
 	const col = row.createDiv({ cls: 'pbl-meta-col' });

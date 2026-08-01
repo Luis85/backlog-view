@@ -1,9 +1,10 @@
 ---
 adr: 5
 title: Ship with no runtime dependencies
-status: Accepted
+status: Superseded
 date: 2026-07-30
 area: tooling
+superseded-by: 18
 ---
 
 # ADR 0005 — Ship with no runtime dependencies

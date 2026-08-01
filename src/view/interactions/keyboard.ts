@@ -1,4 +1,4 @@
-import { BacklogViewHost } from '../host';
+import { BacklogViewHost, BoardSnapshot } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { indent, moveWithinSiblings, outdent } from './structure';
 
@@ -172,4 +172,105 @@ function collapseKeepingSelection(host: BacklogViewHost, item: BacklogItem, coll
 	host.setCollapsed(item.file.path, collapsed);
 	host.refreshSubtree(item);
 	host.selectItem(item);
+}
+
+// ------------------------------------------------------------------- board
+
+/** Where the board selection currently rests: a card in a column, or a column alone. */
+interface BoardPosition {
+	col: number;
+	/** Index into the column's cards; -1 when the column itself is selected. */
+	card: number;
+}
+
+/**
+ * Board keyboard support — the same one-tab-stop model as the tree: arrows move
+ * the selection across cards and columns, Home and End reach the edges, Enter
+ * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes. A column with no card is
+ * still a stop, so an empty board is fully drivable. The move shortcuts and the
+ * card menu are the next increment's work, alongside the board's Set state.
+ */
+export function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
+	if (evt.target !== evt.currentTarget) return;
+	if (handleBoardChromeKey(host, evt)) return;
+	const snapshot = host.board;
+	if (!snapshot || snapshot.board.columns.length === 0) return;
+	const pos = boardPosition(host, snapshot);
+	const next = nextBoardPosition(snapshot, pos, evt.key);
+	if (next) {
+		evt.preventDefault();
+		const card = snapshot.board.columns[next.col].cards[next.card];
+		if (card) host.selectItem(card);
+		else host.selectBoardColumn(next.col);
+		return;
+	}
+	const current = pos && pos.card >= 0 ? snapshot.board.columns[pos.col].cards[pos.card] : null;
+	if (evt.key === 'Enter' && current) {
+		evt.preventDefault();
+		host.openItem(current, evt);
+	}
+}
+
+/** The keys that are not navigation: undo, the column-stop Escape, and the filter pair. */
+function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolean {
+	if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key.toLowerCase() === 'z') {
+		evt.preventDefault();
+		void host.undoLast();
+		return true;
+	}
+	// Escape backs out of the column stop the tree does not have, then the filter path.
+	if (evt.key === 'Escape' && host.filterText === '' && host.selectedBoardColumn !== null) {
+		evt.preventDefault();
+		host.selectBoardColumn(null);
+		return true;
+	}
+	return handleFilterKey(host, evt);
+}
+
+function boardPosition(host: BacklogViewHost, snapshot: BoardSnapshot): BoardPosition | null {
+	if (host.selectedPath !== null) {
+		const columns = snapshot.board.columns;
+		for (let col = 0; col < columns.length; col++) {
+			const card = columns[col].cards.findIndex((c) => c.file.path === host.selectedPath);
+			if (card >= 0) return { col, card };
+		}
+	}
+	if (host.selectedBoardColumn !== null) {
+		return { col: Math.min(host.selectedBoardColumn, snapshot.board.columns.length - 1), card: -1 };
+	}
+	return null;
+}
+
+/** The position a navigation key moves to, or null for a key that is not navigation. */
+function nextBoardPosition(snapshot: BoardSnapshot, pos: BoardPosition | null, key: string): BoardPosition | null {
+	const columns = snapshot.board.columns;
+	const last = columns.length - 1;
+	// Entering the board from nothing: the edges, whatever key asked.
+	const entry = (col: number): BoardPosition => ({ col, card: columns[col].cards.length > 0 ? 0 : -1 });
+	switch (key) {
+		case 'Home':
+			return entry(0);
+		case 'End':
+			return entry(last);
+		case 'ArrowDown': {
+			if (!pos) return entry(0);
+			const max = columns[pos.col].cards.length - 1;
+			return { col: pos.col, card: Math.min(pos.card + 1, max) };
+		}
+		case 'ArrowUp': {
+			if (!pos) return entry(last);
+			// From the first card the column itself is the stop above, and from the
+			// column stop there is nowhere further up.
+			return { col: pos.col, card: Math.max(pos.card - 1, -1) };
+		}
+		case 'ArrowLeft':
+		case 'ArrowRight': {
+			if (!pos) return entry(key === 'ArrowRight' ? 0 : last);
+			const col = Math.min(Math.max(pos.col + (key === 'ArrowRight' ? 1 : -1), 0), last);
+			if (col === pos.col) return pos;
+			// Keep the vertical position where the neighbor column allows it.
+			return { col, card: Math.min(pos.card, columns[col].cards.length - 1) };
+		}
+	}
+	return null;
 }

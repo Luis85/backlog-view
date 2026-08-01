@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Backlog and board]]"
 order: 10
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 files:
@@ -73,6 +73,9 @@ one base can keep a saved backlog view beside a saved board view of the same not
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The mode will be one more option in
-`src/domain/settings.ts` and its schema entry, toggled from `src/view/render/toolbar.ts`
-and read by `src/view/backlogView.ts` at render time, beside the focus level it copies.
+The mode is `boardMode` in `src/domain/settings.ts`, persisted under the `viewMode`
+key — schema-absent like the focus level, since it is set from the toolbar
+(`renderModeToggle` in `src/view/render/toolbar.ts`) and never from the options menu.
+`src/view/backlogView.ts` dispatches the render on it, swapping the scroller between
+tree and listbox roles over the same model, undo slot and filter state. Driven in
+`test/view/board.test.ts`.

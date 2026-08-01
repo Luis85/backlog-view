@@ -38,19 +38,25 @@ plugin is *for*.
 changes the plugin, which is the honest way to write an architectural rule as a use case:
 someone has to be trying to do something for the rule to be worth having.
 
-**Product Kanban** is the next increment, and it is design only: a board projection of
-the same backlog, specified across four features and 15 use cases — the backlog/board
-toggle, columns from the workflow the view options define, card moves as gated state
-writes, and the hierarchy showing through on the board. Nothing under it is built; every
-note states the precedent or the codebase seam it rests on, from a survey of the Kanban
-Guide, the major trackers and the Obsidian ecosystem run on 2026-08-01.
+**Product Kanban** is the epic in flight: a board projection of the same backlog,
+specified across four features and 15 use cases — the backlog/board toggle, columns
+from the workflow the view options define, card moves as gated state writes, and the
+hierarchy showing through on the board. Every note states the precedent or the
+codebase seam it rests on, from a survey of the Kanban Guide, the major trackers and
+the Obsidian ecosystem run on 2026-08-01. The first increment is built: the toggle,
+the columns, the cards, desktop drag as a gated state write, and the focus level
+picking the cards — six use cases closed, and the drag one held `Active` on the one
+criterion only [[WIP limits]] can exercise. What remains under the epic — menu and
+touch moves, lanes, creation from columns, limits, policies, stamps, column
+collapse — is still design.
 
-Those 15 are the argument for writing a PBI as a use case *before* building it rather
-than after. Their `Where it lives` sections say **nothing yet** and then name the module
-the work will extend, which is a design claim a reader can disagree with; their
-extensions are where the epic's hard parts are already settled — what a filtered board
-does to a WIP signal, what happens to a card created into a state the base excludes —
-and every one of those was a paragraph of prose before the shape asked the question.
+Those use cases are the argument for writing a PBI *before* building it rather than
+after. The ones still open say **nothing yet** (or **partly built**, naming exactly
+which slice landed) and then the module the work will extend, which is a design claim
+a reader can disagree with; their extensions are where the epic's hard parts were
+settled before any code — what a filtered board does to a WIP signal, what happens to
+a card created into a state the base excludes — and every one of those was a
+paragraph of prose before the shape asked the question.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. Two features — `Multilang` (every string comes
