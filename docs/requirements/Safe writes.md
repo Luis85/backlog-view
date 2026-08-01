@@ -15,5 +15,6 @@ be taken back.
 
 ## Use cases
 
-- [[Undo and redo]] — take the last batch back, whatever produced it.
+- [[Undo and redo]] — step back through the last few batches, and forward again. **Open**:
+  a bounded history and a dedicated redo, replacing the single slot that shipped in 0.3.0.
 - [[The write gate]] — one serialized checkpoint every change passes.

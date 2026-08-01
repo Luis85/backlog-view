@@ -58,6 +58,23 @@ Six violations planted, six caught, matching how this project verifies its lint 
 | An extension relabelled `9a` above `3a` | `extensions are not in step order` |
 | `status: Accepted` → `Agreed`, section renamed | `status "Agreed" is not one of …`, `ADR has no ## Revisit when` |
 
+A review round on the checker itself then found two more holes, both now closed and both
+planted-and-caught in turn:
+
+| Planted | Reported |
+| --- | --- |
+| A `\| **Guarantee** \|` row unbolded; a `\| **Trigger** \|` row unbolded | `use case has no \| **Guarantee** \|`, `… no \| **Trigger** \|` |
+| `superseded-by: 999`; `supersedes: ADR-12` | `superseded-by: 999 — no such ADR`, `supersedes: "ADR-12" is not an ADR number` |
+
+The first: only the `Actor` row was checked, so a use case could ship without the trigger
+or the guarantee — the two rows that do the most work. The second: `superseded-by` was
+checked for *presence*, not for naming a record that exists, so a broken chain passed. Both
+ends must now agree, because a one-sided link is how a chain rots: the superseded record
+still looks current from the successor's side.
+
+The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
+being taught to check that.
+
 It also caught a bug in its own first draft: the module count read the markdown walker
 instead of the TypeScript one and reported 3 modules where there are 59. A validator with
 a bug is precisely what it exists to prevent, so the count is printed on every run rather

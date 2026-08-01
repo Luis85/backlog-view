@@ -26,11 +26,18 @@ const LEGAL_CHILDREN = {
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
 };
-/** Sections every use case carries — see the shape documented in `docs/README.md`. */
+/**
+ * Sections every use case carries — the shape documented in `docs/README.md`, including
+ * all four rows of the table. Checking only `Actor` would let a use case ship without the
+ * trigger or the guarantee, which are the two rows that do the most work.
+ */
 const USE_CASE_SECTIONS = [
 	"**As**",
 	"## Use case",
 	"| **Actor** |",
+	"| **Trigger** |",
+	"| **Preconditions** |",
+	"| **Guarantee** |",
 	"**Main flow**",
 	"**Extensions**",
 	"## Acceptance criteria",
@@ -153,6 +160,7 @@ for (const [, note] of notes) {
 // ----------------------------------------------------------------------------- ADRs
 const adrFiles = files.filter((f) => /adrs[/\\]\d{4}-/.test(f));
 const numbers = new Map();
+const chains = [];
 for (const file of adrFiles) {
 	const text = texts.get(file);
 	const fm = frontmatter(text);
@@ -174,6 +182,9 @@ for (const file of adrFiles) {
 	if (status === "Superseded" && fm.field("superseded-by") === null) {
 		fail(file, "Superseded without naming superseded-by");
 	}
+	// Resolved in a second pass below: a forward reference names an ADR this loop has
+	// not reached yet, so presence is all that can be judged here.
+	chains.push({ file, number, supersedes: fm.field("supersedes"), supersededBy: fm.field("superseded-by") });
 	const area = fm.field("area");
 	if (area && !ADR_AREAS.has(area)) fail(file, `area "${area}" is not one of ${[...ADR_AREAS]}`);
 	if (!/^date:\s*\d{4}-\d{2}-\d{2}\s*$/m.test(fm.raw)) fail(file, "date is not YYYY-MM-DD");
@@ -186,6 +197,33 @@ for (const file of adrFiles) {
 }
 for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {
 	if (!numbers.has(n)) fail("docs/adrs", `no ADR ${String(n).padStart(4, "0")} — numbering has a gap`);
+}
+
+/**
+ * Supersession, resolved once every number is known. A chain that names a record which
+ * does not exist is worse than none: it reads as history and leads nowhere. Both ends are
+ * required to agree, because a one-sided link is how a chain rots — the superseded record
+ * still looks current from the successor's side.
+ */
+const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : null);
+for (const { file, number, supersedes, supersededBy } of chains) {
+	for (const [field, raw] of [
+		["supersedes", supersedes],
+		["superseded-by", supersededBy],
+	]) {
+		if (raw === null) continue;
+		const target = adrNumber(raw);
+		if (target === null) fail(file, `${field}: "${raw}" is not an ADR number`);
+		else if (!numbers.has(target)) fail(file, `${field}: ${target} — no such ADR`);
+		else if (target === number) fail(file, `${field} points at itself`);
+	}
+	const partner = adrNumber(supersededBy);
+	if (partner !== null && numbers.has(partner)) {
+		const back = chains.find((c) => c.number === partner);
+		if (adrNumber(back?.supersedes ?? null) !== number) {
+			fail(file, `says superseded-by: ${partner}, but ADR ${partner} does not say supersedes: ${number}`);
+		}
+	}
 }
 const adrIndex = texts.get(path.join(DOCS, "adrs", "README.md")) ?? "";
 for (const file of adrFiles) {

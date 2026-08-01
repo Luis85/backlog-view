@@ -86,3 +86,9 @@ Three properties follow, each load-bearing:
 
 Someone asks to take back more than the last thing they did. The capture mechanism already
 supports a stack; only the slot is single.
+
+**That trigger fired on 2026-08-01**, along with a second complaint this record did not
+anticipate: the free redo is the part users cannot read. See
+[ADR 0017](0017-bounded-undo-history-with-an-explicit-redo.md) (Proposed) and
+[[Undo and redo]]. This record stays in force until that one is built — it still describes
+the shipped code, and everything in it except "one level" would survive the change.

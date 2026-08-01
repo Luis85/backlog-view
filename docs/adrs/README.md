@@ -79,3 +79,4 @@ Four headings, in this order, plus one that is this project's own habit:
 | [0014](0014-rank-extra-types-by-type-not-by-position.md) | Rank extra types by type, not by position | Accepted | domain |
 | [0015](0015-undo-by-captured-inverses.md) | Undo by captured inverses, not snapshots | Accepted | storage |
 | [0016](0016-break-compatibility-freely-before-1-0.md) | Break compatibility freely before 1.0 | Accepted | platform |
+| [0017](0017-bounded-undo-history-with-an-explicit-redo.md) | Bounded undo history with an explicit redo | **Proposed** | storage |

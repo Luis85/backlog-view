@@ -71,10 +71,13 @@ can run is worse than none, because it invites trust it has not earned:
    of a moment and may legitimately name a file since split away — rewriting them would
    falsify the record — so their stale paths are **listed rather than failed**. Being
    listed is the point: visible, not silently exempt.
-5. Every use case has all seven of its sections, and its extensions are in step order.
+5. Every use case has all its sections — including **all four rows** of the use-case
+   table, not just `Actor` — and its extensions are in step order.
 6. Every ADR: frontmatter complete, number matching its filename, unique, no gaps in the
-   sequence, a known status and area, `Superseded` naming its successor, relative links
-   resolving, and every record listed in the ADR index.
+   sequence, a known status and area, relative links resolving, and every record listed in
+   the ADR index. `supersedes` and `superseded-by` must name a record that **exists**, and
+   both ends must agree — a one-sided link is how a chain rots, because the superseded
+   record still looks current from the successor's side.
 7. Every module in `src/` and every test file is named by at least one note — the check
    that finds *missing* notes rather than wrong ones. See
    [[Sweep the register against the code]] for how that sweep is run and what it found.
