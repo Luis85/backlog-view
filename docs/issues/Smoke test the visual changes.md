@@ -1,6 +1,6 @@
 ---
 type: Issue
-order: 20
+order: 80
 parent: "[[Product Backlog]]"
 status: Done
 priority: P2
@@ -55,11 +55,11 @@ order properties** over a backlog large enough to take a moment: the toolbar sho
 `tabindex="-1"`, so it must not appear in the `Tab` order.
 
 **Extra-type badges** (added after this note was first closed) — `Issue` renders a
-`circle-alert` icon in pink, `Bug` a `bug` icon in red, and an extra type this plugin did
-not name gets `circle-dot` and a colour from past the end of the ladder. Check all three
-read as peers of the level badges rather than as error states, that pink and red are
-distinguishable from each other and from the four level colours in both themes, and that
-the two icons render at 11px without looking muddy.
+`circle-alert` icon in pink and `Bug` a `bug` icon in red. Check both read as peers of the
+level badges rather than as error states, that pink and red are distinguishable from each
+other and from the four level colours in both themes, and that the two icons render at
+11px without looking muddy. A type outside the six keeps its own name with no icon and the
+neutral `pbl-lvl-unknown` treatment.
 
 **Done rows** — the strike-through is gone; muting is the whole signal now. Check a
 finished row still reads as finished at a glance, and that a done *parent* with an open
@@ -67,6 +67,20 @@ child is still tellable from an open one.
 
 **Reduced motion** — with the OS setting on, spinners should step rather than spin and
 the busy chip should appear without a fade.
+
+## Runs
+
+| Date | Against | Outcome |
+| --- | --- | --- |
+| 2026-08-01 | the PR #14 changes | Everything as intended; `styles.css` needed no adjustment. |
+| 2026-08-01 | **0.3.0** — extra-type badges, done rows without the strike-through | Confirmed by the maintainer: looks and feels fine. No change needed. |
+
+That second run is the one that mattered most, because the badge colours and the removed
+strike-through shipped in 0.3.0 on the strength of jsdom structure tests, which cannot see
+a pixel. **This note is closed but kept to be re-run**, not read as history: it is the
+checklist for any future change to `styles.css` or to the row's markup, and
+`npm run test-build` against the `docs/` backlog makes it a ten-minute pass. Add a row
+above when you run it.
 
 ## If the busy indicator flickers
 

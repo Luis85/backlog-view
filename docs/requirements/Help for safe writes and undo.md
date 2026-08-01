@@ -13,39 +13,60 @@ files:
 
 # Help for safe writes and undo
 
-The manual section on what the view writes to your notes, and how to take it back. The
-view edits real files with no save step and no confirmation dialog, so this is the
+**As** someone whose notes are the data, **I want** to know exactly which properties this
+view edits and how to take a change back, **so that** I can drag things around without
+wondering what it did to files I care about.
+
+The view edits real files with no save step and no confirmation dialog, so this is the
 section that decides whether a new user trusts it.
 
-## What the section says
+## Use case
 
-- **Exactly three properties are the view's to maintain** — `parent`, `order`, `type` —
-  plus the state and tags properties you configure. Nothing else in a note is touched,
-  and the note stays an ordinary note.
-- **Every property change can be taken back**, however many notes it touched: **↩** in the
-  toolbar or <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree, and again to redo. One level,
-  per view and per session. A no-op does not spend it.
-- **Undo restores, it does not overwrite.** A property you edited by hand in the meantime
-  is kept, a note deleted since is skipped, and a notice says when either happened.
-- **Creating an item is the exception**: undo never deletes a note. Delete the note to
-  take a creation back — and the undo slot still points at the change before it.
-- **No new change writes to a note your Base excluded.** A context row is not a write
-  target, and a forward batch naming one is refused **before any of it is written** rather
-  than applied in part.
-- **Undo is the one exception, and deliberately so.** It may write to a note that has
-  since left the filter, because that is often exactly what the change did — marking a
-  parent done in a base that hides done items. Its authorization came when the batch was
-  captured: an undo can only name files its own forward batch wrote while they were
-  results. The rule both paths keep is *never write to a note you could not have acted
-  on*, which is not the same as *never write outside the filter*.
-- **A misconfigured view writes nothing at all.** `Check view options` in the toolbar
-  means the write gate is closed until the configuration is valid.
-- **A batch that fails partway leaves what it already wrote.** Files are written one at a
-  time, so a change touching many notes can stop halfway. What landed is captured in the
-  undo slot, so taking it back is one press — with the same two limits undo always has: a
-  note deleted since is skipped, and a property you edited by hand is kept rather than
-  overwritten. This is the honest version of "safe": not all-or-nothing, but never a
-  change with no way back offered.
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Opening the manual on the writes section, from the **?** button, from the write-in-flight indicator, or from the `Check view options` warning |
+| **Preconditions** | A `product-backlog` view is open |
+| **Guarantee** | Every write the section describes is one the view plans and applies through its single write boundary, and every one of them is offered back through undo — with undo's own two limits stated rather than glossed. |
+
+**Main flow**
+
+1. The section names the properties the view maintains: `parent`, `order` and `type`, plus
+   the state and tags properties you configure. Nothing else in a note is touched, and the
+   note stays an ordinary note.
+2. It says how to take a change back: **↩** in the toolbar or <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>
+   in the tree, again to redo, however many notes the change touched. One level, per view
+   and per session; a no-op does not spend it.
+3. It states what undo does with a note that moved on: it restores rather than overwrites,
+   so a property edited by hand in the meantime is kept and a deleted note is skipped, with
+   a notice when either happened.
+4. It states the two boundaries on writing: a forward batch naming a note the Base excluded
+   is refused **before any of it is written**, and a misconfigured view writes nothing at
+   all until the configuration is valid.
+5. The reader leaves knowing which changes are reversible, which are not, and what
+   "refused" means when they see it.
+
+**Extensions**
+
+- **1a — no state or tags property is configured.** Those writes are dropped rather than
+  written to an empty key, so the section describes the properties actually in play for
+  the reader's configuration.
+- **2a — the change was a creation.** Undo never deletes a note, so a new item stays, and
+  the slot still points at the last property change from before it. Delete the note to
+  take a creation back.
+- **3a — the batch failed partway.** Files are written one at a time, so a change touching
+  many notes can stop halfway. What landed is captured in the undo slot, so taking it back
+  is one press — with the same two limits from step 3. The applied prefix is not promised
+  *visible*: a write can move an item out of the Base's filter, and the refresh that
+  follows the failure will then drop it from the tree.
+- **4a — undo has to write outside the filter.** It may, deliberately: the change being
+  undone is often what moved the note out (marking a parent done in a base that hides done
+  items). Undo's authorization came at capture time — it can only name files its own
+  forward batch wrote while they were results. The rule both paths keep is *never write to
+  a note you could not have acted on*, which is not the same as *never write outside the
+  filter*.
+- **4b — the view is misconfigured.** `Check view options` in the toolbar means the write
+  gate is closed, so the section explains a view that appears to ignore every gesture.
 
 ## Acceptance criteria
 
@@ -58,16 +79,17 @@ section that decides whether a new user trusts it.
   and a mid-batch failure keeps the applied prefix, so the section says so and points at
   undo rather than promising all-or-nothing. Nor is the prefix promised to be *visible*:
   a write can move an item out of the Base's filter, and the refresh that follows the
-  failure will then drop it from the tree. What is promised is the undo slot, with the
-  limits undo already has.
+  failure will then drop it from the tree.
+- The never-writes-outside-the-filter rule is stated of **forward batches**, with undo's
+  capture-time authorization stated beside it, so the section does not contradict
+  [[Help for finding work]] on what may touch a context row.
 - The section is reachable from the busy indicator and from the config warning, since both
   are moments the user is already asking what the view is doing to their files.
 
-## Evidence
+## Where it lives
 
-- `src/storage/frontmatter.ts` — the only module that writes, and where inverses are
-  captured.
-- `src/view/backlogView.ts` — `applySafely`, `undoLast` and the `runExclusively` gate.
-- [[The write gate]], [[Undo and redo]], [[Safe writes]] — the built behaviour, including
-  the recovery cases this section deliberately does not enumerate.
-- `README.md`, section *Undo*.
+**Nothing yet — this note is design.** The behaviour it describes is
+`src/storage/frontmatter.ts` (the only module that writes, and where each write's inverse
+is captured), `src/view/backlogView.ts` (`applySafely`, `undoLast` and the gate they share),
+and `src/domain/settings.ts` (`configProblems`, which is what "misconfigured" means
+concretely).

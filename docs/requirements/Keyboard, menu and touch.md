@@ -12,6 +12,10 @@ files:
 
 # Keyboard, menu and touch
 
+**As** someone who cannot drag — no pointer, a screen reader, or a phone — **I want**
+every move the board offers to be reachable another way, **so that** the board is a way
+of working rather than a picture of other people's work.
+
 The board moves cards without a mouse the way the tree already moves rows, and the
 context menu is the one path that works everywhere. The evidence stacks up on the same
 answer: Trello moves a card between lists with a keystroke rather than a pick-up mode,
@@ -21,6 +25,47 @@ board pattern (`aria-grabbed` is deprecated with no replacement), and on Obsidia
 mobile native drag from touch has historically not fired — the chosen engine claims
 otherwise, a verdict the smoke test owns ([[Pragmatic drag and drop for the board]]).
 The menu is the answer on every platform either way.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Anyone driving the board without a drag — by keyboard, screen reader or touch |
+| **Trigger** | Tabbing into the board, or opening a card's context menu |
+| **Preconditions** | Board mode is on |
+| **Guarantee** | Every target a drag can reach, the keyboard and the menu can reach, and the other way round. No move exists that only a pointer can make. |
+
+**Main flow**
+
+1. The user tabs into the board — one tab stop, like the tree.
+2. Arrows move the selection across cards and columns; Home and End reach the edges.
+3. Alt+Left and Alt+Right move the selected card one column, writing the same batch a
+   drop writes.
+4. The move is announced from a polite live region naming the card and what changed —
+   old and new column for a state move, old and new lane for a reparent, both for a drop
+   that does both.
+5. Enter opens the note; `/` reaches the quick filter; Ctrl/Cmd+Z undoes.
+
+**Extensions**
+
+- **1a — the user is on touch.** The card's context menu is the required path, and the
+  same one. Whether native drag fires from touch on Obsidian mobile is a claim the engine
+  makes and the smoke test settles; the menu does not depend on the answer.
+- **2a — the selection lands on a column with no cards.** The column itself is the stop,
+  where Enter and the context menu offer that column's creation. An empty board is fully
+  drivable by keyboard, or it is a board that cannot be started from.
+- **3a — there is no Alt+Up/Down for rank.** Deliberately: within-column order is derived,
+  not stored ([[Board order is derived not stored]]), so a rank shortcut would promise
+  something the board does not keep. The pair is free for lanes
+  ([[Swimlanes by parent]]).
+- **3b — the user takes the menu instead.** Set state offers exactly the board's targets:
+  the configured states, the observed out-of-workflow values, and a no-state entry writing
+  the same remove-state write the no-state column's drop writes. `stateMenuValues` alone
+  cannot supply that list — it returns only the configured states when a list is set — and
+  closing that gap for board mode is this PBI's own work.
+- **5a — the user needs to know the shortcuts exist.** Hidden instructions on the board
+  describe them and the menu path, so a screen-reader user is told rather than left to
+  discover.
 
 ## Acceptance criteria
 
@@ -44,3 +89,10 @@ The menu is the answer on every platform either way.
   live region naming the card and what changed: old and new column for a state move,
   old and new lane for a reparent, both for a drop that does both. Hidden
   instructions on the board describe the shortcuts and the menu path.
+
+## Where it lives
+
+**Nothing yet — this note is design.** The board's navigation joins the tree's in
+`src/view/interactions/keyboard.ts`, which already owns the one-tab-stop rule and the
+shortcuts; the board's Set state joins `src/view/interactions/menu.ts`, which is where
+the tree's state menu and its context-row omissions already live.

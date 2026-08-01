@@ -17,6 +17,55 @@ files:
 
 # Issue and Bug: types that sit beside the ladder
 
+**As** someone tracking work that is not a plan, **I want** to raise an Issue or a Bug
+against any level of the backlog and break it into Tasks, **so that** a defect found
+against an Epic and one found against a PBI are the same kind of thing, filed where the
+problem actually is, without pretending either is a Feature.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Creating an item under a row, or setting an existing item's type |
+| **Preconditions** | The parent row is an `Epic`, `Feature` or `PBI` |
+| **Guarantee** | An extra type is never re-typed by a move. Its rank is a property of the type, so no drag can change it. |
+
+**Main flow**
+
+1. The user opens the **+** on an `Epic`, `Feature` or `PBI` row.
+2. Because that row can hold more than one kind of child, the modal asks which — the
+   ladder's own child first, then `Issue` and `Bug`.
+3. The user picks `Bug`, names it, and the view writes `type`, `parent` and `order`,
+   filing the note in the `Bug` folder ([[Where new items are filed]]).
+4. The Bug renders with its own icon and colour, ranked as though it were a PBI wherever
+   it hangs.
+5. Opening **+** on that Bug offers `Task` alone, and asks nothing.
+
+**Extensions**
+
+- **2a — the row is a `Task`.** Nothing hangs below a Task; the modal is skipped.
+- **2b — the row is itself an `Issue` or `Bug`.** Its only children are Tasks, so again
+  nothing is asked.
+- **3a — the user instead drags an existing Bug to a different parent.** Its type is
+  left alone. `levelIndex === -1` means "not a rung", and the auto-type cascade has
+  always treated those as deliberate user data.
+- **4a — the Bug has no parent at all.** It stays in the model. A recognised type is
+  enough to belong, and both "Set type → Bug" on a leaf and a drag to the top level
+  produce exactly that.
+
+## Acceptance criteria
+
+- An `Issue` or `Bug` ranks the same wherever it hangs, and its children are Tasks under an
+  Epic exactly as under a PBI.
+- No move ever re-types one, including a move of a subtree that contains one nested inside
+  it.
+- `Epic`, `Feature` and `PBI` rows offer all three child kinds; `Task`, `Issue` and `Bug`
+  rows offer only `Task`, and ask nothing.
+- A parentless `Issue` or `Bug` stays in the model — a recognised type is enough to belong.
+- Each has its own icon and badge colour, distinct from every level's and from each other's.
+- The vocabulary is fixed at six names and is not a user setting.
+
 ## The request
 
 Two new item types, `Issue` and `Bug`. Both may have `Epic`, `Feature` or `PBI` as a
@@ -25,7 +74,7 @@ kind of item to create, since a row can now hold more than one.
 
 ## Why this is not a fifth level
 
-`settings.levels` is a *ladder*: every level rule in the codebase is "one rung below the
+`LEVELS` is a *ladder*: every level rule in the codebase is "one rung below the
 parent" (`nextLevelIndex`), and each rung's children are the next rung down. That shape
 cannot express these two types, because their position and their contents are
 independent — a Bug holds Tasks whether it was raised against an Epic, a Feature or a
@@ -33,7 +82,7 @@ PBI. A fifth rung would have to be *three* rungs at once.
 
 So the rank belongs to the **type**, not to where the item sits:
 
-> An **extra type** is a declared type that is not a rung. It ranks at `extraTypeRank` —
+> An **extra type** is a declared type that is not a rung. It ranks at `EXTRA_TYPE_RANK` —
 > the rung whose children are the deepest level — always, and it has no `levelIndex`.
 
 Everything asked for falls out of those two properties, which is the reason to prefer
@@ -68,7 +117,7 @@ Two questions changed what got built, and both were the user's to answer:
 - `domain/itemTypes.ts` (new) — the vocabulary, and the ladder math moved out of
   `model.ts` (`childLevelIndex`, `nextLevelIndex`, `displayType`) so this could be a leaf
   the model imports while it is still building a tree.
-- `computeLevel` — one branch: an extra type takes `extraTypeRank` where an *unknown*
+- `computeLevel` — one branch: an extra type takes `EXTRA_TYPE_RANK` where an *unknown*
   custom type still takes `childSlot`. That contrast is the invariant worth keeping:
   **declared pins, undeclared inherits.**
 - `computeTypeChanges` — the dragged item is not re-typed when it is an extra type, and
@@ -129,7 +178,7 @@ worth recording because they are the same mistake at different depths:
    itself skipped and apparently untouched. The root and nested cases are now one rule
    (`rankOf`), applied at every step.
 2. **A parentless extra type was pruned** (P2). `pruneOutsideHierarchy` asked whether a
-   type was one of `settings.levels`, so a top-level Bug belonged to nothing and left the
+   type was one of the four levels, so a top-level Bug belonged to nothing and left the
    model — reachable both by `Set type` on a leaf and by dragging one to the top level,
    the rules being advisory. Membership now reads every declared type.
 
@@ -157,3 +206,13 @@ An extra type ranks with the second-lowest level, so `Show completed items`, rol
 the level breakdown all treat it as that level. This is right for a Bug beside a PBI and
 arbitrary for an extra type someone configures with a different intent in mind. No
 evidence yet that anyone wants otherwise — revisit if a report says so.
+
+## Where it lives
+
+`src/domain/itemTypes.ts` (`EXTRA_TYPE_RANK`, `isExtraType`, `childTypeChoices`,
+`folderForType`) · `src/domain/settings.ts` (`EXTRA_TYPES`, `ALL_TYPES`, `byTypeName`) ·
+`src/domain/model.ts` (`collectFocusRoots`, `pruneOutsideHierarchy`) ·
+`src/domain/writePlan.ts` (`computeTypeChanges` — the pinned rank in the cascade) ·
+`src/view/render/rows.ts` (icon and badge colour) · `styles.css`.
+Tests: `test/domain/itemTypes.test.ts`, `test/domain/writePlan.test.ts`,
+`test/view/rendering.test.ts`, `test/view/creation.test.ts`.

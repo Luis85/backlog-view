@@ -85,7 +85,7 @@ export interface BacklogItem extends LinkedItem {
 	children: BacklogItem[];
 	/** Visual depth in the rendered tree (0 for rendered roots, focused or not). */
 	depth: number;
-	/** Index into settings.levels; -1 when typeName doesn't match any configured level. */
+	/** Index into `LEVELS`; -1 when typeName does not name a rung. */
 	levelIndex: number;
 	/**
 	 * The ladder position this item occupies, chained down the parent levels.

@@ -11,10 +11,50 @@ files:
 
 # New cards in place
 
+**As** someone who has just noticed a missing piece of work while looking at a column,
+**I want** to create it right there, already in that state, **so that** capturing it
+costs one gesture instead of a note, a parent, a type and a status.
+
 Every surveyed board creates in place — GitHub Projects pre-fills the column's field,
 Linear creates in the column's status — and two prior Obsidian boards taught the
 failure mode from the other side: a new card that lands in the wrong folder, or outside
 the base's filter, is a note the board writes and then cannot show.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Choosing to create from a column, by pointer, menu or Enter on a selected column |
+| **Preconditions** | Board mode is on and the config-problems gate is clear |
+| **Guarantee** | Creation writes the new note and nothing else — never the lane's parent, never a sibling. If the result is not visible on the next render, the view says so rather than letting it vanish. |
+
+**Main flow**
+
+1. The user creates from a column.
+2. The existing gated creation flow runs with the column's state preset, so everything
+   that governs creation today still governs it: type folders, folder mode, the
+   config-problems gate.
+3. The note is written in one call, with its hierarchy properties and its state.
+4. The next render places its card in that column.
+
+**Extensions**
+
+- **1a — the column is the no-state column.** Creation writes no state at all, rather than
+  writing an empty one. Absence is a value here.
+- **1b — lanes are on.** The lane provides the parent, and the offered types narrow to what
+  that parent may hold.
+- **1c — the lane's parent is outside the filter.** The child is taken by explicit link with
+  folder inference skipped, exactly as the tree's context rows do — the link keeps the
+  hierarchy right wherever the note lands.
+- **4a — the next render does not show it.** Folder rules cannot rescue a note from a
+  *state* filter: a base can exclude a state the workflow still names —
+  `status != Done` beside a Done column — and a filter is opaque to the view, so
+  compatibility is detected by outcome rather than predicted. The view says so and offers
+  to open the note.
+- **4b — the card was born done and hiding finished work swallowed it.** Same answer, for a
+  different reason: the outcome that matters is *visibility*, not result membership alone.
+  Both cases end with the note existing, correct, and reachable — never silently gone.
 
 ## Acceptance criteria
 
@@ -33,3 +73,10 @@ the base's filter, is a note the board writes and then cannot show.
   that parent may hold; a lane whose parent is outside the filter takes the child by
   explicit link with folder inference skipped, exactly as the tree's context rows do.
 - Creation writes the new note only — never the lane's parent, never a sibling.
+
+## Where it lives
+
+**Nothing yet — this note is design.** The gated flow, the folder inference and the
+context-parent exception are already `src/view/interactions/create.ts`; what the board
+adds is a preset state and the visibility check that turns "created but not shown" from a
+silent outcome into a reported one.

@@ -15,37 +15,55 @@ files:
 
 # A help button for the item types
 
+**As** someone meeting a typed backlog for the first time, **I want** to ask what an Epic,
+a PBI or a Bug is actually *for* without leaving the view, **so that** I pick the right
+type deliberately instead of inferring it from a coloured badge.
+
 A **?** button in the toolbar opens the manual on its first section: the six item types,
-what each one is for, and how the view treats them. This PBI builds the surface every
+what each one is for, and how the view treats them. This use case builds the surface every
 other section then lands in.
 
-## What the section says
+## Use case
 
-One entry per type, generated from the vocabulary rather than retyped beside it:
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Clicking the **?** button in the toolbar, or opening the manual from anywhere that deep-links to this section |
+| **Preconditions** | A `product-backlog` view is open |
+| **Guarantee** | Reading the manual writes nothing: no note is created, no frontmatter is touched, and nothing about the dialog is persisted to the `.base` or to local storage. |
 
-| Type | Intent | How the view treats it |
-| --- | --- | --- |
-| `Epic` | The outcome — a body of work with no parent above it | Top of the ladder; a root |
-| `Feature` | A capability under an Epic | One rung down |
-| `PBI` | A deliverable slice a team can finish | One rung down |
-| `Task` | The engineering step that gets a PBI done | The deepest rung — the ladder ends here, so the only child offered under a Task is another Task |
-| `Issue` | A question, verification or decision to record | Beside the ladder, under any rung above the deepest; holds Tasks |
-| `Bug` | A defect raised against something that exists | The same |
+**Main flow**
 
-Plus the three rules that are invisible on screen and decide what the view does:
+1. The user clicks **?** in the toolbar.
+2. The manual opens on the types section, scrolled to the top.
+3. The section names each of the six types — `Epic`, `Feature`, `PBI`, `Task`, `Issue`,
+   `Bug` — with its intent and what the view offers under it, generated from the type
+   vocabulary rather than retyped beside it.
+4. It then states the three rules that decide behaviour and are invisible on screen: a
+   child's level is one rung below its parent's *clamped at the deepest*, an untyped item
+   is shown at the level its position implies, and a move does not re-type.
+5. The user closes the dialog with Escape or the close button; focus returns to the **?**.
 
-- A child's level is **one rung below its parent's**, clamped at the deepest — that is
-  what the ladder means, it is the level an untyped item is shown as, and the clamp is
-  why a Task's **+** offers another Task rather than nothing.
-- An item with **no `type`** shows the level its position implies, and nothing is written
-  until you ask for it.
-- **A move does not re-type anything.** Drag a PBI under an Epic and it stays a PBI;
-  `Assign item type when moving` (off by default) is what turns the rewrite on, and even
-  then `Issue` and `Bug` keep their pinned rank and are never re-typed.
-- The rules are **advisory**: they decide what is offered, never what is refused. No drop
-  is rejected because the types do not fit — put a Task under an Epic and it stays there.
-  (Drops *are* refused for other reasons — onto an item's own descendant, into a group
-  with no shared ranking — which the moving section covers; none of them is about type.)
+**Extensions**
+
+- **1a — the user has no mouse.** The **?** is a real `<button>` in the toolbar's tab-stop
+  zone, so Tab reaches it and Enter or Space opens the manual, unlike the per-row controls
+  inside the tree's single stop.
+- **3a — a `Task` row.** `childLevelIndex` clamps at the deepest rung, so `childTypeChoices`
+  answers `Task` for a Task parent and the row's **+** offers another Task. The entry says
+  so; "holds nothing" would be the ladder read literally and would contradict the button
+  beside it.
+- **3b — a seventh type is added later.** The section is generated from `ALL_TYPES`, so a
+  type without an explanation fails a test rather than shipping as a gap.
+- **4a — `Assign item type when moving` is on.** The rule is stated with its default (off)
+  and its effect when enabled, so the section describes the view in front of the reader
+  rather than the one the option would make.
+- **4b — the user drags a Task under an Epic.** Nothing refuses it. The section says the
+  type rules are advisory, and scopes that to type compatibility: other drops *are* refused
+  (onto an item's own descendant, into a group with no shared ranking) and those belong to
+  [[Help for moving and ranking]].
+- **5a — the manual was opened from another section's link.** Closing returns focus to
+  whatever opened it, so the dialog never strands the keyboard at the top of the pane.
 
 ## Acceptance criteria
 
@@ -62,19 +80,14 @@ Plus the three rules that are invisible on screen and decide what the view does:
   and the reorderable-group checks do refuse drops, and an unqualified "any drag is
   allowed" contradicts [[Help for moving and ranking]] as well as the view.
 - The **displayed level** and the **written `type`** are kept apart: position implies the
-  first and, with re-typing off by default, never rewrites the second. Conflating them
-  here would contradict [[Help for moving and ranking]] and teach the wrong default.
+  first and, with re-typing off by default, never rewrites the second.
 - Nothing is written and nothing is persisted by opening, reading or closing it.
 - The dialog scrolls, closes on Escape, and returns focus to the button that opened it.
 
-## Evidence
+## Where it lives
 
-- User request, 2026-08-01 — this PBI, in these words: a help button describing and
-  explaining the types, their intent, and usage.
-- `src/domain/itemTypes.ts` and `src/domain/settings.ts` — `LEVELS`, `EXTRA_TYPES`,
-  `extraTypeRank`, `nextLevelIndex`: the behaviour the entries have to match.
-- [[Types beside the ladder]] — why the two shapes exist, and
-  the two review findings that came from the pinned rank being subtle.
-- [[Level ladder and implied types]] — the implied-level rule and the ladder being fixed.
-- `README.md`, sections *How it works* and *Issues and bugs sit beside the ladder* — the
-  long form this section condenses.
+**Nothing yet — this note is design.** The button joins the toolbar in
+`src/view/render/toolbar.ts`; the vocabulary the section is generated from is
+`src/domain/itemTypes.ts` and `src/domain/settings.ts`; the dialog belongs beside
+`src/ui/prompts.ts`, which is the existing example of a modal that takes its content as a
+parameter rather than reaching for app structure.
