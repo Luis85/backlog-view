@@ -1564,30 +1564,33 @@
 	width: var(--pbl-bar-width);
 	height: 14px;
 	border-radius: var(--radius-s);
-	background-color: var(--interactive-accent);
+	/* One color for solid and open bars alike: states override the variable,
+	   never the background, so an open end can never reveal a solid backing. */
+	--pbl-bar-color: var(--interactive-accent);
+	background-color: var(--pbl-bar-color);
 }
 
 .pbl-timeline-row.pbl-done .pbl-bar {
-	background-color: var(--color-green);
+	--pbl-bar-color: var(--color-green);
 	opacity: 0.7;
 }
 
 /* A dateless or clipped end is styled open: the plan's gap stays visible
    instead of being filled in, and the exact dates ride on the tooltip. */
 .pbl-bar-open-end {
-	background: linear-gradient(to right, var(--interactive-accent) 55%, transparent);
+	background: linear-gradient(to right, var(--pbl-bar-color) 55%, transparent);
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
 .pbl-bar-open-start {
-	background: linear-gradient(to left, var(--interactive-accent) 55%, transparent);
+	background: linear-gradient(to left, var(--pbl-bar-color) 55%, transparent);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }
 
 .pbl-bar-open-start.pbl-bar-open-end {
-	background: linear-gradient(to right, transparent, var(--interactive-accent) 35%, var(--interactive-accent) 65%, transparent);
+	background: linear-gradient(to right, transparent, var(--pbl-bar-color) 35%, var(--pbl-bar-color) 65%, transparent);
 	border-radius: 0;
 }
 
