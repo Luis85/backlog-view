@@ -1,7 +1,7 @@
 ---
 type: Task
 order: 30
-parent: "[[Module structure]]"
+parent: "[[Build phases in the type system]]"
 status: Done
 priority: P2
 area: design

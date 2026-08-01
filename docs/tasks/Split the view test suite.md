@@ -1,7 +1,7 @@
 ---
 type: Task
 order: 10
-parent: "[[Test harness and coverage]]"
+parent: "[[A test suite that can be navigated]]"
 status: Done
 priority: P1
 area: testing

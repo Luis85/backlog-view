@@ -57,11 +57,11 @@ Two questions changed what got built, and both were the user's to answer:
   drop-target maths, the move/indent/outdent commands and the menu, plus a refusal
   message for each, interacting with context rows whose real siblings the view cannot
   see. Advisory keeps the feature additive.
-- **A view option, on by default** (`Extra types`, default `Issue, Bug`). Hardcoding two
-  English names would contradict the plugin's premise that the vocabulary is yours: a
-  vault running Theme/Initiative/Story would get two words it did not choose. The cost is
-  that notes already typed `Issue` start rendering as Issues on upgrade — a favourable
-  change, and one a user can undo by clearing the option.
+- **A view option, on by default** (`Extra types`, default `Issue, Bug`) — *later
+  reversed*. Making the vocabulary configurable meant every rule about levels had to hold
+  for any list a user could type, and it bought a rename. `Issue` and `Bug` are now
+  constants beside the four levels, and the collision rules, the "what folder does a name
+  nobody chose get" question and the per-view generated schema went with the option.
 
 ## What it touched
 
@@ -96,8 +96,8 @@ Not verifiable here, as ever: the badge. Added to the
 
 A second request, built on the same vocabulary: each type files itself in its own folder
 (`folderForType`), defaulting to `Epic/Feature/PBI → docs/requirements`, `Task →
-docs/tasks`, `Issue → docs/issues`, `Bug → docs/bugs`, configurable as `Type: folder`
-pairs.
+docs/tasks`, `Issue → docs/issues`, `Bug → docs/bugs`, each its own folder picker in the
+view options.
 
 The decision worth recording is the **shipped default**. It was raised that non-empty
 defaults will file new items outside a Base's filter — the view creates a note and then
@@ -136,6 +136,20 @@ worth recording because they are the same mistake at different depths:
 The lesson for anything added here later: **a rule that pins a rank has to hold wherever
 that type appears** — at the root of a move, inside a moved subtree, and in the scope
 test — not only where it was first noticed.
+
+## Where it ended up
+
+The shipped shape after the branch settled, which is not the shape this note was written
+against — kept visible rather than edited away, because the reversals are the evidence:
+
+- The **vocabulary is fixed** — six types, no options. A configurable ladder made every
+  level rule conditional on a list someone could type; `src/domain/CLAUDE.md` lists what
+  removing it deleted.
+- **Folders are one picker per type**, defaulting under the home folder and built from the
+  view's own config, so the box shows what creation will do.
+- **Re-typing on move is off by default.** A move is a move, not a re-classification.
+- Nothing is enforced against a drag — unchanged, and still the point: the rules decide
+  what is *offered*, never what is *refused*.
 
 ## Known limitation
 

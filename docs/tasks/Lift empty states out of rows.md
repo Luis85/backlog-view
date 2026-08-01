@@ -1,7 +1,7 @@
 ---
 type: Task
 order: 10
-parent: "[[Module structure]]"
+parent: "[[One file per concern]]"
 status: Done
 priority: P3
 area: refactor

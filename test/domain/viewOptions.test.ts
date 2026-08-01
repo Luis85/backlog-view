@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getViewOptions } from '../../src/domain/viewOptions';
+import { defaultTypeFolder } from '../../src/domain/settings';
 
 
 /**
@@ -7,7 +8,24 @@ import { getViewOptions } from '../../src/domain/viewOptions';
  * file and read back by `resolveSettings`, so these tests are a rename alarm as
  * much as a coverage exercise.
  */
+/** Stand-in for BasesViewConfig backed by a plain object. */
+function fakeConfig(values: Record<string, unknown> = {}) {
+	return { get: (key: string) => values[key], getAsPropertyId: () => null } as never;
+}
+
 describe('getViewOptions', () => {
+	it('shows each type folder default under THIS view home folder', () => {
+		const flat = getViewOptions(fakeConfig({ homeFolder: 'Roadmap' })).flatMap((o) =>
+			'items' in o ? o.items : [o],
+		);
+		const shown = (key: string) => flat.find((o) => o.key === key) as { default?: string };
+		// The box must advertise what creation will actually do, or restoring the shown
+		// default silently moves the type back to the shipped layout.
+		expect(shown('typeFolder.epic').default).toBe('Roadmap/requirements');
+		expect(shown('typeFolder.bug').default).toBe('Roadmap/bugs');
+		expect(shown('typeFolder.epic').default).toBe(defaultTypeFolder('Epic', 'Roadmap'));
+	});
+
 	it('declares every config key the view reads', () => {
 		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		const keys = flat.map((o) => o.key);

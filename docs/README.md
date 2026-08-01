@@ -19,11 +19,29 @@ demonstrating itself:
 **Product Backlog** is the product: seven features covering the hierarchy, moving items,
 creating them, progress, finding work, safe writes and view state.
 
-**Codebase health** is the engineering work, with the tasks under it.
+**Codebase health** is the engineering work — three features, each with the PBIs that say
+what "healthy" means there, and the tasks that got it done underneath.
 
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
-types are for — they hold Tasks, they are never re-typed by a move, and they can attach at
-any level of the ladder.
+types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
+Epic, a Feature or a PBI alike.
+
+## The hierarchy is the point
+
+This register is the plugin's own schema, so a wrong parent here is a bug in the example.
+Every pair holds:
+
+| Type | Parent may be | Children may be |
+| --- | --- | --- |
+| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug` |
+| `Feature` | `Epic` | `PBI`, `Issue`, `Bug` |
+| `PBI` | `Feature` | `Task`, `Issue`, `Bug` |
+| `Task` | `PBI`, `Issue`, `Bug` | *(nothing)* |
+| `Issue` / `Bug` | `Epic`, `Feature` or `PBI` | `Task` |
+
+The plugin does not *enforce* this — the rules decide what is offered, never what is
+refused — which is exactly why the register has to hold to it by hand. It has been checked:
+every parent link resolves, and every parent/child pair is legal.
 
 ## Conventions
 

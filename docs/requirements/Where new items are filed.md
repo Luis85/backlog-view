@@ -12,9 +12,11 @@ type is filed in a folder under it — `requirements`, `tasks`, `issues`, `bugs`
 
 ## Acceptance criteria
 
-- Relocating a backlog is one setting: the type folders are relative to the home folder.
-- A type folder beginning with `/` reads from the vault root, so the home folder is a
-  default rather than a cage.
+- Each type has **its own folder picker**, so a folder is chosen rather than spelled into
+  a mapping — one class of typo that cannot happen.
+- Each picker DEFAULTS to a subfolder of the home folder, and the option list is built
+  from the view's own config, so the value shown in the box is the value creation uses.
+  Relocating a backlog therefore stays one setting for every folder left untouched.
 - The landing folder follows the type picked in the modal, and the modal says so.
 - Resolution order: folder mode's parent folder, the type's folder, the configured folder,
   the folder most items live in, then ask.

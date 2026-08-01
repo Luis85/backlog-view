@@ -1,7 +1,7 @@
 ---
 type: Task
 order: 10
-parent: "[[Enforced invariants]]"
+parent: "[[Invariants as checks, not conventions]]"
 status: Done
 priority: P2
 area: tooling

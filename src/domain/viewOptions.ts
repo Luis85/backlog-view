@@ -1,4 +1,4 @@
-import { BasesAllOptions, BasesOptions, BasesPropertyId } from 'obsidian';
+import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import {
 	ALL_TYPES,
 	DEFAULT_DONE_VALUES,
@@ -7,6 +7,7 @@ import {
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
 	defaultTypeFolder,
+	resolveSettings,
 	typeFolderKey,
 } from './settings';
 
@@ -27,8 +28,13 @@ const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
  * deliberately absent: it lives in the view's own toolbar, next to the New button
  * whose level it changes.
  */
-export function getViewOptions(): BasesAllOptions[] {
-	return [hierarchyGroup(), progressGroup(), newItemsGroup(), displayGroup()];
+export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
+	// The type list is fixed, but each type's DEFAULT folder sits under this view's home
+	// folder — so the callback still reads the config. Declaring the shipped `docs/…`
+	// here regardless would make every picker in a `Roadmap` base advertise a folder the
+	// creation flow does not use, and restoring that shown default would move the type.
+	const homeFolder = config ? resolveSettings(config).homeFolder : DEFAULT_HOME_FOLDER;
+	return [hierarchyGroup(), progressGroup(), newItemsGroup(homeFolder), displayGroup()];
 }
 
 function hierarchyGroup(): BasesAllOptions {
@@ -126,7 +132,7 @@ function progressGroup(): BasesAllOptions {
 	};
 }
 
-function newItemsGroup(): BasesAllOptions {
+function newItemsGroup(homeFolder: string): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'New items',
@@ -145,8 +151,9 @@ function newItemsGroup(): BasesAllOptions {
 					type: 'folder',
 					key: typeFolderKey(type),
 					displayName: `Folder for ${type} items`,
-					default: defaultTypeFolder(type),
-					placeholder: 'Home folder',
+					// Tracks the home folder above: the value shown is the value that applies.
+					default: defaultTypeFolder(type, homeFolder),
+					placeholder: homeFolder || 'Home folder',
 				}),
 			),
 		],
