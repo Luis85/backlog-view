@@ -22,12 +22,21 @@ creating them, progress, finding work, safe writes and view state.
 **Codebase health** is the engineering work — three features, each with the PBIs that say
 what "healthy" means there, and the tasks that got it done underneath.
 
-**Cross-cutting concerns** is the third kind: properties that have to be true of
-everything or they are true of nothing. Two features — `Multilang` (every string comes
+**Product Kanban** is the next increment, and it is design only: a board projection of
+the same backlog, specified across four features — the backlog/board toggle, columns
+from the workflow the view options define, card moves as gated state writes, and the
+hierarchy showing through on the board. Nothing under it is built; every note states
+the precedent or the codebase seam it rests on, from a survey of the Kanban Guide, the
+major trackers and the Obsidian ecosystem run on 2026-08-01.
+
+**Cross-cutting concerns** is the fourth kind: properties that have to be true of
+everything, or they are true of nothing. Two features — `Multilang` (every string comes
 out of a per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's
-design tokens). They are siblings because they meet at the layout: translated text is longer,
-shorter and sometimes right-to-left, and the stylesheet is what absorbs it. Specification
-only — nothing under this epic is built yet.
+design tokens, from a stylesheet organised like the rest of the codebase). They are
+siblings because they meet at the layout: translated text is longer, shorter and
+sometimes right-to-left, and the stylesheet is what absorbs it. Specification only —
+nothing under this epic is built yet, and what it asks for applies to the board as much
+as to the tree.
 
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an

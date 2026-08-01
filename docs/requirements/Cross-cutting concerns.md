@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 30
+order: 40
 status: Open
 area: meta
 created: 2026-08-01
@@ -12,9 +12,16 @@ Properties the whole plugin has to hold, rather than things the plugin does. A f
 here is not a screen or a behaviour — it is a rule that every screen and every behaviour
 has to satisfy, and that decays the moment one of them stops satisfying it.
 
-`Product Backlog` is what the view does. `Codebase health` is what keeps the code
-maintainable. This epic is the third kind: **qualities that are true of everything or
-true of nothing.**
+`Product Backlog` is what the view does, and `Product Kanban` is the next projection of
+it. `Codebase health` is what keeps the code maintainable. This epic is the fourth kind:
+**qualities that are true of everything or true of nothing.**
+
+That includes work not yet built. `Product Kanban` is design-only today, but a board is a
+new set of rendered surfaces — columns, cards, swimlanes, empty states — and every one of
+them will need a label from the catalog and a colour from a token. Nothing here has to be
+restated in those notes; the point of an epic at this level is that it governs whatever
+the plugin grows next, which is why the two features are written against properties rather
+than against a list of screens.
 
 ## Why they belong together
 
