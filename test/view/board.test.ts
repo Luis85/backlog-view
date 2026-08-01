@@ -183,6 +183,10 @@ describe('focus on the board', () => {
 		expect(countOf(columnByName(containerEl, 'No state'))).toBe('0');
 		// It carries the rollup of what it places.
 		expect(card.querySelector('.pbl-progress-label')?.textContent).toBe('0/2');
+		// A rendered context card IS a card: no advisory may claim the board is empty
+		// (cardCount is 0 here by design — results-only — which is exactly why the
+		// advisory must not read it).
+		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
 
 		// Inert: dragging it moves nothing and writes nothing.
 		boardDrag(card, columnByName(containerEl, 'Done'));

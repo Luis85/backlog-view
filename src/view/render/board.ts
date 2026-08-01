@@ -4,7 +4,7 @@ import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './
 import { renderBadge, renderTitleText } from './rows';
 import { BoardSnapshot } from '../host';
 import { BoardDragController } from '../interactions/boardDrag';
-import { boardColumns, BoardColumn, NO_STATE_LABEL } from '../../domain/board';
+import { boardColumns, BoardColumn, BoardModel, NO_STATE_LABEL } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 
 /**
@@ -22,7 +22,7 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDra
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
 	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd));
 	dnd.wireBoard(boardEl);
-	renderBoardAdvisory(ctx, boardEl, board.cardCount);
+	renderBoardAdvisory(ctx, boardEl, board);
 	return { board, colEls };
 }
 
@@ -30,11 +30,18 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDra
  * Why the board has no cards, said beside the columns rather than instead of them:
  * an empty board is empty stages, never no stages. The explanations are the tree's
  * own empty states, rendered into an aside — one vocabulary for both projections.
+ *
+ * "No cards" means no RENDERED cards, context included — not `cardCount`, which is
+ * results-only by design. A focused board can be nothing but context cards placing
+ * visible results, and an advisory claiming everything is done or nothing matches,
+ * beside a card whose rollup shows open work, would be the board contradicting
+ * itself. A context card renders only while it places a visible result, so gating
+ * on rendered cards agrees with the visibility rule by construction.
  */
-function renderBoardAdvisory(ctx: RowContext, boardEl: HTMLElement, cardCount: number): void {
+function renderBoardAdvisory(ctx: RowContext, boardEl: HTMLElement, board: BoardModel): void {
 	const host = ctx.host;
 	const model = host.model;
-	if (!model || cardCount > 0) return;
+	if (!model || board.columns.some((col) => col.cards.length > 0)) return;
 	const aside = boardEl.createDiv({ cls: 'pbl-board-advisory' });
 	if (model.results.length === 0) renderEmptyState(host, aside);
 	else if (host.isFiltering()) renderFilterEmptyState(host, aside);
