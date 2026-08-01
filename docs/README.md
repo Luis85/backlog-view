@@ -108,8 +108,8 @@ can run is worse than none, because it invites trust it has not earned:
    of a moment and may legitimately name a file since split away — rewriting them would
    falsify the record — so their stale paths are **listed rather than failed**. Being
    listed is the point: visible, not silently exempt.
-5. Every use case has all its sections **in the documented order**; the whole
-   `**As** … **I want** … **so that** …` opening, not just its first word; and the four
+5. Every use case has all its sections **exactly once and in the documented order**; the
+   whole `**As** … **I want** … **so that** …` opening, not just its first word; and the four
    table fields as **rows of the table**, parsed inside the block it occupies — ordering
    says where a marker sits, never that it is a row of anything. And **every** extension
    bullet is labelled `**Na — `, in step order, **naming a step the main flow actually
@@ -135,6 +135,13 @@ can run is worse than none, because it invites trust it has not earned:
    Sections, in both shapes, are matched as **lines, with code stripped first**. A heading
    deleted and quoted in a sentence is not a heading, and an example inside a fence is not
    the document's own structure.
+
+   They are also **counted**, not merely found. Two branches once converted the same note
+   to a use case at the same time; neither edit conflicted, the merge kept both, and the
+   note landed on `main` with two openings, two tables, two main flows and two
+   `## Where it lives` — passing every rule above, because "is it there" and "is it in
+   order" are each satisfied twice over. The two halves then disagreed about what the
+   feature guarantees, which is what a document that says a thing twice eventually does.
 7. Every module in `src/` and every file under `test/` — helpers included — is named by at
    least one note, **as a whole path**. This is the check that finds *missing* notes rather
    than wrong ones, and matching by substring let a mistyped `src/main.tsx` stand in for the
