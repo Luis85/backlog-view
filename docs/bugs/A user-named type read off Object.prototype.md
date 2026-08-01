@@ -3,8 +3,14 @@ type: Bug
 parent: "[[Where new items are filed]]"
 order: 40
 status: Done
+created: 2026-08-01
 closed: 2026-08-01
+area: domain
 source: automated review of PR #22
+files:
+  - src/domain/itemTypes.ts
+  - src/domain/settings.ts
+  - src/view/render/rows.ts
 ---
 
 # A user-named type read off Object.prototype
@@ -36,7 +42,13 @@ export function byTypeName<T>(table: Record<string, T>, typeName: string | null)
 
 Every lookup of a user-supplied type name goes through it. Reaching for a bare index is
 the thing to notice in review now, rather than reasoning about `Object.prototype` afresh
-at each new table.
+at each new table. `test/domain/itemTypes.test.ts` ("does not read a type name off
+Object.prototype") exercises `byTypeName` through the two folder tables — the resolved
+type folders and the defaults table — and would catch a regression in the helper itself.
+It does not call the third site directly: `src/view/render/rows.ts` reads
+`EXTRA_TYPE_STYLE` through the same `byTypeName`, but nothing renders a row with a
+prototype-property type name to check it, so a regression that bypassed the helper only
+at that call site would not be caught.
 
 ## Lesson
 

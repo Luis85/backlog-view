@@ -245,7 +245,8 @@ available in round one precisely because it is not a translation.
 
 ## Where it lives
 
-`styles.css` carries the three direction-dependent constructs and the chevron's rotations —
+**Nothing yet — this note is design.** `styles.css` carries the three direction-dependent
+constructs and the chevron's rotations —
 after `One stylesheet per concern` those live in the source partials rather than the
 assembled file · `src/view/render/rows.ts` chooses the chevron and the context marker ·
 `src/view/backlogView.ts` the root-drop affordance · `src/view/interactions/menu.ts` the

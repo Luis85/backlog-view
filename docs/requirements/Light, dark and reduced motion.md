@@ -93,7 +93,8 @@ way to get it:
 
 ## Where it lives
 
-`styles.css` — after `One stylesheet per concern`, its source partials — carries the
+**Nothing yet — this note is design.** `styles.css` — after `One stylesheet per concern`,
+its source partials — carries the
 `prefers-reduced-motion` and `hover: none` blocks and the two semantic colours ·
 `test-build.mjs` is the one-command path to a vault, which is what made the last round of
 these checks cheap enough to do · `docs/issues/Smoke test the visual changes.md` is the

@@ -18,8 +18,3 @@ by a bug.
 - Layer direction, the write boundary, ranking over real roots, menu anchoring and level
   maths are all checks, not conventions.
 - Each rule is verified by planting the violation and watching lint reject it.
-
-## Use cases
-
-- [[Invariants as checks, not conventions]] — lint where it can be, beside the code where
-  it cannot.

@@ -19,7 +19,3 @@ cannot check.
 - Test files carry their own size budget, so the one suite without a cap does not become
   the place tests hide.
 - What the harness *cannot* check is said out loud rather than assumed.
-
-## Use cases
-
-- [[A test suite that can be navigated]] — one file per subject, real events, stated limits.

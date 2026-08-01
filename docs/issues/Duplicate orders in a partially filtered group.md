@@ -1,5 +1,5 @@
 ---
-type: Bug
+type: Issue
 order: 10
 parent: "[[Sibling ranking]]"
 status: Open
@@ -24,16 +24,7 @@ excluded sibling.
 This predates PR #14 and is recorded in `CLAUDE.md` as a known limitation. It is not
 specific to context rows, though a filtered base is the usual way to meet it.
 
-## Impact
-
-Mild and self-correcting. Equal orders fall back to `entryIndex` — the Bases result
-order, which honours the user's configured sort — so the tree still renders in a stable,
-sensible sequence. The group renumbers itself on the next renumbering drop.
-
-The user-visible symptom is an item occasionally sorting next to, rather than exactly
-at, the position it was dropped, and only in a base whose filter splits a sibling group.
-
-## Why it has not been fixed
+## Why it is deliberate
 
 A correct fix needs the *complete* child set for the target parent — backlinks plus a
 folder scan — which `computeDropWrites` cannot reach without giving up its purity. That
@@ -43,11 +34,20 @@ for the whole `domain/` layer.
 Trading it away to fix a self-correcting cosmetic issue is a bad exchange, which is why
 this is recorded rather than scheduled.
 
-## If it is ever worth fixing
+## What would lift it
 
 The shape would be to resolve the full sibling set *before* planning, in the view where
 vault access is legitimate, and pass the complete list into the existing pure functions —
 so `writePlan.ts` stays pure and simply receives better input.
+
+## Impact
+
+Mild and self-correcting. Equal orders fall back to `entryIndex` — the Bases result
+order, which honours the user's configured sort — so the tree still renders in a stable,
+sensible sequence. The group renumbers itself on the next renumbering drop.
+
+The user-visible symptom is an item occasionally sorting next to, rather than exactly
+at, the position it was dropped, and only in a base whose filter splits a sibling group.
 
 ## Acceptance criteria
 
