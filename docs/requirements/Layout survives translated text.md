@@ -52,8 +52,13 @@ memorise. It is a **method**:
    Not the members that come to mind; the ones the search returns.
 3. Treat any category not enumerated that way as unaudited, and say so rather than
    omitting it.
+4. Then ask which enumerated items are **coupled**, because a complete list of
+   independently-correct fixes can still be wrong. The chevron below is the worked
+   example: its icon and its rotation are separate entries that have to change together,
+   and listing them apart is what let an earlier version call one of them safe.
 
-Step 2 is the one that failed three times. The tables in this note were produced by
+Step 2 failed three times; step 4 failed once, on the chevron, and that one was not
+fixed by enumerating harder. The tables in this note were produced by
 running it — every `box-shadow` read for its x-offset, every icon name in `src/` listed
 and classified — which is why they are worth more than the sentences they replaced.
 
@@ -70,7 +75,7 @@ cannot fix, and there are **five**, not one:
 
 | Icon | Site | Why it points |
 | --- | --- | --- |
-| `chevron-right` | `rows.ts` | The collapsed disclosure. Expanded is `transform: rotate(90deg)` (line 419), which is fine — down is down — but the base state points right |
+| `chevron-right` + `rotate(90deg)` | `rows.ts`, styles.css:419 | **Icon and transform are one construct, not two** — see below |
 | `corner-left-up` | `backlogView.ts:85` | The root-drop affordance |
 | `corner-left-down` | `rows.ts:205` | The outside-filter marker |
 | `indent-increase` | `menu.ts:125` | Indent, in the move menu |
@@ -81,6 +86,18 @@ Equally important is what must **not** be touched. `arrow-up`, `arrow-down`,
 vertical is vertical in every direction. An audit that mirrors them has made things
 worse. `grip-vertical` and `separator-vertical` are the same case. `list-tree` is the one
 to settle by looking rather than by reasoning.
+
+**The chevron is a trap, and an earlier version of this note set it.** That version put
+the icon in this table and declared the transform separately safe — *"rotate(90deg), which
+is fine, down is down"* — which is true only while the base icon points right. Swap the
+collapsed state to a left-pointing icon for RTL and keep the rotation, and the expanded
+chevron points **up**: `←` rotated 90° clockwise is `↑`, not `↓`. An implementation could
+tick every row of this table and ship every expanded row pointing the wrong way.
+
+So the collapsed icon and the expanded rotation are **one construct with two halves**, and
+RTL needs both: a left-pointing collapsed icon *and* `rotate(-90deg)`, or a dedicated
+down-pointing icon for the expanded state. Auditing them independently is what produced
+the wrong answer, and it is the reason this table's first column now names the pair.
 
 **Width is not free.** `Property columns` is `Done` on the criteria *"Columns are
 fixed-width so values line up across rows regardless of title length"* and *"A pane too
@@ -107,6 +124,9 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
   `corner-left-down`, `indent-increase`, `indent-decrease` — and the four vertical arrows
   are deliberately left alone. Icons are a TS change, not a CSS one, so this criterion is
   not satisfied by any amount of stylesheet work.
+- The chevron is verified **in both states**. A collapsed chevron pointing the right way
+  with an expanded one pointing up is the specific failure this note previously invited,
+  so "the icon is mirrored" does not satisfy it — the expanded row has to point down.
 - The icon classification is written down as a list, not re-derived. It is the input to
   the check in `Styling rules are checks`, which is what stops a sixth directional icon
   arriving unnoticed.

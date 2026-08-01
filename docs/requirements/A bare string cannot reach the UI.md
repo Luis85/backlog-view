@@ -59,52 +59,79 @@ matching entirely — and these are not exotic workarounds, they are the two mos
 things a contributor does when a string needs a conditional or a helper needs to build
 one. After the sweep, either pattern reintroduces English and lints clean.
 
-So the rule is inverted. Rather than *"no literal at these sinks"*, it is **"no
-user-facing string literal anywhere in the UI layers"**, with a narrow allowlist of the
-literal kinds that are not text:
+## Why the all-literals allowlist is also the wrong shape
 
-| Allowed | Because |
-| --- | --- |
-| Icon ids (`'plus'`, `'chevron-down'`) | A lucide name, not words |
-| CSS classes and selectors | Structure |
-| Attribute *names*, and ARIA *state* values (`'true'`, `'false'`) | Not read by a human as prose |
-| Frontmatter and config keys | Data — see `Persisted keys stay as written` |
+The obvious repair is to invert: *no string literal in the UI layers except an allowlist
+of kinds that are not text* — icon ids, CSS classes, attribute names, ARIA state values,
+config keys. That was the second attempt, and review killed it too, correctly.
 
-That is a whitelist over a known-finite set of shapes, rather than a blacklist over an
-open set of sinks, and it is why it can actually hold. It also flags
-`` `Updating ${busy.done} of ${busy.total}…` `` where it is *written*, which is where a
-contributor can still see what to do about it.
+`src/view` and `src/ui` contain **615 string literals**. Almost none of them is text.
+They are HTML tag names (`createEl('button')`), event names
+(`addEventListener('click')`), key values (`evt.key === 'Escape'`), drag payloads
+(`setData('text/plain', …)`, `effectAllowed = 'move'`), selectors, class names, icon ids,
+property keys. An allowlist has to classify **all 615** correctly or the post-sweep code
+cannot pass lint without ad-hoc suppressions — and suppressions are how a rule dies.
 
-The belt-and-braces half is at the other end: `t()` returns a **branded** string type
-rather than `string`, so a value that never came from the catalog is visible in the type
-system as well as to the linter. The Obsidian setters take `string` and cannot be
-changed, so branding alone does not close the hole — but the two together mean a literal
-has to survive both a lint rule at its construction site and a type at the boundary.
+The "closed, finite set of shapes" the second attempt claimed was neither closed nor
+finite. It was a set populated from memory, which is the same mistake as the sink list
+one level up.
 
-The pattern worth naming, since this PBI has now been corrected three times: **a rule
-enumerated against examples grows one entry per review; a rule stated against a
-property closes the whole class.** Both corrections here were symptoms of the first kind.
+## The shape that actually closes it
+
+Stop classifying literals. Make the *destination* refuse them.
+
+1. `t()` returns a **branded** type — `Translated`, not `string`. Only the catalog
+   produces one.
+2. A thin set of plugin-local UI helpers takes `Translated` where Obsidian's API takes
+   `string`. The repo already wraps Obsidian this way where a decision needs one place to
+   live: `iconButton` wraps button creation, `showMenuForClick` wraps menu anchoring after
+   the un-anchored version shipped as a bug.
+3. Lint bans the **raw** Obsidian text setters inside the UI layers, so the wrappers are
+   the only route. That is a short, genuinely closed list of *APIs* — and it is the
+   repository's existing idiom, the same `no-restricted-syntax` shape that bans
+   `processFrontMatter` and `vault.create` outside `storage/` and `showAtMouseEvent`
+   outside `menu.ts`.
+
+What this buys is that the indirection hole closes *by type* rather than by pattern
+matching. `syncBusy` can build its label wherever it likes; the moment it passes a plain
+`string` to `setLabel`, the compiler objects, because the parameter is `Translated`. No
+taint analysis, no allowlist, and all 615 structural literals stay exactly as they are —
+they were never going near a UI helper.
+
+The residual risk is a cast (`as Translated`), which is visible in review and greppable,
+in the way a missing lint rule is not.
+
+## The pattern, now that it has been corrected three times
+
+Each attempt was a list, and each list was populated by recall: first the sinks, then the
+literal kinds. Both were wrong in the same way and for the same reason.
+
+**A rule enumerated against examples grows one entry per review. A rule stated against a
+property closes the class.** "Every string reaching the UI came from the catalog" is a
+property, and a branded type is how a compiler states it. The two lists were attempts to
+approximate that property by listing its consequences, which is exactly the move that
+needed three rounds of review to abandon.
 
 ## Acceptance criteria
 
-- A user-facing string literal anywhere in the UI layers is a lint **error**, wherever it
-  is written — at a sink, assigned to a local, or returned from a helper. The two
-  patterns above are the acceptance test: both must fail, and a rule that only catches
-  the sink form has not met this criterion.
-- The allowlist is of literal **kinds**, enumerated and closed: icon ids, CSS classes and
-  selectors, attribute names, ARIA state values, frontmatter and config keys. Anything
-  outside it is text until someone argues otherwise.
-- `t()` returns a branded type, so an unbranded string reaching a message parameter is a
-  type error as well as a lint error. Neither mechanism is sufficient alone — the setters
-  take `string` and cannot be changed — which is why both are here.
-- Permitting is **explicit and narrow** — a named allowance, not a blanket exemption on
-  the file. The root `CLAUDE.md` already sets this standard for framework-invoked members:
-  they are *"declared in `usedClassMembers`, not suppressed inline."*
-- The catalog files themselves are exempt, since literals are what they are made of.
-- `test/**` is exempt. The Obsidian ruleset already stops at `src/`, and the doubles exist
-  to do what it forbids.
+- Both indirection patterns above fail. `syncBusy` building a label into a local, and
+  `emptyHint` returning one from a helper, are the acceptance test — a mechanism that
+  catches only a literal sitting inside `setText(…)` has not met this criterion.
+- `t()` returns a branded type, and every UI helper that renders text takes it. A plain
+  `string` reaching one is a **compile** error, not a lint error, so it cannot be
+  suppressed inline.
+- The raw Obsidian text setters are banned in the UI layers by `no-restricted-syntax`,
+  scoped and messaged like the existing bans on `processFrontMatter`, `vault.create` and
+  `showAtMouseEvent`. That list is of APIs, is short, and is closed.
+- **No literal-classification rule ships.** The 615 structural literals in `src/view` and
+  `src/ui` — tag names, event names, key values, drag payloads, selectors, icon ids — are
+  not touched, not annotated and not allowlisted. If the design requires classifying them,
+  it is the wrong design and this criterion has failed.
+- Casts to the branded type are greppable and reviewed. They are the one remaining way
+  through, and knowing where they are is worth more than pretending there are none.
 - The inline plural ternary (`? '' : 's'` and its variants) is covered too, so
   `Plurals and interpolation` cannot regress.
-- The message names the fix, not the violation. A rule that says *"UI text belongs in the
-  catalog — add a key and call `t()`"* teaches; one that says *"unexpected string
-  literal"* gets suppressed.
+- The catalog module is exempt, since literals are what it is made of, and `test/**` is
+  exempt for the reason the Obsidian ruleset already stops at `src/`.
+- Messages name the fix, not the violation. *"UI text belongs in the catalog — add a key
+  and call `t()`"* teaches; *"unexpected string literal"* gets suppressed.
