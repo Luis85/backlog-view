@@ -227,6 +227,15 @@ for (const [, note] of notes) {
 	if (note.type !== "PBI") continue;
 	const text = texts.get(note.file);
 	checkSections(note.file, text, USE_CASE_SECTIONS, "use case");
+	// The whole opening sentence, not just its first word. `**As**` alone would accept a
+	// note that never says what the actor wants or why — the two halves that make it a use
+	// case rather than a title. Matched with `\s+` inside the markers because the 100-column
+	// wrap routinely breaks them: `**I\nwant**` is the real formatting of two notes here, so
+	// a literal `"**I want**"` would fail the corpus for a line break.
+	const opening = between(text, "**As**", "## Use case");
+	if (opening && !/\*\*I\s+want\*\*[\s\S]*\*\*so\s+that\*\*/.test(opening)) {
+		fail(note.file, "use case has no `**As** … **I want** … **so that** …` opening");
+	}
 	// Inside the block the table occupies, and shaped like a row of it — see USE_CASE_ROWS.
 	const table = between(text, "## Use case", "**Main flow**");
 	for (const row of USE_CASE_ROWS) {
@@ -284,6 +293,13 @@ for (const file of adrFiles) {
 	}
 	for (const field of ["adr", "title", "status", "date", "area"]) {
 		if (fm.field(field) === null) fail(file, `ADR has no ${field}`);
+	}
+	// And carries neither work-item field. This is not tidiness: the runtime treats a note
+	// with a `parent` OR a supported `type` as a work item, so either one silently enrols
+	// the ADR in the plugin's own backlog — against the invariant both index pages state.
+	// Checking the fields ADRs *should* have never notices a field they should not.
+	for (const field of ["parent", "type"]) {
+		if (fm.field(field) !== null) fail(file, `ADR carries a \`${field}\` — an ADR is not a work item`);
 	}
 	// A missing or non-numeric `adr` is already reported; registering it as 0 would invent
 	// a duplicate and a numbering gap on top of the real problem.
@@ -382,8 +398,23 @@ async function collectTs(dir, keep) {
 // Every `.ts` under both trees, helpers included: `test/helpers/view.ts` is the harness
 // every view test is written against, so it is at least as worth naming as a suite.
 const sources = [...(await collectTs("src", (n) => n.endsWith(".ts"))), ...(await collectTs("test", (n) => n.endsWith(".ts")))];
+/**
+ * The paths the docs actually name, as whole tokens. `allText.includes(file)` credited a
+ * *mistyped* path with naming the real one — `src/main.tsx` contains `src/main.ts` — so a
+ * typo simultaneously passed the reference check (which parses the `.ts` prefix and finds
+ * the file) and stood in for the module it misspells. Trailing sentence punctuation is
+ * trimmed; `.tsx` is not, so it stays the different name it is.
+ *
+ * Same rule as `test/docs/surfaces.test.ts` uses for option keys and command ids, arrived
+ * at from the same failure: membership in a token set has no ends to get wrong.
+ */
+const namedPaths = new Set(
+	(allText.match(/[\w./-]+/g) ?? []).map((token) => token.replace(/[.-]+$/, "")).filter((t) => t.endsWith(".ts")),
+);
 for (const file of sources) {
-	if (!allText.includes(file)) fail("docs", `no note names ${file}`);
+	// Notes write `/`; `collectTs` returns the platform separator. The old substring check
+	// had the same split and nobody had run this on Windows to find out.
+	if (!namedPaths.has(file.split(path.sep).join("/"))) fail("docs", `no note names ${file}`);
 }
 
 // --------------------------------------------------------------------------- report

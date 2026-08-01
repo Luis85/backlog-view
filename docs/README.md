@@ -93,13 +93,14 @@ can run is worse than none, because it invites trust it has not earned:
    of a moment and may legitimately name a file since split away — rewriting them would
    falsify the record — so their stale paths are **listed rather than failed**. Being
    listed is the point: visible, not silently exempt.
-5. Every use case has all its sections — including **all four rows** of the use-case
-   table, not just `Actor` — **in the documented order**, which is also what keeps each
-   marker inside its own block: the table rows sit between `## Use case` and `**Main flow**`
-   or they are out of order. And **every** extension bullet is labelled `**Na — `, in step
-   order, **naming a step the main flow actually has**. Validating only the bullets that
-   already look like labels would let a mistyped one vanish and leave the rest looking well
-   ordered; validating only shape and order would let `**99a — ` depart from nowhere.
+5. Every use case has all its sections **in the documented order**; the whole
+   `**As** … **I want** … **so that** …` opening, not just its first word; and the four
+   table fields as **rows of the table**, parsed inside the block it occupies — ordering
+   says where a marker sits, never that it is a row of anything. And **every** extension
+   bullet is labelled `**Na — `, in step order, **naming a step the main flow actually
+   has**. Validating only the bullets that already look like labels would let a mistyped
+   one vanish and leave the rest looking well ordered; validating only shape and order
+   would let `**99a — ` depart from nowhere.
 6. Every ADR — meaning **every note under `adrs/` except the index**, found by where it
    lives rather than by whether its name looks right, so a malformed filename is *reported*
    instead of quietly opting out of the checks below. Frontmatter complete, number matching
@@ -112,8 +113,14 @@ can run is worse than none, because it invites trust it has not earned:
    inside one record. Its five headings are checked for presence **and order**, by the same
    code that checks a use case's sections — they are one rule, and the round that found one
    of them un-ordered found the other still asking only whether the heading was somewhere.
+   An ADR must also carry **neither** `parent` nor `type`: the runtime enrols a note with
+   either one in the backlog, so checking only the fields an ADR should have would never
+   notice a field it must not.
 7. Every module in `src/` and every file under `test/` — helpers included — is named by at
-   least one note. This is the check that finds *missing* notes rather than wrong ones.
+   least one note, **as a whole path**. This is the check that finds *missing* notes rather
+   than wrong ones, and matching by substring let a mistyped `src/main.tsx` stand in for the
+   `src/main.ts` it misspells while the reference check parsed the prefix and found the real
+   file: one typo, passing twice.
 
 **One check lives elsewhere, on purpose.** That every **view-option key** and **command id**
 is named by a *requirement* is verified in `test/docs/surfaces.test.ts`, because it needs to

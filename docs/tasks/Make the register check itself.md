@@ -378,6 +378,37 @@ extend. That is worth keeping as a form: it makes the seam a claim a reviewer ca
 with before any code exists, and it stays honest with the check that every source path a
 requirement names must exist.
 
+## Three checks that were asking half the question
+
+| Planted | Reported |
+| --- | --- |
+| `parent:` added to ADR 0014 | `ADR carries a \`parent\` — an ADR is not a work item` |
+| `**so that**` removed from a use case's opening | `use case has no \`**As** … **I want** … **so that** …\` opening` |
+| `\`src/main.ts\`` mistyped as `\`src/main.tsx\`` | `no note names src/main.ts` |
+
+Each is the same shape: a check that verified what *should* be there and never what must
+not, or verified the first token of a thing and called it the thing.
+
+The ADR check confirmed the five fields an ADR carries, which cannot notice a sixth. The
+runtime enrols a note holding **either** a `parent` or a supported `type`, so one stray
+field would have put a decision record in the plugin's own backlog — against the invariant
+both index pages state, and invisible to a checker looking only for what it expected.
+
+`**As**` stood in for the whole opening sentence, so a note could omit what the actor wants
+and why — the two halves that make it a use case rather than a title.
+
+And `allText.includes(file)` credited a **mistyped** path with naming the real one:
+`src/main.tsx` contains `src/main.ts`. The typo passed twice over, once as a reference the
+path scan resolved by parsing its `.ts` prefix, and once as the module name it misspells.
+Whole-token membership now, the same rule `test/docs/surfaces.test.ts` reached from the
+same failure — and it exposed a platform bug on the way, since `collectTs` returns the
+platform separator while notes are written with `/`.
+
+Two of the three turned up formatting facts a naive fix would have broken. `**I want**` is
+routinely split by the 100-column wrap — `**I\nwant**` is the real text of two notes here —
+so the markers are matched with `\s+` rather than as literals, and a check written the
+obvious way would have failed the corpus for a line break.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.
