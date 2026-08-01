@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { flush, makeView, useViewHarness } from '../helpers/view';
+import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
 import { boardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf } from '../helpers/board';
 
@@ -79,6 +79,21 @@ describe('the board projection', () => {
 		const parent = cardByTitle(containerEl, 'Epic B');
 		// Cards the board shows elsewhere still surface as progress on their parent.
 		expect(parent.querySelector('.pbl-progress-label')?.textContent).toBe('1/2');
+	});
+
+	it('a card carries the row’s tag controls — the board’s one tag surface until its menu lands', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New', tags: ['a'] } });
+		const harness = makeView(vault, { ...BOARD }, { collapsed: true });
+		harness.config.order = ['note.tags'];
+		refresh(harness.view, vault);
+
+		const card = cardByTitle(harness.containerEl, 'A');
+		expect(card.querySelector('.pbl-tag')?.textContent).toBe('#a');
+		// Present and revealed on card hover by the same stylesheet rule as rows —
+		// hover itself is CSS, which the smoke test owns; the DOM is what jsdom can pin.
+		expect(card.querySelector('.pbl-tag-remove')).not.toBeNull();
+		expect(card.querySelector('.pbl-tag-add')).not.toBeNull();
 	});
 
 	it('activating a card opens its note, exactly as activating a row does', () => {

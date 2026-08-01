@@ -789,7 +789,8 @@
 	cursor: pointer;
 }
 
-.pbl-row:hover .pbl-tag-remove {
+.pbl-row:hover .pbl-tag-remove,
+.pbl-card:hover .pbl-tag-remove {
 	display: inline-flex;
 }
 
@@ -820,7 +821,8 @@
 	cursor: pointer;
 }
 
-.pbl-row:hover .pbl-tag-add {
+.pbl-row:hover .pbl-tag-add,
+.pbl-card:hover .pbl-tag-add {
 	display: inline-flex;
 }
 
