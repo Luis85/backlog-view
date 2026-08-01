@@ -20,10 +20,11 @@ filter, not a place cards are moved to.
 
 ## Acceptance criteria
 
-- A done column starts collapsed the first time a board renders it — the same
-  once-only default the tree applies to a parent nobody has ruled on — and an explicit
-  expand or collapse is remembered per device in the collapse store, never in the
-  `.base`.
+- A done column holding nothing but finished subtrees starts collapsed the first time
+  a board renders it — the same once-only default the tree applies to a parent nobody
+  has ruled on. One still carrying open work starts expanded: the collapse default
+  exists for noise, and a retained card's rollup is not noise. An explicit expand or
+  collapse is remembered per device in the collapse store, never in the `.base`.
 - A collapsed column keeps its name and count visible and stays a drop target, as
   Trello's collapsed lists and Linear's hidden columns both do.
 - "Show completed items" off hides what it hides in the tree: cards whose whole

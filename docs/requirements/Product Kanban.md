@@ -66,8 +66,11 @@ top of them:
 
 - The two projections never disagree: one model, one result set, one write gate, one
   undo history. A change made on the board is the change the tree shows.
-- The board never loses a result: at full scope, every result the model holds renders
-  in exactly one column, and column counts sum to that count. The hierarchy scope
+- The board exists only where a workflow can: a configured state property is the
+  mode's prerequisite, and without one board mode is guidance, not columns. Past that
+  gate, the board never loses a result: at full scope, every result the model holds
+  renders in exactly one column, and column counts sum to that count. The hierarchy
+  scope
   ("Ignore notes outside the hierarchy") prunes ahead of both projections alike, its
   toll carried by the same ignored-note advisory the tree shows; past it, exactly two
   controls narrow further, in both projections alike — the focus level (descendants
