@@ -176,6 +176,11 @@ describe('focus on the board', () => {
 		// The Epic is outside the filter, but the results beneath it still need a board.
 		const card = cardByTitle(containerEl, 'Epic');
 		expect(card.hasClass('pbl-card-context')).toBe(true);
+		// Context is a DESCRIPTION on the card, never a label: a label would replace
+		// the content-derived accessible name and cost a reader the badge, the
+		// parent line and the rollup this inert card exists to carry.
+		expect(card.getAttribute('aria-label')).toBeNull();
+		expect(card.getAttribute('aria-description')).toContain('shown for context');
 		// Its own state names no column, and an excluded value must not mint one: it
 		// gathers under no-state, and counts stay results-only.
 		expect(columnNames(containerEl)).toEqual(['No state', 'New', 'Active', 'Done']);

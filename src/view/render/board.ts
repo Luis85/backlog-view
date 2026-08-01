@@ -81,7 +81,14 @@ function columnLabel(col: BoardColumn): string {
 }
 
 function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean): void {
-	const header = colEl.createDiv({ cls: 'pbl-board-col-header', attr: { 'aria-hidden': 'true' } });
+	// The header doubles as the column's keyboard stop: an option-like element the
+	// selection can make the listbox's active descendant, because the column itself
+	// is a group and a group is not a valid active item — a screen reader told to
+	// rest on one may announce nothing. See `.pbl-board-col-stop` in selection.ts.
+	const header = colEl.createDiv({
+		cls: 'pbl-board-col-header pbl-board-col-stop',
+		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col) },
+	});
 	if (col.done) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
 	if (col.state === null) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });
@@ -117,7 +124,10 @@ function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dn
 		const marker = head.createSpan({ cls: 'pbl-outside-marker' });
 		setIcon(marker, 'corner-left-down');
 		setTooltip(marker, "Not in this base's filter — shown to place its items");
-		card.setAttribute('aria-label', `${item.title} — outside this base's filter, shown for context`);
+		// A description, not a label: a label would REPLACE the content-derived
+		// accessible name and cost a screen reader the badge, the parent line and
+		// the rollup — the very details that say what this inert card stands for.
+		card.setAttribute('aria-description', "Outside this base's filter — shown for context");
 	}
 	const title = card.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(host, title, item.title);

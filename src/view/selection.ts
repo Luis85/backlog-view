@@ -51,12 +51,21 @@ export class SelectionController {
 		this.syncActiveDescendant(null);
 	}
 
-	/** Rest the board selection on a column itself; null releases it. */
+	/**
+	 * Rest the board selection on a column itself; null releases it. The active
+	 * descendant is the column's `.pbl-board-col-stop` — an option-like element the
+	 * board render puts in each header — never the column container: that is a
+	 * group, and a group is not a valid active item for a listbox, so a reader
+	 * told to rest on one may announce nothing.
+	 */
 	selectBoardColumn(index: number | null): void {
 		const els = this.colEls();
 		const next = index !== null && index >= 0 && index < els.length ? index : null;
 		this.selectedBoardColumn = next;
-		els.forEach((el, i) => el.toggleClass('pbl-col-selected', i === next));
+		els.forEach((el, i) => {
+			el.toggleClass('pbl-col-selected', i === next);
+			this.stopElOf(el)?.setAttribute('aria-selected', String(i === next));
+		});
 		if (next === null) {
 			// Released with no card taking over: the scroller has no active element.
 			if (this.selectedPath === null) this.syncActiveDescendant(null);
@@ -67,10 +76,15 @@ export class SelectionController {
 			this.deselectRows();
 		}
 		const el = els[next];
-		if (!el.id) el.id = `pbl-row-${++selectionIdCounter}`;
+		const stop = this.stopElOf(el) ?? el;
+		if (!stop.id) stop.id = `pbl-row-${++selectionIdCounter}`;
 		this.treeEl.toggleClass('pbl-has-selection', true);
-		this.treeEl.setAttribute('aria-activedescendant', el.id);
+		this.treeEl.setAttribute('aria-activedescendant', stop.id);
 		el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	}
+
+	private stopElOf(colEl: HTMLElement): HTMLElement | null {
+		return colEl.querySelector<HTMLElement>('.pbl-board-col-stop');
 	}
 
 	/**

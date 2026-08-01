@@ -197,8 +197,13 @@ describe('the board keyboard', () => {
 		expect(view.selectedBoardColumn).toBe(0);
 		expect(strip.hasClass('pbl-col-selected')).toBe(true);
 		expect(tree.hasClass('pbl-has-selection')).toBe(true);
-		expect(strip.id).not.toBe('');
-		expect(tree.getAttribute('aria-activedescendant')).toBe(strip.id);
+		// The active descendant is the option-like stop in the header, never the
+		// column container — a group is not a valid active item for a listbox.
+		const stop = strip.querySelector<HTMLElement>('.pbl-board-col-stop');
+		expect(stop?.getAttribute('role')).toBe('option');
+		expect(stop?.getAttribute('aria-selected')).toBe('true');
+		expect(stop?.id).not.toBe('');
+		expect(tree.getAttribute('aria-activedescendant')).toBe(stop?.id);
 	});
 
 	it('losing the workflow releases the column stop with the board it belonged to', () => {
