@@ -56,9 +56,11 @@ rather than deferred behind it.
 4. The context menu offers the moves in words — set horizon, schedule, unschedule,
    clear horizon, and, with lanes on, move to lane, offering every legal lane under
    the drag's own cycle rules — beside the item's existing actions. Schedule opens
-   the dates for entry, prefilled with the item's current dates or, for an
-   unscheduled item, with today spanning one zoom cell — the shelf drop's own
-   default — and confirming writes the same shaped batch the gestures write. Each
+   the dates for entry, prefilled with the dates the note itself states — an inferred
+   endpoint arrives blank, because an inference is display and confirming a prompt
+   must not be the write that materializes it — or, for an unscheduled item, with
+   today spanning one zoom cell, the shelf drop's own default; confirming writes the
+   same shaped batch the gestures write. Each
    menu action is one dimension and one small undoable batch; the combined
    lane-plus-axis move's non-pointer path is the lift, which holds both dimensions
    before one drop.
@@ -101,8 +103,9 @@ rather than deferred behind it.
 - Enter opens the selected note in roadmap mode exactly as in every other projection,
   context rows included ([[Opening the work]]); the lift never takes it over.
 - The context menu offers set horizon (declared plus observed values), schedule — a
-  date entry prefilled with the current dates, or with today spanning one zoom cell
-  for an unscheduled item — unschedule, clear horizon and, with lanes on, move to
+  date entry prefilled with the dates the note states, an inferred endpoint blank,
+  or with today spanning one zoom cell for an unscheduled item — unschedule, clear
+  horizon and, with lanes on, move to
   lane under the drag's own cycle rules, each writing the batch shape the gestures
   write — one dimension and one small undoable batch each, the combined
   lane-plus-axis move's non-pointer path being the lift; on context rows it offers

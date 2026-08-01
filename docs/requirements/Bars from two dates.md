@@ -49,6 +49,11 @@ date on a roadmap is indistinguishable from a decision.
   its card says why. A guessed date would be the view inventing a plan.
 - **1b — the target precedes the start.** Unreadable as a span: shelved with the reason,
   never silently swapped — swapped ends would draw a plan the note does not state.
+- **1c — a value carries a time and an offset.** The civil date it spells is what
+  places it — no conversion to the viewer's zone, so the same note occupies the same
+  cell on every device, and a calendar step moves that civil date while the time,
+  offset and shape ride along unchanged ([[Move and resize a bar]]). Only the today
+  marker is the reader's own: a plan states its dates, a clock states the reader's.
 - **2a — the span is narrower than a grid cell at this zoom.** It renders at the minimum
   drawable width; the dates are the fact and the pixels are the zoom's
   ([[Zoom and the today marker]]).
@@ -64,7 +69,9 @@ date on a roadmap is indistinguishable from a decision.
   supplies dates renders the inferred span ([[Spans roll up the tree]]), and only a
   wholly dateless subtree shelves.
 - Reads are tolerant of frontmatter's shapes; nothing is invented, swapped or written
-  by rendering.
+  by rendering. A datetime places by the civil date it spells, never converted to the
+  viewer's zone — the same note occupies the same cell on every device — while its
+  time, offset and shape survive on disk.
 - The properties are user-named with placeholders matching the Tasks plugin's
   vocabulary; nothing is ever picked by name-matching ([[Horizons or dates]]).
 - No dependency arrows: no field exists, and this epic adds no data model.
