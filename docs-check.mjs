@@ -109,6 +109,14 @@ function withoutCode(text) {
 	return text.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
 }
 
+/**
+ * `field` reads a **value**, `has` reads a **key**, and the difference is load-bearing: a
+ * bare `parent:` with nothing after it is an absent field to `field` and an explicit root to
+ * `resolveParent`. A rule about what a note must *contain* asks `field`; a rule about what
+ * it must not *declare* asks `has`. Which one is not a style choice — it is whichever the
+ * rule is actually about, and getting it backwards is how the prohibition below first
+ * shipped broken.
+ */
 function frontmatter(text) {
 	const match = /^---\n([\s\S]*?)\n---/.exec(text);
 	if (!match) return null;
@@ -116,7 +124,8 @@ function frontmatter(text) {
 		const found = new RegExp(`^${name}:\\s*(.+)$`, "m").exec(match[1]);
 		return found ? found[1].trim() : null;
 	};
-	return { field, raw: match[1] };
+	const has = (name) => new RegExp(`^${name}:`, "m").test(match[1]);
+	return { field, has, raw: match[1] };
 }
 
 async function walk(dir) {
@@ -237,7 +246,11 @@ for (const file of files) {
 // ------------------------------------------------------------------------ use cases
 for (const [, note] of notes) {
 	if (note.type !== "PBI") continue;
-	const text = texts.get(note.file);
+	// Code stripped once, for every structural question below. `checkSections` strips for
+	// itself; `between` did not, so a `## Use case` quoted in an example would bound the
+	// block at the wrong place and every answer drawn from that slice would be about the
+	// wrong region — a false failure rather than a false pass, and just as wrong.
+	const text = withoutCode(texts.get(note.file));
 	checkSections(note.file, text, USE_CASE_SECTIONS, "use case");
 	// The whole opening sentence, not just its first word. `**As**` alone would accept a
 	// note that never says what the actor wants or why — the two halves that make it a use
@@ -316,7 +329,7 @@ for (const file of adrFiles) {
 	// `fm.field` — which wants a value — reports it as absent. The prohibition is on the
 	// key being there at all, so that is what is tested.
 	for (const field of ["parent", "type"]) {
-		if (new RegExp(`^${field}:`, "m").test(fm.raw)) fail(file, `ADR carries a \`${field}\` — an ADR is not a work item`);
+		if (fm.has(field)) fail(file, `ADR carries a \`${field}\` — an ADR is not a work item`);
 	}
 	// A missing or non-numeric `adr` is already reported; registering it as 0 would invent
 	// a duplicate and a numbering gap on top of the real problem.
@@ -332,6 +345,8 @@ for (const file of adrFiles) {
 	}
 	const status = fm.field("status");
 	if (status && !ADR_STATUSES.has(status)) fail(file, `status "${status}" is not one of ${[...ADR_STATUSES]}`);
+	// By VALUE, and it is the counter-example to the prohibition above: this rule is that a
+	// Superseded record must *name* its successor, and a bare `superseded-by:` names nobody.
 	if (status === "Superseded" && fm.field("superseded-by") === null) {
 		fail(file, "Superseded without naming superseded-by");
 	}
@@ -394,7 +409,9 @@ for (const link of chains) {
 		fail(link.file, `names superseded-by but its status is "${link.status}", not Superseded`);
 	}
 }
-const adrIndex = texts.get(path.join(DOCS, "adrs", "README.md")) ?? "";
+// Code stripped: the index's job is to *link* every record, and a filename quoted inside
+// backticks is an example being shown, not a row pointing anywhere.
+const adrIndex = withoutCode(texts.get(path.join(DOCS, "adrs", "README.md")) ?? "");
 for (const file of adrFiles) {
 	if (!adrIndex.includes(`(${path.basename(file)})`)) fail("docs/adrs/README.md", `does not list ${path.basename(file)}`);
 }

@@ -434,6 +434,32 @@ And the ADR prohibition was written against `fm.field`, which wants a **value** 
 explicit root to the runtime and an absent field to the checker, so the one form of the
 mistake that needs no typo at all was the form that passed. Prohibitions are about keys.
 
+## Making the generalisation instead of waiting for it
+
+Three rounds had now taught the same lesson — *`indexOf` answers a question about
+characters, and every rule here is a question about the document* — and each time the fix
+closed only the instance in front of it. So the remaining call sites were swept for that
+class rather than left for a fourth round to find:
+
+| Swept | Was |
+| --- | --- |
+| `between` bounds | raw `indexOf`, so a quoted `\`## Use case\`` bounded the block at the wrong place |
+| The ADR index | `includes`, so a filename quoted in backticks counted as a row linking to it |
+| `superseded-by` presence | left **as a value test**, deliberately — see below |
+
+The first is worth naming because it fails in the *other* direction: a quoted bound made
+the checker slice the wrong region and then answer confidently about it, so the note that
+mentions the marker gets a **false failure**. Planted and confirmed both ways — the same
+note fails on the previous commit and passes on this one.
+
+The third is the interesting one, because sweeping it would have been wrong. "A `Superseded`
+record must **name** its successor" is a rule about a value: a bare `superseded-by:` names
+nobody and must still fail. The prohibition beside it is a rule about a key. Key-or-value
+is not a style to apply uniformly — it is whichever the rule is actually about, and
+`frontmatter` now offers `field` and `has` side by side with that written down between
+them. Both directions are planted: a bare `parent:` is caught, and a bare `superseded-by:`
+is still caught.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.
