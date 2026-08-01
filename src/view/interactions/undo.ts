@@ -54,7 +54,11 @@ export class UndoRecovery {
 	completed(restores: RestoreWrite[], slot: RestoreWrite[] | null): RestoreWrite[] | null {
 		const carried = this.carried(restores);
 		if (this.stash?.forSlot === restores) this.stash = null;
-		if (carried.length === 0 || !slot || slot === restores) return slot;
+		if (carried.length === 0) return slot;
+		// A retry consumed whole by conflicts or missing notes installs nothing and
+		// the spent-slot rule has cleared it — but the prefix the FAILED attempt did
+		// restore is still coherently redoable, and the carried redo is all of it.
+		if (!slot || slot === restores) return carried;
 		return [...carried, ...slot];
 	}
 

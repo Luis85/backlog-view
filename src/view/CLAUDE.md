@@ -43,7 +43,10 @@ free of runtime code so imports stay cycle-free.
   prefix while the rest stays forward. That stranded prefix redo is not lost either:
   `UndoRecovery` stashes it against the remainder and rejoins it when the retry
   completes, so redo re-applies the whole recovered batch and never only its tail —
-  chained failures accumulate into the same stash. The Ctrl/Cmd+Z chord is handled
+  chained failures accumulate into the same stash, and a retry consumed whole by
+  conflicts or missing notes leaves the carried redo AS the slot, since the prefix
+  the failed attempt did restore is still the one coherently reversible thing.
+  The Ctrl/Cmd+Z chord is handled
   before the empty-model return in `handleTreeKeydown`: the change being undone may
   be exactly what emptied the tree.
 

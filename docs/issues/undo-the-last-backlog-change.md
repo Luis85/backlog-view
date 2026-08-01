@@ -168,7 +168,10 @@ the stranded prefix redo is stashed (`UndoRecovery`) and rejoined when the
 remainder's retry completes, so redo re-applies the whole recovered batch rather
 than only its tail, chained failures included — and key absence is captured with
 an own-property check, so a property named like an `Object.prototype` member
-(`toString`) round-trips instead of "restoring" the inherited function.
+(`toString`) round-trips instead of "restoring" the inherited function. A
+seventh finished the stash's last edge: a retry consumed whole by conflicts or
+missing notes leaves the carried redo as the slot, so the prefix the failed
+attempt did restore stays redoable even when nothing else does.
 
 Not verifiable here, as ever: the button's look in a live vault — the standing
 jsdom limit recorded in [smoke-test-the-visual-changes](smoke-test-the-visual-changes.md).

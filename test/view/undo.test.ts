@@ -172,6 +172,41 @@ describe('undoing the last change', () => {
 		expect(orders()).toEqual([10, 20, 30]);
 	});
 
+	it('a retry consumed by conflicts still leaves the restored prefix redoable', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('C.md', { frontmatter: { type: 'Epic' } });
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+		const orders = () => ['A.md', 'B.md', 'C.md'].map((p) => vault.fm(p)['order']);
+
+		containerEl
+			.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		expect(orders()).toEqual([10, 20, 30]);
+
+		// The undo restores C and fails on B; the unreached files are then edited.
+		vault.failWrites.add('B.md');
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		vault.failWrites.delete('B.md');
+		vault.fm('A.md')['order'] = 99;
+		vault.fm('B.md')['order'] = 99;
+
+		// The retry restores nothing — every remaining key conflicts — and is spent.
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect(Notice.messages).toContain('Undo: 2 values were edited since and kept.');
+		expect(orders()).toEqual([99, 99, undefined]);
+
+		// The one thing the undo DID do is still reversible: redo brings C back.
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect(orders()).toEqual([99, 99, 30]);
+	});
+
 	it('a no-op write does not cost the slot: re-picking the checked state keeps the real undo', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
