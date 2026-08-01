@@ -50,8 +50,12 @@ ignores.
 
 ## Acceptance criteria
 
-- Options are grouped by what they affect rather than listed in schema order; a flat
-  table of fourteen fields is what the options panel already is.
+- Options are grouped by what they affect rather than listed in schema order; the flat
+  list is what the options panel already is, and repeating it buys nothing.
+- Coverage is measured against `getViewOptions`, never against a count written here. The
+  schema declares sixteen fixed keys plus one folder picker per type — twenty-two today,
+  and a number that moves with the type vocabulary — so a section built from a
+  hand-counted list would look complete while omitting the generated half.
 - The section says which options are prerequisites for features the user may be looking
   for and not finding — the state property above all.
 - It distinguishes the plugin's options from the Base's own settings, since both are

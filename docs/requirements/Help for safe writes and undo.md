@@ -35,9 +35,11 @@ section that decides whether a new user trusts it.
 - **A misconfigured view writes nothing at all.** `Check view options` in the toolbar
   means the write gate is closed until the configuration is valid.
 - **A batch that fails partway leaves what it already wrote.** Files are written one at a
-  time, so a change touching many notes can stop halfway; the part that landed is on
-  screen and is exactly what undo takes back. This is the honest version of "safe" — not
-  all-or-nothing, but nothing left that you cannot see or reverse.
+  time, so a change touching many notes can stop halfway. What landed is captured in the
+  undo slot, so taking it back is one press — with the same two limits undo always has: a
+  note deleted since is skipped, and a property you edited by hand is kept rather than
+  overwritten. This is the honest version of "safe": not all-or-nothing, but never a
+  change with no way back offered.
 
 ## Acceptance criteria
 
@@ -48,7 +50,10 @@ section that decides whether a new user trusts it.
 - The whole-batch refusal is scoped to what it actually guarantees — a batch **rejected
   before writing** — and is not written as atomicity. `applyWrites` writes sequentially
   and a mid-batch failure keeps the applied prefix, so the section says so and points at
-  undo rather than promising all-or-nothing.
+  undo rather than promising all-or-nothing. Nor is the prefix promised to be *visible*:
+  a write can move an item out of the Base's filter, and the refresh that follows the
+  failure will then drop it from the tree. What is promised is the undo slot, with the
+  limits undo already has.
 - The section is reachable from the busy indicator and from the config warning, since both
   are moments the user is already asking what the view is doing to their files.
 
