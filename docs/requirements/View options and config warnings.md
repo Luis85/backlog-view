@@ -55,14 +55,20 @@ Notice from three call sites (`backlogView.ts:534`, `create.ts:34`).
   future edit cannot move one either.
 - Group names, `displayName`s and `placeholder`s come from the catalog.
 - Every placeholder is sorted by **whether anything reads it back**, not by whether it
-  looks like a value. A placeholder that mirrors the option's real `default` stays as
-  written — `DEFAULT_DONE_VALUES.join(', ')` on `doneValues`, and the type-folder
-  placeholder showing the resolved home folder — because clearing the field falls back to
-  the string on screen. A placeholder that is an **example** is translated:
-  `stateValues` is `default: ''` with `placeholder: 'New, Active, Done'`
-  (`viewOptions.ts:112-117`), so that text is never parsed and leaving it English would
-  be untranslated UI protecting nothing. `Item title` and `Sprint-12` in `ui/prompts.ts`
-  are the same case. See `Persisted keys stay as written`.
+  looks like a value. Three kinds, and all three are present:
+
+  | Kind | Example | Treatment |
+  | --- | --- | --- |
+  | Mirrors the option's real `default` | `DEFAULT_DONE_VALUES.join(', ')` on `doneValues` | Stays as written — clearing the field falls back to the string on screen |
+  | An **example** of what to type | `stateValues` is `default: ''` with `placeholder: 'New, Active, Done'` (`viewOptions.ts:112-117`); `Item title`, `Sprint-12` in `ui/prompts.ts` | Translated — never parsed, so leaving it English protects nothing |
+  | **Mixed**: user data with a literal fallback | `placeholder: homeFolder || 'Home folder'` on every type folder (`viewOptions.ts:156`) | The path renders as the user's own; the fallback label is translated |
+
+- The type-folder placeholder is the one to get right, because it looks like the first
+  kind and is not. `resolveFolders` falls back to `defaultTypeFolder(type, homeFolder)`
+  (`settings.ts:241`) — `docs/requirements`, say — **not** to the placeholder. So nothing
+  reads that string back, `Home folder` is plain English UI, and the earlier reading of
+  this note (that it mirrored the default and should stay) was simply wrong.
+  See `Persisted keys stay as written`.
 - `configProblems` returns structured problems; no user-facing sentence is built in
   `src/domain/`.
 - The English rendering of every problem is unchanged, so the existing gate tests read

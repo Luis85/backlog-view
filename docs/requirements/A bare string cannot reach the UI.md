@@ -28,13 +28,23 @@ take today.
 That list is worth having, because it is what the sweep works through. It is **not**
 sufficient as the rule, for the reason below.
 
-One distinction from it is worth keeping either way. `setAttribute` belongs in the list
-only for user-facing attributes — `aria-label`, `title`, `placeholder`, `alt`. The other
-five `setAttribute` calls in `src/` write `aria-expanded`, `aria-selected`,
-`aria-activedescendant` and `aria-busy`, whose `'true'`/`'false'` and element-id literals
-are correct and must stay literals. A rule keyed on the *call* rather than on the
-attribute would produce five false positives on day one and be switched off by the second
-contributor to hit it.
+Two distinctions from it are worth keeping either way, and both are about guarding an
+*argument* rather than a call.
+
+`setAttribute` belongs in the list only for user-facing attributes — `aria-label`,
+`title`, `placeholder`, `alt`. The other five `setAttribute` calls in `src/` write
+`aria-expanded`, `aria-selected`, `aria-activedescendant` and `aria-busy`, whose
+`'true'`/`'false'` and element-id literals are correct and must stay literals. A rule
+keyed on the *call* would produce five false positives on day one and be switched off by
+the second contributor to hit it.
+
+`DropdownComponent.addOption` is the same shape and the clearest example in the codebase.
+`prompts.ts:215` is `drop.addOption(type, type)` — the type name as **both** the persisted
+value and the visible label, which is exactly the conflation `Type names are data` exists
+to undo. After that PBI it becomes `addOption(type, label(type))`: canonical name stored,
+translated label shown. So the guard covers the **second** argument only. Guarding the
+first would forbid storing the canonical name, which is the one thing that must not
+change.
 
 ## Why the sink list is the wrong shape
 
@@ -126,10 +136,11 @@ one expression:
 ```ts
 chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });   // columns.ts:319
 btn.createSpan({ text: active || 'All types' });                      // toolbar.ts:211
+placeholder: homeFolder || 'Home folder',                             // viewOptions.ts:156
 ```
 
-A state value or a literal; a type name or a literal. These do not typecheck under one
-brand at all — and the union resolves them the right way round rather than papering over
+A state value or a literal; a type name or a literal; a configured folder path or a
+literal. These do not typecheck under one brand at all — and the union resolves them the right way round rather than papering over
 them, because those fallback literals *are* UI text: they become `value ?? t('state.unset')`
 and `active || t('focus.allTypes')`. The union stops user data being misfiled; it does not
 let a literal through.
