@@ -100,6 +100,26 @@ describe('dragging a card to a new state', () => {
 		expect(vault.fm('Epic A.md')['status']).toBe('Blocked');
 	});
 
+	it('never accepts another board’s drag, even over the same note', async () => {
+		const vaultA = boardVault();
+		const a = board(vaultA);
+		// A second saved board in a split pane — the register's own advertised setup.
+		const vaultB = boardVault();
+		const b = makeView(vaultB, { ...BOARD }, { collapsed: true });
+
+		// The adapter's registry is document-global; without the instance token this
+		// drop would write B's state key for a gesture made on A's board.
+		boardDrag(cardByTitle(a.containerEl, 'Epic A'), columnByName(b.containerEl, 'Done'));
+		await flush();
+
+		expect(vaultA.fm('Epic A.md')['status']).toBe('New');
+		expect(vaultB.fm('Epic A.md')['status']).toBe('New');
+		expect(vaultA.writeLog).toHaveLength(0);
+		expect(vaultB.writeLog).toHaveLength(0);
+		// And the foreign target never even highlighted.
+		expect(columnByName(b.containerEl, 'Done').hasClass('pbl-col-drop-over')).toBe(false);
+	});
+
 	it('config problems block a board move, exactly as every other write', async () => {
 		const vault = boardVault();
 		// Parent and order share a key: the gate must refuse everything.
@@ -160,6 +180,21 @@ describe('the board keyboard', () => {
 		key(tree, 'Escape');
 		expect(active.hasClass('pbl-col-selected')).toBe(false);
 		expect(view.selectedBoardColumn).toBeNull();
+	});
+
+	it('End and reverse entry reach the LAST card of the last column', () => {
+		const vault = boardVault();
+		// Two cards in the final column, so the far edge is not also the near one.
+		vault.addFile('Feature B3.md', { frontmatter: { type: 'Feature', order: 30, status: 'Done' }, parentLink: 'Epic B' });
+		const { containerEl } = board(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'End');
+		expect(cardByTitle(containerEl, 'Feature B3').hasClass('pbl-selected')).toBe(true);
+
+		key(tree, 'Escape'); // back to no selection
+		key(tree, 'ArrowUp'); // reverse entry from nothing is the same far edge
+		expect(cardByTitle(containerEl, 'Feature B3').hasClass('pbl-selected')).toBe(true);
 	});
 
 	it('ArrowUp from a first card rests on the column, ArrowDown returns', () => {

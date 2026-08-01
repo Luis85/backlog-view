@@ -245,20 +245,24 @@ function boardPosition(host: BacklogViewHost, snapshot: BoardSnapshot): BoardPos
 function nextBoardPosition(snapshot: BoardSnapshot, pos: BoardPosition | null, key: string): BoardPosition | null {
 	const columns = snapshot.board.columns;
 	const last = columns.length - 1;
-	// Entering the board from nothing: the edges, whatever key asked.
-	const entry = (col: number): BoardPosition => ({ col, card: columns[col].cards.length > 0 ? 0 : -1 });
+	// Entering the board from nothing: the edges — and an edge is a CARD edge, so
+	// entering from the end means the column's last card, not its first.
+	const entry = (col: number, fromEnd = false): BoardPosition => {
+		const count = columns[col].cards.length;
+		return { col, card: count > 0 ? (fromEnd ? count - 1 : 0) : -1 };
+	};
 	switch (key) {
 		case 'Home':
 			return entry(0);
 		case 'End':
-			return entry(last);
+			return entry(last, true);
 		case 'ArrowDown': {
 			if (!pos) return entry(0);
 			const max = columns[pos.col].cards.length - 1;
 			return { col: pos.col, card: Math.min(pos.card + 1, max) };
 		}
 		case 'ArrowUp': {
-			if (!pos) return entry(last);
+			if (!pos) return entry(last, true);
 			// From the first card the column itself is the stop above, and from the
 			// column stop there is nowhere further up.
 			return { col: pos.col, card: Math.max(pos.card - 1, -1) };

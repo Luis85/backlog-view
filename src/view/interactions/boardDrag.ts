@@ -19,6 +19,15 @@ export class BoardDragController {
 	private readonly host: BacklogViewHost;
 	private readonly viewEl: HTMLElement;
 	private cleanups: (() => void)[] = [];
+	/**
+	 * Marks this board's drags. The adapter's registry is document-global and two
+	 * saved boards can sit in split panes over the same notes — without this, a
+	 * card dragged out of one board would land on the other, which resolves the
+	 * path against ITS model and writes ITS state key: a different property
+	 * changed than the gesture showed. A token comparison in `canDrop` keeps every
+	 * drop on the board it started from.
+	 */
+	private readonly token = Symbol('pbl-board-drag');
 
 	constructor(host: BacklogViewHost, viewEl: HTMLElement) {
 		this.host = host;
@@ -52,7 +61,7 @@ export class BoardDragController {
 		this.cleanups.push(
 			draggable({
 				element: cardEl,
-				getInitialData: () => ({ path: item.file.path }),
+				getInitialData: () => ({ path: item.file.path, board: this.token }),
 				onDragStart: () => {
 					this.viewEl.addClass('pbl-dragging');
 					cardEl.addClass('pbl-drag-source');
@@ -71,6 +80,9 @@ export class BoardDragController {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: colEl,
+				// Only this board's own drags: a foreign card must not even highlight,
+				// or the signal would promise a drop the write path should never make.
+				canDrop: ({ source }) => source.data.board === this.token,
 				onDragEnter: () => colEl.addClass('pbl-col-drop-over'),
 				onDragLeave: () => colEl.removeClass('pbl-col-drop-over'),
 				onDrop: ({ source }) => {
