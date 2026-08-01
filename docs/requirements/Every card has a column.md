@@ -20,7 +20,9 @@ has no authority to show less.
 ## Acceptance criteria
 
 - Items without the state property gather in a leading no-state column — they sit
-  before the workflow, not outside the board.
+  before the workflow, not outside the board. The column renders while it has cards;
+  empty, it shrinks to a leading drop strip, the board's answer to the tree's root
+  strip, so clearing a state by drag stays possible without a permanent empty column.
 - An observed value the configured workflow does not name still gets a column,
   appended after the configured ones and visibly outside the defined workflow — a
   nudge to adopt the state or re-state the items, never a dropped card.

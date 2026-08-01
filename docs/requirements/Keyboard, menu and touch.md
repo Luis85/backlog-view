@@ -30,12 +30,13 @@ mobile HTML5 drag events never fire. The menu is all of those answers at once.
   derived ([[Board order is derived not stored]]) — which leaves the pair free for
   lanes ([[Swimlanes by parent]]).
 - Set state in the context menu is the equivalent non-drag path on every platform, and
-  the required one on touch. On the board its vocabulary is exactly the columns —
-  configured states, observed out-of-workflow values, and a no-state entry writing the
-  same remove-state write the no-state column's drop writes — so every column a drag
-  can reach, the menu can too. `stateMenuValues` alone cannot supply that list (it
-  returns only the configured states when a list is set); closing that gap for board
-  mode is this PBI's own work.
+  the required one on touch. On the board its vocabulary is exactly the board's
+  targets — configured states, observed out-of-workflow values, and a no-state entry
+  writing the same remove-state write the no-state target's drop writes — so every
+  target a drag can reach, the menu can too, and the other way round.
+  `stateMenuValues` alone cannot supply that list (it returns only the configured
+  states when a list is set); closing that gap for board mode is this PBI's own work.
 - Every move — drag, key or menu — is announced to assistive technology from a polite
-  live region, naming the card and its old and new column; hidden instructions on the
-  board describe the shortcuts and the menu path.
+  live region naming the card and what changed: old and new column for a state move,
+  old and new lane for a reparent, both for a drop that does both. Hidden
+  instructions on the board describe the shortcuts and the menu path.
