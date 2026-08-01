@@ -461,12 +461,33 @@ To track unreleased builds, install via
 npm install
 npm run dev            # watch mode
 npm run build          # typecheck + production build
+npm run test-build     # build into .obsidian/plugins/ here, so the repo is a test vault
 npm test               # unit + DOM interaction tests (vitest, jsdom)
 npm run test:coverage  # tests with enforced coverage thresholds
 npm run lint           # eslint with the official eslint-plugin-obsidianmd rules
 npm run analyze        # fallow: dead code, duplication, complexity, dependencies
 npm run check          # everything in one shot — the pre-commit gate
 ```
+
+### Trying a build
+
+`npm run test-build` bundles the plugin into `.obsidian/plugins/product-backlog-view/`
+**inside this repository**, so the repository root can be opened as an Obsidian vault
+with the plugin already installed and enabled — no second checkout, no symlink, no
+copying three files by hand after every edit. The bundle is unminified with an inline
+sourcemap, so a stack trace in the developer console points back at the TypeScript. The
+vault folder is gitignored.
+
+There is a backlog waiting in it: `docs/issues/` carries this plugin's own frontmatter
+vocabulary, so pointing a Base at that folder shows the project's issues in the view that
+displays them — see [`docs/issues/codebase-health.md`](docs/issues/codebase-health.md)
+for the Base configuration. Bases is a core plugin and must be enabled for the view to
+appear at all.
+
+This matters more than a convenience script usually would: **no test in this repository
+can check what the plugin looks like**, and several Bases behaviours are assumed rather
+than exercised, because Obsidian cannot run in the jsdom harness. This is the shortest
+path to checking those by hand.
 
 `src/` is organised in four layers, each of which may reach anything below it and
 nothing above:

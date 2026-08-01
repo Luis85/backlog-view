@@ -35,6 +35,10 @@ That is the worst shape for a bug to have: shipped, believed working, quietly in
 
 ## How to check
 
+`npm run test-build` gets you a vault with the plugin installed: it builds into
+`.obsidian/plugins/product-backlog-view/` here, so this repository root can be opened as
+one. Point a Base at `docs/issues/` (see [codebase-health](codebase-health.md)) and:
+
 1. Open a backlog Base in a real vault.
 2. Expand several rows.
 3. Close the tab and reopen the Base (or restart Obsidian).

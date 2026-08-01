@@ -8,7 +8,10 @@ if you want to view the source, please visit the github repository of this plugi
 */
 `;
 
-const prod = process.argv[2] === "production";
+// "production" builds the release, "once" builds development output and exits (the
+// test-build vault wants a bundle, not a watcher), anything else watches.
+const mode = process.argv[2] ?? "watch";
+const prod = mode === "production";
 
 const context = await esbuild.context({
 	banner: {
@@ -54,6 +57,12 @@ if (prod) {
 		minify: true,
 		logLevel: "info",
 	});
+	process.exit(0);
+} else if (mode === "once") {
+	// Unminified, with the inline sourcemap that makes a stack trace in Obsidian's
+	// console point back at the TypeScript rather than at one long bundled line.
+	await context.rebuild();
+	await context.dispose();
 	process.exit(0);
 } else {
 	await context.watch();
