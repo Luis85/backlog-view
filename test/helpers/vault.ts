@@ -41,8 +41,15 @@ export class FakeVault {
 	failWrites = new Set<string>();
 	/** Paths whose vault.create throws — a permission problem or a sync lock, as far as the caller can tell. */
 	failCreates = new Set<string>();
-	/** Paths passed to fileManager.trashFile, in order. */
-	trashed: string[] = [];
+	/** Folders removed through adapter.rmdir, in order. */
+	removedFolders: string[] = [];
+	/**
+	 * Files that exist on disk but not yet in the metadata cache — so `TFolder.children`
+	 * omits them while `rmdir` still trips over them. That gap is real (a sync client
+	 * writes before Obsidian indexes) and it is the whole reason emptiness is asked of
+	 * the filesystem rather than of the cache.
+	 */
+	hiddenFromCache = new Set<string>();
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 
@@ -106,13 +113,28 @@ export class FakeVault {
 				if (name === 'rename') this.renameHandlers.push(cb);
 				return { name };
 			},
+			adapter: {
+				/**
+				 * Non-recursive removal, refusing a folder that is not empty — the contract
+				 * `rmdir(path, false)` documents. Emptiness is judged from what is actually
+				 * there, never from the cached `children` a caller may have read, since the
+				 * difference between the two is exactly what the caller is relying on it for.
+				 */
+				rmdir: async (path: string, recursive: boolean) => {
+					if (!this.folders.has(path)) throw new Error(`Folder does not exist: ${path}`);
+					if (!recursive && this.childPaths(path).length > 0) {
+						throw new Error(`Folder is not empty: ${path}`);
+					}
+					for (const child of this.childPaths(path)) {
+						this.files.delete(child);
+						this.folders.delete(child);
+					}
+					this.folders.delete(path);
+					this.removedFolders.push(path);
+				},
+			},
 		},
 		fileManager: {
-			trashFile: async (entry: { path: string }) => {
-				this.trashed.push(entry.path);
-				this.folders.delete(entry.path);
-				this.files.delete(entry.path);
-			},
 			processFrontMatter: async (file: TFile, fn: (fm: Record<string, unknown>) => void) => {
 				// Injected failure, for the partial-batch paths a real vault produces.
 				if (this.failWrites.has(file.path)) throw new Error(`write failed: ${file.path}`);
@@ -134,12 +156,19 @@ export class FakeVault {
 		const folder = new TFolder();
 		folder.path = path;
 		folder.name = path.split('/').pop() ?? path;
-		const parentOf = (p: string) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '/');
-		folder.children = [
-			...[...this.files.values()].filter((f) => parentOf(f.path) === path),
-			...[...this.folders].filter((f) => f !== '/' && f !== path && parentOf(f) === path),
-		];
+		// The CACHED view: anything the cache has not caught up with is missing from it,
+		// which is the state a stale `children` read actually sees.
+		folder.children = this.childPaths(path).filter((child) => !this.hiddenFromCache.has(child));
 		return folder;
+	}
+
+	/** Everything directly inside `path` on disk, cache or no cache. */
+	private childPaths(path: string): string[] {
+		const parentOf = (p: string) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '/');
+		return [
+			...[...this.files.keys()].filter((p) => parentOf(p) === path),
+			...[...this.folders].filter((p) => p !== '/' && p !== path && parentOf(p) === path),
+		];
 	}
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */

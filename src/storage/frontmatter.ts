@@ -353,25 +353,29 @@ export async function ensureFolder(app: App, folder: string): Promise<string[]> 
 /**
  * Remove the folders a failed creation left behind, deepest first.
  *
- * Three restrictions, and each is the difference between a cleanup and a data loss:
- * only folders **this attempt created**, only while each is **still empty**, and never
- * recursively. A creation failure is precisely the moment the vault's state is least
- * certain — a sync client, another plugin or the user may have put something in the
- * folder between the two calls — so anything unexpected stops the walk instead of being
- * cleared. Deleting more than we made is a far worse outcome than a stray empty folder,
- * which is why the first surprise ends the loop rather than skipping past it.
+ * Two restrictions, and each is the difference between a cleanup and a data loss: only
+ * folders **this attempt created**, and only while each is **still empty**.
  *
- * Stopping is also the only correct move for the ancestors: a parent cannot be empty
- * while the child that failed to go is still standing in it.
+ * The emptiness is the filesystem's answer at the moment of removal, not ours beforehand.
+ * `rmdir(path, false)` is documented to require an empty folder and fails otherwise, so
+ * the test and the delete cannot come apart. Reading `children` and then trashing would
+ * be a check followed by an unrelated act: `trashFile` takes a folder **and everything
+ * in it**, and `children` is Obsidian's cache, so a note written by a sync client either
+ * between the two calls or merely before the cache caught up would be carried off by a
+ * cleanup that had just satisfied itself the folder was empty. A creation failure is
+ * precisely when the vault's state is least certain, which is when that gap is widest.
+ * Deleting more than we made is a far worse outcome than a stray empty folder, so the
+ * guarantee has to be one the API actually makes.
+ *
+ * A refusal therefore ends the walk rather than being skipped — and stopping is the only
+ * correct move for the ancestors anyway, since a parent cannot be empty while the child
+ * that failed to go is still standing in it.
  */
 export async function removeCreatedFolders(app: App, created: string[]): Promise<void> {
 	for (const path of [...created].reverse()) {
-		const folder = app.vault.getAbstractFileByPath(path);
-		if (!(folder instanceof TFolder) || folder.children.length > 0) return;
+		if (!(app.vault.getAbstractFileByPath(path) instanceof TFolder)) return;
 		try {
-			// The user's own trash preference decides where it goes; this is their vault,
-			// and the folder is only *probably* unwanted.
-			await app.fileManager.trashFile(folder);
+			await app.vault.adapter.rmdir(path, false);
 		} catch {
 			return;
 		}

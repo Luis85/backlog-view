@@ -39,13 +39,18 @@ can be checked by reading one directory.
   that succeeded — and both creators pass that list to `removeCreatedFolders` from their
   own `catch` before rethrowing. The distinction the rollback turns on is *created, not
   merely present*: a folder that was already there is never a candidate, however empty.
-  Two further restrictions, and each is the difference between a cleanup and a data loss —
-  deepest first and only while `children` is empty, and the **first surprise ends the
-  walk** rather than being skipped. A creation failure is precisely when the vault's state
-  is least certain, so anything unexpected stops it; stopping is also the only correct move
-  for the ancestors, since a parent cannot be empty while the child that failed to go is
-  still standing in it. Never a recursive delete, and it goes through
-  `fileManager.trashFile` so the user's own trash setting decides where it lands.
+  The other restriction is that each folder is **still empty**, and the emptiness is the
+  filesystem's answer *at the moment of removal*: `adapter.rmdir(path, false)` is
+  documented to require an empty folder and to fail otherwise. Reading `TFolder.children`
+  and then deleting would be a check followed by an unrelated act — `trashFile` takes a
+  folder **and everything in it**, and `children` is a cache, so a note written by a sync
+  client either in the gap or merely before the cache caught up gets carried off by a
+  cleanup that had just satisfied itself the folder was empty. A creation failure is
+  precisely when that gap is widest. The rule is that deleting more than we made is far
+  worse than a stray empty folder, so the guarantee has to be one the API actually makes,
+  not one the code asserts about a value it read earlier. A refusal ends the walk, which
+  is also the only correct move for the ancestors: a parent cannot be empty while the
+  child that failed to go is still standing in it.
 - **Creation is serialized** (`serializeCreation`), and that is what makes the ownership
   above mean anything. `ensureFolder` decides what to create by looking at what is there
   and the rollback decides what to remove the same way, so two attempts interleaving

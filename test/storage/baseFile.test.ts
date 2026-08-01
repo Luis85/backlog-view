@@ -65,7 +65,7 @@ describe('createBacklogBase', () => {
 		await expect(createBacklogBase(vault.app, 'Roadmap')).rejects.toThrow('create failed');
 
 		// The user asked for a backlog, not for a folder named after one.
-		expect(vault.trashed).toEqual(['Roadmap']);
+		expect(vault.removedFolders).toEqual(['Roadmap']);
 		expect(vault.folders.has('Roadmap')).toBe(false);
 	});
 

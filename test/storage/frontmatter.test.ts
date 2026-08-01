@@ -163,7 +163,7 @@ describe('createBacklogItem', () => {
 		).rejects.toThrow('create failed');
 
 		// Only what this attempt made. `Backlog` was already there and is not ours to take.
-		expect(vault.trashed).toEqual(['Backlog/bugs']);
+		expect(vault.removedFolders).toEqual(['Backlog/bugs']);
 		expect(vault.folders.has('Backlog')).toBe(true);
 	});
 
@@ -182,7 +182,7 @@ describe('createBacklogItem', () => {
 		).rejects.toThrow('create failed');
 
 		// Deepest first is the only order in which each one is empty when it is reached.
-		expect(vault.trashed).toEqual(['Roadmap/work/open', 'Roadmap/work', 'Roadmap']);
+		expect(vault.removedFolders).toEqual(['Roadmap/work/open', 'Roadmap/work', 'Roadmap']);
 		expect([...vault.folders]).toEqual(['/']);
 	});
 
@@ -205,9 +205,36 @@ describe('createBacklogItem', () => {
 		).rejects.toThrow('create failed');
 
 		// And `Roadmap` stays too: it cannot be empty while `work` is still standing in it.
-		expect(vault.trashed).toEqual([]);
+		expect(vault.removedFolders).toEqual([]);
 		expect(vault.folders.has('Roadmap/work')).toBe(true);
 		expect(vault.folders.has('Roadmap')).toBe(true);
+	});
+
+	it('keeps a folder holding a note the metadata cache has not seen yet', async () => {
+		const vault = new FakeVault();
+		vault.failCreates.add('Roadmap/Thing.md');
+		// On disk, and NOT in the cache — a sync client wrote it and Obsidian has not
+		// indexed it. `TFolder.children` therefore reports the folder as empty, which is
+		// the state a check-then-delete would act on. Reading emptiness and then trashing
+		// would take this note with the folder; asking `rmdir` for a non-recursive removal
+		// makes the filesystem answer at the moment it matters, and it refuses.
+		// The folder itself is NOT pre-created: this attempt has to make it, or `created`
+		// would be empty and the rollback would have nothing to get wrong.
+		vault.addFile('Roadmap/Arrived from sync.md');
+		vault.hiddenFromCache.add('Roadmap/Arrived from sync.md');
+
+		await expect(
+			createBacklogItem(vault.app, settings, {
+				folder: 'Roadmap',
+				title: 'Thing',
+				typeName: 'Task',
+				parent: null,
+				order: 10,
+			}),
+		).rejects.toThrow('create failed');
+
+		expect(vault.removedFolders).toEqual([]);
+		expect(vault.files.has('Roadmap/Arrived from sync.md')).toBe(true);
 	});
 
 	it('does not take the folder out from under a creation running beside it', async () => {
@@ -243,7 +270,7 @@ describe('createBacklogItem', () => {
 		// silently keeps a folder it should have taken back because the second's note made
 		// it look occupied. Serialized, the first unwinds its own and the second makes its
 		// own, which is this one line.
-		expect(vault.trashed).toEqual(['Roadmap']);
+		expect(vault.removedFolders).toEqual(['Roadmap']);
 	});
 
 	it('falls back to Untitled for empty titles and supports the vault root', async () => {

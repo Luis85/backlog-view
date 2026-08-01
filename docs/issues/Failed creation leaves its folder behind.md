@@ -76,15 +76,31 @@ call sites already have the `catch`.
 
 ## Outcome
 
-Fixed, on exactly that recipe. `ensureFolder` returns the segments it created — pushed
-only after a `createFolder` that succeeded, so a folder that already existed is never in
-the list — and `removeCreatedFolders` walks them deepest first, taking each only while
-`children` is empty and **stopping at the first surprise** rather than skipping past it.
-Both creation paths call it from their own `catch` and rethrow, so the notice the caller
-shows is unchanged. Three tests: the chain unwinds deepest first, a pre-existing folder is
-kept, and a folder that gained a file in between is kept along with everything above it —
-which is the same assertion twice, because a parent cannot be empty while the child that
-failed to go is still standing in it.
+Fixed, on that recipe with one correction the recipe did not contain. `ensureFolder`
+returns the segments it created — pushed only after a `createFolder` that succeeded, so a
+folder that already existed is never in the list — and `removeCreatedFolders` walks them
+deepest first, **stopping at the first refusal** rather than skipping past it. Both
+creation paths call it from their own `catch` and rethrow, so the notice the caller shows
+is unchanged.
+
+The correction is where "still empty" is decided. The obvious reading — check
+`TFolder.children`, then delete — cannot deliver it, and review caught the claim before
+the code did. `trashFile` takes a folder **and everything in it**, and `children` is
+Obsidian's cache, so a note written by a sync client either in the gap or merely *before
+the cache caught up* is carried off by a cleanup that has just satisfied itself the folder
+was empty. That is precisely the hazard this note's own "Why it is deliberate" section
+named, reappearing inside the fix for it.
+
+So emptiness is asked of the filesystem at the moment of removal:
+`adapter.rmdir(path, false)` is documented to require an empty folder and to fail
+otherwise, which makes the test and the delete one operation instead of two. The rule
+survives intact — deleting more than we made is far worse than a stray empty folder — but
+it now rests on a guarantee the API makes rather than on an assertion about a value read
+earlier.
+
+Five tests: the chain unwinds deepest first, a pre-existing folder is kept, a folder that
+gained a file is kept along with everything above it, a folder holding a note **the cache
+has not seen** is kept, and a creation running beside a failing one keeps its parent.
 
 ### What the fix cost that the recipe did not mention
 
