@@ -114,6 +114,33 @@ construct in three parts**, and RTL needs all of them: a left-pointing collapsed
 negated rotations, or a dedicated down-pointing icon for the expanded state. Auditing them
 independently is what produced the wrong answer twice.
 
+### The category that is not visual at all: keyboard direction
+
+Both categories above are things you can see. The third is a thing you press, and it is
+the one an RTL implementation is most likely to ship broken, because every visual check
+can pass while it is wrong.
+
+`view/interactions/keyboard.ts` binds four direction keys, all of them physical:
+
+| Key | Does | In RTL should |
+| --- | --- | --- |
+| `ArrowLeft` | Collapse, else go to parent | Be `ArrowRight` |
+| `ArrowRight` | Expand, else go to first child | Be `ArrowLeft` |
+| `Alt+ArrowLeft` | Outdent | Be `Alt+ArrowRight` |
+| `Alt+ArrowRight` | Indent | Be `Alt+ArrowLeft` |
+
+Once the children and the collapsed chevron mirror toward the inline start, pressing the
+key that points at a row's children moves away from them. This is not a preference: the
+WAI-ARIA authoring practices for `tree` specify that the two arrow behaviours swap under
+RTL, so a tree that keeps them is wrong by the pattern it claims to implement — and
+`src/view/CLAUDE.md` is explicit that the tree is one tab stop whose arrows *are* the
+navigation, which makes this the primary interaction rather than a shortcut.
+
+It is also the category most cheaply verified, because unlike everything else in this note
+it **can** be tested here: the jsdom harness dispatches real `keydown` events and
+`test/view/` already drives them. Direction-aware navigation is the one part of RTL that
+does not need a live vault.
+
 **Width is not free.** `Property columns` is `Done` on the criteria *"Columns are
 fixed-width so values line up across rows regardless of title length"* and *"A pane too
 narrow drops whole columns rather than shrinking them out of alignment."* Those were
@@ -146,8 +173,12 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
   an expanded one pointing up is the failure this note twice invited, so "the icon is
   mirrored" does not satisfy it.
 - The icon classification is written down as a list, not re-derived. It is the input to
-  the check in `Styling rules are checks`, which is what stops a sixth directional icon
+  the check in `Styling rules are checks`, which is what stops a seventh directional icon
   arriving unnoticed.
+- **`ArrowLeft`/`ArrowRight` and `Alt+` the same, follow the inline direction**, in
+  navigation and in structure moves alike. Unlike the rest of this note, this has jsdom
+  tests rather than a checklist — the harness dispatches real `keydown` events, so an RTL
+  navigation test is ordinary work and its absence would be a gap, not a limitation.
 - A label longer than its column truncates or wraps by the rule `Property columns`
   already sets — it does not overflow, and it does not push the columns out of alignment.
   Whatever the toolbar does when its controls no longer fit, it does the same in every

@@ -19,10 +19,10 @@ a new write path cannot appear by accident."* `showAtMouseEvent` became a lint r
 shipping as a bug once. `VISUAL_DEPTH` guards the two files that decide types.
 
 Styling has the same shape and none of the enforcement. The audit in
-`Theming and styling` found a clean file — no literal rendered colour, 0 `!important`,
-every selector `.pbl`-scoped — and every one of those is a fact about one afternoon's
-grep. The rules are real, they are followed,
-and they are written nowhere a contributor would meet them.
+`Theming and styling` found a nearly clean file — one literal colour, 0 `!important`,
+every selector `.pbl`-scoped — and every one of those is a fact about an afternoon's grep,
+twice corrected. The rules are real, they are mostly followed, and they are written
+nowhere a contributor would meet them.
 
 Two things make the case sharper than it looks. `eslint src test` does not read
 `styles.css` at all, so *nothing* in the definition of done currently examines the file.
@@ -38,7 +38,7 @@ argue about.
 
 | Rule | Today |
 | --- | --- |
-| No literal **rendered** colour — `var(--…)` only | 0 violations, but see below |
+| No literal **rendered** colour — `var(--…)` only | 1 violation (642), see below |
 | No `!important` | 0 |
 | Every selector inside the `.pbl` namespace | 0 outside it, keyframe steps aside |
 | No physical `left`/`right` property where a logical twin exists | 1 (line 96) |
@@ -50,22 +50,39 @@ argue about.
 Stated as *"no literal colour value"* the rule reports **10** violations against today's
 file, not zero, and all 10 are correct code:
 
-| Literal | Where | Why it stays |
+| Literal | Where | Verdict |
 | --- | --- | --- |
-| `transparent` ×8 | 53, 71, 595, 641, 782, 813, and twice in the mask | Not a colour. It is the *absence* of one, and no theme variable means "nothing" |
-| `black` ×2 | 748-749, the mask stops | A mask's channel is **alpha**. `black` there means fully opaque and is never rendered — tokenizing it would substitute a colour for an opacity |
+| `transparent` ×8 | 53, 71, 595, 641, 782, 813, and twice in the mask | **Stays.** Not a colour — the *absence* of one, and no theme variable means "nothing" |
+| `black` ×2 | 748-749, the mask stops | **Stays.** A mask's channel is **alpha**. `black` there means fully opaque and is never rendered; tokenizing it would substitute a colour for an opacity |
+| `128, 128, 128` ×1 | 642, `rgba(var(--pbl-badge-rgb, 128, 128, 128), 0.4)` | **Fix.** A hard-coded grey that renders whenever the custom property is unset — which is a real case, not a defensive one |
 
 So the rule is about **rendered** colour: a literal naming a colour the user sees. That is
 a narrowing by reason rather than an exception list, which matters because an exception
-list would have to be maintained and a reason does not — the next `transparent` is
-covered without anyone adding a row.
+list would have to be maintained and a reason does not — the next `transparent` is covered
+without anyone adding a row.
 
-Worth noting how this was missed: the audit behind the table searched for `#hex` and bare
-`rgb()`/`hsl()` and reported zero, which was true of the forms it searched for and not of
-the rule it was checking. CSS colour *keywords* are a third form. Same shape as the
-direction audit in `Layout survives translated text` — a category named, then partially
-enumerated — which is why that note's method now says to run the search that returns every
-member rather than the members that come to mind.
+The third row is a genuine violation and the only one. `.pbl-badge.pbl-implied` borders an
+implied-type badge, and `--pbl-badge-rgb` is set per level class — so a type **past the end
+of the ladder**, which `domain/CLAUDE.md` describes as ordinary user data (the `Bugfix`
+case), falls through to a grey no theme can reach. It should read a token.
+
+### How the colour audit was wrong twice
+
+This claim has now been corrected twice, and both times the *search* was at fault rather
+than the reading of it:
+
+1. The first audit matched `#hex` and bare `rgb()`/`hsl()`, and reported zero. True of the
+   forms it searched for, not of the rule — CSS colour **keywords** are a third form.
+2. The second audit added the keywords but **excluded every line containing `var(--`**, on
+   the reasoning that such a line reads a variable. Line 642 reads a variable *and supplies
+   a literal fallback*, so the filter removed the one line that could still violate the
+   rule.
+
+The second is the same failure as the icon enumeration in `Layout survives translated
+text`, and it happened *after* that note added **step 0 — verify the search finds what you
+think it finds**. The step was written for the icon audit and never applied back here. A
+method recorded in one note does not run itself in another, which is the last argument this
+register needed for putting the rule in `npm run check` instead.
 
 The last two rows of the table are why this is not just "add stylelint and take the
 defaults".
@@ -92,12 +109,17 @@ instead. Neither rule comes out of a default config.
 - Every rule in the table above fails the build when violated. Prove each one by
   violating it and watching it go red — the register has already recorded that a check
   which has never failed is a check nobody has tested.
-- The two current violations are fixed by `Layout survives translated text`, so this PBI
-  either lands after it or lands with the direction rules staged.
-- The colour rule is scoped to **rendered** colour and passes on today's file unchanged.
-  `transparent` and mask stops are outside it by reason, not by a suppression list — if
-  the implementation needs eight `/* stylelint-disable */` comments to go green, the rule
-  is wrong rather than the stylesheet.
+- The two **direction** violations are fixed by `Layout survives translated text`, so this
+  PBI either lands after it or lands with the direction rules staged. The colour violation
+  at 642 belongs to this PBI, since it is the rule's own first catch.
+- The colour rule is scoped to **rendered** colour. `transparent` and mask stops are
+  outside it by reason, not by a suppression list — if the implementation needs eight
+  `/* stylelint-disable */` comments to go green, the rule is wrong rather than the
+  stylesheet.
+- It matches inside `var()` **fallbacks**, since `rgba(var(--x, 128, 128, 128), 0.4)`
+  renders a hard-coded grey whenever the property is unset. Line 642 is the one real
+  violation in the file and is fixed rather than exempted — an unset `--pbl-badge-rgb`
+  happens for any type past the end of the ladder, which is user data, not an edge case.
 - Rule messages name the fix, not the violation. `Use var(--text-muted); a literal colour
   ignores the user's theme` teaches; `unexpected hex value` gets suppressed.
 - Exceptions are narrow and carry a reason inline, matching how `usedClassMembers`
@@ -106,7 +128,7 @@ instead. Neither rule comes out of a default config.
   physical-left cue the stylesheet cannot reach, and `Layout survives translated text`
   under-enumerated them three times running. The check is an explicit classification of
   every icon name in `src/` as directional or neutral, failing when a name appears that
-  is in neither list — so a sixth directional icon has to be classified rather than
+  is in neither list — so a **seventh** directional icon has to be classified rather than
   noticed. This is the one rule here that reads TypeScript rather than the stylesheet,
   which is why it would never come out of a CSS linter.
 - The rules are stated in `src/view/CLAUDE.md`, beside the render-cost notes, so they are

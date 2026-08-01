@@ -140,7 +140,8 @@ placeholder: homeFolder || 'Home folder',                             // viewOpt
 ```
 
 A state value or a literal; a type name or a literal; a configured folder path or a
-literal. These do not typecheck under one brand at all — and the union resolves them the right way round rather than papering over
+literal. These do not typecheck under one brand at all — and the union resolves them the
+right way round rather than papering over
 them, because those fallback literals *are* UI text: they become `value ?? t('state.unset')`
 and `active || t('focus.allTypes')`. The union stops user data being misfiled; it does not
 let a literal through.
@@ -194,7 +195,21 @@ The mint points stay enumerable — note fields, `TFile`/`TFolder` paths and bas
 values, and the filter input — but they are instances of one rule rather than a list to
 keep extending.
 
-**3. `t()`'s parameters are the laundering hole.** If a message's named parameters accept
+**3. `Intl` formatters return plain `string`.** `Intl.NumberFormat.prototype.format()` and
+`Intl.ListFormat.prototype.format()` both do, and both are *required* elsewhere in this
+feature — `Locale-aware sorting and formatting` asks for the standalone counts at
+`columns.ts:276,280` to be number-formatted, and `Plurals and interpolation` asks for
+`configProblems` to be joined with `Intl.ListFormat`. As written, the two specifications
+contradict each other: what the formatter returns cannot reach a branded sink.
+
+The resolution is the one already used for transformations — the formatters live **inside**
+the module that owns the brands and return one, rather than being called at the sink and
+re-branded. Which brand follows the line already drawn in
+`Locale-aware sorting and formatting`: a formatted **count** is data presentation, so it is
+`UserText`; a **list joined into a sentence** is grammar, so it is `Translated`. That is
+the same rule answering a third question, which is a good sign it is the right rule.
+
+**4. `t()`'s parameters are the laundering hole.** If a message's named parameters accept
 `string`, then `t('tag.pill', { tag: 'hard-coded text' })` returns a perfectly valid
 `Translated` with a literal inside it, and the sink sees only the brand. Every message
 that interpolates — tags, state names, titles, type labels — is a way through. Parameters
@@ -268,7 +283,8 @@ needed three rounds of review to abandon.
   `emptyHint` returning one from a helper, are the acceptance test — a mechanism that
   catches only a literal sitting inside `setText(…)` has not met this criterion.
 - `t()` returns `Translated`, every entry point for text from outside the plugin's source
-  returns `UserText`, and every UI helper that renders text takes the union. A plain `string` reaching one is a **compile**
+  returns `UserText`, and every UI helper that renders text takes the union. A plain
+  `string` reaching one is a **compile**
   error, not a lint error, so it cannot be suppressed inline.
 - `t()`'s **parameters** carry provenance as well — `Displayable | number`, never
   `string`. A message that interpolates an unbranded parameter launders a literal into a
@@ -278,10 +294,11 @@ needed three rounds of review to abandon.
   its own branded option and registration types and widens them at the boundary. A design
   that guards only setter calls leaves the largest concentration of strings in the
   codebase unguarded.
-- Transformations of vault text happen **inside** the module that owns the brand — the
-  filter-match split and the tag pill are the two that exist — so no call site un-brands
-  and re-brands. If the implementation needs a re-branding helper at a call site, the
-  boundary is drawn in the wrong place.
+- Transformations happen **inside** the module that owns the brands, so no call site
+  un-brands and re-brands. Three exist: the filter-match split, the tag pill, and the
+  `Intl` formatters — whose output is branded by what it formats (a count is `UserText`,
+  a list joined into a sentence is `Translated`). If the implementation needs a re-branding
+  helper at a call site, the boundary is drawn in the wrong place.
 - Rendering the user's own text needs **no cast and no `t()` call**. Note titles, folder
   paths, tags, state values, property values and the quick-filter text render as directly
   as they do today. A design in
