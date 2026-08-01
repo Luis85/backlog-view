@@ -37,14 +37,15 @@ A concern lands here when it has three properties:
 | | |
 | --- | --- |
 | `Multilang` | Every string the plugin shows comes out of a per-locale catalog |
-| `Theming` | Every pixel it draws comes from Obsidian's design tokens |
+| `Theming and styling` | Every pixel it draws comes from Obsidian's design tokens |
 
 They are siblings for a real reason rather than a filing convenience: they meet at the
 layout. Translated text is longer, shorter and sometimes right-to-left, and what absorbs
-that is the stylesheet. The seam is drawn once and stated in both places — `Theming` owns
-the *mechanism* (logical properties, no physical direction rules, and the lint that keeps
-it that way), `Multilang` owns the *verification* (that the view still reads correctly
-with German compounds in the columns and Arabic running the other way).
+that is the stylesheet. The seam is drawn once and stated in both places —
+`Theming and styling` owns the *mechanism* (logical properties, no physical direction
+rules, and the lint that keeps it that way), `Multilang` owns the *verification* (that
+the view still reads correctly with German compounds in the columns and Arabic running
+the other way).
 
 ## Definition of done, for anything under this epic
 

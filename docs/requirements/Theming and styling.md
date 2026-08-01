@@ -5,16 +5,20 @@ order: 20
 status: Open
 ---
 
-# Theming
+# Theming and styling
 
 Everything the plugin draws is expressed in Obsidian's own design tokens, so it looks
-like part of the app in any theme the user installs — and stays that way as the plugin
-grows.
+like part of the app in any theme the user installs — and the stylesheet that does it is
+organised, bounded and checked like the rest of the codebase.
 
-## What this feature is not
+Two halves, and the name says both. **Theming** is what the user sees: tokens, theme
+variants, a restyling surface, reduced motion. **Styling** is the file that produces it:
+one stylesheet per concern, a build step, and rules that hold.
 
-It is not a cleanup. `styles.css` is 1143 lines and already disciplined, which the audit
-behind these PBIs establishes rather than assumes:
+## What the theming half is not
+
+It is not a cleanup. `styles.css` is already disciplined, which the audit behind these
+PBIs establishes rather than assumes:
 
 | Checked | Result |
 | --- | --- |
@@ -37,8 +41,14 @@ stylesheet into a stylesheet that cannot quietly stop being good.
 
 ## What is actually open
 
-Four gaps, each its own PBI:
+Five gaps, each its own PBI:
 
+- **One file, 1143 lines.** The root `CLAUDE.md` opens on *"one file per concern,
+  400-line max enforced by lint"*, and `styles.css` is 2.8× that cap. It is the only file
+  in the repository exempt from the rule the repository is built on, and it is exempt
+  because `eslint src test` does not read CSS — an accident, not an argument. It splits
+  first: every other PBI here edits the stylesheet, and doing that in nine small files is
+  the difference between a reviewable diff and a 1143-line one.
 - **97 raw pixel values**, where Obsidian publishes `--size-*` tokens a theme can
   rescale. Not all of them can go — some are load-bearing, which is the interesting part.
 - **A bound spelled in two places.** `ROW_LEAD_WIDTH` in `columns.ts` sums eight widths
@@ -52,8 +62,9 @@ Four gaps, each its own PBI:
 
 ## The seam with Multilang
 
-Direction is where the two features meet, and the line is drawn once: **`Theming` owns
-the mechanism** — logical properties, no physical `left`/`right`, and the lint that keeps
-new ones out. **`Multilang` owns the verification** — that the view still reads correctly
-with long compounds in fixed-width columns and with the tree running right-to-left. See
-`Layout survives translated text`.
+Direction is where the two features meet, and the line is drawn once. **This feature owns
+the mechanism** — logical properties, no direction-dependent value in a shadow, mask or
+gradient, and the lint that keeps new ones out. **`Multilang` owns the verification** —
+that the view still reads correctly with long compounds in fixed-width columns and with
+the tree running right-to-left. See `Layout survives translated text`, which carries the
+inventory of what is left to fix.

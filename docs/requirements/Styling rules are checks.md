@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Theming]]"
-order: 50
+parent: "[[Theming and styling]]"
+order: 60
 status: Open
 ---
 
@@ -18,8 +18,9 @@ reasoning, and the root `CLAUDE.md` records what it bought: `no-restricted-synta
 a new write path cannot appear by accident."* `showAtMouseEvent` became a lint rule after
 shipping as a bug once. `VISUAL_DEPTH` guards the two files that decide types.
 
-Styling has the same shape and none of the enforcement. The audit in `Theming` found a
-clean file — 0 literal colours, 0 `!important`, every selector `.pbl`-scoped — and every
+Styling has the same shape and none of the enforcement. The audit in
+`Theming and styling` found a clean file — 0 literal colours, 0 `!important`, every
+selector `.pbl`-scoped — and every
 one of those is a fact about one afternoon's grep. The rules are real, they are followed,
 and they are written nowhere a contributor would meet them.
 

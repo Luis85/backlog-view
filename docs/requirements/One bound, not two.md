@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Theming]]"
-order: 20
+parent: "[[Theming and styling]]"
+order: 30
 status: Open
 ---
 

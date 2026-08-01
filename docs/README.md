@@ -24,8 +24,8 @@ what "healthy" means there, and the tasks that got it done underneath.
 
 **Cross-cutting concerns** is the third kind: properties that have to be true of
 everything or they are true of nothing. Two features — `Multilang` (every string comes
-out of a per-locale catalog) and `Theming` (every pixel comes from Obsidian's design
-tokens). They are siblings because they meet at the layout: translated text is longer,
+out of a per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's
+design tokens). They are siblings because they meet at the layout: translated text is longer,
 shorter and sometimes right-to-left, and the stylesheet is what absorbs it. Specification
 only — nothing under this epic is built yet.
 

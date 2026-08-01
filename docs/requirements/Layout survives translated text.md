@@ -66,9 +66,9 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
 - All three constructs in the table are fixed: the physical property (96), the selection
   accent shadow (336) and the tag-list mask (748-749). Two of them have no logical twin,
   so "replace the physical properties" is not the whole job and never was.
-- Keeping new ones out is `Styling rules are checks`, in `Theming` — this PBI owns the
-  sweep and the verification, not the lint. The two features have to land in that order
-  or the check has nothing to go green against.
+- Keeping new ones out is `Styling rules are checks`, in `Theming and styling` — this PBI
+  owns the sweep and the verification, not the lint. The two features have to land in
+  that order or the check has nothing to go green against.
 - Row indentation, the chevron, the drag indicator and the root strip mirror correctly
   under `dir="rtl"`. The chevron's collapsed direction is an icon choice in TS, so it is
   checked by looking rather than by grepping.
