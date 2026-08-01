@@ -232,4 +232,21 @@ describe('entering the dated timeline', () => {
 		refresh(view, vault);
 		expect(scroller(containerEl).scrollLeft).toBe(0);
 	});
+
+	it('resets the offset when leaving the timeline, so the horizons open at their lead', () => {
+		const vault = datedVault();
+		const { containerEl } = roadmapView(vault, { ...AXES });
+		const pick = (label: string) =>
+			containerEl
+				.querySelector<HTMLButtonElement>(`.pbl-axis-btn[aria-label="${label}"]`)
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		pick('Show timeline');
+		expect(scroller(containerEl).scrollLeft).toBeGreaterThan(0);
+
+		pick('Show horizons');
+		// A months-wide pan means nothing to the buckets: the leading horizon shows.
+		expect(bucketsOf(containerEl).length).toBeGreaterThan(0);
+		expect(scroller(containerEl).scrollLeft).toBe(0);
+	});
 });

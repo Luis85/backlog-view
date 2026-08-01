@@ -415,10 +415,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// it. The scroller is shared across projections, so position cannot stand in
 		// for lifecycle: a board's leftover offset must not skip the centering, and a
 		// timeline deliberately panned to its far-past edge must not be yanked back
-		// to now by the next data update.
+		// to now by the next data update. Leaving is the mirror: a months-wide pan
+		// means nothing to the buckets or the tree, so exiting resets the offset
+		// rather than opening the next content midway.
 		const todayLeft = this.roadmap?.todayLeft ?? null;
 		if (todayLeft != null && !this.timelineShown) {
 			this.treeEl.scrollLeft = Math.max(todayLeft - this.treeEl.clientWidth / 2, 0);
+		} else if (todayLeft == null && this.timelineShown) {
+			this.treeEl.scrollLeft = 0;
 		}
 		this.timelineShown = todayLeft != null;
 		this.selection.resyncAfterRender();
