@@ -61,7 +61,38 @@ table with the opposite expectation. It is filed rather than done because the sh
 work is clear and the volume is not: the constructs worth covering come from Markdown, and
 enumerating them exhaustively is the enumeration trap this checker keeps falling into.
 
+## The trigger fired, and the prediction held
+
+This note said to start the next time `docs-check.mjs` was changed at all. It has since
+been changed **eleven times**, and the method arrived on its own:
+[[Check that a feature lists its use cases]] now carries `Planted | Accepted` tables beside
+its violations tables — the second table with the opposite expectation, in the shape
+proposed above and reached without reference to this note.
+
+It caught exactly the predicted class. The index-entry matcher encoded one spelling of a
+bullet — a dash and exactly one space — so `-  [[Name]]` with two spaces, a tab, `*`, and
+an ordered marker were all reported as missing children. That commit's own words:
+
+> A false failure that blocks a contributor over whitespace.
+
+Five legal spellings were planted and all five accepted. A valid document had been rejected
+by the gate for six rounds, and no amount of planting violations would ever have shown it.
+
+## What is still missing
+
+**The planting is prose, not a test.** Every one of those eleven commits changed
+`docs-check.mjs` and a task note; none added an executable check. So the corpus that proved
+the widening correct exists only as a Markdown table describing a run somebody once did, and
+the next tightening re-derives it by hand or not at all. `docs-check.mjs` still has no test
+of its own.
+
+That narrows this issue rather than closing it. The question is no longer whether anyone
+will think to ask "does a valid document pass" — they now do — but whether the answer
+survives the person who asked it.
+
 ## Acceptance criteria
 
-None yet. Start it the next time `docs-check.mjs` is changed at all — every fix so far has
-tightened a match, and tightening is exactly the operation that creates false failures.
+- The spellings already planted by hand are captured somewhere that re-runs: a fixture
+  corpus of legal forms the register does not itself use, asserted green.
+- Raise the priority the next time a tightening lands with its evidence in prose only. That
+  is the failure this note is now about.
