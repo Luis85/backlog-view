@@ -30,21 +30,29 @@ asymmetric; and there is no `background-position`, `transform-origin`, `clip-pat
 `float`, `inset` shorthand, physical `left:`/`right:` positioning, or `translateX`
 anywhere in the file. `text-align: end` (line 551) is already logical.
 
-## The lesson, which this note had to learn three times
+## The lesson, which this note has now had to learn four times
 
-It claimed **one** remaining construct, then **two**, then **one** directional icon when
-there are five. Every time, the count came from recalling what had been seen rather than
-from running a search that lists every member of the category.
+The CSS constructs went **one**, then two, then three. The directional icons went **one**,
+then five, then six. Every correction came from review, not from the note.
 
-The second version wrote the category down — *"masks, gradients, shadows, and the choice
-of a directional icon all encode a side without naming one"* — and then enumerated
-neither the shadow nor four of the five icons it had just named. Naming a category and
-enumerating one member of it is worse than not naming it, because the prose reads as
-though the work was done.
+The first three misses had one cause: recalling what had been seen instead of running a
+search. That produced the method below, and steps 1-3 are still right. But the icon miss
+had a *different* cause, and it is the more useful one, because the method as written did
+not prevent it.
 
-So the lesson is not "remember that shadows count", and it is not a longer list to
-memorise. It is a **method**:
+**The search itself was wrong.** The enumeration that produced "five directional icons"
+matched `setIcon(el, 'name')`, `.setIcon('name')` and `icon: 'name'`. This codebase does
+not call `setIcon` directly for its toolbar: it goes through local helpers, so
+`iconButton(barEl, 'undo-2', …)` and `collapseButton(host, barEl, 'chevrons-up-down', …)`
+matched nothing. Six names were invisible to a search that was read carefully and reported
+confidently: `undo-2`, `sparkles`, `chevron-down`, `chevrons-up-down`, `chevrons-down-up`,
+and the `showing ? 'eye' : 'eye-off'` ternary at `toolbar.ts:154`.
 
+So the method needs a step before its first:
+
+0. **Verify the search finds what you think it finds.** A regex is a hypothesis about the
+   shape of the code. Check it against a site you already know, and against the shapes this
+   codebase actually uses — which include its own wrapper helpers, ternaries and variables.
 1. Name the categories. A construct is direction-dependent if it takes an offset, an
    angle, a side or a directional keyword — whether or not the property has a logical
    twin to grep for, and whether or not it lives in CSS at all.
@@ -53,33 +61,34 @@ memorise. It is a **method**:
 3. Treat any category not enumerated that way as unaudited, and say so rather than
    omitting it.
 4. Then ask which enumerated items are **coupled**, because a complete list of
-   independently-correct fixes can still be wrong. The chevron below is the worked
-   example: its icon and its rotation are separate entries that have to change together,
-   and listing them apart is what let an earlier version call one of them safe.
+   independently-correct fixes can still be wrong.
 
-Step 2 failed three times; step 4 failed once, on the chevron, and that one was not
-fixed by enumerating harder. The tables in this note were produced by
-running it — every `box-shadow` read for its x-offset, every icon name in `src/` listed
-and classified — which is why they are worth more than the sentences they replaced.
+Step 2 failed three times, step 4 twice (the chevron rotation, then its keyframes), and
+step 0 once — which was enough to make a table this note called exhaustive wrong by six
+entries.
 
-The deeper reading is that this is not a discipline problem to be solved by resolving to
-be careful, because three rounds of resolving to be careful did not solve it. It is an
-argument for the check in `Styling rules are checks`, which is where a machine enumerates
-the categories on every build instead.
+**And even step 0 does not save the icon audit.** `toolbar.ts:278` passes `icon` as a
+*parameter*: at that call site the name is not a literal at all, so no search over source
+text can classify it. That settles an argument this register has been having with itself
+for four rounds: the directional-icon question **cannot** be answered by grep, and the
+check in `Styling rules are checks` — an explicit classification of every icon name, failing
+on any name in neither list — is not a belt-and-braces addition to a manual audit. It is
+the only thing that can be correct.
 
 ### The category that is not in the stylesheet: icons
 
 An icon does not mirror because its container has `dir="rtl"` — the SVG is drawn the way
 it is drawn. So every directional icon name chosen in TS is a physical-left cue that CSS
-cannot fix, and there are **five**, not one:
+cannot fix, and there are **six**:
 
 | Icon | Site | Why it points |
 | --- | --- | --- |
-| `chevron-right` + `rotate(90deg)` | `rows.ts`, styles.css:419 | **Icon and transform are one construct, not two** — see below |
+| `chevron-right` + its rotations | `rows.ts`, styles.css:419 and 1033-1039 | **Icon and transforms are one construct** — see below |
 | `corner-left-up` | `backlogView.ts:85` | The root-drop affordance |
 | `corner-left-down` | `rows.ts:205` | The outside-filter marker |
 | `indent-increase` | `menu.ts:125` | Indent, in the move menu |
 | `indent-decrease` | `menu.ts:148` | Outdent |
+| `undo-2` | `toolbar.ts:49` | A curved arrow that travels leftward |
 
 Equally important is what must **not** be touched. `arrow-up`, `arrow-down`,
 `arrow-up-to-line` and `arrow-down-to-line` — the four move commands — are vertical, and
@@ -94,10 +103,16 @@ collapsed state to a left-pointing icon for RTL and keep the rotation, and the e
 chevron points **up**: `←` rotated 90° clockwise is `↑`, not `↓`. An implementation could
 tick every row of this table and ship every expanded row pointing the wrong way.
 
-So the collapsed icon and the expanded rotation are **one construct with two halves**, and
-RTL needs both: a left-pointing collapsed icon *and* `rotate(-90deg)`, or a dedicated
-down-pointing icon for the expanded state. Auditing them independently is what produced
-the wrong answer, and it is the reason this table's first column now names the pair.
+The construct has **three** parts, not two, and the third was missed on the round that
+found the second: `@keyframes pbl-expand-nudge` (styles.css:1033-1039) rotates the same
+chevron through `45deg` to `90deg` while a collapsed row auto-expands under a drag hover.
+Fixing the static rule at 419 and leaving the keyframes rotates the icon upward for the
+600ms of the nudge — the identical bug, in the state a user is least able to screenshot.
+
+So the collapsed icon, the expanded rotation and the hover-expand keyframes are **one
+construct in three parts**, and RTL needs all of them: a left-pointing collapsed icon plus
+negated rotations, or a dedicated down-pointing icon for the expanded state. Auditing them
+independently is what produced the wrong answer twice.
 
 **Width is not free.** `Property columns` is `Done` on the criteria *"Columns are
 fixed-width so values line up across rows regardless of title length"* and *"A pane too
@@ -120,13 +135,16 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
   that order or the check has nothing to go green against.
 - Row indentation, the drag indicator and the root strip mirror correctly under
   `dir="rtl"`.
-- All five directional icons are addressed — `chevron-right`, `corner-left-up`,
-  `corner-left-down`, `indent-increase`, `indent-decrease` — and the four vertical arrows
-  are deliberately left alone. Icons are a TS change, not a CSS one, so this criterion is
-  not satisfied by any amount of stylesheet work.
-- The chevron is verified **in both states**. A collapsed chevron pointing the right way
-  with an expanded one pointing up is the specific failure this note previously invited,
-  so "the icon is mirrored" does not satisfy it — the expanded row has to point down.
+- All six directional icons are addressed — `chevron-right`, `corner-left-up`,
+  `corner-left-down`, `indent-increase`, `indent-decrease`, `undo-2` — and the vertical
+  ones are deliberately left alone: `arrow-up`/`arrow-down`(`-to-line`),
+  `chevrons-up-down`, `chevrons-down-up`, `chevron-down`. Icons are a TS change, not a CSS
+  one, so no amount of stylesheet work satisfies this.
+- The chevron is verified in **all three** of its parts: collapsed icon, the static
+  expanded rotation (419), and the `pbl-expand-nudge` keyframes (1033-1039) that run while
+  a row auto-expands under a drag hover. A collapsed chevron pointing the right way with
+  an expanded one pointing up is the failure this note twice invited, so "the icon is
+  mirrored" does not satisfy it.
 - The icon classification is written down as a list, not re-derived. It is the input to
   the check in `Styling rules are checks`, which is what stops a sixth directional icon
   arriving unnoticed.

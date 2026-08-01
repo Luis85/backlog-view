@@ -81,16 +81,23 @@ one level up.
 Stop classifying literals. Make the *destination* refuse them.
 
 1. Two **branded** types, by provenance. `t()` returns `Translated`; the vault-read
-   boundary returns `VaultText`. Only the catalog produces the first, only a note produces
-   the second, and a literal produces neither.
+   boundary returns `UserText`. Only the catalog produces the first, only something
+   outside this plugin's source produces the second, and a literal produces neither.
 2. A thin set of plugin-local UI helpers takes the union — call it `Displayable` — where
    Obsidian's API takes `string`. The repo already wraps Obsidian this way where a
    decision needs one home: `iconButton` wraps button creation, `showMenuForClick` wraps
    menu anchoring after the un-anchored version shipped as a bug.
-3. Lint bans the **raw** Obsidian text setters inside the UI layers, so the wrappers are
-   the only route. That is a short, genuinely closed list of *APIs* — the repository's
-   existing idiom, the same `no-restricted-syntax` shape that bans `processFrontMatter`
-   and `vault.create` outside `storage/` and `showAtMouseEvent` outside `menu.ts`.
+3. Lint bans the **raw** Obsidian text setters across **every shipped source layer**, so
+   the wrappers are the only route. That is a short, genuinely closed list of *APIs* — the
+   repository's existing idiom, the same `no-restricted-syntax` shape that bans
+   `processFrontMatter` and `vault.create` outside `storage/` and `showAtMouseEvent`
+   outside `menu.ts`.
+
+   Scoping it to `view/` and `ui/` would leave a hole: `commands/scaffold.ts:18,21` calls
+   `new Notice(...)` directly, so a future literal there would compile and lint clean. The
+   sweep would fix today's two strings and the route would stay open — which is the failure
+   mode this whole PBI exists to prevent, reappearing as a scoping decision rather than as
+   a missing API. Only the wrapper and catalog implementations are exempt.
 
 ### Why two brands and not one
 
@@ -99,7 +106,8 @@ reaches a text sink today is **user data**, and it is not translatable by defini
 
 | Site | Renders |
 | --- | --- |
-| `prompts.ts:63` | `folder.path` |
+| `prompts.ts:63` | `folder.path`, off an Obsidian `TFolder` |
+| `emptyStates.ts:58` | `host.filterText`, straight from an `<input>` |
 | `prompts.ts:86` | a tag |
 | `rows.ts:215-220` | the note title, split around the filter match |
 | `columns.ts:201` | a property value |
@@ -133,10 +141,10 @@ taint analysis, no allowlist, and all 615 structural literals stay exactly as th
 they were never going near a UI helper.
 
 Both brands are minted at a boundary that already exists and is already narrow.
-`Translated` comes from the catalog; `VaultText` comes from where note fields are read —
-`domain/noteFields.ts` and the Bases entry API — which is the same choke point
-`Persisted keys stay as written` relies on. Neither brand needs a new concept, only a type
-on a boundary that was already the one place that data crosses.
+`Translated` comes from the catalog; `UserText` comes from the points where text enters
+from outside the plugin's source — note fields (`domain/noteFields.ts`), the Bases entry
+API, Obsidian's `TFile`/`TFolder`, and the filter input. Neither brand needs a new concept,
+only a type on boundaries that were already the places text crosses.
 
 The residual risk is a cast, which is visible in review and greppable, in the way a
 missing lint rule is not.
@@ -158,11 +166,22 @@ than adding helpers at the call sites. The filter split becomes one
 un-brands. The tag pill is better still: the `#` is presentation, not data, so it becomes
 a catalog message with the tag as a parameter — which is where it belonged anyway.
 
-**2. Not all vault text comes through `noteFields.ts`.** `prompts.ts:63` renders
-`folder.path` from an Obsidian `TFolder`. The mint point is therefore *"every string
-entering from Obsidian or the vault"* — note fields, `TFile`/`TFolder` paths and basenames,
-and Bases values — not the one module the earlier draft named. Still enumerable, still
-narrow, but wider than stated, and stating it wrongly is how the first cast gets written.
+**2. The second brand is not about the vault.** Two drafts named its source too narrowly
+and were wrong both times. `prompts.ts:63` renders `folder.path` off an Obsidian `TFolder`,
+which is not a note field; `emptyStates.ts:58` renders `host.filterText`, which came from
+an `<input>` in `toolbar.ts:176` and never touched the vault at all.
+
+Chasing those one at a time would add a brand per source. The boundary that actually holds
+is the **negative** one: `UserText` is any string that did not originate in this plugin's
+source. Vault content, Obsidian API values and live user input are all the same thing from
+the type system's point of view — the user's words, not the developer's — and grouping
+them is not a convenience, it is the distinction the feature is built on. `Multilang`
+already says as much: *"Note content. Titles, tags and state values are the user's words
+already."*
+
+The mint points stay enumerable — note fields, `TFile`/`TFolder` paths and basenames, Bases
+values, and the filter input — but they are instances of one rule rather than a list to
+keep extending.
 
 **3. `t()`'s parameters are the laundering hole.** If a message's named parameters accept
 `string`, then `t('tag.pill', { tag: 'hard-coded text' })` returns a perfectly valid
@@ -237,8 +256,8 @@ needed three rounds of review to abandon.
 - Both indirection patterns above fail. `syncBusy` building a label into a local, and
   `emptyHint` returning one from a helper, are the acceptance test — a mechanism that
   catches only a literal sitting inside `setText(…)` has not met this criterion.
-- `t()` returns `Translated`, the vault-read boundary returns `VaultText`, and every UI
-  helper that renders text takes the union. A plain `string` reaching one is a **compile**
+- `t()` returns `Translated`, every entry point for text from outside the plugin's source
+  returns `UserText`, and every UI helper that renders text takes the union. A plain `string` reaching one is a **compile**
   error, not a lint error, so it cannot be suppressed inline.
 - `t()`'s **parameters** carry provenance as well — `Displayable | number`, never
   `string`. A message that interpolates an unbranded parameter launders a literal into a
@@ -252,8 +271,9 @@ needed three rounds of review to abandon.
   filter-match split and the tag pill are the two that exist — so no call site un-brands
   and re-brands. If the implementation needs a re-branding helper at a call site, the
   boundary is drawn in the wrong place.
-- Rendering vault data needs **no cast and no `t()` call**. Note titles, folder paths,
-  tags, state values and property values render as directly as they do today. A design in
+- Rendering the user's own text needs **no cast and no `t()` call**. Note titles, folder
+  paths, tags, state values, property values and the quick-filter text render as directly
+  as they do today. A design in
   which showing a note title requires either is the single-brand design, and has failed
   this criterion.
 - The raw Obsidian text setters are banned in the UI layers by `no-restricted-syntax`,
