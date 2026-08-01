@@ -51,8 +51,8 @@ where a list is used at all, it is now one the code produced.
 That list is worth having, because it is what the sweep works through. It is **not**
 sufficient as the rule, for the reason below.
 
-Two distinctions from it are worth keeping either way, and both are about guarding an
-*argument* rather than a call.
+Three distinctions from it are worth keeping either way, and all three are about guarding
+a *position* rather than an identifier — which is the shape to expect from the rest.
 
 `setAttribute` belongs in the list only for user-facing attributes — `aria-label`,
 `title`, `placeholder`, `alt`. The other five `setAttribute` calls in `src/` write
@@ -60,6 +60,10 @@ Two distinctions from it are worth keeping either way, and both are about guardi
 `'true'`/`'false'` and element-id literals are correct and must stay literals. A rule
 keyed on the *call* would produce five false positives on day one and be switched off by
 the second contributor to hit it.
+
+`textContent` is the third: `columns.ts:204` **reads** it, legitimately, to serialize what
+Obsidian's renderer built. A rule keyed on the property name would fail there on day one.
+Assignment is the sink; reading is not.
 
 `DropdownComponent.addOption` is the same shape and the clearest example in the codebase.
 `prompts.ts:215` is `drop.addOption(type, type)` — the type name as **both** the persisted
@@ -120,11 +124,22 @@ Stop classifying literals. Make the *destination* refuse them.
    Obsidian's API takes `string`. The repo already wraps Obsidian this way where a
    decision needs one home: `iconButton` wraps button creation, `showMenuForClick` wraps
    menu anchoring after the un-anchored version shipped as a bug.
-3. Lint bans the **raw** Obsidian text setters across **every shipped source layer**, so
-   the wrappers are the only route. That is a short, genuinely closed list of *APIs* — the
-   repository's existing idiom, the same `no-restricted-syntax` shape that bans
-   `processFrontMatter` and `vault.create` outside `storage/` and `showAtMouseEvent`
-   outside `menu.ts`.
+3. Lint bans the **raw** text sinks across **every shipped source layer**, so the wrappers
+   are the only route. That is a list of *APIs* — the repository's existing idiom, the same
+   `no-restricted-syntax` shape that bans `processFrontMatter` and `vault.create` outside
+   `storage/` and `showAtMouseEvent` outside `menu.ts`.
+
+   **It is not closed over Obsidian's surface.** Obsidian's setters are a convenience over
+   the DOM, and the DOM underneath them is still reachable: `el.textContent = 'English'`,
+   `innerText`, `innerHTML`, `document.createTextNode`, `insertAdjacentText`, and
+   `append`/`prepend`/`replaceChildren` with a string argument all render a literal and
+   would compile and lint clean against an Obsidian-only ban. None is used as a *write* in
+   `src/` today, so this is a hole the sweep would leave open rather than one it has to
+   close — which is exactly the kind that gets found a year later.
+
+   The one native use is a **read**: `columns.ts:204` does
+   `valueEl.textContent?.trim()` to serialize what Obsidian's renderer built. That must
+   stay legal, so the rule matches **assignment**, not the property name.
 
    Scoping it to `view/` and `ui/` would leave a hole: `commands/scaffold.ts:18,21` calls
    `new Notice(...)` directly, so a future literal there would compile and lint clean. The
@@ -168,6 +183,14 @@ right way round rather than papering over
 them, because those fallback literals *are* UI text: they become `value ?? t('state.unset')`
 and `active || t('focus.allTypes')`. The union stops user data being misfiled; it does not
 let a literal through.
+
+### The two mechanisms cover different ground
+
+Worth stating because it decides how much weight step 3 carries. A branded type cannot
+help at a native sink at all: `textContent` is typed `string | null` by the DOM library,
+and nothing in this plugin can narrow it. So the type closes the *helper* boundary and the
+lint rule closes the *native* one, and neither substitutes for the other. Dropping the ban
+as "belt and braces" would leave every native DOM sink open.
 
 What this buys is that the indirection hole closes *by type* rather than by pattern
 matching. `syncBusy` can build its label wherever it likes; the moment it passes a plain
@@ -327,9 +350,14 @@ needed three rounds of review to abandon.
   as they do today. A design in
   which showing a note title requires either is the single-brand design, and has failed
   this criterion.
-- The raw Obsidian text setters are banned in the UI layers by `no-restricted-syntax`,
-  scoped and messaged like the existing bans on `processFrontMatter`, `vault.create` and
-  `showAtMouseEvent`. That list is of APIs, is short, and is closed.
+- The raw text sinks are banned across every shipped source layer by
+  `no-restricted-syntax`, scoped and messaged like the existing bans on
+  `processFrontMatter`, `vault.create` and `showAtMouseEvent`. The list covers **native
+  DOM sinks as well as Obsidian's** — `textContent`/`innerText`/`innerHTML` assignment,
+  `createTextNode`, `insertAdjacentText`, and `append`/`prepend`/`replaceChildren` with a
+  string — because Obsidian's setters are a convenience over a DOM that stays reachable.
+- Reads stay legal. `columns.ts:204` reads `textContent` to serialize rendered output; a
+  rule keyed on the property rather than on assignment breaks it immediately.
 - **No literal-classification rule ships.** The 615 structural literals in `src/view` and
   `src/ui` — tag names, event names, key values, drag payloads, selectors, icon ids — are
   not touched, not annotated and not allowlisted. If the design requires classifying them,
