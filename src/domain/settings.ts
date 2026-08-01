@@ -83,6 +83,25 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 });
 
 /**
+ * Look a user-supplied type name up in a table keyed by lowercased type name.
+ *
+ * Type names are user data, so `table[name]` is not safe: `constructor`, `toString`,
+ * `valueOf` and `__proto__` all find something inherited from `Object`, and every one of
+ * those hits is truthy — so a guard like `if (!found)` passes and a function ends up
+ * being used as a folder path or a CSS class. This has now been shipped three times, on
+ * three different tables, so it is a function rather than a rule to remember: reach for
+ * this instead of a bare index whenever the key came from the user.
+ *
+ * It lives here rather than in `itemTypes.ts`, which is where it reads more naturally,
+ * because that module imports this one and the dependency cannot run both ways.
+ */
+export function byTypeName<T>(table: Record<string, T>, typeName: string | null): T | undefined {
+	if (typeName === null) return undefined;
+	const key = typeName.toLowerCase();
+	return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
+/**
  * The persisted option key for one type's folder. Shared by the schema that declares
  * these options and the resolver that reads them back, because a key spelled twice is
  * a key that can differ — and these are user data in the `.base` file.
@@ -98,12 +117,8 @@ export function typeFolderKey(typeName: string): string {
  * generated per view, so the default in each box follows the home folder above it.
  */
 export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FOLDER): string {
-	const sub = DEFAULT_TYPE_SUBFOLDERS[typeName.toLowerCase()];
-	// A non-empty STRING or nothing — the same test `folderForType` makes, for the same
-	// reason and now at the table too: a type named `constructor` reads a function off a
-	// plain object, and interpolating it would produce `docs/function Object() {…}` as a
-	// folder default that then beats the home folder.
-	if (typeof sub !== 'string' || !sub) return '';
+	const sub = byTypeName(DEFAULT_TYPE_SUBFOLDERS, typeName);
+	if (!sub) return '';
 	return homeFolder ? `${homeFolder}/${sub}` : sub;
 }
 

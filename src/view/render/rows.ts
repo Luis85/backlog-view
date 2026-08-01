@@ -5,6 +5,7 @@ import { showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType, isExtraType } from '../../domain/itemTypes';
+import { byTypeName } from '../../domain/settings';
 import {
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
@@ -228,7 +229,7 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	// about — its own icon and colour where this plugin named it, and a slot past the
 	// end of the ladder where it did not, so it always reads as beside the levels.
 	const extra = isExtraType(item.typeName, host.settings);
-	const style = extra ? EXTRA_TYPE_STYLE[badgeText.toLowerCase()] : undefined;
+	const style = extra ? byTypeName(EXTRA_TYPE_STYLE, badgeText) : undefined;
 	const extraIdx = extra ? host.settings.extraTypes.findIndex((t) => t.toLowerCase() === badgeText.toLowerCase()) : -1;
 	if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);

@@ -1,4 +1,4 @@
-import { BacklogSettings } from './settings';
+import { BacklogSettings, byTypeName } from './settings';
 
 /**
  * The type vocabulary: the level ladder, and the types that sit beside it.
@@ -98,12 +98,7 @@ export function allTypeChoices(settings: BacklogSettings): string[] {
  * without one falls back to.
  */
 export function folderForType(typeName: string, settings: BacklogSettings): string | null {
-	const configured = settings.typeFolders[typeName.toLowerCase()];
-	// A folder is a non-empty STRING; anything else means unmapped. That type test is
-	// what makes this total for any record a caller hands over — a level named
-	// `constructor` or `toString` otherwise reads an inherited function off a plain
-	// object, and the creation flow would take it for a path and fail on `.trim()`.
-	return typeof configured === 'string' && configured ? configured : null;
+	return byTypeName(settings.typeFolders, typeName) || null;
 }
 
 /**

@@ -22,7 +22,10 @@ describe('rendering', () => {
 		// A type this plugin never named: it cannot be given a meaning, so it gets a
 		// neutral mark and a slot past the ladder rather than a guess.
 		vault.addFile('A spike.md', { frontmatter: { type: 'Spike' }, parentLink: 'Epic' });
-		const { containerEl } = makeView(vault, { extraTypes: 'Issue, Bug, Spike' });
+		// A name that collides with Object.prototype must behave like any other unnamed
+		// extra type, not read a function off the style table.
+		vault.addFile('A ctor.md', { frontmatter: { type: 'constructor' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault, { extraTypes: 'Issue, Bug, Spike, constructor' });
 
 		const badge = (title: string) => rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-badge');
 		const icon = (title: string) =>
@@ -37,6 +40,9 @@ describe('rendering', () => {
 		expect(badge('An issue')?.classList.contains('pbl-lvl-issue')).toBe(true);
 		expect(badge('A bug')?.classList.contains('pbl-lvl-bug')).toBe(true);
 		expect(badge('A spike')?.className).toMatch(/pbl-lvl-[4-7]\b/);
+		expect(icon('A ctor')).toBe('circle-dot');
+		expect(badge('A ctor')?.className).toMatch(/pbl-lvl-[4-7]\b/);
+		expect(badge('A ctor')?.className).not.toContain('undefined');
 	});
 
 	it('mutes a done row without striking its title through', () => {
