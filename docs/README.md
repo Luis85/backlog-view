@@ -76,8 +76,10 @@ can run is worse than none, because it invites trust it has not earned:
 6. Every ADR: frontmatter complete, number matching its filename, unique, no gaps in the
    sequence, a known status and area, relative links resolving, and every record listed in
    the ADR index. `supersedes` and `superseded-by` must name a record that **exists**, and
-   both ends must agree — a one-sided link is how a chain rots, because the superseded
-   record still looks current from the successor's side.
+   both ends must agree — checked **from both directions**, since a chain half-declared
+   from either side rots the same way: the predecessor goes on reading as current. An ADR
+   naming a successor must also carry the `Superseded` status, which is that same failure
+   inside one record.
 7. Every module in `src/` and every test file is named by at least one note — the check
    that finds *missing* notes rather than wrong ones. See
    [[Sweep the register against the code]] for how that sweep is run and what it found.

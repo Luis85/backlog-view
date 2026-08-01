@@ -184,7 +184,13 @@ for (const file of adrFiles) {
 	}
 	// Resolved in a second pass below: a forward reference names an ADR this loop has
 	// not reached yet, so presence is all that can be judged here.
-	chains.push({ file, number, supersedes: fm.field("supersedes"), supersededBy: fm.field("superseded-by") });
+	chains.push({
+		file,
+		number,
+		status,
+		supersedes: fm.field("supersedes"),
+		supersededBy: fm.field("superseded-by"),
+	});
 	const area = fm.field("area");
 	if (area && !ADR_AREAS.has(area)) fail(file, `area "${area}" is not one of ${[...ADR_AREAS]}`);
 	if (!/^date:\s*\d{4}-\d{2}-\d{2}\s*$/m.test(fm.raw)) fail(file, "date is not YYYY-MM-DD");
@@ -206,23 +212,36 @@ for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {
  * still looks current from the successor's side.
  */
 const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : null);
-for (const { file, number, supersedes, supersededBy } of chains) {
-	for (const [field, raw] of [
-		["supersedes", supersedes],
-		["superseded-by", supersededBy],
+for (const link of chains) {
+	// Both directions, from one table — checking only one of them is the asymmetry that
+	// let a half-declared chain through, and it let it through in the worse direction.
+	for (const [field, raw, mirror, mirrorField] of [
+		["supersedes", link.supersedes, "supersededBy", "superseded-by"],
+		["superseded-by", link.supersededBy, "supersedes", "supersedes"],
 	]) {
 		if (raw === null) continue;
 		const target = adrNumber(raw);
-		if (target === null) fail(file, `${field}: "${raw}" is not an ADR number`);
-		else if (!numbers.has(target)) fail(file, `${field}: ${target} — no such ADR`);
-		else if (target === number) fail(file, `${field} points at itself`);
-	}
-	const partner = adrNumber(supersededBy);
-	if (partner !== null && numbers.has(partner)) {
-		const back = chains.find((c) => c.number === partner);
-		if (adrNumber(back?.supersedes ?? null) !== number) {
-			fail(file, `says superseded-by: ${partner}, but ADR ${partner} does not say supersedes: ${number}`);
+		if (target === null) {
+			fail(link.file, `${field}: "${raw}" is not an ADR number`);
+			continue;
 		}
+		if (!numbers.has(target)) {
+			fail(link.file, `${field}: ${target} — no such ADR`);
+			continue;
+		}
+		if (target === link.number) {
+			fail(link.file, `${field} points at itself`);
+			continue;
+		}
+		const partner = chains.find((c) => c.number === target);
+		if (adrNumber(partner?.[mirror] ?? null) !== link.number) {
+			fail(link.file, `says ${field}: ${target}, but ADR ${target} does not say ${mirrorField}: ${link.number}`);
+		}
+	}
+	// Declaring a successor while still claiming Accepted is the same failure stated in
+	// one record instead of two: the record reads as current and is not.
+	if (link.supersededBy !== null && link.status !== "Superseded") {
+		fail(link.file, `names superseded-by but its status is "${link.status}", not Superseded`);
 	}
 }
 const adrIndex = texts.get(path.join(DOCS, "adrs", "README.md")) ?? "";

@@ -72,6 +72,23 @@ checked for *presence*, not for naming a record that exists, so a broken chain p
 ends must now agree, because a one-sided link is how a chain rots: the superseded record
 still looks current from the successor's side.
 
+A third round found the reciprocity check itself half-built: it walked from
+`superseded-by` and asked whether the successor pointed back, but never walked from
+`supersedes` — so a successor could claim to replace a record that still read as current.
+That is the failure the check was added to prevent, in the exact direction the note
+describing it called "worse". Both directions now come from one table, because checking
+one of two symmetric things is how the asymmetry got there.
+
+| Planted | Reported |
+| --- | --- |
+| ADR 12 drops `superseded-by` | `0013…: says supersedes: 12, but ADR 12 does not say superseded-by: 13` |
+| ADR 12 points back at 14 | both ends reported, each naming the half it expected |
+| ADR 12 keeps `superseded-by` but claims `Accepted` | `names superseded-by but its status is "Accepted", not Superseded` |
+
+The third is not something review asked for; the same reasoning reaches it. Declaring a
+successor while claiming `Accepted` is a record that reads as current and is not — the
+same failure as a one-sided link, stated in one record rather than across two.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 
