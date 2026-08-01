@@ -70,8 +70,9 @@ every property change can be taken back, nothing is maintained by hand — and t
 epic's "the projections never disagree" extends to three: one model, one result set,
 one write gate, one undo history. On top of them:
 
-- The roadmap exists only where an axis can: a horizon property or a date property is
-  the mode's prerequisite, and without one the mode is guidance, never a blank pane.
+- The roadmap exists only where an axis can: a horizon property with at least one
+  value, or a date property, is the mode's prerequisite, and without one the mode is
+  guidance, never a blank pane.
 - The roadmap never loses a result: at full scope every result renders exactly once —
   in a bucket, on the timeline, or on the shelf. The narrowing that exists belongs to
   the controls the tree and board already share — the focus level and "Show completed

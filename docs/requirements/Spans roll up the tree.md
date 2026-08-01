@@ -48,7 +48,9 @@ it.
    subtree's envelope falls on the wrong side of the parent's own date, the empty end
    stays open instead, because an inference may extend a statement and never
    contradict it. The children's bars then sit visibly outside, the same rendered
-   disagreement as below.
+   disagreement as below. And a parent whose own pair is reversed is not a parent with
+   dates: unreadable shelves it with the reason ([[Bars from two dates]]), and no
+   inference stands in for a value that needs fixing.
 4. The inferred span updates as children change, because it is derived, never stored.
 
 **Extensions**
@@ -83,8 +85,10 @@ it.
   stated even when children overflow it, an end left empty fills from the results-only
   subtree and carries the inferred styling alone, and an end neither supplies stays
   open; the disagreement renders rather than resolves. An inferred end never crosses a
-  stated one — where the envelope falls on the wrong side of the parent's own date,
-  that end stays open rather than drawing a reversed span.
+  stated one — where the evidence falls on the wrong side of the parent's own date,
+  that end stays open rather than drawing a reversed span. A parent whose own pair is
+  reversed is unreadable and shelves with the reason, no inference standing in — a
+  typo is surfaced, never papered over.
 - Context rows' dates never contribute to any span, and a context parent's inferred
   span describes its visible results only.
 - A subtree with no dates at all shelves.

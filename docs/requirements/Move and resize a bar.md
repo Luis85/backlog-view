@@ -62,6 +62,10 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   reparent and dates travel as the one combined batch [[Lanes on the roadmap]]
   specifies — previewed together, applied together, undone together — so the two notes
   cannot disagree about whose write it is.
+- **1e — the value is a datetime.** The delta is whole calendar units; the time of day
+  rides along untouched, and the write keeps the shape the note had — a drag re-plans
+  a date, it does not re-format a value. Snapping decides where the bar lands on the
+  grid, never that precision the note chose to keep is erased.
 - **2a — an end is dragged past the other.** It clamps at equal — a milestone — and never
   crosses: a reversed span is unreadable ([[Bars from two dates]]), so no gesture may
   write one.
@@ -76,7 +80,9 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 ## Acceptance criteria
 
 - Body drags shift both dates by one whole-cell delta; end drags move one date;
-  everything snaps to the zoom's grid, and release writes exactly the preview.
+  everything snaps to the zoom's grid, and release writes exactly the preview. Deltas
+  are calendar units that preserve the value's own precision: a datetime keeps its
+  time of day and its shape on disk.
 - Within its lane, a bar gesture is a single-note write: no sibling renumbering, no
   cascade to children, nothing else touched. A drag that also crosses a lane is the
   combined batch [[Lanes on the roadmap]] specifies, never a second write path.

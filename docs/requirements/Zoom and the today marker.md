@@ -49,10 +49,11 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 - **1a — today falls outside every span.** The marker and the opening scroll still
   anchor on today: the roadmap orients on the reader's now, not the plan's bounds, and
   jump-to-today plus one pan reaches everything else.
-- **2a — the pane is narrower than the frame is useful.** Labels and the shelf yield
-  before the grid does, and nothing clips under a header — the tree's own rule of
-  dropping whole regions rather than shearing them, applied to the timeline, embedded
-  bases included.
+- **2a — the pane is narrower than the frame is useful.** Labels yield before the grid
+  does, and the shelf compacts, never vanishes: in a narrow pane it collapses to its
+  labelled count, one action from open, because an unplaced result may lose its card
+  but never its existence. Nothing clips under a header — the tree's rule of dropping
+  whole regions applies to decoration, not to results — embedded bases included.
 - **4a — a second device.** Its own zoom. Per-screen working positions never travel
   through the vault — the collapse store's rule, which this state joins.
 
@@ -63,7 +64,8 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 - Zoom offers exactly the discrete scales, and each declares the grid cell that drags
   snap to.
 - Horizontal scrolling is contained inside the view; the pane never scrolls sideways,
-  and a narrow or embedded pane degrades by yielding regions, not by clipping.
+  and a narrow or embedded pane degrades by yielding decoration, not by clipping — the
+  shelf compacts to its labelled count, one action from open, and never disappears.
 - The zoom choice persists per device in the collapse store — never in the `.base` —
   and zooming, panning and opening write nothing to any note or to the `.base`: the
   one thing written is that per-device memory, where collapse state already lives.
