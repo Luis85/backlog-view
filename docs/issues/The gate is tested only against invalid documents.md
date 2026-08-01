@@ -106,14 +106,25 @@ survives the person who asked it.
 
 `docs-check.mjs` has a test — [[Plant a corpus the register gate runs against]] — in the
 shape this note proposed and in both directions: `test/docs/checkerAccepts.test.ts` plants
-15 legal forms the register does not itself use and expects green,
-`test/docs/checkerRejects.test.ts` plants 35 violations and expects each to be named. The
-gate is run as a subprocess over a throwaway tree, so the file under test is the one
-`npm run docs` executes rather than a refactor of it.
+legal forms the register does not itself use and expects green, while
+`test/docs/checkerRejects.test.ts` and `test/docs/checkerRejectsAdrs.test.ts` plant
+violations and expect each to be named. The gate is run as a subprocess over a throwaway
+tree, so the file under test is the one `npm run docs` executes rather than a refactor of
+it.
 
-**Nothing new was found.** All 50 passed first time, which is worth stating plainly: this
-note predicted the *class* correctly and the sweep it asked for turned up no instance. The
-value delivered is that the plantings re-run, not a defect caught.
+The one number worth stating is the one a test pins: **every place the gate can report a
+problem has at least one planted case**, and a rule added to `docs-check.mjs` moves the
+count `checkerRejects.test.ts` asserts, so it goes red until somebody plants a case.
+
+*(An earlier draft of this section gave case totals per file. They were stale inside a
+week — the ADR cases moved to their own file and fourteen more were added — which is the
+same drift `docs/README.md` removed its epic counts for. Corrected by deleting them rather
+than by updating them: `npm run test` is the current inventory.)*
+
+**Nothing new was found in the gate.** Every case passed on the first run, which is worth
+stating plainly: this note predicted the *class* correctly and the sweep it asked for
+turned up no instance. The value delivered is that the plantings re-run, not a defect
+caught.
 
 That claim was then checked instead of assumed. The historical angle-bracket bug was
 reintroduced into `docs-check.mjs` and both accept cases for it went red; a second rule was

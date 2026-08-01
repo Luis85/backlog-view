@@ -82,15 +82,24 @@ missed it by percent-encoding everywhere.
 
 - **A suite that passes because it never ran the gate.** Answered by the last criterion,
   and it was executed rather than reasoned about — see the Outcome.
-- **Cost.** Each case spawns a process; 50 cases run in about three seconds, against a
-  suite that already takes longer than that.
+- **Cost.** Each case spawns a process. The three suites together run in a few seconds,
+  against a test run that already takes longer than that.
 
 ## Outcome
 
-50 cases: 15 legal forms accepted, 35 violations named. Every one passed on the first run,
-which is the honest result and a mild disappointment — the sweep found no new defect in
-the gate. What it produces is the thing the Issue asked for rather than a bug: the
-plantings now re-run.
+Legal forms accepted, violations named, every one passing on the first run — which is the
+honest result and a mild disappointment, since the sweep found no new defect in the gate.
+What it produces is the thing the Issue asked for rather than a bug: the plantings now
+re-run.
+
+**No case totals here on purpose.** The first draft of this section gave them per file,
+and they were wrong within the same pull request: the ADR cases moved to their own suite
+and fourteen more were added, so a reader auditing the coverage claim against those
+numbers would have been auditing against fiction. That is the drift
+[`docs/README.md`](../README.md) deleted its epic counts for, arriving in the note written
+about verification — which makes it the cheapest possible evidence that the rule was
+right. The inventory is `npm run test`; the only number stated anywhere is the report-site
+count, and that one is stated **in a test that fails when it drifts**.
 
 **The teeth were checked rather than assumed.** Two rules were broken in `docs-check.mjs`
 and the suite re-run:
@@ -116,7 +125,7 @@ recorded first because it is the smaller and makes the shape obvious: the case n
 `>`**, so the anchor was invalid trailing content and CommonMark reads no link there at
 all. It passed because the gate skips to `)` with `[^)]*` — so the case asserted that the
 checker tolerates a *malformed* link while its name claimed a legal one. Removing anchor
-handling from `docs-check.mjs` entirely left all sixteen cases green.
+handling from `docs-check.mjs` entirely left every accept case green.
 
 The first is the same shape and worse. Every accept case
 asserts an **empty problem list**, and the list is parsed out of the gate's report — so a
