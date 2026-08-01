@@ -22,6 +22,13 @@ creating them, progress, finding work, safe writes and view state.
 **Codebase health** is the engineering work — three features, each with the PBIs that say
 what "healthy" means there, and the tasks that got it done underneath.
 
+**Product Kanban** is the next increment, and it is design only: a board projection of
+the same backlog, specified across four features — the backlog/board toggle, columns
+from the workflow the view options define, card moves as gated state writes, and the
+hierarchy showing through on the board. Nothing under it is built; every note states
+the precedent or the codebase seam it rests on, from a survey of the Kanban Guide, the
+major trackers and the Obsidian ecosystem run on 2026-08-01.
+
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
 Epic, a Feature or a PBI alike.
