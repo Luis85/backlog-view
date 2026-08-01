@@ -88,19 +88,31 @@ construction — which is the pairing this exists for.
 - The modal still says where the item lands, and says the item gets its own folder there.
   The line names the container; the per-item level is stated, not interpolated from a
   half-typed title.
+- **A parentless item is pinned with an explicit empty `parent`** whenever this option is
+  on — not only when `folderHierarchy` is, which is the sole condition `createBacklogItem`
+  writes the marker under today. A top-level item written to `<container>/<Title>/<Title>.md`
+  now sits one folder deeper than it used to, under whatever the container is, so a folder
+  note anywhere above it (`Backlog/Backlog.md` over `Backlog/Epic/Epic.md`) would adopt it
+  the day inference is switched on. This layout's promise is that it produces a structure
+  inference reads back unchanged, and a note whose top-level-ness is only implied by a
+  missing key does not carry that promise.
 
 ### Which items get a folder
 
-- An item gets a folder when something can be created under it. The deepest ladder rung
-  (`Task`, and anything typed as the last level) stays flat: `childTypeChoices` offers
-  nothing under it, so its folder is one this plugin could never put anything in.
-- Extra types (`Issue`, `Bug`) **do** get folders — they hold Tasks. An unknown custom
-  type does too, since it continues the ladder and takes a child slot.
-- The recorded cost: with Obsidian's attachment folder set to "same folder as the note", a
-  Task's folder would not have been empty after all. Someone who wants that makes the
-  folder by hand. A per-type choice — six more options in a group that already has seven —
-  is not worth buying until somebody asks for it, and this rule can widen later without
-  anything on disk changing.
+- **Every created item does**, whatever its type — no exception for the deepest rung. The
+  ladder *clamps* rather than stops: `childLevelIndex` bottoms out at the last level, so
+  `childTypeChoices` under a `Task` returns `['Task']` and a nested Task is an ordinary
+  thing to create from the row's **+**. A rule that kept Tasks flat would file those
+  children beside their parent instead of inside it, and under inference they would resolve
+  to the *grandparent's* folder note — leaving the folder tree and the item tree
+  disagreeing by design, in the one mode whose whole purpose is that they agree.
+- The cost is real and is the user's to weigh: a `tasks/` folder holding two hundred items
+  becomes two hundred folders. The answer is the toggle — this is a layout choice, not a
+  default — and Obsidian's "same folder as the note" attachment setting is the case where
+  those folders earn their keep.
+- Recorded as rejected: a per-type choice (six more options in a group that already has
+  seven), and a fixed "only types that hold children" rule. Either could be added later
+  without anything on disk changing, since this option only decides what is written next.
 
 ### Collisions and failures
 
@@ -159,8 +171,16 @@ Read on 2026-08-01, in this repository:
   its own new items — the user's to fix, and the same class of trap [[New cards in place]]
   records for state filters.
 
+- `childLevelIndex` clamps at the deepest rung, so `childTypeChoices` under a `Task`
+  returns `['Task']`: nested Tasks are creatable today, which is what rules out an
+  exception for the bottom of the ladder.
+- `createBacklogItem` writes the empty-parent marker under `settings.folderHierarchy`
+  alone — the second condition this PBI widens. `noteFields` already carries the marker as
+  a first-class state ("parent key present but empty"), so the pin costs no new vocabulary.
+
 Obsidian cannot run here, so the layout needs one live-vault pass (`npm run test-build`):
-create into a fresh folder, create a child and confirm it nests, and confirm the tree reads
-back identically with `Infer hierarchy from folder notes` both on and off. The jsdom harness
-covers the paths written and the choices made; it cannot say the result looks like a
-backlog in the file explorer.
+create into a fresh folder, create a child and a nested Task and confirm both nest, then
+switch `Infer hierarchy from folder notes` on and off and confirm the tree is unchanged —
+that last one is the check the parentless pin exists for. The jsdom harness covers the
+paths written and the choices made; it cannot say the result looks like a backlog in the
+file explorer.
