@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 60
+type: Issue
+order: 20
+parent: "[[Product Backlog]]"
 status: Done
 priority: P2
 area: verification

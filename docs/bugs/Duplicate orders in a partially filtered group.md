@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 100
+type: Bug
+order: 10
+parent: "[[Sibling ranking]]"
 status: Open
 priority: P3
 area: limitation

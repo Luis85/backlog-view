@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 70
+type: Task
+order: 20
+parent: "[[Test harness and coverage]]"
 status: Done
 priority: P3
 area: testing
@@ -49,7 +49,7 @@ The uncovered branches cluster in paths the current tests skip:
 - The tree-background drop path (`evt.target !== treeEl` early returns).
 - `dataTransfer` being absent, which every branch guards for but nothing exercises.
 
-Doing this after [split-the-view-test-suite](split-the-view-test-suite.md) is easier —
+Doing this after [split-the-view-test-suite](Split%20the%20view%20test%20suite.md) is easier —
 drag/drop gets its own file to grow in, and the rect/timer helpers live in the shared
 harness rather than being copied.
 

@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
+type: Task
 order: 10
+parent: "[[Test harness and coverage]]"
 status: Done
 priority: P1
 area: testing
@@ -27,7 +27,7 @@ asymmetry is the root cause, not the file.
 
 The cost is felt on every future change: you cannot find the test for a behaviour
 without searching, and any tweak to the shared harness touches the single largest file
-in the repository. It also makes [cover-the-drag-and-drop-branches](cover-the-drag-and-drop-branches.md)
+in the repository. It also makes [cover-the-drag-and-drop-branches](Cover%20the%20drag%20and%20drop%20branches.md)
 harder than it needs to be — there is nowhere natural for drag/drop tests to grow.
 
 ## Approach

@@ -21,8 +21,8 @@ live-vault smoke test.
 `npm run test-build` is the handover for exactly those cases: it bundles into
 `.obsidian/plugins/<id>/` in the repository root (gitignored), so the human can open
 this repository as a vault and look. Name it when a change needs eyes — it is a shorter
-ask than "please set up a vault", and `docs/issues/` is already a backlog to point a
-Base at.
+ask than "please set up a vault", and `docs/` is already a backlog with a `.base` file
+in it — open `docs/Product Backlog.base` and the plugin is displaying its own register.
 
 ## Architecture (one file per concern, 400-line max enforced by lint)
 
@@ -190,6 +190,8 @@ write's inverse as it lands, so the last effective batch can always be taken bac
   `normalizePath` on user paths, no global `app`.
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
-- Open work is tracked in `docs/issues/`, one note per issue, each stating the evidence
-  it rests on. The two that needed a real vault are closed; their notes stay as
-  checklists to re-run, since appearance is still untestable here.
+- Work is tracked in `docs/`, which is a backlog **in this plugin's own schema** and the
+  layout the view ships as its default — `requirements/` (Epic → Feature → PBI),
+  `tasks/`, `issues/`, `bugs/`. Every note states the evidence it rests on. Closed notes
+  are kept: several are checklists to re-run rather than history, since appearance and
+  base identity cannot be tested here. See `docs/README.md`.

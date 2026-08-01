@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
-order: 90
+type: Task
+order: 20
+parent: "[[Module structure]]"
 status: Done
 priority: P3
 area: refactor

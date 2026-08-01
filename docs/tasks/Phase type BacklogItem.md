@@ -1,7 +1,7 @@
 ---
-type: PBI
-parent: "[[codebase-health]]"
+type: Task
 order: 30
+parent: "[[Module structure]]"
 status: Done
 priority: P2
 area: design
@@ -35,7 +35,7 @@ This is not theoretical. Several of the subtlest rules in `CLAUDE.md` live exact
 that gap:
 
 - `depth` is visual only and is re-rooted by focus mode, so level maths must use
-  `effectiveLevelIndex` — see [stop-deriving-levels-from-depth](stop-deriving-levels-from-depth.md)
+  `effectiveLevelIndex` — see [stop-deriving-levels-from-depth](Stop%20deriving%20levels%20from%20depth.md)
   for the one place that still gets this wrong.
 - `descendantCount` / `doneDescendants` deliberately skip `outsideFilter` rows while
   traversing *through* them.

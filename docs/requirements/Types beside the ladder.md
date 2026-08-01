@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[codebase-health]]"
-order: 100
+order: 30
+parent: "[[Work item hierarchy]]"
 status: Done
 priority: P2
 area: feature
@@ -90,7 +90,7 @@ and deepest legal parent, the contrast against an undeclared custom type, every 
 through the real modal.
 
 Not verifiable here, as ever: the badge. Added to the
-[smoke-test checklist](smoke-test-the-visual-changes.md).
+[smoke-test checklist](../issues/Smoke%20test%20the%20visual%20changes.md).
 
 ## Follow-up: folders by type
 

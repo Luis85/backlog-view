@@ -554,11 +554,11 @@ plugin whatever the enabled list says: turn it off once under *Settings → Comm
 plugins*. The script deliberately doesn't do that for you — it's a security decision that
 belongs to whoever opens the vault.
 
-There is a backlog waiting in it: `docs/issues/` carries this plugin's own frontmatter
-vocabulary, so pointing a Base at that folder shows the project's issues in the view that
-displays them — see [`docs/issues/codebase-health.md`](docs/issues/codebase-health.md)
-for the Base configuration. Bases is a core plugin and must be enabled for the view to
-appear at all.
+There is a backlog waiting in it. `docs/` is this plugin's own register, written in the
+plugin's own schema and laid out the way the view files things by default —
+`requirements/` (Epic → Feature → PBI), `tasks/`, `issues/`, `bugs/`. Open
+`docs/Product Backlog.base` and the plugin is displaying the backlog that produced it.
+Bases is a core plugin and must be enabled for the view to appear at all.
 
 This matters more than a convenience script usually would: **no test in this repository
 can check what the plugin looks like**, and several Bases behaviours are assumed rather
