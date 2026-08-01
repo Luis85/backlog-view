@@ -60,7 +60,15 @@ in the root `CLAUDE.md` because it spans every layer.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - The autoType cascade retypes only descendants whose type matches a configured
-  level; custom types outside the ladder are deliberate user data.
+  level; custom types outside the ladder are deliberate user data. **That principle holds
+  for descendants and not for the dragged item**, which `computeTypeChanges` exempts only
+  when it is a *declared* extra type — so a `Spike` survives inside a moved subtree and is
+  rewritten when it is the thing moved. Nobody chose that; it is an artefact of two
+  predicates written for different reasons, and this line stating the principle
+  unqualified is how four notes came to claim the opposite. Recorded in
+  `docs/issues/The dragged item is retyped, its descendants are not.md`. If it is ever
+  decided the dragged item is genuinely special, say so **here**, rather than leaving the
+  exemption to live in a predicate.
 - The vocabulary is **fixed**: `LEVELS` and `EXTRA_TYPES` in `settings.ts` are constants,
   not options. Making them configurable cost collision rules between the two lists, a
   "what folder does a name nobody chose get" question with no good answer, and a schema
