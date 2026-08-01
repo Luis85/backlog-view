@@ -159,7 +159,12 @@ works when the change being undone is what emptied the tree; a note recreated at
 a captured path counts as missing (TFile identity, not path — a replacement must
 not inherit the original's history); and a replay that completed but restored
 nothing consumes the slot instead of re-offering a dead batch forever, while a
-failed replay keeps it for the retry a transient error deserves.
+failed replay keeps it for the retry a transient error deserves. A fifth round
+sharpened that last rule: a replay that fails partway swaps the slot to its
+unfinished remainder, because the restored prefix had already installed its redo
+— retrying from that would re-apply the prefix while the rest stayed forward.
+The next undo now finishes the job; the prefix's redo is the accepted price, and
+redo returns once an undo completes.
 
 Not verifiable here, as ever: the button's look in a live vault — the standing
 jsdom limit recorded in [smoke-test-the-visual-changes](smoke-test-the-visual-changes.md).

@@ -37,10 +37,13 @@ free of runtime code so imports stay cycle-free.
   than treating undo as one more `.pbl-write-ctl`. A replay that COMPLETED but
   restored nothing consumes the slot (its conflicts stay conflicted, its missing
   notes stay missing — the same dead batch must not be offered forever); a forward
-  no-op keeps it, and so does a replay that failed, since a transient write error
-  deserves its retry. The Ctrl/Cmd+Z chord is handled before the empty-model return
-  in `handleTreeKeydown`: the change being undone may be exactly what emptied the
-  tree.
+  no-op keeps it. A replay that FAILED partway swaps the slot to its unfinished
+  remainder, so the next undo finishes taking the change back — the restored prefix
+  already installed its redo, and leaving that would make the next undo re-apply the
+  prefix while the rest stays forward. The prefix's redo is the price; redo returns
+  once an undo completes. The Ctrl/Cmd+Z chord is handled before the empty-model
+  return in `handleTreeKeydown`: the change being undone may be exactly what emptied
+  the tree.
 
 ## What is rendered, and what is merely hidden
 

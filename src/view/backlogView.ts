@@ -7,7 +7,8 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, childLevelIndex } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { computeDropWrites, ItemWrite } from '../domain/writePlan';
-import { applyRestores, applyWrites, RestoreOutcome, RestoreWrite } from '../storage/frontmatter';
+import { applyWrites, RestoreWrite } from '../storage/frontmatter';
+import { ReplayTracker, replayRun, unfinishedRemainder } from './interactions/undo';
 import { renderToolbar, syncBusy } from './render/toolbar';
 import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
 import { refreshRowChildren, renderLoadingState, renderTree } from './render/rows';
@@ -486,14 +487,19 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// filter, which is exactly the change the user is taking back. The current
 		// model's verdict on those files answers a different question.
 		const batch = [...restores].reverse();
-		return this.runExclusively(
-			batch.length,
-			async (onProgress, onInverse) => {
-				const outcome = await applyRestores(this.app, batch, onProgress, onInverse);
-				reportRestoreOutcome(outcome);
-			},
-			restores,
-		);
+		const tracker: ReplayTracker = { finished: 0 };
+		const ok = await this.runExclusively(batch.length, replayRun(this.app, batch, tracker), restores);
+		// A replay that failed partway holds its place: the slot gets the UNFINISHED
+		// remainder, so the next undo finishes taking the change back — the restored
+		// prefix has already swapped its redo in as lastUndo, and leaving that would
+		// make the next undo re-apply the prefix while the rest stays forward, files
+		// pointing two ways with no path out. The prefix's redo is the accepted
+		// price; redo returns once an undo completes. A throw on the FIRST file
+		// installed nothing, so the original slot is still in place for the retry.
+		if (!ok && tracker.finished > 0 && tracker.finished < batch.length) {
+			this.lastUndo = unfinishedRemainder(batch, tracker.finished);
+		}
+		return ok;
 	}
 
 	/**
@@ -572,16 +578,4 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (state) this.treeEl.setAttribute('aria-busy', 'true');
 		else this.treeEl.removeAttribute('aria-busy');
 	}
-}
-
-/** Say what an undo could not put back; a clean undo shows in the tree itself. */
-function reportRestoreOutcome(outcome: RestoreOutcome): void {
-	const parts: string[] = [];
-	if (outcome.conflicts > 0) {
-		parts.push(`${outcome.conflicts} value${outcome.conflicts === 1 ? ' was' : 's were'} edited since and kept`);
-	}
-	if (outcome.missing > 0) {
-		parts.push(`${outcome.missing} note${outcome.missing === 1 ? '' : 's'} no longer exist`);
-	}
-	if (parts.length > 0) new Notice(`Undo: ${parts.join('; ')}.`);
 }

@@ -130,6 +130,38 @@ describe('undoing the last change', () => {
 		expect(Notice.messages).toContain('Nothing to undo.');
 	});
 
+	it('a replay that fails partway keeps the unfinished remainder, not the prefix redo', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('C.md', { frontmatter: { type: 'Epic' } });
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		// One batch over three files: the backfill assigns the missing orders.
+		containerEl
+			.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		expect(vault.fm('C.md')['order']).toBe(30);
+
+		// The replay runs newest-first (C, B, A); B's write fails after C restored.
+		vault.failWrites.add('B.md');
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect('order' in vault.fm('C.md')).toBe(false);
+		expect(vault.fm('B.md')['order']).toBe(20);
+		expect(vault.fm('A.md')['order']).toBe(10);
+
+		// The next undo finishes the job — it must not redo C instead.
+		vault.failWrites.delete('B.md');
+		key(tree, 'z', { ctrlKey: true });
+		await flush();
+		expect('order' in vault.fm('A.md')).toBe(false);
+		expect('order' in vault.fm('B.md')).toBe(false);
+		expect('order' in vault.fm('C.md')).toBe(false);
+	});
+
 	it('a no-op write does not cost the slot: re-picking the checked state keeps the real undo', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
