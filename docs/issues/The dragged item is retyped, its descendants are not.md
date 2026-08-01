@@ -13,7 +13,7 @@ files:
 
 # The dragged item is retyped, its descendants are not
 
-## The asymmetry
+## The limitation
 
 With `autoType` on, an unknown custom type — `Spike`, `Chore`, anything outside the ladder
 and outside the two extra types — is **preserved when it is a descendant of a move and
@@ -32,7 +32,7 @@ inverts one of them, which is how this table first shipped.
 So a `Spike` nested inside a moved subtree survives; the same `Spike` dropped somewhere
 becomes a `Feature`.
 
-## Why this is filed rather than fixed
+## Why it is deliberate
 
 Nobody chose it. `src/domain/CLAUDE.md` states the principle without the exception —
 *"custom types outside the ladder are deliberate user data"* — and the descendant branch
@@ -52,7 +52,7 @@ Changing it either way is cheap and unevidenced, which is the argument for neith
 - Both readings are self-consistent. Picking one on taste would replace an accident with
   a preference and leave the next reader in the same position.
 
-## What would settle it
+## What would lift it
 
 A report, or a decision written down. If it is decided that the dragged item is genuinely
 special, `src/domain/CLAUDE.md` should say so beside the principle it qualifies — the

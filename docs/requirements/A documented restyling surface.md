@@ -93,7 +93,8 @@ is a bug report after the next refactor.
 
 ## Where it lives
 
-`src/view/render/rows.ts` sets six of the eight `--pbl-*` properties per render, and
+**Nothing yet — this note is design.** `src/view/render/rows.ts` sets six of the eight
+`--pbl-*` properties per render, and
 `src/view/render/columns.ts` sets the seventh · `styles.css` sets `--pbl-badge-rgb` per
 level class, which is the one that looks like a knob and is the obvious contract candidate ·
 `README.md` is where a theme author will look, so the contract goes there rather than only

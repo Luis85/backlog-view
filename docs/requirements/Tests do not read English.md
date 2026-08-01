@@ -77,7 +77,8 @@ not been reworded. The first is the test's purpose. The second is a hostage.
 
 ## Where it lives
 
-`test/helpers/view.ts` owns `useViewHarness()` and the per-test reset, so the resolved
+**Nothing yet — this note is design.** `test/helpers/view.ts` owns `useViewHarness()` and
+the per-test reset, so the resolved
 locale belongs beside it · `test/helpers/obsidian-mock.ts` is where `getLanguage` gets a
 stand-in · `test/view/state.test.ts` holds an assertion matching a notice by its English
 text today, which is the shape that changes.

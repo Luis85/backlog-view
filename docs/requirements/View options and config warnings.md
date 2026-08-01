@@ -127,7 +127,8 @@ Notice from three call sites (`backlogView.ts:534`, `create.ts:34`).
 
 ## Where it lives
 
-`src/domain/viewOptions.ts` is the schema whose `displayName`s and `placeholder`s move and
+**Nothing yet — this note is design.** `src/domain/viewOptions.ts` is the schema whose
+`displayName`s and `placeholder`s move and
 whose `key`s must not · `src/domain/settings.ts` holds `configProblems` and
 `typeFolderKey` · `src/view/render/toolbar.ts` renders the warning chip ·
 `src/view/backlogView.ts` and `src/view/interactions/create.ts` quote a problem into a

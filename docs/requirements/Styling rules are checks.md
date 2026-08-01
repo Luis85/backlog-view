@@ -200,7 +200,8 @@ instead. Neither rule comes out of a default config.
 
 ## Where it lives
 
-`eslint.config.mjs` holds the existing `no-restricted-syntax` bans this copies, and does
+**Nothing yet — this note is design.** `eslint.config.mjs` holds the existing
+`no-restricted-syntax` bans this copies, and does
 not read CSS today · `package.json` chains the checks `npm run check` runs · `styles.css`,
 after `One stylesheet per concern` its partials, is what gains a reader · `.fallowrc.json`
 is the other static gate, for the precedent of a config with reasons written into it ·

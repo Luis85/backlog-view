@@ -14,7 +14,7 @@ files:
 
 # Verify base identity resolves in a live vault
 
-## The assumption
+## Why this exists
 
 Collapse-state persistence keys on the `.base` file the view belongs to. The Bases API
 hands a view **no reference to its own file**, so `collapseStoreIdentity` finds it by

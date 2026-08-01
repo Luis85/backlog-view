@@ -19,10 +19,8 @@ Others say Initiative, Story, Sub-task; Scrum says Product Backlog Item where Az
 says User Story. Making the names a setting looked like the obvious courtesy — the same
 courtesy the property *keys* already get, which can be pointed anywhere.
 
-When `Issue` and `Bug` were added
-([ADR 0014](0014-rank-extra-types-by-type-not-by-position.md)), the question came up again
-for the new list, and the same answer was given: a view option, `Extra types`, defaulting
-to `Issue, Bug`.
+`Issue` and `Bug` needed the same courtesy extended to their own list, and the same answer
+was given: a view option, `Extra types`, defaulting to `Issue, Bug`.
 
 ## Decision
 
@@ -53,7 +51,15 @@ And what it bought, in full: **a rename**.
 
 ## Alternatives
 
-The one that won: fix the vocabulary and be opinionated.
+- **Keep the vocabulary fixed**, as it already was. Rejected at the time for withholding
+  from the type names the same courtesy already extended to property keys — a team that
+  says "Story" would still have to write `PBI` on every note. That is the alternative that
+  won hours later, once the cost above was known; see
+  [ADR 0013](0013-fix-the-type-vocabulary-at-six-names.md).
+- **Configure the ladder only, and leave the two extra types fixed.** Not weighed
+  seriously: an extra type is exactly where "what folder does a name nobody chose get" has
+  no position to inherit from, so half a configurable vocabulary would have kept the
+  harder half of the problem.
 
 ## Revisit when
 

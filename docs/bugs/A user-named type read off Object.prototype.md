@@ -3,8 +3,14 @@ type: Bug
 parent: "[[Where new items are filed]]"
 order: 40
 status: Done
+created: 2026-08-01
 closed: 2026-08-01
+area: domain
 source: automated review of PR #22
+files:
+  - src/domain/itemTypes.ts
+  - src/domain/settings.ts
+  - src/view/render/rows.ts
 ---
 
 # A user-named type read off Object.prototype
@@ -36,7 +42,9 @@ export function byTypeName<T>(table: Record<string, T>, typeName: string | null)
 
 Every lookup of a user-supplied type name goes through it. Reaching for a bare index is
 the thing to notice in review now, rather than reasoning about `Object.prototype` afresh
-at each new table.
+at each new table. `test/domain/itemTypes.test.ts` ("does not read a type name off
+Object.prototype") covers all three sites through `byTypeName` and the defaults table
+together; it fails against any commit before the third fix.
 
 ## Lesson
 

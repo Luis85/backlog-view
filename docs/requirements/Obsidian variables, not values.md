@@ -99,7 +99,8 @@ deliverable as much as the edit is.
 
 ## Where it lives
 
-`styles.css` — after `One stylesheet per concern`, the source partials — holds the raw
+**Nothing yet — this note is design.** `styles.css` — after `One stylesheet per concern`,
+the source partials — holds the raw
 values · `src/view/render/columns.ts` holds `ROW_LEAD_WIDTH`, `INDENT_PER_DEPTH` and
 `TREE_PADDING`, the constants that make some of those pixels load-bearing ·
 `src/view/CLAUDE.md` records why they are summed rather than measured.

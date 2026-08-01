@@ -66,5 +66,7 @@ Two corollaries follow from the same principle:
 
 ## Revisit when
 
-A fifth concern appears that fits none of the four, or `host.ts` grows past the point
-where "the view's interface" is still one idea.
+A fifth concern appears that fits none of the four, or `host.ts` hits the same 400-line
+cap every other file in the layers already carries. That number is not special to it, but
+a file this project already treats as one concern crossing the line every other one does
+is evidence it has become two.
