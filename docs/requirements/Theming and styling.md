@@ -15,19 +15,6 @@ Two halves, and the name says both. **Theming** is what the user sees: tokens, t
 variants, a restyling surface, reduced motion. **Styling** is the file that produces it:
 one stylesheet per concern, a build step, and rules that hold.
 
-## Use cases
-
-- [[One stylesheet per concern]] — 1143 lines split into files each about one part.
-- [[Obsidian variables, not values]] — raw pixels give way to the tokens a theme rescales.
-- [[One bound, not two]] — a width lives in one place, so the fit arithmetic cannot disagree
-  with the stylesheet.
-- [[A documented restyling surface]] — a named set of custom properties a snippet author can
-  rely on.
-- [[Light, dark and reduced motion]] — the backlog looks right in the user's setup, not in
-  the default theme.
-- [[Styling rules are checks]] — the rules above enforced by the build rather than by
-  whoever reviews the diff.
-
 ## What the theming half is not
 
 It is not a cleanup. `styles.css` is disciplined on every axis, which the audit behind

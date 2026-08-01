@@ -90,7 +90,8 @@ Only the six names this plugin ships get a label.
 
 ## Where it lives
 
-`src/domain/itemTypes.ts` holds `displayType`, the existing seam between what an item *is*
+**Nothing yet — this note is design.** `src/domain/itemTypes.ts` holds `displayType`, the
+existing seam between what an item *is*
 and what its badge says, plus `isExtraType` and `focusTarget` which must keep matching
 canonical names · `src/domain/settings.ts` defines the fixed vocabulary and
 `typeFolderKey` · `src/view/render/rows.ts` renders the badge ·

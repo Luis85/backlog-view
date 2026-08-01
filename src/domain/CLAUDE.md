@@ -170,7 +170,7 @@ in the root `CLAUDE.md` because it spans every layer.
   orders fall back to `entryIndex` and the group self-corrects on the next renumbering
   drop. Fixing it properly needs the complete child set (backlinks + folder scan), which
   `computeDropWrites` cannot reach without giving up its purity. Recorded in
-  `docs/bugs/Duplicate orders in a partially filtered group.md`.
+  `docs/issues/Duplicate orders in a partially filtered group.md`.
 - `breakCycles` re-roots `cycleEntry(item)`, the node that actually closes the loop, not the
   first unreachable item found: with outside-filter ancestors the unreachable item is usually
   a healthy match hanging below a cycle, and re-rooting it would strand a valid parent link.

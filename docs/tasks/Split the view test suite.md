@@ -47,7 +47,7 @@ Order matters here; the split is not safe until the harness moves.
 
 ## Acceptance criteria
 
-- All 291 tests still pass, with **no assertion changed** — this is pure motion.
+- All 303 tests still pass, with **no assertion changed** — this is pure motion.
 - No test file over the new budget.
 - `npm run check` green.
 

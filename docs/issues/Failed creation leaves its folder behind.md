@@ -14,7 +14,7 @@ files:
 
 # A failed creation leaves the folder it made
 
-## Evidence
+## The limitation
 
 Both creation paths call `ensureFolder` before `vault.create`:
 
@@ -29,7 +29,7 @@ Found by review while writing [[New item flow]] and [[Scaffolding a backlog]] as
 cases: both notes had claimed the failure path leaves nothing behind, and neither the
 code nor a test said so.
 
-## Why it is filed rather than fixed
+## Why it is deliberate
 
 The residue is an **empty folder**, and rolling it back is not obviously better than
 leaving it:
@@ -46,7 +46,7 @@ leaving it:
 The honest position is that this is a **documented limitation**, not an unnoticed bug. The
 two use cases now say so.
 
-## What would change the decision
+## What would lift it
 
 - A report of it happening in practice — the failure needs a `vault.create` that throws
   after a successful `createFolder`, which nobody has yet observed.

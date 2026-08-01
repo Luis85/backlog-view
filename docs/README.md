@@ -26,29 +26,29 @@ is the honest report.
 
 ## The trees
 
-**Product Backlog** is the product: eight features covering the hierarchy, moving items,
-creating them, progress, finding work, safe writes and view state — 24 use cases in all —
-plus **User manual**, the one feature specified rather than built: an in-view help surface
-whose sections explain the types, moving, creating, finding, undo and configuration. Its
-six use cases describe a manual, so each is also a statement of what that part of the
-plugin is *for*.
+**Product Backlog** is the product: features covering the hierarchy, moving items,
+creating them, progress, finding work, safe writes and view state, plus **User manual**,
+the one feature specified rather than built: an in-view help surface whose sections
+explain the types, moving, creating, finding, undo and configuration. Its use cases
+describe a manual, so each is also a statement of what that part of the plugin is *for*.
+A count belongs here only as long as it takes to go stale — open `Product Backlog.base`
+for the current shape, or run `npm run docs` for the current totals.
 
-**Codebase health** is the engineering work — three features and four use cases saying what
+**Codebase health** is the engineering work — features and use cases saying what
 "healthy" means here, with the tasks that got it done underneath. Its actor is whoever
 changes the plugin, which is the honest way to write an architectural rule as a use case:
 someone has to be trying to do something for the rule to be worth having.
 
-**Product Kanban** is the epic in flight: a board projection of the same backlog,
-specified across four features and 15 use cases — the backlog/board toggle, columns
-from the workflow the view options define, card moves as gated state writes, and the
-hierarchy showing through on the board. Every note states the precedent or the
-codebase seam it rests on, from a survey of the Kanban Guide, the major trackers and
-the Obsidian ecosystem run on 2026-08-01. The first increment is built: the toggle,
-the columns, the cards, desktop drag as a gated state write, and the focus level
-picking the cards — six use cases closed, and the drag one held `Active` on the one
-criterion only [[WIP limits]] can exercise. What remains under the epic — menu and
-touch moves, lanes, creation from columns, limits, policies, stamps, column
-collapse — is still design.
+**Product Kanban** is the epic in flight: a board projection of the same backlog —
+the backlog/board toggle, columns from the workflow the view options define, card
+moves as gated state writes, and the hierarchy showing through on the board. Every
+note states the precedent or the codebase seam it rests on, from a survey of the
+Kanban Guide, the major trackers and the Obsidian ecosystem run on 2026-08-01. The
+first increment is built: the toggle, the columns, the cards, desktop drag as a
+gated state write, and the focus level picking the cards; the drag use case stays
+`Active` on the one criterion only [[WIP limits]] can exercise. What remains under
+the epic — menu and touch moves, lanes, creation from columns, limits, policies,
+stamps, column collapse — is still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly
@@ -59,13 +59,12 @@ a card created into a state the base excludes — and every one of those was a
 paragraph of prose before the shape asked the question.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
-everything, or they are true of nothing. Two features — `Multilang` (every string comes
-out of a per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's
-design tokens, from a stylesheet organised like the rest of the codebase). They are
-siblings because they meet at the layout: translated text is longer, shorter and
-sometimes right-to-left, and the stylesheet is what absorbs it. Specification only —
-nothing under this epic is built yet, and what it asks for applies to the board as much
-as to the tree.
+everything, or they are true of nothing. `Multilang` (every string comes out of a
+per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's design
+tokens, from a stylesheet organised like the rest of the codebase) are siblings because
+they meet at the layout: translated text is longer, shorter and sometimes right-to-left,
+and the stylesheet is what absorbs it. Specification only — nothing under this epic is
+built yet, and what it asks for applies to the board as much as to the tree.
 
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
@@ -179,18 +178,17 @@ the lesson, and a limitation written as a Bug reads as something someone is abou
 | Kind | Answers | Sections |
 | --- | --- | --- |
 | `Epic` | Why this body of work exists, and what "done" means beneath it | Prose · why it exists · definition of done |
-| `Feature` | What outcome one coherent slice delivers | Prose · **Outcome** · Use cases |
+| `Feature` | What outcome one coherent slice delivers | Prose · **Outcome** |
 | `PBI` | What someone does, step by step, and every way it can go otherwise | The use-case shape below — **enforced** |
 | `Task` | A piece of engineering work, and the evidence that justified it | Evidence · Why it matters · Approach · Acceptance criteria · Risks · Outcome |
 | `Issue` | A question, a decision taken, or a limitation accepted | Varies by which — see below |
 | `Bug` | What went wrong, what fixed it, and what it taught | What happened · Fix · Lesson |
 | ADR | What was chosen to build it, what that cost, what would change it | Context · Decision · Consequences · Alternatives · Revisit when — **in that order** |
 
-The PBI shape and the ADR shape are gated by `npm run docs`, and so is the one part of the
-Feature shape that is a fact rather than a judgement: that its use-case index names exactly
-its own children. The rest rests on whoever writes them. That is the honest division rather
-than an omission: a checker can see whether a heading is present, never whether the
-paragraph under it says anything. What follows is what "says something" means for each kind.
+The PBI shape and the ADR shape are gated by `npm run docs`. The rest rests on whoever
+writes them. That is the honest division rather than an omission: a checker can see
+whether a heading is present, never whether the paragraph under it says anything. What
+follows is what "says something" means for each kind.
 
 ### `Epic` — why the work exists
 
@@ -205,15 +203,17 @@ any child becoming harder to judge, it was a heading.
 ### `Feature` — one outcome, and its use cases
 
 A Feature states an **outcome** — one sentence, in the user's terms, about what is true
-once the feature exists — and then indexes the use cases that deliver it. Nothing else
-belongs here: detail written at feature level is detail no use case owns.
+once the feature exists. Nothing else belongs here: detail written at feature level is
+detail no use case owns.
 
-Keep the index complete. A Feature whose list has drifted from its actual children is worse
-than one with no list, because the list is what a reader trusts instead of the tree. This
-one is checked: `npm run docs` reports a PBI child the list omits and an entry the list
-names that is no longer a child. It had already gone false — two pull requests that never
-saw each other, one writing an index and one adding a child — which is why it is a check
-and no longer a request.
+A Feature does not also keep its own list of the PBIs that deliver it. That fact already
+exists once, as each PBI's own `parent` link, and a hand-written second copy of it goes
+stale the moment the two disagree without either one saying so — which happened twice
+before this rule replaced the list: two branches, each adding a child its sibling
+branch's copy of the list could not see. Obsidian's backlinks pane, or `Product
+Backlog.base` itself, reads the same link and cannot drift from it, which is the one copy
+worth trusting. See [[Check that a feature lists its use cases]] for the check this
+replaced and why.
 
 ### `PBI` — a use case
 

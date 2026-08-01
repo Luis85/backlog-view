@@ -13,7 +13,7 @@ files:
 
 # The gate is tested only against invalid documents
 
-## The evidence
+## The limitation
 
 This project verifies a mechanical rule by **planting the violation and watching the check
 reject it**. That method is why `docs-check.mjs` exists in the shape it does, and it caught

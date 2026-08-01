@@ -232,7 +232,8 @@ or the guard has to be remembered eleven times.
 
 ## Where it lives
 
-`src/domain/model.ts` sorts the state and tag vocabularies · `src/ui/prompts.ts` sorts and
+**Nothing yet — this note is design.** `src/domain/model.ts` sorts the state and tag
+vocabularies · `src/ui/prompts.ts` sorts and
 filters the folder and tag suggests · `src/view/backlogView.ts` holds the quick filter's
 match · `src/view/render/rows.ts` holds `renderTitleText`, the fold-then-index highlight ·
 `src/view/render/columns.ts` renders the counts · `src/domain/settings.ts`,

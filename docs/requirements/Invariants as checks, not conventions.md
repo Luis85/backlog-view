@@ -51,8 +51,8 @@ that might not happen or a bug that ships.
 - Each rule is verified by planting the violation and watching lint reject it.
 - Rules that cannot be mechanised sit in the layer's own `CLAUDE.md`, not in one wall of
   text far from the code.
-- `npm run check` is the whole gate — build, lint, coverage-thresholded tests and static
-  analysis — and CI runs the same four steps.
+- `npm run check` is the whole gate — every step `package.json`'s `check` script chains,
+  whatever that list grows to — and CI runs the same command.
 
 ## Where it lives
 

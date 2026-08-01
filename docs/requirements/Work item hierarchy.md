@@ -16,17 +16,3 @@ parent, so a backlog works before anyone has tidied it.
 
 **Outcome** — A folder of notes reads as a levelled, ordered tree — before anyone has
 tidied a single property.
-
-## Use cases
-
-- [[Parent, order and type properties]] — the three frontmatter properties that carry the
-  whole model.
-- [[Level ladder and implied types]] — the fixed `Epic → Feature → PBI → Task` ladder, and
-  levels implied from position.
-- [[Types beside the ladder]] — `Issue` and `Bug`: pinned rank, any parent, Tasks only.
-- [[Folder note hierarchy]] — reading the hierarchy from folder notes, for vaults already
-  organised that way.
-- [[What counts as a work item]] — which notes in a folder-scoped base are work
-  items at all.
-- [[Broken links still render]] — orphans and cycles stay visible and marked, never
-  hidden.

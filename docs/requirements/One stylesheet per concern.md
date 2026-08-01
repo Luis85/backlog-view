@@ -201,7 +201,7 @@ diff and a 1143-line one.
 
 ## Where it lives
 
-`styles.css` is the file that splits · `esbuild.config.mjs` already runs esbuild over it
+**Nothing yet — this note is design.** `styles.css` is the file that splits · `esbuild.config.mjs` already runs esbuild over it
 and writes the minified `dist/styles.css` the release uploads, so the build step exists and
 gains sources rather than being new · `test-build.mjs` copies the root file into a vault
 and says in a comment that it is hand-edited · `eslint.config.mjs` carries the 400-line cap

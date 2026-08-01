@@ -197,3 +197,15 @@ gated: the index is a fact about the tree, the outcome sentence is a judgement.
 `npm run docs` reports 111 backlog notes, 69 use cases, 17 ADRs, 64 modules, and every
 feature index is now complete and exact. One more of the README's claims is a check rather
 than a request.
+
+**Later removed**, 2026-08-01, by a broader pass against counted and indexed content in
+the register (see the same date's other closes across `docs/`). The check this task built
+was correct and never went stale on its own watch — that was the point of building it —
+but it verified a second copy of a fact the first copy already carried exactly:
+`parent:`. Obsidian's own backlinks pane reads that link directly and cannot disagree with
+it, which a hand-written list, however well checked, still could in the gap between an
+edit and the next `npm run docs`. The eight rounds of hardening above are not wasted: they
+are the record of how expensive one small hand-maintained index turned out to be, which is
+the argument for not having a second one anywhere else in this register. The `## Use
+cases` section is gone from every Feature note, and the block in `docs-check.mjs` this
+task added is gone with it.

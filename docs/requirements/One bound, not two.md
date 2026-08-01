@@ -119,7 +119,8 @@ per term — is what this PBI is for.
 
 ## Where it lives
 
-`src/view/render/columns.ts` holds `ROW_LEAD_WIDTH` and its eight terms, plus
+**Nothing yet — this note is design.** `src/view/render/columns.ts` holds
+`ROW_LEAD_WIDTH` and its eight terms, plus
 `INDENT_PER_DEPTH` and `TREE_PADDING` · `src/view/render/rows.ts` publishes the TS-owned
 values to CSS as custom properties in `renderTree` · `styles.css` applies them, and is
 where two rules hard-code the indent instead of reading it · `src/view/CLAUDE.md` describes

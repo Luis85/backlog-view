@@ -3,8 +3,12 @@ type: Bug
 parent: "[[Types beside the ladder]]"
 order: 30
 status: Done
+created: 2026-08-01
 closed: 2026-08-01
+area: domain
 source: automated review of PR #22
+files:
+  - src/domain/model.ts
 ---
 
 # Parentless extra type dropped from the model
@@ -23,4 +27,13 @@ deliberately not refused.
 
 Hierarchy membership now reads every **declared** type, levels and extra types alike — an
 extra type is a work item by the same argument a level is. A type the view knows nothing
-about is still pruned, which is what the scope is for.
+about is still pruned, which is what the scope is for. `test/domain/itemTypes.test.ts`
+("keeps a parentless extra type in the model") fails against the previous commit.
+
+## Lesson
+
+**Membership has to read the same vocabulary the rest of the model does.** Level checks
+and "is this a work item" checks are two different questions, and coding the second as a
+narrower version of the first drops exactly the notes that only the second question was
+ever supposed to answer. See [[What counts as a work item]], the requirement this bug
+turned into an explicit rule rather than an assumption inside one function.

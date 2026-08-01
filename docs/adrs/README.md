@@ -62,23 +62,26 @@ Four headings, in this order, plus one that is this project's own habit:
 
 ## The records
 
-| # | Decision | Status | Area |
-| --- | --- | --- | --- |
-| [0001](0001-build-on-the-bases-custom-view-api.md) | Build on the Bases custom view API | Accepted | platform |
-| [0002](0002-keep-the-hierarchy-in-frontmatter.md) | Keep the hierarchy in frontmatter | Accepted | domain |
-| [0003](0003-four-layers-enforced-by-lint.md) | Four layers, enforced by lint | Accepted | architecture |
-| [0004](0004-one-write-boundary-planning-separate-from-applying.md) | One write boundary, planning separate from applying | Accepted | architecture |
-| [0005](0005-ship-with-no-runtime-dependencies.md) | Ship with no runtime dependencies | **Superseded** by 0018 | tooling |
-| [0006](0006-jsdom-is-the-substitute-for-obsidian.md) | jsdom is the substitute for Obsidian | Accepted | testing |
-| [0007](0007-npm-run-check-is-the-whole-gate.md) | `npm run check` is the whole gate | Accepted | tooling |
-| [0008](0008-rank-siblings-with-fractional-orders.md) | Rank siblings with fractional orders | Accepted | domain |
-| [0009](0009-the-type-rules-are-advisory.md) | The type rules are advisory, never enforced | Accepted | domain |
-| [0010](0010-load-excluded-ancestors-as-context-rows.md) | Load excluded ancestors as context rows | Accepted | domain |
-| [0011](0011-keep-collapse-state-out-of-the-base-file.md) | Keep collapse state out of the `.base` file | Accepted | storage |
-| [0012](0012-make-the-type-vocabulary-configurable.md) | Make the type vocabulary configurable | **Superseded** by 0013 | domain |
-| [0013](0013-fix-the-type-vocabulary-at-six-names.md) | Fix the type vocabulary at six names | Accepted | domain |
-| [0014](0014-rank-extra-types-by-type-not-by-position.md) | Rank extra types by type, not by position | Accepted | domain |
-| [0015](0015-undo-by-captured-inverses.md) | Undo by captured inverses, not snapshots | Accepted | storage |
-| [0016](0016-break-compatibility-freely-before-1-0.md) | Break compatibility freely before 1.0 | Accepted | platform |
-| [0017](0017-bounded-undo-history-with-an-explicit-redo.md) | Bounded undo history with an explicit redo | **Proposed** | storage |
-| [0018](0018-admit-runtime-dependencies-by-exception.md) | Admit runtime dependencies by exception, starting with Pragmatic drag and drop | Accepted | tooling |
+Linked here so every record is reachable from one place; **not** restated here, because a
+second copy of a status or an area is one this page could say wrong the day after the
+record itself changes. Open a record for its current status, area and any
+`supersedes`/`superseded-by` link — that frontmatter is the one copy worth trusting.
+
+- [0001 — Build on the Bases custom view API](0001-build-on-the-bases-custom-view-api.md)
+- [0002 — Keep the hierarchy in frontmatter](0002-keep-the-hierarchy-in-frontmatter.md)
+- [0003 — Four layers, enforced by lint](0003-four-layers-enforced-by-lint.md)
+- [0004 — One write boundary, planning separate from applying](0004-one-write-boundary-planning-separate-from-applying.md)
+- [0005 — Ship with no runtime dependencies](0005-ship-with-no-runtime-dependencies.md)
+- [0006 — jsdom is the substitute for Obsidian](0006-jsdom-is-the-substitute-for-obsidian.md)
+- [0007 — `npm run check` is the whole gate](0007-npm-run-check-is-the-whole-gate.md)
+- [0008 — Rank siblings with fractional orders](0008-rank-siblings-with-fractional-orders.md)
+- [0009 — The type rules are advisory, never enforced](0009-the-type-rules-are-advisory.md)
+- [0010 — Load excluded ancestors as context rows](0010-load-excluded-ancestors-as-context-rows.md)
+- [0011 — Keep collapse state out of the `.base` file](0011-keep-collapse-state-out-of-the-base-file.md)
+- [0012 — Make the type vocabulary configurable](0012-make-the-type-vocabulary-configurable.md)
+- [0013 — Fix the type vocabulary at six names](0013-fix-the-type-vocabulary-at-six-names.md)
+- [0014 — Rank extra types by type, not by position](0014-rank-extra-types-by-type-not-by-position.md)
+- [0015 — Undo by captured inverses, not snapshots](0015-undo-by-captured-inverses.md)
+- [0016 — Break compatibility freely before 1.0](0016-break-compatibility-freely-before-1-0.md)
+- [0017 — Bounded undo history with an explicit redo](0017-bounded-undo-history-with-an-explicit-redo.md)
+- [0018 — Admit runtime dependencies by exception, starting with Pragmatic drag and drop](0018-admit-runtime-dependencies-by-exception.md)

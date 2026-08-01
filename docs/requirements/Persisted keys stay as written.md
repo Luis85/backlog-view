@@ -112,7 +112,8 @@ one of the two things this repository cannot test.
 
 ## Where it lives
 
-`src/storage/frontmatter.ts` holds all three writers — `applyWrites`, `applyRestores` and
+**Nothing yet — this note is design.** `src/storage/frontmatter.ts` holds all three
+writers — `applyWrites`, `applyRestores` and
 `createBacklogItem` · `src/storage/baseFile.ts` writes the scaffolded `.base` and owns the
 `docs` and `Product Backlog` defaults · `src/storage/collapseStore.ts` keys collapse state
 on the base's path · `src/domain/settings.ts` derives `typeFolderKey` from a type name.

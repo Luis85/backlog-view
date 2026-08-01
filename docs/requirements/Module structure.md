@@ -18,8 +18,3 @@ answer fails the build.
 - Four layers, each reaching only downwards.
 - A type lives with the code that produces it, not the code that consumes it.
 - Build phases are expressed as types, so a field cannot be read before it is real.
-
-## Use cases
-
-- [[One file per concern]] — four layers, a line cap, one responsibility per file.
-- [[Build phases in the type system]] — a field that is not real yet cannot be read.
