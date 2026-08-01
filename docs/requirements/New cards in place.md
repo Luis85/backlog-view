@@ -23,9 +23,11 @@ the base's filter, is a note the board writes and then cannot show.
   it: type folders, folder mode, the config-problems gate.
 - Folder rules cannot rescue a note from a *state* filter: a base can exclude a state
   the workflow still names — `status != Done` beside a Done column — and a filter is
-  opaque to the view, so compatibility is detected by outcome, not predicted. When the
-  next result set does not contain the note just created, the view says so and offers
-  to open it, rather than letting the card silently vanish.
+  opaque to the view, so compatibility is detected by outcome, not predicted. The
+  outcome that matters is visibility, not result membership alone: when the next
+  render does not show the note just created — the filter excluded it, or hiding
+  finished work swallowed a card born done — the view says so and offers to open it,
+  rather than letting it silently vanish.
 - The no-state column creates without writing a state at all.
 - With lanes on, the lane provides the parent and the offered types narrow to what
   that parent may hold; a lane whose parent is outside the filter takes the child by

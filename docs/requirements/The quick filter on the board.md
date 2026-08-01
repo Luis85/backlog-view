@@ -25,6 +25,9 @@ are its contents.
   renders, its header showing matches against the full count while the filter is
   active. The WIP signal keeps reading the full population — a filter must never make
   an over-limit column look under its limit.
+- Collapse is ignored while filtering, exactly as the tree ignores it: a collapsed
+  column or lane holding a match opens for the filter's duration and returns to its
+  saved state after — a match locked behind a closed header is a match lost.
 - Dragging stays enabled while filtering. A state write does not depend on visual
   neighbours — which is exactly why the tree must disable dragging under the filter
   and the board need not: ranking reads siblings, a column does not.
