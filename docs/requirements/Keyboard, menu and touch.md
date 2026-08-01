@@ -26,12 +26,16 @@ mobile HTML5 drag events never fire. The menu is all of those answers at once.
   columns, Home and End reach the edges, Enter opens the note, `/` reaches the quick
   filter, Ctrl/Cmd+Z undoes.
 - Alt+Left and Alt+Right move the selected card one column, writing the same batch a
-  drop writes. There is deliberately no Alt+Up/Down rank — within-column order is
-  derived ([[Board order is derived not stored]]).
+  drop writes. There is deliberately no Alt+Up/Down *rank* — within-column order is
+  derived ([[Board order is derived not stored]]) — which leaves the pair free for
+  lanes ([[Swimlanes by parent]]).
 - Set state in the context menu is the equivalent non-drag path on every platform, and
-  the required one on touch; it offers the same vocabulary in both projections — which
-  includes clearing: a no-state entry writing the same remove-state write the no-state
-  column's drop writes, or the menu could not reach every column a drag can.
+  the required one on touch. On the board its vocabulary is exactly the columns —
+  configured states, observed out-of-workflow values, and a no-state entry writing the
+  same remove-state write the no-state column's drop writes — so every column a drag
+  can reach, the menu can too. `stateMenuValues` alone cannot supply that list (it
+  returns only the configured states when a list is set); closing that gap for board
+  mode is this PBI's own work.
 - Every move — drag, key or menu — is announced to assistive technology from a polite
   live region, naming the card and its old and new column; hidden instructions on the
   board describe the shortcuts and the menu path.

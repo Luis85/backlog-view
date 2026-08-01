@@ -29,9 +29,11 @@ filter, not a place cards are moved to.
 - "Show completed items" off hides what it hides in the tree: cards whose whole
   subtree is done (`subtreeDone`), never a card still carrying open work — a Done item
   with an Active task below the focus line keeps its card, so its rollup keeps that
-  open work on screen. A done column empties rather than being amputated, and hides
-  whole only when nothing in it is left visible. One of the two deliberate narrowings
-  the epic's invariant names, beside the focus level; the quick filter overrides
-  hiding, as it does in the tree.
+  open work on screen. The column itself always renders — collapsed at most — because
+  a configured stage stays a drop target and a creation point whatever is hidden
+  inside it: completing work into a done state has to keep working precisely while
+  completed work is hidden. One of the two deliberate narrowings the epic's invariant
+  names, beside the focus level; the quick filter overrides hiding, as it does in the
+  tree.
 - Age-based hiding stays out of scope until [[Stamp when work starts and finishes]]
   gives it a date to read.

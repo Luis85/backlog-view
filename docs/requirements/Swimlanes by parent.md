@@ -30,3 +30,7 @@ crossing lanes is the drop-onto-a-row the tree already plans.
   plan — appended order, the autoType cascade only as configured — and, when the
   column differs too, the state change in the same batch: one gate, one undo. A drop
   that would make an item its own ancestor is refused, as in the tree.
+- The drag is never the only path across lanes: the card menu gains a move-to-lane
+  action offering every legal lane under the drag's own cycle rules, and Alt+Up and
+  Alt+Down — which a flat board leaves unused — move the selected card one lane. Both
+  write the reparent batch the drag writes, so touch and keyboard lose nothing.
