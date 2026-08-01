@@ -15,9 +15,12 @@ files:
 
 ## The decision
 
-A column renders its cards in the order the Base's own sort delivers (`data.data`
-arrives presorted; missing orders fall back to `entryIndex`). Dragging within a column
-is not offered, and no property records a board position.
+A column renders its cards exactly in the order the Base's own sort delivers —
+`entryIndex`, since `data.data` arrives presorted — for every card, whether or not it
+carries an `order`. A sibling-scoped `order` is not comparable across parents, so the
+board never consults the property itself; it reaches a column only when the user has
+put it in the Base's sort. Dragging within a column is not offered, and no property
+records a board position.
 
 ## Why
 

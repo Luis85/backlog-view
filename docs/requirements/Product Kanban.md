@@ -70,8 +70,9 @@ top of them:
   in exactly one column, and column counts sum to the result count. Exactly two
   controls narrow that deliberately, in both projections alike — the focus level
   (descendants surface in card rollups, ancestors as context) and "Show completed
-  items" (done columns hide whole) — and the narrowing belongs to those controls,
-  never to the board: restoring them restores every result to a column.
+  items" (fully-done subtrees hide, by the tree's own `subtreeDone` predicate) — and
+  the narrowing belongs to those controls, never to the board: restoring them
+  restores every result to a column.
 - No second source of truth: no board-only rank property, no board-only state, no
   state string written that the user did not configure or observe.
 - A row outside the Base's filter obeys the context-row rule on the board exactly as
