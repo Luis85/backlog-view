@@ -366,12 +366,20 @@ for (const [name, note] of notes) {
 	// correct twice over: it is not an entry, and the use case it names still has to have a
 	// bullet of its own. Descriptions stay free to link wherever they like.
 	//
-	// Up to three leading spaces, because CommonMark renders those as a top-level list item
-	// and demanding column zero reports a legitimate entry as missing — a false FAILURE,
-	// which this file already treats as the more expensive direction to get wrong. It does
-	// mean a sub-bullet indented two spaces reads as an entry; no regex can tell those apart
-	// without tracking list context, and a nested sub-list is not the shape a flat index has.
-	const entries = [...(index ?? "").matchAll(/^ {0,3}[-*+] \[\[([^\]|#]+)/gm)].map(([, t]) => t.trim());
+	// The marker is matched as CommonMark defines a **list item**, not as the one spelling
+	// this register happens to use: up to three leading spaces, a bullet (`-`, `*`, `+`) or
+	// an ordered marker, then one to four spaces or a tab. Every part of that is a legal
+	// entry that a tighter pattern reports as a MISSING child — a false failure, which this
+	// file already treats as the more expensive direction to get wrong, and which would
+	// block a contributor over whitespace. Written as the whole family at once rather than
+	// per variant, because each variant found separately is another round of the same bug.
+	//
+	// The cost is that a sub-bullet indented two spaces reads as an entry. No regex can tell
+	// that from a legally indented top-level bullet without tracking list context, and a
+	// nested sub-list is not the shape a flat index has.
+	const entries = [...(index ?? "").matchAll(/^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]{1,4}\[\[([^\]|#]+)/gm)].map(
+		([, t]) => t.trim(),
+	);
 	const listed = new Set(entries);
 	// Before the Set collapses them: a use case bulleted twice renders twice, and an index
 	// that claims to name the children *exactly* cannot be silent about it.

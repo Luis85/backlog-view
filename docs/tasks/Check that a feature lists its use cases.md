@@ -135,7 +135,19 @@ immediately after a bullet marker.** Only the position distinguishes an entry fr
 mention, so only the position can be checked — and all 69 index bullets in the register
 already sit that way, so the anchoring narrows the check without moving the corpus.
 
-The pattern across all five rounds: every hole was the check answering a slightly different
+A sixth round found the marker itself matched one spelling rather than the Markdown rule:
+`-  [[Name]]` with two spaces renders as a list item and was reported as a missing child.
+Rather than take that variant alone and wait for the next, the marker is now matched as
+CommonMark defines a **list item** — up to three leading spaces, a bullet or an ordered
+marker, then one to four spaces or a tab. Five spellings planted and all five accepted,
+with the mention-only and duplicate cases re-planted to confirm the widening did not
+reopen what the previous rounds closed:
+
+| Planted | Accepted |
+| --- | --- |
+| `-  [[Name]]`, `-⇥[[Name]]`, `* [[Name]]`, `1. [[Name]]`, `   -  [[Name]]` | all five |
+
+The pattern across all six rounds: every hole was the check answering a slightly different
 question than the rule does. The rule is about the list a reader sees; the code variously
 asked about the section, about every child, about text a reader never sees, about every link
 in a bullet, about a bullet's first link wherever it sat, and about bullets in one exact
