@@ -20,3 +20,5 @@ title and nothing else.
 - [[Where new items are filed]] — a home folder and one folder picker per type.
 - [[Backfill missing properties]] — one button turns a folder of plain notes into a backlog.
 - [[Scaffolding a backlog]] — one command produces a working backlog to add to.
+- [[Backlog as folder notes]] — items own their folders, so the file tree and the item tree
+  are one hierarchy.
