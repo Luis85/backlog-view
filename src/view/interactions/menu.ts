@@ -6,6 +6,7 @@ import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
+import { addTagItems, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childLevel: string): void {
@@ -33,6 +34,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childLev
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
 		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	}
 	menu.addSeparator();
 
@@ -167,6 +169,16 @@ export function showStateMenu(host: BacklogViewHost, evt: MouseEvent, item: Back
 	showMenuForClick(menu, evt);
 }
 
+/** Tag picker for the row's add-tag button. */
+export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
+	// Like the state chip: the click belongs to the control, not to the row it sits on.
+	evt.preventDefault();
+	evt.stopPropagation();
+	const menu = new Menu();
+	addTagItems(host, menu, item);
+	showMenuForClick(menu, evt);
+}
+
 /**
  * The states this item's menu offers. The item's own value joins the configured
  * or observed list when missing, so the current state can always render checked.
@@ -204,6 +216,14 @@ function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	menu.addItem((mi) => {
 		mi.setTitle('Set state').setIcon('circle-check');
 		addStateItems(host, submenuOf(mi), item);
+	});
+}
+
+/** Tag editing on the keyboard path — the same list the row's + button offers. */
+function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Edit tags').setIcon('tags');
+		addTagItems(host, submenuOf(mi), item);
 	});
 }
 

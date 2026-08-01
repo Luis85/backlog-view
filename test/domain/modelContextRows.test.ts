@@ -216,6 +216,16 @@ describe('observed states with parents outside the filter', () => {
 		expect(model.byPath.get('Epic.md')?.outsideFilter).toBe(true);
 		expect(model.observedStates).toEqual(['Active']);
 	});
+
+	it('offers only the tags the Base results actually use', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', tags: ['archived'] } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', tags: ['active'] }, parentLink: 'Epic' });
+		const filtered = vault.entries().filter((e) => e.file.path === 'PBI.md');
+		const model = buildModel(vault.app, filtered, settings);
+
+		expect(model.observedTags).toEqual(['active']);
+	});
 });
 
 describe('hierarchy scope when context rows are not loaded', () => {

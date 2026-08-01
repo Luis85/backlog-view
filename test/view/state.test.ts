@@ -104,7 +104,9 @@ describe('view state details', () => {
 		config.order = ['note.points'];
 		view.onDataUpdated();
 
-		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-chip')).toBeNull();
+		const cell = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-prop');
+		expect(cell).not.toBeNull();
+		expect(cell?.querySelector('.pbl-prop-value')).toBeNull();
 	});
 
 	it('tolerates filter calls before the first data render', () => {
@@ -159,7 +161,7 @@ describe('state editing', () => {
 		const epicB = rowByTitle(containerEl, 'Epic B');
 		const chip = epicB.querySelector('.pbl-state-chip');
 		expect(chip?.querySelector('.pbl-state-text')?.textContent).toBe('Active');
-		expect(epicB.querySelector('.pbl-chip')).toBeNull();
+		expect(epicB.querySelector('.pbl-prop')).toBeNull();
 		// A native button assistive tech can activate — without joining the tab order.
 		expect(chip?.tagName).toBe('BUTTON');
 		expect(chip?.getAttribute('tabindex')).toBe('-1');

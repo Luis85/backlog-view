@@ -1,54 +1,50 @@
-import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
+import { setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { newItemLevel, promptCreateItem } from '../interactions/create';
-import { DragDropController } from '../interactions/dragDrop';
-import { showItemMenu, showStateMenu } from '../interactions/menu';
+import { showItemMenu } from '../interactions/menu';
 import { BacklogItem, childLevelIndex, displayType } from '../../domain/model';
+import {
+	INDENT_PER_DEPTH,
+	META_COL_WIDTH,
+	renderColumnHeader,
+	renderRowColumns,
+	RowContext,
+	STATE_COL_WIDTH,
+} from './columns';
 
 const BADGE_COLOR_COUNT = 8;
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
 
-/** A visible property and its display name, resolved once instead of per row. */
-export interface ChipProp {
-	prop: BasesPropertyId;
-	label: string;
-}
-
-/**
- * State shared by one render pass. Config lookups and the row index live here so
- * per-row work stays proportional to the rows themselves — repeating a handful of
- * Bases config calls on every row is what makes a few hundred items feel slow.
- */
-export interface RowContext {
-	host: BacklogViewHost;
-	dnd: DragDropController;
-	/** Rendered rows by path — the view's O(1) lookup for selection and subtree updates. */
-	rows: Map<string, HTMLElement>;
-	chips: ChipProp[];
-}
-
-export function rowContext(
-	host: BacklogViewHost,
-	dnd: DragDropController,
-	rows: Map<string, HTMLElement>,
-): RowContext {
-	return { host, dnd, rows, chips: host.settings.showChips ? chipProps(host) : [] };
-}
-
 /** Render the tree content (or the empty state) into the tree element. */
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	const model = ctx.host.model;
 	if (!model) return;
+	// Column widths are the same for every row, so they live on the scroller and
+	// are inherited — including by the subtrees a targeted refresh re-renders.
+	// Geometry lives in one place: columnFit budgets with these numbers and the
+	// stylesheet lays out with them, so the two cannot drift apart.
+	treeEl.setCssProps({
+		'--pbl-prop-col': `${ctx.host.settings.propColumnWidth}px`,
+		'--pbl-prop-count': String(ctx.chips.length),
+		'--pbl-state-col': `${STATE_COL_WIDTH}px`,
+		'--pbl-meta-col': `${META_COL_WIDTH}px`,
+		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
+	});
 	if (model.items.length === 0) {
 		renderEmptyState(ctx.host, treeEl);
 		return;
 	}
-	renderForest(ctx, treeEl, model.roots);
-	if (treeEl.childElementCount === 0) {
+	// Whether any row will render is knowable before rendering one: renderForest draws
+	// a row per root isRowHidden lets through. Asking first keeps the header — which is
+	// not a row — from having to be built and then thrown away again.
+	if (!model.roots.some((root) => !ctx.host.isRowHidden(root))) {
 		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
 		else renderAllDoneState(ctx.host, treeEl, model.results.length);
+		return;
 	}
+	renderColumnHeader(ctx, treeEl);
+	renderForest(ctx, treeEl, model.roots);
 }
 
 /**
@@ -279,31 +275,28 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
 	}
-	badge.createSpan({ text: badgeText });
+	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
 	else badge.addClass('pbl-lvl-unknown');
-	if (item.impliedType) {
+	const implied = item.impliedType
+		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'
+		: '';
+	if (implied) {
 		badge.addClass('pbl-implied');
-		setTooltip(badge, 'Type property not set — level implied from position. Use "Assign missing properties" to write it.');
+		setTooltip(badge, implied);
 	}
+	// A long level name is capped so the row's lead stays bounded (columnFit budgets
+	// for it); the full name is one hover away when that cap actually bites — and an
+	// implied badge needs both, since the cap hides the very level it is explaining.
+	badge.addEventListener('mouseover', () => {
+		if (textEl.scrollWidth <= textEl.clientWidth) return;
+		setTooltip(badge, implied ? `${badgeText} · ${implied}` : badgeText);
+	});
 }
 
-/**
- * Chips, then the fixed trailing columns. State and rollup sit in columns of their
- * own so they line up across rows: anchored to the row's end, they stay readable as
- * a column no matter how long the title is or how deep the item sits.
- */
+/** The fixed trailing columns, then the row's own add button. */
 function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem, childLevel: string): void {
-	const chips = row.createDiv({ cls: 'pbl-chips' });
-	if (ctx.chips.length > 0) renderChips(ctx, chips, item);
-	// Chips may render note links that must not also open the row's own note; the
-	// empty space around them stays part of the row's click target.
-	chips.addEventListener('click', (evt) => {
-		if (evt.target instanceof Element && evt.target.closest('.pbl-chip')) evt.stopPropagation();
-	});
-
-	if (ctx.host.settings.stateKey) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
-	renderRollup(ctx.host, row, item);
+	renderRowColumns(ctx, row, item);
 
 	// A native button so assistive tech can activate it, with no Tab stop — the same
 	// bargain the state chip makes: the tree keeps its single-tab-stop model, and the
@@ -320,68 +313,6 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 	});
 }
 
-/** Progress rollup or descendant count, in a column of its own so both align. */
-function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
-	const settings = host.settings;
-	if (!settings.stateKey && !settings.showCounts) return;
-	const col = row.createDiv({ cls: 'pbl-meta-col' });
-	if (item.descendantCount === 0) return;
-
-	if (settings.stateKey) {
-		const ratio = item.doneDescendants / item.descendantCount;
-		const progress = col.createDiv({ cls: 'pbl-progress' + (ratio === 1 ? ' pbl-complete' : '') });
-		const bar = progress.createDiv({ cls: 'pbl-progress-bar' });
-		bar.createDiv({ cls: 'pbl-progress-fill' }).setCssProps({
-			'--pbl-progress': `${Math.round(ratio * 100)}%`,
-		});
-		progress.createSpan({
-			cls: 'pbl-progress-label',
-			text: `${item.doneDescendants}/${item.descendantCount}`,
-		});
-		setTooltip(progress, `${item.doneDescendants} of ${item.descendantCount} items done`);
-	} else if (settings.showCounts) {
-		col.createSpan({ cls: 'pbl-count', text: String(item.descendantCount) });
-	}
-}
-
-/** Clickable state chip — the inline write surface for the workflow state. */
-function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
-	const value = item.stateValue;
-	const cls = 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
-
-	// A note the Base excluded is context: show the state it has, never offer to
-	// write it. An unset one renders nothing at all rather than a "State" button
-	// that would look like an invitation.
-	if (item.outsideFilter) {
-		if (value === null) return;
-		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
-		fillStateChip(chip, item, value);
-		setTooltip(chip, "Not in this base's filter — state can't be changed here");
-		return;
-	}
-
-	// A native button, so assistive tech can activate it — but no Tab stop: the
-	// tree keeps its single-tab-stop model, and the context menu carries the
-	// documented keyboard path (Set state).
-	const chip = col.createEl('button', {
-		cls,
-		attr: {
-			type: 'button',
-			tabindex: '-1',
-			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
-		},
-	});
-	fillStateChip(chip, item, value);
-	setTooltip(chip, 'Change state');
-	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
-}
-
-function fillStateChip(chip: HTMLElement, item: BacklogItem, value: string | null): void {
-	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
-}
-
 function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childLevel: string): void {
 	row.addEventListener('click', (evt) => {
 		ctx.host.selectItem(item, false);
@@ -391,62 +322,4 @@ function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, chi
 		if (evt.button === 1) ctx.host.openItemInNewTab(item);
 	});
 	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childLevel));
-}
-
-/** The visible properties to render as chips, with their labels — one lookup per render. */
-function chipProps(host: BacklogViewHost): ChipProp[] {
-	let props: BasesPropertyId[] = [];
-	try {
-		props = host.config.getOrder();
-	} catch {
-		return [];
-	}
-	const skip = new Set<string>([
-		'file.name',
-		`note.${host.settings.parentKey}`,
-		`note.${host.settings.orderKey}`,
-		`note.${host.settings.typeKey}`,
-	]);
-	// The interactive state chip already shows this property.
-	if (host.settings.stateKey) skip.add(`note.${host.settings.stateKey}`);
-	return props.filter((prop) => !skip.has(prop)).map((prop) => ({ prop, label: chipLabel(host, prop) }));
-}
-
-function chipLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
-	try {
-		return host.config.getDisplayName(prop);
-	} catch {
-		return prop.substring(prop.indexOf('.') + 1);
-	}
-}
-
-function renderChips(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem): void {
-	// An ancestor from outside the filter has no Bases row, so no property values.
-	if (!item.entry) return;
-	for (const chip of ctx.chips) renderChip(ctx.host, containerEl, item, chip);
-}
-
-function renderChip(host: BacklogViewHost, containerEl: HTMLElement, item: BacklogItem, prop: ChipProp): void {
-	let value = null;
-	try {
-		value = item.entry?.getValue(prop.prop) ?? null;
-	} catch {
-		return;
-	}
-	if (value === null || value instanceof NullValue) return;
-	// isEmpty() is declared on some Value subclasses (ObjectValue) but not on Value
-	// itself, so this stays a genuine test of the value in hand, not a version guard.
-	const maybeEmpty = value as { isEmpty?: () => boolean };
-	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return;
-
-	const text = value.toString();
-	const chip = containerEl.createDiv({ cls: 'pbl-chip' });
-	chip.createSpan({ cls: 'pbl-chip-label', text: prop.label });
-	const valueEl = chip.createSpan({ cls: 'pbl-chip-value' });
-	try {
-		value.renderTo(valueEl, host.app.renderContext);
-	} catch {
-		valueEl.setText(text);
-	}
-	if (valueEl.textContent?.trim() === '' && text.trim() === '') chip.detach();
 }

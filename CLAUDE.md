@@ -50,12 +50,14 @@ mirrors the same directories.
 | `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, selection, write gate | jsdom tests |
 | `view/collapseState.ts` | Which rows are shut, the once-only default, and the debounced save | jsdom tests |
-| `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering (`RowContext` carries the per-pass row index and hoisted config lookups) | jsdom tests |
+| `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
+| `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | Transient drag state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
 | `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
 | `view/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
+| `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
 | `src/ui/prompts.ts` | New-item and folder prompts (+ folder suggest) | jsdom tests |
 | `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
 
@@ -114,7 +116,7 @@ What stays here is what belongs to no single layer.
 One rule covers the whole context-row feature, and every past bug in it was a place
 that forgot the rule rather than a new rule: **an `outsideFilter` row is never a write
 target, never a ranking peer, and never a source of anything derived from the Base's
-results** (counts, level breakdown, state vocabulary, creation folder). It renders, it
+results** (counts, level breakdown, state and tag vocabulary, creation folder). It renders, it
 parents, and that is all. "Never a ranking peer" means never written to and never
 renumbered — its `order` is still *read* (`afterHighestKnown`, `endOfSiblingsOrder`,
 the backfill's max-order scan), because the row is on screen and a rank that ignored
@@ -151,6 +153,7 @@ Writes go through `applySafely`: serialized (`applying` flag), blocked when
 `configProblems` is non-empty, and refused whole if any write targets an `outsideFilter`
 item. Everything it applies was planned by `domain/writePlan.ts`, which touches nothing,
 and applied by `storage/frontmatter.ts`, which is the only module that may.
+
 
 ## Gotchas
 

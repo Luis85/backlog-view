@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
-import { ParentRef, readNumber, readString, resolveParent } from './noteFields';
+import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
 /** One node of the backlog tree, wrapping a BasesEntry. */
@@ -61,6 +61,8 @@ export interface BacklogItem {
 	descendantCount: number;
 	/** Raw value of the state property, if progress tracking is configured. */
 	stateValue: string | null;
+	/** Tags on the note, without their leading '#'; empty when the key is unset. */
+	tags: string[];
 	/** True when the state value matches one of the configured done values. */
 	done: boolean;
 	/** Number of descendants counting as done. */
@@ -90,6 +92,8 @@ export interface BacklogModel {
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
 	observedStates: string[];
+	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
+	observedTags: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
 	ignoredCount: number;
 }
@@ -101,6 +105,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const scoped = settings.hierarchyOnly ? pruneOutsideHierarchy(all, byPath, roots, settings) : all;
 	const ignoredCount = all.length - scoped.length;
 	const observedStates = collectObservedStates(scoped, settings);
+	const observedTags = collectObservedTags(scoped);
 	sortSiblingsDeep(roots);
 	let items = assignAll(roots, settings);
 
@@ -109,7 +114,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const focusIdx = settings.focusLevel
 		? settings.levels.findIndex((l) => l.toLowerCase() === settings.focusLevel.toLowerCase())
 		: -1;
-	const rest = { realRoots: roots, byPath, observedStates, ignoredCount };
+	const rest = { realRoots: roots, byPath, observedStates, observedTags, ignoredCount };
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
 	if (focusIdx >= 0) {
 		const focusRoots = collectFocusRoots(roots, focusIdx);
@@ -200,6 +205,7 @@ function addItem(
 		focusRoot: false,
 		descendantCount: 0,
 		stateValue,
+		tags: settings.tagsKey ? readTags(fm?.[settings.tagsKey]) : [],
 		done: stateValue !== null && doneValues.includes(stateValue.toLowerCase()),
 		doneDescendants: 0,
 		subtreeDone: false,
@@ -419,6 +425,22 @@ function collectObservedStates(all: BacklogItem[], settings: BacklogSettings): s
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
 	const values = [...seen.values()].sort((a, b) => a.localeCompare(b));
 	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
+}
+
+/**
+ * Every tag the results carry, alphabetical and deduped case-insensitively. Like
+ * the state vocabulary this skips notes the Base excluded: an excluded parent's
+ * tags are not this base's vocabulary and must not become assignable to results.
+ */
+function collectObservedTags(all: BacklogItem[]): string[] {
+	const seen = new Map<string, string>();
+	for (const item of all) {
+		if (item.outsideFilter) continue;
+		for (const tag of item.tags) {
+			if (!seen.has(tagKey(tag))) seen.set(tagKey(tag), tag);
+		}
+	}
+	return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
 /** Focused rendering re-roots the tree visually; effective levels stay untouched. */

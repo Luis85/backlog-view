@@ -48,6 +48,68 @@ function linkpathFromRawValue(rawValue: string): string {
 	return linkpath.split('|')[0].split('#')[0].trim();
 }
 
+/**
+ * Frontmatter tags, in either shape Obsidian accepts: a YAML list, or one string
+ * holding several tags separated by commas or spaces. The leading '#' is optional
+ * in frontmatter, so it is stripped here and re-added only for display.
+ */
+export function readTags(value: unknown): string[] {
+	const raw = Array.isArray(value) ? value : [value];
+	const tags: string[] = [];
+	for (const entry of raw) {
+		if (typeof entry !== 'string') continue;
+		for (const part of entry.split(/[,\s]+/)) {
+			const tag = part.trim().replace(/^#+/, '');
+			if (tag.length > 0 && !hasTag(tags, tag)) tags.push(tag);
+		}
+	}
+	return tags;
+}
+
+/**
+ * Tags compare case-insensitively — `#Sprint` and `#sprint` are one tag to Obsidian.
+ * Every membership test, dedupe and delta comparison goes through these two, so the
+ * notion of "same tag" is one decision rather than a `toLowerCase()` in each layer.
+ */
+export function tagKey(tag: string): string {
+	return tag.toLowerCase();
+}
+
+export function hasTag(tags: string[], tag: string): boolean {
+	return tags.some((existing) => tagKey(existing) === tagKey(tag));
+}
+
+/**
+ * What Obsidian will accept as a frontmatter tag, applied to what a user typed.
+ * Letters, digits, combining marks, underscores, hyphens and '/' as the nesting
+ * separator survive; anything else between them becomes a hyphen, and anything else
+ * at the edges is dropped ("Sprint 12!" is "Sprint-12", not "Sprint-12-"). Returns ''
+ * for input that cannot be a tag at all: Obsidian also requires one non-numeric
+ * character, so "123" would be written and then never recognized — a hyphen or a
+ * slash satisfies that, which is what makes "2026-07" a perfectly good tag.
+ *
+ * This is the write-side inverse of `readTags`, and `applyTagDelta` runs it on the way
+ * to disk, so no caller can put a tag Obsidian will not read into a note.
+ */
+export function normalizeTag(input: string): string {
+	const tag = input
+		.trim()
+		// Unusable characters at the edges are dropped, not turned into a hyphen:
+		// "Sprint 12!" is "Sprint-12", not "Sprint-12-".
+		.replace(/^[^\p{L}\p{N}\p{M}_/-]+|[^\p{L}\p{N}\p{M}_/-]+$/gu, '')
+		// One hyphen per run of unusable characters — hyphens caught up in such a run
+		// ("a!-!b") are part of the separator, so they collapse with it. A run made
+		// only of hyphens is not a separator: "release--candidate" is what was typed
+		// and is a perfectly good tag, so it survives untouched.
+		.replace(/[^\p{L}\p{N}\p{M}_/]*[^\p{L}\p{N}\p{M}_/-][^\p{L}\p{N}\p{M}_/]*/gu, '-')
+		// A hyphen the user typed is theirs to keep at either end too — "-urgent" and
+		// "123-" are real tags. A slash there is not: it means an empty nesting
+		// segment, which is why only those are collapsed and trimmed.
+		.replace(/\/{2,}/g, '/')
+		.replace(/^\/+|\/+$/g, '');
+	return /[^\p{N}]/u.test(tag) ? tag : '';
+}
+
 export function readString(value: unknown): string | null {
 	if (typeof value === 'string') {
 		const trimmed = value.trim();

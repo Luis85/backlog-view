@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LEVELS, defaultSettings, getViewOptions, resolveSettings, stateMenuValues } from '../../src/domain/settings';
+import {
+	configProblems,
+	DEFAULT_LEVELS,
+	defaultSettings,
+	getViewOptions,
+	resolveSettings,
+	stateMenuValues,
+} from '../../src/domain/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -128,6 +135,55 @@ describe('resolveSettings progress options', () => {
 	it('declares the new progress option keys', () => {
 		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		expect(flat.map((o) => o.key)).toEqual(expect.arrayContaining(['stateValues', 'showCompleted']));
+	});
+});
+
+describe('configProblems', () => {
+	it('reports properties sharing a frontmatter key', () => {
+		expect(configProblems(defaultSettings())).toEqual([]);
+		const clash = configProblems({ ...defaultSettings(), orderKey: 'parent' });
+		expect(clash).toHaveLength(1);
+		expect(clash[0]).toContain('parent and order');
+	});
+
+	it('does not gate a view whose state property happens to be the tags key', () => {
+		// The tags column gives way instead: it would render nowhere in this config,
+		// so reporting a collision would only turn a working view read-only.
+		const settings = resolveSettings(fakeConfig({ stateProperty: 'note.tags' }));
+		expect(settings.stateKey).toBe('tags');
+		expect(settings.tagsKey).toBe('');
+		expect(configProblems(settings)).toEqual([]);
+	});
+});
+
+describe('resolveSettings display options', () => {
+	it('reads the tags property, defaulting to the frontmatter tags key', () => {
+		expect(resolveSettings(fakeConfig()).tagsKey).toBe('tags');
+		expect(resolveSettings(fakeConfig({ tagsProperty: 'note.labels' })).tagsKey).toBe('labels');
+	});
+
+	it('treats a cleared tags property as off, not as unset', () => {
+		// Unlike the state property, this one defaults to a real key — clearing it in
+		// the view options has to be able to turn tag editing off.
+		expect(resolveSettings(fakeConfig({ tagsProperty: '' })).tagsKey).toBe('');
+		expect(resolveSettings(fakeConfig({ tagsProperty: null })).tagsKey).toBe('');
+		// A property this view cannot write is equally "off"
+		expect(resolveSettings(fakeConfig({ tagsProperty: 'file.tags' })).tagsKey).toBe('');
+	});
+
+	it('clamps the property column width and ignores unusable values', () => {
+		const width = (v: unknown) => resolveSettings(fakeConfig({ propertyColumnWidth: v })).propColumnWidth;
+		expect(width(180)).toBe(180);
+		// A hand-edited .base file can hold anything — never collapse the columns
+		expect(width(10)).toBe(80);
+		expect(width(9999)).toBe(280);
+		expect(width('160')).toBe(160);
+		expect(width('wide')).toBe(defaultSettings().propColumnWidth);
+	});
+
+	it('declares the new display option keys', () => {
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		expect(flat.map((o) => o.key)).toEqual(expect.arrayContaining(['tagsProperty', 'propertyColumnWidth']));
 	});
 });
 

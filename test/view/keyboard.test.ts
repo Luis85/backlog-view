@@ -87,16 +87,24 @@ describe('opening and keyboard', () => {
 		const tree = treeOf(containerEl);
 
 		expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
+		// The focus ring is the tree's own until a row takes it; CSS reads the class
+		// rather than a :has() selector, so it has to track the selection exactly.
+		expect(tree.classList.contains('pbl-has-selection')).toBe(false);
 		key(tree, 'ArrowDown');
 		const row = rowByTitle(containerEl, 'Epic A');
 		expect(row.id).not.toBe('');
 		expect(tree.getAttribute('aria-activedescendant')).toBe(row.id);
+		expect(tree.classList.contains('pbl-has-selection')).toBe(true);
 
 		// A re-render rebuilds the rows; the reference must follow the new element.
 		view.onDataUpdated();
 		const rerendered = rowByTitle(containerEl, 'Epic A');
 		expect(rerendered.classList.contains('pbl-selected')).toBe(true);
 		expect(tree.getAttribute('aria-activedescendant')).toBe(rerendered.id);
+		expect(tree.classList.contains('pbl-has-selection')).toBe(true);
+
+		view.clearSelection();
+		expect(tree.classList.contains('pbl-has-selection')).toBe(false);
 	});
 });
 

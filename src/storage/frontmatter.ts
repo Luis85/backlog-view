@@ -1,6 +1,7 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
+import { hasTag, normalizeTag, readTags } from '../domain/noteFields';
 import { BacklogSettings } from '../domain/settings';
-import { ItemWrite } from '../domain/writePlan';
+import { ItemWrite, TagDelta } from '../domain/writePlan';
 
 /**
  * The ONLY module that writes frontmatter. Everything upstream decides what a
@@ -37,9 +38,32 @@ export async function applyWrites(
 			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
 			// The stateKey may be unset (progress tracking off) — never write to an empty key.
 			if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+			if (write.tags !== undefined && settings.tagsKey) applyTagDelta(fm, settings.tagsKey, write.tags);
 		});
 		onProgress?.(++done, writes.length);
 	}
+}
+
+/**
+ * Add and remove tags on whatever the note holds right now — inside processFrontMatter,
+ * so the list a click was rendered from cannot overwrite a change made since. Always
+ * written back as a YAML list (the shape Obsidian's own property editor writes), and
+ * the key goes when the last tag does rather than leaving an empty array behind.
+ */
+function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta): void {
+	const current = readTags(fm[key]);
+	const removals = delta.remove ?? [];
+	const next = current.filter((tag) => !hasTag(removals, tag));
+	// Normalizing here rather than at the call site is what makes "every tag on disk is
+	// one Obsidian will read" true of the write path itself, not of one caller.
+	for (const tag of (delta.add ?? []).map(normalizeTag)) {
+		if (tag.length > 0 && !hasTag(next, tag)) next.push(tag);
+	}
+	// A delta that changes nothing leaves the note alone, rather than rewriting the
+	// value into a different shape for no reason.
+	if (next.length === current.length && next.every((tag, i) => tag === current[i])) return;
+	if (next.length > 0) fm[key] = next;
+	else delete fm[key];
 }
 
 export interface NewItemSpec {

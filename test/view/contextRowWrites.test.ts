@@ -161,20 +161,26 @@ describe('write safety with context rows, across every entry point', () => {
 
 	function stressView() {
 		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active', tags: ['ctx'] } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10, tags: ['ctx'] }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20, tags: ['a'] }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
 		// The context row in the middle is done and the result below it is not, so
 		// counting either one in a rollup would show up as a wrong number.
-		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
+		vault.addFile('Mid.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'Done', tags: ['ctx'] },
+			parentLink: 'Feature B',
+		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
 
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		const config = new FakeViewConfig({ stateProperty: 'note.status' });
+		// The tag column is a write surface too — drive it like every other one.
+		config.order = ['note.tags'];
+		anyView.config = config;
 		anyView.data = {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
 		};
@@ -239,6 +245,16 @@ describe('write safety with context rows, across every entry point', () => {
 			row.querySelector<HTMLElement>('.pbl-state-chip')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 			for (const state of Menu.lastShown?.items ?? []) {
 				state.clickHandler?.();
+				await flush();
+			}
+			// Every tag control on the row: the add menu and each remove button
+			row.querySelector<HTMLElement>('.pbl-tag-add')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			for (const tag of Menu.lastShown?.items ?? []) {
+				tag.clickHandler?.();
+				await flush();
+			}
+			for (const remove of row.querySelectorAll<HTMLElement>('.pbl-tag-remove')) {
+				remove.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 				await flush();
 			}
 			row.dispatchEvent(new MouseEvent('click', { bubbles: true }));

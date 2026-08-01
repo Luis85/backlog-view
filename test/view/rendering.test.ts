@@ -140,40 +140,6 @@ describe('rendering', () => {
 	});
 });
 
-describe('property chips', () => {
-	it('renders visible properties as chips with the toString fallback', () => {
-		const vault = fixture();
-		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
-		const { containerEl, config, view } = makeView(vault);
-		config.order = ['note.points'];
-		view.onDataUpdated();
-
-		const chip = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-chip');
-		expect(chip?.querySelector('.pbl-chip-label')?.textContent).toBe('points');
-		expect(chip?.querySelector('.pbl-chip-value')?.textContent).toBe('5');
-		// Rows without a value for the property get no chip
-		expect(rowByTitle(containerEl, 'Epic B').querySelector('.pbl-chip')).toBeNull();
-	});
-
-	it('keeps the empty space around chips part of the row click target', () => {
-		const vault = fixture();
-		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
-		const { containerEl, config, view } = makeView(vault);
-		config.order = ['note.points'];
-		view.onDataUpdated();
-
-		// A click on the chip itself must not open the note (it may hold links)…
-		const chipValue = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-chip-value');
-		chipValue?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(vault.opened).toEqual([]);
-
-		// …but the flexible area next to the chips is still the row.
-		const chips = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-chips');
-		chips?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(vault.opened).toEqual([{ path: 'Epic A.md', mode: false }]);
-	});
-});
-
 describe('row columns', () => {
 	function statedVault(): FakeVault {
 		const vault = new FakeVault();
@@ -186,15 +152,15 @@ describe('row columns', () => {
 		return vault;
 	}
 
-	it('puts the state chip in a column of its own, after the flexible chips', () => {
+	it('puts the state chip in a column of its own, after the flexible spacer', () => {
 		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
 
 		for (const row of rows(containerEl)) {
 			const col = row.querySelector('.pbl-state-col');
 			expect(col).not.toBeNull();
 			expect(col?.querySelector('.pbl-state-chip')).not.toBeNull();
-			// The chips absorb the free space, so the column lands at a fixed offset
-			expect(col?.previousElementSibling?.classList.contains('pbl-chips')).toBe(true);
+			// The spacer absorbs the free space, so the column lands at a fixed offset
+			expect(col?.previousElementSibling?.classList.contains('pbl-row-spacer')).toBe(true);
 		}
 	});
 

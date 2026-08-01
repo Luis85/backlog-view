@@ -309,6 +309,8 @@
 .pbl-tree {
 	flex: 1 1 auto;
 	overflow-y: auto;
+	/* Rows clip at the pane edge rather than making the whole tree scroll sideways */
+	overflow-x: hidden;
 	padding: var(--size-4-2) var(--size-4-2) var(--size-4-4);
 }
 
@@ -319,7 +321,7 @@
 	gap: var(--size-4-1);
 	min-height: 30px;
 	padding: var(--size-2-1) var(--size-4-1);
-	padding-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px);
+	padding-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * var(--pbl-indent, 24px));
 	border-radius: var(--radius-s);
 	cursor: pointer;
 	user-select: none;
@@ -363,7 +365,10 @@
 	outline-offset: -1px;
 }
 
-.pbl-tree:focus-visible:has(.pbl-row.pbl-selected) {
+/* The view sets this class alongside aria-activedescendant. `:has()` would express
+   the same thing without the bookkeeping, but it invalidates on every subtree change,
+   and this tree rebuilds itself on every data update. */
+.pbl-tree:focus-visible.pbl-has-selection {
 	outline: none;
 }
 
@@ -451,14 +456,14 @@
 
 /* The state chip and the rollup sit in fixed columns anchored to the row's end,
    so they line up across rows instead of trailing each item's title. */
-/* Both may shrink rather than push the title out of a narrow pane — alignment
-   degrades under pressure instead of costing the row its content. */
+/* Like the property columns they never shrink: the title truncates instead (it has
+   an ellipsis and a tooltip), and a column that ran out of room drops out whole
+   rather than sliding out from under its neighbours on rows with long titles. */
 .pbl-state-col {
 	display: flex;
 	align-items: center;
-	flex: 0 1 auto;
+	flex: 0 0 auto;
 	width: var(--pbl-state-col, 116px);
-	min-width: 0;
 	overflow: hidden;
 }
 
@@ -466,9 +471,8 @@
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	flex: 0 1 auto;
+	flex: 0 0 auto;
 	width: var(--pbl-meta-col, 84px);
-	min-width: 0;
 }
 
 /* An ancestor the Base's filter excluded: context for the tree, not a result */
@@ -508,7 +512,10 @@
 .pbl-row.pbl-done .pbl-title {
 	color: var(--text-faint);
 	/* Longhand, and no explicit decoration color: it defaults to currentColor, which is
-	   the --text-faint above. The shorthand is only partially supported by Obsidian. */
+	   the --text-faint above. Plugin review still reports "text-decoration" as partially
+	   supported — that verdict is about the feature group (skip-ink, thickness,
+	   underline-offset), none of which is used here; line-through is as old as CSS 1.
+	   Dropping it would mean dropping the strike-through, so the longhand stays. */
 	text-decoration-line: line-through;
 }
 
@@ -577,8 +584,11 @@
 	justify-content: center;
 	gap: var(--size-2-1);
 	flex: 0 0 auto;
-	/* A shared minimum keeps titles starting at an even column for the default level names */
+	/* A shared minimum keeps titles starting at an even column for the default level
+	   names; the maximum keeps a long custom level from eating the row — the fit
+	   calculation budgets for a badge no wider than this. */
 	min-width: 58px;
+	max-width: 120px;
 	font-size: var(--font-ui-smaller);
 	font-weight: var(--font-medium);
 	line-height: 1.6;
@@ -590,9 +600,16 @@
 	white-space: nowrap;
 }
 
+.pbl-badge-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
 .pbl-badge-icon {
 	display: inline-flex;
 	align-items: center;
+	flex: 0 0 auto;
 }
 
 .pbl-badge-icon .svg-icon {
@@ -621,50 +638,195 @@
 	opacity: 0.8;
 }
 
-/* -------------------------------------------------------------------- chips */
+/* --------------------------------------------------------- property columns */
 
-.pbl-chips {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-1);
+/* Everything after this is a column: the spacer takes the slack so the columns
+   are anchored to the row's end, whatever the title length or indent. */
+.pbl-row-spacer {
 	flex: 1 1 auto;
-	min-width: 0;
-	overflow: hidden;
-	margin-inline-start: var(--size-4-2);
-	/* Overflowing chips fade out instead of clipping hard */
-	-webkit-mask-image: linear-gradient(to right, black calc(100% - 16px), transparent);
-	mask-image: linear-gradient(to right, black calc(100% - 16px), transparent);
+	min-width: var(--size-4-2);
 }
 
-.pbl-chip {
-	display: inline-flex;
+/* One fixed-width cell per visible property, so a value sits in the same place on
+   every row instead of trailing its title. Never shrinks: a squeezed column would
+   put its values somewhere other than under their header, which is the whole point
+   of the layout — the title truncates instead, and the container query below drops
+   the columns entirely once the pane is too narrow to hold them. */
+.pbl-props {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	width: calc(var(--pbl-prop-col, 132px) * var(--pbl-prop-count, 0));
+	overflow: hidden;
+}
+
+/* Columns drop out in reverse order of usefulness once the pane cannot hold them:
+   first the properties, then the rollup, leaving the title and the state chip. The
+   view measures itself for this (see columnFit): the threshold depends on the
+   configured column width and count, which a media or container query cannot read. */
+.pbl-view.pbl-hide-props .pbl-props {
+	display: none;
+}
+
+.pbl-view.pbl-hide-meta .pbl-meta-col {
+	display: none;
+}
+
+.pbl-view.pbl-hide-state .pbl-state-col {
+	display: none;
+}
+
+.pbl-prop {
+	display: flex;
 	align-items: center;
 	gap: var(--size-2-1);
-	max-width: 220px;
+	flex: 0 0 var(--pbl-prop-col, 132px);
+	width: var(--pbl-prop-col, 132px);
+	min-width: 0;
+	padding-inline-end: var(--size-4-2);
 	overflow: hidden;
 	white-space: nowrap;
 	font-size: var(--font-ui-smaller);
-	background-color: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	padding: 0 var(--size-4-1);
-	line-height: 1.7;
-	flex: 0 0 auto;
-}
-
-.pbl-chip-label {
-	color: var(--text-faint);
-}
-
-.pbl-chip-value {
 	color: var(--text-muted);
+}
+
+.pbl-prop-value {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
-.pbl-chip-value p {
+.pbl-prop-value p {
 	margin: 0;
 	display: inline;
+}
+
+/* The column names, once at the top of the scroller instead of on every row */
+.pbl-cols {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: 0 var(--size-4-1) var(--size-2-2);
+	margin-bottom: var(--size-2-1);
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+}
+
+.pbl-col-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------- tags */
+
+.pbl-prop-tags {
+	gap: var(--size-2-2);
+}
+
+/* Only the pills clip: the add button beside them keeps its place in the cell */
+.pbl-tag-list {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	/* Overflowing tags fade out instead of clipping hard */
+	-webkit-mask-image: linear-gradient(to right, black calc(100% - 12px), transparent);
+	mask-image: linear-gradient(to right, black calc(100% - 12px), transparent);
+}
+
+.pbl-tag {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	max-width: 100%;
+	overflow: hidden;
+	border-radius: var(--radius-l);
+	padding: 0 var(--size-2-2);
+	line-height: 1.6;
+	color: var(--text-accent);
+	background-color: hsla(var(--interactive-accent-hsl), 0.12);
+}
+
+.pbl-tag-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* A note the Base excluded shows its tags but never offers to change them */
+.pbl-row.pbl-outside .pbl-tag {
+	opacity: 0.7;
+}
+
+/* The remove affordance stays out of the way until the row is under the pointer */
+.pbl-tag-remove {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	appearance: none;
+	box-shadow: none;
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-s);
+	padding: 0;
+	margin-inline-start: var(--size-2-1);
+	width: 12px;
+	height: 12px;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.pbl-row:hover .pbl-tag-remove {
+	display: inline-flex;
+}
+
+.pbl-tag-remove:hover {
+	color: var(--text-error);
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-tag-remove .svg-icon {
+	width: 10px;
+	height: 10px;
+}
+
+.pbl-tag-add {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	appearance: none;
+	box-shadow: none;
+	background: transparent;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	padding: 0;
+	width: 16px;
+	height: 16px;
+	flex: 0 0 auto;
+	color: var(--text-faint);
+	cursor: pointer;
+}
+
+.pbl-row:hover .pbl-tag-add {
+	display: inline-flex;
+}
+
+.pbl-tag-add:hover {
+	color: var(--text-accent);
+	border-color: var(--text-accent);
+}
+
+.pbl-tag-add .svg-icon {
+	width: 11px;
+	height: 11px;
 }
 
 /* Clickable workflow-state chip (a real button, minus the default button chrome) */
@@ -738,7 +900,7 @@
 	position: absolute;
 	top: 2px;
 	bottom: 2px;
-	inset-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px + 26px);
+	inset-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * var(--pbl-indent, 24px) + 26px);
 	width: 1px;
 	background-color: var(--background-modifier-border);
 	pointer-events: none;
@@ -776,6 +938,23 @@
 
 	.pbl-add {
 		opacity: 1;
+	}
+
+	/* Revealed by row hover on a pointer device, which a touch user cannot produce —
+	   without this the inline tag editing has no reachable control at all. */
+	.pbl-tag-remove,
+	.pbl-tag-add {
+		display: inline-flex;
+	}
+
+	.pbl-tag-remove {
+		width: 16px;
+		height: 16px;
+	}
+
+	.pbl-tag-add {
+		width: 20px;
+		height: 20px;
 	}
 
 	.pbl-row {

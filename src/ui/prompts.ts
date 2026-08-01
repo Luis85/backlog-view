@@ -1,4 +1,21 @@
-import { AbstractInputSuggest, App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
+import { App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
+import { ValueSuggest } from './valueSuggest';
+
+/**
+ * Enter submits the prompt, and the field can claim focus once the modal is on
+ * screen — the shape every text field in these prompts wants. The Enter that
+ * confirms an IME composition is not a submit: taking it would close the prompt
+ * on the half-finished reading instead of the word being composed.
+ */
+function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus = false): void {
+	inputEl.addEventListener('keydown', (evt) => {
+		if (evt.key === 'Enter' && !evt.isComposing) {
+			evt.preventDefault();
+			submit();
+		}
+	});
+	if (autofocus) window.setTimeout(() => inputEl.focus(), 0);
+}
 
 export interface NewItemPromptResult {
 	title: string;
@@ -16,14 +33,7 @@ export interface NewItemPromptOptions {
 }
 
 /** Folder autocomplete for the folder field of the prompt. Exported for tests. */
-export class FolderSuggest extends AbstractInputSuggest<TFolder> {
-	private readonly textInputEl: HTMLInputElement;
-
-	constructor(app: App, textInputEl: HTMLInputElement) {
-		super(app, textInputEl);
-		this.textInputEl = textInputEl;
-	}
-
+export class FolderSuggest extends ValueSuggest<TFolder> {
 	protected getSuggestions(query: string): TFolder[] {
 		const needle = query.toLowerCase();
 		const folders: TFolder[] = [];
@@ -40,10 +50,72 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 		el.setText(folder.path);
 	}
 
-	selectSuggestion(folder: TFolder): void {
-		this.setValue(folder.path);
-		this.textInputEl.dispatchEvent(new Event('input'));
-		this.close();
+	protected valueOf(folder: TFolder): string {
+		return folder.path;
+	}
+}
+
+/** Autocomplete over the tags already in use, so spellings do not drift. Exported for tests. */
+export class TagSuggest extends ValueSuggest<string> {
+	private readonly known: string[];
+
+	constructor(app: App, textInputEl: HTMLInputElement, known: string[]) {
+		super(app, textInputEl);
+		this.known = known;
+	}
+
+	protected getSuggestions(query: string): string[] {
+		const needle = query.trim().replace(/^#+/, '').toLowerCase();
+		return this.known.filter((tag) => tag.toLowerCase().includes(needle)).slice(0, 50);
+	}
+
+	renderSuggestion(tag: string, el: HTMLElement): void {
+		el.setText(`#${tag}`);
+	}
+
+	protected valueOf(tag: string): string {
+		return tag;
+	}
+}
+
+export interface TagPromptOptions {
+	/** Tags offered as suggestions — the ones this item does not already carry. */
+	known: string[];
+	onSubmit: (tag: string) => void;
+}
+
+/** Prompt asking for a single tag to add to an item. */
+export class TagPromptModal extends Modal {
+	private readonly options: TagPromptOptions;
+
+	constructor(app: App, options: TagPromptOptions) {
+		super(app);
+		this.options = options;
+	}
+
+	onOpen(): void {
+		this.titleEl.setText('Add tag');
+		let tag = '';
+		const submit = () => {
+			if (tag.trim().length === 0) return;
+			this.close();
+			this.options.onSubmit(tag);
+		};
+
+		new Setting(this.contentEl).setName('Tag').addText((text) => {
+			text.setPlaceholder('Sprint-12');
+			text.onChange((v) => (tag = v));
+			new TagSuggest(this.app, text.inputEl, this.options.known);
+			submitOnEnter(text.inputEl, submit, true);
+		});
+
+		new Setting(this.contentEl).addButton((btn) => {
+			btn.setButtonText('Add').setCta().onClick(submit);
+		});
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
 	}
 }
 
@@ -79,13 +151,7 @@ export class FolderPromptModal extends Modal {
 				text.setValue(this.options.defaultFolder);
 				text.onChange((v) => (folder = v));
 				new FolderSuggest(this.app, text.inputEl);
-				text.inputEl.addEventListener('keydown', (evt) => {
-					if (evt.key === 'Enter') {
-						evt.preventDefault();
-						submit();
-					}
-				});
-				window.setTimeout(() => text.inputEl.focus(), 0);
+				submitOnEnter(text.inputEl, submit, true);
 			});
 
 		new Setting(this.contentEl).addButton((btn) => {
@@ -125,14 +191,6 @@ export class TitlePromptModal extends Modal {
 				folder: this.options.askFolder ? folder.trim().replace(/^\/+|\/+$/g, '') : undefined,
 			});
 		};
-		const submitOnEnter = (inputEl: HTMLInputElement) => {
-			inputEl.addEventListener('keydown', (evt) => {
-				if (evt.key === 'Enter') {
-					evt.preventDefault();
-					submit();
-				}
-			});
-		};
 
 		new Setting(this.contentEl).setName('Title').addText((text) => {
 			text.setPlaceholder('Item title');
@@ -140,8 +198,7 @@ export class TitlePromptModal extends Modal {
 				title = v;
 				createBtn?.setDisabled(title.trim().length === 0);
 			});
-			submitOnEnter(text.inputEl);
-			window.setTimeout(() => text.inputEl.focus(), 0);
+			submitOnEnter(text.inputEl, submit, true);
 		});
 
 		if (this.options.askFolder) {
@@ -154,7 +211,7 @@ export class TitlePromptModal extends Modal {
 					text.setPlaceholder('Backlog');
 					text.onChange((v) => (folder = v));
 					new FolderSuggest(this.app, text.inputEl);
-					submitOnEnter(text.inputEl);
+					submitOnEnter(text.inputEl, submit);
 				});
 		}
 

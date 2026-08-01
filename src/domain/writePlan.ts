@@ -29,6 +29,18 @@ export interface ItemWrite {
 	typeName?: string;
 	/** New value for the state property; ignored when no state property is configured. */
 	state?: string;
+	/**
+	 * Tags to add and remove (without '#'). A delta rather than the new list,
+	 * because the row it came from can be a refresh behind the note: two removals
+	 * in a row would otherwise both compute from the same stale list, and the
+	 * second would put the first tag back.
+	 */
+	tags?: TagDelta;
+}
+
+export interface TagDelta {
+	add?: string[];
+	remove?: string[];
 }
 
 /**

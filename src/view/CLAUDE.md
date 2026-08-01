@@ -62,11 +62,68 @@ free of runtime code so imports stay cycle-free.
 
 ## Controls
 
-- Row layout is columnar: `.pbl-chips` is the flexible middle, and `.pbl-state-col` /
-  `.pbl-meta-col` are fixed-width trailing columns so the state chip and the rollup line
-  up across rows regardless of title length and indent. Both columns render on every row
-  whenever their feature is configured — a leaf without a rollup still gets the empty
-  `.pbl-meta-col`, or the columns after it would shift per row.
+- Row layout is columnar: `.pbl-row-spacer` is the flexible middle, and everything after
+  it (`.pbl-props` → `.pbl-state-col` → `.pbl-meta-col`) is fixed-width, so values line
+  up across rows regardless of title length and indent. Every configured column renders
+  on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
+  after it would shift per row. Widths live on the tree element as `--pbl-prop-col` /
+  `--pbl-prop-count` (one set per render pass, inherited by targeted subtree refreshes),
+  and `.pbl-cols` is the presentational (`aria-hidden`) header naming the columns; row
+  cells carry the property name in their tooltip and `aria-label` instead of repeating
+  it as visible text. The header is not a row: `renderTree` checks for a rendered
+  `.pbl-row` before falling back to the empty states. Columns never shrink (a shrunk
+  column no longer sits under its header), so a pane too narrow for them drops them
+  whole: `columnFit` derives the threshold from the *configured* width and count — a
+  fixed CSS breakpoint would clip two 280px columns in a 700px pane — and the view
+  toggles `pbl-hide-props` / `pbl-hide-meta` / `pbl-hide-state` from a `ResizeObserver`
+  (absent in jsdom, and `clientWidth` is 0 there, so tests stub it and call the render
+  path). Two things make the measurement honest: it happens *after* the rows render, so
+  the scrollbar that `overflow-y: auto` may have just added is already taking its width,
+  and the observer watches the **tree**, whose content box shrinks when that scrollbar
+  appears — the view's own box does not. A verdict that changes after a render triggers
+  exactly one more pass (`refitting`), since the second pass measures the same tree.
+  The indent term comes from `ctx.maxDepth`, an output of the render rather than a
+  second walk of the model: the pass that drew the rows is the one that knows which
+  rows are on screen. Everything the threshold counts has to be *bounded in CSS and summed here*:
+  `ROW_LEAD_WIDTH` is written as its terms (padding, grip, chevron, capped badge, title
+  min-width, the orphan and outside markers, spacer, add button) so it can be checked
+  against `styles.css`, the badge carries a `max-width` for that reason, indent is added
+  per rendered depth, and the tree's own padding is subtracted because `clientWidth`
+  includes it while rows live in the content box. The numbers TS owns — the two column
+  widths and the indent step — are *published* to CSS as custom properties by
+  `renderTree`, the same way `--pbl-prop-col` already was, so the stylesheet reads them
+  instead of repeating them. The terms that are Obsidian's (`--size-4-1` gaps, the tree
+  padding) cannot be owned that way and stay as constants; a theme that redefines them
+  moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
+  one left out of the sum, comes back as a clipped row rather than a dropped column. The
+  ladder ends at the state chip: below that only the row's lead is left, and the title
+  truncates from there.
+- Which properties become columns is resolved once per data update into `host.chips`
+  (`chipProps`), and everything else reads that: the rows render it, and
+  `tagsColumnVisible` is `chips.some((c) => c.tags)`. Deriving it twice is how the tag
+  menu came to offer editing for a column `chipProps` had skipped.
+- Tag editing follows the *column*, not the setting: `tagsColumnVisible` asks whether
+  the tags property is one of the resolved columns, because the pills the user removes
+  are the ones the column renders — a context menu that edited an invisible property
+  would write things nothing on screen shows. That
+  is a question about the Base's configuration, not about the pane: the responsive
+  `pbl-hide-*` classes are a space decision, and no command is withheld for them (the
+  state chip drops the same way and Set state stays). On a pane too narrow for the
+  column the menu is the only way left to edit tags, and it shows the item's tags
+  checked, so nothing is edited unseen.
+  `applyWrites` drops `ItemWrite.tags` without a `tagsKey` (same rule as state). The
+  write is a *delta* (`TagDelta`), never a computed list: a row's `tags` are a snapshot
+  from the last refresh, so two removals before the refresh lands would both start from
+  the same list and the second would put the first tag back. `applyTagDelta` therefore
+  runs inside `processFrontMatter` against the live value, rewrites it as a YAML
+  sequence, deletes the key when the last tag goes, and leaves the note untouched when
+  the delta changes nothing. `observedTags` is result-only vocabulary, exactly like
+  `observedStates`.
+- The tree carries a focus ring only until a row takes it, and the switch is a class
+  (`pbl-has-selection`, set beside `aria-activedescendant`) rather than `:has()`: a
+  `:has()` selector on a container invalidates whenever its subtree changes, and this
+  one rebuilds on every data update. Obsidian's plugin review flags `:has` for the same
+  reason. State CSS depends on belongs on the element, put there where the state changes.
 - Two tab-stop zones, and a control's element type follows from which one it is in.
   The **toolbar** is ordinary UI: every activatable control is a real `<button>`
   (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one

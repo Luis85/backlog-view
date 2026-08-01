@@ -29,6 +29,13 @@ export interface BacklogSettings {
 	focusLevel: string;
 	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
 	stateKey: string;
+	/**
+	 * Frontmatter key holding the note's tags, or '' to render them as plain text.
+	 * Editing is offered only while this property is one of the visible ones.
+	 */
+	tagsKey: string;
+	/** Width in pixels of one property column. */
+	propColumnWidth: number;
 	/** State values (case-insensitive) that count as done. */
 	doneValues: string[];
 	/** Workflow states offered by the state menus, in order; [] falls back to observed values. */
@@ -39,6 +46,10 @@ export interface BacklogSettings {
 
 export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
 const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
+/** Property columns are fixed-width so values line up across rows; this is that width. */
+const DEFAULT_PROP_COLUMN_WIDTH = 132;
+const MIN_PROP_COLUMN_WIDTH = 80;
+const MAX_PROP_COLUMN_WIDTH = 280;
 
 export function defaultSettings(): BacklogSettings {
 	return {
@@ -55,6 +66,8 @@ export function defaultSettings(): BacklogSettings {
 		newItemFolder: '',
 		focusLevel: '',
 		stateKey: '',
+		tagsKey: 'tags',
+		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
 		doneValues: [...DEFAULT_DONE_VALUES],
 		states: [],
 		showCompleted: true,
@@ -91,6 +104,11 @@ export function configProblems(settings: BacklogSettings): string[] {
 	add('order', settings.orderKey);
 	add('type', settings.typeKey);
 	add('state', settings.stateKey);
+	// `tagsKey` is deliberately absent: unlike the four above it cannot collide by
+	// the time anything reads it, because `resolveSettings` turns a colliding tags
+	// key off. Reporting it here would instead block every write in a view that was
+	// working before this option existed — a base whose state property happens to be
+	// `tags` would upgrade into a read-only view.
 	for (const [key, users] of keys) {
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
@@ -246,6 +264,23 @@ function displayGroup(): BasesAllOptions {
 				default: true,
 			},
 			{
+				type: 'slider',
+				key: 'propertyColumnWidth',
+				displayName: 'Property column width',
+				default: DEFAULT_PROP_COLUMN_WIDTH,
+				min: MIN_PROP_COLUMN_WIDTH,
+				max: MAX_PROP_COLUMN_WIDTH,
+				step: 4,
+			},
+			{
+				type: 'property',
+				key: 'tagsProperty',
+				displayName: 'Tags property',
+				default: 'note.tags',
+				placeholder: 'tags',
+				filter: notePropsOnly,
+			},
+			{
 				type: 'toggle',
 				key: 'showCounts',
 				displayName: 'Show descendant counts',
@@ -271,6 +306,17 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		}
 		return def;
 	};
+	/**
+	 * Like `propKey`, but only for an option whose default is a real key: clearing
+	 * it in the view options has to mean "off", and only an option that was never
+	 * touched falls back. Without the distinction the tags property could never be
+	 * turned off — `getAsPropertyId` reports cleared and unset the same way.
+	 */
+	const clearablePropKey = (key: string, def: string): string => {
+		// Set to something: honor it, and treat anything unusable (cleared, or a
+		// property this view cannot write, like file.tags) as off.
+		return config.get(key) === undefined ? def : propKey(key, '');
+	};
 	const str = (key: string): string => {
 		const v = config.get(key);
 		return typeof v === 'string' ? v : '';
@@ -278,6 +324,14 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	const bool = (key: string, def: boolean): boolean => {
 		const v = config.get(key);
 		return typeof v === 'boolean' ? v : def;
+	};
+	// A slider stores a number, but a hand-edited .base file can hold anything;
+	// clamp so a stray value cannot collapse the columns to nothing.
+	const width = (key: string, def: number): number => {
+		const v = config.get(key);
+		const n = typeof v === 'number' ? v : Number.parseFloat(typeof v === 'string' ? v : '');
+		if (!Number.isFinite(n)) return def;
+		return Math.min(Math.max(Math.round(n), MIN_PROP_COLUMN_WIDTH), MAX_PROP_COLUMN_WIDTH);
 	};
 	const list = (key: string): string[] =>
 		str(key)
@@ -297,6 +351,23 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 
 	const levels = list('levels');
 	const doneValues = list('doneValues');
+	/**
+	 * The tags column is the only one whose property is also *editable*, so it gives
+	 * way to every other role: a key already spoken for by parent, order, type or
+	 * state is that feature's, and `chipProps` skips such a property anyway, so tag
+	 * editing would be unreachable. Resolving it to "off" here keeps that one fact
+	 * in one place instead of a collision report that would gate unrelated writes.
+	 */
+	const tagsKey = (): string => {
+		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
+		const taken = [
+			propKey('parentProperty', fallback.parentKey),
+			propKey('orderProperty', fallback.orderKey),
+			propKey('typeProperty', fallback.typeKey),
+			propKey('stateProperty', fallback.stateKey),
+		];
+		return taken.includes(key) ? '' : key;
+	};
 
 	return {
 		parentKey: propKey('parentProperty', fallback.parentKey),
@@ -312,6 +383,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		newItemFolder: str('newItemFolder').trim().replace(/^\/+|\/+$/g, ''),
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
+		tagsKey: tagsKey(),
+		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
 		states: dedupe(list('stateValues')),
 		showCompleted: bool('showCompleted', fallback.showCompleted),

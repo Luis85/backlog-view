@@ -488,6 +488,29 @@ describe('buildModel progress rollup', () => {
 		expect(f2?.children[0].subtreeDone).toBe(true);
 	});
 
+	it('reads tags from a list or a single string, deduped and without the hash', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', tags: ['#alpha', 'beta', 'Alpha'] } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic', tags: 'gamma, #delta epsilon' } });
+		vault.addFile('C.md', { frontmatter: { type: 'Epic', tags: 42 } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const tagsOf = (title: string) => model.items.find((i) => i.title === title)?.tags;
+
+		expect(tagsOf('A')).toEqual(['alpha', 'beta']);
+		expect(tagsOf('B')).toEqual(['gamma', 'delta', 'epsilon']);
+		expect(tagsOf('C')).toEqual([]);
+		expect(model.observedTags).toEqual(['alpha', 'beta', 'delta', 'epsilon', 'gamma']);
+	});
+
+	it('leaves tags empty when no tags property is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', tags: ['alpha'] } });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, tagsKey: '' });
+
+		expect(model.items[0].tags).toEqual([]);
+		expect(model.observedTags).toEqual([]);
+	});
+
 	it('collects observed states deduped, open states first, then done states', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', status: 'Ready' } });
