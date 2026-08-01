@@ -45,7 +45,7 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   stays open: shifting an absence would invent a date the note never stated. Dragging
   the open end is exactly how the missing date gets written — where its property is
   configured: with only one date property named ([[Horizons or dates]]), the other end
-  has no key to receive a write, so it offers no grip to pointer and pick-up alike.
+  has no key to receive a write, so it offers no grip to pointer and lift alike.
   Nothing is ever written to an unconfigured key.
 - **1b — the bar is a parent's own.** Only the parent's dates move; its children state
   their own plans and stay put. A bar is a note's plan, never a group handle — the same

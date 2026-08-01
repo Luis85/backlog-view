@@ -47,7 +47,7 @@ one undo.
   planned alone ([[Lanes on the roadmap]]), with no redundant horizon write riding
   along.
 - **1b — the user cannot drag.** The context menu offers the horizons as a set-action and
-  the keyboard offers pick-up and move ([[Keyboard and menu on the roadmap]]); both write
+  the keyboard offers lift and move ([[Keyboard and menu on the roadmap]]); both write
   the identical batch.
 - **1c — the drag starts on the shelf.** The same single write: entering the vocabulary
   is the triage gesture, and the shelf is where untriaged items wait for exactly it.

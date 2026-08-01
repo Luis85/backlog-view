@@ -37,7 +37,7 @@ crosses a lane and a column does.
 
 1. The user turns lanes on; rows group under lane headers naming each parent, on either
    axis.
-2. The user moves an item into another lane — by drag, menu or pick-up
+2. The user moves an item into another lane — by drag, menu or lift
    ([[Keyboard and menu on the roadmap]]).
 3. The view plans the reparent the tree's drop-onto would plan — appended order, the
    autoType cascade only as configured — plus the horizon or date write when the
