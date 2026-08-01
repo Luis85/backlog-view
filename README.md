@@ -259,12 +259,16 @@ Once in the tree (mirroring Azure DevOps backlog shortcuts where sensible):
 
 ### Undo
 
-Everything the view writes — a drop, a move, a state or tag change, the ✨ backfill —
-can be taken back right afterwards: click the **↩** toolbar button or press
+Every property change the view writes — a drop, a move, a state or tag change, the ✨
+backfill — can be taken back right afterwards: click the **↩** toolbar button or press
 <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree. Undoing the undo redoes. One level is
 kept, per view and per session, and quick no-ops don't spend it — re-picking an item's
 current state won't cost you the undo of the drop before it. A batch that failed
 partway can still take back the part that landed.
+
+Creating an item is the one exception: undo never deletes a note, so a new item stays —
+and the undo button still points at the last property change from before it. Delete the
+note itself to take a creation back.
 
 Undo puts back exactly what was there before, and only where the note still holds what
 the view wrote: a property you edited by hand in the meantime is kept rather than
