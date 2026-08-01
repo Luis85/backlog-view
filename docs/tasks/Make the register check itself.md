@@ -89,6 +89,25 @@ The third is not something review asked for; the same reasoning reaches it. Decl
 successor while claiming `Accepted` is a record that reads as current and is not — the
 same failure as a one-sided link, stated in one record rather than across two.
 
+A fourth round pushed the module check further. It asked only whether a module *path*
+appeared somewhere in the docs — so a new view option or command added to a file the
+register already names passed unseen, while the sweep note claimed every such surface maps
+to a PBI. The two literal-string surfaces are now checked by name:
+
+| Planted | Reported |
+| --- | --- |
+| `key: 'showCounts'` → `'showBurndown'` | `no note names the view option "showBurndown"` |
+| `id: 'create-backlog'` → `'archive-backlog'` | `no note names the command "archive-backlog"` |
+
+Ten option keys and one command id had to be added to the register to make that pass,
+which is the finding: they were *described* everywhere and *named* nowhere, and an option
+key is stored in the user's `.base` file, so it is the one string that must never drift.
+
+Menu items and toolbar controls stay a hand sweep — they are display text, and forcing the
+notes to quote UI strings that change for cosmetic reasons would trade a real check for a
+brittle one. The sweep note now says which is which instead of claiming the script covers
+both.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 

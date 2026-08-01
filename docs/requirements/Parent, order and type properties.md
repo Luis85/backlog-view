@@ -54,6 +54,9 @@ editable as notes rather than becoming a database I can only reach through one v
 ## Where it lives
 
 `src/domain/noteFields.ts` reads the fields · `src/domain/model.ts` links them ·
-`src/domain/settings.ts` resolves the keys and reports collisions.
+`src/domain/settings.ts` resolves the keys and reports collisions ·
+`src/domain/viewOptions.ts` (`parentProperty`, `orderProperty`, `typeProperty` — the
+persisted option keys, which live in the user's `.base` file and so may never be renamed
+without resetting the option for everyone).
 Tests: `test/domain/noteFields.test.ts`, `test/domain/model.test.ts`,
 `test/domain/settings.test.ts`.

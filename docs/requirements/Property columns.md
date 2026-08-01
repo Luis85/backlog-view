@@ -65,6 +65,7 @@ the whole reason to put values in columns rather than after the title.
 
 ## Where it lives
 
+`src/domain/viewOptions.ts` (`showProperties`, `propertyColumnWidth`, `tagsProperty`) ·
 `src/view/render/columns.ts` (`RowContext`, the header, every trailing cell) ·
 `src/view/backlogView.ts` (`chipProps`, `columnFit`, the `ResizeObserver`) ·
 `src/view/interactions/tags.ts` (vocabulary, normalization, the delta writes).

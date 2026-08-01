@@ -53,6 +53,7 @@ click instead of opening the note.
 
 ## Where it lives
 
+`src/domain/viewOptions.ts` (`stateProperty`, `stateValues`, `doneValues`) ·
 `src/domain/model.ts` (`collectObservedStates` — result-only vocabulary) ·
 `src/domain/settings.ts` (`stateMenuValues`: the configured list, else observed ∪ a done
 value) · `src/view/render/columns.ts` (the chip) ·

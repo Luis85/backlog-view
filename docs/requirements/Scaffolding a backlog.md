@@ -68,7 +68,7 @@ file I have to learn the syntax of before anything renders.
 `createBacklogBase` — the one vault write that is not a work item) ·
 `src/ui/prompts.ts` (`FolderPromptModal`, `FolderSuggest`) ·
 `src/ui/valueSuggest.ts` (the suggester both the folder and tag pickers extend) ·
-`src/main.ts` (the command).
+`src/main.ts` (the `create-backlog` command).
 Tests: `test/commands/scaffold.test.ts`, `test/storage/baseFile.test.ts`,
 `test/ui/prompts.test.ts`.
 The manual alternative — writing the `.base` by hand — is documented in the project

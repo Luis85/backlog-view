@@ -62,6 +62,7 @@ left rather than everything that ever was.
 
 ## Where it lives
 
+`src/domain/viewOptions.ts` (`showCompleted`, `showCounts`) ·
 `src/domain/model.ts` (`assignAll`, `subtreeDone`) ·
 `src/view/backlogView.ts` (`isRowHidden`) · `src/view/render/columns.ts` (the rollup cell) ·
 `src/view/render/emptyStates.ts` (the all-done state).

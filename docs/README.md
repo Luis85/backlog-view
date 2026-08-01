@@ -80,9 +80,11 @@ can run is worse than none, because it invites trust it has not earned:
    from either side rots the same way: the predecessor goes on reading as current. An ADR
    naming a successor must also carry the `Superseded` status, which is that same failure
    inside one record.
-7. Every module in `src/` and every test file is named by at least one note — the check
-   that finds *missing* notes rather than wrong ones. See
-   [[Sweep the register against the code]] for how that sweep is run and what it found.
+7. Every module in `src/`, every test file, **every view-option key and every command id**
+   is named by at least one note — the check that finds *missing* notes rather than wrong
+   ones. Option keys and command ids are literal strings in the source, so they can be
+   checked; menu items and toolbar controls are display text and stay a hand sweep. See
+   [[Sweep the register against the code]] for which is which, and what the sweep found.
 
 Each rule was verified the way this project verifies its lint rules: by planting the
 violation and watching the check reject it.

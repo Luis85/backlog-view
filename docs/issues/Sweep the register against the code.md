@@ -67,15 +67,33 @@ has to say where a behaviour lives cannot be written without checking.
 ## Acceptance criteria
 
 - Every view option, command, menu item and toolbar control maps to a named PBI.
-- Every `src/` module with its own test file is named by at least one PBI's "Where it
-  lives".
+- Every `src/` module with its own test file is named by at least one note.
 - Every symbol and path a note names exists.
+
+## What the script can take over, and what it cannot
+
+`docs-check.mjs` mechanises the parts of this sweep that are **literal strings in the
+source**, so those stop needing a human:
+
+- every **view-option key** in `viewOptions.ts` and every **command id** in `main.ts` must
+  be named by some note. Both are promises to the user — an option key is *stored in their
+  `.base` file* — so one arriving unnamed is a capability nobody specified;
+- every module and test file must be named by some note;
+- every path and wikilink a note names must resolve.
+
+**Menu items and toolbar controls stay a hand sweep.** They are display text
+(`setTitle('Move to top')`), and the register describes them in prose rather than quoting
+them, so a literal check would either fail on every note or force the notes to quote UI
+strings that change for cosmetic reasons. Adding one to an existing module is exactly the
+case the script cannot see, and it is why this note is a checklist rather than a closed
+task.
 
 ## Outcome
 
-Done: 23 use cases became 28, and all three criteria are checked by script rather than by
-reading — see the validation described in `docs/README.md`.
+Done: 23 use cases became 28, and the mechanisable criteria are now enforced by
+`npm run docs` rather than by reading — see `docs/README.md`.
 
-**Re-run this when a feature lands**, not on a schedule. The sweep is cheap (five greps)
-and its value is entirely in being done at the moment behaviour is added, which is the
-moment it is easiest to write down and the moment nobody wants to.
+**Re-run the rest when a feature lands**, not on a schedule. What is left to do by hand is
+the two display surfaces above, and its value is entirely in being done at the moment
+behaviour is added — the moment it is easiest to write down and the moment nobody wants
+to.

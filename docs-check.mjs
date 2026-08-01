@@ -270,6 +270,26 @@ for (const file of sources) {
 	if (!allText.includes(file)) fail("docs", `no note names ${file}`);
 }
 
+/**
+ * The two feature surfaces that are literal strings in the source, and so can be checked
+ * rather than swept: a persisted view-option key, and a command id. Both are promises to
+ * the user — an option key is *stored in their `.base` file* — so one arriving with no
+ * note naming it is a capability nobody specified.
+ *
+ * The other surfaces in the sweep (menu items, toolbar controls) are display text, and
+ * the register describes them in prose rather than quoting them. Those stay a hand sweep;
+ * see `docs/issues/Sweep the register against the code.md`, which says which is which.
+ */
+const surfaces = [
+	["view option", "src/domain/viewOptions.ts", /\bkey: '([^']+)'/g],
+	["command", "src/main.ts", /\bid: '([^']+)'/g],
+];
+for (const [kind, file, pattern] of surfaces) {
+	for (const [, name] of (await readFile(file, "utf8")).matchAll(pattern)) {
+		if (!allText.includes(name)) fail("docs", `no note names the ${kind} "${name}"`);
+	}
+}
+
 // --------------------------------------------------------------------------- report
 const useCases = [...notes.values()].filter((n) => n.type === "PBI").length;
 console.log(
