@@ -23,8 +23,8 @@ crossing lanes is the drop-onto-a-row the tree already plans.
   under a lane header naming it, and parentless cards gather in a trailing lane —
   Jira keeps an undeletable "Everything Else" lane for the same reason.
 - A lane header opens its parent. A header whose parent is outside the Base's filter
-  renders as context and obeys the context-row rule: never a card, never counted,
-  never written.
+  renders as context and obeys the context-row rule: never counted, never written,
+  never draggable.
 - Lane collapse is remembered per device, like columns and rows.
 - Dragging a card into another lane writes the reparent the tree's drop-onto would
   plan — appended order, the autoType cascade only as configured — and, when the

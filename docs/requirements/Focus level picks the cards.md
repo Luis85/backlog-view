@@ -22,6 +22,12 @@ re-roots, on the board it decides which rung becomes cards.
   ranks with the level it sits level with rather than vanishing.
 - With no focus level, every result is a card, and each card's type badge carries the
   difference.
+- A focused-level item that is itself outside the filter still places its results, as
+  the tree's context rows do: an inert context card — visible, carrying its rollup of
+  visible results, never draggable, never counted, never written — under its own
+  state's column when one exists, else in the no-state column, styled and announced
+  as context. A base returning only Tasks beneath excluded parents therefore still
+  shows a board under that parent level's focus.
 - Changing focus is a render decision and writes nothing.
 - Focus narrows the board and its counts together, and nothing falls silently: results
   below the focused level surface in card rollups, ancestors as context. The epic's

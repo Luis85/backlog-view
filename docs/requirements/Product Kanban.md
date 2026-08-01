@@ -66,18 +66,21 @@ top of them:
 
 - The two projections never disagree: one model, one result set, one write gate, one
   undo history. A change made on the board is the change the tree shows.
-- The board never loses a result: at full scope, every item the Base returned renders
-  in exactly one column, and column counts sum to the result count. Exactly two
-  controls narrow that deliberately, in both projections alike — the focus level
-  (descendants surface in card rollups, ancestors as context) and "Show completed
-  items" (fully-done subtrees hide, by the tree's own `subtreeDone` predicate) — and
-  the narrowing belongs to those controls, never to the board: restoring them
-  restores every result to a column.
+- The board never loses a result: at full scope, every result the model holds renders
+  in exactly one column, and column counts sum to that count. The hierarchy scope
+  ("Ignore notes outside the hierarchy") prunes ahead of both projections alike, its
+  toll carried by the same ignored-note advisory the tree shows; past it, exactly two
+  controls narrow further, in both projections alike — the focus level (descendants
+  surface in card rollups, ancestors as context) and "Show completed items"
+  (fully-done subtrees hide, by the tree's own `subtreeDone` predicate). The
+  narrowing belongs to those controls, never to the board: restoring them restores
+  every result to a column.
 - No second source of truth: no board-only rank property, no board-only state, no
   state string written that the user did not configure or observe.
 - A row outside the Base's filter obeys the context-row rule on the board exactly as
-  in the tree: it may label context, and it is never a card, never counted, never
-  written.
+  in the tree — it renders, it parents, and that is all: a breadcrumb, a lane header,
+  or an inert context card when focus lands on its level. Never counted, never
+  written, never a source of columns.
 
 ## Shape in the codebase
 

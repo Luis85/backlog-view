@@ -26,7 +26,8 @@ has no authority to show less.
   nudge to adopt the state or re-state the items, never a dropped card.
 - State-to-column matching is case-insensitive, exactly as `doneValues` matching
   already is.
-- Column counts sum to the cards on the board — at full scope, exactly the result
-  count; only the two narrowings the epic names move the two together
-  ([[Focus level picks the cards]], [[Done columns stay lean]]). A row loaded only
-  for context is not a card and is in no count.
+- Column counts sum to the result cards on the board — at full scope, exactly the
+  count of results the model holds, the hierarchy scope having pruned ahead of both
+  projections; only the two narrowings the epic names move the two together
+  ([[Focus level picks the cards]], [[Done columns stay lean]]). A row rendered only
+  for context is in no count, and its value never mints a column.

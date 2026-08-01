@@ -22,7 +22,8 @@ on a board, the hierarchy has to travel on the card.
   would render, and its tag pills. Both projections read the same resolved column list
   (`host.chips`), so a property hidden in the tree is hidden on the card.
 - The parent renders on the card as context — including a parent outside the Base's
-  filter, which labels the card and is never itself one.
+  filter, which labels the card; outside-filter items themselves render on the board
+  only in the context forms the epic names.
 - A parent item's card carries its rollup, so descendants the board is not showing
   surface as progress rather than disappearing.
 - A done card is styled done. Activating a card opens its note, exactly as activating
