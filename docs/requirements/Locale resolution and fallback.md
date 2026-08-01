@@ -15,6 +15,11 @@ already handled upstream — the resolution left to do is matching that code to 
 catalog. Obsidian's translation list includes regional codes, so `pt-BR` must find the
 `pt` catalog rather than fall all the way to English.
 
+In this round the answer is always English: `English ships alone` is the only catalog
+that ships, so every code resolves to `en` and no lookup can miss. That makes the
+resolution logic correct-by-vacuum, which is exactly the state a fixture locale exists to
+break — the chain has to be exercised now, or its first real exercise is a user's.
+
 Resolution happens **once**, at load. Obsidian requires a restart to change its language,
 so re-reading per render would be cost with no observable benefit; `main.ts` registers
 the view name and the command name at `onload` and could not react anyway.

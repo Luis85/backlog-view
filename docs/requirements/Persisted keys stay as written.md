@@ -52,11 +52,17 @@ one of the two things this repository cannot test.
 
 ## Acceptance criteria
 
-- A test runs the scaffold under a non-English locale and asserts the generated `.base`
-  content and the created file path are identical to the English run, byte for byte.
-- A test asserts the full view-option key set is identical across every shipped locale.
+- A test runs the scaffold under a non-English **fixture** locale and asserts the
+  generated `.base` content and the created file path are identical to the English run,
+  byte for byte. English ships alone, so a fixture is what makes this assertion capable
+  of failing at all.
+- A test asserts the full view-option key set is identical across every locale, fixtures
+  included. Restricting it to *shipped* locales makes it a one-element comparison in this
+  round, which proves nothing.
 - The collapse-store key for a given base is identical across locales.
 - No frontmatter value written by `applyWrites` or `createBacklogItem` differs by locale.
   These are the only two write functions, which is what makes this checkable at all.
 - A `docs/issues/` note records the one thing tests cannot cover: whether a vault created
-  in one language opens correctly in another. That needs two live vaults.
+  in one language opens correctly in another. That needs two live vaults **and two
+  languages**, so with English shipping alone it cannot arise yet — the note is opened
+  against the first real translation, not this round.

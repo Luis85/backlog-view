@@ -141,7 +141,18 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
 
 The jsdom harness renders nothing, and `docs/issues/Smoke test the visual changes.md`
 records that as a standing limitation with `npm run test-build` as the answer. **This PBI
-cannot be closed from this repository.** It needs a live vault, with Obsidian set to a
-long-word language and to an RTL one, and it should leave behind a re-runnable checklist
-in `docs/issues/` the way the appearance check did — because the next locale added will
-need the same look.
+cannot be closed from this repository.** It needs a live vault and a re-runnable
+checklist in `docs/issues/`, the way the appearance check did, because the next locale
+added will need the same look.
+
+What it does **not** need is a second language, which is just as well: `English ships
+alone` rules one out for this round. Setting Obsidian to German would show this plugin in
+English and prove nothing. The two conditions come from development-only tooling instead
+— a **pseudo-locale** for the expansion half, padding every string by a known factor, and
+a forced `dir="rtl"` for the direction half. Both are reachable from a
+`npm run test-build` vault and neither ships.
+
+The pseudo-locale earns its place twice over here, because its bracketing makes the sweep
+visible: any string still rendering as plain English is one the sweep missed. That is a
+completeness check on `Every surface translated` that no lint rule can perform, and it is
+available in round one precisely because it is not a translation.

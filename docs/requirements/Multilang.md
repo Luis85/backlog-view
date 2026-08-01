@@ -109,8 +109,10 @@ hundred strings get moved against an interface that then changes.
   locale.
 - The suite passes in a locale that is not English, and no assertion depends on English
   wording.
-- At least one non-English catalog ships, because machinery with a single locale has
-  never been exercised.
+- **English ships alone in this round** — it is the default, the fallback and the only
+  catalog. The machinery a second locale would exercise is proven by fixture locales and
+  a development-only pseudo-locale instead, so nothing ships untested and no translation
+  ships unreviewed. See `English ships alone`.
 
 ## Not in scope
 
@@ -119,5 +121,7 @@ hundred strings get moved against an interface that then changes.
   so resolving the locale once at load is correct, not a shortcut.
 - **The marketplace description.** `manifest.json` carries one `description` and the
   community list shows it as written. Out of the plugin's hands.
+- **Any second language.** A deliberate scope decision rather than an omission, and the
+  one PBI most likely to be misread as unfinished — `English ships alone` states it.
 - **Note content.** Titles, tags and state values are the user's words already.
 - **Translating `docs/`.** This register is the maintainers' working notes, not product.

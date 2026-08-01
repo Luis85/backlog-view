@@ -44,8 +44,10 @@ layout. Translated text is longer, shorter and sometimes right-to-left, and what
 that is the stylesheet. The seam is drawn once and stated in both places —
 `Theming and styling` owns the *mechanism* (logical properties, no physical direction
 rules, and the lint that keeps it that way), `Multilang` owns the *verification* (that
-the view still reads correctly with German compounds in the columns and Arabic running
-the other way).
+the view still reads correctly with long compounds in the columns and the tree running
+the other way). Since English ships alone in the first round, that verification runs
+against a development-only pseudo-locale and a forced `dir="rtl"` rather than against a
+shipped translation.
 
 ## Definition of done, for anything under this epic
 

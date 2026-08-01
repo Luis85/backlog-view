@@ -26,8 +26,12 @@ rather than an assumption that `npm run check` already covers it.
 ## Acceptance criteria
 
 - A test compares every locale's key set against English and fails on either difference,
-  naming the keys. One test, driven off the shipped locale list, so adding a language
-  needs no test edit.
+  naming the keys. One test, driven off the locale list, so adding a language needs no
+  test edit.
+- Because **English ships alone**, that test has nothing real to compare in this round and
+  would pass vacuously. It runs against **fixture** catalogs instead, so every failure
+  mode below is exercised before a real second locale exists rather than after. A parity
+  check that has only ever seen one catalog is not a check — see `English ships alone`.
 - The report distinguishes *missing* from *stale*: they have different fixes and a
   contributor should not have to work out which they are looking at.
 - Every message's **parameter set** matches English too. A translation that drops `{count}`

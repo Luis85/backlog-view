@@ -32,8 +32,10 @@ not been reworded. The first is the test's purpose. The second is a hostage.
   belongs beside it.
 - The full suite runs green under a **non-English** locale, not only under English. A
   suite that has only ever run in the source language proves nothing about the layer.
-  Whether that is a second CI matrix entry or a locale-parameterized run is an
-  implementation call; that it happens is not.
+  Since English ships alone, that locale is a **fixture** rather than a shipped catalog —
+  which is the point: the fixture can carry three plural categories and a regional code,
+  and English cannot. Whether it runs as a second CI matrix entry or a
+  locale-parameterized pass is an implementation call; that it happens is not.
 - A small number of assertions genuinely *are* about text — that the English catalog
   reads in sentence case, that a translated option label is quoted into the hint that
   names it. Those stay, and they say in a comment that the wording is the subject.
