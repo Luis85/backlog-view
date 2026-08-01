@@ -381,7 +381,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (!model) return;
 		const board = this.settings.boardMode;
 		this.viewEl.toggleClass('pbl-board-mode', board);
-		this.treeEl.setAttribute('role', board ? 'listbox' : 'tree');
+		// The listbox role is a promise of options. The no-workflow guidance renders
+		// none, so it presents as a plain labelled region rather than an empty
+		// listbox a screen reader may announce as nothing at all — a board with
+		// columns always has options, because an empty column's stop is one.
+		const role = board ? (this.settings.stateKey ? 'listbox' : 'region') : 'tree';
+		this.treeEl.setAttribute('role', role);
 		this.treeEl.setAttribute('aria-label', board ? 'Product backlog board' : 'Product backlog');
 		this.dnd.onRenderStart();
 		this.boardDnd.onRenderStart();

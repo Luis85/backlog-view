@@ -58,6 +58,9 @@ describe('the board projection', () => {
 		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
 		expect(hint).toContain('State property');
 		expect(hint).toContain('view options');
+		// Guidance holds no options, so it must not claim to be a listbox — an
+		// empty one may be announced as nothing at all.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
 	});
 
 	it('falls back to the observed states when no list is configured', () => {
