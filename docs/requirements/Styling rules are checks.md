@@ -19,9 +19,9 @@ a new write path cannot appear by accident."* `showAtMouseEvent` became a lint r
 shipping as a bug once. `VISUAL_DEPTH` guards the two files that decide types.
 
 Styling has the same shape and none of the enforcement. The audit in
-`Theming and styling` found a clean file — 0 literal colours, 0 `!important`, every
-selector `.pbl`-scoped — and every
-one of those is a fact about one afternoon's grep. The rules are real, they are followed,
+`Theming and styling` found a clean file — no literal rendered colour, 0 `!important`,
+every selector `.pbl`-scoped — and every one of those is a fact about one afternoon's
+grep. The rules are real, they are followed,
 and they are written nowhere a contributor would meet them.
 
 Two things make the case sharper than it looks. `eslint src test` does not read
@@ -38,14 +38,37 @@ argue about.
 
 | Rule | Today |
 | --- | --- |
-| No literal colour value — `var(--…)` only | 0 violations |
+| No literal **rendered** colour — `var(--…)` only | 0 violations, but see below |
 | No `!important` | 0 |
 | Every selector inside the `.pbl` namespace | 0 outside it, keyframe steps aside |
 | No physical `left`/`right` property where a logical twin exists | 1 (line 96) |
 | No direction-dependent value in a shadow, mask or gradient | 2 (line 336, lines 748-749) |
 | No `:has()` on a container | Already reasoned about in `src/view/CLAUDE.md` |
 
-The last two rows are why this is not just "add stylelint and take the defaults".
+### The colour rule needs one word of care
+
+Stated as *"no literal colour value"* the rule reports **10** violations against today's
+file, not zero, and all 10 are correct code:
+
+| Literal | Where | Why it stays |
+| --- | --- | --- |
+| `transparent` ×8 | 53, 71, 595, 641, 782, 813, and twice in the mask | Not a colour. It is the *absence* of one, and no theme variable means "nothing" |
+| `black` ×2 | 748-749, the mask stops | A mask's channel is **alpha**. `black` there means fully opaque and is never rendered — tokenizing it would substitute a colour for an opacity |
+
+So the rule is about **rendered** colour: a literal naming a colour the user sees. That is
+a narrowing by reason rather than an exception list, which matters because an exception
+list would have to be maintained and a reason does not — the next `transparent` is
+covered without anyone adding a row.
+
+Worth noting how this was missed: the audit behind the table searched for `#hex` and bare
+`rgb()`/`hsl()` and reported zero, which was true of the forms it searched for and not of
+the rule it was checking. CSS colour *keywords* are a third form. Same shape as the
+direction audit in `Layout survives translated text` — a category named, then partially
+enumerated — which is why that note's method now says to run the search that returns every
+member rather than the members that come to mind.
+
+The last two rows of the table are why this is not just "add stylelint and take the
+defaults".
 
 The direction rule has to match on **values**, not property names. `box-shadow: inset 2px
 0 0` (line 336) and `linear-gradient(to right, …)` (748-749) both pin a side, and neither
@@ -71,6 +94,10 @@ instead. Neither rule comes out of a default config.
   which has never failed is a check nobody has tested.
 - The two current violations are fixed by `Layout survives translated text`, so this PBI
   either lands after it or lands with the direction rules staged.
+- The colour rule is scoped to **rendered** colour and passes on today's file unchanged.
+  `transparent` and mask stops are outside it by reason, not by a suppression list — if
+  the implementation needs eight `/* stylelint-disable */` comments to go green, the rule
+  is wrong rather than the stylesheet.
 - Rule messages name the fix, not the violation. `Use var(--text-muted); a literal colour
   ignores the user's theme` teaches; `unexpected hex value` gets suppressed.
 - Exceptions are narrow and carry a reason inline, matching how `usedClassMembers`

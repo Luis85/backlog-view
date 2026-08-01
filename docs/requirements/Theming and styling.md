@@ -22,7 +22,7 @@ PBIs establishes rather than assumes:
 
 | Checked | Result |
 | --- | --- |
-| Literal colour values (`#hex`, bare `rgb()`/`hsl()`) | **0** — all 14 colour expressions read `var(--…)` |
+| Literal **rendered** colours | **0** — all 14 colour expressions read `var(--…)`. The 8 `transparent` and the 2 mask stops name an absence and an alpha, not a colour |
 | `!important` | **0** |
 | `var(--…)` uses | **202**, across 47 distinct variables |
 | Selectors outside the `.pbl` namespace | **0** — the only unscoped rules are `@keyframes` steps |

@@ -60,8 +60,17 @@ one of the two things this repository cannot test.
   included. Restricting it to *shipped* locales makes it a one-element comparison in this
   round, which proves nothing.
 - The collapse-store key for a given base is identical across locales.
-- No frontmatter value written by `applyWrites` or `createBacklogItem` differs by locale.
-  These are the only two write functions, which is what makes this checkable at all.
+- No frontmatter value written by `applyWrites`, `applyRestores` or `createBacklogItem`
+  differs by locale. Those are the **three** functions that put frontmatter on disk —
+  `processFrontMatter` at `frontmatter.ts:70` and `:155`, and `vault.create` at `:262` —
+  and a small closed set is what makes this checkable at all.
+- `applyRestores` is the one worth stating rather than testing blind. It replays values
+  **captured from the note** when the forward batch landed, so it is locale-independent by
+  construction rather than by care: it emits what was already there. That makes it a
+  *dependency*, not an exemption — a forward write that ever emitted a localized value
+  would be faithfully replayed by undo and by redo, so its correctness is inherited
+  entirely from `applyWrites`. The criterion is to verify that reasoning holds, not to
+  skip the function because it looked derivative.
 - A `docs/issues/` note records the one thing tests cannot cover: whether a vault created
   in one language opens correctly in another. That needs two live vaults **and two
   languages**, so with English shipping alone it cannot arise yet — the note is opened
