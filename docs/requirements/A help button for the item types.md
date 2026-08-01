@@ -34,10 +34,13 @@ One entry per type, generated from the vocabulary rather than retyped beside it:
 
 Plus the three rules that are invisible on screen and decide what the view does:
 
-- A child's level is **one rung below its parent's**, so type follows position on the
-  ladder — but `Issue` and `Bug` have a pinned rank and are never re-typed by a move.
+- A child's level is **one rung below its parent's** — that is what the ladder means, and
+  it is the level an untyped item is shown as.
 - An item with **no `type`** shows the level its position implies, and nothing is written
   until you ask for it.
+- **A move does not re-type anything.** Drag a PBI under an Epic and it stays a PBI;
+  `Assign item type when moving` (off by default) is what turns the rewrite on, and even
+  then `Issue` and `Bug` keep their pinned rank and are never re-typed.
 - The rules are **advisory**: they decide what is offered, never what is refused. Any drag
   is allowed, and a deliberate structure is kept.
 
@@ -49,6 +52,9 @@ Plus the three rules that are invisible on screen and decide what the view does:
   a seventh type cannot ship without its explanation.
 - The section states the pinned rank of the extra types and the advisory rule, since both
   are places a user's mental model would otherwise be wrong rather than merely incomplete.
+- The **displayed level** and the **written `type`** are kept apart: position implies the
+  first and, with re-typing off by default, never rewrites the second. Conflating them
+  here would contradict [[Help for moving and ranking]] and teach the wrong default.
 - Nothing is written and nothing is persisted by opening, reading or closing it.
 - The dialog scrolls, closes on Escape, and returns focus to the button that opened it.
 

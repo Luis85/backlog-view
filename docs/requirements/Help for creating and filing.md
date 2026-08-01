@@ -23,9 +23,11 @@ note appears in the view at all.
 - **Three entry points.** The row's **+** for a child, the toolbar **New** for the type
   the view is currently about, and the **▾** beside it for any type at the top level. Where
   a row can hold more than one kind of item, the modal asks which.
-- **Filing is per type.** Every created note lands under the home folder, with one folder
-  picker per type — a Bug is filed with the bugs wherever in the tree it hangs. Untouched
-  pickers follow the home folder, so relocating a backlog stays one setting.
+- **Filing is per type.** One folder picker per type — a Bug is filed with the bugs
+  wherever in the tree it hangs. Each picker holds a complete path and defaults to a
+  subfolder of the home folder, so an untouched one follows it and relocating a backlog
+  stays one setting; a folder you pick by hand keeps its own path, wherever that points.
+  Folder mode overrules both, filing a child beside its parent's folder note.
 - **The warning worth reading before the first item**: the view creates a note and then
   shows it only if the Base's filter matches it. Type folders left at their defaults under
   a base filtered elsewhere create items you will not see. They are not lost — the

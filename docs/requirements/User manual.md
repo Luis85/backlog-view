@@ -33,9 +33,10 @@ The gap is sharpest exactly where the vocabulary is least obvious:
 - **The rules are advisory.** Nothing is refused, so the view cannot teach by rejection
   the way a validating tool does. What it offers is the whole lesson, and an unexplained
   offer teaches nothing.
-- **Writes are silent and instant.** A drag rewrites `parent` and `order` across a
-  subtree; the tree redraws and no dialog says what happened. Undo exists precisely
-  because of that, and undo is a toolbar arrow with a tooltip.
+- **Writes are silent and instant.** A drag rewrites the dragged item's `parent` and
+  `order` and may renumber the siblings it landed among — several notes changed with no
+  dialog and no save step. Undo exists precisely because of that, and undo is a toolbar
+  arrow with a tooltip.
 
 ## Shape, and the decisions that go with it
 

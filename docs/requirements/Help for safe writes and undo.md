@@ -30,9 +30,14 @@ section that decides whether a new user trusts it.
 - **Creating an item is the exception**: undo never deletes a note. Delete the note to
   take a creation back — and the undo slot still points at the change before it.
 - **The view never writes to a note your Base excluded.** A context row is not a write
-  target, and the whole batch is refused rather than partly applied if one is named.
+  target, and a batch naming one is refused **before any of it is written** rather than
+  applied in part.
 - **A misconfigured view writes nothing at all.** `Check view options` in the toolbar
   means the write gate is closed until the configuration is valid.
+- **A batch that fails partway leaves what it already wrote.** Files are written one at a
+  time, so a change touching many notes can stop halfway; the part that landed is on
+  screen and is exactly what undo takes back. This is the honest version of "safe" — not
+  all-or-nothing, but nothing left that you cannot see or reverse.
 
 ## Acceptance criteria
 
@@ -40,8 +45,10 @@ section that decides whether a new user trusts it.
   is exactly the sentence that stops someone from trying a plugin.
 - Undo is described with its two limits — one level, and creation — rather than as an
   unbounded history.
-- The refuse-the-whole-batch rule is stated as the guarantee it is: a change either lands
-  or does not, never half.
+- The whole-batch refusal is scoped to what it actually guarantees — a batch **rejected
+  before writing** — and is not written as atomicity. `applyWrites` writes sequentially
+  and a mid-batch failure keeps the applied prefix, so the section says so and points at
+  undo rather than promising all-or-nothing.
 - The section is reachable from the busy indicator and from the config warning, since both
   are moments the user is already asking what the view is doing to their files.
 
