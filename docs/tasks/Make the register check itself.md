@@ -193,6 +193,32 @@ six". They carry **no** `type` at all, and the checker exempts them by path. The
 was right and the reason was wrong, which is the more misleading of the two: a reader
 correcting the file would have gone looking for a type that is not there.
 
+A ninth round found two more ways to slip past the surface scan, and prompted the only
+structural change in this list:
+
+| Planted | Reported |
+| --- | --- |
+| `key:'brandNewNoDocs'` — no space after the colon | `no note names the view option "brandNewNoDocs"` |
+| `typeFolderKey(type + 'Archive')` | `cannot resolve the view option …` |
+| `'key': 'brandNewNoDocs'` — quoted property name, invisible to the pattern | `found 16 \`key:\` … expected 17` |
+
+The first two are ordinary fixes: match `\s*` rather than exactly one space, and exempt the
+generated expression **exactly** rather than by prefix — a prefix accepted a changed
+argument while the derivation went on producing the six original keys, green and wrong
+about which keys are persisted.
+
+The third is the point. Nine rounds of this file have been regex-scanning TypeScript, and
+each round found another way the regex could be fooled. That is a floor, not a series of
+bugs: there is no parser here to reach for. So the scan now carries a **count backstop** —
+every option object has a `displayName` (as does every group, which has no key), and every
+command has an `addCommand(`, so the number of keys found must equal the number the file
+should contain. A key the pattern cannot see for **any** reason makes the counts diverge
+and fails.
+
+That check earned itself on its first run by catching a wrong assumption in its own author:
+it reported 17 keys against 21 `displayName`s, because groups carry one too. The expected
+count is one minus the other, and the check said so before a human noticed.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 

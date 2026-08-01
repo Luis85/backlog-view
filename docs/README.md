@@ -93,8 +93,10 @@ can run is worse than none, because it invites trust it has not earned:
    is named by at least one note — the check that finds *missing* notes rather than wrong
    ones. That includes the six keys *generated* per type, derived from the vocabulary and
    the key template rather than scanned for; a key expression the check cannot resolve
-   fails rather than being passed over. Menu items and toolbar controls are display text
-   and stay a hand sweep. See [[Sweep the register against the code]] for which is which,
+   fails rather than being passed over — and the number of keys found is cross-checked
+   against the number the file should contain, so one the pattern cannot see at all makes
+   the counts diverge instead of quietly shrinking what is checked. Menu items and toolbar
+   controls are display text and stay a hand sweep. See [[Sweep the register against the code]] for which is which,
    and what the sweep found.
 
 Each rule was verified the way this project verifies its lint rules: by planting the

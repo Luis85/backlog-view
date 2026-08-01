@@ -57,6 +57,7 @@ const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 
 const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
+const count = (text, pattern) => [...text.matchAll(pattern)].length;
 
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
@@ -315,12 +316,39 @@ for (const file of sources) {
  * see `docs/issues/Sweep the register against the code.md`, which says which is which.
  */
 const surfaces = [
-	{ kind: "view option", file: "src/domain/viewOptions.ts", field: "key", generator: /^typeFolderKey\(/ },
-	{ kind: "command", file: "src/main.ts", field: "id" },
+	{
+		kind: "view option",
+		file: "src/domain/viewOptions.ts",
+		field: "key",
+		// The ONE generated expression, matched exactly. A prefix would accept
+		// `typeFolderKey(type + 'Archive')` while the derivation below still produced the
+		// six unsuffixed keys — green, and wrong about which keys are persisted.
+		generator: /^typeFolderKey\(type\)$/,
+		// Every option carries a `displayName` and so does every GROUP, which has no key —
+		// so the expected count is one minus the other. This is the backstop for the whole
+		// scan: a `key` the pattern cannot see, for any reason nobody predicted, makes the
+		// counts diverge and fails, rather than quietly reducing what is checked.
+		expected: (src) => count(src, /\bdisplayName:\s*/g) - count(src, /\btype: 'group'/g),
+		expectedFrom: "`displayName:` minus `type: 'group'`",
+	},
+	{
+		kind: "command",
+		file: "src/main.ts",
+		field: "id",
+		expected: (src) => count(src, /\baddCommand\(/g),
+		expectedFrom: "`addCommand(`",
+	},
 ];
-for (const { kind, file, field, generator } of surfaces) {
+for (const { kind, file, field, generator, expected, expectedFrom } of surfaces) {
 	const src = await readFile(file, "utf8");
-	for (const [, expr] of src.matchAll(new RegExp(`\\b${field}: ([^,\\n]+)`, "g"))) {
+	// `\s*` after the colon, and a value that may run to a line break: depending on one
+	// space was itself a way for a real surface to go unseen.
+	const found = [...src.matchAll(new RegExp(`\\b${field}:\\s*([^,\\n]+)`, "g"))];
+	const want = expected(src);
+	if (found.length !== want) {
+		fail("docs-check", `found ${found.length} \`${field}:\` in ${file}, expected ${want} from ${expectedFrom}`);
+	}
+	for (const [, expr] of found) {
 		const value = expr.trim().replace(/,$/, "");
 		const literal = /^'([^']*)'$/.exec(value);
 		if (literal) {
