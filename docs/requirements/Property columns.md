@@ -66,7 +66,10 @@ the whole reason to put values in columns rather than after the title.
 ## Where it lives
 
 `src/domain/viewOptions.ts` (`showProperties`, `propertyColumnWidth`, `tagsProperty`) ·
-`src/view/render/columns.ts` (`RowContext`, the header, every trailing cell) ·
-`src/view/backlogView.ts` (`chipProps`, `columnFit`, the `ResizeObserver`) ·
+`src/view/render/columns.ts` (`RowContext`, the header, every trailing cell, plus
+`chipProps` and the fit ladder — `columnFit` decides and `syncColumnFit` applies it,
+together, because a threshold computed in one file and applied in another is one edit
+away from the two disagreeing) ·
+`src/view/backlogView.ts` (the `ResizeObserver` and when to re-measure) ·
 `src/view/interactions/tags.ts` (vocabulary, normalization, the delta writes).
 Tests: `test/view/columns.test.ts`, `test/view/tags.test.ts`.

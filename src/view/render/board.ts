@@ -3,8 +3,11 @@ import { renderPropCells, renderRollup, RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderBadge, renderTitleText } from './rows';
 import { BoardSnapshot } from '../host';
+import { uniqueElementId } from '../selection';
 import { BoardDragController } from '../interactions/boardDrag';
+import { showItemMenu } from '../interactions/menu';
 import { boardColumns, BoardColumn, BoardModel } from '../../domain/board';
+import { childTypeChoices } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 
 /**
@@ -19,11 +22,40 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDra
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
 	const board = boardColumns(model, host.settings, (item) => !host.isRowHidden(item));
 
+	renderBoardInstructions(boardEl);
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
 	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd));
 	dnd.wireBoard(boardEl);
 	renderBoardAdvisory(ctx, boardEl, board);
 	return { board, colEls };
+}
+
+/**
+ * What the board can do without a pointer, told rather than left to be discovered.
+ * Visually hidden and attached with `aria-describedby`, so it is read once when
+ * focus arrives on the board and never again — the shortcuts are exactly the part
+ * a screen-reader user cannot see a hint for, and a drag they cannot make is not
+ * an alternative they should have to guess at. The id is minted per element
+ * because two saved boards can sit in split panes and `aria-describedby` resolves
+ * across the whole document.
+ *
+ * `aria-hidden` AND described-by, which only looks contradictory: the board is a
+ * listbox, whose children are options, and a stray div among them is content a
+ * reader may try to announce in its own right. Hiding it keeps the option list
+ * clean — and a referenced description is still read from a hidden element, which
+ * is the whole reason the visually-hidden-description pattern works at all.
+ */
+function renderBoardInstructions(boardEl: HTMLElement): void {
+	const help = boardEl.createDiv({
+		cls: 'pbl-sr-only',
+		attr: { 'aria-hidden': 'true' },
+		text:
+			'Arrow keys move between cards and columns. Alt with left or right arrow moves the selected card ' +
+			'one column, writing the same change a drop writes. The menu key opens the card menu, where set ' +
+			'state offers every column — the path that works without a drag on every device. Enter opens the note.',
+	});
+	help.id = uniqueElementId('pbl-board-help');
+	boardEl.setAttribute('aria-describedby', help.id);
 }
 
 /**
@@ -159,5 +191,9 @@ function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dn
 	card.addEventListener('auxclick', (evt) => {
 		if (evt.button === 1) host.openItemInNewTab(item);
 	});
+	// The menu is the non-drag path, and on touch the only one — so a card carries it
+	// exactly as a row does. What it offers differs (see `buildItemMenu`): a card has
+	// no visible neighbours to rank against, and its Set state is the board's columns.
+	card.addEventListener('contextmenu', (evt) => showItemMenu(host, evt, item, childTypeChoices(item)));
 	dnd.wireCard(card, item);
 }

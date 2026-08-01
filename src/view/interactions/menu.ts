@@ -43,7 +43,10 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	}
 	menu.addSeparator();
 
-	addMoveSection(host, menu, item);
+	// The move section is tree shape: every entry in it is defined by the row's
+	// visible NEIGHBOURS, and a card has none — within-column order is derived, so
+	// there is no rank to move within and no sibling to indent under.
+	if (!host.boardMode) addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
@@ -184,26 +187,58 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
 	showMenuForClick(menu, evt);
 }
 
+/** One offer in Set state: the value it writes (null removes the key) and its name. */
+interface StateChoice {
+	state: string | null;
+	label: string;
+}
+
 /**
- * The states this item's menu offers. The item's own value joins the configured
- * or observed list when missing, so the current state can always render checked.
+ * What Set state offers. In the tree: the configured or observed values, plus the
+ * item's own when it is in neither, so the current state can always render checked.
+ *
+ * On the board: the board's own COLUMNS, read off the board rather than rebuilt —
+ * the configured states, the observed out-of-workflow values, and the no-state
+ * entry whose write removes the key. That is what makes the menu the drag's equal:
+ * every target a drop can reach the menu offers, and no target the menu offers is
+ * missing from the board. `stateMenuValues` alone cannot supply that list — it
+ * returns only the configured states when a list is set, and knows no no-state —
+ * and a second list built from the same inputs would be a second vocabulary to
+ * keep in step. The labels come from the columns too, so the entry a user picks is
+ * named exactly as the column they can see.
  */
-function stateChoices(host: BacklogViewHost, item: BacklogItem): string[] {
+function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
+	const board = host.boardMode ? host.board?.board : null;
+	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
 	const current = item.stateValue;
-	if (current !== null && !values.some((v) => v.toLowerCase() === current.toLowerCase())) {
-		return [...values, current];
-	}
-	return values;
+	const listed = current !== null && values.some((v) => v.toLowerCase() === current.toLowerCase());
+	const all = listed || current === null ? values : [...values, current];
+	return all.map((state) => ({ state, label: state }));
+}
+
+/** True when this offer is the state the item already holds — no-state included. */
+function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
+	if (choice.state === null) return item.stateValue === null;
+	return item.stateValue !== null && item.stateValue.toLowerCase() === choice.state.toLowerCase();
+}
+
+/**
+ * The write a Set state entry means. On the board the menu is the drag's equal, so
+ * it takes the drag's own path — the same planned write, the same gate, the same
+ * announcement — and that path is also the only one that can express the no-state
+ * entry, which the tree's list never offers.
+ */
+function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
+	if (host.boardMode || choice.state === null) return host.performBoardMove(item, choice.state);
+	return host.applySafely([{ file: item.file, state: choice.state }]);
 }
 
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	for (const state of stateChoices(host, item)) {
+	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
-			si.setTitle(state).onClick(() => void host.applySafely([{ file: item.file, state }]));
-			if (item.stateValue !== null && item.stateValue.toLowerCase() === state.toLowerCase()) {
-				si.setChecked(true);
-			}
+			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
+			if (isCurrentState(item, choice)) si.setChecked(true);
 		});
 	}
 }

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, vi } from 'vitest';
+import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig } from './vault';
@@ -20,6 +21,12 @@ export interface Harness {
 export function useViewHarness(): void {
 	beforeEach(() => {
 		document.body.empty();
+		// The board's live region is a module-level singleton in the drag library, so
+		// emptying the body detaches it without the library knowing: it would keep
+		// writing announcements into a node no test can find, and the first one to
+		// look would read the previous test's move. Dropping it makes the next
+		// announcement build a fresh one.
+		liveRegionCleanup();
 		Notice.reset();
 		Menu.lastShown = null;
 		Menu.lastPosition = null;

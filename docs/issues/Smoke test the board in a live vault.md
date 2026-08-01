@@ -37,6 +37,12 @@ carries states.
   true on a device, confirm the context menu changes state end to end regardless,
   and record whether drag ships on touch or stays menu-only. That decision belongs
   on evidence from a device, not a guess in a spec.
+- **Without a pointer** — with a screen reader on, tab into the board once and confirm
+  the hidden instructions are read; then move a card by Alt+Left/Right and by the card
+  menu's Set state, and confirm each move is spoken with the card and both column names
+  ([[Keyboard, menu and touch]]). The live region is the drag library's, announced on a
+  delay so a focus change cannot interrupt it — whether that delay reads as prompt or
+  as lost is exactly the question jsdom cannot answer.
 - **Collapse** — collapsed done columns and lanes come back collapsed after a restart,
   and renaming the base keeps them (the identity migrations cover the board's keys).
 - **Themes** — light, dark, and one community theme: column headers, over-limit

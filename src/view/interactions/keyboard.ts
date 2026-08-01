@@ -187,33 +187,79 @@ interface BoardPosition {
  * Board keyboard support — the same one-tab-stop model as the tree: arrows move
  * the selection across cards and columns, Home and End reach the edges, Enter
  * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes. A column with no card is
- * still a stop, so an empty board is fully drivable. The move shortcuts and the
- * card menu are the next increment's work, alongside the board's Set state.
+ * still a stop, so an empty board is fully drivable. Alt+Left and Alt+Right move
+ * the selected card one column, writing exactly the batch a drop writes.
  */
 export function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	if (evt.target !== evt.currentTarget) return;
 	if (handleBoardChromeKey(host, evt)) return;
-	// Navigation is unmodified keys only. Alt+arrows are the MOVE shortcuts this
-	// increment defers — a modified arrow that silently moved the selection instead
-	// of the card would teach the wrong reflex, and other chords are not this
-	// handler's to swallow.
-	if (evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
 	const snapshot = host.board;
 	if (!snapshot || snapshot.board.columns.length === 0) return;
 	const pos = boardPosition(host, snapshot);
-	const next = nextBoardPosition(snapshot, pos, evt.key);
-	if (next) {
-		evt.preventDefault();
-		const card = snapshot.board.columns[next.col].cards[next.card];
-		if (card) host.selectItem(card);
-		else host.selectBoardColumn(next.col);
+	if (evt.altKey) {
+		// Alt is the move modifier, never a second way to navigate. Alt+Up/Down is
+		// deliberately nothing: within-column order is derived, not stored, so a rank
+		// shortcut would promise something the board does not keep.
+		if (pos) handleBoardMoveKey(host, snapshot, pos, evt);
 		return;
 	}
-	const current = pos && pos.card >= 0 ? snapshot.board.columns[pos.col].cards[pos.card] : null;
-	if (evt.key === 'Enter' && current) {
+	if (handleBoardNavigationKey(host, snapshot, pos, evt)) return;
+	const card = pos && pos.card >= 0 ? snapshot.board.columns[pos.col].cards[pos.card] : null;
+	if (card) handleBoardCardKey(host, card, evt);
+}
+
+/** Arrow/Home/End selection movement; true when the key was one of those. */
+function handleBoardNavigationKey(
+	host: BacklogViewHost,
+	snapshot: BoardSnapshot,
+	pos: BoardPosition | null,
+	evt: KeyboardEvent,
+): boolean {
+	// Navigation is unmodified keys only — other chords are not this handler's to
+	// swallow, and they still reach the card keys below (Ctrl+Enter opens in a new
+	// leaf, exactly as it does in the tree).
+	if (evt.ctrlKey || evt.metaKey || evt.shiftKey) return false;
+	const next = nextBoardPosition(snapshot, pos, evt.key);
+	if (!next) return false;
+	evt.preventDefault();
+	const card = snapshot.board.columns[next.col].cards[next.card];
+	if (card) host.selectItem(card);
+	else host.selectBoardColumn(next.col);
+	return true;
+}
+
+/** The keys that act on the selected card rather than moving between them. */
+function handleBoardCardKey(host: BacklogViewHost, card: BacklogItem, evt: KeyboardEvent): void {
+	if (evt.key === 'Enter') {
 		evt.preventDefault();
-		host.openItem(current, evt);
+		host.openItem(card, evt);
+	} else if (evt.key === 'ContextMenu' || (evt.key === 'F10' && evt.shiftKey)) {
+		// The menu is the path that works everywhere a drag cannot, so it has to be
+		// reachable from the keyboard on the board exactly as it is in the tree.
+		evt.preventDefault();
+		host.showContextMenuFor(card);
 	}
+}
+
+/** Alt+Left/Right: the selected card moves one column, by the drop's own write. */
+function handleBoardMoveKey(
+	host: BacklogViewHost,
+	snapshot: BoardSnapshot,
+	pos: BoardPosition,
+	evt: KeyboardEvent,
+): void {
+	if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
+	evt.preventDefault();
+	const card = snapshot.board.columns[pos.col].cards[pos.card];
+	// Nothing on a column stop — a column is not a thing that moves — and never a
+	// context card: the same rule that keeps it out of the draggables, applied where
+	// a keyboard could otherwise reach past them.
+	if (!card || card.outsideFilter) return;
+	const target = pos.col + (evt.key === 'ArrowRight' ? 1 : -1);
+	// The edges hold rather than wrap: a card in the last column has nowhere further
+	// to advance, and wrapping would send finished work back to the start unasked.
+	if (target < 0 || target >= snapshot.board.columns.length) return;
+	void host.performBoardMove(card, snapshot.board.columns[target].state);
 }
 
 /** The keys that are not navigation: undo, the column-stop Escape, and the filter pair. */

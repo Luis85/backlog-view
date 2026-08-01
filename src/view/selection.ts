@@ -1,7 +1,17 @@
 import { BacklogItem } from '../domain/model';
 
-/** Source of unique element ids for aria-activedescendant, shared across view instances. */
-let selectionIdCounter = 0;
+/** Source of unique element ids for the aria attributes, shared across view instances. */
+let elementIdCounter = 0;
+
+/**
+ * A DOM id no other view instance can have. Two saved views can sit in split panes
+ * over the same notes, and `aria-activedescendant` and `aria-describedby` both
+ * resolve their target by id across the WHOLE document — a per-view counter would
+ * point one board's attributes at the other board's elements.
+ */
+export function uniqueElementId(prefix: string): string {
+	return `${prefix}-${++elementIdCounter}`;
+}
 
 /**
  * The one selection either projection holds: a row or card by path, or — board
@@ -77,7 +87,7 @@ export class SelectionController {
 		}
 		const el = els[next];
 		const stop = this.stopElOf(el) ?? el;
-		if (!stop.id) stop.id = `pbl-row-${++selectionIdCounter}`;
+		if (!stop.id) stop.id = uniqueElementId('pbl-row');
 		this.treeEl.toggleClass('pbl-has-selection', true);
 		this.treeEl.setAttribute('aria-activedescendant', stop.id);
 		el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -117,7 +127,7 @@ export class SelectionController {
 			this.treeEl.removeAttribute('aria-activedescendant');
 			return;
 		}
-		if (!row.id) row.id = `pbl-row-${++selectionIdCounter}`;
+		if (!row.id) row.id = uniqueElementId('pbl-row');
 		this.treeEl.setAttribute('aria-activedescendant', row.id);
 	}
 }
