@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 30
-status: Open
+status: Done
 priority: P2
 area: design
+closed: 2026-08-01
 created: 2026-07-31
 source: PR #14 maintainability review
 files:
@@ -68,3 +69,51 @@ Each phase function takes the previous type and returns the next. Consumers keep
 Highest-risk item in this folder. Fan-in 16 means the ripple is wide, and TypeScript's
 structural typing will happily accept a `LinkedItem` where a `BacklogItem` is wanted
 unless the phases differ by more than optionality. Wants its own PR, not a ride-along.
+
+---
+
+## Outcome
+
+Done, in the shape the plan proposed: `RawItem` → `LinkedItem` → `BacklogItem`, each
+extending the one before, with `RawStore` / `LinkedTree` / `BacklogTree` for the
+collections. All 383 tests passed **untouched**, which is the acceptance criterion that
+mattered.
+
+**The feared risk did not materialise, and the reason is worth recording.** The worry was
+that structural typing would accept a `LinkedItem` where a `BacklogItem` was wanted. It
+does not: each phase *adds required fields*, so the later type is a strict subtype and
+the unsafe direction — passing an unpromoted item to something expecting a promoted one —
+is a missing-property error. The compiler proved this the moment the types went in, by
+rejecting exactly two lines. Both were real (`cycleEntry`'s `Set<BacklogItem>` holding
+items mid-link), and both were the new types catching precisely what they were added to
+catch. Optionality would have been the weak formulation; required fields are what make it
+work.
+
+**What the fan-in cost: nothing.** `BacklogItem` still carries all 24 fields, so all 16
+dependents compile unchanged. The only cross-module edit was `inferFolderParent`, which is
+called from *inside* `linkAll` and so cannot demand a finished item; it is now generic
+over `{ file: TFile }` — all it ever needed — which also drops `folderNotes.ts`'s import of
+`model.ts` and makes it a true leaf.
+
+**The honest cost.** The item graph is cyclic — a parent points back at its children — so
+a phase cannot rebuild its items without rebuilding every reference to them. Promotion is
+therefore in place, behind one assertion each in `linkAll` and `assignAll`, and each is
+followed immediately by the loop that assigns every field the new type claims. Two lines
+of unsafety replace ten placeholder fields visible to every reader, which is the trade
+this issue was asking for; it is not zero, and the comments say so at both sites.
+
+Two things improved beyond the plan while the code was open:
+
+- `assignAll` now accumulates rollups from the **return value** of the recursive call
+  rather than reading `child.descendantCount` back off the child. Same numbers, but a
+  rollup can no longer read a field the recursion has not filled in yet.
+- `pruneOutsideHierarchy` prunes `all` in place and returns the dropped count, instead of
+  returning a filtered copy alongside a still-complete `all`. What survives is now exactly
+  what the next phase promotes, so no unpromoted item is left behind claiming the later
+  type.
+
+The third acceptance criterion — deleting `CLAUDE.md`'s notes about which fields are valid
+when — turned out to have nothing to delete: that prose lived in `model.ts`'s own field
+comments, which the phase split reorganised. `src/domain/CLAUDE.md` gained a note instead,
+because the phases raise a question a contributor must now answer: **adding a field means
+choosing its phase.**
