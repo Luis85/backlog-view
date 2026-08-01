@@ -48,9 +48,10 @@ rather than deferred behind it.
    and, with lanes on, up and down across lanes, so one lift can cross lane and axis
    together and commit the combined batch [[Lanes on the roadmap]] specifies. On a
    bar, Tab shifts the grip between the holds the pointer may take — the whole bar
-   where the note states a date of its own, and each end that can take a write
-   ([[Move and resize a bar]]) — announced with the selection, so arrows resize as
-   well as slide: the one-date write the edge drag plans, without the pointer.
+   where every end it renders is the note's own, stated or open, and each end that
+   can take a write ([[Move and resize a bar]]) — announced with the selection, so
+   arrows resize as well as slide: the one-date write the edge drag plans, without
+   the pointer.
 3. Space drops, committing the batch the drag would write; Escape cancels with nothing
    written.
 4. The context menu offers the moves in words — set horizon, schedule, unschedule,
@@ -95,8 +96,9 @@ rather than deferred behind it.
 ## Acceptance criteria
 
 - Lift, move, drop, cancel work as specified on both axes — Space, arrows, Space,
-  Escape — the grip reaching every hold the pointer may take: the whole bar where the
-  note states its own date, each writable end, so a resize is a keyboard move too, and
+  Escape — the grip reaching every hold the pointer may take: the whole bar where
+  every rendered end is the note's own (stated or open), each writable end, so a
+  resize is a keyboard move too, and
   up and down crossing lanes when lanes are on, so one drop can carry the combined
   lane-plus-axis batch; the committed batch is identical to the drag's, and Escape
   always exits with nothing written.
