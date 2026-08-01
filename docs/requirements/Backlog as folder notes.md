@@ -224,6 +224,21 @@ construction — which is the pairing this exists for.
   also be **still empty when the cleanup runs**. Sync, an attachment write or another
   plugin can drop a file in between creating the folder and the note failing, and a delete
   that races them takes real content with it.
+- That criterion **overturns a recorded decision, deliberately**.
+  [[Failed creation leaves its folder behind]] files the same residue as an accepted
+  limitation rather than a bug, on the reasoning that deleting on an error path is worse
+  than an empty folder — and it is right about today's behaviour, where a folder is only
+  ever created when a *type folder* is missing, which is rare and happens once. This option
+  changes the premise: with it on, **every** creation makes a folder, so the residue stops
+  being a stray and starts being one per failure, named after the item the user just tried
+  to make. That is the "it happens repeatedly" the Issue names as what would change its
+  own decision. What becomes required is the **per-item folder** specifically — tracked as
+  its own thing, removed in the caller's `catch` while still empty, never a recursive
+  delete. The Issue's recipe returns everything `ensureFolder` created, which is the whole
+  container chain; taking it wholesale would contradict the criterion above and would
+  change *flat* creation and the scaffold command too, through a helper they share. What
+  the container chain deserves stays this Issue's open question, for both layouts, and is
+  not settled by an option about where one note goes.
 
 ### What it does not do
 
