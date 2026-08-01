@@ -197,10 +197,13 @@ export function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): v
 	if (!snapshot || snapshot.board.columns.length === 0) return;
 	const pos = boardPosition(host, snapshot);
 	if (evt.altKey) {
-		// Alt is the move modifier, never a second way to navigate. Alt+Up/Down is
-		// deliberately nothing: within-column order is derived, not stored, so a rank
-		// shortcut would promise something the board does not keep.
-		if (pos) handleBoardMoveKey(host, snapshot, pos, evt);
+		// Alt ALONE is the move modifier, never a second way to navigate. Alt+Up/Down
+		// is deliberately nothing: within-column order is derived, not stored, so a
+		// rank shortcut would promise something the board does not keep. And Alt with
+		// a second modifier belongs to Obsidian, the OS or assistive technology — a
+		// chord aimed elsewhere must not land as a state write.
+		const altOnly = !evt.ctrlKey && !evt.metaKey && !evt.shiftKey;
+		if (altOnly && pos) handleBoardMoveKey(host, snapshot, pos, evt);
 		return;
 	}
 	if (handleBoardNavigationKey(host, snapshot, pos, evt)) return;

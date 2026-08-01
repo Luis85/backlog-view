@@ -89,6 +89,26 @@ describe('moving a card without a drag', () => {
 		expect(vault.writeLog).toEqual([]);
 	});
 
+	it('moves on Alt alone, leaving Alt+Shift and Ctrl+Alt to whoever owns them', async () => {
+		const vault = boardVault();
+		const { containerEl } = makeBoard(vault);
+		const tree = treeOf(containerEl);
+		select(containerEl, 'Epic A');
+
+		// These chords may belong to Obsidian, the OS or assistive technology; a state
+		// write for a keystroke aimed elsewhere is the worst kind of surprise.
+		key(tree, 'ArrowRight', { altKey: true, shiftKey: true });
+		key(tree, 'ArrowRight', { altKey: true, ctrlKey: true });
+		key(tree, 'ArrowRight', { altKey: true, metaKey: true });
+		await flush();
+		expect(vault.writeLog).toEqual([]);
+
+		// Alt on its own still moves.
+		key(tree, 'ArrowRight', { altKey: true });
+		await flush();
+		expect(vault.fm('Epic A.md')['status']).toBe('Active');
+	});
+
 	it('does nothing on a column stop — a column is not a thing that moves', async () => {
 		const vault = boardVault();
 		const { containerEl, view } = makeBoard(vault);
