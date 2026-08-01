@@ -141,6 +141,58 @@ on a boundary that was already the one place that data crosses.
 The residual risk is a cast, which is visible in review and greppable, in the way a
 missing lint rule is not.
 
+### Three things branding does not close by itself
+
+A brand is `string & { readonly __x: unique symbol }`, and TypeScript loses it the moment
+the string is touched. Three consequences, all present in today's code, and all of which
+have to be designed for rather than discovered:
+
+**1. Transformations drop the brand.** `rows.ts:218-220` splits the note title around the
+quick-filter match with three `text.substring(…)` calls; `prompts.ts:86` builds a tag pill
+as `` `#${tag}` ``. Both produce plain `string`, so a branded input arrives at the sink
+unbranded and the design fails its own "no cast for vault data" criterion.
+
+The fix is to move the transformation **inside** the module that owns the brand rather
+than adding helpers at the call sites. The filter split becomes one
+`renderMatch(el, title, needle)` that slices and brands internally, so no caller ever
+un-brands. The tag pill is better still: the `#` is presentation, not data, so it becomes
+a catalog message with the tag as a parameter — which is where it belonged anyway.
+
+**2. Not all vault text comes through `noteFields.ts`.** `prompts.ts:63` renders
+`folder.path` from an Obsidian `TFolder`. The mint point is therefore *"every string
+entering from Obsidian or the vault"* — note fields, `TFile`/`TFolder` paths and basenames,
+and Bases values — not the one module the earlier draft named. Still enumerable, still
+narrow, but wider than stated, and stating it wrongly is how the first cast gets written.
+
+**3. `t()`'s parameters are the laundering hole.** If a message's named parameters accept
+`string`, then `t('tag.pill', { tag: 'hard-coded text' })` returns a perfectly valid
+`Translated` with a literal inside it, and the sink sees only the brand. Every message
+that interpolates — tags, state names, titles, type labels — is a way through. Parameters
+must therefore carry provenance too: `Displayable | number`, never `string`.
+
+### The destinations that are not setters
+
+Banning the raw setters covers calls. It does not cover **object literals handed to an
+external interface**, and that is where the largest single concentration of strings lives:
+
+| Destination | Field | Sites |
+| --- | --- | --- |
+| `BasesAllOptions` / `BasesOptions` (`domain/viewOptions.ts`) | `displayName`, `placeholder` | 30 |
+| `registerBasesView` (`main.ts:10`) | `name` | 1 |
+| `addCommand` (`main.ts:25`) | `name` | 1 |
+
+`obsidian.d.ts:846` types `displayName: string`, so a branded value is accepted there and
+so is a literal — no setter to ban, nothing to fail. Thirty of the roughly 141 sites would
+be unguarded.
+
+The answer is a **local branded option type** that the plugin builds and widens at the
+boundary: declare the schema with `displayName: Translated`, and let it flow into
+`BasesAllOptions` on return. Because a brand is an intersection with `string`, the
+widening is free and needs no cast. The same for the two `name` fields. The rule is
+general — *anywhere the plugin hands text to an external interface, it declares its own
+type first* — and it is the same move as the UI helpers, applied to a shape rather than a
+call.
+
 ## Cost, and the order to land it in
 
 Two brands plus a helper layer is the expensive half of this PBI, and the lint ban is the
@@ -148,6 +200,26 @@ cheap half. They can land in that order — ban the raw setters first, brand aft
 but only with the ordering understood: **lint alone leaves the indirection hole open**,
 which is the hole that started this. Shipping step 3 and calling the PBI done would
 reproduce the first design under a different name.
+
+### Spike this before treating the criteria as final
+
+This design has now been rewritten five times without a line of code: sinks, then literal
+kinds, then one brand, then two, then the brand-integrity gaps above. Each round was
+correct about the previous round being wrong, which is a good sign about the review and a
+bad sign about the medium — the last three findings were all facts about how TypeScript
+treats an intersection type, and every one of them is settled definitively by about fifty
+lines of real code.
+
+So the honest sequencing is a **spike first**: brand two values, wrap two sinks, run one
+transformation and one `t()` call with a parameter through it, and see what the compiler
+says. That answers the transformation question, the widening question and the parameter
+question at once, and it is cheaper than a sixth paper round.
+
+Treat everything above as the design to *validate*, not to implement directly. If the
+spike says a nominal wrapper with an explicit `.value` is needed instead of an
+intersection brand, that is a better outcome than discovering it after the sweep has
+touched 141 sites — and it is exactly the kind of thing this register exists to record
+rather than rediscover.
 
 ## The pattern, now that it has been corrected three times
 
@@ -168,6 +240,18 @@ needed three rounds of review to abandon.
 - `t()` returns `Translated`, the vault-read boundary returns `VaultText`, and every UI
   helper that renders text takes the union. A plain `string` reaching one is a **compile**
   error, not a lint error, so it cannot be suppressed inline.
+- `t()`'s **parameters** carry provenance as well — `Displayable | number`, never
+  `string`. A message that interpolates an unbranded parameter launders a literal into a
+  branded result, which defeats the whole mechanism at its own front door.
+- Destinations that are object fields on an external interface are covered too:
+  `viewOptions.ts` (30 sites), and the two `name` fields in `main.ts`. The plugin declares
+  its own branded option and registration types and widens them at the boundary. A design
+  that guards only setter calls leaves the largest concentration of strings in the
+  codebase unguarded.
+- Transformations of vault text happen **inside** the module that owns the brand — the
+  filter-match split and the tag pill are the two that exist — so no call site un-brands
+  and re-brands. If the implementation needs a re-branding helper at a call site, the
+  boundary is drawn in the wrong place.
 - Rendering vault data needs **no cast and no `t()` call**. Note titles, folder paths,
   tags, state values and property values render as directly as they do today. A design in
   which showing a note title requires either is the single-brand design, and has failed
