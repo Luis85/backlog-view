@@ -78,23 +78,47 @@ const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(ra
  *
  * Both ends of an inversion are named. A monotonic walk blames whichever section follows
  * the displaced one, which points at the innocent party.
+ *
+ * Present and ordered is not enough: each section must also appear **exactly once**. Two
+ * branches converted the same note to a use case at the same time, neither edit conflicted
+ * textually, and the merge kept both — two openings, two tables, two main flows, two
+ * `## Where it lives`. Every rule here passed it, because "is it there" and "is it in
+ * order" are both satisfied twice over, so the register was blessed while the note
+ * contradicted itself: one guarantee said the option never touches a note on disk, the
+ * other said what actually happens. A document that says a thing twice says it in two
+ * versions eventually, and the checker is what has to notice.
  */
 function checkSections(file, text, sections, what) {
 	const prose = withoutCode(text);
 	const found = [];
 	for (const section of sections) {
-		// Bounded at both ends. A line-start anchor alone is a prefix match, so `## Contextual`
-		// satisfied `## Context` — the same prefix hole as `showCounts` vouching for
-		// `showCount`, in the third place it has turned up. A `##` heading is a whole line and
-		// is anchored as one; a `**Bold**` marker opens a sentence and is bounded by its own
-		// closing `**`, so it needs only to not run straight into more word.
-		const bound = section.startsWith("#") ? String.raw`\s*$` : String.raw`(?=\s|$)`;
-		const at = prose.search(new RegExp(`^${escapeRe(section)}${bound}`, "m"));
-		if (at === -1) fail(file, `${what} has no ${section}`);
-		else found.push([section, at]);
+		const hits = sectionHits(prose, section);
+		if (hits.length !== 1) fail(file, countProblem(what, section, hits.length));
+		// The first index is what the order walk needs, and it is recorded even when the
+		// count was wrong: a note reported for saying `## Use case` twice should not also
+		// be reported for an inversion it does not have.
+		if (hits.length > 0) found.push([section, hits[0].index]);
 	}
 	checkOrder(file, found, what);
 }
+
+/**
+ * Every occurrence of one section marker, in document order.
+ *
+ * Bounded at both ends. A line-start anchor alone is a prefix match, so `## Contextual`
+ * satisfied `## Context` — the same prefix hole as `showCounts` vouching for `showCount`,
+ * in the third place it has turned up. A `##` heading is a whole line and is anchored as
+ * one; a `**Bold**` marker opens a sentence and is bounded by its own closing `**`, so it
+ * needs only to not run straight into more word.
+ */
+function sectionHits(prose, section) {
+	const bound = section.startsWith("#") ? String.raw`\s*$` : String.raw`(?=\s|$)`;
+	return [...prose.matchAll(new RegExp(`^${escapeRe(section)}${bound}`, "gm"))];
+}
+
+/** Missing and duplicated are one question — "how many" — so they are one message. */
+const countProblem = (what, section, n) =>
+	n === 0 ? `${what} has no ${section}` : `${what} has ${n} ${section} sections, expected one`;
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
