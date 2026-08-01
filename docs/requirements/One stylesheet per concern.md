@@ -22,27 +22,51 @@ escapes it by accident rather than by argument.
 `Module structure` closed `One file per concern` for `src/`. This is the same PBI for the
 half that was not looked at.
 
-## The seam is already drawn
+## The seam is *mostly* drawn, and one banner lies
 
-The split does not need designing. The stylesheet is *already* sectioned by hand, with
-banner comments, and the sections already mirror the source tree:
+The stylesheet is already sectioned by hand with banner comments, and most of those
+sections mirror the source tree:
 
 | Section | Lines | Styles |
 | --- | --- | --- |
 | toolbar | 14-306 | `view/render/toolbar.ts` |
 | tree | 307-454 | `view/render/rows.ts` |
-| badges | 577-646 | `view/render/rows.ts` |
 | columns | 455-576 | `view/render/columns.ts` |
+| badges | 577-646 | `view/render/rows.ts` |
 | property columns | 647-732 | `view/render/columns.ts` |
-| tags | 733-975 | `view/render/columns.ts`, `view/interactions/tags.ts` |
+| tags | 733-**838** | `view/render/columns.ts`, `view/interactions/tags.ts` |
 | drag & drop | 976-1095 | `view/interactions/dragDrop.ts` |
 | empty state | 1096-1135 | `view/render/emptyStates.ts` |
 | modals | 1136-1143 | `ui/prompts.ts` |
 
-Every one of those sections is **already under 400 lines** — the largest is the toolbar at
-293. So splitting at the banners that exist brings the whole stylesheet under the cap on
-the first pass, with no judgement calls about where to cut. `test/` mirrors `src/`
-already; this makes the styles do the same.
+**The `tags` banner runs to 975 and only its first hundred lines are about tags.** After
+`.pbl-tag-add` ends at 838 it carries three unrelated things, and following the banner
+mechanically would file all of them under a tags partial:
+
+| Lines | Actually | Belongs with |
+| --- | --- | --- |
+| 839-894 | `.pbl-state-chip` and its variants | columns |
+| 900-914 | `.pbl-children` and the indent guide | tree |
+| 915-939 | `@media (prefers-reduced-motion)` — spinners, grips, chevrons | **nothing below it** |
+| 940-975 | `@media (hover: none)` — touch affordances | **nothing below it** |
+
+So the earlier claim that this is a mechanical split needing no judgement was wrong. Two
+sections need moving, and the two media queries are genuinely **cross-cutting**: they
+restyle elements owned by the toolbar, the tree and the tags partial alike, so they belong
+to no component file. Filing accessibility rules under `tags.css` would leave the next
+reduced-motion change owned by a file nobody would think to open.
+
+That is the one real design decision here, and this PBI has to make it rather than inherit
+it: either a shared partial per *condition* (`motion.css`, `touch.css`) that every
+component's overrides live in, or each partial carrying its own `@media` block for the
+rules it owns. The second keeps a concern in one file and costs a repeated query; the
+first keeps the query in one place and splits each component across two files. Whichever
+is chosen, the reason goes in the note — because the next contributor adding a
+reduced-motion rule needs to know where it goes without re-deriving this.
+
+Every resulting partial is **well under 400 lines** — the largest is the toolbar at 293 —
+so the cap is met on the first pass either way. `test/` mirrors `src/` already; this makes
+the styles do the same.
 
 ## There is already a CSS build step
 
@@ -86,8 +110,13 @@ to carry over.
 
 ## Acceptance criteria
 
-- One partial per section above, each named for the module it styles, under a directory
-  that makes the mirror obvious. Each is under the 400-line cap.
+- One partial per **concern**, each named for the module it styles, under a directory that
+  makes the mirror obvious. Each is under the 400-line cap. The banners are the starting
+  point, not the answer: the state chip and the indent guide move out of the `tags` span
+  to the files that own them.
+- The two cross-cutting media queries have a stated home and a stated reason. A
+  `prefers-reduced-motion` rule for the spinner must be findable by someone who has never
+  read this note.
 - An entry file that imports them in an order that is **stated to be load-bearing**, and
   the build assembles it. `npm run build` and `npm run test-build` both produce a
   stylesheet, and the release keeps shipping the minified one.

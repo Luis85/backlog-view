@@ -51,6 +51,32 @@ folds `I` to `i` when the language folds it to `ı`. A user types what their key
 their language produce, and the filter silently fails to find a note that is plainly on
 screen — the worst kind of bug, because nothing is broken enough to report.
 
+### Two of those eight cannot take the same fix, and are already wrong
+
+`rows.ts:212-213` is not a boolean match. It folds the title, finds an **index**, and then
+slices the **original**:
+
+```ts
+const idx = needle.length > 0 ? text.toLowerCase().indexOf(needle) : -1;
+titleEl.appendText(text.substring(0, idx));
+titleEl.createSpan({ cls: 'pbl-match', text: text.substring(idx, idx + needle.length) });
+```
+
+Case folding is not length-preserving, so that index does not address the same character
+in both strings. `İx` folds to `i̇x` — 2 UTF-16 units becoming 3, because the dot becomes a
+combining mark — and a search for `x` reports index 2 while `x` sits at index 1 in the
+title. The highlight lands on the wrong characters, or on none.
+
+**This is a defect in shipped code, not one this PBI would introduce.** It reproduces
+today with plain `toLowerCase()`; locale folding only widens the set of titles that hit
+it. Turkish adds more, and so does any language whose case mapping expands.
+
+So these two sites need an **index-preserving matcher**, not the recipe the boolean filter
+uses: fold both sides while recording the offset mapping back to the original, or match on
+the original with a case-insensitive comparison that never re-indexes. Applying
+`toLocaleLowerCase` here and calling it done would leave the bug in place and add locales
+to it.
+
 **Thirty-eight canonicalize identity and must not be touched — three would corrupt
 vaults.** They are not matching user text; they are deciding what something *is*:
 
@@ -145,6 +171,10 @@ or the guard has to be remembered eleven times.
   `processFrontMatter` outside `storage/` already is.
 - Counts and ratios shown to the user go through `Intl.NumberFormat` for the **requested**
   locale.
+- `renderTitleText` highlights the **right characters** for a title whose case mapping
+  changes length — `İx` is the worked example, and it is wrong today. Fold-then-index into
+  the original is the bug; an offset mapping or an index-free matcher is the fix, and
+  reusing the boolean filter's recipe is not.
 - The **eight** matching calls fold with `toLocaleLowerCase(requested)`; the other
   **thirty-nine** keep `toLowerCase()` — thirty-eight identity comparisons plus the
   protocol one. A check distinguishes them, because the two look identical and one of them

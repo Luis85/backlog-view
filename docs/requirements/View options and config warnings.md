@@ -71,8 +71,21 @@ Notice from three call sites (`backlogView.ts:534`, `create.ts:34`).
   See `Persisted keys stay as written`.
 - `configProblems` returns structured problems; no user-facing sentence is built in
   `src/domain/`.
-- The English rendering of every problem is unchanged, so the existing gate tests read
-  the same after the change.
+- The English rendering of every problem is unchanged **in meaning and in structure**,
+  which is narrower than byte-identical and deliberately so. `Intl.ListFormat` and the
+  current `join(' and ')` agree on two labels and diverge past that:
+
+  | Colliding | Today | `Intl.ListFormat('en')` |
+  | --- | --- | --- |
+  | 2 | `parent and order` | `parent and order` |
+  | 3 | `parent and order and type` | `parent, order, and type` |
+  | 4 | `parent and order and type and state` | `parent, order, type, and state` |
+
+  Four labels can collide (`parent`, `order`, `type`, `state`), so this is reachable rather
+  than theoretical. The formatted output is **correct English and the current output is
+  not**, so the change is an improvement to accept, not a regression to avoid — but any
+  existing assertion spelling the three-label form has to be updated deliberately rather
+  than discovered. Stating the expected strings here is what makes that a decision.
 - Marketplace review requires sentence-case UI text. That is an **English** rule and the
   lint that enforces it must apply to the English catalog only — German capitalizes
   nouns, and a rule that fights the language it is translating into is a bug in the rule.
