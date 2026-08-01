@@ -17,10 +17,12 @@ demonstrating itself:
 
 The backlog says what the product does and why someone wants it. The
 [ADRs](adrs/README.md) say what was chosen to make that possible, what it cost, and what
-would make us choose again. They are deliberately **not** work items: no `parent`, and a
-`type` the view does not recognise, so the register's own scope rule
-([[What counts as a work item]]) leaves them out of the tree. That is the plugin's
-behaviour applied to itself, and the toolbar's advisory counting them is the honest report.
+would make us choose again. They are deliberately **not** work items: **no `parent` and no
+`type`** — their frontmatter is `adr`, `title`, `status`, `date`, `area`, none of which the
+view reads. A note belongs to the backlog if it has a supported type *or* a parent, so the
+register's own scope rule ([[What counts as a work item]]) leaves them out of the tree.
+That is the plugin's behaviour applied to itself, and the toolbar's advisory counting them
+is the honest report.
 
 ## The trees
 
