@@ -70,6 +70,23 @@ The third is the one worth reading twice: it is the case that would have been ea
 implement as a skip, and a skip there would have passed all three of the features this
 task found.
 
+Review of the checker then found two more holes, both closed and both planted in turn.
+Neither was exercised by the register as it stands, which is exactly why review found them
+and a green run did not:
+
+| Planted | Reported |
+| --- | --- |
+| An `Issue` child listed under `## Use cases` | `… lists [[Board order is derived not stored]], which is a child of type Issue, not a use case` |
+| A use-case bullet wrapped in `<!-- -->` | `… does not list [[Scaffolding a backlog]]` |
+
+The first: entries were compared against every child rather than the PBI children, so "may
+hang from a Feature" quietly meant "may be indexed as a use case". The second is the sharper
+one — `withoutCode` strips code spans and fences and leaves HTML comments standing, so
+commenting a bullet out hid it from the reader while the check still counted its link. That
+is the deletion case this task exists to catch, passing green. Both fixes stay inside the
+index: a wikilink in a comment must still resolve, so `withoutCode` was left alone rather
+than widened for one caller.
+
 ## Risks
 
 The check reads structure, not sense — it cannot tell whether the sentence after the

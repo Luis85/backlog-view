@@ -357,9 +357,24 @@ for (const [name, note] of notes) {
 		.filter(([child, c]) => c.type === "PBI" && !listed.has(child))
 		.sort(([, a], [, b]) => a.order - b.order)
 		.map(([child]) => child);
-	const stale = [...listed].filter((entry) => !children.some(([child]) => child === entry));
 	if (missing.length > 0) fail(note.file, `## Use cases does not list ${missing.map((m) => `[[${m}]]`).join(", ")}`);
-	for (const entry of stale) fail(note.file, `## Use cases lists [[${entry}]], which is not a child of this feature`);
+	// Compared against the PBI children, not against every child. An `Issue` or a `Bug` may
+	// legally hang from a Feature and is NOT a use case, so a list naming one is not merely
+	// untidy — it is the index asserting something the type system says is false. Comparing
+	// against all children accepted exactly that, which made "may hang here" quietly mean
+	// "may be indexed here".
+	const useCases = new Set(children.filter(([, c]) => c.type === "PBI").map(([child]) => child));
+	for (const entry of listed) {
+		if (useCases.has(entry)) continue;
+		// The two ways an entry can be wrong read differently to whoever fixes it: a note
+		// that moved away, and a note that is here but is not a use case.
+		const kind = notes.get(entry);
+		const why =
+			kind && children.some(([child]) => child === entry)
+				? `is a child of type ${kind.type}, not a use case`
+				: "is not a child of this feature";
+		fail(note.file, `## Use cases lists [[${entry}]], which ${why}`);
+	}
 }
 
 /**
@@ -367,8 +382,17 @@ for (const [name, note] of notes) {
  * level, or the end of the note. Absent entirely, it is '' rather than a special case —
  * a Feature with no index fails as one missing every child, which is what it is, and the
  * report then names them all rather than saying only that a heading is gone.
+ *
+ * HTML comments are stripped first, and this is the whole question the section asks:
+ * completeness is about what a READER sees, and `<!-- -->` hides a bullet from the rendered
+ * note while leaving its wikilink here to be counted. That is the deletion case the check
+ * exists to catch, passing green — so a commented-out entry has to read as an absent one.
+ * Stripped here rather than in `withoutCode`, which every other check shares: a wikilink
+ * inside a comment should still have to resolve, and widening that helper would quietly
+ * relax rules this change is not about.
  */
 function useCaseIndex(text) {
+	text = text.replace(/<!--[\s\S]*?-->/g, "");
 	const start = /^## Use cases\s*$/m.exec(text);
 	if (!start) return "";
 	const rest = text.slice(start.index + start[0].length);
