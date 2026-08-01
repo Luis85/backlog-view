@@ -30,25 +30,57 @@ asymmetric; and there is no `background-position`, `transform-origin`, `clip-pat
 `float`, `inset` shorthand, physical `left:`/`right:` positioning, or `translateX`
 anywhere in the file. `text-align: end` (line 551) is already logical.
 
-## The lesson, which this note had to learn twice
+## The lesson, which this note had to learn three times
 
-It first claimed **one** remaining rule, then **two**. Both times the number came from
-grepping for physical `left`/`right` *properties*, and both times something encoding a
-side without naming one was sitting outside that grep.
+It claimed **one** remaining construct, then **two**, then **one** directional icon when
+there are five. Every time, the count came from recalling what had been seen rather than
+from running a search that lists every member of the category.
 
-The second version even wrote the category down — *"masks, gradients, shadows, and the
-choice of a directional icon all encode a side without naming one"* — and then failed to
-enumerate the shadow it had just named. So the rule is not "remember that shadows count".
-It is: **name the categories, then enumerate each one, and treat a category you have not
-enumerated as unaudited.** A construct is direction-dependent if it takes an offset, an
-angle, a side or a directional keyword — regardless of whether the property has a logical
-twin to grep for.
+The second version wrote the category down — *"masks, gradients, shadows, and the choice
+of a directional icon all encode a side without naming one"* — and then enumerated
+neither the shadow nor four of the five icons it had just named. Naming a category and
+enumerating one member of it is worse than not naming it, because the prose reads as
+though the work was done.
 
-There is one final category that is not in the stylesheet at all: the chevron. Its
-expanded state is `transform: rotate(90deg)` (line 419), which is correct in both
-directions because down is down. Its collapsed direction comes from the **icon chosen in
-TS**, so if it points right it keeps pointing right in RTL. That is checked by looking,
-not by grepping, and it belongs to the verification pass.
+So the lesson is not "remember that shadows count", and it is not a longer list to
+memorise. It is a **method**:
+
+1. Name the categories. A construct is direction-dependent if it takes an offset, an
+   angle, a side or a directional keyword — whether or not the property has a logical
+   twin to grep for, and whether or not it lives in CSS at all.
+2. For each one, run the search that returns **every** member, and read the whole result.
+   Not the members that come to mind; the ones the search returns.
+3. Treat any category not enumerated that way as unaudited, and say so rather than
+   omitting it.
+
+Step 2 is the one that failed three times. The tables in this note were produced by
+running it — every `box-shadow` read for its x-offset, every icon name in `src/` listed
+and classified — which is why they are worth more than the sentences they replaced.
+
+The deeper reading is that this is not a discipline problem to be solved by resolving to
+be careful, because three rounds of resolving to be careful did not solve it. It is an
+argument for the check in `Styling rules are checks`, which is where a machine enumerates
+the categories on every build instead.
+
+### The category that is not in the stylesheet: icons
+
+An icon does not mirror because its container has `dir="rtl"` — the SVG is drawn the way
+it is drawn. So every directional icon name chosen in TS is a physical-left cue that CSS
+cannot fix, and there are **five**, not one:
+
+| Icon | Site | Why it points |
+| --- | --- | --- |
+| `chevron-right` | `rows.ts` | The collapsed disclosure. Expanded is `transform: rotate(90deg)` (line 419), which is fine — down is down — but the base state points right |
+| `corner-left-up` | `backlogView.ts:85` | The root-drop affordance |
+| `corner-left-down` | `rows.ts:205` | The outside-filter marker |
+| `indent-increase` | `menu.ts:125` | Indent, in the move menu |
+| `indent-decrease` | `menu.ts:148` | Outdent |
+
+Equally important is what must **not** be touched. `arrow-up`, `arrow-down`,
+`arrow-up-to-line` and `arrow-down-to-line` — the four move commands — are vertical, and
+vertical is vertical in every direction. An audit that mirrors them has made things
+worse. `grip-vertical` and `separator-vertical` are the same case. `list-tree` is the one
+to settle by looking rather than by reasoning.
 
 **Width is not free.** `Property columns` is `Done` on the criteria *"Columns are
 fixed-width so values line up across rows regardless of title length"* and *"A pane too
@@ -69,9 +101,15 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
 - Keeping new ones out is `Styling rules are checks`, in `Theming and styling` — this PBI
   owns the sweep and the verification, not the lint. The two features have to land in
   that order or the check has nothing to go green against.
-- Row indentation, the chevron, the drag indicator and the root strip mirror correctly
-  under `dir="rtl"`. The chevron's collapsed direction is an icon choice in TS, so it is
-  checked by looking rather than by grepping.
+- Row indentation, the drag indicator and the root strip mirror correctly under
+  `dir="rtl"`.
+- All five directional icons are addressed — `chevron-right`, `corner-left-up`,
+  `corner-left-down`, `indent-increase`, `indent-decrease` — and the four vertical arrows
+  are deliberately left alone. Icons are a TS change, not a CSS one, so this criterion is
+  not satisfied by any amount of stylesheet work.
+- The icon classification is written down as a list, not re-derived. It is the input to
+  the check in `Styling rules are checks`, which is what stops a sixth directional icon
+  arriving unnoticed.
 - A label longer than its column truncates or wraps by the rule `Property columns`
   already sets — it does not overflow, and it does not push the columns out of alignment.
   Whatever the toolbar does when its controls no longer fit, it does the same in every

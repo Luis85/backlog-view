@@ -75,6 +75,13 @@ instead. Neither rule comes out of a default config.
   ignores the user's theme` teaches; `unexpected hex value` gets suppressed.
 - Exceptions are narrow and carry a reason inline, matching how `usedClassMembers`
   declares framework-invoked members rather than suppressing them.
+- **Directional icons are checked too, even though they are not CSS.** An icon name is a
+  physical-left cue the stylesheet cannot reach, and `Layout survives translated text`
+  under-enumerated them three times running. The check is an explicit classification of
+  every icon name in `src/` as directional or neutral, failing when a name appears that
+  is in neither list — so a sixth directional icon has to be classified rather than
+  noticed. This is the one rule here that reads TypeScript rather than the stylesheet,
+  which is why it would never come out of a CSS linter.
 - The rules are stated in `src/view/CLAUDE.md`, beside the render-cost notes, so they are
   loaded when someone is working on the view rather than read as one wall — the pattern
   the layer guides already follow.
