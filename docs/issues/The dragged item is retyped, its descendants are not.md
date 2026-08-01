@@ -20,10 +20,14 @@ and outside the two extra types — is **preserved when it is a descendant of a 
 rewritten when it is the thing being moved**. Two predicates, twenty lines apart in
 `computeTypeChanges`:
 
-| | Exempt from retyping | The test |
+| | Retyped when — the `if` as written | So what is exempt |
 | --- | --- | --- |
-| The dragged item | Declared extra types only | `!isExtraType(dragged.typeName)` |
-| Any descendant | Extra types **and** unknown customs | `child.typeName !== null && child.levelIndex !== -1` |
+| The dragged item | `!isExtraType(dragged.typeName)` | declared extra types only |
+| Any descendant | `child.typeName !== null && child.levelIndex !== -1` | extra types **and** unknown customs |
+
+The middle column is the guard the rewrite sits inside, copied as it stands, and the right
+column is what falls out of it. Stating the condition and the exemption in one column
+inverts one of them, which is how this table first shipped.
 
 So a `Spike` nested inside a moved subtree survives; the same `Spike` dropped somewhere
 becomes a `Feature`.

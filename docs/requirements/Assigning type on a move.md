@@ -67,10 +67,10 @@ dropped somewhere becomes a `Feature`.
 
 The two tests are different, and only one of them was written as a rule:
 
-| | Exempt from retyping | Test |
+| | Retyped when — the `if` as written | So what is exempt |
 | --- | --- | --- |
-| The dragged item | Declared extra types only | `isExtraType(dragged.typeName)` |
-| Any descendant | Extra types **and** unknown custom types | `child.levelIndex !== -1` |
+| The dragged item | `!isExtraType(dragged.typeName)` | declared extra types only |
+| Any descendant | `child.typeName !== null && child.levelIndex !== -1` | extra types **and** unknown custom types |
 
 There is a defensible reading — the dragged item is the one the user just acted on, so
 taking its new position as an instruction is stronger there than three levels down. But
