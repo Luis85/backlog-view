@@ -35,33 +35,6 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
-- `ensureFolder` returns the segments **it** created — pushed only after a `createFolder`
-  that succeeded — and both creators pass that list to `removeCreatedFolders` from their
-  own `catch` before rethrowing. The distinction the rollback turns on is *created, not
-  merely present*: a folder that was already there is never a candidate, however empty.
-  The other restriction is that each folder is **still empty**, and the emptiness is the
-  filesystem's answer *at the moment of removal*: `adapter.rmdir(path, false)` is
-  documented to require an empty folder and to fail otherwise. Reading `TFolder.children`
-  and then deleting would be a check followed by an unrelated act — `trashFile` takes a
-  folder **and everything in it**, and `children` is a cache, so a note written by a sync
-  client either in the gap or merely before the cache caught up gets carried off by a
-  cleanup that had just satisfied itself the folder was empty. A creation failure is
-  precisely when that gap is widest. The rule is that deleting more than we made is far
-  worse than a stray empty folder, so the guarantee has to be one the API actually makes,
-  not one the code asserts about a value it read earlier. A refusal ends the walk, which
-  is also the only correct move for the ancestors: a parent cannot be empty while the
-  child that failed to go is still standing in it.
-- **Creation is serialized** (`serializeCreation`), and that is what makes the ownership
-  above mean anything. `ensureFolder` decides what to create by looking at what is there
-  and the rollback decides what to remove the same way, so two attempts interleaving
-  between those two looks disagree about who owns a folder: the second sees it present,
-  records nothing, and depends on a folder the first still believes is its own to unwind.
-  Nothing upstream prevents that — `createFromPrompt` calls straight into here rather than
-  through the view's write gate, so two modals, two views, or a creation beside the
-  scaffold command are all unserialized. Both creators share the one queue, since they
-  share `ensureFolder`. Queued behind the previous attempt **finishing**, not succeeding:
-  a failed creation must not stall the next one, and its rollback is part of what has to
-  finish first.
 
 ## Collapse state
 

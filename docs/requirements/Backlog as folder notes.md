@@ -215,37 +215,30 @@ construction — which is the pairing this exists for.
   one of them under inference, and creation writes the new note only — never a sibling.
   Naming a folder should be a deliberate act, not a side effect of typing a title that
   happens to match.
-- A creation that fails cleans up **only what this attempt created**. A folder reused
+- A creation that fails cleans up **only the folder this attempt created**. A folder reused
   because it was already there and empty belongs to the user, not to the plugin, and
-  removing it would be the one destructive thing this flow is capable of. "Leaves no empty
-  folder behind" was too broad a rule for a step that reuses what it finds. Ownership is
-  necessary and not sufficient: the folder must also be **still empty when the cleanup
-  runs**. Sync, an attachment write or another plugin can drop a file in between creating
-  the folder and the note failing, and a delete that races them takes real content with it.
-- That covers the **per-item folder**, which is this option's own addition and is not a
-  folder `ensureFolder` walks to. The container chain around it (`docs/requirements`) is
-  already handled by the same test, applied by the same rule:
-  [[Failed creation leaves its folder behind]] is fixed, and `ensureFolder` now returns the
-  segments it actually created so a failed attempt unwinds them deepest-first while each is
-  still empty. An earlier draft of this note excluded the chain from the attempt on
-  principle; that was wrong on its own terms, since a chain segment nobody had a moment ago
-  passes the ownership test exactly as the per-item folder does. What survives is the
-  distinction that matters: **created, not merely present**.
-- That criterion **overturned a recorded decision**, and the decision has since been
-  overturned on its own account rather than by this option.
-  [[Failed creation leaves its folder behind]] filed the residue as an accepted limitation
-  on the reasoning that deleting on an error path is worse than an empty folder — right
-  about the behaviour it was written against, where a folder is only ever created when a
-  *type folder* is missing, which is rare and happens once. This option changes that
-  premise: with it on, **every** creation makes a folder, so the residue stops being a
-  stray and starts being one per failure, named after the item the user just tried to make.
-  That was the "it happens repeatedly" the Issue named as what would change its own mind.
-  The Issue was fixed before this option was built, so what is left here is not a storage
-  change but a **narrower target**: the per-item folder is tracked as its own thing, since
-  it is not a segment `ensureFolder` walks to and nothing else would know to remove it. The
-  rule it is removed under — created not merely present, and still empty when the cleanup
-  runs — is already in `removeCreatedFolders` and is shared with flat creation and the
-  scaffold command.
+  removing it would be the one destructive thing this flow is capable of. Nor does the
+  container chain `ensureFolder` walks (`docs/requirements`) belong to the attempt — only
+  the per-item folder does. "Leaves no empty folder behind" was too broad a rule for a step
+  that reuses what it finds. Ownership is necessary and not sufficient: the folder must
+  also be **still empty when the cleanup runs**. Sync, an attachment write or another
+  plugin can drop a file in between creating the folder and the note failing, and a delete
+  that races them takes real content with it.
+- That criterion **overturns a recorded decision, deliberately**.
+  [[Failed creation leaves its folder behind]] files the same residue as an accepted
+  limitation rather than a bug, on the reasoning that deleting on an error path is worse
+  than an empty folder — and it is right about today's behaviour, where a folder is only
+  ever created when a *type folder* is missing, which is rare and happens once. This option
+  changes the premise: with it on, **every** creation makes a folder, so the residue stops
+  being a stray and starts being one per failure, named after the item the user just tried
+  to make. That is the "it happens repeatedly" the Issue names as what would change its
+  own decision. What becomes required is the **per-item folder** specifically — tracked as
+  its own thing, removed in the caller's `catch` while still empty, never a recursive
+  delete. The Issue's recipe returns everything `ensureFolder` created, which is the whole
+  container chain; taking it wholesale would contradict the criterion above and would
+  change *flat* creation and the scaffold command too, through a helper they share. What
+  the container chain deserves stays this Issue's open question, for both layouts, and is
+  not settled by an option about where one note goes.
 
 ### What it does not do
 

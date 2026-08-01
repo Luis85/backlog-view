@@ -1,4 +1,4 @@
-import { App, normalizePath, stringifyYaml, TFile, TFolder } from 'obsidian';
+import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { hasTag, normalizeTag, readTags } from '../domain/noteFields';
 import { BacklogSettings } from '../domain/settings';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
@@ -230,37 +230,6 @@ function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta
 	return { add: added, remove: removed };
 }
 
-/**
- * Every creation that may make a folder runs to completion — including its rollback —
- * before the next one starts.
- *
- * `ensureFolder` decides what to create by looking at what is there, and
- * `removeCreatedFolders` decides what to remove the same way. Two attempts interleaving
- * between those two looks disagree about who owns a folder: the second sees it missing,
- * loses the `createFolder` race, tolerates the collision and proceeds believing the
- * folder is there — while recording nothing, because it created nothing. The first then
- * fails, finds the folder empty (the second has not written its note yet) and takes it
- * out from under it, so an otherwise-valid creation fails for having had its parent
- * removed. Nothing upstream prevents that: `createFromPrompt` calls straight into here
- * rather than through the view's write gate, so two modals, two views or a creation
- * beside the scaffold command are all unserialized.
- *
- * Serializing removes the interleaving instead of coordinating across it — each attempt
- * observes the vault, acts and unwinds before the next one looks, so "empty" means what
- * the rollback needs it to mean. It is what the rest of this module already does
- * (`applyWrites` is sequential for the same reason), and creations are user-initiated
- * one at a time, so the queue is never a wait anybody sees.
- */
-let creations: Promise<unknown> = Promise.resolve();
-
-export function serializeCreation<T>(attempt: () => Promise<T>): Promise<T> {
-	// Queued behind the previous attempt FINISHING, not succeeding — a failed creation
-	// must not stall every later one, and its rollback is part of what has to finish.
-	const next = creations.then(attempt, attempt);
-	creations = next.catch(() => undefined);
-	return next;
-}
-
 export interface NewItemSpec {
 	folder: string;
 	title: string;
@@ -270,14 +239,10 @@ export interface NewItemSpec {
 }
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
-export function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
-	return serializeCreation(() => createItem(app, settings, spec));
-}
-
-async function createItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
+export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
 	const trimmed = spec.folder.trim().replace(/^\/+|\/+$/g, '');
 	const folder = trimmed ? normalizePath(trimmed) : '';
-	const created = await ensureFolder(app, folder);
+	await ensureFolder(app, folder);
 
 	const base = sanitizeTitle(spec.title);
 	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
@@ -294,14 +259,7 @@ async function createItem(app: App, settings: BacklogSettings, spec: NewItemSpec
 	// intentionally top-level note — pin it with an explicitly empty parent.
 	else if (settings.folderHierarchy) fm[settings.parentKey] = '';
 	fm[settings.orderKey] = spec.order;
-	try {
-		return await app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
-	} catch (error) {
-		// The notice the caller shows explains the failure; this is so the attempt does
-		// not also leave a folder named after the item the user did not get.
-		await removeCreatedFolders(app, created);
-		throw error;
-	}
+	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 
 /**
@@ -322,62 +280,18 @@ function sanitizeTitle(title: string): string {
 	return cleaned.length > 0 ? cleaned : 'Untitled';
 }
 
-/**
- * Create every missing segment of `folder`, and report **which ones this call made**.
- *
- * The list is what makes a failed creation cleanable. `ensureFolder` walks a chain and
- * some of it usually already exists, so "what is under this path" cannot answer the
- * question a rollback has to ask — only the segments this attempt created are ours to
- * remove. Returning them is the whole of that bookkeeping; deciding what to do with
- * them is `removeCreatedFolders`.
- */
-export async function ensureFolder(app: App, folder: string): Promise<string[]> {
-	if (!folder) return [];
+export async function ensureFolder(app: App, folder: string): Promise<void> {
+	if (!folder) return;
 	const parts = folder.split('/');
-	const created: string[] = [];
 	let current = '';
 	for (const part of parts) {
 		current = current ? `${current}/${part}` : part;
 		if (app.vault.getAbstractFileByPath(current) === null) {
 			try {
 				await app.vault.createFolder(current);
-				created.push(current);
 			} catch {
 				// Folder may have been created concurrently; creation of the note will surface real errors.
 			}
-		}
-	}
-	return created;
-}
-
-/**
- * Remove the folders a failed creation left behind, deepest first.
- *
- * Two restrictions, and each is the difference between a cleanup and a data loss: only
- * folders **this attempt created**, and only while each is **still empty**.
- *
- * The emptiness is the filesystem's answer at the moment of removal, not ours beforehand.
- * `rmdir(path, false)` is documented to require an empty folder and fails otherwise, so
- * the test and the delete cannot come apart. Reading `children` and then trashing would
- * be a check followed by an unrelated act: `trashFile` takes a folder **and everything
- * in it**, and `children` is Obsidian's cache, so a note written by a sync client either
- * between the two calls or merely before the cache caught up would be carried off by a
- * cleanup that had just satisfied itself the folder was empty. A creation failure is
- * precisely when the vault's state is least certain, which is when that gap is widest.
- * Deleting more than we made is a far worse outcome than a stray empty folder, so the
- * guarantee has to be one the API actually makes.
- *
- * A refusal therefore ends the walk rather than being skipped — and stopping is the only
- * correct move for the ancestors anyway, since a parent cannot be empty while the child
- * that failed to go is still standing in it.
- */
-export async function removeCreatedFolders(app: App, created: string[]): Promise<void> {
-	for (const path of [...created].reverse()) {
-		if (!(app.vault.getAbstractFileByPath(path) instanceof TFolder)) return;
-		try {
-			await app.vault.adapter.rmdir(path, false);
-		} catch {
-			return;
 		}
 	}
 }

@@ -58,17 +58,6 @@ describe('createBacklogBase', () => {
 		expect(second.path).toBe('docs/Product Backlog 1.base');
 	});
 
-	it('removes the folder it scaffolded when the base file cannot be written', async () => {
-		const vault = new FakeVault();
-		vault.failCreates.add('Roadmap/Product Backlog.base');
-
-		await expect(createBacklogBase(vault.app, 'Roadmap')).rejects.toThrow('create failed');
-
-		// The user asked for a backlog, not for a folder named after one.
-		expect(vault.removedFolders).toEqual(['Roadmap']);
-		expect(vault.folders.has('Roadmap')).toBe(false);
-	});
-
 	it('files a scaffolded backlog inside its own filter, wherever it is scaffolded', () => {
 		// The home folder follows the folder the user picked, so the per-type folders —
 		// relative to home — cannot land outside the
