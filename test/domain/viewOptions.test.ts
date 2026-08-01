@@ -76,6 +76,24 @@ describe('getViewOptions', () => {
 		);
 	});
 
+	it('declares the roadmap axis: properties to name, values prefilled, nothing detected', () => {
+		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		expect(flat.map((o) => o.key)).toEqual(
+			expect.arrayContaining(['horizonProperty', 'horizonValues', 'startProperty', 'targetProperty']),
+		);
+		// The canonical triple ships as an editable default, not a fixed list.
+		const values = flat.find((o) => o.key === 'horizonValues') as { default?: string };
+		expect(values.default).toBe('Now, Next, Later');
+		// The date pickers suggest the ecosystem's names without assuming them: no
+		// default value, only placeholders — nothing is picked by name-matching.
+		const start = flat.find((o) => o.key === 'startProperty') as { default?: string; placeholder?: string };
+		const target = flat.find((o) => o.key === 'targetProperty') as { default?: string; placeholder?: string };
+		expect(start.default).toBeUndefined();
+		expect(target.default).toBeUndefined();
+		expect(start.placeholder).toBe('start');
+		expect(target.placeholder).toBe('due');
+	});
+
 	it('limits the property pickers to note properties', () => {
 		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
 		const parent = flat.find((o) => o.key === 'parentProperty') as {

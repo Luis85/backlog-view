@@ -1,10 +1,11 @@
 import { BasesQueryResult, Menu, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost, BusyState } from '../host';
+import { BacklogViewHost, BusyState, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogModel } from '../../domain/model';
 import { displayType, focusTarget } from '../../domain/itemTypes';
+import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 
@@ -36,6 +37,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 	renderFocusPicker(host, barEl, model);
 	renderModeToggle(host, barEl);
+	renderAxisPicker(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	// The one command that routinely writes hundreds of notes: it carries the
@@ -53,9 +55,9 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	undoBtn.addEventListener('click', () => {
 		void host.undoLast();
 	});
-	// Expand and collapse drive the tree's rows; the board has nothing collapsible
-	// yet, and a control that visibly does nothing is worse than none.
-	if (!host.boardMode) {
+	// Expand and collapse drive the tree's rows; the board and the roadmap have
+	// nothing collapsible yet, and a control that visibly does nothing is worse than none.
+	if (host.projection === 'tree') {
 		collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
 			for (const item of model.items) host.setCollapsed(item.file.path, false);
 		});
@@ -295,21 +297,45 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 }
 
 /**
- * The projection toggle — one view, read as a tree or as a board. The mode is
- * working position, not configuration: base settings are saved on the view, UI
- * state in vault-scoped localStorage, so the choice persists beside the collapse
- * state — per saved view, per device — and never touches the `.base`.
+ * The projection toggle — one view, read as a tree, a board or a roadmap. The
+ * mode is working position, not configuration: base settings are saved on the
+ * view, UI state in vault-scoped localStorage, so the choice persists beside the
+ * collapse state — per saved view, per device — and never touches the `.base`.
  */
 function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
-	const board = host.boardMode;
-	const btn = iconButton(
-		barEl,
-		board ? 'list-tree' : 'square-kanban',
-		board ? 'Show as backlog tree' : 'Show as kanban board',
-	);
-	btn.addClass('pbl-mode-toggle');
-	btn.toggleClass('is-active', board);
-	btn.addEventListener('click', () => host.setBoardMode(!board));
+	const wrap = barEl.createDiv({ cls: 'pbl-mode-toggle', attr: { role: 'group', 'aria-label': 'Projection' } });
+	const position = (mode: Projection, icon: string, label: string) => {
+		const btn = iconButton(wrap, icon, label);
+		btn.addClass('pbl-mode-btn');
+		btn.toggleClass('is-active', host.projection === mode);
+		btn.setAttribute('aria-pressed', String(host.projection === mode));
+		btn.addEventListener('click', () => host.setProjection(mode));
+	};
+	position('tree', 'list-tree', 'Show as backlog tree');
+	position('board', 'square-kanban', 'Show as kanban board');
+	position('roadmap', 'map', 'Show as roadmap');
+}
+
+/**
+ * Which axis this saved view shows — offered only on the roadmap, and only while
+ * both axes are configured: with one, there is no choice to make, and the axis
+ * that remains always beats guidance. The pick persists the way the mode itself
+ * does, and it is retained when its axis loses its configuration, so restoring
+ * the cleared property restores the saved choice with it.
+ */
+function renderAxisPicker(host: BacklogViewHost, barEl: HTMLElement): void {
+	if (host.projection !== 'roadmap' || configuredAxes(host.settings).length < 2) return;
+	const active = activeAxis(host.settings, host.axisPick);
+	const wrap = barEl.createDiv({ cls: 'pbl-axis-picker', attr: { role: 'group', 'aria-label': 'Roadmap axis' } });
+	const position = (axis: RoadmapAxis, icon: string, label: string) => {
+		const btn = iconButton(wrap, icon, label);
+		btn.addClass('pbl-axis-btn');
+		btn.toggleClass('is-active', active === axis);
+		btn.setAttribute('aria-pressed', String(active === axis));
+		btn.addEventListener('click', () => host.setAxisPick(axis));
+	};
+	position('horizons', 'columns-3', 'Show horizons');
+	position('dates', 'calendar-range', 'Show timeline');
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */

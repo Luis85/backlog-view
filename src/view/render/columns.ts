@@ -66,7 +66,7 @@ const TREE_PADDING = 16;
  * Columns go in reverse order of usefulness — properties, then the rollup, then the
  * state chip, which survives longest because it summarizes a row on its own.
  */
-export function columnFit(
+function columnFit(
 	settings: BacklogSettings,
 	chipCount: number,
 	depth: number,
@@ -83,6 +83,30 @@ export function columnFit(
 		// truncates from there.
 		hideState: width < lead + state,
 	};
+}
+
+/**
+ * Apply the fit verdict as the `pbl-hide-*` classes, returning whether it changed —
+ * which is when what was rendered no longer matches it. Columns never shrink (that
+ * is what keeps them aligned across rows), so a pane too narrow for them drops them
+ * whole rather than clipping what sits at the row's end.
+ */
+export function applyColumnFit(
+	viewEl: HTMLElement,
+	settings: BacklogSettings,
+	chipCount: number,
+	depth: number,
+	width: number,
+): boolean {
+	const fit = columnFit(settings, chipCount, depth, width);
+	const changed =
+		fit.hideProps !== viewEl.hasClass('pbl-hide-props') ||
+		fit.hideMeta !== viewEl.hasClass('pbl-hide-meta') ||
+		fit.hideState !== viewEl.hasClass('pbl-hide-state');
+	viewEl.toggleClass('pbl-hide-props', fit.hideProps);
+	viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
+	viewEl.toggleClass('pbl-hide-state', fit.hideState);
+	return changed;
 }
 
 /**

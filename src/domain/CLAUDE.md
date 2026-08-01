@@ -185,3 +185,24 @@ in the root `CLAUDE.md` because it spans every layer.
   why `DropTarget` and `DropZone` live in `dropTargets.ts` rather than with the writer and
   the view that read them. Both used to sit upstream and made this layer depend on the
   effectful one.
+- The roadmap's axis is DECLARED, never detected (`roadmap.ts`): a horizon property with
+  a non-empty values list makes the bucket axis, either date property makes the timeline,
+  and no property is ever picked by name-matching — nor is a date ever read as a horizon.
+  `activeAxis` honors a retained pick only while its axis is configured; the pick itself
+  is the caller's to keep, never rewritten by falling back.
+- The roadmap field readers are tri-state (`FieldReading` in `noteFields.ts`): absence
+  and refusal are different facts — absent is untriaged (shelved silently), invalid
+  shelves with the reason on the card. Collapsing them would turn "can't read this" into
+  a silent "not planned". Dates are CIVIL (year/month/day as the note spells them, any
+  time/offset ignored for placement, never converted to a zone), and `timeline.ts` takes
+  `today` as a parameter — nothing in this layer reads a clock.
+- Context rows on the roadmap: never counted, never shelved (the shelf is a statement
+  about results), never a source of vocabulary — a context value places into a bucket
+  that already exists but never mints one — and never placed on the timeline by its own
+  dates (its span, once spans roll up, is what its visible results give it). What has no
+  place stands in `RoadmapModel.context`, rendered beside the shelf apart from its
+  count. The invariant the tests state from the rule: placed plus shelved equals the
+  visible result rows, on either axis.
+- Bucket order inside a bucket is the Base's own sort (`entryIndex`), the board's
+  derived-order rule; the shelf and the timeline keep tree order — rows arrive from
+  `roadmapRows` already in it, which is what "sibling order" on the shelf rests on.

@@ -1,22 +1,31 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
-import { BacklogViewHost, BoardSnapshot, BusyState, ChipProp, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
+import {
+	BacklogViewHost,
+	BoardSnapshot,
+	BusyState,
+	ChipProp,
+	PRODUCT_BACKLOG_VIEW_TYPE,
+	Projection,
+	RoadmapSnapshot,
+} from './host';
 import { BoardDragController } from './interactions/boardDrag';
 import { DragDropController } from './interactions/dragDrop';
-import { handleBoardKeydown, handleTreeKeydown } from './interactions/keyboard';
+import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
+import { RoadmapAxis } from '../domain/roadmap';
 import { computeDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
-import { renderBoard } from './render/board';
-import { chipProps, columnFit, rowContext, RowContext } from './render/columns';
-import { renderBoardNoWorkflowState, renderLoadingState } from './render/emptyStates';
-import { refreshRowChildren, renderTree } from './render/rows';
+import { applyColumnFit, chipProps, rowContext, RowContext } from './render/columns';
+import { renderLoadingState } from './render/emptyStates';
+import { renderProjectionContent } from './render/projections';
+import { refreshRowChildren } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
@@ -36,8 +45,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
 	private boardDnd: BoardDragController;
-	/** The board of the last render; null while the view is a tree. */
+	/** The board of the last render; null while the view is not a board. */
 	board: BoardSnapshot | null = null;
+	/** The roadmap of the last render; null while the view is not a roadmap. */
+	roadmap: RoadmapSnapshot | null = null;
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -97,9 +108,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		});
 		this.dnd.setupRootDropZone();
 		this.boardDnd = new BoardDragController(this, this.viewEl);
-		this.treeEl.addEventListener('keydown', (evt) =>
-			this.boardMode ? handleBoardKeydown(this, evt) : handleTreeKeydown(this, evt),
-		);
+		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
@@ -119,64 +128,56 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	/**
-	 * Drop the columns a pane this narrow cannot hold. They never shrink — that is
-	 * what keeps them aligned across rows — so the alternative to hiding them is
-	 * clipping whatever sits at the row's end, which is the state and the rollup.
-	 * Measured after the rows are in place: an empty tree has no scrollbar, and its
-	 * width is not the width the columns will actually get. Returns true when the
-	 * decision changed, which is when what was rendered no longer matches it.
+	 * Drop the columns a pane this narrow cannot hold, measured after the rows are
+	 * in place: an empty tree has no scrollbar, and its width is not the width the
+	 * columns will actually get. The depth term comes off the row index — `rowEls`
+	 * holds exactly what was rendered, so a collapse shrinks it the same pass —
+	 * because indent is part of what a row needs, and expanding a deep branch can
+	 * be what makes the columns stop fitting.
 	 */
 	private syncColumnFit(): boolean {
 		const width = this.treeEl.clientWidth;
 		// Zero while detached or before the first layout: keep the last decision.
 		if (width === 0) return false;
-		// Indent is part of what a row needs, so expanding a deep branch can be what
-		// makes the columns stop fitting.
-		const fit = columnFit(this.settings, this.chips.length, this.renderedDepth(), width);
-		const changed =
-			fit.hideProps !== this.viewEl.hasClass('pbl-hide-props') ||
-			fit.hideMeta !== this.viewEl.hasClass('pbl-hide-meta') ||
-			fit.hideState !== this.viewEl.hasClass('pbl-hide-state');
-		this.viewEl.toggleClass('pbl-hide-props', fit.hideProps);
-		this.viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
-		this.viewEl.toggleClass('pbl-hide-state', fit.hideState);
-		return changed;
-	}
-
-	/**
-	 * Deepest row on screen, read off the row index rather than walked out of the
-	 * model: `rowEls` holds exactly what was rendered, so this cannot disagree with
-	 * the tree the user is looking at, and a collapse shrinks it the same pass it
-	 * happens in.
-	 */
-	private renderedDepth(): number {
-		let max = 0;
+		let depth = 0;
 		for (const path of this.rowEls.keys()) {
-			const depth = this.model?.byPath.get(path)?.depth ?? 0;
-			if (depth > max) max = depth;
+			depth = Math.max(depth, this.model?.byPath.get(path)?.depth ?? 0);
 		}
-		return max;
+		return applyColumnFit(this.viewEl, this.settings, this.chips.length, depth, width);
 	}
 
 	/**
-	 * True while this view shows the board. UI state, not a base setting: it lives
+	 * Which projection this view shows. UI state, not a base setting: it lives
 	 * beside the collapse state — per saved view, per device — never in the `.base`.
 	 */
-	get boardMode(): boolean {
-		return this.collapse.boardMode();
+	get projection(): Projection {
+		return this.collapse.projection();
 	}
 
-	setBoardMode(on: boolean): void {
-		if (on === this.boardMode) return;
-		this.collapse.setBoardMode(on);
+	setProjection(mode: Projection): void {
+		if (mode === this.projection) return;
+		this.collapse.setProjection(mode);
 		// No config was set, so no Bases refresh is coming: this render is the switch.
+		this.render();
+	}
+
+	/** The retained roadmap-axis pick for this saved view; null before the user picks. */
+	get axisPick(): string | null {
+		return this.collapse.axisPick();
+	}
+
+	setAxisPick(axis: RoadmapAxis): void {
+		if (axis === this.axisPick) return;
+		this.collapse.setAxisPick(axis);
+		// The pick is UI state like the mode: no Bases refresh is coming.
 		this.render();
 	}
 
 	/** Re-measure after a resize, and rebuild only if a column came or went. */
 	private onResize(): void {
-		// Board columns scroll horizontally instead of dropping; the fit ladder is the tree's.
-		if (this.boardMode) return;
+		// Board columns and the timeline scroll horizontally instead of dropping
+		// columns; the fit ladder is the tree's.
+		if (this.projection !== 'tree') return;
 		if (this.syncColumnFit()) this.renderTreeContent();
 	}
 
@@ -377,15 +378,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		syncFilterUi(this, this.toolbarEl);
 		const model = this.model;
 		if (!model) return;
-		const board = this.boardMode;
-		this.viewEl.toggleClass('pbl-board-mode', board);
-		// The listbox role is a promise of options. The no-workflow guidance renders
-		// none, so it presents as a plain labelled region rather than an empty
-		// listbox a screen reader may announce as nothing at all — a board with
-		// columns always has options, because an empty column's stop is one.
-		const role = board ? (this.settings.stateKey ? 'listbox' : 'region') : 'tree';
-		this.treeEl.setAttribute('role', role);
-		this.treeEl.setAttribute('aria-label', board ? 'Product backlog board' : 'Product backlog');
+		const projection = this.projection;
+		this.viewEl.toggleClass('pbl-board-mode', projection === 'board');
+		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
 		this.dnd.onRenderStart();
 		this.boardDnd.onRenderStart();
 		this.viewEl.toggleClass('pbl-focused', model.focused);
@@ -396,22 +391,33 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const scrollLeft = this.treeEl.scrollLeft;
 		this.treeEl.empty();
 		this.rowEls.clear();
-		if (board) {
+		if (projection !== 'tree') {
 			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
 			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-state');
-			this.renderBoardContent();
-		} else {
-			this.board = null;
-			// A column stop is board state; carrying it into the tree would leave the
-			// selection pointing at a projection that is no longer on screen.
-			this.selectBoardColumn(null);
-			renderTree(this.rowCtx(), this.treeEl);
+		}
+		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.boardDnd);
+		this.board = content.board;
+		this.roadmap = content.roadmap;
+		this.treeEl.setAttribute('role', content.role);
+		this.treeEl.setAttribute('aria-label', content.label);
+		// Column stops are board state: without a board on screen a held stop would
+		// point at a projection that no longer exists, so it is released; with one,
+		// it is clamped to the columns left, the way the card selection is carried.
+		if (content.board === null) this.selectBoardColumn(null);
+		else if (this.selectedBoardColumn !== null) {
+			this.selectBoardColumn(Math.min(this.selectedBoardColumn, content.board.colEls.length - 1));
 		}
 		this.treeEl.scrollTop = scrollTop;
 		this.treeEl.scrollLeft = scrollLeft;
+		// The timeline opens on today rather than on its far-past edge — but only
+		// while nothing has been scrolled yet: a data update mid-session must not
+		// yank the view back to now.
+		if (projection === 'roadmap' && scrollLeft === 0 && this.roadmap?.todayLeft != null) {
+			this.treeEl.scrollLeft = Math.max(this.roadmap.todayLeft - this.treeEl.clientWidth / 2, 0);
+		}
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
-		if (board) return;
+		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.
@@ -419,28 +425,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			this.refitting = true;
 			this.renderTreeContent();
 			this.refitting = false;
-		}
-	}
-
-	/**
-	 * The board projection of the same model. Without a state property there is no
-	 * workflow to project, so board mode is guidance instead of columns — the one
-	 * case with no board, and never a blank pane.
-	 */
-	private renderBoardContent(): void {
-		if (!this.settings.stateKey) {
-			this.board = null;
-			// A held column stop is board state, and there is no board: releasing it
-			// here keeps the guidance screen from carrying a dangling active position.
-			this.selectBoardColumn(null);
-			renderBoardNoWorkflowState(this.treeEl);
-			return;
-		}
-		this.board = renderBoard(this.rowCtx(), this.treeEl, this.boardDnd);
-		// The selection may rest on a column rather than a card; carry it across the
-		// rebuild the way the card selection is carried, clamped to the columns left.
-		if (this.selectedBoardColumn !== null) {
-			this.selectBoardColumn(Math.min(this.selectedBoardColumn, this.board.colEls.length - 1));
 		}
 	}
 

@@ -18,11 +18,18 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 	return visible;
 }
 
+/** One keydown entry for the scroller: the projection decides which handler runs. */
+export function handleProjectionKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
+	if (host.projection === 'board') handleBoardKeydown(host, evt);
+	else if (host.projection === 'roadmap') handleRoadmapKeydown(host, evt);
+	else handleTreeKeydown(host, evt);
+}
+
 /**
  * Tree keyboard support: arrows navigate, Enter opens, and Alt+arrows mirror
  * the Azure DevOps backlog shortcuts (move within siblings, outdent, indent).
  */
-export function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
+function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	// Keys bubbling out of a focused row control (the state chip) drive that
 	// control alone — Enter there must not also open the selected item.
 	if (evt.target !== evt.currentTarget) return;
@@ -190,14 +197,8 @@ interface BoardPosition {
  * still a stop, so an empty board is fully drivable. The move shortcuts and the
  * card menu are the next increment's work, alongside the board's Set state.
  */
-export function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
-	if (evt.target !== evt.currentTarget) return;
-	if (handleBoardChromeKey(host, evt)) return;
-	// Navigation is unmodified keys only. Alt+arrows are the MOVE shortcuts this
-	// increment defers — a modified arrow that silently moved the selection instead
-	// of the card would teach the wrong reflex, and other chords are not this
-	// handler's to swallow.
-	if (evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
+function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
+	if (cardChromeHandled(host, evt)) return;
 	const snapshot = host.board;
 	if (!snapshot || snapshot.board.columns.length === 0) return;
 	const pos = boardPosition(host, snapshot);
@@ -216,6 +217,19 @@ export function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): v
 	}
 }
 
+/**
+ * The guard both card projections share: keys bubbling out of a focused control
+ * drive that control alone, the chrome keys run first, and navigation is
+ * unmodified keys only — Alt+arrows are the deferred MOVE shortcuts, and a
+ * modified arrow that silently moved the selection instead of a card would teach
+ * the wrong reflex; other chords are not these handlers' to swallow.
+ */
+function cardChromeHandled(host: BacklogViewHost, evt: KeyboardEvent): boolean {
+	if (evt.target !== evt.currentTarget) return true;
+	if (handleBoardChromeKey(host, evt)) return true;
+	return evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey;
+}
+
 /** The keys that are not navigation: undo, the column-stop Escape, and the filter pair. */
 function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolean {
 	if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key.toLowerCase() === 'z') {
@@ -230,6 +244,51 @@ function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolea
 		return true;
 	}
 	return handleFilterKey(host, evt);
+}
+
+// ------------------------------------------------------------------- roadmap
+
+/**
+ * Roadmap keyboard support — the same one-tab-stop model, over the rendered
+ * cards in reading order: axis, then shelf, then context. Arrows in either pair
+ * step the selection (buckets and the shelf lay out sideways, the timeline
+ * stacks, so both pairs work everywhere), Home and End reach the edges, Enter
+ * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes. The lift-move-drop gestures
+ * are the scheduling feature's work, beside the writes they commit.
+ */
+function handleRoadmapKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
+	if (cardChromeHandled(host, evt)) return;
+	const cards = host.roadmap?.cards ?? [];
+	if (cards.length === 0) return;
+	const currentIdx = host.selectedPath ? cards.findIndex((c) => c.file.path === host.selectedPath) : -1;
+	const next = nextRoadmapIndex(cards.length, currentIdx, evt.key);
+	if (next !== null) {
+		evt.preventDefault();
+		host.selectItem(cards[next]);
+		return;
+	}
+	if (evt.key === 'Enter' && currentIdx >= 0) {
+		evt.preventDefault();
+		host.openItem(cards[currentIdx], evt);
+	}
+}
+
+/** The card a navigation key moves to, or null for a key that is not navigation. */
+function nextRoadmapIndex(count: number, currentIdx: number, key: string): number | null {
+	const last = count - 1;
+	switch (key) {
+		case 'Home':
+			return 0;
+		case 'End':
+			return last;
+		case 'ArrowDown':
+		case 'ArrowRight':
+			return currentIdx === -1 ? 0 : Math.min(currentIdx + 1, last);
+		case 'ArrowUp':
+		case 'ArrowLeft':
+			return currentIdx === -1 ? last : Math.max(currentIdx - 1, 0);
+	}
+	return null;
 }
 
 function boardPosition(host: BacklogViewHost, snapshot: BoardSnapshot): BoardPosition | null {

@@ -58,15 +58,19 @@ settled before any code — what a filtered board does to a WIP signal, what hap
 a card created into a state the base excludes — and every one of those was a
 paragraph of prose before the shape asked the question.
 
-**Product Roadmap** is the third projection, also design only: the same backlog on a
-time axis, specified across five features and 15 use cases — the projection toggle grown
-to three positions, Now-Next-Later buckets from a horizon property, a dated timeline
-whose parents span their children, scheduling as gated date writes, and lanes, focus and
-rollups carried over. Two decisions organize the epic: the axis is declared in the view
-options, never guessed from property names and never derived from dates; and planned
-dates are different keys from the board's transition stamps, so a plan can never
-overwrite a record. Every note states the precedent it rests on, from a survey of the
-roadmap literature, the major trackers and the Obsidian ecosystem run on 2026-08-01.
+**Product Roadmap** is the third projection: the same backlog on a time axis,
+specified across five features and 15 use cases — the projection toggle grown to three
+positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
+parents span their children, scheduling as gated date writes, and lanes, focus and
+rollups carried over. Its first feature is built: the toggle's roadmap position, the
+declared axis with its collision checks, both frames read-only — buckets and stated
+bars — the unplaced shelf, and the roadmap's empty states. Everything that writes —
+moving between horizons, scheduling by drag, the lanes — is design still. Two
+decisions organize the epic: the axis is declared in the view options, never guessed
+from property names and never derived from dates; and planned dates are different keys
+from the board's transition stamps, so a plan can never overwrite a record. Every note
+states the precedent it rests on, from a survey of the roadmap literature, the major
+trackers and the Obsidian ecosystem run on 2026-08-01.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a

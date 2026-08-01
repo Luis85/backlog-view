@@ -23,7 +23,7 @@ function board(vault: FakeVault, extra: Record<string, unknown> = {}) {
 	// The mode is UI state, not a base setting: flipped through the host, as the
 	// toolbar does, never through the config.
 	const harness = makeView(vault, { ...WORKFLOW, ...extra }, { collapsed: true });
-	harness.view.setBoardMode(true);
+	harness.view.setProjection('board');
 	return harness;
 }
 
@@ -286,7 +286,7 @@ describe('the board keyboard', () => {
 		key(tree, 'ArrowRight');
 		expect(view.selectedBoardColumn).toBe(0);
 
-		view.setBoardMode(false);
+		view.setProjection('tree');
 
 		// Board state must not point at a projection no longer on screen.
 		expect(view.selectedBoardColumn).toBeNull();
@@ -333,7 +333,7 @@ describe('the quick filter on the board', () => {
 		treeSide.view.setFilter('Epic A');
 
 		// The toggle switches in place — the filter is session state in both projections.
-		treeSide.view.setBoardMode(true);
+		treeSide.view.setProjection('board');
 
 		expect(cardTitles(treeSide.containerEl)).toEqual(['Epic A']);
 		const input = treeSide.containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');

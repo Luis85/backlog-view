@@ -169,10 +169,11 @@ free of runtime code so imports stay cycle-free.
   `listbox` and the keydown dispatched to `handleBoardKeydown`. The column-fit ladder
   (`pbl-hide-*`) is the tree's — entering board mode clears its stale verdicts, or a
   narrow-pane decision from tree mode would hide card cells.
-- The mode is `host.boardMode`, backed by the collapse store (UI state, per saved view,
-  per device) — never `settings` and never the `.base`: base settings are saved on the
-  view, working position in localStorage. `setBoardMode` re-renders itself, because no
-  config was set and no Bases refresh is coming.
+- The mode is `host.projection` — `'tree' | 'board' | 'roadmap'` — backed by the
+  collapse store (UI state, per saved view, per device) — never `settings` and never
+  the `.base`: base settings are saved on the view, working position in localStorage.
+  `setProjection` re-renders itself, because no config was set and no Bases refresh is
+  coming; the roadmap-axis pick (`setAxisPick`) follows the same rule.
 - `BoardDragController` collects every adapter registration's cleanup and runs them at
   the top of each render pass: the board is rebuilt wholesale, and pragmatic listeners
   left on detached elements would fire against a board that no longer exists. Its
@@ -192,6 +193,34 @@ free of runtime code so imports stay cycle-free.
   so the resync leaves a held column alone rather than stripping the active
   descendant it just set. Rendering the tree releases any held column stop: board
   state must not outlive the projection it points into.
+
+## The roadmap projection
+
+- Read-only by design in this increment: no drag wiring, no lift, no menu writes —
+  scheduling and horizon moves are their own feature and arrive with their write
+  plans. What IS interactive: opening (click/Enter), the shared tag pills on result
+  cards (the card body is the board's), the toolbar. Everything else renders.
+- A roadmap card is the board's card: `createCard` / `renderCardBody` /
+  `wireCardActivation` are exported from `render/board.ts` and shared, so an item
+  cannot look different per projection. Timeline rows reuse the card SHELL (selection,
+  context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
+  card's column geometry in CSS.
+- The axis is resolved per render (`activeAxis(settings, axisPick)`), never stored
+  resolved: the pick is retained in the collapse store even while its axis is
+  unconfigured, so restoring the configuration restores the choice. The picker renders
+  only in roadmap mode with BOTH axes configured — with one there is no choice to make.
+- Roles are earned, not assumed: the pane is a `listbox` only while cards render
+  (snapshot decided after the render pass), a labelled `region` otherwise — the
+  board's no-workflow reasoning, applied to an empty frame. Keyboard is a linear walk
+  of `roadmap.cards` (axis order, then shelf, then context) with both arrow pairs,
+  Home/End, Enter to open, and the shared chrome keys; the 2D treegrid semantics come
+  with the scheduling feature.
+- `todayCivil()` is computed in the view and INJECTED into the domain: nothing under
+  `domain/` reads a clock, which is what keeps every window and geometry test able to
+  say which day today is. The timeline scrolls to today only while `scrollLeft` is 0 —
+  a data update mid-session must not yank the view back to now.
+- The board- and roadmap-mode CSS guards both clear the tree's stale `pbl-hide-*`
+  verdicts; the fit ladder is the tree's alone.
 
 ## Lifecycle
 
