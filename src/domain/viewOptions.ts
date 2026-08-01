@@ -3,6 +3,7 @@ import {
 	DEFAULT_DONE_VALUES,
 	DEFAULT_EXTRA_TYPES,
 	DEFAULT_LEVELS,
+	DEFAULT_TYPE_FOLDERS,
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
@@ -146,6 +147,13 @@ function newItemsGroup(): BasesAllOptions {
 				key: 'newItemFolder',
 				displayName: 'Folder for new items',
 				placeholder: 'Same folder as existing items',
+			},
+			{
+				type: 'text',
+				key: 'typeFolders',
+				displayName: 'Folders by type',
+				default: DEFAULT_TYPE_FOLDERS,
+				placeholder: DEFAULT_TYPE_FOLDERS,
 			},
 		],
 	};

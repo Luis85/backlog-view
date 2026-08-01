@@ -92,6 +92,51 @@ through the real modal.
 Not verifiable here, as ever: the badge. Added to the
 [smoke-test checklist](smoke-test-the-visual-changes.md).
 
+## Follow-up: folders by type
+
+A second request, built on the same vocabulary: each type files itself in its own folder
+(`folderForType`), defaulting to `Epic/Feature/PBI → docs/requirements`, `Task →
+docs/tasks`, `Issue → docs/issues`, `Bug → docs/bugs`, configurable as `Type: folder`
+pairs.
+
+The decision worth recording is the **shipped default**. It was raised that non-empty
+defaults will file new items outside a Base's filter — the view creates a note and then
+shows it only if the query returns it, so a vault filtered to `Backlog/` gets an Epic in
+`docs/requirements` that is not in the tree afterwards. The maintainer chose to ship the
+mapping anyway; it is documented prominently in the README, and mitigated where it could
+be without contradicting the choice: the **Create backlog** command writes
+`typeFolders: ''` into the base it scaffolds, since that command writes a filter and a
+creation folder in the same breath and would otherwise contradict itself on the first
+Bug.
+
+Two consequences of a fully-mapped default that are easy to mistake for bugs later:
+
+- Folder **inference** and the folder **prompt** never run, because a type folder answers
+  first. Both paths are still live for a cleared option, and several creation tests now
+  pass `typeFolders: ''` to reach them.
+- The landing folder depends on the type, which is chosen *inside* the modal — so the
+  prompt's detail line had to become a function of the type rather than a string, or it
+  would state the wrong folder at the moment the user confirms.
+
+## Review findings
+
+Two real bugs came out of automated review of the PR, both in the pinning rule, and both
+worth recording because they are the same mistake at different depths:
+
+1. **A nested extra type lost its rank** (P1). The dragged root carried its pinned rank,
+   but the recursive walk descended into an extra type *below* it using the positional
+   level — so moving a Feature containing a Bug rewrote that Bug's Tasks to PBIs, the Bug
+   itself skipped and apparently untouched. The root and nested cases are now one rule
+   (`rankOf`), applied at every step.
+2. **A parentless extra type was pruned** (P2). `pruneOutsideHierarchy` asked whether a
+   type was one of `settings.levels`, so a top-level Bug belonged to nothing and left the
+   model — reachable both by `Set type` on a leaf and by dragging one to the top level,
+   the rules being advisory. Membership now reads every declared type.
+
+The lesson for anything added here later: **a rule that pins a rank has to hold wherever
+that type appears** — at the root of a move, inside a moved subtree, and in the scope
+test — not only where it was first noticed.
+
 ## Known limitation
 
 An extra type ranks with the second-lowest level, so `Show completed items`, rollups and

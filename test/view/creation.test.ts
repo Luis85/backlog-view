@@ -11,7 +11,9 @@ describe('item creation', () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Backlog/Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
-		const { containerEl } = makeView(vault);
+		// Folders by type off: this is the inference path, which only runs when the
+		// type being created has no folder of its own.
+		const { containerEl } = makeView(vault, { typeFolders: '' });
 
 		rowByTitle(containerEl, 'Epic A')
 			.querySelector<HTMLElement>('.pbl-add')
@@ -50,7 +52,7 @@ describe('item creation', () => {
 	it('creates the extra type picked in the modal, under a parent three rungs up', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, { typeFolders: '' });
 
 		rowByTitle(containerEl, 'Epic A')
 			.querySelector<HTMLElement>('.pbl-add')
@@ -75,6 +77,42 @@ describe('item creation', () => {
 		expect(fm['parent']).toBe('[[Epic A]]');
 	});
 
+	it('files a new item in its type folder, and follows the picker', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// Default mapping: Feature → docs/requirements, Bug → docs/bugs.
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Epic A')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('prompt not opened');
+
+		// The landing spot is announced for the default type...
+		const detail = () => modal.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
+		expect(detail()).toBe('Under "Epic A" · in folder "docs/requirements"');
+
+		// ...and must follow the picker, or it tells the user something untrue at the
+		// moment they confirm.
+		const picker = modal.contentEl.querySelector('select');
+		if (!picker) throw new Error('type picker missing');
+		picker.value = 'Bug';
+		picker.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(detail()).toBe('Under "Epic A" · in folder "docs/bugs"');
+
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('title input missing');
+		input.value = 'Login times out';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// Filed by type, not beside the items it was created from.
+		expect(vault.fm('docs/bugs/Login times out.md')['type']).toBe('Bug');
+		expect(vault.fm('docs/bugs/Login times out.md')['parent']).toBe('[[Epic A]]');
+	});
+
 	it('asks nothing when the row can hold only one type', () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
@@ -95,7 +133,9 @@ describe('item creation', () => {
 describe('creation flows', () => {
 	it('asks for a folder on an empty view and persists the choice', async () => {
 		const vault = new FakeVault();
-		const { containerEl, config } = makeView(vault);
+		// The prompt only asks when the type being created has nowhere to go: no folder
+		// of its own, none configured, and no items to infer from.
+		const { containerEl, config } = makeView(vault, { typeFolders: '' });
 
 		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		// With the folder still a user choice there is no landing spot to announce
@@ -110,7 +150,7 @@ describe('creation flows', () => {
 
 	it('describes the vault root as the landing spot for rootless backlogs', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, { typeFolders: '' });
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe('In the vault root');
@@ -121,7 +161,7 @@ describe('creation flows', () => {
 		vault.addFile('Epic 1.md', { frontmatter: { type: 'Epic', order: 100 } });
 		vault.addFile('Epic 2.md', { frontmatter: { type: 'Epic', order: 200 } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic 1' });
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature' });
+		const { containerEl } = makeView(vault, { focusLevel: 'Feature', typeFolders: '' });
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		submitPrompt({ title: 'Fresh Feature' });
@@ -135,7 +175,7 @@ describe('creation flows', () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		// Focused on Feature, nothing matches — but the full tree knows the folder
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature' });
+		const { containerEl } = makeView(vault, { focusLevel: 'Feature', typeFolders: '' });
 		expect(containerEl.querySelector('.pbl-empty')).not.toBeNull();
 
 		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

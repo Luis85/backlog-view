@@ -2,6 +2,7 @@ import { Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { TitlePromptModal } from '../../ui/prompts';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { folderForType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/frontmatter';
 import { BacklogSettings, configProblems } from '../../domain/settings';
@@ -39,17 +40,32 @@ export function promptCreateItem(host: BacklogViewHost, choices: string[], paren
 		host.settings.folderHierarchy && parentItem && !parentItem.outsideFilter
 			? normalizeFolder(parentItem.file.parent?.path)
 			: null;
-	const inferredFolder =
-		parentFolder ?? (host.settings.newItemFolder || (hasItems ? inferFolder(host.model) : ''));
+	// Walked once, not per type: the fallback does not depend on which type is chosen.
+	const fallbackFolder = host.settings.newItemFolder || (hasItems ? inferFolder(host.model) : '');
+	/**
+	 * Where a new item of this type lands. Folder mode's "beside the parent's folder
+	 * note" rule stays on top — there the folder tree IS the hierarchy, and an opt-in
+	 * mode should not be quietly overruled by a filing default. Below it the type's own
+	 * folder wins over the generic one, so a Bug files itself under `docs/bugs` even in
+	 * a base whose items otherwise live together.
+	 */
+	const folderFor = (typeName: string): string =>
+		parentFolder ?? folderForType(typeName, host.settings) ?? fallbackFolder;
 	// Without items or a configured folder there is nothing to infer from, and a note
 	// in the vault root would most likely fall outside this base's filter — ask instead.
-	const askFolder = parentFolder === null && !hasItems && host.settings.newItemFolder === '';
+	// A type that files itself needs no asking, so this only fires when one of the
+	// offered types would have nowhere to go.
+	const askFolder =
+		parentFolder === null &&
+		!hasItems &&
+		host.settings.newItemFolder === '' &&
+		choices.some((type) => folderForType(type, host.settings) === null);
 
 	new TitlePromptModal(host.app, {
 		// With a choice to make the heading cannot name the type, since the type is the
 		// thing being chosen; without one it still says exactly what is being created.
 		heading: choices.length > 1 ? 'New item' : `New ${choices[0]}`,
-		detail: askFolder ? undefined : promptDetail(parentItem, inferredFolder),
+		detail: askFolder ? undefined : (typeName: string) => promptDetail(parentItem, folderFor(typeName)),
 		types: choices,
 		askFolder,
 		onSubmit: ({ title, folder, typeName }) => {
@@ -57,7 +73,7 @@ export function promptCreateItem(host: BacklogViewHost, choices: string[], paren
 				levelName: typeName,
 				parentItem,
 				title,
-				folder: askFolder ? folder ?? '' : inferredFolder,
+				folder: askFolder ? folder ?? '' : folderFor(typeName),
 				persistFolder: askFolder,
 			});
 		},

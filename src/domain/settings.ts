@@ -31,6 +31,12 @@ export interface BacklogSettings {
 	showChips: boolean;
 	showCounts: boolean;
 	newItemFolder: string;
+	/**
+	 * Folder per item type, keyed by LOWERCASED type name — `Bug` files itself in
+	 * `docs/bugs` wherever it sits in the tree. Takes precedence over `newItemFolder`
+	 * and over inference, but not over folder mode's "beside the parent" rule.
+	 */
+	typeFolders: Record<string, string>;
 	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
 	focusLevel: string;
 	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
@@ -52,6 +58,35 @@ export interface BacklogSettings {
 
 export const DEFAULT_LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
 export const DEFAULT_EXTRA_TYPES = ['Issue', 'Bug'];
+/**
+ * The default mapping, kept as the text the option shows so the shipped default and the
+ * parsed one cannot drift: `defaultSettings` parses this very string.
+ */
+export const DEFAULT_TYPE_FOLDERS =
+	'Epic: docs/requirements, Feature: docs/requirements, PBI: docs/requirements, ' +
+	'Task: docs/tasks, Issue: docs/issues, Bug: docs/bugs';
+
+/**
+ * Parse `Type: folder` pairs. Folder names containing a comma cannot be expressed here —
+ * the separator wins — which is the price of a one-line option; the generic
+ * `newItemFolder` picker handles any name and is the way out.
+ */
+export function parseTypeFolders(text: string): Record<string, string> {
+	const folders: Record<string, string> = {};
+	for (const entry of text.split(',')) {
+		const idx = entry.indexOf(':');
+		if (idx <= 0) continue;
+		const type = entry.substring(0, idx).trim().toLowerCase();
+		const folder = entry
+			.substring(idx + 1)
+			.trim()
+			.replace(/^\/+|\/+$/g, '');
+		// An entry with no folder is a typo rather than a request for the vault root,
+		// so it is dropped and that type falls through to the usual resolution.
+		if (type && folder) folders[type] = folder;
+	}
+	return folders;
+}
 export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
 /** Property columns are fixed-width so values line up across rows; this is that width. */
 export const DEFAULT_PROP_COLUMN_WIDTH = 132;
@@ -72,6 +107,7 @@ export function defaultSettings(): BacklogSettings {
 		showChips: true,
 		showCounts: true,
 		newItemFolder: '',
+		typeFolders: parseTypeFolders(DEFAULT_TYPE_FOLDERS),
 		focusLevel: '',
 		stateKey: '',
 		tagsKey: 'tags',
@@ -239,6 +275,10 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
 		newItemFolder: str('newItemFolder').trim().replace(/^\/+|\/+$/g, ''),
+		// Cleared has to differ from never set, exactly as for the extra types: this
+		// option defaults to something real, so an empty value means "no type folders".
+		typeFolders:
+			config.get('typeFolders') === undefined ? fallback.typeFolders : parseTypeFolders(str('typeFolders')),
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		tagsKey: tagsKey(),

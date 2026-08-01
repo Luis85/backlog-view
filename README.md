@@ -310,6 +310,39 @@ None of this is enforced. The ladder has always guided what the view *offers* an
 *writes* without refusing a move you make deliberately, and extra types follow the same
 rule: drag a Bug wherever the work actually belongs.
 
+### Where new items are filed
+
+Each type can have its own folder, so a Bug is filed with the bugs wherever in the tree
+it hangs. **Folders by type** in the view options takes `Type: folder` pairs and ships as:
+
+```text
+Epic: docs/requirements, Feature: docs/requirements, PBI: docs/requirements,
+Task: docs/tasks, Issue: docs/issues, Bug: docs/bugs
+```
+
+The new-item modal names the folder before you commit, and the line follows the type
+picker — switch from PBI to Bug and it re-reads `docs/bugs`.
+
+**Point these at folders your Base's filter matches.** The view creates a note and then
+shows it only if the Base returns it, so with a base filtered to `Backlog/` and the
+defaults above, a new Epic lands in `docs/requirements` and is not in the tree
+afterwards. It is not lost — it is a note in your vault, with its `parent` link intact —
+but it is not where you were looking. Either point the folders inside your backlog, or
+clear the option to get the old behaviour back. The **Create backlog** command writes
+`typeFolders: ''` into the base it scaffolds for exactly this reason.
+
+Full resolution order, first match wins:
+
+1. In **folder mode**, beside the parent's folder note — that mode makes folders the
+   hierarchy, and a filing default should not quietly overrule it.
+2. The type's own folder, from this option.
+3. **Folder for new items**, if set.
+4. The folder most existing items live in.
+5. Otherwise the modal asks, and remembers the answer.
+
+A folder name containing a comma cannot be written here — the separator wins. Use
+**Folder for new items** for those.
+
 ### Filtered bases keep their tree
 
 A Base filtered to one level, one state or one tag returns matching items but not their
@@ -436,7 +469,8 @@ Open the view options in the Bases toolbar to configure:
 | Assign item type when moving | on | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
-| Folder for new items | *(inferred)* | Where the view creates new notes; defaults to the folder most items live in |
+| Folder for new items | *(inferred)* | Where the view creates new notes when the type has no folder of its own; defaults to the folder most items live in |
+| Folders by type | `Epic: docs/requirements, Feature: docs/requirements, PBI: docs/requirements, Task: docs/tasks, Issue: docs/issues, Bug: docs/bugs` | `Type: folder` pairs. **Point these at folders your Base's filter matches**, or clear the option |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |

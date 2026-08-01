@@ -19,7 +19,9 @@ describe('moves in a group that holds an outside-filter row', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({});
+		// Inference is what this test is about, so the type folders that would answer
+		// first are turned off.
+		anyView.config = new FakeViewConfig({ typeFolders: '' });
 		anyView.data = {
 			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
 		};
@@ -72,7 +74,9 @@ describe('new-item folder inference with context rows', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({});
+		// Inference is what this test is about, so the type folders that would answer
+		// first are turned off.
+		anyView.config = new FakeViewConfig({ typeFolders: '' });
 		anyView.data = {
 			data: vault.entries().filter((e) => e.file.path.startsWith('Backlog/')),
 		};
@@ -97,7 +101,9 @@ describe('creating a child under a context parent', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true });
+		// Type folders off: the rule under test is where a child of a CONTEXT parent
+		// lands, which only comes up when the folder is being inferred at all.
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, typeFolders: '' });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
 		view.onDataUpdated();
 		expandAll(containerEl);
@@ -136,7 +142,9 @@ describe('creating a child under a context parent', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true });
+		// Type folders off: the rule under test is where a child of a CONTEXT parent
+		// lands, which only comes up when the folder is being inferred at all.
+		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, typeFolders: '' });
 		anyView.data = { data: vault.entries() };
 		view.onDataUpdated();
 

@@ -27,8 +27,13 @@ export interface NewItemPromptResult {
 
 export interface NewItemPromptOptions {
 	heading: string;
-	/** Context line under the heading: where the new item will land. */
-	detail?: string;
+	/**
+	 * Context line under the heading: where the new item will land. A function of the
+	 * chosen type, because the folder can depend on it — a Bug and a PBI created from
+	 * the same row may be filed in different places, and a line that said otherwise
+	 * would be telling the user something untrue at the moment they confirm.
+	 */
+	detail?: (typeName: string) => string;
 	/**
 	 * Types this row may hold, most expected first. One entry asks nothing and creates
 	 * that type; more than one adds a picker, because which of them is wanted is a
@@ -183,13 +188,14 @@ export class TitlePromptModal extends Modal {
 
 	onOpen(): void {
 		this.titleEl.setText(this.options.heading);
-		if (this.options.detail) {
-			this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.detail });
-		}
 		let title = '';
 		let folder = '';
 		let createBtn: ButtonComponent | null = null;
 		let typeName = this.options.types[0];
+
+		const detailEl = this.options.detail ? this.contentEl.createDiv({ cls: 'pbl-modal-detail' }) : null;
+		const syncDetail = () => detailEl?.setText(this.options.detail?.(typeName) ?? '');
+		syncDetail();
 
 		const submit = () => {
 			const trimmed = title.trim();
@@ -208,7 +214,12 @@ export class TitlePromptModal extends Modal {
 			new Setting(this.contentEl).setName('Type').addDropdown((drop) => {
 				for (const type of this.options.types) drop.addOption(type, type);
 				drop.setValue(typeName);
-				drop.onChange((v) => (typeName = v));
+				drop.onChange((v) => {
+					typeName = v;
+					// The landing spot follows the type, so the line saying where it lands
+					// has to follow it too.
+					syncDetail();
+				});
 			});
 		}
 

@@ -77,10 +77,25 @@ in the root `CLAUDE.md` because it spans every layer.
   level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
   OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
   guided rather than refused.
+- `typeFolders` files new items by TYPE (`folderForType`), ahead of `newItemFolder` and
+  inference but behind folder mode's "beside the parent's folder note" rule — that mode
+  makes folders the hierarchy, and a filing default must not quietly overrule an opt-in
+  structural mode. It ships non-empty (`docs/requirements`, `docs/tasks`, `docs/issues`,
+  `docs/bugs`), which has a consequence worth knowing before debugging it: with every
+  type mapped, inference and the folder prompt never run unless the option is cleared —
+  which is why several creation tests pass `typeFolders: ''` to reach those paths. The
+  same default is why `baseFileContent` writes `typeFolders: ''` into a scaffolded base:
+  it outranks the `newItemFolder` written beside it, so leaving it set would file the
+  first Bug outside the filter the command had just written for it. Because the folder
+  depends on the chosen type and the type is chosen INSIDE the modal, the prompt's detail
+  line is a function of the type, not a string.
 - Scope (`settings.hierarchyOnly`, on by default): a base filtered by folder returns
   every note living there, so `pruneOutsideHierarchy` drops the ones that are not work
   items — a note belongs when it has a *supported* type (matching a configured level) or
-  a parent (explicit, empty-marker, folder-inferred, or unresolvable). The test runs per
+  a parent (explicit, empty-marker, folder-inferred, or unresolvable). "Supported" means
+  every DECLARED type — `allTypeChoices`, levels AND extra types — because an extra type
+  is a work item by the same argument a level is; reading only the ladder dropped a
+  parentless Bug out of the model, the note vanishing moments after being typed. The test runs per
   root subtree, so one participant keeps the whole component (untyped children, untyped
   containers of typed items). Pruned notes leave `model.byPath`/`items` entirely, so
   backfill and rollups never see them; `model.ignoredCount` carries the number for the

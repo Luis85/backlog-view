@@ -21,6 +21,10 @@ describe('baseFileContent', () => {
 		expect(content).toContain('type: product-backlog');
 		// The creation folder is pre-wired so the first item lands inside the filter
 		expect(content).toContain('newItemFolder: "Backlog"');
+		// The per-type folders default to a docs/ layout this base knows nothing about,
+		// and they outrank the line above — left set, the first Bug would be filed
+		// outside the filter that was just written for it.
+		expect(content).toContain("typeFolders: ''");
 	});
 
 	it('quotes the filter as a YAML scalar so hash folder names survive', () => {

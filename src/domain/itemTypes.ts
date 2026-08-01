@@ -88,6 +88,15 @@ export function allTypeChoices(settings: BacklogSettings): string[] {
 	return [...settings.levels, ...settings.extraTypes];
 }
 
+/**
+ * Where a new item of this type is filed, or null when the type has no folder of its
+ * own and the caller should fall through to its usual resolution. Type-first filing:
+ * a Bug goes to the bug folder wherever in the tree it hangs.
+ */
+export function folderForType(typeName: string, settings: BacklogSettings): string | null {
+	return settings.typeFolders[typeName.toLowerCase()] || null;
+}
+
 /** The level name to show on an item's badge. */
 export function displayType(item: { levelIndex: number; typeName: string | null }, settings: BacklogSettings): string {
 	if (item.levelIndex >= 0) return settings.levels[item.levelIndex];

@@ -7,7 +7,7 @@ import { TFolder } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 
-function openModal(options: { askFolder?: boolean; detail?: string; types?: string[] } = {}) {
+function openModal(options: { askFolder?: boolean; detail?: () => string; types?: string[] } = {}) {
 	const vault = new FakeVault();
 	const results: { title: string; folder?: string; typeName?: string }[] = [];
 	const modal = new TitlePromptModal(vault.app as never, {
@@ -67,7 +67,7 @@ describe('TitlePromptModal', () => {
 	});
 
 	it('shows the landing-spot detail line only when provided', () => {
-		const { modal } = openModal({ detail: 'Under "Epic X" · in folder "Backlog"' });
+		const { modal } = openModal({ detail: () => 'Under "Epic X" · in folder "Backlog"' });
 		expect(modal.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe(
 			'Under "Epic X" · in folder "Backlog"',
 		);
