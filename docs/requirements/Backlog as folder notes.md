@@ -102,10 +102,23 @@ construction — which is the pairing this exists for.
   switched on — silently undoing the move, or re-parenting a root. A note whose
   top-level-ness is only implied by an absent key cannot carry this layout's promise that
   the structure it writes is the structure inference reads back.
-- **Both writers take the condition from one predicate**, not from the same boolean
-  expression spelled twice in `storage/frontmatter.ts`. Three places already decide
-  something from `folderHierarchy`, and a rule spelled per call site is one that can
-  differ per call site.
+- **For a move, the item's own layout decides as well as the options in force.** An item
+  that IS a folder note (`Epic/Epic.md`) is pinned on a move to the root whatever the
+  options currently say — a test on its own path, no vault walk. Without that, turning this
+  option back off leaves every note it already created able to lose its marker on the next
+  outdent and be re-adopted the day inference goes on, which would make the toggle change
+  the meaning of notes already on disk after the fact. A setting can be flipped; the shape
+  of the note on disk is the fact, so the fact is what the write reads.
+- **Both writers take the condition from one predicate**, not from the same expression
+  spelled twice in `storage/frontmatter.ts`. Three places already decide something from
+  `folderHierarchy`, and a rule spelled per call site is one that can differ per call site.
+  The predicate takes the file as well as the settings, which is precisely what the
+  boolean-only version could not express.
+- The residual case is pre-existing and stays out of scope: a **flat** note that happens to
+  sit under a folder note still loses its key on a move to the root while inference is off,
+  and can be adopted when inference is switched on. That is today's behaviour for today's
+  layout — stated here so the pin is not mistaken for a general guarantee about every note
+  in a vault that has folder notes in it.
 - `ItemWrite.removeParentKey` keeps its current meaning and its current gate: it is the
   deliberate opposite — delete the key to hand the item *back* to folder inference ("Use
   folder position", "Clear parent link"). Those actions exist only when inference is on,
@@ -164,7 +177,8 @@ construction — which is the pairing this exists for.
 - `storage/frontmatter.ts`: `NewItemSpec` gains the flag; path building and the collision
   search move up one level to the folder. Still the only module that creates a note. The
   top-level marker widens here in **both** writers — `createBacklogItem` and `applyWrites`
-  — off one shared predicate, leaving `removeParentKey` alone.
+  — off one shared predicate over the settings *and* the file, leaving `removeParentKey`
+  alone.
 - `inferFolder` must count **container** folders. With the option on every item has a
   folder of its own, so every count is 1 and the "where do most items live" fallback would
   aim a new top-level item into some other item's folder. Count a folder note's parent
