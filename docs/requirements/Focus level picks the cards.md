@@ -27,7 +27,10 @@ re-roots, on the board it decides which rung becomes cards.
   visible results, never draggable, never counted, never written — under its own
   state's column when one exists, else in the no-state column, styled and announced
   as context. A base returning only Tasks beneath excluded parents therefore still
-  shows a board under that parent level's focus.
+  shows a board under that parent level's focus. And the tree's visibility rule
+  travels with it: a context card renders only while it places a visible result —
+  when hiding finished work hides everything it stood for, the card goes too, its own
+  state never the thing keeping it on screen.
 - Changing focus is a render decision and writes nothing.
 - Focus narrows the board and its counts together, and nothing falls silently: results
   below the focused level surface in card rollups, ancestors as context. The epic's

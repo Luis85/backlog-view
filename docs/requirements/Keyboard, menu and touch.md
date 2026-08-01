@@ -26,7 +26,9 @@ The menu is the answer on every platform either way.
 
 - The board is one tab stop, like the tree: arrows move the selection across cards and
   columns, Home and End reach the edges, Enter opens the note, `/` reaches the quick
-  filter, Ctrl/Cmd+Z undoes.
+  filter, Ctrl/Cmd+Z undoes. A column with no card to select is still a stop — the
+  selection rests on the column itself, where Enter and the context menu offer that
+  column's creation — so an empty board is fully drivable by keyboard.
 - Alt+Left and Alt+Right move the selected card one column, writing the same batch a
   drop writes. There is deliberately no Alt+Up/Down *rank* — within-column order is
   derived ([[Board order is derived not stored]]) — which leaves the pair free for
