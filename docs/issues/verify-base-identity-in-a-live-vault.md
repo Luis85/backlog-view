@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 20
-status: Open
+status: Done
 priority: P1
 area: verification
+closed: 2026-08-01
 created: 2026-07-31
 source: PR #14, collapse-state persistence
 files:
@@ -66,3 +67,27 @@ for why two bases sharing one key is worse than not persisting.
 - Confirmed in a real vault that rows reopen as left, or the failure diagnosed and fixed.
 - Whatever is learned about the leaf's real shape is written into `CLAUDE.md`, since it
   is the fact the whole feature rests on.
+
+---
+
+## Outcome
+
+**The assumption holds.** Verified by the maintainer on 2026-08-01 in a live vault built
+with `npm run test-build`: rows expanded, the tab closed and reopened, and the rows came
+back open.
+
+That single observation is decisive, because the fallback is session-only — had
+`collapseStoreIdentity` returned `null`, closing the tab would have dropped the state and
+everything would have come back collapsed. Rows surviving a tab close means the walk over
+`iterateAllLeaves` found the leaf, that the leaf presented as a `FileView`, that `.file`
+was set, and that its extension was `base`. Every link in the chain the feature rests on
+had to hold to produce that result.
+
+Recorded in `src/storage/CLAUDE.md` as the acceptance criteria asked, and deliberately
+recorded as **verified-once rather than guaranteed**: it is an observation about
+Obsidian's internals, not a documented API. If collapse persistence ever goes quiet after
+an Obsidian update, this is the first thing to re-check — the failure is silent by design,
+so nothing else will report it.
+
+No code changed. The value of this issue was never a patch; it was retiring a thing this
+repository believed but had not seen.

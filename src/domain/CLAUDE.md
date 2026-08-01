@@ -5,6 +5,19 @@ DOM — enforced by `no-restricted-imports` in `eslint.config.mjs`. The rules be
 the ones that bite when changing anything here; the cross-cutting context-row rule lives
 in the root `CLAUDE.md` because it spans every layer.
 
+- The model is built in three phases and **each has its own type**: `RawItem` (what one
+  note says about itself) → `LinkedItem` (+ `parent`, `children`, `orphan`, once the tree
+  is resolved) → `BacklogItem` (+ levels, depth, `focusRoot`, rollups). A field exists
+  only once the phase that owns it has run, so a signature states which fields are real
+  and the compiler enforces it — this used to be ten placeholder values in `addItem` and
+  a request that readers remember. Only `BacklogItem` leaves this module, and it still
+  carries all 24 fields, so nothing downstream knows the difference. **Adding a field
+  means choosing its phase**, which is the question that was easy to skip before.
+  Promotion is an in-place assertion in `linkAll` and `assignAll`, each followed
+  immediately by the loop that fills every field it claims: the graph is cyclic, so a
+  phase cannot rebuild its items without rebuilding every reference to them. Those two
+  lines are the whole unsafety, and they are why the phases are worth having anyway —
+  the alternative is that same unsafety spread across ten fields and every reader.
 - Config property ids are `note.`-prefixed (`note.parent`); frontmatter keys are not.
   `resolveSettings` strips the prefix.
 - Tag identity is case-insensitive and lives in `noteFields.ts` (`tagKey`, `hasTag`):
@@ -69,7 +82,7 @@ in the root `CLAUDE.md` because it spans every layer.
   and skipped by `computeInitWrites`. They ARE valid drop parents and can take new children.
   Their rollups describe the visible subtree only. `entry` is nullable for exactly this
   reason — anything reading `item.entry` must handle null, which the compiler enforces.
-  The seed for the walk is `outsideParentSeed`, which mirrors `linkParents`' precedence
+  The seed for the walk is `outsideParentSeed`, which mirrors `linkAll`'s precedence
   (explicit link, else the nearest folder note *in the vault* when `folderHierarchy` is on)
   — seeding from explicit links alone leaves filtered folder hierarchies flat, since
   inference only ever looks in `byPath`.

@@ -45,7 +45,7 @@ mirrors the same directories.
 | `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation | node tests |
 | `domain/viewOptions.ts` | The declarative Bases view-options schema (its `key`s are persisted user data) | node tests |
 | `domain/noteFields.ts` | Reading a work item's fields off a note: wikilink/bare/alias/list parents, tolerant numbers | node tests |
-| `domain/model.ts` | Tree building: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
+| `domain/model.ts` | Tree building in three typed phases: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
 | `domain/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
 | `domain/dropTargets.ts` | Drop-target math and the `DropZone`/`DropTarget` vocabulary (zones, no-op/cycle/stale-link rules) | node tests |
 | `domain/writePlan.ts` | What a change *would* write: drop plans, ranking, backfill. Pure — applies nothing | node tests |
@@ -190,4 +190,5 @@ write's inverse as it lands, so the last effective batch can always be taken bac
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
 - Open work is tracked in `docs/issues/`, one note per issue, each stating the evidence
-  it rests on. Two of them can only be closed in a real vault.
+  it rests on. The two that needed a real vault are closed; their notes stay as
+  checklists to re-run, since appearance is still untestable here.

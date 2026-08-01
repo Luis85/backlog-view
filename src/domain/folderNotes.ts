@@ -1,6 +1,4 @@
 import { App, TFile } from 'obsidian';
-// Type-only: this module is a leaf, so the import erases and no cycle exists at runtime.
-import type { BacklogItem } from './model';
 
 /**
  * Folder-note hierarchy inference. In folder mode a note with no explicit parent
@@ -15,8 +13,12 @@ import type { BacklogItem } from './model';
  * the walk above its own folder, and container folders without a note of their own
  * (like "use-cases/") pass through. Exported so "Use folder position" can predict
  * where an item will land.
+ *
+ * Generic over the item, because it is called from two different build phases: all it
+ * needs is a path and object identity, and asking for a whole `BacklogItem` would be
+ * asking `linkAll` for fields that do not exist yet while it is doing the linking.
  */
-export function inferFolderParent(item: BacklogItem, byPath: Map<string, BacklogItem>): BacklogItem | null {
+export function inferFolderParent<T extends { file: TFile }>(item: T, byPath: Map<string, T>): T | null {
 	return walkUp(item.file.path, (path) => {
 		const candidate = byPath.get(path);
 		return candidate && candidate !== item ? candidate : null;

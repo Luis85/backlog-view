@@ -14,16 +14,20 @@ into distinct notes in this folder. Everything here came out of the review round
 included in it — each item is either too large to ride along, or needs a real Obsidian
 vault to close.
 
-Nothing here is a user-facing bug in shipped behaviour. Two items (`verify-base-identity-in-a-live-vault`,
-`smoke-test-the-visual-changes`) are verification tasks that gate confidence in code
-already merged; the rest are structure, coverage and documented limitations.
+Nothing here is a user-facing bug in shipped behaviour: the register is structure,
+coverage, verification and documented limitations.
 
-As of 2026-08-01 the tractable work is done: the test suite is split and budgeted, the
-drag-and-drop coverage gap is closed, the invariants that could become checks have,
-levels no longer derive from depth, both refactor seams are cut — and undo, the one gap
-the review found that was a missing *feature* rather than debt, is in. What remains is
-the two live-vault verifications, one refactor that wants its own pull request, and
-three recorded decisions.
+**As of 2026-08-01 every actionable finding is closed.** The test suite is split and
+budgeted, the drag-and-drop coverage gap is closed, the invariants that could become
+checks have, levels no longer derive from depth, both refactor seams are cut, the model's
+build phases are types rather than prose, and undo — the one finding that was a missing
+*feature* rather than debt — is in. Both live-vault verifications passed on their first
+run, retiring two things this repository believed but had not seen; `npm run test-build`
+is what made them cheap enough to do.
+
+What remains is three notes with no acceptance criteria — recorded decisions and
+limitations waiting on evidence rather than on effort. This epic is done; the next one
+should be opened by new evidence, not by grooming this one.
 
 ## Reading this as a backlog
 

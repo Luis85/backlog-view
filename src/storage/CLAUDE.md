@@ -56,9 +56,13 @@ can be checked by reading one directory.
   session-only, exactly as before persistence existed. A shared fallback key would be
   worse than not persisting, because two bases would inherit each other's open rows and
   overwrite each other's state.
-  **Whether a `.base` leaf really presents as a `FileView` with `.file` set is unverified**
-  — Obsidian does not run in this harness. If it does not hold, persistence silently does
-  nothing. See `docs/issues/verify-base-identity-in-a-live-vault.md`.
+  **A `.base` leaf does present as a `FileView` with `.file` set** — confirmed in a live
+  vault on 2026-08-01 (Obsidian 1.10.x), which is the fact the whole feature rests on:
+  rows came back open across a tab close, and they can only do that if the walk found the
+  leaf. Treat it as verified-once, not guaranteed forever — it is an observation about
+  Obsidian's internals, not a documented API, so it is the first thing to re-check if
+  persistence ever goes quiet after an Obsidian update. The failure is silent by design
+  (session-only fallback), so nothing else will report it.
 - Both halves of the key, and both collapse sets, are paths or names a user can change
   at any moment — so each one needs its own migration, not just whichever bit first.
   A **note** rename moves that row's entry in `collapsed`/`settled` (`renamePath`, wired

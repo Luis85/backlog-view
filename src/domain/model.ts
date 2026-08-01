@@ -3,8 +3,23 @@ import { inferFolderParent, nearestFolderNote } from './folderNotes';
 import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
-/** One node of the backlog tree, wrapping a BasesEntry. */
-export interface BacklogItem {
+/**
+ * The model is built in three phases, and each has its own type. A field exists only
+ * once the phase that owns it has run, so a function's parameter type says which
+ * fields are real yet and the compiler enforces it — where this used to be 10
+ * placeholder values and a paragraph of prose asking readers to remember.
+ *
+ * `RawItem` → `LinkedItem` → `BacklogItem`, each extending the one before. Consumers
+ * outside this module only ever meet `BacklogItem`, which still carries all 24 fields,
+ * so nothing downstream changes.
+ */
+
+/**
+ * Phase 1 — what one note says about itself: its file, its Bases row, and the values
+ * read off its frontmatter. Nothing here depends on any other note, which is why
+ * `addItem` can produce it in a single pass and why the vocabulary collectors take it.
+ */
+interface RawItem {
 	file: TFile;
 	/** The Bases result row, or null for an ancestor loaded from outside the filter. */
 	entry: BasesEntry | null;
@@ -39,6 +54,32 @@ export interface BacklogItem {
 	 * hierarchy mode this pins the item to the top level instead of re-inferring.
 	 */
 	explicitRoot: boolean;
+	/** Raw value of the state property, if progress tracking is configured. */
+	stateValue: string | null;
+	/** Tags on the note, without their leading '#'; empty when the key is unset. */
+	tags: string[];
+	/** True when the state value matches one of the configured done values. */
+	done: boolean;
+}
+
+/**
+ * Phase 2 — the tree exists: parent links resolved against the loaded set, folder
+ * inference applied, cycles broken. Everything about *shape*, nothing yet about
+ * position: an item knows its parent but not how deep it sits or what level it is.
+ */
+interface LinkedItem extends RawItem {
+	parent: LinkedItem | null;
+	children: LinkedItem[];
+	/** True when a parent value exists but doesn't resolve to an item in this view. */
+	orphan: boolean;
+}
+
+/**
+ * Phase 3 — everything derived from an item's position in the finished tree: levels,
+ * visual depth, and the rollups counted back up from the leaves. This is the only
+ * phase anything outside `model.ts` ever sees.
+ */
+export interface BacklogItem extends LinkedItem {
 	parent: BacklogItem | null;
 	children: BacklogItem[];
 	/** Visual depth in the rendered tree (0 for rendered roots, focused or not). */
@@ -54,17 +95,9 @@ export interface BacklogItem {
 	effectiveLevelIndex: number;
 	/** True when the level was derived from the parent chain because typeName is missing. */
 	impliedType: boolean;
-	/** True when a parent value exists but doesn't resolve to an item in this view. */
-	orphan: boolean;
 	/** True when this item heads the rendered tree only because of the focus level. */
 	focusRoot: boolean;
 	descendantCount: number;
-	/** Raw value of the state property, if progress tracking is configured. */
-	stateValue: string | null;
-	/** Tags on the note, without their leading '#'; empty when the key is unset. */
-	tags: string[];
-	/** True when the state value matches one of the configured done values. */
-	done: boolean;
 	/** Number of descendants counting as done. */
 	doneDescendants: number;
 	/** True when the item and every descendant are done — the unit hidden by "Show completed items". */
@@ -99,15 +132,15 @@ export interface BacklogModel {
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
-	const { all, byPath } = createItems(app, entries, settings);
-	const roots = linkParents(all, byPath, settings);
-	breakCycles(all, roots);
-	const scoped = settings.hierarchyOnly ? pruneOutsideHierarchy(all, byPath, roots, settings) : all;
-	const ignoredCount = all.length - scoped.length;
-	const observedStates = collectObservedStates(scoped, settings);
-	const observedTags = collectObservedTags(scoped);
-	sortSiblingsDeep(roots);
-	let items = assignAll(roots, settings);
+	const linked = linkAll(createItems(app, entries, settings), settings);
+	breakCycles(linked);
+	const ignoredCount = settings.hierarchyOnly ? pruneOutsideHierarchy(linked, settings) : 0;
+	// Read off the linked phase: neither vocabulary depends on position, and taking
+	// them here keeps them off the tree walk below.
+	const observedStates = collectObservedStates(linked.all, settings);
+	const observedTags = collectObservedTags(linked.all);
+	sortSiblingsDeep(linked.roots);
+	const { roots, byPath, items } = assignAll(linked, settings);
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
 	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
@@ -151,13 +184,30 @@ export function nextLevelIndex(levelIndex: number, levels: string[]): number {
 
 // ------------------------------------------------------------- build phases
 
-interface ItemStore {
-	all: BacklogItem[];
-	byPath: Map<string, BacklogItem>;
+/**
+ * The collection at each phase. Each is the previous one with its items promoted, and
+ * they are separate types for the same reason the items are: a function that takes a
+ * `RawStore` cannot accidentally walk a tree that has not been linked yet.
+ */
+interface RawStore {
+	all: RawItem[];
+	byPath: Map<string, RawItem>;
 }
 
-function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings): ItemStore {
-	const store: ItemStore = { all: [], byPath: new Map() };
+interface LinkedTree {
+	all: LinkedItem[];
+	byPath: Map<string, LinkedItem>;
+	roots: LinkedItem[];
+}
+
+interface BacklogTree {
+	all: BacklogItem[];
+	byPath: Map<string, BacklogItem>;
+	roots: BacklogItem[];
+}
+
+function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings): RawStore {
+	const store: RawStore = { all: [], byPath: new Map() };
 	/** The notes these items hang from — seeds for loading the ancestors the filter cut. */
 	const parents: TFile[] = [];
 
@@ -180,7 +230,7 @@ function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings)
  */
 function addItem(
 	app: App,
-	store: ItemStore,
+	store: RawStore,
 	file: TFile,
 	entry: BasesEntry | null,
 	settings: BacklogSettings,
@@ -194,7 +244,9 @@ function addItem(
 	const seed = outsideParentSeed(app, file, parentRef, settings);
 	const stateValue = settings.stateKey ? readString(fm?.[settings.stateKey]) : null;
 	const doneValues = settings.doneValues.map((v) => v.toLowerCase());
-	const item: BacklogItem = {
+	// Every field this note can answer for itself, and no others: the ten that used to
+	// be initialised here as placeholders now belong to the phases that compute them.
+	const item: RawItem = {
 		file,
 		entry,
 		outsideFilter: entry === null,
@@ -206,20 +258,9 @@ function addItem(
 		hasParentValue: parentRef.hasValue,
 		parentExists: seed !== null,
 		explicitRoot: parentRef.explicitRoot,
-		parent: null,
-		children: [],
-		depth: 0,
-		levelIndex: 0,
-		effectiveLevelIndex: 0,
-		impliedType: false,
-		orphan: false,
-		focusRoot: false,
-		descendantCount: 0,
 		stateValue,
 		tags: settings.tagsKey ? readTags(fm?.[settings.tagsKey]) : [],
 		done: stateValue !== null && doneValues.includes(stateValue.toLowerCase()),
-		doneDescendants: 0,
-		subtreeDone: false,
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
@@ -255,7 +296,7 @@ function outsideParentSeed(
  * this view exists to show collapses into a list. The ancestors come from the
  * metadata cache and are marked `outsideFilter`: context, not results.
  */
-function loadOutsideParents(app: App, store: ItemStore, parents: TFile[], settings: BacklogSettings): void {
+function loadOutsideParents(app: App, store: RawStore, parents: TFile[], settings: BacklogSettings): void {
 	const queue = [...parents];
 	while (queue.length > 0) {
 		const file = queue.pop();
@@ -267,9 +308,26 @@ function loadOutsideParents(app: App, store: ItemStore, parents: TFile[], settin
 	}
 }
 
-/** Attach children to parents; anything unresolvable becomes a root. */
-function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>, settings: BacklogSettings): BacklogItem[] {
-	const roots: BacklogItem[] = [];
+/**
+ * Phase 2. Attach children to parents; anything unresolvable becomes a root.
+ *
+ * The promotion is an assertion followed immediately by the loop that makes it true.
+ * That is the price of an object graph with cycles in it — an item's parent points
+ * back at the item — which cannot be rebuilt phase by phase without rebuilding every
+ * reference to every item, so the fields are added to the objects that already exist.
+ * The cost is paid exactly twice in this file, here and in `assignAll`, and both times
+ * the very next statement assigns every field the new type claims.
+ */
+function linkAll(store: RawStore, settings: BacklogSettings): LinkedTree {
+	const all = store.all as LinkedItem[];
+	for (const item of all) {
+		item.parent = null;
+		item.children = [];
+		item.orphan = false;
+	}
+	const byPath = store.byPath as Map<string, LinkedItem>;
+
+	const roots: LinkedItem[] = [];
 	for (const item of all) {
 		let parent = item.parentPath ? byPath.get(item.parentPath) : undefined;
 		// Folder mode: notes without an explicit parent link attach to the nearest
@@ -285,16 +343,16 @@ function linkParents(all: BacklogItem[], byPath: Map<string, BacklogItem>, setti
 			roots.push(item);
 		}
 	}
-	return roots;
+	return { all, byPath, roots };
 }
 
 /** Any item not reachable from a root is part of a parent cycle — re-root it. */
-function breakCycles(all: BacklogItem[], roots: BacklogItem[]): void {
-	const visited = new Set<BacklogItem>();
-	const markSubtree = (start: BacklogItem) => {
+function breakCycles({ all, roots }: LinkedTree): void {
+	const visited = new Set<LinkedItem>();
+	const markSubtree = (start: LinkedItem) => {
 		const stack = [start];
 		while (stack.length > 0) {
-			const cur = stack.pop() as BacklogItem;
+			const cur = stack.pop() as LinkedItem;
 			if (visited.has(cur)) continue;
 			visited.add(cur);
 			for (const child of cur.children) stack.push(child);
@@ -328,17 +386,16 @@ function breakCycles(all: BacklogItem[], roots: BacklogItem[]): void {
  * configured levels) or has a parent, explicit or folder-inferred, resolvable or not.
  * The test runs per root subtree, not per note: one participant keeps the whole
  * component, so untyped children of a typed item stay, and so does an untyped (or
- * custom-typed) container that holds typed ones. Returns the surviving items;
- * `roots` and `byPath` are pruned in place.
+ * custom-typed) container that holds typed ones.
+ *
+ * The tree is pruned in place — `all`, `roots` and `byPath` all lose the dropped notes,
+ * so what survives here is exactly what the next phase promotes. Returns how many were
+ * dropped, for the toolbar's advisory.
  */
-function pruneOutsideHierarchy(
-	all: BacklogItem[],
-	byPath: Map<string, BacklogItem>,
-	roots: BacklogItem[],
-	settings: BacklogSettings,
-): BacklogItem[] {
+function pruneOutsideHierarchy(tree: LinkedTree, settings: BacklogSettings): number {
+	const { byPath, roots } = tree;
 	const levels = new Set(settings.levels.map((l) => l.toLowerCase()));
-	const belongs = (item: BacklogItem): boolean =>
+	const belongs = (item: LinkedItem): boolean =>
 		item.parent !== null ||
 		item.hasParentValue ||
 		item.explicitRoot ||
@@ -346,27 +403,28 @@ function pruneOutsideHierarchy(
 		// not to load; the note is still part of the hierarchy either way.
 		item.parentExists ||
 		(item.typeName !== null && levels.has(item.typeName.toLowerCase()));
-	const subtreeBelongs = (item: BacklogItem): boolean => belongs(item) || item.children.some(subtreeBelongs);
+	const subtreeBelongs = (item: LinkedItem): boolean => belongs(item) || item.children.some(subtreeBelongs);
 
-	const dropped = new Set<BacklogItem>();
+	const dropped = new Set<LinkedItem>();
 	for (let i = roots.length - 1; i >= 0; i--) {
 		const root = roots[i];
 		if (subtreeBelongs(root)) continue;
 		roots.splice(i, 1);
 		const stack = [root];
 		while (stack.length > 0) {
-			const cur = stack.pop() as BacklogItem;
+			const cur = stack.pop() as LinkedItem;
 			dropped.add(cur);
 			byPath.delete(cur.file.path);
 			for (const child of cur.children) stack.push(child);
 		}
 	}
-	return dropped.size > 0 ? all.filter((item) => !dropped.has(item)) : all;
+	if (dropped.size > 0) tree.all = tree.all.filter((item) => !dropped.has(item));
+	return dropped.size;
 }
 
 /** Walking up from an unreachable item always ends on the cycle that stranded it. */
-function cycleEntry(start: BacklogItem): BacklogItem {
-	const seen = new Set<BacklogItem>();
+function cycleEntry(start: LinkedItem): LinkedItem {
+	const seen = new Set<LinkedItem>();
 	let cur = start;
 	while (cur.parent && !seen.has(cur)) {
 		seen.add(cur);
@@ -380,42 +438,62 @@ function cycleEntry(start: BacklogItem): BacklogItem {
  * Bases query delivered them — which honors the sort the user configured in the
  * Bases toolbar (file name by default).
  */
-function sortSiblingsDeep(list: BacklogItem[]): void {
+function sortSiblingsDeep(list: LinkedItem[]): void {
 	list.sort(compareSiblings);
 	for (const item of list) sortSiblingsDeep(item.children);
 }
 
-function compareSiblings(a: BacklogItem, b: BacklogItem): number {
+function compareSiblings(a: RawItem, b: RawItem): number {
 	const ao = a.order ?? Number.POSITIVE_INFINITY;
 	const bo = b.order ?? Number.POSITIVE_INFINITY;
 	if (ao !== bo) return ao < bo ? -1 : 1;
 	return a.entryIndex - b.entryIndex;
 }
 
-/** Assign visual depth, semantic level and rollup counts over the full tree. */
-function assignAll(renderedRoots: BacklogItem[], settings: BacklogSettings): BacklogItem[] {
+/**
+ * Phase 3. Assign visual depth, semantic level and rollup counts over the full tree,
+ * promoting every item as it is reached. The walk covers the whole tree — `breakCycles`
+ * guarantees every item is reachable from a root, and pruning removes whole root
+ * subtrees — so nothing is left behind holding the earlier type.
+ *
+ * The second and last promotion; see `linkAll` for why an assertion is the price of a
+ * cyclic graph. Each item's fields are assigned before the walk moves on, and the
+ * counts come back as return values rather than being read off the children, so a
+ * rollup cannot accidentally read a field the recursion has not filled in yet.
+ */
+function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & { items: BacklogItem[] } {
+	const promoted = tree as BacklogTree;
 	const items: BacklogItem[] = [];
-	const assign = (item: BacklogItem, depth: number) => {
+	const assign = (linked: LinkedItem, depth: number): Rollup => {
+		const item = linked as BacklogItem;
 		item.depth = depth;
 		computeLevel(item, settings);
+		item.focusRoot = false;
 		items.push(item);
 		let count = 0;
 		let done = 0;
 		for (const child of item.children) {
-			assign(child, depth + 1);
+			const sub = assign(child, depth + 1);
 			// Traverse *through* a context row to the results below it, but never count
 			// it: rollups describe what the Base returned, and an excluded note's own
 			// state must not skew a progress bar or keep a finished subtree on screen.
 			const self = child.outsideFilter ? 0 : 1;
-			count += self + child.descendantCount;
-			done += (child.done ? self : 0) + child.doneDescendants;
+			count += self + sub.count;
+			done += (child.done ? self : 0) + sub.done;
 		}
 		item.descendantCount = count;
 		item.doneDescendants = done;
 		item.subtreeDone = item.done && done === count;
+		return { count, done };
 	};
-	for (const root of renderedRoots) assign(root, 0);
-	return items;
+	for (const root of promoted.roots) assign(root, 0);
+	return { ...promoted, items };
+}
+
+/** What a subtree contributes to its parent's counts. */
+interface Rollup {
+	count: number;
+	done: number;
 }
 
 /**
@@ -423,7 +501,7 @@ function assignAll(renderedRoots: BacklogItem[], settings: BacklogSettings): Bac
  * alphabetically, done states after them. Deduped case-insensitively, keeping
  * the casing seen first.
  */
-function collectObservedStates(all: BacklogItem[], settings: BacklogSettings): string[] {
+function collectObservedStates(all: RawItem[], settings: BacklogSettings): string[] {
 	const seen = new Map<string, string>();
 	for (const item of all) {
 		// Ancestors from outside the filter are not part of this base's vocabulary:
@@ -443,7 +521,7 @@ function collectObservedStates(all: BacklogItem[], settings: BacklogSettings): s
  * the state vocabulary this skips notes the Base excluded: an excluded parent's
  * tags are not this base's vocabulary and must not become assignable to results.
  */
-function collectObservedTags(all: BacklogItem[]): string[] {
+function collectObservedTags(all: RawItem[]): string[] {
 	const seen = new Map<string, string>();
 	for (const item of all) {
 		if (item.outsideFilter) continue;

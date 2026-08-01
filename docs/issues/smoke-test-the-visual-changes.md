@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[codebase-health]]"
 order: 60
-status: Open
+status: Done
 priority: P2
 area: verification
+closed: 2026-08-01
 created: 2026-07-31
 source: PR #14
 files:
@@ -67,3 +68,23 @@ themselves". Nothing else depends on the value.
 - Checked in both light and dark themes, and on one non-default theme if convenient.
 - Anything adjusted is adjusted in `styles.css` only — none of this should require a
   behaviour change.
+
+---
+
+## Outcome
+
+**Checked by the maintainer on 2026-08-01 in a `npm run test-build` vault, and everything
+on the list renders as intended.** Nothing needed adjusting — `styles.css` is unchanged,
+which is the result this note was hoping for and could not assume.
+
+Two of these were live guesses rather than checks, and both came out right: the explicit
+`border` / `box-shadow` / `background-color` / `cursor` resets on the toolbar buttons do
+sit correctly under Obsidian's `.clickable-icon` (the reason they were written was that
+this could not be verified here), and the 250 ms `animation-delay` on the busy chip is
+tuned right — it announces a real batch without flashing on a single drag.
+
+This closes the appearance gap for everything through the undo work. It does not close it
+for good: no test in this repository will ever check what the plugin looks like, so a
+change to `styles.css` or to the toolbar's markup still needs eyes. `npm run test-build`
+is now the one-command path to those eyes, and this note stands as the checklist to
+re-run — reopen it, don't rewrite it.
