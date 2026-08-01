@@ -60,7 +60,7 @@ describe('createBacklogBase', () => {
 
 	it('files a scaffolded backlog inside its own filter, wherever it is scaffolded', () => {
 		// The home folder follows the folder the user picked, so the per-type folders —
-		// relative to home, and outranking newItemFolder — cannot land outside the
+		// relative to home — cannot land outside the
 		// filter written in the same breath.
 		const content = baseFileContent('Roadmap');
 		expect(content).toContain('- "file.inFolder(\\"Roadmap\\")"');

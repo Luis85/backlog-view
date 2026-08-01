@@ -87,12 +87,6 @@ Backlogging into `Roadmap/` means `file.inFolder("Roadmap")` and `homeFolder: "R
 the type folders follow on their own. The **Create backlog** command writes it from the
 one folder it asks you for, which is the whole reason it asks.
 
-Upgrading from a version before these options existed? Nothing moves out from under you.
-A base that set the old **Folder for new items** keeps filing there, and a base that set
-no folder at all keeps filing where its items already live — the shipped folders are a
-default, and a backlog that already lives somewhere outranks a default. Only a vault with
-nothing to learn from starts in `docs/`.
-
 Any properties you enable under **Properties** in the Bases toolbar (the `order` list
 above) are shown as chips on each row — handy for `status`, story points, assignee, etc.
 
@@ -361,7 +355,8 @@ Full resolution order, first match wins:
    hierarchy, and a filing default should not quietly overrule it.
 2. The folder configured for the type being created.
 3. The **home folder**.
-4. The folder most existing items live in.
+4. The folder most existing items live in — only reachable by clearing the two above,
+   since both are configured out of the box.
 5. Otherwise the modal asks, and remembers the answer as the home folder.
 
 ### Filtered bases keep their tree

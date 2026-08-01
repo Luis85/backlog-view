@@ -42,13 +42,6 @@ export interface BacklogSettings {
 	 * the parent" rule.
 	 */
 	typeFolders: Record<string, string>;
-	/**
-	 * True when this base actually names a folder — any of the per-type options, the
-	 * home folder, or the `newItemFolder` that preceded it. False means every folder
-	 * above is this plugin's GUESS, which matters because a guess must not outrank
-	 * evidence: see `folderFor` in `interactions/create.ts`.
-	 */
-	foldersConfigured: boolean;
 	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
 	focusLevel: string;
 	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
@@ -145,7 +138,6 @@ export function defaultSettings(): BacklogSettings {
 		showChips: true,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
-		foldersConfigured: false,
 		typeFolders: typeFoldersFor([...DEFAULT_LEVELS, ...DEFAULT_EXTRA_TYPES], (t) => defaultTypeFolder(t)),
 		focusLevel: '',
 		stateKey: '',
@@ -213,7 +205,6 @@ export function configProblems(settings: BacklogSettings): string[] {
 interface ConfigReaders {
 	str: (key: string) => string;
 	clearable: <T>(key: string, def: T, parse: () => T) => T;
-	config: BasesViewConfig;
 }
 
 /** A user-typed folder path, trimmed and stripped of surrounding slashes. */
@@ -222,38 +213,19 @@ function folderPath(value: string): string {
 }
 
 /**
- * Everything about where new items are filed, resolved together because the three answers
- * depend on each other: each type folder defaults under the home folder, the home folder
- * falls back to the `newItemFolder` that preceded it, and whether ANY of them was named
- * decides if they are choices or this plugin's guesses.
+ * Where new items are filed, resolved together because the two answers depend on each
+ * other: every type folder defaults to a subfolder of the home folder, so moving the
+ * home folder moves each one that has not been picked by hand.
  */
 function resolveFolders(
 	read: ConfigReaders,
 	types: string[],
 	fallback: BacklogSettings,
-): Pick<BacklogSettings, 'homeFolder' | 'foldersConfigured' | 'typeFolders'> {
-	const { str, clearable, config } = read;
-	// A base configured before the home folder existed carries the old `newItemFolder`,
-	// and it means exactly what the home folder means: reading it keeps such a view
-	// filing where it already filed.
-	const legacyFolder = folderPath(str('newItemFolder'));
-	const homeFolder = clearable('homeFolder', legacyFolder || fallback.homeFolder, () =>
-		folderPath(str('homeFolder')),
-	);
-	/**
-	 * Has this base named a folder at all? A base predating these options has named none
-	 * — and it is not a fresh install, it is a backlog already living somewhere. Answering
-	 * "no" is what lets creation prefer where the items already are over a default this
-	 * plugin picked. Reading `newItemFolder` alone missed most of them, since it was
-	 * optional and most such bases left it unset.
-	 */
-	const foldersConfigured =
-		config.get('homeFolder') !== undefined ||
-		config.get('newItemFolder') !== undefined ||
-		types.some((type) => config.get(typeFolderKey(type)) !== undefined);
+): Pick<BacklogSettings, 'homeFolder' | 'typeFolders'> {
+	const { str, clearable } = read;
+	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => folderPath(str('homeFolder')));
 	return {
 		homeFolder,
-		foldersConfigured,
 		// One option per type, so a folder is picked rather than typed into a mapping,
 		// and each default sits under the resolved home folder — the value in the box is
 		// the value that applies, and moving the home folder moves every untouched one.
@@ -354,7 +326,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	 * in one place instead of a collision report that would gate unrelated writes.
 	 */
 	const resolvedExtras = extraTypes();
-	const folders = resolveFolders({ str, clearable, config }, [...resolvedLevels, ...resolvedExtras], fallback);
+	const folders = resolveFolders({ str, clearable }, [...resolvedLevels, ...resolvedExtras], fallback);
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [

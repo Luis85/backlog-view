@@ -53,20 +53,12 @@ export function promptCreateItem(host: BacklogViewHost, choices: string[], paren
 	 * note" rule stays on top — there the folder tree IS the hierarchy, and an opt-in
 	 * mode should not be quietly overruled by a filing default. Below it the type's own
 	 * folder wins over the home folder, so a Bug files itself under `docs/bugs` even in
-	 * a base whose items otherwise live together.
-	 *
-	 * **A guess must not outrank evidence.** When this base names no folder at all, the
-	 * folders below are this plugin's defaults, and a backlog whose items already live
-	 * in `Backlog/` is telling us something a default cannot know. Inference therefore
-	 * comes first in that case and only in that case — which is what keeps a base built
-	 * before any of these options existed filing exactly where it always did, instead of
-	 * creating notes into `docs/` that its own filter does not return.
+	 * a base whose items otherwise live together. Where the existing items live is the
+	 * last resort before asking, since both folders above are configurable and a
+	 * configured folder is an answer where a guess from the vault is not.
 	 */
 	const chosen = (typeName: string): string => folderForType(typeName, host.settings) || host.settings.homeFolder;
-	const folderFor = (typeName: string): string => {
-		if (parentFolder !== null) return parentFolder;
-		return host.settings.foldersConfigured ? chosen(typeName) || inferred : inferred || chosen(typeName);
-	};
+	const folderFor = (typeName: string): string => parentFolder ?? (chosen(typeName) || inferred);
 	// Without items or a configured folder there is nothing to infer from, and a note
 	// in the vault root would most likely fall outside this base's filter — ask instead.
 	// A type that files itself needs no asking, so this only fires when one of the

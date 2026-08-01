@@ -86,15 +86,7 @@ in the root `CLAUDE.md` because it spans every layer.
   chose. Each default is derived from the RESOLVED home folder, not from the constant, so
   separate pickers did not cost "relocate a backlog in one setting" — the options are
   generated per view, so the value shown in each box is the value that applies, and moving
-  the home folder moves every untouched one. `homeFolder` itself falls back to a legacy
-  `newItemFolder`: the two answered the same question, and a base configured before the
-  rename must keep filing where it filed. That alone was half a migration, since
-  `newItemFolder` was optional and most such bases set neither key — so `foldersConfigured`
-  answers "has this base named a folder at all", and **a guess must not outrank evidence**:
-  when nothing is named, `folderFor` prefers where the items already live over a default
-  this plugin picked. A base that names a folder is stating a decision and keeps it; a base
-  with no items has no evidence, so a fresh vault still gets the shipped layout. Those three
-  cases are the whole rule, and each has a test.
+  the home folder moves every untouched one.
   Type folders rank ahead of `homeFolder` and inference but behind folder mode's
   "beside the parent's folder note" rule — that mode makes folders the hierarchy, and a
   filing default must not quietly overrule an opt-in structural mode. Two consequences

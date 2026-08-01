@@ -89,9 +89,7 @@ describe('item creation', () => {
 	it('files a new item in its type folder, and follows the picker', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
-		// This base names a folder, so the per-type defaults under it are choices rather
-		// than guesses and outrank where the existing item happens to live.
-		const { containerEl } = makeView(vault, { homeFolder: 'docs' });
+		const { containerEl } = makeView(vault);
 
 		rowByTitle(containerEl, 'Epic A')
 			.querySelector<HTMLElement>('.pbl-add')
@@ -123,33 +121,7 @@ describe('item creation', () => {
 		expect(vault.fm('docs/bugs/Login times out.md')['parent']).toBe('[[Epic A]]');
 	});
 
-	it('keeps a base that names no folder filing where its items already live', async () => {
-		const vault = new FakeVault();
-		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
-		// A base built before any of these options existed names no folder. It is not a
-		// fresh install — it is a backlog already living in Backlog/, and a default this
-		// plugin picked must not move it into docs/ where the base's filter cannot see it.
-		const { containerEl } = makeView(vault);
-
-		rowByTitle(containerEl, 'Epic A')
-			.querySelector<HTMLElement>('.pbl-add')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		const modal = Modal.lastOpened;
-		if (!modal) throw new Error('prompt not opened');
-		expect(modal.contentEl.querySelector('.pbl-modal-detail')?.textContent).toContain('in folder "Backlog"');
-
-		const input = modal.contentEl.querySelector('input');
-		if (!input) throw new Error('title input missing');
-		input.value = 'Still here';
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		await flush();
-		expect(vault.fm('Backlog/Still here.md')['type']).toBe('Feature');
-	});
-
-	it('uses the shipped folders when there is nothing to infer from', () => {
-		// The other half of the rule: with no items, there is no evidence to prefer, so
-		// the defaults apply and the feature ships as intended on a fresh vault.
+	it('files into the shipped folders on a vault with nothing in it yet', () => {
 		const { containerEl } = makeView(new FakeVault());
 
 		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
