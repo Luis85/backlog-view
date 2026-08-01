@@ -17,7 +17,8 @@ Drop a card on a column and the state property is written — the whole interact
 one `ItemWrite.state` batch through `applySafely`. The value written is the configured
 string, exactly: one community Bases board writes a slugified column name into
 frontmatter, which is the vocabulary-corrupting class of bug the single write boundary
-exists to make impossible.
+exists to make impossible. The drag engine is decided:
+[[Pragmatic drag and drop for the board]].
 
 ## Acceptance criteria
 

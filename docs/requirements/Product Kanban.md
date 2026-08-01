@@ -90,7 +90,8 @@ top of them:
 The layers keep their jobs. Deriving columns from the model and the settings is pure
 `domain/` work beside `dropTargets.ts`; the board DOM is new `view/render/` and
 `view/interactions/` files beside the tree's, under the same one-file-per-concern
-budgets; the only writer stays `storage/frontmatter.ts`, gaining a remove-the-state-key
+budgets, with Atlassian's Pragmatic drag and drop as the drag layer
+([[Pragmatic drag and drop for the board]]); the only writer stays `storage/frontmatter.ts`, gaining a remove-the-state-key
 write (the mirror of `removeParentKey`) and the optional transition stamps; the mode
 itself is one persisted view option toggled from the toolbar, exactly as the focus
 level already is. Column collapse goes to the collapse store, never the `.base`.
@@ -115,4 +116,5 @@ followed the view API). Load-bearing sources:
   https://linear.app/docs/board-layout)
 - Accessible board interaction: Atlassian's Pragmatic drag and drop accessibility
   guidelines (https://atlassian.design/components/pragmatic-drag-and-drop/accessibility-guidelines)
-  and WCAG 2.2 SC 2.5.7.
+  and WCAG 2.2 SC 2.5.7. The library those guidelines describe is the chosen drag
+  engine (https://github.com/atlassian/pragmatic-drag-and-drop, Apache-2.0).

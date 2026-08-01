@@ -18,7 +18,9 @@ answer: Trello moves a card between lists with a keystroke rather than a pick-up
 Atlassian's accessibility guidance recommends menu alternatives over draggable focus
 modes, WCAG 2.2 requires a single-pointer alternative to any drag, there is no ARIA
 board pattern (`aria-grabbed` is deprecated with no replacement), and on Obsidian
-mobile HTML5 drag events never fire. The menu is all of those answers at once.
+mobile native drag from touch has historically not fired — the chosen engine claims
+otherwise, a verdict the smoke test owns ([[Pragmatic drag and drop for the board]]).
+The menu is the answer on every platform either way.
 
 ## Acceptance criteria
 

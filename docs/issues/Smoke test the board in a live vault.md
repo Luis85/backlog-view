@@ -29,9 +29,12 @@ carries states.
   engages near the pane edges only while moving toward them; the drag preview stays
   legible over both themes; with reduced motion set, nothing slides and the landed
   card still flashes its arrival.
-- **Touch, on a phone or tablet** — HTML5 drag events do not fire there: confirm the
-  context menu changes state end to end, and record whether long-press drag ships or
-  waits. That decision belongs on evidence from a device, not a guess in a spec.
+- **Touch, on a phone or tablet** — the chosen engine claims full iOS and Android
+  support while the ecosystem's experience says native drag from touch has not fired
+  in these WebViews ([[Pragmatic drag and drop for the board]]): observe which is
+  true on a device, confirm the context menu changes state end to end regardless,
+  and record whether drag ships on touch or stays menu-only. That decision belongs
+  on evidence from a device, not a guess in a spec.
 - **Collapse** — collapsed done columns and lanes come back collapsed after a restart,
   and renaming the base keeps them (the identity migrations cover the board's keys).
 - **Themes** — light, dark, and one community theme: column headers, over-limit
