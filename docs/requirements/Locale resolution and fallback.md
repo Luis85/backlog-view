@@ -1,6 +1,6 @@
 ---
 type: PBI
-parent: "[[Translation layer]]"
+parent: "[[Multilang]]"
 order: 10
 status: Open
 ---

@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Data is never translated]]"
-order: 10
+parent: "[[Multilang]]"
+order: 70
 status: Open
 ---
 
@@ -47,7 +47,7 @@ Only the six names this plugin ships get a label.
 - Badges, the `New <type>` button and its picker, the `New <type>` menu items, the modal's
   type dropdown and the focus-level control all show the label.
 - The type *chosen* in the modal is stored by its canonical name, not by the label the
-  user clicked. This is the single most likely bug in the epic.
+  user clicked. This is the single most likely bug in this feature.
 - A user-named type off the ladder renders verbatim, in every locale.
 - `typeFolderKey` keeps deriving from the canonical name, and a test asserts the key set
   is identical across locales.

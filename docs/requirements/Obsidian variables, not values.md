@@ -1,0 +1,68 @@
+---
+type: PBI
+parent: "[[Theming]]"
+order: 10
+status: Open
+---
+
+# Obsidian variables, not values
+
+Sizing and spacing come from Obsidian's design tokens wherever a token exists, so a theme
+that rescales the app rescales this plugin with it.
+
+## What is left
+
+Colour is done — 0 literal values, every colour expression already reads a variable,
+including the accent (`hsla(var(--interactive-accent-hsl), …)`) and the semantic
+`--color-green-rgb` / `--color-orange-rgb`. What has not had the same pass is
+**dimension**: `styles.css` carries **97 raw pixel values**, the commonest being
+
+| Value | Occurrences |
+| --- | --- |
+| `12px` | 20 |
+| `1px` | 15 |
+| `24px` | 11 |
+| `2px` | 8 |
+| `16px` | 5 |
+
+Obsidian publishes `--size-2-*` and `--size-4-*` for spacing and `--font-ui-*` for type,
+and the file already uses 47 distinct variables, so the idiom is established — it just
+was not applied to every number.
+
+## The half that must not move
+
+This is why it is a PBI and not a find-and-replace. A subset of those pixels is
+**load-bearing**, and `src/view/CLAUDE.md` says so:
+
+> Everything the threshold counts has to be *bounded in CSS and summed here* …
+> The terms that are Obsidian's (`--size-4-1` gaps, the tree padding) cannot be owned
+> that way and stay as constants; a theme that redefines them moves the threshold by a
+> few pixels, which is the accepted cost of not measuring.
+
+`columnFit` decides which columns a pane can hold by arithmetic over bounds that live in
+the stylesheet — the badge's `max-width`, the grip, the chevron, the title's min-width.
+Turning one of those into a theme-controlled token means the theme can change a number TS
+is adding up, and the symptom is a clipped row rather than a rescaled one. The existing
+comment accepts that risk for the two gap terms deliberately; widening it silently is a
+different decision.
+
+So the sweep has to sort every raw pixel into one of three piles, and the sorting is the
+deliverable as much as the edit is.
+
+## Acceptance criteria
+
+- Every raw pixel value in `styles.css` is classified as: **a token** (replaced with the
+  Obsidian variable), **a bound `columnFit` sums** (left as a number, and covered by
+  `One bound, not two`), or **genuinely arbitrary** (a border radius, a hairline) with a
+  one-line reason.
+- Nothing in the second pile changes value as part of this PBI. A layout change hiding
+  inside a tokenization sweep is the thing that makes this reviewable or not.
+- The three piles are written down, not just applied, so the next contributor adding a
+  rule knows which question to ask.
+- `1px` borders and hairlines are exempt from tokenization by default — a border that
+  scales with the theme's spacing token is not a border.
+- Font sizes go through `--font-ui-*` where one fits. `11px` appears four times, all of
+  them small-text; if no token matches, that is a finding worth stating rather than
+  working around.
+- No visual change is intended. Any that appears is a bug in the mapping, and this PBI
+  cannot be closed without the live-vault look from `Light, dark and reduced motion`.

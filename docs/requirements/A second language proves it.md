@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Translations stay honest]]"
-order: 40
+parent: "[[Multilang]]"
+order: 130
 status: Open
 ---
 
@@ -13,12 +13,12 @@ request with one file in it.
 ## Why this is a requirement and not a nice-to-have
 
 A translation layer with exactly one locale has never been exercised. Everything the
-epic builds — the fallback chain, the plural categories, the completeness check, the
+feature builds — the fallback chain, the plural categories, the completeness check, the
 column widths, the collation, the "type names are data" boundary — is untested against
 the case it exists for. The bugs in a system like this are not in the abstraction; they
 are in the first thing that does not fit it.
 
-So the second locale is the acceptance test for the other thirteen PBIs, and it is worth
+So the second locale is the acceptance test for the other twelve PBIs, and it is worth
 choosing one that *stresses* rather than one that is convenient. A language with more
 than two plural categories exercises `Intl.PluralRules`; a language with long compounds
 exercises the fixed-width columns; an RTL language exercises `Layout survives translated

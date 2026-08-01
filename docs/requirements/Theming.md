@@ -1,0 +1,59 @@
+---
+type: Feature
+parent: "[[Cross-cutting concerns]]"
+order: 20
+status: Open
+---
+
+# Theming
+
+Everything the plugin draws is expressed in Obsidian's own design tokens, so it looks
+like part of the app in any theme the user installs — and stays that way as the plugin
+grows.
+
+## What this feature is not
+
+It is not a cleanup. `styles.css` is 1143 lines and already disciplined, which the audit
+behind these PBIs establishes rather than assumes:
+
+| Checked | Result |
+| --- | --- |
+| Literal colour values (`#hex`, bare `rgb()`/`hsl()`) | **0** — all 14 colour expressions read `var(--…)` |
+| `!important` | **0** |
+| `var(--…)` uses | **202**, across 47 distinct variables |
+| Selectors outside the `.pbl` namespace | **0** — the only unscoped rules are `@keyframes` steps |
+| `prefers-reduced-motion` | Handled (line 915), and `hover: none` too (line 940) |
+| Inline styles | None — `setCssProps` throughout, already a marketplace rule in `CLAUDE.md` |
+
+So the plugin passes the styling bar today. **The problem is that nothing holds it
+there.** Every one of those numbers is a fact about the current file, established by
+grep, on one afternoon. None of them is a check, none is written down where a
+contributor would meet it, and the one test harness this repository has renders nothing
+at all.
+
+That is the same argument `Codebase health` made for the layering rules, and it got the
+same answer: *invariants as checks, not conventions*. This feature converts a good
+stylesheet into a stylesheet that cannot quietly stop being good.
+
+## What is actually open
+
+Four gaps, each its own PBI:
+
+- **97 raw pixel values**, where Obsidian publishes `--size-*` tokens a theme can
+  rescale. Not all of them can go — some are load-bearing, which is the interesting part.
+- **A bound spelled in two places.** `ROW_LEAD_WIDTH` in `columns.ts` sums eight widths
+  that live in `styles.css`, and the comment says it is *"a sum of the bounds in
+  styles.css rather than a guess, so it can be checked against them."* Checked by hand,
+  by whoever remembers.
+- **No restyling contract.** Eight `--pbl-*` custom properties exist, but they are
+  internal plumbing set per render, not a surface a snippet author can rely on.
+- **No enforcement, and no way to see the result.** The rules above, plus light/dark and
+  reduced motion, which this repository structurally cannot verify.
+
+## The seam with Multilang
+
+Direction is where the two features meet, and the line is drawn once: **`Theming` owns
+the mechanism** — logical properties, no physical `left`/`right`, and the lint that keeps
+new ones out. **`Multilang` owns the verification** — that the view still reads correctly
+with long compounds in fixed-width columns and with the tree running right-to-left. See
+`Layout survives translated text`.

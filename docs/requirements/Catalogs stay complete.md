@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Translations stay honest]]"
-order: 20
+parent: "[[Multilang]]"
+order: 110
 status: Open
 ---
 

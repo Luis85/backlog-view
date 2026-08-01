@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Every surface translated]]"
-order: 30
+parent: "[[Multilang]]"
+order: 50
 status: Open
 ---
 
@@ -54,11 +54,15 @@ Notice from three call sites (`backlogView.ts:534`, `create.ts:34`).
   `typeFolder.<type>` key. A test asserts the full key set against a frozen list, so a
   future edit cannot move one either.
 - Group names, `displayName`s and `placeholder`s come from the catalog.
-- The placeholders that show a **default value** rather than a hint stay data:
-  `DEFAULT_DONE_VALUES.join(', ')` and the type-folder placeholder that shows the
-  resolved home folder are values the user would type, not words. `New, Active, Done`
-  as the `stateValues` placeholder is the same case — see `Persisted keys stay as
-  written`.
+- Every placeholder is sorted by **whether anything reads it back**, not by whether it
+  looks like a value. A placeholder that mirrors the option's real `default` stays as
+  written — `DEFAULT_DONE_VALUES.join(', ')` on `doneValues`, and the type-folder
+  placeholder showing the resolved home folder — because clearing the field falls back to
+  the string on screen. A placeholder that is an **example** is translated:
+  `stateValues` is `default: ''` with `placeholder: 'New, Active, Done'`
+  (`viewOptions.ts:112-117`), so that text is never parsed and leaving it English would
+  be untranslated UI protecting nothing. `Item title` and `Sprint-12` in `ui/prompts.ts`
+  are the same case. See `Persisted keys stay as written`.
 - `configProblems` returns structured problems; no user-facing sentence is built in
   `src/domain/`.
 - The English rendering of every problem is unchanged, so the existing gate tests read

@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Data is never translated]]"
-order: 20
+parent: "[[Multilang]]"
+order: 80
 status: Open
 ---
 
@@ -16,10 +16,25 @@ in every locale.
 Covered by an assertion against a frozen key list in `View options and config warnings`;
 restated here because this is the note the invariant lives in.
 
-**Option values that are defaults, not hints.** `DEFAULT_DONE_VALUES` and the
-`New, Active, Done` placeholder on `stateValues` look like UI text and are not: they are
-values the user is being shown so they can type or accept them, and they must match what
-`resolveSettings` will parse.
+**Option values that are defaults, not hints.** `DEFAULT_DONE_VALUES` looks like UI text
+and is not. It is the `doneValues` option's real `default`, shown as its placeholder too,
+so clearing the field falls back to exactly the string on screen. Translating it would
+make the placeholder describe behaviour the option does not have.
+
+The neighbouring option is the opposite case and the two are easy to confuse — this note
+originally got it wrong. `stateValues` is declared `default: ''` with
+`placeholder: 'New, Active, Done'` (`viewOptions.ts:112-117`): that placeholder is an
+**example**, never parsed, never a fallback. It is text, and it belongs in the catalog.
+
+So the test is not "does it look like a value" but **does anything read it back**:
+
+| Placeholder | Kind |
+| --- | --- |
+| Mirrors the option's real `default` (`doneValues`) | Data — leave as written |
+| An example of what to type (`stateValues`, `Item title`, `Sprint-12`) | Text — translate |
+
+Sorting every placeholder in `viewOptions.ts` by that test is part of
+`View options and config warnings`.
 
 **The scaffold's output** (`storage/baseFile.ts`) — `name: Backlog` inside the generated
 `.base`, `BASE_FILE_NAME = 'Product Backlog'`, `DEFAULT_BACKLOG_FOLDER = 'docs'`. The

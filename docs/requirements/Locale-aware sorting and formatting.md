@@ -1,14 +1,14 @@
 ---
 type: PBI
-parent: "[[Data is never translated]]"
-order: 30
+parent: "[[Multilang]]"
+order: 90
 status: Open
 ---
 
 # Locale-aware sorting and formatting
 
 The places where the *locale* changes an ordering or a rendering even though no string is
-being translated. Small, easy to miss, and nothing else in the epic will surface them.
+being translated. Small, easy to miss, and nothing else in this feature will surface them.
 
 ## Where they are
 

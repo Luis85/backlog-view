@@ -1,9 +1,8 @@
 ---
-type: Epic
-order: 30
+type: Feature
+parent: "[[Cross-cutting concerns]]"
+order: 10
 status: Open
-area: i18n
-created: 2026-08-01
 ---
 
 # Multilang
@@ -11,9 +10,6 @@ created: 2026-08-01
 Every string this plugin puts on screen comes out of a catalog keyed by locale, so the
 view reads in the language the user already set Obsidian to. Nothing about the backlog
 itself changes: the tree, the ranking and the frontmatter are the same in every language.
-
-This epic is the whole translation problem — the mechanism, the sweep over the surfaces,
-the line between text and data, and what keeps a new string from shipping untranslated.
 
 ## Why it exists
 
@@ -51,39 +47,60 @@ finds **about 141 of them across 14 files**, every one an English literal spelle
 | `view/interactions/undo.ts`, `view/host.ts` | 1 each |
 
 That is a count of *call sites*, not of distinct messages — the honest number of catalog
-keys is not known until the sweep runs, and the first feature to do it should record what
-it actually found.
+keys is not known until the sweep runs, and the PBI that does it should record what it
+actually found.
 
-## The decision that shapes everything under it
+## The rule the PBIs share: text is not data
 
 A plugin whose data model is frontmatter has two kinds of string, and translating the
-second kind corrupts vaults:
+second kind corrupts vaults.
 
-**Text** is what the plugin says. `Move up`, `Loading backlog…`, `Show completed items`,
-`Nothing to undo.` Every one of these is free to change per locale, because nothing reads
-them back.
+**Text** is what the plugin says. `Move up`, `Loading backlog…`, `Nothing to undo.` Free
+to change per locale, because nothing reads it back.
 
-**Data** is what the plugin writes, matches or persists, and it is *not* English — it is
-the vocabulary this plugin and the user's notes agree on:
+**Data** is what the plugin writes, matches or persists:
 
-- The type names. `type: Epic` goes into frontmatter (`storage/frontmatter.ts`) and is
-  matched case-insensitively coming back out (`focusTarget`, `isExtraType`,
-  `byTypeName`). A German vault whose notes say `Epos` is a different vault.
-- Every view-option `key` in `domain/viewOptions.ts`. The file already says it: *"Every
-  `key` here is PERSISTED in the user's `.base` file … Renaming one silently resets that
-  option for everyone."* A locale-dependent key would do that on every language switch.
-- The values inside those options — `stateValues: "Open, Active, Done"` and
-  `doneValues` in `docs/Product Backlog.base` are the user's own workflow states, echoed
-  back on the state chip.
-- What the scaffold writes to disk: `name: Backlog` inside the generated `.base`
-  (`storage/baseFile.ts`), the `Product Backlog` file name, the `docs` folder default.
-  A vault should not be shaped differently depending on the locale of whoever ran
-  **Create backlog**.
+| Data | Where it is read back |
+| --- | --- |
+| Type names (`Epic`, `Feature`, `PBI`, `Task`, `Issue`, `Bug`) | `type:` frontmatter; matched by `focusTarget`, `isExtraType`, `byTypeName` |
+| View-option keys | Persisted in the `.base` file, read by `resolveSettings` |
+| `typeFolder.<type>` keys | Derived from the type name — a translated type is a different key |
+| State values, done values | The user's own workflow, echoed on the chip |
+| Tag text | The user's own vocabulary |
+| `.base` contents from the scaffold | `name: Backlog`, the `docs` folder, the `Product Backlog` file name |
+| `parent` wikilink targets | File names, which are vault content |
 
-`Data is never translated` is the feature that holds this line, and it is the one to
-read first when anything here looks ambiguous.
+This is written as an invariant rather than a note on one PBI because every way to get it
+wrong looks locally reasonable — translating `Epic` is the obviously helpful thing to do
+at every single site that renders it. The test when it is not obvious: **ask what breaks
+if two people with different Obsidian languages open the same vault.** If the answer is
+"one of them sees different words", it is text. If it is "one of them writes notes the
+other's view cannot read", it is data.
 
-## Definition of done, for anything under this epic
+The corollary is the thing to build: a type name has to be *renderable* without becoming
+translatable, which means a display label separate from the stored value. That is
+`Type names are data`, and it is the PBI most likely to be got wrong.
+
+## Where the catalog lives
+
+The layer diagram in `CLAUDE.md` has no room for it. `ui/` may import nothing at all
+(`forbidden('ui', ['view', 'commands', 'domain', 'storage'])` in `eslint.config.mjs`) and
+`ui/prompts.ts` has 13 string sites; `domain/` may not reach view, storage, ui or
+commands. So a catalog placed in any existing directory is unreachable from at least one
+of its callers.
+
+It has to be a **new leaf below everything** — importable by every layer, importing none
+of them. That is the same shape `ui/` has, one level lower, and it needs the same
+mechanical statement: a `forbidden` entry listing every other directory, so the leaf
+cannot quietly grow an edge back up.
+
+## Order of work
+
+The layer lands whole before the sweep — `Locale resolution and fallback`,
+`The string catalog` and `Plurals and interpolation` first. A half-built layer means a
+hundred strings get moved against an interface that then changes.
+
+## Definition of done
 
 - No user-facing string is spelled at the place it is used; a bare literal reaching the
   UI fails `npm run check` rather than review.
@@ -102,6 +119,5 @@ read first when anything here looks ambiguous.
   so resolving the locale once at load is correct, not a shortcut.
 - **The marketplace description.** `manifest.json` carries one `description` and the
   community list shows it as written. Out of the plugin's hands.
-- **Note content.** Titles, tags and state values are the user's words in the user's
-  language already.
+- **Note content.** Titles, tags and state values are the user's words already.
 - **Translating `docs/`.** This register is the maintainers' working notes, not product.

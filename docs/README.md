@@ -22,9 +22,12 @@ creating them, progress, finding work, safe writes and view state.
 **Codebase health** is the engineering work — three features, each with the PBIs that say
 what "healthy" means there, and the tasks that got it done underneath.
 
-**Multilang** is the translation epic — four features covering the mechanism, the sweep
-over every surface, the line between UI text and vault data, and what keeps a new string
-from shipping untranslated. It is specification only: nothing under it is built yet.
+**Cross-cutting concerns** is the third kind: properties that have to be true of
+everything or they are true of nothing. Two features — `Multilang` (every string comes
+out of a per-locale catalog) and `Theming` (every pixel comes from Obsidian's design
+tokens). They are siblings because they meet at the layout: translated text is longer,
+shorter and sometimes right-to-left, and the stylesheet is what absorbs it. Specification
+only — nothing under this epic is built yet.
 
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an

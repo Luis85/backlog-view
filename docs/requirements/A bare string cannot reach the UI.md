@@ -1,7 +1,7 @@
 ---
 type: PBI
-parent: "[[Translations stay honest]]"
-order: 10
+parent: "[[Multilang]]"
+order: 100
 status: Open
 ---
 
@@ -20,9 +20,20 @@ applied to level math, scoped to the two files that decide types.
 
 The translation rule is the same shape with a different selector: a string literal as the
 argument of `setTitle`, `setName`, `setDesc`, `setTooltip`, `setPlaceholder`,
-`setButtonText`, `new Notice`, or as a `text:` / `aria-label` / `displayName:` /
-`placeholder:` property. Those are the ten forms the ~141 sites already take, so the
+`setButtonText`, `setText`, `new Notice`, or as a `text:` / `aria-label` / `displayName:`
+/ `placeholder:` property. Those are the eleven forms the ~141 sites already take, so the
 selector is written against a known population rather than guessed.
+
+`setText` earns its place by example rather than by symmetry: `ui/prompts.ts:110` is
+`this.titleEl.setText('Add tag')`, and `backlogView.ts:445` builds the count label the
+same way. A selector list assembled from the *other* setters would leave both passing
+lint after the sweep, which is the exact failure this PBI exists to prevent — the rule
+has to cover the APIs this codebase actually reaches for, not the ones that came to mind.
+
+The companion form is `appendText` (`rows.ts:218`), and it makes the boundary concrete:
+every call site of both today passes a **value** — a folder path, a note title, a state
+name. The rule bans *literals* in these positions, so data-carrying calls are unaffected
+by construction, and that is the property to preserve rather than a special case to write.
 
 ## Acceptance criteria
 
