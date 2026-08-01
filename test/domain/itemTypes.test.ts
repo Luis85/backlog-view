@@ -7,7 +7,7 @@ import {
 	folderForType,
 	isExtraType,
 } from '../../src/domain/itemTypes';
-import { defaultSettings, resolveSettings } from '../../src/domain/settings';
+import { defaultSettings, defaultTypeFolder, resolveSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -226,6 +226,37 @@ describe('folders by type', () => {
 		// And such a name can still be MAPPED, rather than being a hole the other way.
 		const mapped = resolveSettings(fakeConfig({ extraTypes: 'constructor', 'typeFolder.constructor': 'odd' }));
 		expect(folderForType('constructor', mapped)).toBe('odd');
+
+		// The DEFAULT table is a second lookup and needs the same guard: unset, such a
+		// type must fall back to the home folder, not to `docs/function Object() {…}`.
+		expect(defaultTypeFolder('constructor')).toBe('');
+		const unset = resolveSettings(fakeConfig({ extraTypes: 'constructor, toString' }));
+		expect(folderForType('constructor', unset)).toBeNull();
+		expect(folderForType('toString', unset)).toBeNull();
+	});
+
+	it('moves every untouched type folder with the home folder', () => {
+		// Separate pickers did not cost the "relocate a backlog in one setting" property:
+		// each default is derived from the home folder, and the options are generated per
+		// view, so the value shown in each box is the value that applies.
+		const moved = resolveSettings(fakeConfig({ homeFolder: 'Roadmap' }));
+		expect(folderForType('Epic', moved)).toBe('Roadmap/requirements');
+		expect(folderForType('Bug', moved)).toBe('Roadmap/bugs');
+		// A folder picked by hand stays picked; only the untouched defaults follow.
+		const pinned = resolveSettings(fakeConfig({ homeFolder: 'Roadmap', 'typeFolder.bug': 'triage' }));
+		expect(pinned.typeFolders['bug']).toBe('triage');
+		expect(folderForType('Epic', pinned)).toBe('Roadmap/requirements');
+	});
+
+	it('keeps a base configured before the home folder existed filing where it filed', () => {
+		// The old key means what the home folder means. Without this, upgrading moves
+		// every new item into docs/ — most likely outside the filter that view was built
+		// around, so the note is created and then simply not there.
+		const legacy = resolveSettings(fakeConfig({ newItemFolder: 'Backlog' }));
+		expect(legacy.homeFolder).toBe('Backlog');
+		expect(folderForType('Bug', legacy)).toBe('Backlog/bugs');
+		// An explicit home folder wins over the old key.
+		expect(resolveSettings(fakeConfig({ newItemFolder: 'Backlog', homeFolder: 'Now' })).homeFolder).toBe('Now');
 	});
 
 	it('keeps the home folder as the one general fallback', () => {

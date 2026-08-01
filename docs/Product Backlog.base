@@ -5,7 +5,6 @@ filters:
 views:
   - type: product-backlog
     name: Backlog
-    newItemFolder: "docs"
     homeFolder: "docs"
     stateProperty: note.status
     stateValues: "Open, Active, Done"

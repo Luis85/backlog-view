@@ -9,9 +9,11 @@ import { BacklogSettings, configProblems } from '../../domain/settings';
 
 /**
  * Type for the primary New button: whatever the view is focused on when it is focused —
- * a level or an extra type, since both can be focused — else the top level.
+ * a level or an extra type, since both can be focused — else the top level. Named for
+ * the TYPE it returns rather than the level it used to, because focusing a Bug is now
+ * as ordinary as focusing a PBI.
  */
-export function newItemLevel(settings: BacklogSettings, model: BacklogModel): string {
+export function newItemType(settings: BacklogSettings, model: BacklogModel): string {
 	if (model.focused) {
 		const focus = focusTarget(settings);
 		if (focus) return focus;

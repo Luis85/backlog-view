@@ -106,7 +106,7 @@ describe('toolbar controls are reachable without a mouse', () => {
 			'Collapse all',
 			'Hide completed items',
 			'Filter items',
-			'Show all levels',
+			'Show all types',
 		]) {
 			const el = controls.get(label);
 			expect(el, `no toolbar control labelled "${label}"`).toBeDefined();

@@ -121,13 +121,13 @@ describe('rendering', () => {
 		const { containerEl, config } = makeView(fixture());
 
 		const btn = containerEl.querySelector<HTMLElement>('.pbl-focus-btn');
-		expect(btn?.textContent).toContain('All levels');
+		expect(btn?.textContent).toContain('All types');
 		// Nothing is focused, so there is nothing to clear
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 
 		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All levels', 'Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
-		expect(Menu.lastShown?.item('All levels')?.checked).toBe(true);
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', 'Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		expect(Menu.lastShown?.item('All types')?.checked).toBe(true);
 		Menu.lastShown?.item('Feature')?.click();
 		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === 'Feature')).toBe(true);
 	});

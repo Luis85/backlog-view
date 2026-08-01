@@ -1,6 +1,6 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, BusyState } from '../host';
-import { newItemLevel, promptCreateItem } from '../interactions/create';
+import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogModel } from '../../domain/model';
@@ -13,7 +13,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	if (!model) return;
 	barEl.empty();
 
-	const newLevel = newItemLevel(host.settings, model);
+	const newLevel = newItemType(host.settings, model);
 	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn' });
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	newBtn.createSpan({ text: `New ${newLevel}` });
@@ -190,9 +190,12 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 }
 
 /**
- * Focus level picker — beside the New button, because the focus level is also what
- * that button creates. Doubles as the cue that a level is narrowing the tree: it
- * shows the active level, accented, with a one-click way back to all levels.
+ * Focus picker — beside the New button, because what the view is focused on is also
+ * what that button creates. Doubles as the cue that something is narrowing the tree:
+ * it shows the active type, accented, with a one-click way back to everything.
+ *
+ * It offers levels AND extra types, so the wording says "type" throughout: "all levels"
+ * would be a promise this menu no longer keeps.
  */
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// A focus naming no configured type re-roots nothing — report all levels.
@@ -204,7 +207,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 
 	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-	btn.createSpan({ text: active || 'All levels' });
+	btn.createSpan({ text: active || 'All types' });
 	setTooltip(btn, 'Focus — show one type as the top of the tree');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
@@ -215,7 +218,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 					.setChecked(active === level)
 					.onClick(() => setLevel(level)),
 			);
-		choice('', 'All levels');
+		choice('', 'All types');
 		for (const level of host.settings.levels) choice(level, level);
 		// Extra types are focusable too: they rank with a level, so a view of just the
 		// bugs is the same kind of view as one of just the PBIs.
@@ -226,14 +229,14 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	if (active === '') return;
 	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Show all levels' },
+		attr: { type: 'button', 'aria-label': 'Show all types' },
 	});
 	setIcon(clear, 'x');
-	setTooltip(clear, 'Show all levels');
+	setTooltip(clear, 'Show all types');
 	clear.addEventListener('click', () => setLevel(''));
 }
 
-/** e.g. "2 Epic · 4 Feature · 9 PBI" for the item-count tooltip. */
+/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */
 function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
 	const byLevel = new Map<string, number>();
 	for (const item of model.results) {

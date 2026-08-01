@@ -75,20 +75,21 @@ views:
   - type: product-backlog
     name: Backlog
     homeFolder: "docs"
-    typeFolder.epic: "docs/requirements"
-    typeFolder.bug: "docs/bugs"
     order:
       - note.status
       - note.points
 ```
 
-**Keep these folders and the filter pointing at the same place.** New items are filed in
-the folder configured for their type (falling back to the home folder), and the view can
-only show what the Base returns — a base filtering `Backlog/` while the folders are left at
-their `docs/…` defaults creates items you will not see afterwards. Backlogging into
-`Roadmap/` means `file.inFolder("Roadmap")` with the folders under `Roadmap/`. The
-**Create backlog** command writes all of them from the one folder it asks you for, which is
-the whole reason it asks.
+**Keep the home folder and the filter pointing at the same place.** New items are filed
+under it, and the view can only show what the Base returns — a base filtering `Backlog/`
+with the home folder left at `docs` creates items you will not see afterwards.
+Backlogging into `Roadmap/` means `file.inFolder("Roadmap")` and `homeFolder: "Roadmap"`;
+the type folders follow on their own. The **Create backlog** command writes it from the
+one folder it asks you for, which is the whole reason it asks.
+
+Upgrading from a version before the home folder existed? A base configured with the old
+**Folder for new items** keeps filing there — that setting is read as the home folder, so
+nothing moves out from under you.
 
 Any properties you enable under **Properties** in the Bases toolbar (the `order` list
 above) are shown as chips on each row — handy for `status`, story points, assignee, etc.
@@ -104,7 +105,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
 | Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
 | Create any type at the top | Toolbar **New** button, or the **▾** menu next to it for every other type |
-| Focus one type | Toolbar focus button next to **New** → pick a level or an extra type (**All levels** returns) |
+| Focus one type | Toolbar focus button next to **New** → pick a level or an extra type (**All types** returns) |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type (every level, plus the extra types) |
 | Change an item's state | Click the state chip on the row, or right-click → Set state |
@@ -114,7 +115,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Hide finished work | Click the eye button in the toolbar (or toggle **Show completed items** in the view options) |
 | Open in a new tab or split | Middle-click, Ctrl/Cmd-click, or right-click → Open in new tab / Open to the right |
 | Find items | Type in the toolbar filter (or press <kbd>/</kbd> in the tree) — matches keep their ancestors and subtrees, Escape clears |
-| See counts per level | Hover the item count in the toolbar |
+| See counts per type | Hover the item count in the toolbar |
 
 While the filter is active the tree ignores collapsed state and drag and drop is
 disabled (visual neighbors aren't necessarily real siblings); keyboard navigation and
@@ -127,8 +128,8 @@ tree at any type: pick *Feature* from the button next to **New** in the toolbar 
 feature becomes a top-level row with its PBIs and tasks below it. Extra types are on that
 menu too — focusing *Bug* gives you a list of every bug, which is the same kind of view.
 Focusing the level an extra type ranks with (*PBI*, by default) shows both together. While
-focused, that button shows the level, accented, with a `✕` beside it that returns to all
-levels in one click (so does picking *All levels*). Items keep their real parents —
+focused, that button shows the type, accented, with a `✕` beside it that returns to
+everything in one click (so does picking *All types*). Items keep their real parents —
 re-parenting by dropping *into* a row still works — but the top row of a focused view has
 no shared ranking, so reordering, indent/outdent and the top-level drop strip are disabled
 there.
@@ -330,14 +331,17 @@ rule: drag a Bug wherever the work actually belongs.
 
 ### Where new items are filed
 
-Each type gets **its own folder picker** in the view options — `Folder for Epic items`,
-`Folder for Bug items`, and so on, one per type you have configured. A Bug is filed with
-the bugs wherever in the tree it hangs. The shipped defaults are `docs/requirements` for
-the three upper levels, `docs/tasks`, `docs/issues` and `docs/bugs`.
+Everything the view creates lives under one **home folder** (`docs` by default), and each
+type gets **its own folder picker** — `Folder for Epic items`, `Folder for Bug items`, one
+per type you have configured. A Bug is filed with the bugs wherever in the tree it hangs.
+
+Each picker defaults to a subfolder of the home folder, so **relocating a backlog is still
+one setting**: point the home folder at `Roadmap` and the defaults become
+`Roadmap/requirements`, `Roadmap/bugs`, and so on. A folder you pick by hand stays picked;
+only the untouched ones follow.
 
 Types you rename or invent get no default: this plugin has no opinion about where a
-`Theme` belongs, so it falls back to the **home folder** — the one general answer to
-"where does this go", `docs` unless you change it.
+`Theme` belongs, so it falls back to the home folder itself.
 
 The new-item modal names the folder before you commit, and the line follows the type
 picker — switch from PBI to Bug and it re-reads `docs/bugs`.
@@ -481,11 +485,11 @@ Open the view options in the Bases toolbar to configure:
 | Extra types | `Issue, Bug` | Types that sit beside the ladder: they hold the lowest level as children wherever they hang, and are never re-typed by a move. Clear it to turn them off |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
-| Assign item type when moving | **off** | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
+| Assign item type when moving | off | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
-| Home folder | `docs` | Where new items go when their type has no folder of its own |
-| Folder for *&lt;type&gt;* items | `docs/requirements`, `docs/tasks`, `docs/issues`, `docs/bugs` | **One folder picker per configured type**, so each is chosen rather than typed |
+| Home folder | `docs` | The folder the backlog lives under; every type folder below defaults to a subfolder of it |
+| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs` | **One folder picker per configured type.** Untouched, each follows the home folder |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |

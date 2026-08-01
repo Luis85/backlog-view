@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { baseFileContent, createBacklogBase } from '../../src/storage/baseFile';
+import { defaultTypeFolder } from '../../src/domain/settings';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
@@ -20,12 +21,9 @@ describe('baseFileContent', () => {
 		expect(content).toContain('file.ext == "md"');
 		expect(content).toContain('type: product-backlog');
 		// The creation folder is pre-wired so the first item lands inside the filter
-		// Every folder the view files into is pre-wired under the folder just filtered
-		// for. The type folders outrank the home folder and default to a docs/ layout,
-		// so writing the home folder alone would still send the first Bug outside.
+		// One line is enough: the per-type folders default to subfolders of the home
+		// folder, so everything this view files lands inside the filter above.
 		expect(content).toContain('homeFolder: "Backlog"');
-		expect(content).toContain('typeFolder.epic: "Backlog/requirements"');
-		expect(content).toContain('typeFolder.bug: "Backlog/bugs"');
 	});
 
 	it('quotes the filter as a YAML scalar so hash folder names survive', () => {
@@ -67,6 +65,7 @@ describe('createBacklogBase', () => {
 		const content = baseFileContent('Roadmap');
 		expect(content).toContain('- "file.inFolder(\\"Roadmap\\")"');
 		expect(content).toContain('homeFolder: "Roadmap"');
-		expect(content).toContain('typeFolder.bug: "Roadmap/bugs"');
+		// And the type folders follow it without being named.
+		expect(defaultTypeFolder('Bug', 'Roadmap')).toBe('Roadmap/bugs');
 	});
 });

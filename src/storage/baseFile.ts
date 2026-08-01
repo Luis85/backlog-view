@@ -1,5 +1,4 @@
 import { App, normalizePath, TFile } from 'obsidian';
-import { DEFAULT_EXTRA_TYPES, DEFAULT_LEVELS, defaultTypeFolder, typeFolderKey } from '../domain/settings';
 import { ensureFolder } from './frontmatter';
 
 /**
@@ -29,14 +28,11 @@ export function baseFileContent(folder: string): string {
 		'views:',
 		'  - type: product-backlog',
 		'    name: Backlog',
-		// Pre-wire every folder this view files into, all under the folder just filtered
-		// for, so the first item of any type cannot land outside it. The shipped
-		// defaults point at a `docs/` layout this base knows nothing about, and they
-		// outrank the home folder, so writing the home folder alone would not be enough.
+		// One line files everything inside the filter written above: the per-type folders
+		// default to subfolders of the home folder, so `Roadmap` gives `Roadmap/bugs`
+		// without this command having to name each of them — and they keep following if
+		// the home folder is moved later.
 		`    homeFolder: ${yamlQuote(folder)}`,
-		...[...DEFAULT_LEVELS, ...DEFAULT_EXTRA_TYPES].map(
-			(type) => `    ${typeFolderKey(type)}: ${yamlQuote(defaultTypeFolder(type, folder))}`,
-		),
 		'',
 	].join('\n');
 }

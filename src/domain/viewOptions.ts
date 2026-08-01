@@ -105,7 +105,9 @@ function hierarchyGroup(): BasesAllOptions {
 				type: 'toggle',
 				key: 'autoAssignType',
 				displayName: 'Assign item type when moving',
-				default: true,
+				// Must match `defaultSettings().autoType`: the toggle showing on while
+				// moves changed nothing would be the UI lying about the behaviour.
+				default: false,
 			},
 		],
 	};
@@ -166,7 +168,9 @@ function newItemsGroup(settings: BacklogSettings): BasesAllOptions {
 					type: 'folder',
 					key: typeFolderKey(type),
 					displayName: `Folder for ${type} items`,
-					default: defaultTypeFolder(type),
+					// Tracks the home folder above, so the value shown is the value that
+					// applies — and moving the home folder moves every untouched default.
+					default: defaultTypeFolder(type, settings.homeFolder),
 					placeholder: settings.homeFolder || 'Home folder',
 				}),
 			),

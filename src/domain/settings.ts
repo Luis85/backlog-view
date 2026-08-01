@@ -73,14 +73,14 @@ export const DEFAULT_HOME_FOLDER = 'docs';
  * vocabulary has an opinion — a level someone renames has no default and falls through
  * to the home folder, which is the honest answer for a name this plugin never chose.
  */
-const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = {
+const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.create(null) as Record<string, string>, {
 	epic: 'requirements',
 	feature: 'requirements',
 	pbi: 'requirements',
 	task: 'tasks',
 	issue: 'issues',
 	bug: 'bugs',
-};
+});
 
 /**
  * The persisted option key for one type's folder. Shared by the schema that declares
@@ -91,10 +91,19 @@ export function typeFolderKey(typeName: string): string {
 	return `typeFolder.${typeName.toLowerCase()}`;
 }
 
-/** The shipped folder for a type, or '' for one this plugin did not name. */
+/**
+ * The shipped folder for a type, under the given home folder, or '' for a type this
+ * plugin did not name. Derived from the home folder rather than fixed, so relocating a
+ * backlog stays ONE setting even though each type has its own picker: the options are
+ * generated per view, so the default in each box follows the home folder above it.
+ */
 export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FOLDER): string {
 	const sub = DEFAULT_TYPE_SUBFOLDERS[typeName.toLowerCase()];
-	if (!sub) return '';
+	// A non-empty STRING or nothing — the same test `folderForType` makes, for the same
+	// reason and now at the table too: a type named `constructor` reads a function off a
+	// plain object, and interpolating it would produce `docs/function Object() {…}` as a
+	// folder default that then beats the home folder.
+	if (typeof sub !== 'string' || !sub) return '';
 	return homeFolder ? `${homeFolder}/${sub}` : sub;
 }
 
@@ -283,7 +292,18 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	 * in one place instead of a collision report that would gate unrelated writes.
 	 */
 	const resolvedExtras = extraTypes();
-	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => folderPath(str('homeFolder')));
+	/**
+	 * A base configured before the home folder existed carries the old `newItemFolder`,
+	 * and it means exactly what the home folder means. Reading it keeps such a view
+	 * filing where it already filed — without this, upgrading silently moves every new
+	 * item into `docs/`, most likely outside the filter that view was built around, so
+	 * the note is created and then not there. That failure is invisible, which is why
+	 * this one migration is worth its two lines.
+	 */
+	const legacyFolder = folderPath(str('newItemFolder'));
+	const homeFolder = clearable('homeFolder', legacyFolder || fallback.homeFolder, () =>
+		folderPath(str('homeFolder')),
+	);
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [
@@ -313,7 +333,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// this view's: the value in the box is the value that applies, which is the
 		// whole point of giving each type its own input.
 		typeFolders: typeFoldersFor([...resolvedLevels, ...resolvedExtras], (type) =>
-			clearable(typeFolderKey(type), defaultTypeFolder(type), () => folderPath(str(typeFolderKey(type)))),
+			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
+				folderPath(str(typeFolderKey(type))),
+			),
 		),
 		focusLevel: str('focusLevel').trim(),
 		stateKey: propKey('stateProperty', fallback.stateKey),
