@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
-import { childLevelIndex, extraTypeRank, isExtraType } from './itemTypes';
+import { allTypeChoices, childLevelIndex, extraTypeRank, isExtraType } from './itemTypes';
 import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
@@ -369,7 +369,10 @@ function breakCycles({ all, roots }: LinkedTree): void {
  */
 function pruneOutsideHierarchy(tree: LinkedTree, settings: BacklogSettings): number {
 	const { byPath, roots } = tree;
-	const levels = new Set(settings.levels.map((l) => l.toLowerCase()));
+	// Every DECLARED type, not just the ladder: an extra type is a work item by the same
+	// argument a level is, and counting only levels drops a parentless Bug out of the
+	// model entirely — the note vanishing from the view moments after being typed.
+	const supported = new Set(allTypeChoices(settings).map((t) => t.toLowerCase()));
 	const belongs = (item: LinkedItem): boolean =>
 		item.parent !== null ||
 		item.hasParentValue ||
@@ -377,7 +380,7 @@ function pruneOutsideHierarchy(tree: LinkedTree, settings: BacklogSettings): num
 		// The anchor may be a folder note the filter excluded and the options chose
 		// not to load; the note is still part of the hierarchy either way.
 		item.parentExists ||
-		(item.typeName !== null && levels.has(item.typeName.toLowerCase()));
+		(item.typeName !== null && supported.has(item.typeName.toLowerCase()));
 	const subtreeBelongs = (item: LinkedItem): boolean => belongs(item) || item.children.some(subtreeBelongs);
 
 	const dropped = new Set<LinkedItem>();

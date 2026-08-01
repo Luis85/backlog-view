@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { allTypeChoices, childTypeChoices, extraTypeRank, isExtraType } from '../../src/domain/itemTypes';
-import { defaultSettings, resolveSettings } from '../../src/domain/settings';
+import {
+	allTypeChoices,
+	childTypeChoices,
+	extraTypeRank,
+	folderForType,
+	isExtraType,
+} from '../../src/domain/itemTypes';
+import { defaultSettings, parseTypeFolders, resolveSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -148,5 +154,70 @@ describe('extra types in the view options', () => {
 		// Always the rung whose children are the deepest level, whatever that ladder is.
 		expect(extraTypeRank(resolved.levels)).toBe(1);
 		expect(resolved.levels[extraTypeRank(resolved.levels)]).toBe('Story');
+	});
+});
+
+describe('extra types and the hierarchy scope', () => {
+	it('keeps a parentless extra type in the model', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		// No parent, no parent value: it belongs only if its type is recognised. Both
+		// "Set type → Bug" on a leaf and a drag to the top level produce exactly this,
+		// and counting only the ladder as supported made the note disappear instead.
+		vault.addFile('Loose Bug.md', { frontmatter: { type: 'Bug' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		expect(model.items.map((i) => i.title).sort()).toEqual(['Epic', 'Loose Bug']);
+		expect(model.ignoredCount).toBe(0);
+	});
+
+	it('still prunes a parentless note whose type is not declared at all', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Meeting.md', { frontmatter: { type: 'meeting-note' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		expect(model.items.map((i) => i.title)).toEqual(['Epic']);
+		expect(model.ignoredCount).toBe(1);
+	});
+});
+
+describe('folders by type', () => {
+	it('files each shipped type in its own folder', () => {
+		expect(folderForType('Epic', settings)).toBe('docs/requirements');
+		expect(folderForType('Feature', settings)).toBe('docs/requirements');
+		expect(folderForType('PBI', settings)).toBe('docs/requirements');
+		expect(folderForType('Task', settings)).toBe('docs/tasks');
+		expect(folderForType('Issue', settings)).toBe('docs/issues');
+		expect(folderForType('Bug', settings)).toBe('docs/bugs');
+		// Type names are matched case-insensitively, like every other type lookup.
+		expect(folderForType('bug', settings)).toBe('docs/bugs');
+	});
+
+	it('answers null for a type with no folder, so the caller falls through', () => {
+		expect(folderForType('Bugfix', settings)).toBeNull();
+		expect(folderForType('Epic', { ...settings, typeFolders: {} })).toBeNull();
+	});
+
+	it('parses pairs, normalizes the folder and drops entries without one', () => {
+		const parsed = parseTypeFolders(' Epic : /docs/reqs/ , Bug: docs/bugs , Task: , : nope ');
+		expect(parsed).toEqual({ epic: 'docs/reqs', bug: 'docs/bugs' });
+	});
+
+	it('treats a cleared mapping as off, not as unset', () => {
+		// Same rule as the extra types: the option defaults to something real, so
+		// clearing it has to be able to mean "no type folders".
+		expect(resolveSettings(fakeConfig({ typeFolders: '' })).typeFolders).toEqual({});
+	});
+
+	it('defaults to the shipped mapping when never set', () => {
+		expect(resolveSettings(fakeConfig()).typeFolders).toEqual(defaultSettings().typeFolders);
+		expect(resolveSettings(fakeConfig()).typeFolders['bug']).toBe('docs/bugs');
+	});
+
+	it('honours a reconfigured mapping', () => {
+		const resolved = resolveSettings(fakeConfig({ typeFolders: 'Bug: triage, Epic: plan' }));
+		expect(folderForType('Bug', resolved)).toBe('triage');
+		expect(folderForType('Epic', resolved)).toBe('plan');
+		// Types left out of the mapping fall through, whatever the default said.
+		expect(folderForType('Task', resolved)).toBeNull();
 	});
 });
