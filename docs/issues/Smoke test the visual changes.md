@@ -54,10 +54,16 @@ order properties** over a backlog large enough to take a moment: the toolbar sho
 **Row add button** — hover a row; `+` appears. It is now a `<button>` with
 `tabindex="-1"`, so it must not appear in the `Tab` order.
 
-**Extra-type badges** (added after this note was first closed) — a row typed `Issue` or
-`Bug` renders a badge with the `circle-dot` icon and a colour taken from past the end of
-the ladder. Check it reads as a peer of the level badges rather than as an error state,
-and that the colour does not collide with the level beside it in either theme.
+**Extra-type badges** (added after this note was first closed) — `Issue` renders a
+`circle-alert` icon in pink, `Bug` a `bug` icon in red, and an extra type this plugin did
+not name gets `circle-dot` and a colour from past the end of the ladder. Check all three
+read as peers of the level badges rather than as error states, that pink and red are
+distinguishable from each other and from the four level colours in both themes, and that
+the two icons render at 11px without looking muddy.
+
+**Done rows** — the strike-through is gone; muting is the whole signal now. Check a
+finished row still reads as finished at a glance, and that a done *parent* with an open
+child is still tellable from an open one.
 
 **Reduced motion** — with the OS setting on, spinners should step rather than spin and
 the busy chip should appear without a fade.

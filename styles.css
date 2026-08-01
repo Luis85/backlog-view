@@ -508,15 +508,13 @@
 	text-align: center;
 }
 
-/* Done items dim out; the title gets a subtle strike-through. */
+/*
+ * Done items dim out, and that is the whole signal. A strike-through on top of muting
+ * says the same thing twice, and it says it by making the title harder to read — which
+ * a finished item still has to be, since a backlog is read as much as it is worked.
+ */
 .pbl-row.pbl-done .pbl-title {
 	color: var(--text-faint);
-	/* Longhand, and no explicit decoration color: it defaults to currentColor, which is
-	   the --text-faint above. Plugin review still reports "text-decoration" as partially
-	   supported — that verdict is about the feature group (skip-ink, thickness,
-	   underline-offset), none of which is used here; line-through is as old as CSS 1.
-	   Dropping it would mean dropping the strike-through, so the longhand stays. */
-	text-decoration-line: line-through;
 }
 
 .pbl-row.pbl-done .pbl-badge {
@@ -625,6 +623,14 @@
 .pbl-lvl-5 { --pbl-badge-rgb: var(--color-cyan-rgb); }
 .pbl-lvl-6 { --pbl-badge-rgb: var(--color-pink-rgb); }
 .pbl-lvl-7 { --pbl-badge-rgb: var(--color-red-rgb); }
+
+/*
+ * The extra types this plugin ships get colours of their own rather than the next slot
+ * in the rotation: a Bug should read as a problem, not as whatever came after Task.
+ * Both are clear of the four default levels (orange, purple, blue, yellow).
+ */
+.pbl-lvl-issue { --pbl-badge-rgb: var(--color-pink-rgb); }
+.pbl-lvl-bug { --pbl-badge-rgb: var(--color-red-rgb); }
 
 .pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
 	color: rgb(var(--pbl-badge-rgb));

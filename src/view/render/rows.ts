@@ -17,7 +17,17 @@ import {
 const BADGE_COLOR_COUNT = 8;
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
-/** One icon for every extra type: they are named by the user, so nothing else generalizes. */
+/**
+ * Icon and badge colour for the extra types this plugin ships, keyed lowercase. Only the
+ * shipped names get an opinion — the same rule their folders follow — because an icon for
+ * a type someone invented cannot be guessed. Anything else falls back to a neutral icon
+ * and the colour rotation, which is still distinct from every level.
+ */
+const EXTRA_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
+	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
+	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
+};
+/** For an extra type this plugin did not name: a mark, without claiming to know what it means. */
 const EXTRA_TYPE_ICON = 'circle-dot';
 
 /** Render the tree content (or the empty state) into the tree element. */
@@ -215,17 +225,19 @@ function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem)
 	const badge = row.createSpan({ cls: 'pbl-badge' });
 	// A declared extra type is a first-class type, so it gets a badge like a level's
 	// rather than the bare-text treatment reserved for a type this view knows nothing
-	// about. Its colour is taken from past the end of the ladder, so it reads as beside
-	// the levels rather than as one of them.
+	// about — its own icon and colour where this plugin named it, and a slot past the
+	// end of the ladder where it did not, so it always reads as beside the levels.
 	const extra = isExtraType(item.typeName, host.settings);
+	const style = extra ? EXTRA_TYPE_STYLE[badgeText.toLowerCase()] : undefined;
 	const extraIdx = extra ? host.settings.extraTypes.findIndex((t) => t.toLowerCase() === badgeText.toLowerCase()) : -1;
 	if (item.levelIndex >= 0 && item.levelIndex < LEVEL_ICONS.length) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
 	} else if (extra) {
-		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), EXTRA_TYPE_ICON);
+		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style?.icon ?? EXTRA_TYPE_ICON);
 	}
 	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	if (item.levelIndex >= 0) badge.addClass(`pbl-lvl-${item.levelIndex % BADGE_COLOR_COUNT}`);
+	else if (style) badge.addClass(style.badge);
 	else if (extraIdx >= 0) badge.addClass(`pbl-lvl-${(host.settings.levels.length + extraIdx) % BADGE_COLOR_COUNT}`);
 	else badge.addClass('pbl-lvl-unknown');
 	const implied = item.impliedType

@@ -315,6 +315,10 @@ choices directly (`New PBI`, `New Issue`, `New Bug`), and `Set type` offers ever
 declared type. A row with only one option — a Task, or a Bug, which holds only Tasks —
 asks nothing and creates it straight away.
 
+`Issue` and `Bug` each get their own badge icon and colour — an alert in pink and a bug
+in red, distinct from the four level colours. A type you name yourself gets a neutral
+mark instead, since the plugin has no way to know what it means.
+
 Rename them, add your own (`Defect, Spike`), or clear the option to turn the whole idea
 off, under **Extra types** in the view options. A name that is already a level is ignored,
 since the level would win anyway. They rank with the second-lowest level, so focusing that

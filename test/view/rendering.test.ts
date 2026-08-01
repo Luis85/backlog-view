@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
@@ -6,7 +7,49 @@ import { drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf
 
 useViewHarness();
 
+/**
+ * The stylesheet as shipped. Appearance cannot be tested here, but a rule that was
+ * deliberately REMOVED can be kept out — otherwise it comes back unnoticed.
+ */
+const styles = readFileSync('styles.css', 'utf8');
+
 describe('rendering', () => {
+	it('gives each shipped extra type its own icon and badge colour', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('An issue.md', { frontmatter: { type: 'Issue' }, parentLink: 'Epic' });
+		vault.addFile('A bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
+		// A type this plugin never named: it cannot be given a meaning, so it gets a
+		// neutral mark and a slot past the ladder rather than a guess.
+		vault.addFile('A spike.md', { frontmatter: { type: 'Spike' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault, { extraTypes: 'Issue, Bug, Spike' });
+
+		const badge = (title: string) => rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-badge');
+		const icon = (title: string) =>
+			rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon;
+
+		expect(icon('An issue')).toBe('circle-alert');
+		expect(icon('A bug')).toBe('bug');
+		expect(icon('A spike')).toBe('circle-dot');
+
+		// Colours are their own, not the next slot in the rotation, and distinct from
+		// each other and from every default level (0-3).
+		expect(badge('An issue')?.classList.contains('pbl-lvl-issue')).toBe(true);
+		expect(badge('A bug')?.classList.contains('pbl-lvl-bug')).toBe(true);
+		expect(badge('A spike')?.className).toMatch(/pbl-lvl-[4-7]\b/);
+	});
+
+	it('mutes a done row without striking its title through', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+
+		// Muting is the whole signal; the strike-through said it twice and made a
+		// finished item harder to read.
+		expect(rowByTitle(containerEl, 'Epic').classList.contains('pbl-done')).toBe(true);
+		expect(styles).not.toContain('line-through');
+	});
+
 	it('renders the hierarchy with badges, depths and tree semantics', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
