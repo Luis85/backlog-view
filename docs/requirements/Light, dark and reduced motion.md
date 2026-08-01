@@ -46,8 +46,12 @@ way to get it:
   round of these checks cheap enough to actually do.
 - Nothing signals by colour alone. A done row, an orphan and a context row each remain
   identifiable without colour vision.
-- Anything adjusted is adjusted in `styles.css`. A behaviour change coming out of a look
-  check is a separate note, the way the appearance issue already insisted.
+- Anything adjusted is adjusted in the **source partial** that owns the rule, not in the
+  assembled `styles.css`. `One stylesheet per concern` lands first and makes the root file
+  a build artifact, so an edit there is overwritten by the next build without ever
+  reaching the partial — and this PBI is the one most likely to invite exactly that, since
+  a look check finds its subject by inspecting rendered output. A behaviour change coming
+  out of a look check is a separate note, the way the appearance issue already insisted.
 - The result is a **re-runnable checklist** left in `docs/issues/`, not a closed task.
   Every future theming change and every new locale needs the same pass, and the register
   has already established that these get reopened rather than rewritten.

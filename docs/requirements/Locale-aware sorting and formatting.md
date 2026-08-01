@@ -30,9 +30,11 @@ Formatting is the other half: `columns.ts:276` renders `${done}/${total}` and
 
 ## Case folding is the same split again
 
-`toLowerCase()` appears **41 times** in `src/`, and the locale question divides them the
-way `text is not data` divides everything else in this feature — except that here the
-*dangerous* direction is the sweep, not the omission.
+`toLowerCase()` appears **47 times** in `src/` — call expressions, not lines; an earlier
+draft of this paragraph said 41, which was the line count and undercounted the eight lines
+that fold twice. The locale question divides those 47 the way `text is not data` divides
+everything else in this feature, except that here the *dangerous* direction is the sweep
+rather than the omission.
 
 **Eight sites are user-facing matching, and are wrong today.** They fold a needle and a
 haystack to compare them, so they should use the **requested** locale:
@@ -49,8 +51,8 @@ folds `I` to `i` when the language folds it to `ı`. A user types what their key
 their language produce, and the filter silently fails to find a note that is plainly on
 screen — the worst kind of bug, because nothing is broken enough to report.
 
-**The other thirty-three must not be touched, and three of them would corrupt vaults.**
-They are not matching user text; they are canonicalizing *identity*:
+**Thirty-eight canonicalize identity and must not be touched — three would corrupt
+vaults.** They are not matching user text; they are deciding what something *is*:
 
 - `settings.ts:114` — `typeFolder.${typeName.toLowerCase()}`, which is a **persisted
   option key**. Under `toLocaleLowerCase('tr')` an `Issue` folder would key on
@@ -68,11 +70,14 @@ they can see; fold without it when deciding what something *is*.** A blanket swe
 `toLocaleLowerCase` is not a partial fix, it is a data-corruption bug — which makes this
 the one item in this feature where doing nothing is safer than doing it carelessly.
 
-Two sites are neither. `keyboard.ts:32` folds `evt.key` to compare against `'z'`, and a
-`KeyboardEvent.key` is a protocol value, not text. `create.ts:92` upper-cases the first
-character of a sentence for display — which stops being right the moment that sentence
-comes from a catalog, since the capitalized form belongs *in* the message and not every
-script has case at all. That one belongs to `Every surface translated`.
+One is neither: `keyboard.ts:32` folds `evt.key` to compare against `'z'`, and a
+`KeyboardEvent.key` is a protocol value rather than text. **8 + 38 + 1 = 47**, which is the
+arithmetic the check has to reproduce.
+
+Separately there is a single `toUpperCase()` — `create.ts:92`, upper-casing the first
+character of a sentence for display, which stops being right the moment that sentence comes
+from a catalog. The capitalized form belongs *in* the message, and not every script has
+case at all. That one belongs to `Every surface translated`.
 
 ## Two locales, not one
 
@@ -104,17 +109,51 @@ catalog is asked for a plural form it does not have. Collation and number format
 presentation of the user's own data, and follow the user. See
 `Plurals and interpolation`, which owns the grammar half.
 
+## The requested locale has to be validated before `Intl` sees it
+
+"Pass the requested locale" is right and incomplete: `Intl` throws on a **malformed** tag,
+and the resolution rules deliberately tolerate one. `Locale resolution and fallback`
+requires handling "an empty or unrecognized code", and empty is exactly what `Intl` will
+not take:
+
+| Code | `Intl.Collator` / `toLocaleLowerCase` | `Intl.getCanonicalLocales` |
+| --- | --- | --- |
+| `en`, `fr`, `pt-BR` | ok | valid |
+| `xx` — structurally valid, no such language | **ok** | valid |
+| `''`, `en_US`, `@@` | **RangeError** | invalid |
+
+The distinction that matters is not *supported* but *well-formed*. `xx` is a language
+`Intl` has no data for and it still works, falling back internally — which is the whole
+reason this PBI keeps the requested locale rather than the catalog one. But an empty
+string or an underscore instead of a hyphen throws, and it throws at render time, in the
+tree, on every row.
+
+So the requested locale is **validated once**, next to where it is resolved:
+`Intl.getCanonicalLocales(code)` in a `try`, falling back to `'en'` on `RangeError`. That
+preserves every valid-but-untranslated locale — which is the point — while making the
+formatting path total. Validation belongs with resolution rather than at each call site,
+or the guard has to be remembered eleven times.
+
 ## Acceptance criteria
 
+- The requested locale is **validated once** with `Intl.getCanonicalLocales`, falling back
+  to `'en'` only when the code is malformed — never when it is merely untranslated. A
+  `RangeError` from `Intl.Collator`, `Intl.NumberFormat` or `toLocaleLowerCase` at render
+  time means this criterion was not met.
 - Every `localeCompare` in `src/` passes a locale explicitly — the **requested** one, per
   the section above. A bare `localeCompare(b)` is a lint-visible mistake, the way
   `processFrontMatter` outside `storage/` already is.
 - Counts and ratios shown to the user go through `Intl.NumberFormat` for the **requested**
   locale.
-- The **eight** matching sites fold with `toLocaleLowerCase(requested)`; the other
-  thirty-three keep `toLowerCase()`. A check distinguishes them, because the two look
-  identical and one of them is a vault-corruption bug — `typeFolderKey` alone would reset
-  every Turkish user's type-folder configuration.
+- The **eight** matching calls fold with `toLocaleLowerCase(requested)`; the other
+  **thirty-nine** keep `toLowerCase()` — thirty-eight identity comparisons plus the
+  protocol one. A check distinguishes them, because the two look identical and one of them
+  is a vault-corruption bug: `typeFolderKey` alone would reset every Turkish user's
+  type-folder configuration.
+- The classification covers **all 47 calls**, counted as call expressions rather than
+  lines. Eight lines fold twice, so a line-based count reports 41 and leaves six
+  identity-folding calls outside the protected set — which is how this note first stated
+  it.
 - The reverse is explicitly a failure: a PR that "fixes locale handling" by replacing every
   `toLowerCase()` has not met this criterion, it has broken `Persisted keys stay as
   written`. That is the one place in this feature where a careless fix is worse than no

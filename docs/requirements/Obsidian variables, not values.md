@@ -51,7 +51,7 @@ deliverable as much as the edit is.
 
 ## Acceptance criteria
 
-- Every raw pixel value in `styles.css` is classified as: **a token** (replaced with the
+- Every raw pixel value in the stylesheet sources is classified as: **a token** (replaced with the
   Obsidian variable), **a bound `columnFit` sums** (left as a number, and covered by
   `One bound, not two`), or **genuinely arbitrary** (a border radius, a hairline) with a
   one-line reason.
