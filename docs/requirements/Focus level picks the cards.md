@@ -27,7 +27,10 @@ re-roots, on the board it decides which rung becomes cards.
   visible results, never draggable, never counted, never written — under its own
   state's column when one exists, else in the no-state column, styled and announced
   as context. A base returning only Tasks beneath excluded parents therefore still
-  shows a board under that parent level's focus. And the tree's visibility rule
+  shows a board under that parent level's focus — while "Show parents outside the
+  filter" is on, the option that loads those ancestors at all; with it off the model
+  holds no such parent to render, and the focused empty state answers honestly, as
+  the tree's does. And the tree's visibility rule
   travels with it: a context card renders only while it places a visible result —
   when hiding finished work hides everything it stood for, the card goes too, its own
   state never the thing keeping it on screen.
