@@ -486,6 +486,31 @@ would have been listed rather than failed. `walk` deliberately recurses; the rul
 consumes it did not. Nothing is nested today, which is exactly why it would have been
 found the hard way.
 
+## Three more, one of them created by the fix before it
+
+| Planted | Reported |
+| --- | --- |
+| `* **NOT LABELLED — ` beside a valid `-` bullet | `extension is not labelled \`**Na — \`: * **NOT LABELLED…` |
+| 0012 and 0013 reversed, reciprocity intact | `supersedes: 13 … must point backwards`, `superseded-by: 12 … must point forwards` |
+| A command documented only in `requirements/board/` | the surfaces test finds it — a flat read would not have |
+
+Bullets were matched with `-` alone, so `*` and `+` — both ordinary Markdown — were not
+extensions the check could see, and a stray one dropped out exactly as a mistyped label
+used to. The same hole one level down, inside the fix for it.
+
+Supersession had been checked for existence, for self-reference, for reciprocity from both
+sides, for the predecessor's status and for the successor's, and still nothing read the
+**numbers**. `docs/adrs/README.md` defines Superseded as "replaced by a *later* ADR", so
+the direction is in the vocabulary; a reversed pair satisfies every other rule, and a
+reciprocal pair with the arrow flipped is a cycle that reads as ordinary history.
+
+The third was made by the previous commit. Teaching `docs-check.mjs` to treat nested
+requirement notes as specifications left `test/docs/surfaces.test.ts` reading the folder
+flat, so an id specified only in a nested note would have failed a test while the register
+was perfectly correct. **A split has two halves, and changing what one of them means is a
+change to both** — the same lesson as the checker and `resolveParent` disagreeing about
+what a `parent:` key is, one file further out.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that — and caught `test/docs/surfaces.test.ts` being unnamed by any
 note within a minute of its being written.

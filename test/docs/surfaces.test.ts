@@ -25,10 +25,23 @@ import { FakeVault } from '../helpers/vault';
 
 const REQUIREMENTS = path.join('docs', 'requirements');
 
-/** The register's specification notes. A record that mentions a name does not specify it. */
-const specText = readdirSync(REQUIREMENTS)
-	.filter((f) => f.endsWith('.md'))
-	.map((f) => readFileSync(path.join(REQUIREMENTS, f), 'utf8'))
+/**
+ * The register's specification notes. A record that mentions a name does not specify it.
+ *
+ * Recursive, because `docs-check.mjs` walks `docs/` recursively and validates a note in
+ * `requirements/board/` as a requirement. A flat read here would drop it from the corpus,
+ * so an id specified only in a nested note would fail this test while the register was
+ * perfectly correct — the two halves of the split disagreeing about what a requirement is.
+ */
+function specFiles(dir: string): string[] {
+	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+		const full = path.join(dir, entry.name);
+		if (entry.isDirectory()) return specFiles(full);
+		return entry.name.endsWith('.md') ? [full] : [];
+	});
+}
+const specText = specFiles(REQUIREMENTS)
+	.map((f) => readFileSync(f, 'utf8'))
 	.join('\n');
 
 /**

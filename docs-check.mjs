@@ -286,14 +286,18 @@ for (const [, note] of notes) {
 		fail(note.file, "**Extensions** block could not be parsed");
 		continue;
 	}
-	const bullets = [...block[1].matchAll(/^- .*/gm)];
+	// Every Markdown bullet marker, not just the one this register happens to use. Matching
+	// `-` alone meant a `* **NOT LABELLED` bullet was not an extension the check could see,
+	// so it dropped out exactly as a mistyped label used to — the same hole, one level down,
+	// in the fix for it.
+	const bullets = [...block[1].matchAll(/^[-*+] .*/gm)];
 	if (bullets.length === 0) fail(note.file, "**Extensions** has no bullets");
 	const flow = /\*\*Main flow\*\*\n+([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
 	const steps = new Set([...(flow?.[1] ?? "").matchAll(/^(\d+)\. /gm)].map(([, n]) => Number(n)));
 	if (steps.size === 0) fail(note.file, "main flow has no numbered steps");
 	const labels = [];
 	for (const [bullet] of bullets) {
-		const label = /^- \*\*(\d+)([a-z]) — /.exec(bullet);
+		const label = /^[-*+] \*\*(\d+)([a-z]) — /.exec(bullet);
 		if (!label) {
 			fail(note.file, `extension is not labelled \`**Na — \`: ${bullet.slice(0, 60)}`);
 			continue;
@@ -392,9 +396,9 @@ for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {
 for (const link of chains) {
 	// Both directions, from one table — checking only one of them is the asymmetry that
 	// let a half-declared chain through, and it let it through in the worse direction.
-	for (const [field, raw, mirror, mirrorField] of [
-		["supersedes", link.supersedes, "supersededBy", "superseded-by"],
-		["superseded-by", link.supersededBy, "supersedes", "supersedes"],
+	for (const [field, raw, mirror, mirrorField, backwards] of [
+		["supersedes", link.supersedes, "supersededBy", "superseded-by", true],
+		["superseded-by", link.supersededBy, "supersedes", "supersedes", false],
 	]) {
 		if (raw === null) continue;
 		const target = adrNumber(raw);
@@ -412,6 +416,14 @@ for (const link of chains) {
 		}
 		const partner = chains.find((c) => c.number === target);
 		if (link.number === null) continue; // reciprocity needs our own number; the missing `adr` is already reported
+		// Chronology. `docs/adrs/README.md` defines Superseded as "replaced by a **later**
+		// ADR", so the numbers carry that direction and nothing was reading them. Existence
+		// and reciprocity are both satisfied by a pair pointing the wrong way round — and a
+		// reciprocal pair with the arrow reversed is a cycle that reads as ordinary history.
+		if (backwards !== target < link.number) {
+			fail(link.file, `${field}: ${target} — a record is replaced by a later ADR, so this must point ${backwards ? "backwards" : "forwards"}`);
+			continue;
+		}
 		if (adrNumber(partner?.[mirror] ?? null) !== link.number) {
 			fail(link.file, `says ${field}: ${target}, but ADR ${target} does not say ${mirrorField}: ${link.number}`);
 		}
