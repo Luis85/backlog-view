@@ -16,11 +16,14 @@ files:
 ## The decision
 
 A column renders its cards exactly in the order the Base's own sort delivers —
-`entryIndex`, since `data.data` arrives presorted — for every card, whether or not it
-carries an `order`. A sibling-scoped `order` is not comparable across parents, so the
-board never consults the property itself; it reaches a column only when the user has
-put it in the Base's sort. Dragging within a column is not offered, and no property
-records a board position.
+`entryIndex`, since `data.data` arrives presorted — for every result card, whether or
+not it carries an `order`. A sibling-scoped `order` is not comparable across parents,
+so the board never consults the property itself; it reaches a column only when the
+user has put it in the Base's sort. The one card without an index of its own is the
+focused context card (`entry: null`): it takes the earliest `entryIndex` among the
+visible results it places, sorting where its first result would — the only ordering
+consistent with existing only to place them. Dragging within a column is not offered,
+and no property records a board position.
 
 ## Why
 

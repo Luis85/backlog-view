@@ -20,8 +20,10 @@ difference between a board that shows states and one that shows the working agre
 
 - Each configured state can carry a short policy text in the view options, generated
   one option per state the way the per-type folder options already are.
-- A column whose state has a policy shows an affordance on its header; the text is
-  reachable by pointer and keyboard, and read to assistive technology.
+- A column whose state has a policy shows an affordance on its header, and the text
+  is reachable without new tab stops: by pointer on the affordance, and from the
+  column's context menu — the same menu the selected column already offers for
+  creation — with assistive technology hearing it as the column's description.
 - Policies render. Nothing enforces them — a card moves into a column whether or not
   its policy is met, exactly as the ladder guides and never refuses.
 - With no policies configured, headers are unchanged: no empty affordances.
