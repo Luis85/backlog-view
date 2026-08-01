@@ -17,6 +17,55 @@ files:
 
 # Issue and Bug: types that sit beside the ladder
 
+**As** someone tracking work that is not a plan, **I want** to raise an Issue or a Bug
+against any level of the backlog and break it into Tasks, **so that** a defect found
+against an Epic and one found against a PBI are the same kind of thing, filed where the
+problem actually is, without pretending either is a Feature.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Creating an item under a row, or setting an existing item's type |
+| **Preconditions** | The parent row is an `Epic`, `Feature` or `PBI` |
+| **Guarantee** | An extra type is never re-typed by a move. Its rank is a property of the type, so no drag can change it. |
+
+**Main flow**
+
+1. The user opens the **+** on an `Epic`, `Feature` or `PBI` row.
+2. Because that row can hold more than one kind of child, the modal asks which — the
+   ladder's own child first, then `Issue` and `Bug`.
+3. The user picks `Bug`, names it, and the view writes `type`, `parent` and `order`,
+   filing the note in the `Bug` folder ([[Where new items are filed]]).
+4. The Bug renders with its own icon and colour, ranked as though it were a PBI wherever
+   it hangs.
+5. Opening **+** on that Bug offers `Task` alone, and asks nothing.
+
+**Extensions**
+
+- **2a — the row is a `Task`.** Nothing hangs below a Task; the modal is skipped.
+- **2b — the row is itself an `Issue` or `Bug`.** Its only children are Tasks, so again
+  nothing is asked.
+- **3a — the user instead drags an existing Bug to a different parent.** Its type is
+  left alone. `levelIndex === -1` means "not a rung", and the auto-type cascade has
+  always treated those as deliberate user data.
+- **4a — the Bug has no parent at all.** It stays in the model. A recognised type is
+  enough to belong, and both "Set type → Bug" on a leaf and a drag to the top level
+  produce exactly that.
+
+## Acceptance criteria
+
+- An `Issue` or `Bug` ranks the same wherever it hangs, and its children are Tasks under an
+  Epic exactly as under a PBI.
+- No move ever re-types one, including a move of a subtree that contains one nested inside
+  it.
+- `Epic`, `Feature` and `PBI` rows offer all three child kinds; `Task`, `Issue` and `Bug`
+  rows offer only `Task`, and ask nothing.
+- A parentless `Issue` or `Bug` stays in the model — a recognised type is enough to belong.
+- Each has its own icon and badge colour, distinct from every level's and from each other's.
+- The vocabulary is fixed at six names and is not a user setting.
+
 ## The request
 
 Two new item types, `Issue` and `Bug`. Both may have `Epic`, `Feature` or `PBI` as a

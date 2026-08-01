@@ -7,8 +7,44 @@ status: Done
 
 # New item flow
 
-A **+** on every row, a **New** button in the toolbar, and `New <type>` in the context
-menu. The view writes `type`, `parent` and `order`; the user supplies a title.
+**As** someone breaking work down, **I want** to add a child to a row and only have to
+name it, **so that** the thought I was having survives the act of writing it down —
+instead of being spent on which folder, which type and which order number.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | The **+** on a row, the **New** button in the toolbar, or `New <type>` in the context menu |
+| **Preconditions** | The view options are valid — creation goes through the same config gate as every other write |
+| **Guarantee** | The user supplies a title. The view supplies `type`, `parent`, `order` and the folder. |
+
+**Main flow**
+
+1. The user presses **+** on a row.
+2. The view works out what that row can hold ([[Types beside the ladder]]).
+3. Because there is more than one answer, the modal asks which kind — defaulting to the
+   ladder's own child, with `Issue` and `Bug` beside it.
+4. The modal shows **where the note will land**, and the folder follows the type as the
+   user changes it ([[Where new items are filed]]).
+5. The user types a title and confirms.
+6. The view creates the note with `type`, `parent` and an `order` that puts it at the end
+   of its new siblings, then opens it.
+
+**Extensions**
+
+- **1a — the trigger is the toolbar's **New**.** The item is top level: an `Epic`. The
+  chevron beside it offers the other types for a root that is not one.
+- **1b — the trigger is the context menu.** Same flow, reached from the keyboard.
+- **2a — the parent row came from outside the Base's filter.** `New <child>` stays
+  available: it writes a *different* note. But folder inference counts only result rows,
+  and folder mode's "children go beside the parent's folder note" rule is skipped — the
+  explicit parent link keeps the hierarchy right wherever the note lands.
+- **3a — the row can hold only one kind of item** (a `Task`'s parent, an `Issue`, a `Bug`).
+  Nothing is asked; the modal goes straight to the title.
+- **5a — the title names a note that already exists in that folder.** The modal says so
+  before creating, rather than the write failing afterwards.
 
 ## Acceptance criteria
 
@@ -17,3 +53,12 @@ menu. The view writes `type`, `parent` and `order`; the user supplies a title.
 - A row with one option asks nothing.
 - The modal says where the item will land before it is created.
 - Creation goes through the same config gate as every other write.
+- The new note is created and opened; nothing else in the tree is written.
+
+## Where it lives
+
+`src/view/interactions/create.ts` (the flow and folder inference) ·
+`src/ui/prompts.ts` (the modal) · `src/storage/frontmatter.ts` (`createBacklogItem` —
+the only place a note is created) · `src/domain/itemTypes.ts` (`childTypeChoices`).
+Tests: `test/view/creation.test.ts`, `test/ui/prompts.test.ts`,
+`test/domain/itemTypes.test.ts`.

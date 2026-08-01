@@ -16,6 +16,51 @@ files:
 
 # Undo the last backlog change
 
+**As** someone who just dropped an item in the wrong place, **I want** to take that change
+back, **so that** one slip against a large backlog is a keystroke rather than an evening
+of reconstructing thirty notes by hand.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | The ↩ toolbar button, or `Ctrl`/`Cmd`+`Z` in the tree |
+| **Preconditions** | A batch has landed this session and changed at least one note |
+| **Guarantee** | Undo never *deletes*. Creation is out of scope, because the inverse of creating a note is removing one. |
+
+**Main flow**
+
+1. The user makes a change — a drop, a move, a state pick, the ✨ backfill.
+2. As each write lands, its **inverse** is captured inside the same `processFrontMatter`
+   call: what the key held before (including "key absent") and what the write put there.
+3. The user presses ↩.
+4. Each captured key is compared against what the note holds now and, where it still holds
+   what the batch wrote, put back exactly — raw shape and all.
+5. A notice says what was restored, and the tree shows it.
+6. Pressing ↩ again is **redo**: the replay recorded its own inverses the same way.
+
+**Extensions**
+
+- **2a — the batch changed nothing** (re-picking an item's current state). No inverse is
+  emitted, so the previous undo slot survives. A no-op must not cost the user the undo of
+  the change before it.
+- **2b — the batch failed partway.** The applied prefix is undoable, because inverses are
+  handed over as each write lands rather than returned at the end.
+- **3a — the write moved its own target out of the Base's filter** (a parent marked done in
+  a base that excludes done items). Still undoable. Authorization came at **capture** time:
+  an undo batch can only name files its forward batch wrote while they were results.
+- **4a — a key was hand-edited between the write and the undo.** It is **kept**, not
+  overwritten. Undo is not the only editor, and refusing the whole undo over one edited
+  note would make it useless on exactly the large batches that need it most. The notice
+  counts what was kept.
+- **4b — a note was deleted in between.** Skipped whole; the rest of the batch restores.
+- **4c — a note was recreated at the same path.** Counted as missing: identity is the file,
+  not the path, and a replacement must not inherit the original's history.
+- **4d — the replay itself fails partway.** The slot swaps to the **unfinished remainder**,
+  so the next undo finishes the job, and the prefix's redo is stashed and rejoined when the
+  retry completes.
+
 ## Evidence
 
 - One gesture can rewrite many notes: `renumberWrites` produces a write per sibling

@@ -7,11 +7,46 @@ status: Done
 
 # Build phases in the type system
 
-The model is built in phases, and a field is meaningless until its phase has run. Saying
-so in the types means the compiler enforces it instead of the reader remembering it.
+**As** someone reading or extending the model builder, **I want** the types to say which
+fields are real yet, **so that** the compiler stops me from using a value the phase that
+computes it has not produced — instead of my having to hold the build order in my head.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Whoever is changing the model builder |
+| **Trigger** | Writing a function that takes a model item, or adding a field to one |
+| **Preconditions** | None |
+| **Guarantee** | A field that has not been computed yet cannot be read. Not by convention — the parameter type does not have it. |
+
+**Main flow**
+
+1. The model is built in phases: raw fields read off notes, then parent links, then cycle
+   breaking and sorting, then levels, focus and rollups.
+2. Each phase has **its own type** — `RawItem` → `LinkedItem` → `BacklogItem` — each
+   extending the one before.
+3. A function's parameter names the phase it runs in, so it can only see fields that phase
+   has produced.
+4. Promotion between phases is an in-place cast, because the object graph is cyclic and
+   rebuilding it would break the parent links it just made.
+
+**Extensions**
+
+- **1a — a new field is added.** Its phase has to be chosen: which type does it go on? That
+  was the question it was easy to skip when everything was one interface with placeholder
+  values in it.
+- **3a — a function needs a field from a later phase than its parameter.** It does not
+  compile. That is the whole point, and it is what the placeholder values used to hide.
 
 ## Acceptance criteria
 
 - Each phase has its own type, and a function's parameter says which fields are real.
 - No placeholder values stand in for fields a later phase owns.
 - Adding a field means choosing its phase — the question that was easy to skip before.
+
+## Where it lives
+
+`src/domain/model.ts` (the three phase types and the phases themselves).
+Tests: `test/domain/model.test.ts`.
+Done by: [[Phase type BacklogItem]].

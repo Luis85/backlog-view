@@ -17,10 +17,12 @@ demonstrating itself:
 ## The trees
 
 **Product Backlog** is the product: seven features covering the hierarchy, moving items,
-creating them, progress, finding work, safe writes and view state.
+creating them, progress, finding work, safe writes and view state — 19 use cases in all.
 
-**Codebase health** is the engineering work — three features, each with the PBIs that say
-what "healthy" means there, and the tasks that got it done underneath.
+**Codebase health** is the engineering work — three features and four use cases saying what
+"healthy" means here, with the tasks that got it done underneath. Its actor is whoever
+changes the plugin, which is the honest way to write an architectural rule as a use case:
+someone has to be trying to do something for the rule to be worth having.
 
 `Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
@@ -42,6 +44,31 @@ Every pair holds:
 The plugin does not *enforce* this — the rules decide what is offered, never what is
 refused — which is exactly why the register has to hold to it by hand. It has been checked:
 every parent link resolves, and every parent/child pair is legal.
+
+## Every PBI is a use case
+
+A `PBI` here is not a title with a checklist under it. It is a **use case**, in one shape:
+
+| Section | Answers |
+| --- | --- |
+| `**As** … **I want** … **so that** …` | Who wants this, and what changes for them if they get it |
+| **Actor / Trigger / Preconditions / Guarantee** | What starts it, what must already hold, and what stays true no matter which branch is taken |
+| **Main flow** | The numbered path when nothing goes wrong |
+| **Extensions** | Every other path, numbered against the step it departs from — `3a`, `3b` |
+| **Acceptance criteria** | What has to be true for it to be done. Testable, not aspirational |
+| **Where it lives** | The modules and the tests, so the register leads back into the code |
+
+The **extensions** are the part that earns its keep. Most of this plugin's hard-won
+behaviour is a branch off a main flow that reads as obvious: a drop onto a descendant, a
+tag edit racing a refresh, a base whose identity cannot be resolved. Writing them as
+extensions puts each one beside the step it complicates, so the rule and its reason arrive
+together instead of the rule surviving alone in a list of criteria.
+
+A `Feature` states its **outcome** and indexes its use cases. An `Epic` states why it
+exists and what "done" means for anything under it.
+
+`Issue`, `Bug` and `Task` notes are not use cases — they are records of a question, a
+defect or a piece of work — and keep their own shapes.
 
 ## Conventions
 
