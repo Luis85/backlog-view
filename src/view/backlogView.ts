@@ -49,6 +49,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	board: BoardSnapshot | null = null;
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
+	/** Whether the last render drew the dated timeline: entering it is what centers on today. */
+	private timelineShown = false;
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -409,12 +411,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		}
 		this.treeEl.scrollTop = scrollTop;
 		this.treeEl.scrollLeft = scrollLeft;
-		// The timeline opens on today rather than on its far-past edge — but only
-		// while nothing has been scrolled yet: a data update mid-session must not
-		// yank the view back to now.
-		if (projection === 'roadmap' && scrollLeft === 0 && this.roadmap?.todayLeft != null) {
-			this.treeEl.scrollLeft = Math.max(this.roadmap.todayLeft - this.treeEl.clientWidth / 2, 0);
+		// The timeline opens on today rather than on its far-past edge — on ENTERING
+		// it. The scroller is shared across projections, so position cannot stand in
+		// for lifecycle: a board's leftover offset must not skip the centering, and a
+		// timeline deliberately panned to its far-past edge must not be yanked back
+		// to now by the next data update.
+		const todayLeft = this.roadmap?.todayLeft ?? null;
+		if (todayLeft != null && !this.timelineShown) {
+			this.treeEl.scrollLeft = Math.max(todayLeft - this.treeEl.clientWidth / 2, 0);
 		}
+		this.timelineShown = todayLeft != null;
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
 		if (projection !== 'tree') return;

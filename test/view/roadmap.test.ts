@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { key, makeView, projectionButton, treeOf, useViewHarness } from '../helpers/view';
+import { key, makeView, projectionButton, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { bucketNames, bucketsOf, shelfTitles } from '../helpers/roadmap';
 
 useViewHarness();
@@ -193,5 +193,43 @@ describe('roadmap keyboard support', () => {
 
 		key(tree, '/');
 		expect(document.activeElement?.classList.contains('pbl-filter-input')).toBe(true);
+	});
+});
+
+describe('entering the dated timeline', () => {
+	const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
+
+	function datedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Dated.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		return vault;
+	}
+
+	function scroller(containerEl: HTMLElement): HTMLElement {
+		const el = containerEl.querySelector<HTMLElement>('.pbl-tree');
+		if (!el) throw new Error('the scroller is missing');
+		return el;
+	}
+
+	it('centers on today whatever offset the scroller inherited from another projection', () => {
+		const vault = datedVault();
+		const { view, containerEl } = makeView(vault, { ...DATES }, { collapsed: true });
+		// A board or tree scrolled sideways leaves its offset on the shared scroller;
+		// position must not stand in for lifecycle.
+		scroller(containerEl).scrollLeft = 240;
+
+		view.setProjection('roadmap');
+		expect(containerEl.querySelector('.pbl-timeline')).not.toBeNull();
+		expect(scroller(containerEl).scrollLeft).toBe(view.roadmap?.todayLeft);
+	});
+
+	it('keeps a timeline panned to its far-past edge there across a data update', () => {
+		const vault = datedVault();
+		const { view, containerEl } = roadmapView(vault, { ...DATES });
+		expect(scroller(containerEl).scrollLeft).toBe(view.roadmap?.todayLeft);
+
+		scroller(containerEl).scrollLeft = 0;
+		refresh(view, vault);
+		expect(scroller(containerEl).scrollLeft).toBe(0);
 	});
 });
