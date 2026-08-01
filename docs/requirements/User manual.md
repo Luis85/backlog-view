@@ -14,6 +14,18 @@ whose sections explain what the plugin's parts are for — the types first, then
 creating, finding, undoing and configuring. Short prose, in the view, at the moment the
 question is asked.
 
+## Use cases
+
+- [[A help button for the item types]] — what an Epic, a PBI or a Bug is *for*, asked from
+  inside the view.
+- [[Help for moving and ranking]] — what a drop will do, before the user lets go.
+- [[Help for creating and filing]] — where a new note will land, before it is confirmed.
+- [[Help for finding work]] — which control is hiding a row, so narrowing is not read as
+  data loss.
+- [[Help for safe writes and undo]] — which properties this view edits, and how to take a
+  change back.
+- [[Help for setting up the view]] — each option explained by what it changes.
+
 ## Why it exists
 
 Everything this manual would say is already written, and none of it is reachable from

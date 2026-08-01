@@ -327,6 +327,79 @@ for (const [, note] of notes) {
 	}
 }
 
+// ------------------------------------------------------------------ feature indexes
+/**
+ * A Feature indexes the use cases that deliver its outcome, and `docs/README.md` states
+ * the rule this enforces: *"Keep the index complete. A Feature whose list has drifted from
+ * its actual children is worse than one with no list, because the list is what a reader
+ * trusts instead of the tree."*
+ *
+ * That was an advertised invariant nobody could run — the failure this whole file exists
+ * to end — and it had already gone false: two PRs that never saw each other, one writing
+ * the index from the children it branched with and one adding a child, both merging clean.
+ * Neither could have caught it alone, which is the argument for checking it here rather
+ * than in review.
+ *
+ * Both directions, because drift has two shapes: a PBI child missing from the list, and a
+ * listed entry that is not one of this Feature's use cases — a note that has moved away, or
+ * a child of a type that was never a use case to begin with. The index is compared against
+ * the PBI children exactly: an `Issue` or a `Bug` may legally hang from a Feature, and
+ * accepting it in the list let "may hang here" quietly mean "may be indexed here".
+ */
+for (const [name, note] of notes) {
+	if (note.type !== "Feature") continue;
+	const listed = new Set(
+		[...useCaseIndex(withoutCode(texts.get(note.file))).matchAll(/\[\[([^\]|#]+)/g)].map(([, t]) => t.trim()),
+	);
+	const children = [...notes].filter(([, c]) => c.parent === name);
+	// Ranked, so the report reads in the order the note should list them in.
+	const missing = children
+		.filter(([child, c]) => c.type === "PBI" && !listed.has(child))
+		.sort(([, a], [, b]) => a.order - b.order)
+		.map(([child]) => child);
+	if (missing.length > 0) fail(note.file, `## Use cases does not list ${missing.map((m) => `[[${m}]]`).join(", ")}`);
+	// Compared against the PBI children, not against every child. An `Issue` or a `Bug` may
+	// legally hang from a Feature and is NOT a use case, so a list naming one is not merely
+	// untidy — it is the index asserting something the type system says is false. Comparing
+	// against all children accepted exactly that, which made "may hang here" quietly mean
+	// "may be indexed here".
+	const useCases = new Set(children.filter(([, c]) => c.type === "PBI").map(([child]) => child));
+	for (const entry of listed) {
+		if (useCases.has(entry)) continue;
+		// The two ways an entry can be wrong read differently to whoever fixes it: a note
+		// that moved away, and a note that is here but is not a use case.
+		const kind = notes.get(entry);
+		const why =
+			kind && children.some(([child]) => child === entry)
+				? `is a child of type ${kind.type}, not a use case`
+				: "is not a child of this feature";
+		fail(note.file, `## Use cases lists [[${entry}]], which ${why}`);
+	}
+}
+
+/**
+ * The body of the `## Use cases` section: everything up to the next heading of the same
+ * level, or the end of the note. Absent entirely, it is '' rather than a special case —
+ * a Feature with no index fails as one missing every child, which is what it is, and the
+ * report then names them all rather than saying only that a heading is gone.
+ *
+ * HTML comments are stripped first, and this is the whole question the section asks:
+ * completeness is about what a READER sees, and `<!-- -->` hides a bullet from the rendered
+ * note while leaving its wikilink here to be counted. That is the deletion case the check
+ * exists to catch, passing green — so a commented-out entry has to read as an absent one.
+ * Stripped here rather than in `withoutCode`, which every other check shares: a wikilink
+ * inside a comment should still have to resolve, and widening that helper would quietly
+ * relax rules this change is not about.
+ */
+function useCaseIndex(text) {
+	text = text.replace(/<!--[\s\S]*?-->/g, "");
+	const start = /^## Use cases\s*$/m.exec(text);
+	if (!start) return "";
+	const rest = text.slice(start.index + start[0].length);
+	const end = /^## /m.exec(rest);
+	return end ? rest.slice(0, end.index) : rest;
+}
+
 // ----------------------------------------------------------------------------- ADRs
 /**
  * An ADR is any note under `docs/adrs/` that is not the index — discovered by **where it
