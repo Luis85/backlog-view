@@ -41,14 +41,24 @@ argue about.
 | No `!important` | 0 |
 | Every selector inside the `.pbl` namespace | 0 outside it, keyframe steps aside |
 | No physical `left`/`right` property where a logical twin exists | 1 (line 96) |
-| No direction-dependent value in a mask, gradient or shadow | 1 (lines 748-749) |
+| No direction-dependent value in a shadow, mask or gradient | 2 (line 336, lines 748-749) |
 | No `:has()` on a container | Already reasoned about in `src/view/CLAUDE.md` |
 
-The last two rows are why this is not just "add stylelint and take the defaults". The
-mask at 748-749 is invisible to a physical-property rule, and `:has()` is banned here for
-a *performance* reason specific to a tree that rebuilds on every data update — Obsidian's
-plugin review flags it, and the view already avoids it with a class instead. A generic
-ruleset knows neither.
+The last two rows are why this is not just "add stylelint and take the defaults".
+
+The direction rule has to match on **values**, not property names. `box-shadow: inset 2px
+0 0` (line 336) and `linear-gradient(to right, …)` (748-749) both pin a side, and neither
+property has a logical twin for a property-name rule to demand. A check that greps for
+`left`/`right` passes both — which is not hypothetical: `Layout survives translated text`
+missed one of them twice while being written, and the second miss was a category that
+note had already named in prose. **If a human enumerating the file by hand missed it
+twice, a rule that only matches property names will miss it every time.** The check is
+worth writing precisely because the manual audit demonstrably does not hold.
+
+`:has()` is the other one a generic ruleset gets wrong, in the opposite direction: it is
+banned here for a *performance* reason specific to a tree that rebuilds on every data
+update — Obsidian's plugin review flags it, and the view already avoids it with a class
+instead. Neither rule comes out of a default config.
 
 ## Acceptance criteria
 

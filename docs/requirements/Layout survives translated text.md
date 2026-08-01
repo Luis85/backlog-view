@@ -14,26 +14,41 @@ has a fixed-width column model and a depth-indented tree, so both are load-beari
 
 **Direction is mostly free already, but not entirely.** `styles.css` is 1143 lines and
 uses CSS logical properties in 11 places (`inline-start` / `inline-end`). What is left is
-**two** direction-dependent constructs, and only one of them is a physical property:
+**three** direction-dependent constructs — and only one of them is a physical property:
 
-- `margin-left: var(--size-4-1)` on `.pbl-filter` (line 96) — the straightforward one,
-  `margin-inline-start` and done.
-- The tag-list overflow fade (lines 748-749):
-  `mask-image: linear-gradient(to right, black calc(100% - 12px), transparent)`. A mask
-  is not a property with a logical twin, so a search for `left`/`right` *properties*
-  misses it. In RTL the flex overflow edge moves to the start of the line while the mask
-  stays put, so tags fade on the side that is not overflowing and clip hard on the side
-  that is. `to right` becomes `to inline-end` (or the rule is flipped under `[dir='rtl']`).
+| Line | Construct | In RTL |
+| --- | --- | --- |
+| 96 | `margin-left: var(--size-4-1)` on `.pbl-filter` | `margin-inline-start` and done |
+| 336 | `box-shadow: inset 2px 0 0 var(--interactive-accent)` on `.pbl-row.pbl-selected` | The selection accent stays on the physical left instead of mirroring to the inline start |
+| 748-749 | `mask-image: linear-gradient(to right, black calc(100% - 12px), transparent)` on `.pbl-tag-list` | The overflow edge moves to the start of the line but the mask does not, so tags fade where nothing overflows and clip hard where something does |
 
-Worth stating plainly because this note first claimed there was exactly one: **grepping
-for physical properties is not the same as auditing for direction.** Masks, gradients,
-shadows, and the choice of a directional icon all encode a side without naming one.
+The audit behind that table is exhaustive rather than a spot check, which matters because
+the first two versions of this note were not. Every `box-shadow` was read for a non-zero
+x-offset (line 336 is the only one — 167 and 1043 are symmetric `inset 0 0 0` rings, 1064
+is the theme's own `--shadow-s`); every `border-radius` is single-value, so none is
+asymmetric; and there is no `background-position`, `transform-origin`, `clip-path`,
+`float`, `inset` shorthand, physical `left:`/`right:` positioning, or `translateX`
+anywhere in the file. `text-align: end` (line 551) is already logical.
 
-The chevron is the third thing to look at and it is not in the stylesheet at all: the
+## The lesson, which this note had to learn twice
+
+It first claimed **one** remaining rule, then **two**. Both times the number came from
+grepping for physical `left`/`right` *properties*, and both times something encoding a
+side without naming one was sitting outside that grep.
+
+The second version even wrote the category down — *"masks, gradients, shadows, and the
+choice of a directional icon all encode a side without naming one"* — and then failed to
+enumerate the shadow it had just named. So the rule is not "remember that shadows count".
+It is: **name the categories, then enumerate each one, and treat a category you have not
+enumerated as unaudited.** A construct is direction-dependent if it takes an offset, an
+angle, a side or a directional keyword — regardless of whether the property has a logical
+twin to grep for.
+
+There is one final category that is not in the stylesheet at all: the chevron. Its
 expanded state is `transform: rotate(90deg)` (line 419), which is correct in both
-directions because down is down. The collapsed state's direction comes from the *icon*
-chosen in TS, so if it points right it keeps pointing right in RTL. That belongs to the
-verification pass rather than to a CSS sweep.
+directions because down is down. Its collapsed direction comes from the **icon chosen in
+TS**, so if it points right it keeps pointing right in RTL. That is checked by looking,
+not by grepping, and it belongs to the verification pass.
 
 **Width is not free.** `Property columns` is `Done` on the criteria *"Columns are
 fixed-width so values line up across rows regardless of title length"* and *"A pane too
@@ -48,10 +63,12 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
 
 ## Acceptance criteria
 
-- No physical `left`/`right` property remains in `styles.css` where a logical one exists,
-  **and** no direction-dependent value survives in a construct that has no logical twin —
-  the tag-list mask included. Keeping new ones out is `Styling rules are checks`, in
-  `Theming`; this PBI owns the sweep and the verification, not the lint.
+- All three constructs in the table are fixed: the physical property (96), the selection
+  accent shadow (336) and the tag-list mask (748-749). Two of them have no logical twin,
+  so "replace the physical properties" is not the whole job and never was.
+- Keeping new ones out is `Styling rules are checks`, in `Theming` — this PBI owns the
+  sweep and the verification, not the lint. The two features have to land in that order
+  or the check has nothing to go green against.
 - Row indentation, the chevron, the drag indicator and the root strip mirror correctly
   under `dir="rtl"`. The chevron's collapsed direction is an icon choice in TS, so it is
   checked by looking rather than by grepping.
