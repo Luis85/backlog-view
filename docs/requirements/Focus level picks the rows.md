@@ -46,9 +46,12 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
   carries the difference — the tree's own default, unchanged.
 - **2b — a focused-level item is itself outside the filter.** It still places its
   results, as the board's inert context card does: visible, styled and announced as
-  context, carrying only what its visible results give it — in the bucket or span its
-  own value names when it has one, else rendered beside the shelf as context, apart
-  from the shelf's count — never draggable, never counted, never written.
+  context, carrying only what its visible results give it. On the horizon axis it sits
+  in the bucket its own value names only where that bucket already exists — a context
+  value never adds one; on the timeline its span is the one its visible results give
+  it ([[Spans roll up the tree]]), never one drawn from its own dates; with neither,
+  it renders beside the shelf as context, apart from the shelf's count. Never
+  draggable, never counted, never written.
 - **2c — "Show parents outside the filter" is off.** The model holds no such parent to
   render, and the focused empty state answers honestly, as the tree's does.
 - **2d — hiding finished work hides everything a context row stood for.** The row goes
@@ -65,7 +68,9 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
 - Below-focus results are counted in fills and spans, never rendered as rows; ancestors
   render only as context; clearing focus restores every result.
 - A focused-level context item places its visible results as an inert context row —
-  never draggable, counted or written, and never part of the shelf's count.
+  placed only into a bucket that already exists or at the span its visible results
+  give it, never one its own value or dates would add — never draggable, counted or
+  written, and never part of the shelf's count.
 - Changing focus writes nothing, and bucket and shelf counts narrow with the rows.
 - The same toolbar control drives all three projections and persists as it does today.
 

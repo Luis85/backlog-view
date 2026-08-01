@@ -54,6 +54,10 @@ the keys rather than blanking them.
 - **2b — a configured date property collides with a key the plugin owns.** The collision
   is a configuration problem and the gate blocks writes until it is fixed — the stamps'
   rule ([[Stamp when work starts and finishes]]), which these properties join.
+- **2c — only one date property is configured.** The drop writes the one it has: a point
+  placement at the cell, rendered as the open-ended bar a single date makes
+  ([[Bars from two dates]]). Nothing is ever written to an unconfigured key — the state
+  write's rule, which the date writes join.
 - **4a — the note carries transition stamps.** Untouched. Plan and record are different
   keys, deliberately: unscheduling a note does not unhappen its history, and no
   scheduling write may ever reach the stamped keys.
@@ -63,10 +67,12 @@ the keys rather than blanking them.
 
 ## Acceptance criteria
 
-- Shelf to grid writes exactly the two configured date properties, spanning the drop
-  cell at the current zoom, one batch, one undo; the highlight states the dates before
-  the drop commits them.
-- Grid to shelf removes both keys — never blanks them — and undo restores them.
+- Shelf to grid writes exactly the configured date properties — both, spanning the
+  drop cell at the current zoom, or the single one configured as a point placement —
+  one batch, one undo; the highlight states the dates before the drop commits them,
+  and nothing is ever written to an unconfigured key.
+- Grid to shelf removes the configured date keys — never blanks them — and undo
+  restores them.
 - A drop nowhere meaningful writes nothing and keeps the previous undo.
 - Context rows can never be scheduled or unscheduled: never shelved, never draggable,
   and any batch naming one is refused whole.

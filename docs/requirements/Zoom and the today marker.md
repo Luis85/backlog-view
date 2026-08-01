@@ -65,7 +65,8 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 - Horizontal scrolling is contained inside the view; the pane never scrolls sideways,
   and a narrow or embedded pane degrades by yielding regions, not by clipping.
 - The zoom choice persists per device in the collapse store — never in the `.base` —
-  and zooming, panning and opening write nothing anywhere.
+  and zooming, panning and opening write nothing to any note or to the `.base`: the
+  one thing written is that per-device memory, where collapse state already lives.
 
 ## Where it lives
 
