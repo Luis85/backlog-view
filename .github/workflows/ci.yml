@@ -30,3 +30,6 @@ jobs:
 
       - name: Static analysis (fallow)
         run: npm run analyze
+
+      - name: Validate the docs register and ADRs
+        run: npm run docs

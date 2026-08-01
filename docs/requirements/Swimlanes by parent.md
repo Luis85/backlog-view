@@ -12,10 +12,54 @@ files:
 
 # Swimlanes by parent
 
+**As** someone reading a board of tasks from several features, **I want** the cards
+grouped under the thing they belong to, **so that** the board answers "how is that
+feature going" without me reading every card's parent line.
+
 One level of ancestry, without pretending the board is a tree: optional lanes group
 cards under their parent, the way Jira lanes a board by epic and Linear sub-groups by
 parent issue. Lanes also give the board its second write axis — a lane is a parent, so
 crossing lanes is the drop-onto-a-row the tree already plans.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Turning lanes on, or moving a card across lanes |
+| **Preconditions** | Board mode is on |
+| **Guarantee** | A lane is a parent, so crossing one is a reparent the tree already knows how to plan — same gate, same undo, same refusal of a drop that would make an item its own ancestor. |
+
+**Main flow**
+
+1. The user turns lanes on.
+2. Each parent's card-children group under a lane header naming it.
+3. The user drags a card into another lane.
+4. The view plans the reparent the tree's drop-onto would plan — appended order, the
+   autoType cascade only as configured — and applies it through the one gate.
+5. Undo takes it back as one batch.
+
+**Extensions**
+
+- **1a — lanes are off.** Flat columns, which is the default. Lanes are one level of
+  ancestry offered, not the tree redrawn sideways.
+- **2a — a card has no parent.** Parentless cards gather in a trailing lane. Jira keeps an
+  undeletable "Everything Else" lane for the same reason: a card with nowhere to go is a
+  card that disappears.
+- **2b — a lane's parent is outside the Base's filter.** The header renders as context and
+  obeys the context-row rule: never counted, never written, never draggable. A lane header
+  otherwise opens its parent.
+- **2c — the user collapses a lane.** Remembered per device, like columns and rows, and
+  for the same reason: it is a per-screen preference, not a property of the base.
+- **3a — the drop crosses a column as well as a lane.** Both changes go in one batch — the
+  reparent and the state — so one gate runs and one undo takes both back.
+- **3b — the drop would make the item its own ancestor.** Refused, exactly as in the tree.
+  The cycle rule is a property of the hierarchy, not of the projection showing it.
+- **3c — the user cannot drag.** The card menu gains a move-to-lane action offering every
+  legal lane under the drag's own cycle rules, and Alt+Up and Alt+Down — which a flat
+  board leaves unused — move the selected card one lane. Both write the batch the drag
+  writes, so touch and keyboard lose nothing
+  ([[Keyboard, menu and touch]]).
 
 ## Acceptance criteria
 
@@ -34,3 +78,10 @@ crossing lanes is the drop-onto-a-row the tree already plans.
   action offering every legal lane under the drag's own cycle rules, and Alt+Up and
   Alt+Down — which a flat board leaves unused — move the selected card one lane. Both
   write the reparent batch the drag writes, so touch and keyboard lose nothing.
+
+## Where it lives
+
+**Nothing yet — this note is design.** A lane crossing is the drop-onto plan
+`src/domain/writePlan.ts` already builds, and the cycle refusal is already
+`src/domain/dropTargets.ts` — which is the argument for lanes being the board's second
+axis rather than a second write path.

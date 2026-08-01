@@ -90,6 +90,29 @@ export class Component {
 	}
 }
 
+/**
+ * Enough of `Plugin` to let `main.ts` register against something and be asked what it
+ * registered. Only what `onload` touches: a command list, a view registration, and the
+ * event hook it wires for base renames — so "every command id is specified" can be
+ * answered by *running* the registration rather than by naming ids in a test.
+ */
+export class Plugin extends Component {
+	commands: { id: string; name: string; callback?: () => void }[] = [];
+	basesViews: { type: string; name: string }[] = [];
+
+	constructor(public app: unknown) {
+		super();
+	}
+
+	addCommand(command: { id: string; name: string; callback?: () => void }): void {
+		this.commands.push(command);
+	}
+
+	registerBasesView(type: string, spec: { name: string }): void {
+		this.basesViews.push({ type, name: spec.name });
+	}
+}
+
 /** Matches the runtime surface ProductBacklogView relies on; app/config/data are assigned by the test harness. */
 /**
  * Minimal stand-in for the leaf view that owns a base file. The plugin identifies

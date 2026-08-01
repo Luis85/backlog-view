@@ -9,7 +9,7 @@ import { ALL_TYPES, BacklogSettings, byTypeName, EXTRA_TYPES, LEVELS } from './s
  * rung is a property of the type rather than of where it sits. Two consequences follow,
  * and both are why this is a type rather than a fifth level:
  *
- * - it ranks at `extraTypeRank` no matter its parent, so its children always imply the
+ * - it ranks at `EXTRA_TYPE_RANK` no matter its parent, so its children always imply the
  *   deepest level;
  * - it has no `levelIndex`, so nothing re-types it by position — dropping a Bug under an
  *   Epic leaves a Bug.
@@ -20,7 +20,7 @@ import { ALL_TYPES, BacklogSettings, byTypeName, EXTRA_TYPES, LEVELS } from './s
 
 /** Where an item sits on the ladder — all these functions need of a parent. */
 export interface LadderPosition {
-	/** Index into `settings.levels`; -1 for an extra type or a type off the ladder. */
+	/** Index into `LEVELS`; -1 for an extra type or a type off the ladder. */
 	levelIndex: number;
 	/** The rung the item occupies, chained down the parent levels. */
 	effectiveLevelIndex: number;
@@ -28,7 +28,7 @@ export interface LadderPosition {
 
 /**
  * Level index a child of `parent` should get: one below the parent's effective
- * level, clamped to the deepest configured level. Top-level items get level 0.
+ * level, clamped to the deepest level. Top-level items get level 0.
  */
 export function childLevelIndex(parent: LadderPosition | null): number {
 	if (!parent) return 0;
@@ -36,7 +36,7 @@ export function childLevelIndex(parent: LadderPosition | null): number {
 }
 
 /**
- * One rung below `levelIndex`, clamped at the deepest configured level — the
+ * One rung below `levelIndex`, clamped at the deepest level — the
  * single statement of "what a child's level is". Exported so a walk that has a
  * level in hand rather than an item (the autoType cascade, planning types for a
  * subtree that has not been written yet) descends by the same rule the model
@@ -97,7 +97,7 @@ export function folderForType(typeName: string, settings: BacklogSettings): stri
 }
 
 /**
- * The type a focused view is showing at its top: a configured level, or an extra type
+ * The type a focused view is showing at its top: a level, or an extra type
  * named directly. Extra types are focusable because they are types a user files work
  * under — "show me the bugs" is the same question as "show me the PBIs".
  */

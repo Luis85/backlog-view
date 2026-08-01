@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { ALL_TYPES, EXTRA_TYPES } from '../../src/domain/settings';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
@@ -14,6 +15,36 @@ useViewHarness();
 const styles = readFileSync('styles.css', 'utf8');
 
 describe('rendering', () => {
+	it('styles every declared type — none falls through to bare text', () => {
+		// `renderBadge` has no fallback for a declared type, because the vocabulary is
+		// fixed and its two tables (level icons, extra-type styles) cover all of it. This
+		// is what keeps that true across BOTH tables and the stylesheet: add a type
+		// without an icon, or a colour class with no CSS rule, and this fails.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task' }, parentLink: 'PBI' });
+		for (const type of EXTRA_TYPES) {
+			vault.addFile(`${type}.md`, { frontmatter: { type }, parentLink: 'Epic' });
+		}
+		const { containerEl } = makeView(vault);
+
+		const seen = new Set<string>();
+		for (const type of ALL_TYPES) {
+			const badge = rowByTitle(containerEl, type).querySelector<HTMLElement>('.pbl-badge');
+			expect(badge?.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBeTruthy();
+			const colour = [...(badge?.classList ?? [])].find((c) => c.startsWith('pbl-lvl-'));
+			expect(colour).toBeDefined();
+			expect(colour).not.toBe('pbl-lvl-unknown');
+			// The class has to be one the shipped stylesheet actually paints, and no two
+			// types may share it — a colour is how a rung is told apart at a glance.
+			expect(styles).toContain(`.${colour} {`);
+			expect(seen.has(colour ?? '')).toBe(false);
+			seen.add(colour ?? '');
+		}
+	});
+
 	it('gives each shipped extra type its own icon and badge colour', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
@@ -31,9 +62,8 @@ describe('rendering', () => {
 		expect(icon('An issue')).toBe('circle-alert');
 		expect(icon('A bug')).toBe('bug');
 
-
-		// Colours are their own, not the next slot in the rotation, and distinct from
-		// each other and from every default level (0-3).
+		// Colours are their own rather than a slot after the ladder, and distinct from
+		// each other and from every level (0-3).
 		expect(badge('An issue')?.classList.contains('pbl-lvl-issue')).toBe(true);
 		expect(badge('A bug')?.classList.contains('pbl-lvl-bug')).toBe(true);
 		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
