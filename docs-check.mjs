@@ -52,6 +52,8 @@ const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "tes
  * a file that has since been split or removed — rewriting them would falsify the record.
  */
 const LIVING = new Set(["requirements", "adrs"]);
+/** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
+const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 
 const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
@@ -100,7 +102,13 @@ const notes = new Map();
 for (const file of files) {
 	const fm = frontmatter(texts.get(file));
 	const type = fm?.field("type");
-	if (!type) continue; // ADRs and the READMEs are deliberately not work items.
+	if (!type) {
+		// ADRs and the index files are deliberately not work items. Anything ELSE without a
+		// type is a note that has silently fallen out of the register — no parent checked,
+		// no order, no use-case shape — which is the failure mode a skip hides best.
+		if (!NOT_WORK_ITEMS.test(file)) fail(file, "backlog note has no `type` in its frontmatter");
+		continue;
+	}
 	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
 	notes.set(path.basename(file, ".md"), { type, parent, order: Number(fm.field("order") ?? 0), file });
 }
@@ -137,6 +145,17 @@ for (const file of files) {
 		if (await exists(referenced)) continue;
 		if (living) fail(file, `names ${referenced}, which does not exist`);
 		else historical.push(`${file} -> ${referenced}`);
+	}
+	// Every relative markdown link, of any shape — not just the `NNNN-slug.md` between
+	// ADRs. A link to `assets/diagram.svg` breaks exactly as loudly as a link to a note.
+	// Code spans are skipped for the same reason wikilinks are: inside backticks nothing
+	// renders as a link, so it is an example being quoted, not a reference being made.
+	for (const [, target] of withoutCode(text).matchAll(/\]\(\s*<?([^)\s>]+)>?[^)]*\)/g)) {
+		if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) continue;
+		const [linkPath] = target.split("#");
+		if (!linkPath) continue; // a bare anchor into this same file
+		const resolved = path.join(path.dirname(file), decodeURIComponent(linkPath));
+		if (!(await exists(resolved))) fail(file, `links ${target}, which does not exist`);
 	}
 }
 
@@ -196,9 +215,6 @@ for (const file of adrFiles) {
 	if (!/^date:\s*\d{4}-\d{2}-\d{2}\s*$/m.test(fm.raw)) fail(file, "date is not YYYY-MM-DD");
 	for (const section of ADR_SECTIONS) {
 		if (!text.includes(section)) fail(file, `ADR has no ${section}`);
-	}
-	for (const [, link] of text.matchAll(/\]\((\d{4}-[a-z0-9-]+\.md)\)/g)) {
-		if (!(await exists(path.join(path.dirname(file), link)))) fail(file, `links ${link}, which does not exist`);
 	}
 }
 for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {

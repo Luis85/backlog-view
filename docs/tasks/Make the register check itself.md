@@ -108,6 +108,30 @@ notes to quote UI strings that change for cosmetic reasons would trade a real ch
 brittle one. The sweep note now says which is which instead of claiming the script covers
 both.
 
+A fifth round closed two silent skips — the most dangerous shape a checker has, because
+a skipped file reports nothing at all:
+
+| Planted | Reported |
+| --- | --- |
+| A task note stripped of its frontmatter | `backlog note has no \`type\` in its frontmatter` |
+| A bug note keeping frontmatter but losing `type:` | same |
+| `[diagram](assets/layers.svg)`, `[details](missing.md)` in an ADR | both reported |
+| A percent-encoded task link pointed at a missing file | `links Split%20the%20view%20suite.md, which does not exist` |
+
+A note without a `type` was skipped **unconditionally**, so a note that lost its
+frontmatter fell out of every hierarchy, order and use-case check while the run stayed
+green. Only ADRs and the index pages are legitimately typeless, so that is now a rule about
+paths rather than a blanket skip. And relative links were checked only where they matched
+`NNNN-slug.md`, so any other link — an asset, a note referenced by its real filename, a
+percent-encoded path — was invisible. Every relative link in `docs/` is now resolved,
+percent-decoding and stripping anchors first, external schemes skipped.
+
+Adding that check immediately failed on **this note's own table**, because the planted
+examples above are written as links. Code spans are now skipped for links exactly as they
+already were for wikilinks, and for the same reason: inside backticks nothing renders as a
+link, so it is an example being quoted rather than a reference being made. The same
+example in prose still fails, which is the line worth holding.
+
 The checker also caught its author omitting ADR 0017 from the ADR index, minutes after
 being taught to check that.
 

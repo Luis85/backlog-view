@@ -61,11 +61,15 @@ npm run docs   # and as part of npm run check, and in CI
 `docs-check.mjs` enforces everything this file claims — an advertised invariant nobody
 can run is worse than none, because it invites trust it has not earned:
 
-1. Every parent link resolves, and every parent/child pair is legal.
+1. Every note outside `adrs/` carries a `type`, every parent link resolves, and every
+   parent/child pair is legal. A note that lost its frontmatter is reported rather than
+   skipped — a skipped file is checked for nothing and says so to nobody.
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
-3. Every wikilink resolves to a note. Links inside code spans are examples, not
-   references, and are skipped.
+3. Every wikilink resolves to a note, and **every relative markdown link resolves to a
+   file** — anywhere in `docs/`, whatever it points at, percent-encoding decoded and
+   anchors stripped. Links inside code spans are examples, not references, and are
+   skipped; so are external URLs.
 4. Every `src/` or `test/` path named by a note in **`requirements/` or `adrs/`** exists.
    Those two describe the code as it is now. `tasks/`, `issues/` and `bugs/` are records
    of a moment and may legitimately name a file since split away — rewriting them would
