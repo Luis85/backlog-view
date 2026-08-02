@@ -32,8 +32,8 @@ gate: `test/docs/checkerAccepts.test.ts` and `test/docs/checkerRejects.test.ts` 
 planted trees in both directions, so a rule quietly lost fails a test, and a legal form it
 starts refusing does too — the direction that blocks a contributor rather than letting one
 through. Obsidian itself
-cannot run here — the jsdom test harness below is the substitute; say so honestly when a
-change still needs a live-vault smoke test.
+cannot run here — the jsdom test harness ([`test/CLAUDE.md`](test/CLAUDE.md)) is the
+substitute; say so honestly when a change still needs a live-vault smoke test.
 
 `npm run test-build` is the handover for exactly those cases: it bundles into
 `.obsidian/plugins/<id>/` in the repository root (gitignored), so the human can open
@@ -114,28 +114,10 @@ depend on the effectful one.
 
 ## Testing
 
-- `test/helpers/obsidian-mock.ts` — runtime stand-in for the `obsidian` module (aliased in
-  `vitest.config.mts`). Extend it when new obsidian API surface is used; keep it minimal.
-- `test/helpers/dom.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
-  `addClass`, `setCssProps`, …) for jsdom files. Call `installObsidianDom()` at module top.
-- `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
-  recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
-  `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
-- `test/helpers/view.ts` — the view harness every `test/view/*.test.ts` file shares:
-  `makeView`, `refresh`, `fixture`, the row/tree accessors, `drag`, `key`, `stubRect`,
-  `flush`, `submitPrompt`, and `useViewHarness()` for the per-test reset. Call
-  `useViewHarness()` at the top of the file; the helper installs no hooks by itself.
-- `test/helpers/register.ts` — a whole miniature repository (`docs/`, `src/`, `test/`)
-  written to a throwaway directory and handed to the REAL `docs-check.mjs` as a subprocess.
-  The gate is a script — top-level await, paths relative to the working directory,
-  `process.exit` for its verdict — so it is run the way CI runs it rather than refactored
-  into something importable; a seam built for the test is the thing that would get tested.
-  `baseRegister()` is one valid tree and every case is a single delta against it, so a
-  failure names a rule rather than a document.
-- View tests (`test/view/*.test.ts`, one file per subject) drive REAL interactions: dispatch
-  `dragstart`/`dragover`/`drop` (stub `getBoundingClientRect` for drop zones — jsdom returns
-  zeros, and `dataTransfer` is absent unless the test supplies one), `keydown`, `click`,
-  `contextmenu` (grab the menu via `Menu.lastShown`). Async writes need `await flush()`.
+The harness itself — the helpers, what a view test drives, and the limits of the jsdom
+substitute — lives in [`test/CLAUDE.md`](test/CLAUDE.md), loaded when you are working
+there. What stays here binds while you are editing `src/`:
+
 - `test/**` has its own lint budget (`max-lines: 450`), because the one suite without a cap
   is the one that grows: split by subject before a file becomes the place tests hide. The
   Obsidian ruleset deliberately stops at `src/` — it is type-aware, and the test doubles
@@ -146,16 +128,6 @@ depend on the effectful one.
   broke, so a confident paragraph is evidence of intent and of nothing else — see
   `docs/issues/A comment that states a rule is not a check.md`. Twice, watching the test
   fail was what showed it asserted less than it read as.
-- Known harness limits: nothing refreshes on its own — a write updates the vault and no
-  `onDataUpdated` follows, so a test that wants to see the result RE-RENDERED calls
-  `refresh(view, vault)` (or sets `vault.afterWrite`, which is how a Bases update is
-  interleaved with a batch). The model it rebuilds does see the write: `addFile` gives
-  the metadata cache the same frontmatter object `processFrontMatter` mutates — verified
-  2026-08-02, after this line claimed for months that the caches were static and cost a
-  legitimate test that was deleted rather than driven. A note added with NO frontmatter
-  is the real exception: the cache never gets an object for it, so writes to it stay
-  invisible to the model. `entry.getValue()` returns null, so property chips render empty
-  in tests.
 
 ## Invariants that bite
 
