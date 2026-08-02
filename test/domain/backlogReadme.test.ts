@@ -183,6 +183,19 @@ describe('backlogReadmeContent', () => {
 		expect(content).not.toContain('writes neither');
 	});
 
+	it('names only the placement actions this view offers', () => {
+		// The row menu gates the two groups on the two axis predicates, so a document that
+		// listed both would send a dated view looking for a Set horizon it does not have.
+		const dated = readme(settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '' }), []);
+		expect(dated).toContain('placement action — Schedule and Unschedule');
+		expect(dated).not.toContain('Set horizon');
+		const horizons = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'], startKey: '', targetKey: '' }));
+		expect(horizons).toContain('placement action — Set horizon and Clear horizon');
+		expect(horizons).not.toContain('Unschedule');
+		const both = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'], startKey: 'start', targetKey: 'due' }));
+		expect(both).toContain('placement actions — Set horizon and Clear horizon, Schedule and Unschedule');
+	});
+
 	it('describes the timeline when only one date property is configured', () => {
 		// Either key alone is a configured axis, so a view with one must not be told it
 		// has no roadmap at all.
@@ -271,16 +284,14 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('``up`link``');
 	});
 
-	it('keeps the pipe escaped when the value already ends a backslash run', () => {
-		// The row is split by a scan where a backslash consumes the next character, so
-		// escaping a pipe that already had one in front of it leaves an even run and the
-		// pipe delimits again — the cell the escaping exists to protect, split anyway.
+	it('keeps a value the cell escaping cannot protect readable AND intact', () => {
+		// A backslash before a pipe defeats the backslash escape, so the row quotes the
+		// value as HTML instead — the value as configured, and a row a parser still reads
+		// as three cells. The rule itself is `readmeText.ts`; this is that it is reached.
 		const content = readme(settingsWith({ stateKey: 'status', states: ['Waiting \\| external'] }), []);
-		expect(content).toContain('| `Waiting \\\\\\| external` |');
-		// Said again the way a parser reads it: walk the row letting each backslash eat the
-		// character after it, and the pipes still standing are the three cells' delimiters.
+		expect(content).toContain('| <code>Waiting \\&#124; external</code> | No |');
 		const row = content.split('\n').find((line) => line.includes('Waiting')) ?? '';
-		expect(row.replace(/\\[\s\S]/g, '').split('|')).toHaveLength(5);
+		expect(row.split('|')).toHaveLength(5);
 	});
 
 	it('documents the empty parent value, and what it means in folder mode', () => {
@@ -468,7 +479,15 @@ describe('backlogReadmeContent', () => {
 
 	it('says what a move does to the type, per this view s setting', () => {
 		expect(readme(settingsWith({ autoType: false }), [])).toContain('never rewrites its type');
-		expect(readme(settingsWith({ autoType: true }), [])).toContain('re-type what it moves');
+		// The rules bullet names the trigger and sends the reader to the section that
+		// qualifies it, rather than restating it: `computeTypeChanges` rewrites nothing on a
+		// reorder and nothing on an extra type, so a second "a move re-types what it moves"
+		// here is a sentence that is already wrong twice.
+		const auto = readme(settingsWith({ autoType: true }), []);
+		expect(auto).toContain('A move into a new parent is the one thing that rewrites a type');
+		expect(auto).toContain('**The item types** above says which moves, and which types it leaves alone');
+		expect(auto).toContain('## The item types');
+		expect(auto).not.toContain('re-type what it moves');
 	});
 
 	it('qualifies the custom-type promise where a move rewrites it', () => {

@@ -1,7 +1,8 @@
 import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, stateMenuValues } from './settings';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
-import { hasHorizonAxis } from './roadmap';
+import { cell, code, list, yamlScalar } from './readmeText';
+import { hasDateAxis, hasHorizonAxis } from './roadmap';
 import { ORDER_SPACING } from './writePlan';
 
 /**
@@ -63,47 +64,6 @@ const SOURCE_LABEL: Record<StateSource, string> = {
 	offered: 'Offered so work can be marked done',
 };
 
-/**
- * A value as YAML, quoted when writing it bare would change what it means. The
- * example block is the part a reader copies, so a state called `Needs: review` or
- * `#blocked` has to survive it — bare, those are a mapping and a comment.
- */
-function yamlScalar(value: string): string {
-	const safe = /^[A-Za-z][A-Za-z0-9 _./-]*$/.test(value) && !/^(true|false|null|yes|no|on|off)$/i.test(value);
-	return safe ? value : `"${yamlEscape(value)}"`;
-}
-
-/** The escapes a double-quoted YAML scalar spells with a name; the rest go as `\xNN`. */
-const YAML_ESCAPES = new Map([
-	['\\', '\\\\'],
-	['"', '\\"'],
-	['\n', '\\n'],
-	['\r', '\\r'],
-	['\t', '\\t'],
-]);
-
-/**
- * The inside of a double-quoted scalar. Quoting alone is not escaping: a state or a
- * property name holding a newline emits a literal line break, which YAML *folds* into a
- * space — so the example a reader copies would define a different key from the one this
- * view uses, silently, which is the whole failure this document exists to prevent. Other
- * control characters make it not parse at all.
- *
- * Built by walking the characters rather than by a regex, because a class covering the
- * control range is exactly what `no-control-regex` forbids, and a suppression here would
- * be hiding the rule rather than answering it.
- */
-function yamlEscape(value: string): string {
-	return [...value]
-		.map((char) => {
-			const named = YAML_ESCAPES.get(char);
-			if (named !== undefined) return named;
-			const code = char.codePointAt(0) ?? 0;
-			return code < 0x20 || code === 0x7f ? `\\x${code.toString(16).padStart(2, '0')}` : char;
-		})
-		.join('');
-}
-
 /** Where a type sits on the ladder, for the two questions the type table asks. */
 function position(typeName: string): LadderPosition {
 	const levelIndex = LEVELS.indexOf(typeName);
@@ -111,6 +71,13 @@ function position(typeName: string): LadderPosition {
 		? { levelIndex, effectiveLevelIndex: levelIndex }
 		: { levelIndex: -1, effectiveLevelIndex: EXTRA_TYPE_RANK };
 }
+
+/**
+ * The heading the type table gets, and the name the rules section points at — spelled
+ * once, because a cross-reference to a heading that was renamed is a reader sent looking
+ * for a section this document does not have.
+ */
+const TYPES_HEADING = 'The item types';
 
 /** The types a `typeName` item may hold, from the same rule the + button uses. */
 const childrenOf = (typeName: string): string[] => childTypeChoices(position(typeName));
@@ -125,47 +92,10 @@ function parentsOf(typeName: string): string[] {
 	return childTypeChoices(null).includes(typeName) ? ['*(nothing — it is a root)*', ...parents] : parents;
 }
 
-/**
- * A value as an inline code span. Property names, states and folders are all user
- * data, so the fence is as long as it has to be and a value that begins or ends with
- * a backtick gets the padding spaces CommonMark strips again — a state called
- * `` `todo` `` must render as itself rather than closing the span early.
- */
-function code(value: string): string {
-	// A line break first, and inside the span rather than around it: a table row is one
-	// line, so a state or a property name holding one splits the row in half and the rest
-	// of the table stops being a table. In prose it merely renders as a space, which is a
-	// value shown as something other than what it is. Spelled the way the example block
-	// spells it, since a reader meets both.
-	const shown = value.replace(/\r/g, '\\r').replace(/\n/g, '\\n');
-	const longest = Math.max(0, ...[...shown.matchAll(/`+/g)].map((m) => m[0].length));
-	const fence = '`'.repeat(longest + 1);
-	const pad = shown.startsWith('`') || shown.endsWith('`') ? ' ' : '';
-	return `${fence}${pad}${shown}${pad}${fence}`;
-}
-
-/**
- * The same, inside a table cell — where a pipe ends the cell whatever it sits in,
- * code span included, and has to be escaped before the row is parsed. A state named
- * `Waiting | external` otherwise silently becomes two columns.
- *
- * The backslashes ALREADY in the value come with it: the row is split by a scan that
- * lets a backslash consume the character after it, so a value spelling `\|` itself
- * would put an even run before the pipe and hand the parser a delimiter again. The run
- * is doubled so it consumes itself and the escape still reaches the pipe. That costs a
- * backslash on screen — a code span shows what it holds, and the cell keeps the pair —
- * which is the trade this makes: a value drawn with one backslash too many, rather than
- * a table that stops being a table halfway down.
- */
-const cell = (value: string): string => code(value).replace(/(\\*)\|/g, '$1$1\\|');
-
-const list = (values: string[]): string =>
-	values.length > 0 ? values.map((v) => (v.startsWith('*') ? v : cell(v))).join(', ') : '*(nothing)*';
-
 function typeSection(settings: BacklogSettings): string[] {
 	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
 	return [
-		'## The item types',
+		`## ${TYPES_HEADING}`,
 		'',
 		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
 			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
@@ -389,9 +319,16 @@ function planningSection(settings: BacklogSettings): string[] {
 		);
 	}
 	if (lines.length > 0) {
+		// Named from the axes, because the menu offers them from the axes: a horizon-only
+		// view has no Schedule, a dated one no Set horizon, and either list read whole is a
+		// reader looking for an action their view does not have.
+		const actions = [
+			...(hasHorizonAxis(settings) ? ['Set horizon and Clear horizon'] : []),
+			...(hasDateAxis(settings) ? ['Schedule and Unschedule'] : []),
+		];
 		lines.push(
 			'These are a **plan**, and the only things that write them are you and the view\'s own ' +
-				'placement actions — Set horizon and Clear horizon, Schedule and Unschedule, each ' +
+				`placement ${actions.length > 1 ? 'actions' : 'action'} — ${actions.join(', ')}, each ` +
 				'writing or removing exactly the keys named here. Nothing writes them as a side ' +
 				'effect of a move, a state change or a rename.',
 		);
@@ -466,7 +403,11 @@ function rulesSection(settings: BacklogSettings): string[] {
 			`under an ${code(LEVELS[0])} stays one, at its own level, however oddly it sits. Only a ` +
 			'note with **no** type takes the level its position implies, and a type this plugin ' +
 			'does not ship sits one rung below its parent so its own children continue the ladder.' +
-			`${settings.autoType ? ' In this view a move does re-type what it moves, to match where it lands.' : ' Moving a note never rewrites its type.'}`,
+			// Which moves rewrite a type, and which types are exempt, is stated once — under
+			// the type table, where the vocabulary it qualifies is. Said again here it would
+			// be a second sentence to keep true, and this is the bullet that would drift:
+			// "a move re-types what it moves" is wrong for a reorder and wrong for a Bug.
+			`${settings.autoType ? ` A move into a new parent is the one thing that rewrites a type — **${TYPES_HEADING}** above says which moves, and which types it leaves alone.` : ' Moving a note never rewrites its type.'}`,
 		'- **Only the properties above are written.** Prose, headings and any other frontmatter ' +
 			'are left alone.',
 		'- **Levels, progress and board position are derived, never stored.** Do not write them ' +

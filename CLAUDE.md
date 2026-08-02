@@ -71,6 +71,7 @@ mirrors the same directories.
 | `domain/timeline.ts` | Civil-date arithmetic: spans, the bounded month window, bar geometry — today is always injected | node tests |
 | `domain/writePlan.ts` | What a change *would* write: drop plans (tree, state, horizon), ranking, backfill. Pure — applies nothing | node tests |
 | `domain/backlogReadme.ts` | The README a backlog folder carries: the schema in the view's own keys, generated from configuration and the offered states. Pure text | node tests |
+| `domain/readmeText.ts` | Putting a configured value into that text without it changing meaning: the code span, the table cell, the copyable YAML | node tests |
 | `domain/readmeMarker.ts` | What the generated README *is*: its file name, and the one line saying which view wrote it | node tests |
 | **`storage/`** | **The only place anything is persisted.** | |
 | `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |

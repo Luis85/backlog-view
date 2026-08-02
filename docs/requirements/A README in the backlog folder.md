@@ -8,6 +8,7 @@ created: 2026-08-02
 source: user request
 files:
   - src/domain/backlogReadme.ts
+  - src/domain/readmeText.ts
   - src/domain/readmeMarker.ts
   - src/storage/readmeFile.ts
   - src/commands/readme.ts
@@ -309,7 +310,12 @@ and a test that keeps both honest is worth more than either.
 
 `src/domain/backlogReadme.ts` (`backlogReadmeContent`, `readmeStates` — pure text from the
 settings and the offered states, applying nothing, beside `src/domain/writePlan.ts` which
-decides what a change would say the same way) · `src/domain/readmeMarker.ts` (what the
+decides what a change would say the same way) · `src/domain/readmeText.ts` (`code`, `cell`,
+`list`, `yamlScalar` — putting a value somebody typed into a code span, a table cell or the
+copyable YAML without it changing meaning: the fence that grows, the pipe an HTML entity
+carries past the row scan, the control characters a quoted scalar still folds. Its own
+module because every defect this document has shipped has been one of those rather than a
+sentence) · `src/domain/readmeMarker.ts` (what the
 file *is* rather than what it says: `README_FILE_NAME`, `readmeMarker`, `readmeSource` and
 the encoding that keeps a source on one line — its own module because the writer needs the
 identity without the prose, and a rule about identity should not be read out of four
@@ -326,6 +332,8 @@ The vocabulary the document is generated from is `src/domain/settings.ts` and
 `src/domain/itemTypes.ts`; the tolerant reading rules it describes are
 `src/domain/noteFields.ts`, and the ranking step is `src/domain/writePlan.ts`.
 Tests: `test/domain/backlogReadme.test.ts` (what the document says, and that it says it
-from the configuration), `test/storage/readmeFile.test.ts` (created, unchanged, updated,
+from the configuration), `test/domain/readmeText.test.ts` (the escaping rules per place,
+so the document's own tests are about what it says rather than about backslashes),
+`test/storage/readmeFile.test.ts` (created, unchanged, updated,
 refused), `test/commands/readme.test.ts` (the command end to end through a real view, and
 the registry).
