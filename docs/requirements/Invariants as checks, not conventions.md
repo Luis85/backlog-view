@@ -56,6 +56,6 @@ that might not happen or a bug that ships.
 
 ## Where it lives
 
-`eslint.config.mjs` · `.fallowrc.json` · `vitest.config.ts` (coverage thresholds, which
+`eslint.config.mjs` · `.fallowrc.json` · `vitest.config.mts` (coverage thresholds, which
 only ever go up) · `CLAUDE.md` and `src/*/CLAUDE.md`.
 Done by: [[Enforce and colocate invariants]], [[Stop deriving levels from depth]].

@@ -85,3 +85,4 @@ record itself changes. Open a record for its current status, area and any
 - [0016 — Break compatibility freely before 1.0](0016-break-compatibility-freely-before-1-0.md)
 - [0017 — Bounded undo history with an explicit redo](0017-bounded-undo-history-with-an-explicit-redo.md)
 - [0018 — Admit runtime dependencies by exception, starting with Pragmatic drag and drop](0018-admit-runtime-dependencies-by-exception.md)
+- [0019 — Notice dependency staleness on a clock, verify it with the gate](0019-notice-dependency-staleness-on-a-clock.md)
