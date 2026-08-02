@@ -86,10 +86,13 @@ exists to make impossible. The drag engine is decided:
 The plan is `computeStateDropWrites` in `src/domain/writePlan.ts`, beside the drop
 plans it already builds; the remove-state write (`removeStateKey`) joined
 `removeParentKey` in `src/storage/frontmatter.ts`, the only module that may write; the
-batch goes through the same `applySafely` in `src/view/backlogView.ts`
-(`performBoardDrop`) that every other gesture uses; and the gesture itself is
-`src/view/interactions/boardDrag.ts`, wiring the Pragmatic element adapter with
-live-region announcements and edge auto-scroll. Driven by synthetic drag events in
+batch goes through the same `applySafely` in `src/view/backlogView.ts` — reached via
+`performBoardMove`, which is now the one method all three inputs land on
+([[Keyboard, menu and touch]]), so a drop cannot plan a different write than the key
+or the menu that mean the same thing, and it is where the move announces itself; and
+the gesture itself is `src/view/interactions/boardDrag.ts`, wiring the Pragmatic
+element adapter with edge auto-scroll and owning the live region the announcement
+speaks through. Driven by synthetic drag events in
 `test/view/boardMoves.test.ts` (helpers in `test/helpers/dnd.ts`), the storage
 round-trip in `test/storage/frontmatter.test.ts`, and the context-row invariant across
 the board's entry points in `test/view/contextRowWrites.test.ts`.

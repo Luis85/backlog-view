@@ -2,12 +2,15 @@
 type: PBI
 parent: "[[Moving cards]]"
 order: 20
-status: Open
+status: Active
 priority: P2
 created: 2026-08-01
 files:
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
+  - src/view/interactions/boardDrag.ts
+  - src/view/render/board.ts
+  - src/view/backlogView.ts
   - src/view/selection.ts
 ---
 
@@ -93,11 +96,40 @@ The menu is the answer on every platform either way.
 
 ## Where it lives
 
-**Partly built.** The navigation slice shipped with the board: `handleBoardKeydown` in
-`src/view/interactions/keyboard.ts` (one tab stop, arrows across cards and columns,
-Home/End, Enter, `/`, undo, the empty column as a stop) over the selection state in
-`src/view/selection.ts`, driven in `test/view/boardMoves.test.ts`. Still design: the
-Alt+arrow moves, the board's Set state vocabulary in
-`src/view/interactions/menu.ts`, the live-region announcements for keyboard and menu
-moves, and the touch verdict — which belongs to
-[[Smoke test the board in a live vault]].
+**Partly built — everything except the parts that wait on a use case of their own.**
+
+`handleBoardKeydown` in `src/view/interactions/keyboard.ts` is the one tab stop: arrows
+across cards and columns, Home/End, Enter, `/`, undo, the empty column as a stop, and
+the menu keys, over the selection state in `src/view/selection.ts`. Beside it,
+`handleBoardMoveKey` turns Alt+Left and Alt+Right into a card move, and nothing into
+Alt+Up/Down.
+
+All three inputs land on **one** method — `performBoardMove` in
+`src/view/backlogView.ts` — so a key, a menu pick and a drop cannot plan different
+writes, and a fourth input cannot arrive with its own idea of what a move is. It is
+also where the move is announced, through `announceBoardMove` in
+`src/view/interactions/boardDrag.ts`: the announcement lives with the drag because
+that module owns the live region, but nothing about it is the drag's. The message
+names the columns, resolved by `columnLabelFor` in `src/domain/board.ts` — so what is
+read out is what is on screen, the no-state column's label included.
+
+The board's Set state is `stateChoices` in `src/view/interactions/menu.ts`, which reads
+the **rendered columns** instead of rebuilding the list. That is what makes the menu's
+targets and the drag's the same set by construction, no-state entry included, rather
+than two lists kept in step by hand. The same builder withholds the tree's move
+section, whose every entry is defined by a row's visible neighbours. The card's
+`contextmenu` wiring and the hidden `aria-describedby` instructions are in
+`src/view/render/board.ts`, clipped by `.pbl-sr-only` in `styles.css`.
+
+Driven in `test/view/boardMenu.test.ts` (fixtures and the live-region reader in
+`test/helpers/board.ts`), with the navigation half in `test/view/boardMoves.test.ts`
+and both new entry points aimed at a context card in
+`test/view/contextRowWrites.test.ts` — a keyboard can select what a drag was never
+wired to pick up, so the rule needed testing where the drag could not reach.
+
+Still open, each waiting on a use case of its own: the column stop's **creation** —
+Enter and the menu on an empty column — needs [[New cards in place]]; the **lane** half
+of the announcement, old and new lane for a reparent, needs [[Swimlanes by parent]];
+and the **touch verdict** belongs to [[Smoke test the board in a live vault]], which is
+where a device can answer it. The menu path it would fall back to is built either way,
+which was the point of not waiting for the answer.

@@ -2,8 +2,31 @@ import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-d
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { BacklogViewHost } from '../host';
-import { BoardColumn } from '../../domain/board';
+import { BoardColumn, BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
+
+/**
+ * Say what a move changed, to assistive technology, from the polite live region
+ * (`role="status"`) the drag library owns. It lives with the drag because this
+ * module creates and cleans that region up — but every board move announces
+ * through it, drag or not, so a keyboard move and a menu move are told in the same
+ * words as the gesture they replace. Old column and new: "moved" alone leaves a
+ * screen-reader user knowing something happened and not what.
+ *
+ * The states are named by their COLUMNS, so what is announced is what is on
+ * screen — the no-state column's label rather than a silence, and the yielded
+ * "Unset" rather than a name a real state has taken. No board, no announcement:
+ * there is no column vocabulary to say it in.
+ */
+export function announceBoardMove(
+	board: BoardModel | null | undefined,
+	title: string,
+	from: string | null,
+	to: string | null,
+): void {
+	if (!board) return;
+	announce(`Moved "${title}" from ${columnLabelFor(board, from)} to ${columnLabelFor(board, to)}`);
+}
 
 /**
  * The board's drag layer — Pragmatic drag and drop, the plugin's first bundled
@@ -91,21 +114,12 @@ export class BoardDragController {
 					// The dragged path outlives the model it was taken from — a refresh
 					// mid-drag can drop the note — so the item is resolved at drop time.
 					const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
-					if (item) void this.dropOnColumn(item, column);
+					// The host owns the write AND the announcement: a drop is one of three
+					// inputs to the same move, and three callers announcing separately is
+					// how they come to say different things about the same change.
+					if (item) void this.host.performBoardMove(item, column.state);
 				},
 			}),
 		);
-	}
-
-	private async dropOnColumn(item: BacklogItem, column: BoardColumn): Promise<void> {
-		const applied = await this.host.performBoardDrop(item, column.state);
-		// A move that wrote nothing (own column, refused batch) announces nothing.
-		if (applied) {
-			announce(
-				column.state === null
-					? `Cleared the state of "${item.title}"`
-					: `Moved "${item.title}" to ${column.state}`,
-			);
-		}
 	}
 }

@@ -65,8 +65,12 @@ const TREE_PADDING = 16;
  * and every level of indent takes another 24px away from the deepest row's title.
  * Columns go in reverse order of usefulness — properties, then the rollup, then the
  * state chip, which survives longest because it summarizes a row on its own.
+ *
+ * Private: the threshold and the classes it drives are one decision, applied by
+ * {@link syncColumnFit} below. Exporting the calculation alone invites a second
+ * caller that measures the same pane and then disagrees about what to hide.
  */
-export function columnFit(
+function columnFit(
 	settings: BacklogSettings,
 	chipCount: number,
 	depth: number,
@@ -83,6 +87,49 @@ export function columnFit(
 		// truncates from there.
 		hideState: width < lead + state,
 	};
+}
+
+/**
+ * Measure the pane and apply {@link columnFit} to it: drop the columns this pane
+ * cannot hold, keep the ones it can. Lives with the widths and the threshold it
+ * reads — a decision computed in one file and applied in another is one edit away
+ * from the two disagreeing.
+ *
+ * Measured after the rows are in place: an empty tree has no scrollbar, and its
+ * width is not the width the columns will actually get. Returns true when the
+ * decision CHANGED, which is exactly when what was rendered no longer matches it
+ * and the caller owes the rows another pass.
+ */
+export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTMLElement): boolean {
+	const width = treeEl.clientWidth;
+	// Zero while detached or before the first layout: keep the last decision.
+	if (width === 0) return false;
+	// Indent is part of what a row needs, so expanding a deep branch can be what
+	// makes the columns stop fitting.
+	const fit = columnFit(ctx.host.settings, ctx.chips.length, renderedDepth(ctx), width);
+	const changed =
+		fit.hideProps !== viewEl.hasClass('pbl-hide-props') ||
+		fit.hideMeta !== viewEl.hasClass('pbl-hide-meta') ||
+		fit.hideState !== viewEl.hasClass('pbl-hide-state');
+	viewEl.toggleClass('pbl-hide-props', fit.hideProps);
+	viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
+	viewEl.toggleClass('pbl-hide-state', fit.hideState);
+	return changed;
+}
+
+/**
+ * Deepest row on screen, read off the row index rather than walked out of the
+ * model: `ctx.rows` holds exactly what was rendered, so this cannot disagree with
+ * the tree the user is looking at, and a collapse shrinks it the same pass it
+ * happens in.
+ */
+function renderedDepth(ctx: RowContext): number {
+	let max = 0;
+	for (const path of ctx.rows.keys()) {
+		const depth = ctx.host.model?.byPath.get(path)?.depth ?? 0;
+		if (depth > max) max = depth;
+	}
+	return max;
 }
 
 /**
