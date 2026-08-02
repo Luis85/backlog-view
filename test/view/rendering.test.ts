@@ -145,6 +145,7 @@ describe('rendering', () => {
 	it('shows the empty state with a create button when nothing matches', () => {
 		const { containerEl } = makeView(new FakeVault());
 		expect(containerEl.querySelector('.pbl-empty')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-empty-icon')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No backlog items');
 		expect(containerEl.querySelector('.pbl-empty button')?.textContent).toContain('New Epic');
 	});

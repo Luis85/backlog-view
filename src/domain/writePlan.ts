@@ -247,8 +247,6 @@ export function computeStateWrites(
 	settings: BacklogSettings,
 	today: string,
 ): ItemWrite[] {
-	// One question, one answer: `sameValue` is what the menu's checkmark asks too, so a
-	// plan that says "unchanged" cannot disagree with the tick the user is looking at.
 	if (sameValue(item.stateValue, state)) return [];
 	const write: ItemWrite = state === null ? { file: item.file, removeStateKey: true } : { file: item.file, state };
 	return [{ ...write, ...stampWrites(state, settings, today) }];
