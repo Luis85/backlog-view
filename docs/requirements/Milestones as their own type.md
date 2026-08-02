@@ -134,6 +134,27 @@ date.
   start-only milestone it would take away a key that was never the milestone's date, and
   taken on the 2c note it would delete a start the feature promised to ignore. Ignoring a
   value and deleting it are different acts, and only the first was specified.
+- **2f — the milestone is placed by a gesture rather than by the row's entries.** The same
+  answer, because the rule belongs to the **type** and not to the control: every path that
+  writes a placement writes the target alone and leaves any start where it found it. The
+  row's menu is simply the path that exists first — the roadmap's gestures are specified in
+  siblings still unbuilt, and each has a both-ends shape a marker has to narrow:
+  - A shelf card dropped on the grid writes start **and** target spanning the cell
+    ([[Drag from the shelf to schedule]]). A milestone takes the target alone, anchored
+    where a target's kind already anchors it — the cell's **last** day. That is the note's
+    own 2c shape, reached by the type rather than by the configuration.
+  - A bar dropped back on the shelf removes the configured date keys. A milestone's drop
+    removes the target key alone, exactly as 2e requires of Unschedule, because the two are
+    the same act reached by two hands.
+  - A bar's body slides both dates together and an end handle moves one
+    ([[Move and resize a bar]]). A diamond has no ends to resize — a point has no duration
+    to change, so it offers no end grip — and its body slide moves the target alone. On the
+    2c note the ignored start is *not* carried along: sliding a date the projection ignores
+    would write a plan the reader was never shown.
+  - The keyboard equivalents ([[Keyboard and menu on the roadmap]]) mirror those gestures
+    and inherit the narrowing with them, which is the point of stating it once here: a rule
+    written per control is a rule that is one control out of date the moment a fourth path
+    is added.
 - **3a — the milestone folder is cleared.** It falls through to the home folder, like
   every other type whose folder is unset — one rule, no special case.
 - **4a — the row has no child type to offer.** Every create affordance is **absent**, not
@@ -174,6 +195,11 @@ date.
   never appears as a focus root for a level, and moving a subtree that contains one never
   retypes that milestone or its descendants from a rank it does not have. Focusing
   `Milestone` by name still lists them, which is a different question and the one to keep.
+- **Every** path that places a milestone writes its target alone and never touches a start:
+  the row's Schedule and Unschedule entries, a shelf card dropped on the grid, a bar dropped
+  back on the shelf, a bar gesture, and each of their keyboard equivalents. A milestone is
+  never given a start it did not have, and never loses one the feature only promised to
+  ignore, whichever hand does the placing.
 - The row's Schedule entry asks a milestone for its target alone and does not apply the
   span rule to it — and is offered at all only where a target key is configured, never
   opened onto no fields — so no entry can leave a milestone in a state its own projection

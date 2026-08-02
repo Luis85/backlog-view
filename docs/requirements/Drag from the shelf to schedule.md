@@ -68,6 +68,13 @@ the keys rather than blanking them.
 - **2d — lanes are on and the drop lands in another lane's row.** The reparent rides the
   same batch as the dates — the combined write [[Lanes on the roadmap]] specifies — one
   gate, one undo, and one notice if the destination leaves the filter.
+- **2e — the dragged item is a marker.** A milestone takes the **target alone**, anchored
+  where a target's kind already anchors it — the cell's last day — and no start is written
+  however many date properties are configured; a milestone dropped back on the shelf loses
+  that key alone, leaving any stale start it carries untouched. The same narrowing as 2c,
+  chosen by the type rather than by the configuration, because the type states *point* as
+  strongly as a missing key does ([[Milestones as their own type]]). Writing the pair here
+  would hand a deadline a duration by gesture that the row's own entry refuses to give it.
 - **4a — the note carries transition stamps.** Untouched. Plan and record are different
   keys, deliberately: unscheduling a note does not unhappen its history, and no
   scheduling write may ever reach the stamped keys.
@@ -83,6 +90,10 @@ the keys rather than blanking them.
   one undo; the highlight states the dates before the drop commits them, and nothing
   is ever written to an unconfigured key. A drop into another lane's row carries the
   reparent in the same batch ([[Lanes on the roadmap]]).
+- A marker is target-only on both gestures: dropped on the grid it takes the target
+  anchored at the cell's last day and gains no start, and dropped back on the shelf it
+  loses the target key alone, whatever else the note carries
+  ([[Milestones as their own type]]).
 - Grid to shelf removes the configured date keys — never blanks them — and undo
   restores them. Where the item renders next follows the placement rules — the shelf
   only when its whole subtree is dateless, an inferred bar otherwise — and the drop

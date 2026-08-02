@@ -76,6 +76,12 @@ rather than deferred behind it.
   axis at its first bucket — and arrows move from there. The drop writes the same
   schedule-or-horizon batch the shelf drag writes, so triage needs no pointer and
   starts where the reader is oriented.
+- **2c — the item is a marker.** The lift holds a point, so it moves the target alone and
+  offers no end grip to resize — the batch a milestone's own gestures write
+  ([[Milestones as their own type]]), which this path commits rather than re-derives. The
+  general rule already says the keyboard's batch is identical to the drag's; it is stated
+  here because "identical" is only a guarantee where both were narrowed, and a keyboard
+  path that widened one back would be the write no pointer could make.
 - **3a — the commit is refused.** Loud, nothing written, selection stays where the user
   left it — the failure is announced where the keyboard user is, not on a pointer they
   are not holding.
@@ -97,7 +103,8 @@ rather than deferred behind it.
 
 - Lift, move, drop, cancel work as specified on both axes — Space, arrows, Space,
   Escape — the grip reaching every hold the pointer may take: the whole bar where
-  every rendered end is the note's own (stated or open), each writable end, so a
+  every rendered end is the note's own (stated or open), each writable end — a marker's
+  diamond having none, so its lift moves its target alone — so a
   resize is a keyboard move too, and
   up and down crossing lanes when lanes are on, so one drop can carry the combined
   lane-plus-axis batch; the committed batch is identical to the drag's, and Escape

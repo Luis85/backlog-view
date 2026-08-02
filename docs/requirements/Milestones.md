@@ -75,7 +75,14 @@ by hand.
 The middle two are one trap wearing two coats, and worth naming as a rule rather than a
 pair: **a placement action must answer for the type it is acting on, on both the offering
 side and the writing side.** Narrowing the prompt and leaving Unschedule alone was the
-first version of this specification's own mistake.
+first version of this specification's own mistake — and narrowing both while leaving the
+*gestures* alone was the second, so the rule is now written per **type** rather than per
+control: every path that places a milestone writes its target alone, the row's entries and
+the shelf drop and the bar slide and each keyboard equivalent
+([[Drag from the shelf to schedule]], [[Move and resize a bar]],
+[[Keyboard and menu on the roadmap]] each carry it). Those three are unbuilt, which is the
+only reason this is cheap: a rule stated per control is one control out of date the moment
+a fourth path appears.
 
 **The loud one is a gift.** `EXTRA_TYPE_STYLE` in `src/view/render/rows.ts` deliberately
 has no fallback for a declared type, and a test asserts the table covers the vocabulary —
