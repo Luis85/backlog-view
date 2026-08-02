@@ -7,7 +7,18 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Both platforms, because a green Ubuntu run says nothing about the two things that
+    # differ: path separators and line endings. Each had already broken `docs-check.mjs`
+    # on Windows — it reported `docs\adrs\…` where the corpus expects `/`, and it read a
+    # CRLF checkout as a register with no frontmatter in it at all. Both are fixed; with
+    # one entry in this matrix, neither was visible and the next one would not be either.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Both legs report. A cancelled sibling is a leg whose result nobody has, and the
+      # question this matrix exists to answer is exactly which platform failed.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
 

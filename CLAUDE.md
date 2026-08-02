@@ -14,7 +14,9 @@ Requires Obsidian 1.10.2+ (Bases custom view API).
 npm run check   # build + lint + coverage-thresholded tests + fallow + docs register
 ```
 
-All five must pass before committing; CI runs the same steps. Coverage thresholds
+All five must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
+paths and line endings are the only things that differ between them, and both have already
+produced a defect this repository could not see. Coverage thresholds
 (vitest.config.ts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
 duplication, complexity/CRAP (fed by the vitest coverage file) and dependency hygiene —
 framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
