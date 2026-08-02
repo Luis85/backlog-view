@@ -233,8 +233,10 @@ function renderCard(
  * result, and listing its children under it would bury the thing the user searched for.
  *
  * Buttons with `tabindex="-1"`, exactly as the tree's per-row controls are — the board
- * is one tab stop, so these are reachable by assistive technology and by pointer while
- * Tab keeps skipping past the whole projection.
+ * is one tab stop, so Tab keeps skipping past the whole projection. That makes the
+ * card MENU their keyboard path rather than an extra: `addMatchSection` offers the
+ * same matches, from the same walk. Pointer-only links would fail this feature at its
+ * own purpose, which is that a found match can be reached.
  */
 function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem, carded: Set<string>): void {
 	const host: BacklogViewHost = ctx.host;
