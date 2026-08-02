@@ -1762,6 +1762,17 @@
 	border: 1px dashed var(--pbl-bar-color);
 }
 
+/* .pbl-bar-open-start.pbl-bar-open-end is a two-class compound (0,2,0), which
+   outranks the single-class .pbl-bar-inferred (0,1,0) regardless of source
+   order — a window clamp can clip both ends of an inferred bar at once (see
+   MAX_TIMELINE_MONTHS in domain/timeline.ts), and without this rule the
+   gradient would win back the fill. Match the compound's own specificity to
+   override it explicitly rather than reordering rules or reaching for
+   !important. */
+.pbl-bar-open-start.pbl-bar-open-end.pbl-bar-inferred {
+	background: none;
+}
+
 /* A point in time is not a span: equal stated ends render as the Gantt diamond. */
 .pbl-bar-milestone {
 	width: 12px;
