@@ -35,14 +35,18 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
-- Date stamps (`startedDate`, `finishedDate`) are FIELDS of the state write that caused
-  them, applied inside the same `processFrontMatter` call — never a second write. That
-  is what makes one undo take back the state and its dates together, and it is why they
-  join `touchedKeys`: a key listed there but unchanged emits no inverse anyway. The
-  start is **write-once and the writer is what enforces it**, tested against the live
-  value rather than the planner's snapshot — the same reason tags travel as a delta,
-  since the row that planned the write can be a refresh behind the note. The finish is
-  set-or-clear (`null` deletes), because leaving done un-finishes an item.
+- Date stamps (`startedDate`, `finish`) are FIELDS of the state write that caused them,
+  applied inside the same `processFrontMatter` call — never a second write. That is
+  what makes one undo take back the state and its dates together, and it is why they
+  join `touchedKeys`: a key listed there but unchanged emits no inverse anyway.
+- **Both stamp decisions are made HERE, against the live note, not in the plan** — the
+  row that planned a write can be a refresh behind it, exactly as with tags. The start
+  is write-once: it lands only where the property is empty, so the earliest start
+  survives rework. The finish carries `{date, toDone}` and this module compares
+  `toDone` against the state the note is actually LEAVING (read before the state write
+  replaces it): crossing in stamps, crossing out deletes, and done-to-done leaves it
+  alone. Deciding that from the model's idea of the old state left a note that was
+  already done, moved to a not-done state, still carrying its finish.
 
 ## Collapse state, and the view mode beside it
 

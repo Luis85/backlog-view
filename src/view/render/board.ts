@@ -244,11 +244,7 @@ function renderCard(
 function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem, carded: Set<string>): void {
 	const host: BacklogViewHost = ctx.host;
 	if (!host.isFiltering() || host.isFilterMatch(item)) return;
-	const matches = hiddenMatches(
-		item,
-		(child) => host.isFilterMatch(child),
-		(child) => carded.has(child.file.path),
-	);
+	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
 	if (matches.length === 0) return;
 	const list = card.createDiv({ cls: 'pbl-card-matches' });
 	setIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');

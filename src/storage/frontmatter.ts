@@ -1,6 +1,6 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { hasTag, normalizeTag, readTags } from '../domain/noteFields';
-import { BacklogSettings } from '../domain/settings';
+import { BacklogSettings, isDoneValue } from '../domain/settings';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
 
 /**
@@ -70,21 +70,12 @@ export async function applyWrites(
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
 			const keys = touchedKeys(settings, write);
 			const before = keys.map((key) => rawValueOf(fm, key));
-			if (write.removeParentKey) {
-				delete fm[settings.parentKey];
-			} else if (write.parent !== undefined) {
-				if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
-				// In folder mode a deleted key would just re-infer the folder parent;
-				// an explicitly empty value pins the item to the top level instead.
-				else if (settings.folderHierarchy) fm[settings.parentKey] = '';
-				else delete fm[settings.parentKey];
-			}
-			if (write.order !== undefined) fm[settings.orderKey] = write.order;
-			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
-			// The stateKey may be unset (progress tracking off) — never write to an empty key.
-			if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
-			else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
-			applyStamps(fm, settings, write);
+			// The state this note is actually leaving, read before the write replaces it.
+			// The model's idea of it can be a refresh behind — an external edit, or a
+			// batch still landing — and the done boundary has to be judged on the truth.
+			const leaving = settings.stateKey ? fm[settings.stateKey] : undefined;
+			applyFields(app, fm, settings, write);
+			applyStamps(fm, settings, write, typeof leaving === 'string' ? leaving : null);
 			const applied =
 				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
 			// The stored delta is the one that UNDOES what was applied.
@@ -107,8 +98,26 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	// decline to write: a key whose value did not change emits no inverse anyway, and
 	// listing it is what makes the dates ride the state's own undo.
 	if (write.startedDate !== undefined && settings.startedDateKey) keys.push(settings.startedDateKey);
-	if (write.finishedDate !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
+	if (write.finish !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
 	return keys;
+}
+
+/** The hierarchy and state fields of one write: parent, order, type, state. */
+function applyFields(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.removeParentKey) {
+		delete fm[settings.parentKey];
+	} else if (write.parent !== undefined) {
+		if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
+		// In folder mode a deleted key would just re-infer the folder parent;
+		// an explicitly empty value pins the item to the top level instead.
+		else if (settings.folderHierarchy) fm[settings.parentKey] = '';
+		else delete fm[settings.parentKey];
+	}
+	if (write.order !== undefined) fm[settings.orderKey] = write.order;
+	if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
+	// The stateKey may be unset (progress tracking off) — never write to an empty key.
+	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
+	else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
 }
 
 /**
@@ -119,17 +128,28 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
  * A stamp key is only ever written when the user named that property, exactly as the
  * state key is: every part of stamping is opt-in.
  */
-function applyStamps(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+function applyStamps(
+	fm: Record<string, unknown>,
+	settings: BacklogSettings,
+	write: ItemWrite,
+	leaving: string | null,
+): void {
 	if (write.startedDate !== undefined && settings.startedDateKey && isBlank(fm[settings.startedDateKey])) {
 		// Write-once, decided against the LIVE value rather than the planner's snapshot:
 		// the earliest start survives rework, and the row that planned this can be a
 		// refresh behind the note.
 		fm[settings.startedDateKey] = write.startedDate;
 	}
-	if (write.finishedDate !== undefined && settings.finishedDateKey) {
-		if (write.finishedDate === null) delete fm[settings.finishedDateKey];
-		else fm[settings.finishedDateKey] = write.finishedDate;
-	}
+	if (write.finish === undefined || !settings.finishedDateKey) return;
+	// Only CROSSING the boundary writes, and the crossing is measured from the state
+	// the NOTE was in. Done to done is a re-labelling — Done becoming Dropped — not a
+	// new finish, and moving the date forward would rewrite the item's history to say
+	// the work took longer than it did. Leaving done clears it, so a reopened item
+	// never claims a finish it no longer has.
+	const wasDone = isDoneValue(settings, leaving);
+	if (write.finish.toDone === wasDone) return;
+	if (write.finish.toDone) fm[settings.finishedDateKey] = write.finish.date;
+	else delete fm[settings.finishedDateKey];
 }
 
 /** Whether a frontmatter value counts as "no date yet" — absent, null, or empty text. */

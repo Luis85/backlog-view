@@ -226,13 +226,58 @@ describe('applying date stamps', () => {
 		expect(vault.fm('A.md')['started']).toBe('2026-08-02');
 	});
 
-	it('removes the finish when the stamp is null', async () => {
+	it('stamps the finish on crossing INTO done', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Active' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Done', finish: { date: '2026-08-02', toDone: true } }]);
+
+		expect(vault.fm('A.md')['finished']).toBe('2026-08-02');
+	});
+
+	it('leaves the finish alone done-to-done — a re-label is not a new finish', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+		const settings = { ...stamping, doneValues: ['Done', 'Dropped'] };
+
+		await applyWrites(vault.app, settings, [{ file, state: 'Dropped', finish: { date: '2026-08-02', toDone: true } }]);
+
+		// Moving the date forward would rewrite the item's history to say the work took
+		// longer than it did.
+		expect(vault.fm('A.md')['finished']).toBe('2026-07-01');
+	});
+
+	it('removes the finish on crossing OUT of done', async () => {
 		const vault = new FakeVault();
 		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
 
-		await applyWrites(vault.app, stamping, [{ file, state: 'Active', finishedDate: null }]);
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', finish: { date: '2026-08-02', toDone: false } }]);
 
 		expect('finished' in vault.fm('A.md')).toBe(false);
+	});
+
+	it('judges the crossing on the note’s state, not the one the plan came from', async () => {
+		// The model said Active; the note is already Done, finished, by an edit the view
+		// has not seen yet. Moving it to New is a crossing OUT however stale the row was,
+		// and a New note carrying a finished date is exactly the lie the rule forbids.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'New', finish: { date: '2026-08-02', toDone: false } }]);
+
+		expect(vault.fm('A.md')['status']).toBe('New');
+		expect('finished' in vault.fm('A.md')).toBe(false);
+	});
+
+	it('does not re-stamp a finish the note already crossed into', async () => {
+		// The mirror: the model said Active, the note is already Done. Writing Done again
+		// is not a new finish, so the original date stands.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Done', finish: { date: '2026-08-02', toDone: true } }]);
+
+		expect(vault.fm('A.md')['finished']).toBe('2026-07-01');
 	});
 
 	it('writes no stamp to a property the user has not named', async () => {
@@ -242,7 +287,7 @@ describe('applying date stamps', () => {
 		// Every part of stamping is opt-in — an unnamed property is not one with a
 		// default name, so the date has nowhere to go and goes nowhere.
 		await applyWrites(vault.app, { ...settings, stateKey: 'status' }, [
-			{ file, state: 'Active', startedDate: '2026-08-02', finishedDate: '2026-08-02' },
+			{ file, state: 'Active', startedDate: '2026-08-02', finish: { date: '2026-08-02', toDone: true } },
 		]);
 
 		expect(vault.fm('A.md')).toEqual({ status: 'Active' });
@@ -256,7 +301,7 @@ describe('applying date stamps', () => {
 		await applyWrites(
 			vault.app,
 			stamping,
-			[{ file, state: 'Done', finishedDate: '2026-08-02' }],
+			[{ file, state: 'Done', finish: { date: '2026-08-02', toDone: true } }],
 			undefined,
 			(inv) => inverses.push(inv),
 		);

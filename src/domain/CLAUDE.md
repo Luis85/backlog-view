@@ -133,7 +133,10 @@ in the root `CLAUDE.md` because it spans every layer.
   (`noteFields.ts`), from LOCAL date parts — `toISOString` stamps an evening transition
   as tomorrow for everyone west of Greenwich.
 - The stamps ask about a state VALUE, not an item (`isStartedValue`, `isDoneValue`):
-  the state being written is one no item holds yet. `startedStates` empty means NOTHING
+  the state being written is one no item holds yet. The plan answers only what it can
+  know for certain — the state the user PICKED. Whether that crosses the done boundary
+  depends on the state being left, which only the note knows, so the plan carries
+  `finish: {date, toDone}` and `storage/` decides. `startedStates` empty means NOTHING
   counts as started — a first column is a backlog as often as it is a start, and a
   guessed default would date work nobody began. Both stamp keys join `configProblems`,
   and the RESOLVED `tagsKey` joins it with them: it has already yielded to the four it

@@ -168,12 +168,12 @@ export function cardPaths(board: BoardModel): Set<string> {
 export function hiddenMatches(
 	item: BacklogItem,
 	matched: (item: BacklogItem) => boolean,
-	rendered: (item: BacklogItem) => boolean,
+	rendered: Set<string>,
 ): BacklogItem[] {
 	const found: BacklogItem[] = [];
 	const walk = (parent: BacklogItem): void => {
 		for (const child of parent.children) {
-			if (rendered(child)) continue;
+			if (rendered.has(child.file.path)) continue;
 			if (matched(child)) found.push(child);
 			walk(child);
 		}

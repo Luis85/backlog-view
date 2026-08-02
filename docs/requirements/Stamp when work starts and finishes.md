@@ -105,9 +105,13 @@ everyone west of Greenwich.
 
 The writes land in `src/storage/frontmatter.ts` as fields of the state's own write, in
 the same `processFrontMatter` call, so one undo takes the state and its dates back
-together. Write-once for the start is enforced THERE rather than in the plan, against
-the live value: the row that planned the write can be a refresh behind the note, which
-is the same reason tags travel as a delta.
+together. **Both** stamp decisions are made there rather than in the plan, against the
+live note: the row that planned a write can be a refresh behind it, which is the same
+reason tags travel as a delta. Write-once for the start is one half; the other is the
+done boundary — the plan carries `{date, toDone}` and the writer compares it with the
+state the note is actually leaving, so crossing in stamps, crossing out clears, and
+done-to-done leaves it alone. Judging that from the model's idea of the old state left
+a note already finished, moved to a not-done state, still claiming its finish.
 
 Driven by `test/domain/stamps.test.ts` (the transition rules, one test per state pair),
 the stamp block in `test/storage/frontmatter.test.ts` (write-once, removal, the shared

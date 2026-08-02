@@ -52,11 +52,15 @@ export interface ItemWrite {
 	 */
 	startedDate?: string;
 	/**
-	 * Date to stamp as the finish, or null to remove the key. Set-or-clear rather
-	 * than write-once, because leaving done un-finishes an item: a reopened note must
-	 * not keep claiming a finish it no longer has.
+	 * The finish stamp for a write that MAY cross the done boundary: the date to
+	 * stamp, and whether the state being written counts as done. Which way it crosses
+	 * — or whether it crosses at all — is decided at the WRITE boundary against the
+	 * live state, for the same reason the start's write-once test is: the row that
+	 * planned this can be a refresh behind the note. Deciding here from the model's
+	 * idea of the old state leaves a note that is already done, moved to a not-done
+	 * state, still carrying the finish it no longer has.
 	 */
-	finishedDate?: string | null;
+	finish?: { date: string; toDone: boolean };
 }
 
 export interface TagDelta {
@@ -208,7 +212,7 @@ export function computeStateWrites(
 	const same = state === null ? current === null : current !== null && current.toLowerCase() === state.toLowerCase();
 	if (same) return [];
 	const write: ItemWrite = state === null ? { file: item.file, removeStateKey: true } : { file: item.file, state };
-	return [{ ...write, ...stampWrites(current, state, settings, today) }];
+	return [{ ...write, ...stampWrites(state, settings, today) }];
 }
 
 /**
@@ -217,23 +221,19 @@ export function computeStateWrites(
  * A stamp is never a second write.
  */
 function stampWrites(
-	from: string | null,
 	to: string | null,
 	settings: BacklogSettings,
 	today: string,
-): Pick<ItemWrite, 'startedDate' | 'finishedDate'> {
-	const stamps: Pick<ItemWrite, 'startedDate' | 'finishedDate'> = {};
-	// Entering a started state offers the date; the writer keeps the earliest one.
+): Pick<ItemWrite, 'startedDate' | 'finish'> {
+	const stamps: Pick<ItemWrite, 'startedDate' | 'finish'> = {};
+	// Entering a started state offers the date; the writer keeps the earliest one. The
+	// state being entered is what the user just picked, so it is never stale — unlike
+	// the one being left, which is why only this half is decided here.
 	if (settings.startedDateKey && isStartedValue(settings, to)) stamps.startedDate = today;
-	if (settings.finishedDateKey) {
-		const wasDone = isDoneValue(settings, from);
-		const isDone = isDoneValue(settings, to);
-		// Only CROSSING the boundary writes. Done to done is a re-labelling — Done
-		// becoming Dropped — not a new finish, and moving the date forward would rewrite
-		// the item's history to say the work took longer than it did. Leaving done
-		// clears it, so a reopened item never claims a finish it no longer has.
-		if (isDone !== wasDone) stamps.finishedDate = isDone ? today : null;
-	}
+	// Both halves of the finish rule need the state being LEFT, and only the note
+	// knows that for certain: whether this crosses in (stamp), crosses out (clear) or
+	// is a done-to-done re-label (leave alone) is settled at the write boundary.
+	if (settings.finishedDateKey) stamps.finish = { date: today, toDone: isDoneValue(settings, to) };
 	return stamps;
 }
 

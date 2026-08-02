@@ -49,10 +49,8 @@ describe('stamping the start', () => {
 		expect(plan('Done', 'Active')?.startedDate).toBe(TODAY);
 	});
 
-	it('writes nothing for a state that counts as neither started nor done', () => {
-		const write = plan('Active', 'New');
-		expect(write.startedDate).toBeUndefined();
-		expect(write.finishedDate).toBeUndefined();
+	it('offers no start for a state that counts as neither started nor done', () => {
+		expect(plan('Active', 'New').startedDate).toBeUndefined();
 	});
 
 	it('stamps nothing at all until a started state is named', () => {
@@ -67,29 +65,24 @@ describe('stamping the start', () => {
 });
 
 describe('stamping the finish', () => {
-	it('writes the date when a card crosses into done', () => {
-		expect(plan('Active', 'Done')?.finishedDate).toBe(TODAY);
+	it('carries the date and whether the target state is done', () => {
+		// The plan does NOT decide the crossing. Which way it goes — in, out, or a
+		// done-to-done re-label that changes nothing — needs the state the NOTE is in,
+		// and only the writer sees that. The model can be a refresh behind.
+		expect(plan('Active', 'Done')?.finish).toEqual({ date: TODAY, toDone: true });
+		expect(plan('Done', 'Active')?.finish).toEqual({ date: TODAY, toDone: false });
 	});
 
-	it('leaves it alone done-to-done — a re-label is not a new finish', () => {
-		// Done becoming Dropped: moving the date forward would rewrite the item's history
-		// to say the work took longer than it did.
-		const write = computeStateWrites(item('Done'), 'Dropped', { ...stamped, doneValues: ['Done', 'Dropped'] }, TODAY);
-		expect(write[0].state).toBe('Dropped');
-		expect(write[0].finishedDate).toBeUndefined();
+	it('reads done-ness of the target case-insensitively, like every other match', () => {
+		expect(plan('New', 'done', { ...stamped, states: ['New', 'done'] })?.finish?.toDone).toBe(true);
 	});
 
-	it('removes it when a card leaves done', () => {
-		// Null, not absent: a reopened item must not keep claiming a finish it no longer has.
-		expect(plan('Done', 'Active')?.finishedDate).toBeNull();
+	it('treats the no-state target as not done', () => {
+		expect(plan('Done', null)?.finish).toEqual({ date: TODAY, toDone: false });
 	});
 
-	it('removes it when a card leaves done for no state at all', () => {
-		expect(plan('Done', null)?.finishedDate).toBeNull();
-	});
-
-	it('is unnamed by default, so nothing is written', () => {
-		expect(plan('Active', 'Done', { ...stamped, finishedDateKey: '' }).finishedDate).toBeUndefined();
+	it('is absent when the property is unnamed, so nothing is written', () => {
+		expect(plan('Active', 'Done', { ...stamped, finishedDateKey: '' }).finish).toBeUndefined();
 	});
 });
 
@@ -109,15 +102,10 @@ describe('stamps and the state write they ride', () => {
 		expect(computeStateWrites(item('Active'), 'Active', stamped, TODAY)).toEqual([]);
 	});
 
-	it('carries both stamps when one move crosses both boundaries', () => {
-		const write = computeStateWrites(
-			item('Done'),
-			'Active',
-			{ ...stamped, startedStates: ['Active'] },
-			TODAY,
-		)[0];
+	it('carries both stamps when one move can cross both boundaries', () => {
+		const write = computeStateWrites(item('Done'), 'Active', { ...stamped, startedStates: ['Active'] }, TODAY)[0];
 		expect(write.startedDate).toBe(TODAY);
-		expect(write.finishedDate).toBeNull();
+		expect(write.finish).toEqual({ date: TODAY, toDone: false });
 	});
 });
 

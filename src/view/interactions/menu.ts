@@ -203,11 +203,7 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	const board = host.boardMode ? host.board?.board : null;
 	if (!board || !host.isFiltering() || host.isFilterMatch(item)) return;
 	const carded = cardPaths(board);
-	const matches = hiddenMatches(
-		item,
-		(child) => host.isFilterMatch(child),
-		(child) => carded.has(child.file.path),
-	);
+	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {
