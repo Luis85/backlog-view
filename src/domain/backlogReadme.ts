@@ -62,6 +62,14 @@ const decodeSource = (encoded: string): string =>
 	encoded.replace(/%(25|2D|3C|3E)/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
 
 /**
+ * The two halves the encoded source sits between, spelled once because `readmeSource`
+ * is the exact inverse of `readmeMarker` only while both read the same text. Written
+ * twice, the writer could drift and leave the reader accepting a line nothing produces.
+ */
+const MARKER_OPEN = `${README_MARKER_PREFIX} from "`;
+const MARKER_CLOSE = '". Rewritten in full whenever it is regenerated. -->';
+
+/**
  * The marker, naming the view it came from. Two views may share a home folder while
  * configuring different property keys, and a folder cannot have two contracts: without
  * the source in the line, each view reads the other's file as its own and replaces it,
@@ -69,7 +77,7 @@ const decodeSource = (encoded: string): string =>
  * that refuses it, and to whoever opens the file.
  */
 export function readmeMarker(source: string): string {
-	return `${README_MARKER_PREFIX} from "${encodeSource(source)}". Rewritten in full whenever it is regenerated. -->`;
+	return `${MARKER_OPEN}${encodeSource(source)}${MARKER_CLOSE}`;
 }
 
 /**
@@ -83,10 +91,20 @@ export function readmeMarker(source: string): string {
  *
  * Decoded, because what comes back is shown to a user in a notice; the comparison it
  * feeds is unaffected either way, the encoding being injective.
+ *
+ * The WHOLE line has to match, both halves, because this answers a second question its
+ * caller acts on: a file whose first line parses is a file the plugin may replace
+ * wholesale. Validating the opening alone would accept a line truncated after the
+ * source — a half-written marker from an interrupted write is the file least able to
+ * afford being overwritten — and a comment somebody wrote themselves that happens to
+ * start the same way. Between the two halves everything is the source, unambiguously:
+ * `encodeSource` leaves no `>` in it, so the closing `-->` can only be the one this
+ * module wrote.
  */
 export function readmeSource(line: string): string | null {
-	const match = new RegExp(`^${README_MARKER_PREFIX} from "(.*)"\\.`).exec(line.trimEnd());
-	return match ? decodeSource(match[1]) : null;
+	const trimmed = line.trimEnd();
+	if (!trimmed.startsWith(MARKER_OPEN) || !trimmed.endsWith(MARKER_CLOSE)) return null;
+	return decodeSource(trimmed.slice(MARKER_OPEN.length, trimmed.length - MARKER_CLOSE.length));
 }
 
 /**
@@ -494,6 +512,38 @@ function stampRule(settings: BacklogSettings): string[] {
 }
 
 /**
+ * What makes a note here an item. In folder mode the answer is not the properties
+ * alone: `inferFolderParent` gives a propertyless note the folder note above it as a
+ * parent, and that parent is the hierarchy evidence `pruneOutsideHierarchy` keeps it
+ * for — so "the folder does not make it one" is exactly false in the configuration
+ * where position IS hierarchy, and would tell a reader their new note stays out of a
+ * backlog it has already joined.
+ */
+function openingScope(settings: BacklogSettings): string {
+	if (!settings.hierarchyOnly)
+		return 'Every note this view returns is a work item, whether or not it carries the ' + 'properties below — that is how this view is configured. ';
+	return settings.folderHierarchy
+		? 'A note here becomes a work item by carrying the properties below **or** by where it ' +
+				'sits: this view reads a folder note as the parent of everything under it, so ' +
+				'position enrols a note as surely as a property does. One with neither stays an ' +
+				'ordinary note. '
+		: 'A note here becomes a work item by carrying the properties below — the folder ' +
+				'does not make it one, and notes that carry none of them stay ordinary notes. ';
+}
+
+/** Where the hierarchy is kept — the same question, and the same folder-mode answer. */
+function openingHierarchy(settings: BacklogSettings): string {
+	const plain =
+		'They stay plain markdown, so they can be read, written and reviewed in any editor, ' +
+		'with or without Obsidian and the Product Backlog view that generated this file.';
+	return settings.folderHierarchy
+		? 'The hierarchy between the items lives in frontmatter and, in this view, in the ' +
+				'folders beside it: a note naming its parent is placed by that property, and one ' +
+				`that does not hangs from the nearest folder note above it. ${plain}`
+		: `The hierarchy between the items lives in frontmatter rather than in folders, on purpose. ${plain}`;
+}
+
+/**
  * The whole document. Deterministic in its inputs — same settings and states in, same
  * bytes out — so a regeneration that changes nothing can be recognized as a no-op and
  * a repository gets no diff for running the command twice.
@@ -506,16 +556,7 @@ export function backlogReadmeContent(settings: BacklogSettings, observedStates: 
 			'',
 			'# This folder is a product backlog',
 			'',
-			(settings.hierarchyOnly
-				? 'A note here becomes a work item by carrying the properties below — the folder ' +
-					'does not make it one, and notes that carry none of them stay ordinary notes. '
-				: 'Every note this view returns is a work item, whether or not it carries the ' +
-					'properties below — that is how this view is configured. ') +
-				'The ' +
-				'hierarchy between the items lives in frontmatter rather than in folders, on ' +
-				'purpose: they stay plain markdown, so they can be read, written and reviewed in ' +
-				'any editor, with or without Obsidian and the Product Backlog view that generated ' +
-				'this file.',
+			openingScope(settings) + openingHierarchy(settings),
 			'',
 			'This document is generated from that view\'s configuration, so the property names ' +
 				'below are the ones this backlog actually uses.',

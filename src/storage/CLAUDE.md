@@ -78,8 +78,14 @@ can be checked by reading one directory.
   is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also
   the one write that may REPLACE an existing file, so it reads before writing: identical
   content is a no-op (a repository must not get a commit for regenerating the same
-  document), and content without the generated marker is somebody else's file and is
-  refused. Neither may be decided from the file name alone.
+  document), and content whose first line does not parse whole as the generated marker is
+  somebody else's file and is refused. Neither may be decided from the file name alone.
+  The replacement itself goes through `Vault.process`, Obsidian's atomic read-modify-write,
+  and re-asks "still ours?" inside the callback: the permission is about CONTENT, and
+  `read` then `modify` answers it about content that need not still be there when the
+  write lands. It is read-then-`process` rather than `process` alone because the two
+  outcomes that write nothing promise exactly that, and a callback returning the file
+  unchanged has still been through a save.
 
 ## Collapse state, and the view mode beside it
 

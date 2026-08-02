@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile } from 'obsidian';
+import { App, normalizePath } from 'obsidian';
 import { ensureFolder } from './frontmatter';
 import { README_FILE_NAME, readmeSource } from '../domain/backlogReadme';
 
@@ -64,11 +64,16 @@ export function readmePath(folder: string): string {
  * output may be replaced wholesale, and anything else may not. Reading also answers
  * the no-op question — an identical file is left untouched, so a team keeping the
  * vault in git gets a commit only when the configuration actually changed.
+ *
+ * Read first and `process` after, rather than `process` alone, precisely because of
+ * those two outcomes: they promise that NOTHING is written, and a callback that hands
+ * the file back unchanged has still been through a save. The replacement itself goes
+ * through `process`, where the check and the write cannot come apart.
  */
 export async function writeBacklogReadme(app: App, folder: string, content: string): Promise<ReadmeWriteResult> {
 	const path = readmePath(folder);
-	const existing = app.vault.getAbstractFileByPath(path);
-	if (existing instanceof TFile) {
+	const existing = app.vault.getFileByPath(path);
+	if (existing !== null) {
 		const current = await app.vault.read(existing);
 		if (current === content) return { outcome: 'unchanged', path };
 		// One question, asked once: a file is ours when its first line PARSES as a marker,
@@ -84,7 +89,19 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 		// Refusing instead would brick the ordinary cases: a renamed base or view, or a
 		// file git rewrote, all of which change the line without changing the owner.
 		const mine = readmeSource(firstLine(content));
-		await app.vault.modify(existing, content);
+		// `process` rather than `modify`: it reads and writes in one atomic step, so the
+		// bytes judged above are the bytes replaced. The permission asked here is about
+		// the file's CONTENT — this document may be overwritten, somebody else's may not —
+		// and `read`-then-`modify` answers it about content that no longer has to exist by
+		// the time the write lands. Sync, another Obsidian window or a second command can
+		// land in that gap. The callback re-asks the one question that matters if they did:
+		// still ours? Otherwise it hands the file back exactly as found.
+		let raced = false;
+		await app.vault.process(existing, (live) => {
+			raced = readmeSource(firstLine(live)) === null;
+			return raced ? live : content;
+		});
+		if (raced) return { outcome: 'foreign', path };
 		return previous !== mine ? { outcome: 'replaced', path, previous } : { outcome: 'updated', path };
 	}
 	await ensureFolder(app, normalizedFolder(folder));

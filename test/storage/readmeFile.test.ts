@@ -118,6 +118,26 @@ describe('writeBacklogReadme', () => {
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
 	});
 
+	it('refuses a file that stopped being ours between the check and the write', async () => {
+		// The permission is about the file's content, and `read`-then-`modify` answers it
+		// about content that need not still be there when the write lands — sync, a second
+		// window, a second command. The re-check inside `process` is what closes that gap.
+		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		const theirs = '# Mine now\n';
+		const file = vault.files.get('docs/README_PRODUCT_BACKLOG.md') as never;
+		const process = vault.app.vault.process;
+		vault.app.vault.process = async (f: never, fn: (data: string) => string) => {
+			vault.contents.set('docs/README_PRODUCT_BACKLOG.md', theirs);
+			return process(f, fn);
+		};
+
+		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+
+		expect(result.outcome).toBe('foreign');
+		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
+		expect(file).toBeDefined();
+	});
+
 	it('refuses a file of the same name that it did not write', async () => {
 		const theirs = '# My own notes about this folder\n';
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);

@@ -168,12 +168,18 @@ the view options can rename.
   started is an inert key like a horizon property with no values (**3a**).
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
-- **4b — the file exists and differs.** It is replaced only when its first line **parses**
-  as the generated marker; otherwise the command refuses and says why, because the file
-  may be somebody's own writing. Parsing rather than matching the opening is the whole
-  test: a file that merely begins like the marker — a comment of the reader's own, or a
-  marker left half-written by a truncated write or a bad merge — is one to leave alone,
-  and the half-written one is the file least able to afford being overwritten. Read
+- **4b — the file exists and differs.** It is replaced only when its first line **parses
+  whole** as the generated marker — both halves, opening and closing; otherwise the
+  command refuses and says why, because the file may be somebody's own writing. Parsing
+  rather than matching the opening is the whole test: a file that merely begins like the
+  marker — a comment of the reader's own, or a marker left half-written by a truncated
+  write or a bad merge — is one to leave alone, and the half-written one is the file
+  least able to afford being overwritten. The reader is the writer's exact inverse, which
+  is why the line's two halves are spelled once: a reader written separately can drift
+  into accepting a line nothing produces. The replacement then goes through Obsidian's
+  atomic `Vault.process`, and re-asks that question inside it — the permission is about
+  the file's content, and a check made before a separate write is a check against content
+  that need not still be there when the write lands. Read
   through what a round trip elsewhere adds and this document does not — a Windows
   checkout's carriage return, an editor's UTF-8 byte-order mark — since either would
   otherwise have the plugin call its own file somebody else's and refuse regeneration

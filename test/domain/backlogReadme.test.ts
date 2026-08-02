@@ -58,6 +58,17 @@ describe('backlogReadmeContent', () => {
 		expect(readmeSource('# not a marker at all')).toBeNull();
 	});
 
+	it('refuses a line that only opens like the marker', async () => {
+		// The caller replaces a file whose first line parses, so a half-written marker — an
+		// interrupted write, a bad merge — must not parse: it is the file least able to
+		// afford being overwritten. Nor must a comment that merely starts the same way.
+		expect(readmeSource(`${README_MARKER_PREFIX} from "work/B.base › B".`)).toBeNull();
+		expect(readmeSource(`${README_MARKER_PREFIX} of my own -->`)).toBeNull();
+		expect(readmeSource(README_MARKER_PREFIX)).toBeNull();
+		// And the whole line still round-trips with its trailing whitespace trimmed.
+		expect(readmeSource(`${readmeMarker('work/B.base › B')}  `)).toBe('work/B.base › B');
+	});
+
 	it('explains every type in the vocabulary', () => {
 		const content = readme(settingsWith(), []);
 		for (const type of ALL_TYPES) expect(typeRow(content, type)).toContain(type);
@@ -223,6 +234,20 @@ describe('backlogReadmeContent', () => {
 		expect(readme(settingsWith({ folderHierarchy: false }), [])).toContain(
 			'Omitting the key entirely means the same thing here',
 		);
+	});
+
+	it('does not tell a folder-mode reader that the folder cannot enrol a note', () => {
+		// There a propertyless note under a folder note gets that folder note as its parent,
+		// which is the hierarchy evidence the scope rule keeps it for — so "the folder does
+		// not make it one" is false in exactly the mode where position IS hierarchy.
+		const folderMode = readme(settingsWith({ hierarchyOnly: true, folderHierarchy: true }), []);
+		expect(folderMode).not.toContain('the folder does not make it one');
+		expect(folderMode).toContain('position enrols a note as surely as a property does');
+		expect(folderMode).toContain('in the folders beside it');
+
+		const flat = readme(settingsWith({ hierarchyOnly: true, folderHierarchy: false }), []);
+		expect(flat).toContain('the folder does not make it one');
+		expect(flat).toContain('lives in frontmatter rather than in folders');
 	});
 
 	it('opens with the scope this view is actually configured for', () => {

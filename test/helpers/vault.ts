@@ -87,6 +87,8 @@ export class FakeVault {
 		vault: {
 			getAbstractFileByPath: (path: string) =>
 				this.files.get(path) ?? (this.folders.has(path) ? { path } : null),
+			/** Files only, as the real one is: a folder at this path answers null. */
+			getFileByPath: (path: string) => this.files.get(path) ?? null,
 			getAllLoadedFiles: () =>
 				[...this.folders].map((path) => {
 					const folder = new TFolder();
@@ -115,6 +117,14 @@ export class FakeVault {
 			read: async (file: TFile) => this.contents.get(file.path) ?? '',
 			modify: async (file: TFile, content: string) => {
 				this.contents.set(file.path, content);
+			},
+			// Obsidian's atomic read-modify-write. Kept honest about the one thing it
+			// exists for: the callback is handed what is on disk NOW, which a test can
+			// change between the caller's read and this call to drive the raced path.
+			process: async (file: TFile, fn: (data: string) => string) => {
+				const next = fn(this.contents.get(file.path) ?? '');
+				this.contents.set(file.path, next);
+				return next;
 			},
 		},
 		fileManager: {
