@@ -327,10 +327,11 @@ function planningSection(settings: BacklogSettings): string[] {
 			...(hasDateAxis(settings) ? ['Schedule and Unschedule'] : []),
 		];
 		lines.push(
-			'These are a **plan**, and the only things that write them are you and the view\'s own ' +
+			'These are a **plan**, and the only things that write them are you, the view\'s own ' +
 				`placement ${actions.length > 1 ? 'actions' : 'action'} — ${actions.join(', ')}, each ` +
-				'writing or removing exactly the keys named here. Nothing writes them as a side ' +
-				'effect of a move, a state change or a rename.',
+				'writing or removing exactly the keys named here — and **Assign missing properties**, ' +
+				'which adds the keys *empty* to items that lack them and places nothing. Nothing ' +
+				'writes them as a side effect of a move, a state change or a rename.',
 		);
 	}
 	return lines.length > 0 ? ['## Planning', '', ...lines.flatMap((l) => [l, ''])].slice(0, -1) : [];
@@ -343,11 +344,12 @@ function filingSection(settings: BacklogSettings): string[] {
 		'## Where notes are filed',
 		'',
 		settings.folderHierarchy
-			? 'In this view folders are **also** hierarchy: a note with no parent property hangs ' +
-				'from the nearest folder note above it, so moving such a note moves it in the tree. ' +
-				'A note that names its parent is unaffected — the property always wins — which is ' +
-				'the way to file a note anywhere and keep its place. Below is where this view puts ' +
-				'a note it creates, in this order:'
+			? 'In this view folders are **also** hierarchy: a note that **omits** the parent ' +
+				'property hangs from the nearest folder note above it, so moving such a note moves ' +
+				'it in the tree. A note that names its parent is unaffected — the property always ' +
+				'wins — and so is one carrying the key empty, which pins it to the top level ' +
+				'instead of asking the folder. Either is the way to file a note anywhere and keep ' +
+				'its place. Below is where this view puts a note it creates, in this order:'
 			: 'Folders are filing, not hierarchy: the tree comes from the properties above, so a ' +
 				'note is in the right place wherever it lives. What follows is only where **this** ' +
 				'view puts a note it creates, in this order:',
@@ -478,7 +480,7 @@ function openingHierarchy(settings: BacklogSettings): string {
 	return settings.folderHierarchy
 		? 'The hierarchy between the items lives in frontmatter and, in this view, in the ' +
 				'folders beside it: a note naming its parent is placed by that property, and one ' +
-				`that does not hangs from the nearest folder note above it. ${plain}`
+				`that omits the key hangs from the nearest folder note above it. ${plain}`
 		: `The hierarchy between the items lives in frontmatter rather than in folders, on purpose. ${plain}`;
 }
 

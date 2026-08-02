@@ -194,6 +194,15 @@ the view options can rename.
   another editor stamps nothing. A row promising that entering a state writes a date would
   have exactly this document's reader — the one working outside Obsidian — waiting for a
   history that never arrives.
+- **3n — a planning key is written by something other than a placement.** **Assign
+  missing properties** adds the axis keys *empty* to items that lack them
+  (`computeInitWrites`), so a list of writers that named only the placement actions left
+  a reader unable to explain a key the view created and never filled.
+- **3o — an empty parent key is not an omitted one, in folder mode either.** The model
+  treats the empty key as an explicit root and skips inference for it, so a document
+  grouping "does not name a parent" with "hangs from the folder note above" would have an
+  outside editor expect a pinned root to be nested. Inference is stated as what it is: the
+  answer for a note that **omits** the key.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses

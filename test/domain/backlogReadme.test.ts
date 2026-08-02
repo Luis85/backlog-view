@@ -341,6 +341,25 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('a note that holds a work item is kept with it');
 	});
 
+	it('names the backfill among the things that write a planning key', () => {
+		// computeInitWrites adds the axis keys EMPTY to items that lack them, so a claim
+		// that only the user and the placement actions write them leaves a reader unable to
+		// explain a key the view created.
+		const content = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }));
+		expect(content).toContain('**Assign missing properties**');
+		expect(content).toContain('adds the keys *empty* to items that lack them and places nothing');
+	});
+
+	it('applies folder inference to an omitted parent key, not an empty one', () => {
+		// An empty key is `explicitRoot`: the model deliberately skips inference for it, so
+		// grouping it with "does not name a parent" would have a reader expect a pinned root
+		// to be nested under the folder note above it.
+		const content = readme(settingsWith({ folderHierarchy: true }));
+		expect(content).toContain('a note that **omits** the parent property hangs');
+		expect(content).toContain('one carrying the key empty, which pins it to the top level');
+		expect(content).toContain('that omits the key hangs from the nearest folder note');
+	});
+
 	it('names the empty parent key as enrolment evidence too', () => {
 		// `parent:` with nothing after it is the top-level marker, and pruneOutsideHierarchy
 		// counts it: a predicate that only admitted a named parent would tell a reader their
