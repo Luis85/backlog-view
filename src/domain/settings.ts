@@ -206,6 +206,21 @@ export function defaultSettings(): BacklogSettings {
 }
 
 /**
+ * The roadmap's three write targets, named by FIELD rather than by key. Every layer
+ * that has to ask "which property does this placement live in" asks here, so the
+ * mapping from a field to a configured key is stated once: the planner, the writer
+ * and the backfill would otherwise each spell out the same three-way switch.
+ */
+export type AxisField = 'horizon' | 'start' | 'target';
+export const AXIS_FIELDS: AxisField[] = ['horizon', 'start', 'target'];
+
+/** The frontmatter key one axis field is stored under; '' when it is unconfigured. */
+export function axisKeyFor(settings: BacklogSettings, field: AxisField): string {
+	if (field === 'horizon') return settings.horizonKey;
+	return field === 'start' ? settings.startKey : settings.targetKey;
+}
+
+/**
  * The states offered by the state menus: the configured list when set, else the
  * values observed in the backlog — with a done state appended so marking an item
  * done is always one click away. Menus append the item's own unlisted value on
@@ -234,6 +249,22 @@ export function isDoneValue(settings: BacklogSettings, state: string | null): bo
  */
 export function isStartedValue(settings: BacklogSettings, state: string | null): boolean {
 	return state !== null && settings.startedStates.some((v) => v.toLowerCase() === state.toLowerCase());
+}
+
+/**
+ * The horizons Set horizon offers: the declared vocabulary, plus every value the
+ * RESULTS actually carry that it does not name — which is exactly the bucket list
+ * the roadmap draws, in the order it draws it (declared first, then each minted
+ * bucket in the order it was first seen). Union rather than the state menu's
+ * either/or, because the two questions differ: an undeclared state is a state the
+ * board shows in a stray column, while an undeclared horizon is a bucket a drag can
+ * already drop into — so a row menu offering only the declared list could not reach
+ * a target the roadmap can. Menus append the item's own unlisted value on top of
+ * this, so the current horizon always renders checked.
+ */
+export function horizonMenuValues(settings: BacklogSettings, observedHorizons: string[]): string[] {
+	const declared = new Set(settings.horizonValues.map((v) => v.toLowerCase()));
+	return [...settings.horizonValues, ...observedHorizons.filter((v) => !declared.has(v.toLowerCase()))];
 }
 
 /**

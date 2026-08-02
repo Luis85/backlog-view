@@ -1144,6 +1144,17 @@
 	margin-bottom: var(--size-4-3);
 }
 
+/* Why a prompt refused what was typed. Always in the DOM and empty until there is
+   something to say, so the dialog does not resize under the pointer on submit. */
+.pbl-modal-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-modal-error:not(:empty) {
+	margin-bottom: var(--size-4-2);
+}
+
 /* -------------------------------------------------------------------- board */
 
 /* Text for assistive tech only — the board's keyboard instructions. Clipped

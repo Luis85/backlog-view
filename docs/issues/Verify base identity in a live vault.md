@@ -91,3 +91,8 @@ so nothing else will report it.
 
 No code changed. The value of this issue was never a patch; it was retiring a thing this
 repository believed but had not seen.
+
+**Re-confirmed 2026-08-02**, Windows desktop, against a bundle rebuilt by esbuild 0.28:
+rows expanded before a close came back open, and collapsed board columns did too. Worth
+repeating after any bundler or Obsidian upgrade for the reason stated above — this
+feature does not fail loudly, so a run like this is the only thing that reports on it.

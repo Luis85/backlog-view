@@ -42,7 +42,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	// The one command that routinely writes hundreds of notes: it carries the
 	// write-control marker so it goes disabled while a batch is already in flight.
-	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing type and order properties');
+	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing properties');
 	initBtn.addClass('pbl-write-ctl');
 	initBtn.addEventListener('click', () => {
 		void runInit(host);

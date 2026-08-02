@@ -54,6 +54,10 @@ can be checked by reading one directory.
   how the boundary rule came to keep a finish on a reopened item and overwrite it on a
   re-label. The rule generalizes past the stamps: reading a live value the model also
   reads means borrowing its reader, not writing a second one.
+- The roadmap's placement keys (`ItemWrite.axis`) follow the state key's two rules:
+  never written to an unconfigured key, and a null REMOVES rather than blanks. Applying
+  and capturing read the same `axisEntries` list — a key written but not captured would
+  be a change no undo could reach, which is exactly how a hole gets in.
 
 ## Collapse state, and the view mode beside it
 

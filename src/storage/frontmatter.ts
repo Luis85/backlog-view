@@ -1,7 +1,7 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { hasTag, normalizeTag, readString, readTags } from '../domain/noteFields';
-import { BacklogSettings, isDoneValue } from '../domain/settings';
-import { ItemWrite, TagDelta } from '../domain/writePlan';
+import { AXIS_FIELDS, axisKeyFor, BacklogSettings, isDoneValue } from '../domain/settings';
+import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
 /**
  * The ONLY module that writes frontmatter. Everything upstream decides what a
@@ -70,24 +70,64 @@ export async function applyWrites(
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
 			const keys = touchedKeys(settings, write);
 			const before = keys.map((key) => rawValueOf(fm, key));
-			// The state this note is actually leaving, read before the write replaces it.
-			// The model's idea of it can be a refresh behind — an external edit, or a
-			// batch still landing — and the done boundary has to be judged on the truth.
-			// Through the SAME tolerant reader the model builds `stateValue` with, or a
-			// state stored as a one-item list reads as no state here and as `Done` there:
-			// two answers to one question, and the boundary rule believes the wrong one.
-			const leaving = settings.stateKey ? readString(fm[settings.stateKey]) : null;
-			applyFields(app, fm, settings, write);
-			applyStamps(fm, settings, write, leaving);
-			const applied =
-				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
-			// The stored delta is the one that UNDOES what was applied.
-			const tags = applied ? { key: settings.tagsKey, delta: { add: applied.remove, remove: applied.add } } : null;
+			const tags = applyInto(app, fm, settings, write);
 			inverse = captureInverse(write.file, keys, before, fm, tags);
 		});
 		if (inverse) onInverse?.(inverse);
 		onProgress?.(++done, writes.length);
 	}
+}
+
+/**
+ * Apply one planned write to the live frontmatter, returning the tag restore its
+ * delta earned (null when it changed no tags). Separate from the loop above so the
+ * question "what does a write DO" is answerable in one place, and so the capture
+ * that surrounds it stays readable beside it.
+ */
+function applyInto(
+	app: App,
+	fm: Record<string, unknown>,
+	settings: BacklogSettings,
+	write: ItemWrite,
+): RestoreWrite['tags'] | null {
+	// The state this note is actually leaving, read BEFORE the write replaces it. The
+	// model's idea of it can be a refresh behind — an external edit, or a batch still
+	// landing — and the done boundary has to be judged on the truth. Through the same
+	// tolerant reader the model builds `stateValue` with, or a state stored as a
+	// one-item list reads as no state here and as `Done` there: two answers to one
+	// question, and the boundary rule believes the wrong one.
+	const leaving = settings.stateKey ? readString(fm[settings.stateKey]) : null;
+	applyHierarchy(app, fm, settings, write);
+	// The stateKey may be unset (progress tracking off) — never write to an empty key.
+	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
+	else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+	applyStamps(fm, settings, write, leaving);
+	// The roadmap's placement keys, by the same two rules: never an unconfigured key,
+	// and a null REMOVES rather than blanks — unscheduled is a state a note returns
+	// to, not a pair of empty strings.
+	for (const { key, value } of axisEntries(settings, write.axis)) {
+		if (value === null) delete fm[key];
+		else fm[key] = value;
+	}
+	const applied =
+		write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
+	// The stored delta is the one that UNDOES what was applied.
+	return applied ? { key: settings.tagsKey, delta: { add: applied.remove, remove: applied.add } } : null;
+}
+
+/** The three hierarchy properties: the parent link (or its removal), the rank, the type. */
+function applyHierarchy(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.removeParentKey) {
+		delete fm[settings.parentKey];
+	} else if (write.parent !== undefined) {
+		if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
+		// In folder mode a deleted key would just re-infer the folder parent;
+		// an explicitly empty value pins the item to the top level instead.
+		else if (settings.folderHierarchy) fm[settings.parentKey] = '';
+		else delete fm[settings.parentKey];
+	}
+	if (write.order !== undefined) fm[settings.orderKey] = write.order;
+	if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
 }
 
 /** The frontmatter keys this write will touch, in the order they are written. */
@@ -102,25 +142,8 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	// listing it is what makes the dates ride the state's own undo.
 	if (write.startedDate !== undefined && settings.startedDateKey) keys.push(settings.startedDateKey);
 	if (write.finish !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
+	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
 	return keys;
-}
-
-/** The hierarchy and state fields of one write: parent, order, type, state. */
-function applyFields(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	if (write.removeParentKey) {
-		delete fm[settings.parentKey];
-	} else if (write.parent !== undefined) {
-		if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
-		// In folder mode a deleted key would just re-infer the folder parent;
-		// an explicitly empty value pins the item to the top level instead.
-		else if (settings.folderHierarchy) fm[settings.parentKey] = '';
-		else delete fm[settings.parentKey];
-	}
-	if (write.order !== undefined) fm[settings.orderKey] = write.order;
-	if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
-	// The stateKey may be unset (progress tracking off) — never write to an empty key.
-	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
-	else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
 }
 
 /**
@@ -158,6 +181,22 @@ function applyStamps(
 /** Whether a frontmatter value counts as "no date yet" — absent, null, or empty text. */
 function isBlank(value: unknown): boolean {
 	return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+}
+
+/**
+ * The configured keys one axis write touches, each with the value it will write.
+ * Applying and capturing read the SAME list: a key written but not captured would
+ * be a change no undo could reach, which is exactly how a hole gets in.
+ */
+function axisEntries(settings: BacklogSettings, axis?: AxisWrite): { key: string; value: string | null }[] {
+	if (!axis) return [];
+	const entries: { key: string; value: string | null }[] = [];
+	for (const field of AXIS_FIELDS) {
+		const key = axisKeyFor(settings, field);
+		const value = axis[field];
+		if (key !== '' && value !== undefined) entries.push({ key, value });
+	}
+	return entries;
 }
 
 /**
