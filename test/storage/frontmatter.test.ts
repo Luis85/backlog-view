@@ -269,6 +269,35 @@ describe('applying date stamps', () => {
 		expect('finished' in vault.fm('A.md')).toBe(false);
 	});
 
+	it('reads the live state as tolerantly as the model does', async () => {
+		// `status: [Done]` is a state the model reads as "Done" — a one-item list is one
+		// of the shapes frontmatter takes. Reading it more strictly here would answer
+		// "no state" to a question the model answers "Done", and the boundary rule would
+		// believe the wrong one: reopening would keep a finish, and a re-label would
+		// overwrite the original date.
+		const vault = new FakeVault();
+		const listed = vault.addFile('A.md', { frontmatter: { status: ['Done'], finished: '2026-07-01' } });
+		const numeric = vault.addFile('B.md', { frontmatter: { status: 1, finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, { ...stamping, doneValues: ['Done', '1'] }, [
+			{ file: listed, state: 'Active', finish: { date: '2026-08-02', toDone: false } },
+			{ file: numeric, state: 'Active', finish: { date: '2026-08-02', toDone: false } },
+		]);
+
+		expect('finished' in vault.fm('A.md')).toBe(false);
+		expect('finished' in vault.fm('B.md')).toBe(false);
+	});
+
+	it('does not re-stamp a finish a list-valued state already crossed into', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: ['Done'], finished: '2026-07-01' } });
+		const settings = { ...stamping, doneValues: ['Done', 'Dropped'] };
+
+		await applyWrites(vault.app, settings, [{ file, state: 'Dropped', finish: { date: '2026-08-02', toDone: true } }]);
+
+		expect(vault.fm('A.md')['finished']).toBe('2026-07-01');
+	});
+
 	it('does not re-stamp a finish the note already crossed into', async () => {
 		// The mirror: the model said Active, the note is already Done. Writing Done again
 		// is not a new finish, so the original date stands.

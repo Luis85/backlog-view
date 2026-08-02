@@ -1,5 +1,5 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
-import { hasTag, normalizeTag, readTags } from '../domain/noteFields';
+import { hasTag, normalizeTag, readString, readTags } from '../domain/noteFields';
 import { BacklogSettings, isDoneValue } from '../domain/settings';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
 
@@ -73,9 +73,12 @@ export async function applyWrites(
 			// The state this note is actually leaving, read before the write replaces it.
 			// The model's idea of it can be a refresh behind — an external edit, or a
 			// batch still landing — and the done boundary has to be judged on the truth.
-			const leaving = settings.stateKey ? fm[settings.stateKey] : undefined;
+			// Through the SAME tolerant reader the model builds `stateValue` with, or a
+			// state stored as a one-item list reads as no state here and as `Done` there:
+			// two answers to one question, and the boundary rule believes the wrong one.
+			const leaving = settings.stateKey ? readString(fm[settings.stateKey]) : null;
 			applyFields(app, fm, settings, write);
-			applyStamps(fm, settings, write, typeof leaving === 'string' ? leaving : null);
+			applyStamps(fm, settings, write, leaving);
 			const applied =
 				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
 			// The stored delta is the one that UNDOES what was applied.

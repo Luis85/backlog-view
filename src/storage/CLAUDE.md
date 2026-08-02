@@ -47,6 +47,13 @@ can be checked by reading one directory.
   replaces it): crossing in stamps, crossing out deletes, and done-to-done leaves it
   alone. Deciding that from the model's idea of the old state left a note that was
   already done, moved to a not-done state, still carrying its finish.
+- A live value read here must go through the **same tolerant reader the model used**
+  (`readString` for the state, as `buildModel` does). Frontmatter takes shapes a strict
+  read misses — a one-item list, a number, a boolean — and a stricter read here answers
+  "no state" to the question the model answers "Done". Two answers to one question is
+  how the boundary rule came to keep a finish on a reopened item and overwrite it on a
+  re-label. The rule generalizes past the stamps: reading a live value the model also
+  reads means borrowing its reader, not writing a second one.
 
 ## Collapse state, and the view mode beside it
 
