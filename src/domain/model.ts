@@ -585,10 +585,14 @@ function collectObservedTags(all: RawItem[]): string[] {
  * unsorted load order instead and a base whose own sort disagrees with the sibling
  * ranks yields a menu listing the buckets in an order the axis contradicts.
  *
- * Rows the roadmap does not draw — hidden, or outside a focus level — narrow that
- * walk to a subsequence, never a different sequence, and the menu deliberately keeps
- * offering their values: a vocabulary that shrank when a filter narrowed would make
- * the reachable targets depend on what is on screen.
+ * That agreement is exact while the roadmap draws every result, and only then. Hiding
+ * — a focus level, the quick filter, a finished subtree — can remove a value's first
+ * carrier and leave the axis minting its bucket later than this list met it, and the
+ * view-level ones are not knowable here at all. So this is the base order, not a
+ * promise: the menu takes its order from the buckets it can see when there are any
+ * (`interactions/plan.ts`), and this list stays the whole vocabulary regardless of
+ * what is hidden — one that shrank when a filter narrowed would make the reachable
+ * targets depend on what is on screen.
  *
  * Context rows contribute nothing: an excluded note's horizon is not this base's
  * vocabulary, exactly as its state is not.

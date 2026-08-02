@@ -94,6 +94,14 @@ belong to the **item**, not to the mode, and this is where the tree got them.
   editing surface: the tags column is editable because the view renders its pills itself
   ([[Property columns]]), and a horizon is a Bases value drawn by Bases — one editing
   path is worth more here than a second one that has to agree with it.
+- **2f — the roadmap is the projection.** The **drawn buckets lead**, read off the frame
+  as rendered, with anything the vocabulary reaches and no bucket covers after them: the
+  board's own rule for Set state, which offers its rendered columns rather than a list
+  rebuilt from the settings that then has to agree with them. It matters because hiding —
+  a focus level, the quick filter, a finished subtree — can remove a value's first
+  carrier, so the order the axis mints buckets in is not always the order the vocabulary
+  was collected in, and on screen the buckets are the version the user can check. What is
+  *reachable* never narrows: a hidden row's value is still offered, last.
 - **3a — the write is refused** (configuration problems, or a batch naming a note the Base
   excluded). Refused whole and loudly; nothing half-applies, and the row keeps rendering
   what the note still says.
@@ -131,7 +139,9 @@ belong to the **item**, not to the mode, and this is where the tree got them.
 
 - With the bucket axis configured, a row's context menu offers **Set horizon** with the
   declared values **union** the values observed among results, the item's own always
-  checked; picking one writes exactly that key, one batch, one undo.
+  checked; picking one writes exactly that key, one batch, one undo. In roadmap mode the
+  entries lead with the buckets as drawn, so the list and the axis beside it never
+  disagree about their order; what is offered is the same set either way.
 - With a date property configured, **Schedule** opens an entry prefilled from the note's
   own dates and writes exactly the configured date keys — the one configured, if only one
   is — in one batch, one undo. An unreadable date or a target before its start is refused

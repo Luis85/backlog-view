@@ -100,6 +100,43 @@ describe('setting a horizon from the row', () => {
 		expect(entries.filter((i) => i.checked).map((i) => i.titleText)).toEqual(['Q3']);
 	});
 
+	it('follows the buckets on screen when the roadmap is the projection', () => {
+		const vault = new FakeVault();
+		// The Epic is not drawn under a Feature focus, so the axis never mints its
+		// bucket first — but the model met its value first. On screen, the buckets win.
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Xray' } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Yankee' }, parentLink: 'Epic' });
+		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 20, horizon: 'Xray' }, parentLink: 'Epic' });
+		const { view, containerEl } = makeView(vault, { ...AXES, focusLevel: 'Feature' });
+
+		// The tree has no buckets to follow, so it lists the vocabulary as the model
+		// met it: the hidden Epic's value first.
+		expect(submenuOf(menuFor(containerEl, 'F1'), 'Set horizon').map((i) => i.titleText)).toEqual([
+			'Now',
+			'Next',
+			'Later',
+			'Xray',
+			'Yankee',
+			'Clear horizon',
+		]);
+
+		view.setProjection('roadmap');
+		const card = containerEl.querySelector<HTMLElement>('.pbl-card');
+		card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const entries = Menu.lastShown?.item('Set horizon')?.submenu?.items ?? [];
+
+		// Drawn order: the focused rows mint Yankee, then Xray. Nothing is lost — the
+		// vocabulary is the same set, in the order the user can see.
+		expect(entries.map((i) => i.titleText)).toEqual([
+			'Now',
+			'Next',
+			'Later',
+			'Yankee',
+			'Xray',
+			'Clear horizon',
+		]);
+	});
+
 	it('writes the picked value to the note, and nothing else', async () => {
 		const vault = planVault();
 		const { containerEl } = makeView(vault, AXES);

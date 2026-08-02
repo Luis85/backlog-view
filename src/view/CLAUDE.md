@@ -231,7 +231,11 @@ free of runtime code so imports stay cycle-free.
   roadmap draws cannot drift apart. A horizon property with an empty values list is
   UNCONFIGURED for both. Set horizon offers `horizonMenuValues` (declared ∪ observed
   on results) plus the item's own unlisted value — the union, not the state menu's
-  either/or, because an undeclared horizon is a bucket the roadmap already draws.
+  either/or, because an undeclared horizon is a bucket the roadmap already draws. In
+  roadmap mode the DRAWN buckets lead and the rest follow, the same reason the board's
+  Set state reads its rendered columns: hiding can remove a value's first carrier, so
+  the collected order and the minted order are not always the same, and the frame on
+  screen is the one that can be checked. Membership never narrows with what is hidden.
   Removal actions (Clear horizon, Unschedule, an emptied field in the entry) appear
   only while the note CARRIES the key (`item.axisKeys`, presence not value), so no
   offered action can write nothing, and they delete the key rather than blanking it.

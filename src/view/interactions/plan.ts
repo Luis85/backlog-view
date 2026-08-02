@@ -25,20 +25,34 @@ export function carriesDates(item: BacklogItem): boolean {
 
 /**
  * The horizons this row may be given: the declared vocabulary plus the values the
- * results already carry (the buckets the roadmap draws), with the item's own on the
- * end when it is on neither list — a menu that cannot show what the item *is* loses
- * it on the next pick.
+ * results already carry, with the item's own on the end when it is on neither list —
+ * a menu that cannot show what the item *is* loses it on the next pick.
+ *
+ * On the roadmap the BUCKETS LEAD, read off the frame as drawn — the board's rule for
+ * Set state, which offers its rendered columns rather than a list rebuilt from the
+ * settings that then has to agree with them. It matters here for the same reason: a
+ * focus level or a hidden row can remove a value's first carrier, so the order the
+ * axis mints its buckets in and the order the model met those values in are not
+ * always the same, and the one the user can see is the one to follow. Values no drawn
+ * bucket covers still follow, so what is reachable never depends on what is on screen.
  */
 function horizonChoices(host: BacklogViewHost, item: BacklogItem): string[] {
-	const values = horizonMenuValues(host.settings, host.model?.observedHorizons ?? []);
+	const vocabulary = horizonMenuValues(host.settings, host.model?.observedHorizons ?? []);
+	const drawn = host.projection === 'roadmap' ? (host.roadmap?.roadmap.buckets ?? []).map((b) => b.value) : [];
+	const values = [...drawn, ...vocabulary.filter((v) => !includesValue(drawn, v))];
 	const current = item.horizon.value;
-	if (current === null || values.some((v) => v.toLowerCase() === current.toLowerCase())) return values;
+	if (current === null || includesValue(values, current)) return values;
 	return [...values, current];
+}
+
+/** Placement values match case-insensitively, the same matching that fills the buckets. */
+function includesValue(values: string[], value: string): boolean {
+	return values.some((v) => v.toLowerCase() === value.toLowerCase());
 }
 
 function isCurrentHorizon(item: BacklogItem, value: string): boolean {
 	const current = item.horizon.value;
-	return current !== null && current.toLowerCase() === value.toLowerCase();
+	return current !== null && includesValue([value], current);
 }
 
 /** The Set horizon list: every bucket this base can place a row in, and the way out of them. */
