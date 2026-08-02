@@ -499,7 +499,7 @@ anyone else's view.
 The board needs a **state property**. Without one it shows guidance and a button that sets
 it up. The **Workflow states (in order)** list is optional: with it, those are the columns,
 in that order. Without it, the board draws the states your notes actually carry — plus a
-**Done** column even if nothing is in it yet, when none of the states you carry already
+done column even if nothing is in it yet, when none of the states you carry already
 counts as done, so marking an item done is always one click away. And even with a list
 configured, a value one of your **results** carries that the list omits still gets a
 column, so no card of yours is ever homeless.
@@ -516,7 +516,7 @@ matches no column, it sits in the no-state column.
 | Create in a column | Toolbar **New**, then drag — creation from a column is not built yet |
 
 - **Columns** are the no-state column first, then **Workflow states (in order)** if you
-  set it — or, left unconfigured, the states your notes actually carry plus a **Done**
+  set it — or, left unconfigured, the states your notes actually carry plus a done
   column even if nothing is in it yet, when none of those already counts as done — and
   finally one more column per observed result value neither names, so a stray status
   still gets a column of its own rather than losing its card.
@@ -646,7 +646,7 @@ Open the view options in the Bases toolbar to configure:
 | Horizons (in order) | `Now, Next, Later` | The buckets the horizon axis draws, in order. Naming a **Horizon property** is enough to turn the axis on — the values ship populated, so you only need to edit this list to rename or add buckets |
 | Start date property / Target date property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
 | Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
-| Show completed items | on | Off hides fully-done subtrees from the tree (only while a state property is set); nothing about ranking or rollups changes |
+| Show completed items | on | Off hides fully-done subtrees from every projection (only while a state property is set); nothing about ranking or rollups changes |
 | Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
