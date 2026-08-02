@@ -132,10 +132,16 @@ function parentsOf(typeName: string): string[] {
  * `` `todo` `` must render as itself rather than closing the span early.
  */
 function code(value: string): string {
-	const longest = Math.max(0, ...[...value.matchAll(/`+/g)].map((m) => m[0].length));
+	// A line break first, and inside the span rather than around it: a table row is one
+	// line, so a state or a property name holding one splits the row in half and the rest
+	// of the table stops being a table. In prose it merely renders as a space, which is a
+	// value shown as something other than what it is. Spelled the way the example block
+	// spells it, since a reader meets both.
+	const shown = value.replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+	const longest = Math.max(0, ...[...shown.matchAll(/`+/g)].map((m) => m[0].length));
 	const fence = '`'.repeat(longest + 1);
-	const pad = value.startsWith('`') || value.endsWith('`') ? ' ' : '';
-	return `${fence}${pad}${value}${pad}${fence}`;
+	const pad = shown.startsWith('`') || shown.endsWith('`') ? ' ' : '';
+	return `${fence}${pad}${shown}${pad}${fence}`;
 }
 
 /**

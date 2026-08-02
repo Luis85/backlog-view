@@ -128,8 +128,10 @@ the view options can rename.
 - **3f — a value or a key contains markup.** Everything interpolated is user data: a state
   named `Waiting | external` ends a table cell, a folder holding a backtick closes a code
   span, and a key containing a colon turns the example's frontmatter into a different
-  mapping. Each value is fenced and escaped for the place it lands in, so the document a
-  reader copies from is the document the configuration describes.
+  mapping, and a line break in either splits the table row it sits in — a row is one line,
+  and half a table is not a table. Each value is fenced and escaped for the place it lands
+  in, and a break is shown the way the example block spells it rather than emitted, so the
+  document a reader copies from is the document the configuration describes.
 - **3g — the reader wants to put an item at the top level.** The contract states the
   **empty** parent value, not only the link-shaped one, because that is what this plugin
   writes for a top-level item and because in folder mode the two differ: an empty value

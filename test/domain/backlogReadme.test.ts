@@ -372,6 +372,18 @@ describe('backlogReadmeContent', () => {
 		expect(readme(settingsWith({ folderHierarchy: false }), [])).toContain('| `parent` | Every item except a root |');
 	});
 
+	it('keeps a line break out of the table it would otherwise split', () => {
+		// A row is one line: a state or a key holding a break ends the row early and the
+		// rest of the table stops parsing. Shown the way the example block shows it.
+		const content = readme(settingsWith({ stateKey: 'sta\ntus', states: ['Do\ning'] }));
+		expect(content).toContain('| `sta\\ntus` |');
+		expect(content).toContain('| `Do\\ning` |');
+		// Every row of both tables is still a row.
+		for (const line of content.split('\n')) {
+			if (line.startsWith('| `')) expect(line.endsWith('|')).toBe(true);
+		}
+	});
+
 	it('says a type of the reader s own does not by itself enrol a parentless note', () => {
 		// pruneOutsideHierarchy seeds only on ALL_TYPES, so "declare a type" would send
 		// an outside editor to write a custom-typed root the view then drops.
