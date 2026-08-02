@@ -1,8 +1,9 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { CivilDate, sameValue } from '../../domain/noteFields';
+import { sameValue } from '../../domain/noteFields';
 import { horizonMenuValues, optionalKeyFor } from '../../domain/settings';
+import { formatCivil } from '../../domain/timeline';
 import { computeHorizonWrites, computeScheduleWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 
@@ -94,12 +95,6 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
 			.setIcon('eraser')
 			.onClick(() => void chooseHorizon(host, item, null)),
 	);
-}
-
-/** `YYYY-MM-DD`, the shape the prompt asks for and the one every reader here accepts. */
-function formatCivil(date: CivilDate): string {
-	const pad = (n: number) => String(n).padStart(2, '0');
-	return `${date.year}-${pad(date.month)}-${pad(date.day)}`;
 }
 
 /**
