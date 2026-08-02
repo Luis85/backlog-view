@@ -229,6 +229,33 @@ describe('moving between horizons without a drag', () => {
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Now item.md']);
 	});
 
+	it('Alt+Left cleans up a shelved card whose key still holds something', async () => {
+		const vault = horizonVault();
+		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 40, horizon: { when: 'soon' } } });
+		vault.addFile('Stub.md', { frontmatter: { type: 'Epic', order: 50, horizon: '' } });
+		const { view, containerEl } = makeRoadmap(vault);
+		const tree = treeOf(containerEl);
+
+		// Both are DRAWN on the shelf and neither is ON it — the note still holds
+		// something, and removing it is the write the shelf drop and Clear horizon
+		// both plan for the same card. The keyboard is the third input to one move, so
+		// it must reach it too; indexing these at stop 0 made the edge rule swallow it.
+		for (const path of ['Garbled.md', 'Stub.md']) {
+			view.selectItem(view.model?.byPath.get(path) as never);
+			key(tree, 'ArrowLeft', { altKey: true });
+			await flush();
+			expect('horizon' in vault.fm(path)).toBe(false);
+		}
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Garbled.md', 'Stub.md']);
+
+		// And the edge still holds for a card with no key at all: nothing to clean up,
+		// so nothing is written and the undo slot is not spent.
+		view.selectItem(view.model?.byPath.get('Untriaged.md') as never);
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+		expect(vault.writeLog).toHaveLength(2);
+	});
+
 	it('holds at the last bucket rather than wrapping', async () => {
 		const vault = horizonVault();
 		const { view, containerEl } = makeRoadmap(vault);

@@ -259,7 +259,16 @@ free of runtime code so imports stay cycle-free.
 - The Alt+arrow ladder leads with the SHELF, then the buckets as they render. The shelf
   is the roadmap's no-state column — where un-placing lives, and where an untriaged card
   enters the axis from, which is also where the specified lift arrives from the shelf
-  (`docs/requirements/Keyboard and menu on the roadmap.md`). Edges hold rather than wrap.
+  (`docs/requirements/Keyboard and menu on the roadmap.md`). Edges hold rather than wrap
+  — **except that the shelf edge is not an edge for a card that is drawn there without
+  being on it.** An empty or unreadable key reads as absence, so such a card indexes at
+  stop 0 while its note still holds something, and reaching the shelf is a real cleanup:
+  the write the shelf drop and Clear horizon both plan for that same card. Holding the
+  edge there left the keyboard unable to express a move its two siblings could, which is
+  the "one move, three inputs" rule failing by omission rather than by disagreement —
+  the harder kind to notice, since nothing produces a wrong write, one input just goes
+  quiet. `offLadder` in `handleRoadmapMoveKey` is that case, and it uses the same
+  presence-versus-value split `placementLabel` does.
 - An EMPTY shelf still renders on the horizon axis, carrying `pbl-shelf-empty`: the DOM
   keeps it so a drop has somewhere to land, and the stylesheet keeps it out of the layout
   until a drag is live. A target that exists only while it is occupied is one nothing can

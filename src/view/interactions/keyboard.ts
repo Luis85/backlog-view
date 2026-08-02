@@ -379,13 +379,22 @@ function handleRoadmapMoveKey(
 	// key this handler does not act on is left to whatever else wants it.
 	if (!stops || card.outsideFilter) return;
 	evt.preventDefault();
-	// An unreadable value shelves the card, and `sameValue` reads it as absence —
-	// so the stop it moves from is the one it is drawn in, not the one it claims.
+	// An unreadable or empty value shelves the card, and `sameValue` reads both as
+	// absence — so the stop it moves FROM is the one it is drawn in, not the one it
+	// claims.
 	const current = stops.findIndex((stop) => sameValue(stop, card.horizon.value));
-	const target = current + (evt.key === 'ArrowRight' ? 1 : -1);
+	if (current < 0) return;
+	const step = evt.key === 'ArrowRight' ? 1 : -1;
+	// …but it is drawn on the shelf without being ON it: the note still holds
+	// something, so reaching the shelf is a real, undoable cleanup — the very write
+	// the shelf drop and Clear horizon plan for the same card. Indexing it at stop 0
+	// made the shelf edge look like an edge for it, and the keyboard alone could not
+	// express a move its two siblings both could.
+	const offLadder = card.horizon.value === null && card.axisKeys.horizon;
+	const target = offLadder && step < 0 ? 0 : current + step;
 	// The edges hold rather than wrap: a card in the last bucket has nowhere further
 	// to advance, and wrapping would un-place it unasked.
-	if (current < 0 || target < 0 || target >= stops.length) return;
+	if (target < 0 || target >= stops.length) return;
 	void host.performHorizonMove(card, stops[target]);
 }
 
