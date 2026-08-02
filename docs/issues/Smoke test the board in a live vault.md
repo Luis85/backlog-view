@@ -50,6 +50,26 @@ carries states.
 - **Scale** — a few hundred cards render and drag without jank; the tree's render
   budget applies to the board's passes too.
 
+## Runs
+
+| Date | Against | Outcome |
+| --- | --- | --- |
+| 2026-08-02 | **0.3.0** on Windows desktop, after the esbuild 0.28 and TypeScript 6 upgrades (PRs #45, #48) | Every desktop line passes. The plugin loads clean, cards drag between columns, the mode toggle and collapsed columns survive a restart, auto-scroll engages only toward a pane edge, the drag preview reads over both themes, reduced motion behaves, and a few hundred cards render and drag without jank. Nothing needed adjusting in `styles.css`. |
+
+That run also carried a second job. `@atlaskit` is the only third-party code in
+`main.js`, and esbuild is what inlines it, so dragging a card is what verified the
+bundler major end to end — the one thing the structural bundle checks in PR #45 could
+not do. A `-noEmit` compiler bump cannot reach the bundle at all, so TypeScript 6 needed
+nothing here.
+
+**Two lines remain unrun, and they are why this issue stays open:**
+
+- **Touch, on a phone or tablet** — unanswerable without a device, and the one carrying
+  a real decision rather than a check: whether drag ships on touch or stays menu-only.
+  See [[Pragmatic drag and drop for the board]].
+- **Without a pointer** — the screen-reader pass. A desktop *can* run it; this run did
+  not. The live region's announcement delay is the specific unknown.
+
 ## Acceptance criteria
 
 - Every line above checked in a live vault, with anything adjusted landing in
