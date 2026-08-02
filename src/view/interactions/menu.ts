@@ -5,6 +5,7 @@ import { BacklogItem } from '../../domain/model';
 import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { todayStamp } from '../../domain/noteFields';
 import { stateMenuValues } from '../../domain/settings';
+import { cardPaths, hiddenMatches } from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
@@ -49,6 +50,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	// there is no rank to move within and no sibling to indent under.
 	if (!host.boardMode) addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
+	addMatchSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi
@@ -186,6 +188,36 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
 	const menu = new Menu();
 	addTagItems(host, menu, item);
 	showMenuForClick(menu, evt);
+}
+
+/**
+ * The matches hiding under this card, as menu entries.
+ *
+ * The board is one tab stop by design, so the match links on a card face carry
+ * `tabindex="-1"` — and the menu is their keyboard path, exactly as it is for the
+ * tree's add button and state chip. Without it those links would be pointer-only, and
+ * a match that only a mouse can reach is the very failure the card face exists to
+ * prevent: found, counted in the rollup, and impossible to get to.
+ */
+function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	const board = host.boardMode ? host.board?.board : null;
+	if (!board || !host.isFiltering() || host.isFilterMatch(item)) return;
+	const carded = cardPaths(board);
+	const matches = hiddenMatches(
+		item,
+		(child) => host.isFilterMatch(child),
+		(child) => carded.has(child.file.path),
+	);
+	if (matches.length === 0) return;
+	menu.addSeparator();
+	for (const match of matches) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(`Open match "${match.title}"`)
+				.setIcon('search')
+				.onClick((evt) => host.openItem(match, evt)),
+		);
+	}
 }
 
 /** One offer in Set state: the value it writes (null removes the key) and its name. */

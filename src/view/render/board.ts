@@ -6,7 +6,7 @@ import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { BoardDragController } from '../interactions/boardDrag';
 import { showItemMenu } from '../interactions/menu';
-import { boardColumns, BoardColumn, BoardModel, hiddenMatches } from '../../domain/board';
+import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 
@@ -34,7 +34,7 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDra
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
 	// Which items have a card of their own, so a card naming the matches below it can
 	// skip the ones already on screen. Built once per pass rather than searched per card.
-	const carded = new Set(board.columns.flatMap((col) => col.cards.map((card) => card.file.path)));
+	const carded = cardPaths(board);
 	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd, carded));
 	dnd.wireBoard(boardEl);
 	renderBoardAdvisory(ctx, boardEl, board);
@@ -259,6 +259,14 @@ function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem
 			// one note the user demonstrably did not click.
 			evt.stopPropagation();
 			host.openItem(match, evt);
+		});
+		// A middle click never fires `click`, so without its own handler it would reach
+		// the card's `auxclick` and open the parent in a new tab — the same wrong note,
+		// by the one route stopping the primary click does not cover.
+		link.addEventListener('auxclick', (evt) => {
+			if (evt.button !== 1) return;
+			evt.stopPropagation();
+			host.openItemInNewTab(match);
 		});
 	}
 }

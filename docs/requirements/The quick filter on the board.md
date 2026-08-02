@@ -8,6 +8,7 @@ created: 2026-08-01
 closed: 2026-08-02
 files:
   - src/view/filterState.ts
+  - src/view/interactions/menu.ts
   - src/view/backlogView.ts
   - src/domain/board.ts
   - src/view/render/board.ts
@@ -101,8 +102,12 @@ against cannot disagree about what is in a column.
 Reachability: `hiddenMatches` in `src/domain/board.ts` walks a card's subtree for
 matches that have no card of their own, stopping at anything already rendered so one
 match is never named by two cards; `src/view/render/board.ts` renders them as
-`tabindex="-1"` buttons, the same rule the tree's per-row controls follow, and stops
-the click from also opening the card it hangs under. It matters most under focus,
+`tabindex="-1"` buttons, the same rule the tree's per-row controls follow, and
+`addMatchSection` in `src/view/interactions/menu.ts` puts the same matches in the card
+menu — the keyboard path those controls always take here, since the board is one tab
+stop. Each link stops its click and its `auxclick` from reaching the card beneath: a
+middle click never fires `click`, so stopping the primary one alone still opened the
+parent in a new tab. It matters most under focus,
 where the only cards are the focus level's and a match three levels down would
 otherwise be found, counted in the rollup, and impossible to get to.
 

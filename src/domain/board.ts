@@ -150,6 +150,11 @@ function workflowColumns(
 	return { columns, byValue, noState };
 }
 
+/** Every path with a card of its own — the "already on screen" test `hiddenMatches` takes. */
+export function cardPaths(board: BoardModel): Set<string> {
+	return new Set(board.columns.flatMap((col) => col.cards.map((card) => card.file.path)));
+}
+
 /**
  * The matches hiding under a card: items in its subtree that the quick filter matched
  * and that no card of their own puts on screen. A focused board shows one card per

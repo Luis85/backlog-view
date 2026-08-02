@@ -220,7 +220,12 @@ free of runtime code so imports stay cycle-free.
   cards. It matters most under focus, where the only cards are the focus level's: a
   match three levels down would otherwise be found, counted in the rollup, and
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
-  control, and each stops its click from also opening the card it hangs under.
+  control, so the card MENU carries the same matches — that is their keyboard path, the
+  same answer the tree gives for the add button and the state chip, and without it the
+  links would be pointer-only and the feature would fail at its own purpose. Each link
+  stops both its click AND its `auxclick` from reaching the card beneath: a middle click
+  never fires `click`, so stopping the primary one alone still opened the parent in a
+  new tab.
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by
   `uniqueElementId` because that attribute resolves across the whole document and two

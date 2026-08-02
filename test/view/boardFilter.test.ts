@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { Menu } from '../helpers/obsidian-mock';
 import { flush, makeView, useViewHarness } from '../helpers/view';
 import { boardDrag } from '../helpers/dnd';
 import {
@@ -163,5 +164,70 @@ describe('a card kept only by a match below it', () => {
 	it('names nothing at all when no filter is running', () => {
 		const { containerEl } = board(deepVault(), { focusLevel: 'Epic' });
 		expect(matchesOn(containerEl, 'Epic A')).toEqual([]);
+	});
+});
+
+describe('reaching a hidden match without a pointer', () => {
+	/** An epic whose matching work sits two levels down, below the focus line. */
+	function deepVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
+		vault.addFile('PBI Logout.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Feature A1' });
+		return vault;
+	}
+
+	function cardMenu(containerEl: HTMLElement, title: string): Menu {
+		cardByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error(`no menu shown for card: ${title}`);
+		return menu;
+	}
+
+	it('the card menu offers every match, which is the keyboard path', () => {
+		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
+		view.setFilter('Log');
+
+		// The links on the card face are tabindex="-1" like every other per-row control,
+		// so the menu is how a keyboard reaches them — the same answer the tree gives.
+		const titles = cardMenu(containerEl, 'Epic A').items.map((i) => i.titleText);
+		expect(titles).toContain('Open match "PBI Login"');
+		expect(titles).toContain('Open match "PBI Logout"');
+	});
+
+	it('opens the match, not the card it hangs under', () => {
+		const vault = deepVault();
+		const { containerEl, view } = board(vault, { focusLevel: 'Epic' });
+		view.setFilter('Login');
+
+		cardMenu(containerEl, 'Epic A').item('Open match "PBI Login"')?.click();
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
+	});
+
+	it('offers nothing when no filter is running, or when the card matched itself', () => {
+		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
+		const matchEntries = (): string[] =>
+			cardMenu(containerEl, 'Epic A')
+				.items.map((i) => i.titleText)
+				.filter((t) => t.startsWith('Open match'));
+
+		expect(matchEntries()).toEqual([]);
+		view.setFilter('Epic A');
+		expect(matchEntries()).toEqual([]);
+	});
+
+	it('a middle click on a match opens the match in a new tab, not the parent', () => {
+		const vault = deepVault();
+		const { containerEl, view } = board(vault, { focusLevel: 'Epic' });
+		view.setFilter('Login');
+
+		// A middle click never fires `click`, so the card's own auxclick handler would
+		// otherwise take it and open the epic.
+		const link = containerEl.querySelector<HTMLElement>('.pbl-card-match');
+		link?.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
 	});
 });
