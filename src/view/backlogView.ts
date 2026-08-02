@@ -399,12 +399,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		else if (this.selectedBoardColumn !== null) {
 			this.selectBoardColumn(Math.min(this.selectedBoardColumn, content.board.colEls.length - 1));
 		}
-		this.treeEl.scrollTop = scrollTop;
-		this.treeEl.scrollLeft = scrollLeft;
-		// The horizontal offset belongs to the content that made it — restored,
-		// corrected, reset or replaced by the anchor policy `anchorScrollLeft` states.
+		// Both offsets belong to the content that made them — restored, corrected,
+		// reset or replaced by the anchor policy `anchorScrollLeft` states. Vertical
+		// keeps the same rule without the centering: same content keeps the reader's
+		// place, a switch starts at the top — a tree's depth means nothing to buckets.
 		const todayLeft = this.roadmap?.todayLeft ?? null;
 		const drawn = todayLeft != null ? 'dates' : this.roadmap ? 'horizons' : projection;
+		this.treeEl.scrollTop = drawn === this.scroll.content ? scrollTop : 0;
 		this.treeEl.scrollLeft = anchorScrollLeft(this.scroll, drawn, todayLeft, scrollLeft, this.treeEl.clientWidth);
 		this.scroll = { content: drawn, todayLeft };
 		this.selection.resyncAfterRender();

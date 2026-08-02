@@ -265,6 +265,20 @@ describe('the shared scroller across projections', () => {
 		expect(scroller(containerEl).scrollLeft).toBe(0);
 	});
 
+	it('starts a switched projection at the top — vertical depth belongs to its content too', () => {
+		const vault = roadmapVault();
+		const { view, containerEl } = makeView(vault, { ...AXES }, { collapsed: true });
+		scroller(containerEl).scrollTop = 300;
+
+		view.setProjection('roadmap');
+		expect(scroller(containerEl).scrollTop).toBe(0);
+
+		scroller(containerEl).scrollTop = 120;
+		refresh(view, vault);
+		// A same-content data update keeps the reader's place.
+		expect(scroller(containerEl).scrollTop).toBe(120);
+	});
+
 	it('keeps the calendar position when a data update moves the window origin', () => {
 		const vault = datedVault();
 		const { view, containerEl } = roadmapView(vault, { ...DATES });
