@@ -299,26 +299,30 @@ function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolea
  * are the scheduling feature's work, beside the writes they commit.
  */
 function handleRoadmapKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
-	// Keys bubbling out of a focused control drive that control alone; the chrome
-	// keys run first; and navigation is unmodified keys only — the roadmap's Alt
-	// work is the lift the scheduling feature specifies, so until it lands a
-	// modified arrow must not silently move the selection instead.
+	// Keys bubbling out of a focused control drive that control alone, and the
+	// chrome keys run first, exactly as on the board. Alt is reserved whole: the
+	// roadmap's move vocabulary is the lift the scheduling feature specifies, and
+	// until it lands a modified arrow must not silently move the selection instead.
 	if (evt.target !== evt.currentTarget) return;
 	if (handleBoardChromeKey(host, evt)) return;
-	if (evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
+	if (evt.altKey) return;
 	const cards = host.roadmap?.cards ?? [];
 	if (cards.length === 0) return;
 	const currentIdx = host.selectedPath ? cards.findIndex((c) => c.file.path === host.selectedPath) : -1;
-	const next = nextRoadmapIndex(cards.length, currentIdx, evt.key);
-	if (next !== null) {
-		evt.preventDefault();
-		host.selectItem(cards[next]);
-		return;
+	// Navigation is unmodified keys only; other chords fall through to the card
+	// keys, so Ctrl+Enter and Shift+F10 mean here what they mean everywhere.
+	if (!evt.ctrlKey && !evt.metaKey && !evt.shiftKey) {
+		const next = nextRoadmapIndex(cards.length, currentIdx, evt.key);
+		if (next !== null) {
+			evt.preventDefault();
+			host.selectItem(cards[next]);
+			return;
+		}
 	}
-	if (evt.key === 'Enter' && currentIdx >= 0) {
-		evt.preventDefault();
-		host.openItem(cards[currentIdx], evt);
-	}
+	// The selected card takes the board's own card keys — Enter opens, and the
+	// menu keys reach the one context menu, which cards that are not tab stops
+	// have no other keyboard route to.
+	if (currentIdx >= 0) handleBoardCardKey(host, cards[currentIdx], evt);
 }
 
 /** The card a navigation key moves to, or null for a key that is not navigation. */

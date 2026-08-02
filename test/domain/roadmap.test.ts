@@ -209,6 +209,23 @@ describe('context rows on the roadmap', () => {
 		expect(roadmap.shelf).toEqual([]);
 	});
 
+	it("sorts where its first visible result would — the board's own rule", () => {
+		const settings = axisSettings();
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Now' } });
+		const entries = vault.entries().filter((e) => e.file.path !== 'Epic A.md');
+		const model = buildModel(vault.app, entries, { ...settings, focusLevel: 'Epic' });
+
+		const roadmap = roadmapOf(model, settings, 'horizons');
+
+		// Epic A is loaded after every result, so its raw entryIndex would sink it to
+		// the bucket's end. It interleaves where F1 — the result it places — sorts,
+		// so the same focused items cannot appear in a different order per projection.
+		expect(titles(roadmap.buckets[0].cards)).toEqual(['Epic A', 'Epic B']);
+	});
+
 	it('is never placed by its own dates on the timeline', () => {
 		const settings = axisSettings();
 		const roadmap = roadmapOf(

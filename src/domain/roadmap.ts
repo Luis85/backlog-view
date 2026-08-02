@@ -1,3 +1,4 @@
+import { firstPlacedIndex } from './board';
 import { BacklogItem, BacklogModel } from './model';
 import { BacklogSettings } from './settings';
 import { DateSpan, daysBetween } from './timeline';
@@ -112,7 +113,7 @@ export function buildRoadmap(
 ): RoadmapModel {
 	const rows = roadmapRows(model, visible);
 	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 };
-	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap);
+	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
 	else deriveBars(rows, roadmap);
 	const results = rows.filter((item) => !item.outsideFilter).length;
 	roadmap.placedCount = results - roadmap.shelf.length;
@@ -125,7 +126,12 @@ export function buildRoadmap(
  * a context value never adds one, and a context row never shelves, because the
  * shelf is a statement about the results.
  */
-function deriveBuckets(rows: BacklogItem[], settings: BacklogSettings, roadmap: RoadmapModel): void {
+function deriveBuckets(
+	rows: BacklogItem[],
+	settings: BacklogSettings,
+	roadmap: RoadmapModel,
+	visible: (item: BacklogItem) => boolean,
+): void {
 	const buckets = settings.horizonValues.map(
 		(value): HorizonBucket => ({ value, declared: true, cards: [], count: 0 }),
 	);
@@ -136,8 +142,19 @@ function deriveBuckets(rows: BacklogItem[], settings: BacklogSettings, roadmap: 
 	for (const item of rows) {
 		if (item.outsideFilter) placeContext(item, byValue, roadmap);
 	}
-	// Within a bucket, order is the Base's own sort — never a stored bucket rank.
-	for (const bucket of buckets) bucket.cards.sort((a, b) => a.entryIndex - b.entryIndex);
+	// Within a bucket, order is the Base's own sort — never a stored bucket rank —
+	// with a context card interleaved where its first visible result would sort,
+	// the board's own rule: its raw entryIndex is a load position, and sorting by
+	// it would sink every context card to the bottom of its bucket.
+	const sortIndex = new Map<BacklogItem, number>();
+	for (const bucket of buckets) {
+		for (const card of bucket.cards) {
+			sortIndex.set(card, card.outsideFilter ? firstPlacedIndex(card, visible) : card.entryIndex);
+		}
+	}
+	for (const bucket of buckets) {
+		bucket.cards.sort((a, b) => (sortIndex.get(a) ?? 0) - (sortIndex.get(b) ?? 0) || a.entryIndex - b.entryIndex);
+	}
 	roadmap.buckets = buckets;
 }
 

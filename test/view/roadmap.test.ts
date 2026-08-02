@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { key, makeView, projectionButton, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { bucketNames, bucketsOf, shelfTitles } from '../helpers/roadmap';
@@ -180,6 +181,20 @@ describe('roadmap keyboard support', () => {
 		key(tree, 'Home');
 		key(tree, 'Enter');
 		expect(vault.opened.map((o) => o.path)).toEqual(['Placed.md']);
+	});
+
+	it('opens the card menu from the keyboard: ContextMenu, and Shift+F10', () => {
+		const { containerEl } = roadmapView(roadmapVault());
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown');
+
+		key(tree, 'ContextMenu');
+		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
+
+		Menu.lastShown = null;
+		key(tree, 'F10', { shiftKey: true });
+		// Cards are not tab stops, so these keys are the menu's only keyboard route.
+		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
 	});
 
 	it('keeps the chords: Escape clears the selection, / reaches the filter', () => {
