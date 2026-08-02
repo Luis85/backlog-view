@@ -2,9 +2,9 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
-import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
-import { todayStamp } from '../../domain/noteFields';
+import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasDateAxis, hasHorizonAxis } from '../../domain/roadmap';
+import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { cardPaths, hiddenMatches } from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -224,7 +224,11 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	}
 }
 
-/** One offer in Set state: the value it writes (null removes the key) and its name. */
+/**
+ * One offer in Set state: the state it writes (null removes the key) and the name it
+ * wears. The two differ on the board, where the entry is named for the COLUMN rather
+ * than for its own value, so "No state" reads as a place instead of as a silence.
+ */
 interface StateChoice {
 	state: string | null;
 	label: string;
@@ -249,15 +253,9 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
 	const current = item.stateValue;
-	const listed = current !== null && values.some((v) => v.toLowerCase() === current.toLowerCase());
+	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
 	return all.map((state) => ({ state, label: state }));
-}
-
-/** True when this offer is the state the item already holds — no-state included. */
-function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
-	if (choice.state === null) return item.stateValue === null;
-	return item.stateValue !== null && item.stateValue.toLowerCase() === choice.state.toLowerCase();
 }
 
 /**
@@ -274,11 +272,21 @@ function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoi
 	return host.applySafely(computeStateWrites(item, choice.state, host.settings, todayStamp()));
 }
 
+/**
+ * Render Set state's offers, checking the one the item already holds.
+ *
+ * "Already holds" is asked of the PLAN — an entry is checked exactly when picking
+ * it would write nothing — rather than by a comparison written beside the plan and
+ * expected to agree with it. Those two drift the moment either side learns a case
+ * the other has not: an entry checked as current whose pick still writes spends the
+ * undo slot on a change nobody asked for. One question, asked once. `addHorizonItems`
+ * in `plan.ts` follows the same rule against its own planner.
+ */
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			if (isCurrentState(item, choice)) si.setChecked(true);
+			if (computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0) si.setChecked(true);
 		});
 	}
 }

@@ -16,10 +16,3 @@ documents about itself.
 **Outcome** — The same backlog can be read as a tree, a board or a roadmap, and choosing
 costs nothing: no second data model, no second configuration, and no item hidden by the
 projection you happen to be looking at.
-
-## Use cases
-
-- [[Three projections, one toggle]] — the persisted mode, one value wider.
-- [[Horizons or dates]] — the axis is declared, never guessed.
-- [[The unplaced shelf]] — what the axis cannot place stays visible and counted.
-- [[Roadmap empty states]] — why the roadmap is empty, said out loud.

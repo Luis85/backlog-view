@@ -110,6 +110,19 @@ export function normalizeTag(input: string): string {
 	return /[^\p{N}]/u.test(tag) ? tag : '';
 }
 
+/**
+ * Two frontmatter values naming the same thing. Case-insensitive, because that is
+ * how every vocabulary in this view matches — a state to its column, a horizon to
+ * its bucket — and absence is a value rather than a missing one, so "no state" and
+ * "no horizon" compare like anything else. One predicate, because a plan that said
+ * "unchanged" on a different rule than the menu's checkmark would disagree about
+ * what the user is looking at.
+ */
+export function sameValue(a: string | null, b: string | null): boolean {
+	if (a === null || b === null) return a === b;
+	return a.toLowerCase() === b.toLowerCase();
+}
+
 export function readString(value: unknown): string | null {
 	if (typeof value === 'string') {
 		const trimmed = value.trim();

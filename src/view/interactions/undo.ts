@@ -81,6 +81,27 @@ export class UndoRecovery {
 		return remainder;
 	}
 
+	/**
+	 * What the undo slot becomes once a replay of `restores` has run — the whole
+	 * verdict in one place, because "completed" and "failed partway" are two answers
+	 * to one question and the view had them as two branches beside each other. A
+	 * replay that threw on the FIRST file installed nothing and finished nothing, so
+	 * the original slot (and any stash pointed at it) simply stays for the retry.
+	 */
+	settle(
+		ok: boolean,
+		restores: RestoreWrite[],
+		batch: RestoreWrite[],
+		tracker: ReplayTracker,
+		slot: RestoreWrite[] | null,
+	): RestoreWrite[] | null {
+		if (ok) return this.completed(restores, slot);
+		if (tracker.finished > 0 && tracker.finished < batch.length) {
+			return this.failed(restores, batch, tracker.finished, slot);
+		}
+		return slot;
+	}
+
 	/** The stashed redo waiting on `restores`; [] when the stash is for another batch. */
 	private carried(restores: RestoreWrite[]): RestoreWrite[] {
 		return this.stash?.forSlot === restores ? this.stash.redo : [];

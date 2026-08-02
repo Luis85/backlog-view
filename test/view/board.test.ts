@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { flush, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
-import { boardDrag } from '../helpers/dnd';
+import { cardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf } from '../helpers/board';
 
 useViewHarness();
@@ -262,7 +262,7 @@ describe('focus on the board', () => {
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
 
 		// Inert: dragging it moves nothing and writes nothing.
-		boardDrag(card, columnByName(containerEl, 'Done'));
+		cardDrag(card, columnByName(containerEl, 'Done'));
 		await flush();
 		expect(vault.fm('Epic.md')['status']).toBe('Someday');
 		expect(vault.writeLog).toHaveLength(0);

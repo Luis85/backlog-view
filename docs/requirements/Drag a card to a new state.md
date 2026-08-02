@@ -9,7 +9,7 @@ files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
-  - src/view/interactions/boardDrag.ts
+  - src/view/interactions/cardDrag.ts
 ---
 
 # Drag a card to a new state
@@ -91,12 +91,19 @@ batch goes through the same `applySafely` in `src/view/backlogView.ts` — reach
 `performBoardMove`, which is now the one method all three inputs land on
 ([[Keyboard, menu and touch]]), so a drop cannot plan a different write than the key
 or the menu that mean the same thing, and it is where the move announces itself; and
-the gesture itself is `src/view/interactions/boardDrag.ts`, wiring the Pragmatic
+the gesture itself is `src/view/interactions/cardDrag.ts`, wiring the Pragmatic
 element adapter with edge auto-scroll and owning the live region the announcement
 speaks through. Driven by synthetic drag events in
 `test/view/boardMoves.test.ts` (helpers in `test/helpers/dnd.ts`), the storage
 round-trip in `test/storage/frontmatter.test.ts`, and the context-row invariant across
-the board's entry points in `test/view/contextRowWrites.test.ts`.
+the board's entry points in `test/view/contextCardWrites.test.ts`.
+
+The drag layer is shared with the roadmap since [[Moving between horizons]] — a card
+is the same card in both projections and so is the gesture, so what a drop MEANS is
+the caller's callback and everything else is one controller
+([[Share the card drag between projections]]). Nothing about a board move changed:
+`performBoardMove` still plans the same batch, and the drop-over class it highlights
+with is now the one every card target wears.
 
 Still Active, not Done, on one honest technicality: the over-limit acceptance
 criterion cannot be *exercised* until [[WIP limits]] exists to put a column over one.

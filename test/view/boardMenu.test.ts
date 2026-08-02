@@ -2,8 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
-import { boardDrag } from '../helpers/dnd';
-import { announced, boardVault, cardByTitle, columnByName, columnNames, makeBoard } from '../helpers/board';
+import { announced, cardDrag } from '../helpers/dnd';
+import { boardVault, cardByTitle, columnByName, columnNames, makeBoard } from '../helpers/board';
 
 useViewHarness();
 
@@ -243,7 +243,7 @@ describe('announcing every board move', () => {
 		vi.useFakeTimers();
 		const { containerEl } = makeBoard(boardVault());
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
 
 		// Old column and new: "moved" alone leaves a screen-reader user knowing
 		// something happened and not what.
@@ -268,10 +268,10 @@ describe('announcing every board move', () => {
 
 		// A card leaving no-state, and one arriving in it: the label is what the user
 		// can see on screen, never the empty value underneath it.
-		boardDrag(cardByTitle(containerEl, 'Feature B2'), columnByName(containerEl, 'Active'));
+		cardDrag(cardByTitle(containerEl, 'Feature B2'), columnByName(containerEl, 'Active'));
 		expect(await announced()).toBe('Moved "Feature B2" from No state to Active');
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'No state'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'No state'));
 		expect(await announced()).toBe('Moved "Epic A" from New to No state');
 	});
 
@@ -304,7 +304,7 @@ describe('announcing every board move', () => {
 		const { containerEl } = makeBoard(boardVault());
 
 		// Onto its own column: no write, so nothing changed and nothing is reported.
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'New'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'New'));
 
 		expect(await announced()).toBe('');
 	});

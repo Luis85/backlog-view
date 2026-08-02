@@ -4,7 +4,7 @@ import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './
 import { renderBadge, renderTitleText } from './rows';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
-import { BoardDragController } from '../interactions/boardDrag';
+import { CardDragController } from '../interactions/cardDrag';
 import { showItemMenu } from '../interactions/menu';
 import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
@@ -16,7 +16,7 @@ import { BacklogItem } from '../../domain/model';
  * title, the same resolved property columns, the rollup — so switching projections
  * costs no information about an item.
  */
-export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDragController): BoardSnapshot {
+export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
 	// Annotated rather than inferred from `ctx.host` so `npm run check` can see which
 	// host members this file uses — fallow resolves interface members through an
 	// explicit type and not through a property access. See the root CLAUDE.md.
@@ -36,7 +36,7 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDra
 	// skip the ones already on screen. Built once per pass rather than searched per card.
 	const carded = cardPaths(board);
 	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd, carded));
-	dnd.wireBoard(boardEl);
+	dnd.wireScroller(boardEl);
 	renderBoardAdvisory(ctx, boardEl, board);
 	return { board, colEls };
 }
@@ -95,7 +95,7 @@ function renderColumn(
 	ctx: RowContext,
 	colsEl: HTMLElement,
 	col: BoardColumn,
-	dnd: BoardDragController,
+	dnd: CardDragController,
 	carded: Set<string>,
 ): HTMLElement {
 	// The no-state column earns its room only while it holds cards; empty, it
@@ -118,8 +118,10 @@ function renderColumn(
 	renderColumnHeader(colEl, col, strip, filtering);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
 	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd, carded);
-	dnd.wireColumn(colEl, col);
-	dnd.wireBoard(cardsEl);
+	// What a drop on this column MEANS is the board's; the controller only resolves
+	// the card that was dragged and hands it here.
+	dnd.wireDropTarget(colEl, (item) => void ctx.host.performBoardMove(item, col.state));
+	dnd.wireScroller(cardsEl);
 	return colEl;
 }
 
@@ -173,7 +175,7 @@ function renderCard(
 	ctx: RowContext,
 	cardsEl: HTMLElement,
 	item: BacklogItem,
-	dnd: BoardDragController,
+	dnd: CardDragController,
 	carded: Set<string>,
 ): void {
 	const card = createCard(ctx, cardsEl, item);

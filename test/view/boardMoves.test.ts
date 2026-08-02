@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
 import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
-import { boardDrag } from '../helpers/dnd';
+import { cardDrag } from '../helpers/dnd';
 import {
 	boardVault,
 	cardByTitle,
@@ -21,7 +21,7 @@ describe('dragging a card to a new state', () => {
 		const vault = boardVault();
 		const { containerEl } = board(vault);
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
 		await flush();
 
 		expect(vault.fm('Epic A.md')['status']).toBe('Done');
@@ -38,18 +38,18 @@ describe('dragging a card to a new state', () => {
 		const card = cardByTitle(containerEl, 'Epic A');
 		card.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
 		// No dataTransfer on this event: pragmatic ignores it, and no drag starts.
-		expect(done.hasClass('pbl-col-drop-over')).toBe(false);
+		expect(done.hasClass('pbl-drop-over')).toBe(false);
 
-		boardDrag(card, done);
+		cardDrag(card, done);
 		// The gesture ended; the highlight must not survive it.
-		expect(done.hasClass('pbl-col-drop-over')).toBe(false);
+		expect(done.hasClass('pbl-drop-over')).toBe(false);
 	});
 
 	it('dropping on the no-state column removes the key, and undo puts it back', async () => {
 		const vault = boardVault();
 		const { containerEl } = board(vault);
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'No state'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'No state'));
 		await flush();
 		expect('status' in vault.fm('Epic A.md')).toBe(false);
 
@@ -63,13 +63,13 @@ describe('dragging a card to a new state', () => {
 		const { containerEl } = board(vault);
 
 		// A real change first, so there is an undo slot to protect.
-		boardDrag(cardByTitle(containerEl, 'Epic B'), columnByName(containerEl, 'Done'));
+		cardDrag(cardByTitle(containerEl, 'Epic B'), columnByName(containerEl, 'Done'));
 		await flush();
 		expect(vault.fm('Epic B.md')['status']).toBe('Done');
 		expect(vault.writeLog).toHaveLength(1);
 
 		// Same column, case-insensitively: Epic A's "New" is the New column.
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'New'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'New'));
 		await flush();
 		expect(vault.writeLog).toHaveLength(1);
 
@@ -88,7 +88,7 @@ describe('dragging a card to a new state', () => {
 		// values, and no-state ([[Keyboard, menu and touch]]): "Blocked" is observed,
 		// so consolidating another card into it is a legitimate, reversible write —
 		// the value written is the observed string, exactly.
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Blocked'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Blocked'));
 		await flush();
 		expect(vault.fm('Epic A.md')['status']).toBe('Blocked');
 	});
@@ -102,7 +102,7 @@ describe('dragging a card to a new state', () => {
 
 		// The adapter's registry is document-global; without the instance token this
 		// drop would write B's state key for a gesture made on A's board.
-		boardDrag(cardByTitle(a.containerEl, 'Epic A'), columnByName(b.containerEl, 'Done'));
+		cardDrag(cardByTitle(a.containerEl, 'Epic A'), columnByName(b.containerEl, 'Done'));
 		await flush();
 
 		expect(vaultA.fm('Epic A.md')['status']).toBe('New');
@@ -110,7 +110,7 @@ describe('dragging a card to a new state', () => {
 		expect(vaultA.writeLog).toHaveLength(0);
 		expect(vaultB.writeLog).toHaveLength(0);
 		// And the foreign target never even highlighted.
-		expect(columnByName(b.containerEl, 'Done').hasClass('pbl-col-drop-over')).toBe(false);
+		expect(columnByName(b.containerEl, 'Done').hasClass('pbl-drop-over')).toBe(false);
 	});
 
 	it('config problems block a board move, exactly as every other write', async () => {
@@ -118,7 +118,7 @@ describe('dragging a card to a new state', () => {
 		// Parent and order share a key: the gate must refuse everything.
 		const { containerEl } = board(vault, { orderProperty: 'note.parent' });
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
 		await flush();
 
 		expect(vault.fm('Epic A.md')['status']).toBe('New');

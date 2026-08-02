@@ -2,13 +2,15 @@
 type: PBI
 parent: "[[The horizon board]]"
 order: 20
-status: Open
+status: Active
 priority: P1
 created: 2026-08-01
 files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
+  - src/view/interactions/cardDrag.ts
+  - src/view/render/roadmap.ts
 ---
 
 # Moving between horizons
@@ -89,7 +91,54 @@ one undo.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The plan is a value write beside the state write
-in `src/domain/writePlan.ts`; the application, the key removal and its captured inverse
-are `src/storage/frontmatter.ts`; the gate it all runs through is the one in
-`src/view/backlogView.ts`.
+Built. The plan is `computeHorizonWrites` in `src/domain/writePlan.ts` — shared with
+[[Horizon and dates from the row]], which arrived at the same property from the row
+while this was being built, and whose shape won: one general `ItemWrite.axis` carrying
+every placement key, applied and captured through one `axisEntries` list in
+`src/storage/frontmatter.ts`, the only module that may write and the one that captures
+the removal's inverse as it lands. A null there REMOVES the key rather than blanking
+it, joining `removeStateKey` and `removeParentKey`. The batch goes through the same
+`applySafely` in `src/view/backlogView.ts`, reached via `performHorizonMove` — the one
+method every input on the roadmap lands on, so a drop cannot plan a different write than
+the key or the menu that mean the same thing, and the one place a move announces itself.
+The gesture is `src/view/interactions/cardDrag.ts`, the drag layer both card projections
+now share ([[Share the card drag between projections]]); the buckets and the shelf that
+receive it are `src/view/render/roadmap.ts`; `bucketLabelFor` in `src/domain/roadmap.ts`
+is what names a placement out loud, so an announcement can only say what is on screen.
+
+The two non-pointer paths: Alt+Left/Right in `src/view/interactions/keyboard.ts` steps
+one placement along a ladder that leads with the shelf — the roadmap's no-state column,
+which is also where the specified lift enters the axis from — and `Set horizon` in
+`src/view/interactions/plan.ts`, which is the row's action rather than the roadmap's and
+so appears in every projection the axis is configured for. On the roadmap it leads with
+the buckets as DRAWN, exactly as the board's `Set state` reads its columns, and
+`chooseHorizon` routes the pick through `performHorizonMove` so a pick and a drop onto
+one bucket are one write and one announcement; off the roadmap there is no frame to
+announce into and the same planned write goes straight through the gate. Its checkmark
+asks the planner rather than comparing values beside it, so an entry can never read as
+current while picking it would write. The way out of the vocabulary is `Clear horizon`,
+offered only while the note carries the key — the shelf's drop under the name the row
+menu gives it. Driven by synthetic drag events, keys and menus in
+`test/view/roadmapMoves.test.ts` (fixtures in `test/helpers/roadmap.ts`, the gesture in
+`test/helpers/dnd.ts`), the plan in `test/domain/writePlanAxis.test.ts`, the placement
+naming in `test/domain/roadmap.test.ts`, the storage round-trip in
+`test/storage/frontmatter.test.ts`, and the context-row invariant across every roadmap
+entry point in `test/view/contextCardWrites.test.ts`.
+
+**Extension 3b is NOT built.** A move whose new value takes the note out of the Base's
+own results applies, and the card leaves on the refresh, in silence — the behaviour
+everywhere else in the plugin, and not what this note asks for. It was built once and
+taken back out: the mechanism belongs to [[New cards in place]], which is still design,
+and building it from this note's one sentence cost eleven review findings across seven
+rounds without reaching a correct rule. The whole account, and what has to be decided
+before it is built again, is [[The outcome report was built from one sentence]].
+
+Still Active, not Done, on three honest counts. 3b is the first, above. The lift —
+Space, arrows, Space, Escape — is [[Keyboard and menu on the roadmap]]'s, and this
+note's 1b is met by the shortcut and the menu until it lands. And 1a's lane clause
+cannot be exercised at all: with [[Lanes on the roadmap]] unbuilt there is no second
+dimension for a same-bucket drop to cross, so "the reparent is planned alone" is
+specified and untested. What a live vault
+still has to confirm is the drag itself — jsdom dispatches the events but paints
+nothing, so the bucket highlight, the empty shelf appearing mid-drag and the drop
+feeling like a drop are [[Smoke test the visual changes]]'s to check.

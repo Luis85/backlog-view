@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { flush, makeView, useViewHarness } from '../helpers/view';
-import { boardDrag } from '../helpers/dnd';
+import { cardDrag } from '../helpers/dnd';
 import {
 	BOARD_WORKFLOW,
 	boardVault,
@@ -60,7 +60,7 @@ describe('the quick filter on the board', () => {
 		const { containerEl, view } = board(vault);
 
 		view.setFilter('Epic A');
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
 		await flush();
 		expect(vault.fm('Epic A.md')['status']).toBe('Active');
 	});
