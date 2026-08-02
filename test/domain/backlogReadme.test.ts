@@ -247,6 +247,48 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('or one of your own');
 	});
 
+	it('names the dates a state change stamps, and says a state change is what writes them', () => {
+		// The view writes these two itself, so a contract that omitted them would leave an
+		// outside editor two unexplained keys and would make its own "only the properties
+		// above are written" rule false.
+		const stamping = readme(
+			settingsWith({
+				stateKey: 'status',
+				states: ['Todo', 'Active', 'Done'],
+				startedStates: ['Active'],
+				startedDateKey: 'started',
+				finishedDateKey: 'finished',
+			}),
+			[],
+		);
+		expect(stamping).toContain('| `started` | Stamped for you |');
+		expect(stamping).toContain('| `finished` | Stamped for you |');
+		expect(stamping).toContain('written for you, by a state change');
+		expect(stamping).toContain('only into an empty property');
+		expect(stamping).toContain('leaving one removes it again');
+	});
+
+	it('does not advertise a stamp key that can never fire', () => {
+		// Both stamps ride a state write, and a start needs a state that counts as started:
+		// each of those unmet is a key the view never touches, and a row for it would name
+		// one — the inert-horizon rule, asked of the other two dates.
+		const noStartedStates = readme(
+			settingsWith({ stateKey: 'status', startedStates: [], startedDateKey: 'started', finishedDateKey: 'finished' }),
+			[],
+		);
+		expect(noStartedStates).not.toContain('| `started` |');
+		expect(noStartedStates).toContain('| `finished` |');
+		expect(noStartedStates).not.toContain('only into an empty property');
+
+		const noState = readme(
+			settingsWith({ stateKey: '', startedStates: ['Active'], startedDateKey: 'started', finishedDateKey: 'finished' }),
+			[],
+		);
+		expect(noState).not.toContain('| `started` |');
+		expect(noState).not.toContain('| `finished` |');
+		expect(noState).not.toContain('written for you, by a state change');
+	});
+
 	it('does not require the parent property on every non-root item in folder mode', () => {
 		// There the property is the OVERRIDE: a note without it hangs from the folder note
 		// above, so "every item except a root" sends an outside editor to pin each note by

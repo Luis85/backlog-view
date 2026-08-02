@@ -155,6 +155,17 @@ the view options can rename.
   ([[Folder note hierarchy]]) — so the table asks for it only where the folder position is
   not the answer. Calling it mandatory there would have a reader pin every note by hand
   and switch off the inference the view was configured for.
+- **3k — a property the view writes by itself.** The started and finished dates are
+  stamped by a state change ([[Stamp when work starts and finishes]]), and they are in the
+  table for the same reason every other key is: an outside editor meets them in these notes
+  and has nothing to read them by, and the document's own "only the properties above are
+  written" rule is false while they are missing. They are stated as the exception they are —
+  written as a side effect, in the same edit as the state — with the two rules a reader can
+  otherwise only discover by watching a date change: a start lands only in an empty
+  property, so a date recorded by hand is kept, and a finish follows the done boundary in
+  both directions. Each is named only where it can actually fire: both ride a state write,
+  so neither is mentioned without a state property, and a start with no states counting as
+  started is an inert key like a horizon property with no values (**3a**).
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when it carries the generated

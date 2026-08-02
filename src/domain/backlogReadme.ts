@@ -207,6 +207,19 @@ function typeSection(): string[] {
 	];
 }
 
+/**
+ * Whether this view ever stamps a start, and whether it ever stamps a finish. The
+ * property row and the rule below it ask through these rather than restating the
+ * condition, so the table cannot name a key the rule says nothing writes.
+ *
+ * Both ride a state write (`stampWrites`), so neither can fire without a state
+ * property; a start additionally needs states that count as started, since with none
+ * declared nothing ever enters one — an inert key, gated exactly as a horizon
+ * property with no values is.
+ */
+const stampsStart = (s: BacklogSettings): boolean => s.stateKey !== '' && s.startedDateKey !== '' && s.startedStates.length > 0;
+const stampsFinish = (s: BacklogSettings): boolean => s.stateKey !== '' && s.finishedDateKey !== '';
+
 function fieldRows(settings: BacklogSettings): string[] {
 	// In folder mode the property is how you OVERRIDE the folder note above, so calling
 	// it required would have an outside editor pin every note by hand and switch off the
@@ -222,6 +235,18 @@ function fieldRows(settings: BacklogSettings): string[] {
 	];
 	if (settings.stateKey) rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below |`);
 	if (settings.tagsKey) rows.push(`| ${cell(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
+	// The two the view WRITES for you. They belong in the contract for the reason every
+	// other row does — a document that named only what a reader writes would leave two
+	// keys appearing in these notes with nothing to explain them, and would make the
+	// "only the properties above are written" rule below false.
+	if (stampsStart(settings))
+		rows.push(
+			`| ${cell(settings.startedDateKey)} | Stamped for you | The date work started, ${code('YYYY-MM-DD')}. Written when an item first enters a started state, and only while the key is empty — a date you write by hand stands |`,
+		);
+	if (stampsFinish(settings))
+		rows.push(
+			`| ${cell(settings.finishedDateKey)} | Stamped for you | The date work finished, ${code('YYYY-MM-DD')}. Written when an item reaches a done state and removed again when it leaves one |`,
+		);
 	// The same gate the menu and the planner use: a horizon property with no values is an
 	// axis nothing renders and nothing writes, and a row for it would advertise an inert key.
 	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
@@ -441,6 +466,30 @@ function rulesSection(settings: BacklogSettings): string[] {
 			'back: they are computed from the properties above every time the view opens.',
 		'- **A note nothing links to is still a note.** An unresolved parent leaves the item at ' +
 			'the top level rather than hiding it.',
+		...stampRule(settings),
+	];
+}
+
+/**
+ * The stamped dates, stated as the exception they are: everything else in this document
+ * is written because someone asked for it, and these two are written because a state
+ * changed. A reader told only "these are the properties" would keep them by hand, or
+ * read a date that moved as an edit somebody made.
+ */
+function stampRule(settings: BacklogSettings): string[] {
+	const keys = [stampsStart(settings) && settings.startedDateKey, stampsFinish(settings) && settings.finishedDateKey];
+	const named = keys.filter((k): k is string => k !== false && k !== '');
+	if (named.length === 0) return [];
+	return [
+		`- **${named.map(code).join(' and ')} ${named.length === 1 ? 'is' : 'are'} written for you, by a ` +
+			'state change.** The one thing here written as a side effect of something else — and in ' +
+			'the same edit as the state, so one undo takes back both. ' +
+			(stampsStart(settings)
+				? 'The start is written only into an empty property, so a date you record yourself is kept. '
+				: '') +
+			(stampsFinish(settings)
+				? 'The finish follows the boundary in both directions: reaching a done state writes it, and leaving one removes it again.'
+				: ''),
 	];
 }
 
