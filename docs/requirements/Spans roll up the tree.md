@@ -135,3 +135,26 @@ including the crossed and reversed cases), and `test/view/roadmapFrame.test.ts` 
 yet, so nothing excludes a hand-nested marker's date from an ancestor's inferred span.
 It lands in the same walk and is inherited the same way, with
 [[Milestones as their own type]] — that note's spec already says so.
+
+**Not yet built either: extension 2d's "both ends open".** Crossed evidence is meant to
+draw with both ends OPEN — the gradient fade of `pbl-bar-open-start` / `pbl-bar-open-end`.
+What shipped instead is a closed dashed bar: `inferredStart` and `inferredEnd` are both
+true, but no `pbl-bar-open-*` class joins them, so the ends are hard dashed edges rather
+than faded ones. This is a deliberate decision, not an oversight: the whole bar is
+already dashed, which says "not stated"; the gradient fade means "no date at this end at
+all", a different fact, and drawing both together for the crossed case would be two
+signals for one meaning.
+
+**Not yet built either: extension 2a's "faded where partly unknown".** A wholly inferred
+bar and a half-inferred one (one end stated, the other filled from below) both carry only
+`pbl-bar-inferred` — there is no second, fainter state distinguishing "partly unknown"
+from "wholly unknown". `src/view/render/timeline.ts` names this itself, in a `ponytail:`
+comment beside `barClasses`. Deliberate, for the same reason as 2d: an inferred end is
+uncertain by construction, so a second visual state needs a boolean nobody can see the
+difference of.
+
+**Not yet built either: the acceptance criterion that a context parent's inferred span
+describes its visible results only.** `deriveBars` in `src/domain/roadmap.ts` still routes
+every `outsideFilter` row to `roadmap.context` before a span is ever computed for it, so a
+context parent gets no bar at all, inferred or otherwise — it just stands beside the
+shelf, same as before spans rolled up.

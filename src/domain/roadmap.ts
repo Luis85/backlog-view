@@ -286,9 +286,10 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
  * The dated axis. A stated pair places as the note states it; a reversed pair of
  * the item's own is unreadable rather than silently swapped. A dateless end fills
  * from the subtree's evidence (`inferSpan`) so a dateless parent spans its dated
- * descendants instead of shelving. A context row is never placed by its own dates
- * — its span, once spans roll up, is the one its visible results give it, so
- * until then it stands beside the shelf as context.
+ * descendants instead of shelving. A context row is never placed by its own dates,
+ * and gets no inferred span either: every `outsideFilter` row routes straight to
+ * `roadmap.context` before a span is ever computed for it, so it stands beside the
+ * shelf exactly as it did before spans rolled up — that scoping is not built.
  */
 function deriveBars(rows: BacklogItem[], roadmap: RoadmapModel): void {
 	for (const item of rows) {

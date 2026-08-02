@@ -144,6 +144,22 @@ describe('the dated frame', () => {
 		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
 		expect(epic.getAttribute('aria-label')).toBe('2026-08-01 → 2026-09-30 — inferred from children');
 	});
+
+	it('an inferred equal pair renders as the milestone diamond too, not just a stated one', () => {
+		const vault = new FakeVault();
+		// The epic states nothing; its only child states an equal start and due.
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-08-10', due: '2026-08-10' },
+			parentLink: 'Epic',
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const epic = barOf(timelineRows(containerEl)[0]);
+		expect(epic.hasClass('pbl-bar-milestone')).toBe(true);
+		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
+		expect(epic.getAttribute('aria-label')).toBe('Milestone 2026-08-10 — inferred from children');
+	});
 });
 
 describe('the unplaced shelf', () => {

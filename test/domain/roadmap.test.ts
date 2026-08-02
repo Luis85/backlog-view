@@ -403,6 +403,19 @@ describe('a dateless parent spans its children', () => {
 		expect(epic?.inferredEnd).toBe(false);
 	});
 
+	it('an inference may extend a statement and never contradict it — the other side', () => {
+		// Parent's target precedes the child's stated start: filling the parent's
+		// empty start from it would draw a reversed bar. The end stays open instead.
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10, due: '2026-03-01' }],
+			['A', { type: 'Feature', order: 10, start: '2026-06-01' }, 'Epic'],
+		]);
+
+		const epic = bars(model).find((b) => b.item.title === 'Epic');
+		expect(epic?.span).toEqual({ start: null, target: march });
+		expect(epic?.inferredStart).toBe(false);
+	});
+
 	it('an end with no evidence of its own kind stays open', () => {
 		const model = tree([
 			['Epic', { type: 'Epic', order: 10 }],
@@ -415,7 +428,7 @@ describe('a dateless parent spans its children', () => {
 		expect(epic?.inferredEnd).toBe(true);
 	});
 
-	it('crossed evidence brackets the activity without bounding it — both ends open', () => {
+	it('crossed evidence covers both known dates with both ends inferred, never reversed', () => {
 		// One child states only a start, a later one only an earlier target.
 		const model = tree([
 			['Epic', { type: 'Epic', order: 10 }],
@@ -486,8 +499,9 @@ describe('a dateless parent spans its children', () => {
 			day: 1,
 		});
 
-		// The epic's own frontmatter was never touched: an inference is not a value.
-		expect(vault.writeLog).toEqual([]);
+		// "Written nowhere" is guaranteed structurally, not by an assertion here:
+		// `src/domain/` is barred from importing `src/storage/` (eslint
+		// no-restricted-imports), so nothing in this module can reach a write path.
 	});
 });
 

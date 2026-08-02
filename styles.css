@@ -1773,7 +1773,7 @@
 	background: none;
 }
 
-/* A point in time is not a span: equal stated ends render as the Gantt diamond. */
+/* A point in time is not a span: an equal pair, stated or inferred, renders as the Gantt diamond. */
 .pbl-bar-milestone {
 	width: 12px;
 	height: 12px;

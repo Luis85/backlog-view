@@ -126,16 +126,17 @@ export function timelineWindow(spans: DateSpan[], today: CivilDate): TimelineWin
 /**
  * Where a span sits in the window, in whole days from its start. Ends are
  * inclusive — a one-day span is one day wide — and an end the note does not
- * state borrows the other, so a single date renders at the date it has. Equal
- * stated ends are the milestone case, a point in time rather than a span.
- * Reversed spans never reach here: they shelve as unreadable.
+ * state borrows the other, so a single date renders at the date it has. An
+ * equal pair, stated or inferred, is the milestone case, a point in time
+ * rather than a span. Reversed spans never reach here: they shelve as
+ * unreadable.
  */
 export interface BarGeometry {
 	/** First day of the bar, clamped into the window. */
 	startDay: number;
 	/** Days the bar covers inside the window, at least 1. */
 	spanDays: number;
-	/** True when the note states both ends and they are the same day. */
+	/** True when both ends land on the same day, whether stated or inferred. */
 	milestone: boolean;
 	/** True when that end runs past the window's edge and was clamped to it. */
 	clippedStart: boolean;
