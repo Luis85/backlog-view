@@ -216,7 +216,9 @@ free of runtime code so imports stay cycle-free.
   the refusal has to hold where the drag could not reach. Column counts are result
   cards only; a context card is placement, not population.
 - A filtered column header says "3 of 12" (`BoardColumn.fullCount`), and a card kept
-  only by a match below it names those matches on its face — `hiddenMatches` walks its
+  hiding a match below it names those matches on its face — whether or not the card
+  itself matched, since a match under a matching card is a second result and one card
+  cannot stand for two — — `hiddenMatches` walks its
   subtree, stopping at anything already rendered so one match is never announced by two
   cards. It matters most under focus, where the only cards are the focus level's: a
   match three levels down would otherwise be found, counted in the rollup, and

@@ -43,10 +43,12 @@ are its contents.
 
 **Extensions**
 
-- **2a — a card is kept only by a descendant's match.** It names those matching
-  descendants on its face while the filter is active, each opening its note. A rollup
-  number alone would leave the search's own result unreachable — found, counted, and
-  impossible to get to.
+- **2a — a card hides a descendant's match.** It names those matching descendants on
+  its face while the filter is active, each opening its note. A rollup number alone
+  would leave the search's own result unreachable — found, counted, and impossible to
+  get to. Whether the card ITSELF matched changes nothing: a match below a matching
+  card is a second, distinct result, and one card cannot stand for two. A match that
+  has a card of its own is left to that card, so no match is named twice.
 - **2b — a collapsed column or lane holds a match.** Collapse is ignored while filtering,
   exactly as the tree ignores it: the header opens for the filter's duration and returns
   to its saved state after. A match locked behind a closed header is a match lost.
@@ -64,10 +66,11 @@ are its contents.
 
 - Filtering shows the cards the tree would show: a card stays while it, an ancestor,
   or anything in the subtree it represents matches — the tree's match-path contract,
-  so switching projections mid-filter never changes what is found. A card kept only
-  by a descendant's match names those matching descendants on its face while the
-  filter is active, each opening its note — a rollup number alone would leave the
-  search's own result unreachable. Every column still
+  so switching projections mid-filter never changes what is found. A card hiding a
+  descendant's match names those matching descendants on its face while the filter is
+  active, each opening its note — a rollup number alone would leave the search's own
+  result unreachable — whether or not the card itself matched, and never naming one
+  that has a card of its own. Every column still
   renders, its header showing matches against the full count while the filter is
   active. The WIP signal keeps reading the full population — a filter must never make
   an over-limit column look under its limit.

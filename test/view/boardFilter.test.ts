@@ -143,12 +143,31 @@ describe('a card kept only by a match below it', () => {
 		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
 	});
 
-	it('says nothing on a card that matched itself', () => {
+	it('says nothing when nothing below it matched', () => {
 		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
 
-		// The card IS the result; listing its children under it would bury it.
+		// The card is the only result here, so there is nothing to name.
 		view.setFilter('Epic A');
 		expect(matchesOn(containerEl, 'Epic A')).toEqual([]);
+	});
+
+	it('names them even when the card matched too', () => {
+		// Both the epic and a PBI below it match "Login", and the PBI has no card of its
+		// own. A match below a matching card is a SECOND result, and one card cannot
+		// stand for two — suppressing the link because the card matched would leave the
+		// deeper one exactly as unreachable as having no link at all.
+		const vault = new FakeVault();
+		vault.addFile('Login epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Login epic' });
+		vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
+		const { containerEl, view } = board(vault, { focusLevel: 'Epic' });
+
+		view.setFilter('Login');
+
+		expect(matchesOn(containerEl, 'Login epic')).toEqual(['PBI Login']);
+		// And the keyboard path agrees with the face, as it must.
+		cardByTitle(containerEl, 'Login epic').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Open match "PBI Login"');
 	});
 
 	it('leaves a match that has a card of its own to that card', () => {

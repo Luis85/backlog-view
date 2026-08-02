@@ -203,11 +203,13 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * `tabindex="-1"` — and the menu is their keyboard path, exactly as it is for the
  * tree's add button and state chip. Without it those links would be pointer-only, and
  * a match that only a mouse can reach is the very failure the card face exists to
- * prevent: found, counted in the rollup, and impossible to get to.
+ * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
+ * not the card itself matched, for the same reason the face names them: a match below
+ * a matching card is a second result, and it has no card of its own to be reached by.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	const board = host.projection === 'board' ? host.board?.board : null;
-	if (!board || !host.isFiltering() || host.isFilterMatch(item)) return;
+	if (!board || !host.isFiltering()) return;
 	const carded = cardPaths(board);
 	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
 	if (matches.length === 0) return;

@@ -258,8 +258,11 @@ export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: Bac
 
 /**
  * The matches the search found beneath this card, named on its face so they can be
- * opened. Only for a card kept by something below it: a card that matched IS the
- * result, and listing its children under it would bury the thing the user searched for.
+ * opened. Whether the card ITSELF matched makes no difference: a match below it is a
+ * second, distinct result, and one card cannot stand for two. Suppressing these
+ * because the card matched too is how the deeper one becomes unreachable — the exact
+ * failure this exists to prevent. Nothing is rendered when nothing hides below,
+ * which is the ordinary case and needs no special test.
  *
  * Buttons with `tabindex="-1"`, exactly as the tree's per-row controls are — the board
  * is one tab stop, so Tab keeps skipping past the whole projection. That makes the
@@ -269,7 +272,7 @@ export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: Bac
  */
 function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem, carded: Set<string>): void {
 	const host: BacklogViewHost = ctx.host;
-	if (!host.isFiltering() || host.isFilterMatch(item)) return;
+	if (!host.isFiltering()) return;
 	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
 	if (matches.length === 0) return;
 	const list = card.createDiv({ cls: 'pbl-card-matches' });
