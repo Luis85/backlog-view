@@ -197,9 +197,18 @@ function movesState(leaving: string | null, state: string | undefined): boolean 
 	return leaving === null || leaving.toLowerCase() !== state.toLowerCase();
 }
 
-/** Whether a frontmatter value counts as "no date yet" — absent, null, or empty text. */
+/**
+ * Whether a frontmatter value counts as "no date yet". Absent, null and empty text —
+ * and a LIST holding nothing but those, because Obsidian writes an emptied list
+ * property as `[]` and the date readers already call that absence. A stricter test
+ * here would read `started: []` as a date already recorded and decline the stamp
+ * forever, which is the write-once rule protecting a value that is not there.
+ */
 function isBlank(value: unknown): boolean {
-	return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+	if (value === undefined || value === null) return true;
+	if (typeof value === 'string') return value.trim() === '';
+	if (Array.isArray(value)) return value.every((entry) => isBlank(entry));
+	return false;
 }
 
 /**

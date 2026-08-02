@@ -252,6 +252,32 @@ describe('applying date stamps', () => {
 		expect(vault.fm('A.md')['started']).toBe('2026-08-02');
 	});
 
+	it('treats an emptied list property as no start at all', async () => {
+		// Obsidian writes an emptied list property as `[]`, and the date readers call
+		// that absence. Reading it as a date already recorded would decline the stamp
+		// forever — write-once protecting a value that is not there.
+		const vault = new FakeVault();
+		const empty = vault.addFile('A.md', { frontmatter: { status: 'New', started: [] } });
+		const blank = vault.addFile('B.md', { frontmatter: { status: 'New', started: [''] } });
+
+		await applyWrites(vault.app, stamping, [
+			{ file: empty, state: 'Active', startedDate: '2026-08-02' },
+			{ file: blank, state: 'Active', startedDate: '2026-08-02' },
+		]);
+
+		expect(vault.fm('A.md')['started']).toBe('2026-08-02');
+		expect(vault.fm('B.md')['started']).toBe('2026-08-02');
+	});
+
+	it('leaves a list that actually holds a date alone', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New', started: ['2026-01-15'] } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toEqual(['2026-01-15']);
+	});
+
 	it('stamps the finish on crossing INTO done', async () => {
 		const vault = new FakeVault();
 		const file = vault.addFile('A.md', { frontmatter: { status: 'Active' } });
