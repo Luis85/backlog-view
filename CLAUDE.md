@@ -238,9 +238,19 @@ key and spends the undo slot.
 **A write can take its own note out of the base.** A filter can name the very property
 a move writes, so `applyCardMove` registers the moved note with `OutcomeWatch` and the
 data pass that write triggers answers for whether it still shows — by outcome, never
-predicted, because a Bases filter is opaque here. Reported from the DATA pass only: a
-re-render the user caused (typing in the quick filter) would otherwise blame the write
-for the filter. The write stands and stays undoable; what is refused is silence.
+predicted, because a Bases filter is opaque here. The write stands and stays undoable;
+what is refused is silence. Three rules, each of which was got wrong once:
+
+- **Armed BEFORE the write**, for the same reason the announcement's vocabulary is
+  captured before it — the answering pass can land INSIDE the await, when
+  `runExclusively` flushes a deferred update in its `finally`. Cleared when the batch
+  is refused or fails, or the watch answers for an unrelated pass instead.
+- **Reported from the DATA pass only.** A re-render the user caused (typing in the
+  quick filter) would otherwise blame the write for the filter.
+- **The quick filter is no part of the verdict**, for the same reason: it is the
+  user's doing and never a write's, so a filter typed between a move and the requery
+  it triggered must not read as the move having hidden the note. Completed-subtree
+  hiding IS part of it — that one a write can cause.
 
 
 ## Gotchas

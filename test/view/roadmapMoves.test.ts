@@ -420,10 +420,47 @@ describe('a move whose value leaves the base', () => {
 		moveThenRequery(harness, vault, ['Now item.md']);
 		expect(Notice.messages.some((m) => m.includes('no longer matches this base'))).toBe(true);
 
+		// A real button, not a bare anchor: the way back has to be reachable by the
+		// keyboard, and an `<a>` with no `href` is not in the tab order at all.
 		const action = Notice.last?.messageEl.querySelector<HTMLElement>('.pbl-notice-open');
+		expect(action?.tagName).toBe('BUTTON');
 		expect(action?.textContent).toBe('Open the note');
 		action?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(vault.opened.map((o) => o.path)).toEqual(['Now item.md']);
+	});
+
+	it('reports when the requery lands INSIDE the write — the pass that answers is that one', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+		// Bases requeries as the write lands, which is the ordinary case: the update is
+		// deferred while the batch runs and flushed in its `finally` — synchronously,
+		// before the move's own await resolves. A watch armed after that await would
+		// miss the only pass that could have answered.
+		vault.afterWrite = () => {
+			(harness.view as unknown as Record<string, unknown>).data = {
+				data: vault.entries().filter((e) => e.file.path !== 'Now item.md'),
+			};
+			harness.view.onDataUpdated();
+		};
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+
+		expect(Notice.messages.some((m) => m.includes('no longer matches this base'))).toBe(true);
+	});
+
+	it('says nothing when the write never lands', async () => {
+		const vault = horizonVault();
+		// Parent and order share a key: the gate refuses the batch outright.
+		const harness = makeRoadmap(vault, { orderProperty: 'note.parent' });
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+		Notice.reset();
+		// Nothing was written, so nothing became of anything — and a watch left armed
+		// would answer for whatever data pass came next.
+		moveThenRequery(harness, vault, ['Now item.md']);
+		expect(Notice.messages).toEqual([]);
 	});
 
 	it('still undoes it — the note is gone from the view, not from the slot', async () => {
@@ -461,8 +498,15 @@ describe('a move whose value leaves the base', () => {
 		harness.view.setFilter('zzz');
 		expect(Notice.messages).toEqual([]);
 
-		// And the answer still arrives when the data pass finally comes.
+		// Nor when the data pass arrives with that filter still on: the filter is the
+		// user's doing and never the write's, so it is no part of the verdict.
+		moveThenRequery(harness, vault, []);
+		expect(Notice.messages).toEqual([]);
+
+		// And the answer still arrives when the note really has left the results.
 		harness.view.setFilter('');
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
 		moveThenRequery(harness, vault, ['Now item.md']);
 		expect(Notice.messages.some((m) => m.includes('no longer matches this base'))).toBe(true);
 	});

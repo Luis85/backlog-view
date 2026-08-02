@@ -28,9 +28,18 @@ interface WatchedNote {
 export class OutcomeWatch {
 	private watched: WatchedNote | null = null;
 
-	/** A write landed on this note; the next data pass answers for whether it still shows. */
+	/**
+	 * A write is going out to this note; the next data pass answers for whether it
+	 * still shows. Armed BEFORE the write, never after: the pass that answers can
+	 * land inside the write's own await.
+	 */
 	after(file: TFile, title: string): void {
 		this.watched = { file, title };
+	}
+
+	/** The write never landed, so there is nothing to answer for. */
+	clear(): void {
+		this.watched = null;
 	}
 
 	/**
@@ -51,8 +60,18 @@ export class OutcomeWatch {
 		// `messageEl` rather than the deprecated `noticeEl`: an action inside the
 		// message is the whole point — a report that a note vanished, with no way to
 		// reach it, leaves the user worse off than the silence it replaced.
-		const link = notice.messageEl.createEl('a', { cls: 'pbl-notice-open', text: 'Open the note' });
-		link.addEventListener('click', (evt) => {
+		//
+		// A real `<button>`, not a bare `<a>`: an anchor with no `href` is not
+		// focusable, so the way back would be pointer-only — and the one user most
+		// likely to lose a card they cannot see again is the one driving by keyboard.
+		// A notice is ordinary UI outside the tree's single-tab-stop model, so the
+		// element type follows the toolbar's rule rather than the row's.
+		const action = notice.messageEl.createEl('button', {
+			cls: 'pbl-notice-open',
+			text: 'Open the note',
+			attr: { type: 'button' },
+		});
+		action.addEventListener('click', (evt) => {
 			notice.hide();
 			open(note.file, evt);
 		});

@@ -200,11 +200,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.collapse.collapseNewParents(this.model.items);
 		this.recomputeFilter();
 		this.render();
-		// The pass a write asked for is the pass that can say what became of it.
+		// The pass a write asked for is the pass that can say what became of it. Still
+		// a result, and still not hidden by a rule the WRITE could have tripped —
+		// which the quick filter never is, so an active filter is not part of the
+		// verdict. Without that clause, a filter typed between a move and the requery
+		// it triggered would read as the move having hidden the note.
 		this.outcome.report(
 			(file) => {
 				const item = this.model?.byPath.get(file.path);
-				return !!item && !item.outsideFilter && !this.isRowHidden(item);
+				if (!item || item.outsideFilter) return false;
+				return this.isFiltering() || !this.isRowHidden(item);
 			},
 			(file, evt) => void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(file),
 		);
@@ -434,12 +439,24 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	private async applyCardMove(item: BacklogItem, writes: ItemWrite[], say: () => void): Promise<boolean> {
 		if (writes.length === 0) return false;
-		if (!(await this.applyMove(item, writes))) return false;
-		say();
 		// A move can write a value this base filters out. That is the filter speaking,
 		// not the write failing — so the card leaving is reported, with a way back to
 		// the note, rather than prevented or passed over in silence.
+		//
+		// Armed BEFORE the write, for the same reason the vocabulary above is captured
+		// before it: the data pass this write triggers can land INSIDE the await, when
+		// `runExclusively` flushes a deferred update in its `finally`. Arming after
+		// would miss exactly the refresh that was meant to answer, and leave the watch
+		// to answer for whatever pass came next instead.
 		this.outcome.after(item.file, item.title);
+		if (!(await this.applyMove(item, writes))) {
+			// Refused or failed: nothing to answer for, and a watch left armed would
+			// answer for an unrelated pass. A refresh that already reported inside the
+			// await has cleared it itself, so this only ever disarms a live watch.
+			this.outcome.clear();
+			return false;
+		}
+		say();
 		return true;
 	}
 

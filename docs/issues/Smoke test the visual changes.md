@@ -107,6 +107,13 @@ highlight is unchanged from 0.3.0.
 **The bucket's New button** — a `+` in the bucket header, appearing on hover like the
 row's. Check it does not crowd the count badge and does not appear in the `Tab` order.
 
+**The vanished-note notice** — move a card to a value the base filters out (a base
+scoped to one horizon will do). A notice should say the note left the view and carry an
+`Open the note` button. Two things only a vault can answer: whether the button inherits
+the notice's own text colour legibly on its background, and whether it is reachable by
+`Tab` while the notice is up — it is a real `<button>` for exactly that reason, but
+where Obsidian mounts notices in the tab order is not something jsdom can tell us.
+
 ## Runs
 
 | Date | Against | Outcome |
