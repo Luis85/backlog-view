@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
-import { useViewHarness } from '../helpers/view';
-import { boardVault, columnByName, makeBoard } from '../helpers/board';
+import { key, treeOf, useViewHarness } from '../helpers/view';
+import { boardVault, cardByTitle, columnByName, columnNames, makeBoard } from '../helpers/board';
 
 useViewHarness();
 
@@ -52,5 +52,32 @@ describe('a column carries its policy', () => {
 		const { containerEl } = makeBoard(boardVault(), POLICY);
 		headerOf(containerEl, 'New').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		expect(Menu.lastShown).toBeNull();
+	});
+});
+
+describe('the keyboard reaches the column menu', () => {
+	it('opens the policy from the selected column stop', () => {
+		// The board is one tab stop by design, so a per-column control would multiply
+		// stops by columns (extension 3a). The menu is the keyboard path instead.
+		const { containerEl, view } = makeBoard(boardVault(), POLICY);
+		view.selectBoardColumn(columnNames(containerEl).indexOf('Active'));
+		key(treeOf(containerEl), 'ContextMenu');
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Someone is actually on it']);
+	});
+
+	it('opens nothing from a column with no policy', () => {
+		const { containerEl, view } = makeBoard(boardVault(), POLICY);
+		view.selectBoardColumn(columnNames(containerEl).indexOf('New'));
+		key(treeOf(containerEl), 'ContextMenu');
+		expect(Menu.lastShown).toBeNull();
+	});
+
+	it('still opens the CARD menu when a card is selected, not the column one', () => {
+		// The two menus share a key. A branch that read the column first would take the
+		// card's menu away on every board, and no test above would notice.
+		const { containerEl } = makeBoard(boardVault(), POLICY);
+		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		key(treeOf(containerEl), 'ContextMenu');
+		expect(Menu.lastShown?.item('Set state')).toBeDefined();
 	});
 });
