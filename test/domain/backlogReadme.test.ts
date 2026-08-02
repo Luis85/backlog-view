@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { readmeMarker, README_MARKER_PREFIX, readmeSource } from '../../src/domain/readmeMarker';
+import { README_MARKER_PREFIX, joinSource, readmeMarker, readmeSource } from '../../src/domain/readmeMarker';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
@@ -62,6 +62,15 @@ describe('backlogReadmeContent', () => {
 		expect(readmeSource(README_MARKER_PREFIX)).toBeNull();
 		// And the whole line still round-trips with its trailing whitespace trimmed.
 		expect(readmeSource(`${readmeMarker('work/B.base › B')}  `)).toBe('work/B.base › B');
+	});
+
+	it('keeps the two halves of a source apart, whatever they are called', () => {
+		// Free text either side: a view named `b.base › c` under `a.base` would otherwise
+		// produce the identity of view `c` under a base called `a.base › b.base`, and the
+		// second view would replace the first's document reported as an ordinary update.
+		expect(joinSource('a.base', 'b.base › c')).not.toBe(joinSource('a.base › b.base', 'c'));
+		// An ordinary pair still reads as itself, in the file and in the notice.
+		expect(joinSource('work/Product Backlog.base', 'Backlog')).toBe('work/Product Backlog.base › Backlog');
 	});
 
 	it('encodes a line break, which would cost the marker its whole job', () => {
@@ -412,6 +421,25 @@ describe('backlogReadmeContent', () => {
 	it('says what a move does to the type, per this view s setting', () => {
 		expect(readme(settingsWith({ autoType: false }), [])).toContain('never rewrites its type');
 		expect(readme(settingsWith({ autoType: true }), [])).toContain('re-type what it moves');
+	});
+
+	it('qualifies the custom-type promise where a move rewrites it', () => {
+		// computeTypeChanges exempts only DECLARED extra types, so with types assigned on a
+		// move a dragged `Spike` is rewritten — the descendants keep theirs. An unqualified
+		// promise is wrong in exactly the configuration that opts into rewriting.
+		expect(readme(settingsWith({ autoType: false }))).toContain('Nothing rewrites it into one of these');
+		const auto = readme(settingsWith({ autoType: true }));
+		expect(auto).toContain('rewrites the item you **drag**');
+		expect(auto).toContain('deeper in the subtree you dragged is left alone');
+	});
+
+	it('does not promise a propertyless note stays out of a folder-inferred tree', () => {
+		const folderMode = readme(settingsWith({ hierarchyOnly: true, folderHierarchy: true }));
+		expect(folderMode).toContain('Declaring neither is not enough to stay out of it here');
+		expect(folderMode).not.toContain('Declare neither and it stays an ordinary note');
+		expect(readme(settingsWith({ hierarchyOnly: true, folderHierarchy: false }))).toContain(
+			'Declare neither and it stays an ordinary note',
+		);
 	});
 
 	it('does not say a declared type is redrawn at the level its position implies', () => {

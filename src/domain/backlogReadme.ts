@@ -154,7 +154,7 @@ const cell = (value: string): string => code(value).replace(/\|/g, '\\|');
 const list = (values: string[]): string =>
 	values.length > 0 ? values.map((v) => (v.startsWith('*') ? v : cell(v))).join(', ') : '*(nothing)*';
 
-function typeSection(): string[] {
+function typeSection(settings: BacklogSettings): string[] {
 	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
 	return [
 		'## The item types',
@@ -170,7 +170,12 @@ function typeSection(): string[] {
 		'',
 		'Write the type exactly as spelled above; matching is case-insensitive but the ' +
 			'spelling is the vocabulary. A type this plugin does not ship is kept as written and ' +
-			'shown as itself — it is never rewritten into one of these.',
+			'shown as itself.' +
+			(settings.autoType
+				? ' With one exception, and it belongs to this view: assigning types on a move ' +
+					'rewrites the item you **drag**, a name of your own included. The same name deeper ' +
+					'in the subtree you dragged is left alone.'
+				: ' Nothing rewrites it into one of these.'),
 	];
 }
 
@@ -252,8 +257,14 @@ function propertySection(settings: BacklogSettings): string[] {
 			? 'A note in this folder joins the backlog when it declares one of the types **listed ' +
 				'above**, or has a parent. A type of your own is kept and shown, but it does not by ' +
 				'itself enrol a note that has no parent — give such a note a parent, or it stays out ' +
-				'of the tree. Declare neither and it stays an ordinary note, which is how a document ' +
-				'like this one sits here without becoming a work item.'
+				'of the tree. ' +
+				(settings.folderHierarchy
+					? 'Declaring neither is not enough to stay out of it here: this view reads the ' +
+						'folder note above a note as its parent, so a note under one is a work item ' +
+						'whatever its frontmatter omits. Somewhere with no folder note above it is ' +
+						'what keeps an ordinary note ordinary.'
+					: 'Declare neither and it stays an ordinary note, which is how a document like ' +
+						'this one sits here without becoming a work item.')
 			: 'This view treats **every** note it returns as an item, so a note with none of these ' +
 				'properties still appears, at the top level and untyped.',
 	];
@@ -534,7 +545,7 @@ export function backlogReadmeContent(settings: BacklogSettings, observedStates: 
 			'This document is generated from that view\'s configuration, so the property names ' +
 				'below are the ones this backlog actually uses.',
 		],
-		typeSection(),
+		typeSection(settings),
 		propertySection(settings),
 		rankingSection(settings),
 		stateSection(settings, states),

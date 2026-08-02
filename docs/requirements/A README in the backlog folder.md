@@ -120,11 +120,15 @@ the view options can rename.
   computes and never stores ([[Board order is derived not stored]]). The ranking rule is
   stated with its tie-break, and the tie-break is a **view** setting: siblings sharing a
   number fall back to the order the base returned them in, not to anything in the notes.
-- **3e — the reader writes a type of their own.** It is kept and shown verbatim, and it
-  does **not** enrol a note that has no parent: the scope rule seeds only on the types
+- **3e — the reader writes a type of their own.** It is kept and shown verbatim — with
+  the one exception this view can make: assigning types on a move rewrites the item
+  *dragged*, a custom name included, while the same name deeper in the moved subtree
+  survives (`computeTypeChanges` exempts only declared extra types). An unqualified
+  promise is wrong in precisely the configuration that opted into rewriting. A custom type
+  does **not** enrol a note that has no parent either: the scope rule seeds only on the types
   this plugin ships (`ALL_TYPES`), so a custom-typed root written to the letter of a
   contract that said "declare a type" would be dropped by the very configuration the
-  document was generated from. Those two facts are one paragraph for that reason.
+  document was generated from. All of it sits in one paragraph for that reason.
 - **3f — a value or a key contains markup.** Everything interpolated is user data: a state
   named `Waiting | external` ends a table cell, a folder holding a backtick closes a code
   span, and a key containing a colon turns the example's frontmatter into a different
@@ -173,6 +177,11 @@ the view options can rename.
   the stamp reads the configured list rather than the table, so a started value the
   workflow does not offer is named as well — without it, writing a state would put a date
   on a note for a reason the document never gave.
+- **3l — the scope paragraph and the opening disagree about folder mode.** They cannot:
+  both ask `folderHierarchy`. With it on, a note under a folder note is a work item
+  whatever its frontmatter omits, so the paragraph that tells a reader how to keep a note
+  ordinary says *where* to put it rather than what to leave out — the document contradicting
+  itself is how an outside editor comes to misfile the one note it was reading about.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses
@@ -210,8 +219,9 @@ the view options can rename.
   configure different property keys, and a folder holds one contract at a time — the
   failure worth preventing is not the replacement, it is a replacement nobody is told
   about. The marker therefore names its source (the base path and the view name, the
-  identity the collapse store already resolves), and that identity is *reported, never
-  enforced*: a base or a view can be renamed, and git hands a Windows checkout the same
+  identity the collapse store already resolves, joined so the join can be undone — both
+  halves are free text, and a view named with the separator would otherwise share an
+  identity with a different base), and that identity is *reported, never enforced*: a base or a view can be renamed, and git hands a Windows checkout the same
   file with different line endings, so a refusal keyed on it would leave a view unable to
   refresh its own document after an ordinary rename. A false refusal is found by someone
   who was doing something else; being told what you replaced is found by reading the

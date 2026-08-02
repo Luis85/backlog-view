@@ -110,3 +110,23 @@ export function readmeSource(line: string): string | null {
 	// round trip, and nothing else is.
 	return encodeSource(source) === encoded ? source : null;
 }
+
+/** The separator between the two halves of a source, and its escape. */
+const SOURCE_SEPARATOR = ' › ';
+const SEPARATOR_ESCAPE = '%E2%80%BA';
+
+/**
+ * The two halves of a source, joined so the join can be undone. A base path and a view
+ * name are both free text, and a view called `b.base › c` under base `a.base` would
+ * otherwise produce the same line as view `c` under a base called `a.base › b.base` —
+ * two different views answering to one identity, so the second replaces the first's
+ * document and is reported as an ordinary update.
+ *
+ * `%` first, then the separator, which is the same trick `encodeSource` plays and for
+ * the same reason: escaping the escape character is what makes the mapping injective.
+ * The pathological name is the only one that reads escaped in a notice.
+ */
+export function joinSource(base: string, view: string): string {
+	const part = (text: string): string => text.replace(/%/g, '%25').replace(/›/g, SEPARATOR_ESCAPE);
+	return `${part(base)}${SOURCE_SEPARATOR}${part(view)}`;
+}
