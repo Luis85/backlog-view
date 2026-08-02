@@ -4,11 +4,13 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import {
+	barFor,
 	barOf,
 	bucketByName,
 	bucketCountOf,
 	bucketNames,
 	bucketsOf,
+	rowFor,
 	shelfCountOf,
 	shelfIsEmptyStrip,
 	shelfOf,
@@ -175,6 +177,30 @@ describe('the dated frame', () => {
 		expect(epic.hasClass('pbl-bar-milestone')).toBe(true);
 		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
 		expect(epic.getAttribute('aria-label')).toBe('Milestone 2026-08-10 — inferred from children');
+	});
+});
+
+describe('a marker on the dated axis', () => {
+	it('draws no diamond for a milestone past the window edge, only the direction it lies past', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2200-01-01' } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-09-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const bar = barFor(containerEl, 'Ship 1.0');
+		expect(bar.classList.contains('pbl-bar-milestone')).toBe(false);
+		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
+		expect(bar.classList.contains('pbl-bar-open-end')).toBe(true);
+		// The exact date is never lost — it stays where the row's accessible name puts it.
+		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toContain('2200-01-01');
+	});
+
+	it('puts the milestone’s name and exact date in its row’s accessible name', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
 	});
 });
 

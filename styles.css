@@ -1809,6 +1809,17 @@
 	transform: translateY(-50%) rotate(45deg);
 }
 
+/* Wholly past an edge: a direction, not a date. Half the bar height and no fill of its
+   own, so it can never be mistaken for a span that happens to be short. */
+.pbl-bar-outside {
+	width: 10px;
+	height: 8px;
+	border-radius: 0;
+	background: none;
+	border-top: 2px solid var(--pbl-bar-color);
+	opacity: 0.7;
+}
+
 .pbl-today {
 	position: absolute;
 	top: 0;

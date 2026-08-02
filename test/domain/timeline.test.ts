@@ -99,6 +99,31 @@ describe('bar geometry', () => {
 	it('refuses a fully dateless span — deriveBars never admits one', () => {
 		expect(() => barGeometry(window, { start: null, target: null })).toThrow();
 	});
+
+	it('says a span is wholly outside the window rather than reporting a clamped one', () => {
+		// The window clamps at MAX_TIMELINE_MONTHS around today, so a typo'd year lands
+		// past the edge. Clamping a POINT onto that edge draws a diamond at a date the
+		// milestone does not have — and a diamond is exactly the claim that this is the
+		// date, where a clipped end only claims a direction.
+		const far = d(2200, 1, 1);
+		const beyond = barGeometry(window, { start: far, target: far });
+		expect(beyond.outside).toBe(true);
+		expect(beyond.clippedEnd).toBe(true);
+		const before = d(1900, 1, 1);
+		const past = barGeometry(window, { start: before, target: before });
+		expect(past.outside).toBe(true);
+		expect(past.clippedStart).toBe(true);
+	});
+
+	it('does not call a span outside when it merely runs past both edges', () => {
+		// A bar covering the whole window is in view everywhere; only "nothing of it is
+		// drawn" is outside.
+		const wide = barGeometry(window, { start: d(1900, 1, 1), target: d(2200, 1, 1) });
+		expect(wide.outside).toBe(false);
+		const inside = barGeometry(window, { start: d(2026, 8, 15), target: d(2026, 8, 15) });
+		expect(inside.outside).toBe(false);
+		expect(inside.milestone).toBe(true);
+	});
 });
 
 describe('earliest and latest', () => {

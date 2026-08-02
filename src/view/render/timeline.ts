@@ -83,6 +83,11 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
+	// The row is the timeline's one selection stop, so it is where everything the marks
+	// show has to be readable: the name and the exact dates together. Nothing about a
+	// milestone may exist only under a hover, and a row past the window edge has no mark
+	// stating its date at all.
+	row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
 	wireCardActivation(ctx, row, bar.item);
 }
 
@@ -100,6 +105,13 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
  * describe the two pixels apart.
  */
 function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
+	// Nothing of it is in view. Drawing the clamp would put a diamond at a date the item
+	// does not have, and a diamond IS the claim that this is the date — so the row carries
+	// only the direction it lies past, in the same open-end vocabulary a clipped bar uses.
+	// The exact date is in the bar's tooltip and in the row's accessible name.
+	if (geometry.outside) {
+		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}`;
+	}
 	let cls = 'pbl-bar';
 	if (geometry.milestone) cls += ' pbl-bar-milestone';
 	if (bar.span.start === null || geometry.clippedStart) cls += ' pbl-bar-open-start';
