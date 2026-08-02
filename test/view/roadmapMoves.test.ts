@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { flush, key, makeView, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, makeView, refresh, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 import { announced, cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 import { bucketByName, bucketNames, horizonVault, makeRoadmap, shelfOf, shelfTitles } from '../helpers/roadmap';
@@ -180,17 +180,19 @@ describe('moving between horizons by drag', () => {
 		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
 	});
 
-	it('places every card by its own value, so the write decides the bucket', () => {
+	it('the card renders in its new bucket on the write’s own refresh', async () => {
 		const vault = horizonVault();
-		const { containerEl } = makeRoadmap(vault);
-
-		// Where a card renders is the note's frontmatter and nothing else — which is
-		// what makes the write above the whole of the move. (That the RE-render shows
-		// it is a vault check: `FakeVault`'s metadata cache is static, so a rebuild
-		// here would replay the values the write just replaced.)
+		const { view, containerEl } = makeRoadmap(vault);
 		expect(bucketTitles(containerEl, 'Now')).toEqual(['Now item']);
-		expect(bucketTitles(containerEl, 'Next')).toEqual([]);
-		expect(bucketTitles(containerEl, 'Later')).toEqual(['Later item']);
+
+		cardDrag(cardByTitle(containerEl, 'Now item'), bucketByName(containerEl, 'Next'));
+		await flush();
+		refresh(view, vault);
+
+		// Where a card renders is the note's own frontmatter and nothing else, which
+		// is what makes that one write the whole of the move.
+		expect(bucketTitles(containerEl, 'Now')).toEqual([]);
+		expect(bucketTitles(containerEl, 'Next')).toEqual(['Now item']);
 	});
 });
 
@@ -447,6 +449,23 @@ describe('a move whose value leaves the base', () => {
 		await flush();
 
 		expect(Notice.messages.some((m) => m.includes('no longer matches this base'))).toBe(true);
+	});
+
+	it('answers for every move still waiting, not only the last', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		// Two moves before any refresh arrives — nothing stops the user making the
+		// second, and a single slot would drop the first one's answer on the floor.
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+		cardDrag(cardByTitle(harness.containerEl, 'Later item'), bucketByName(harness.containerEl, 'Now'));
+		await flush();
+
+		moveThenRequery(harness, vault, ['Now item.md', 'Later item.md']);
+		expect(Notice.messages.filter((m) => m.includes('left the view'))).toHaveLength(2);
+		expect(Notice.messages.some((m) => m.includes('"Now item"'))).toBe(true);
+		expect(Notice.messages.some((m) => m.includes('"Later item"'))).toBe(true);
 	});
 
 	it('says nothing when the write never lands', async () => {

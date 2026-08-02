@@ -207,10 +207,13 @@ free of runtime code so imports stay cycle-free.
   BEFORE the write, and `refreshFromData` answers for it once: still a result, still
   not hidden, or a notice naming what happened with a way back to the note. Armed
   before, because the answering pass can land inside the write's own await (see
-  Lifecycle); cleared when the batch is refused or fails. Answered from the data pass
-  and nowhere else, and with the quick filter excluded from the verdict — a filter the
-  user typed hides cards too, and blaming a move for it would be the same mistake in a
-  different place. The way back is a real `<button>`: a notice is ordinary UI outside
+  Lifecycle); cleared when the batch is refused or fails. It holds a LIST — a move
+  waiting on its refresh does not stop the next one, and a slot would drop the first
+  answer. Answered from the data pass and nowhere else, and with the quick filter
+  excluded from the verdict — a filter the user typed hides cards too, and blaming a
+  move for it would be the same mistake in a different place. The view supplies the
+  REASON (`filtered` or `completed`), because the two are different messages and a
+  report naming the wrong one sends the reader to fix the wrong setting. The way back is a real `<button>`: a notice is ordinary UI outside
   the tree's one-tab-stop model, so an `<a>` with no `href` would put the only escape
   from a vanished card out of a keyboard's reach.
 - Context cards are never wired as draggables, and `performBoardMove` still rides

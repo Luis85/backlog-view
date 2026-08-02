@@ -251,6 +251,13 @@ what is refused is silence. Three rules, each of which was got wrong once:
   user's doing and never a write's, so a filter typed between a move and the requery
   it triggered must not read as the move having hidden the note. Completed-subtree
   hiding IS part of it — that one a write can cause.
+- **The caller supplies the reason, not just a boolean.** There are two ways out and
+  they are different messages: the Base rejected the note, or the same write finished
+  it while completed items are hidden. A report naming the wrong one sends the reader
+  to fix a setting that is not the cause.
+- **A list, not a slot.** A move whose refresh has not arrived does not stop the user
+  making another, and a slot drops the first one's answer — the silence this exists to
+  prevent. Every data pass drains the list whole.
 
 
 ## Gotchas

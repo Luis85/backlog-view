@@ -208,8 +208,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.outcome.report(
 			(file) => {
 				const item = this.model?.byPath.get(file.path);
-				if (!item || item.outsideFilter) return false;
-				return this.isFiltering() || !this.isRowHidden(item);
+				if (!item || item.outsideFilter) return 'filtered';
+				// Still a result, so anything hiding it now is this view's own doing —
+				// and with the filter ruled out, the completed-subtree rule is what is
+				// left. A write CAN cause that one, which is why it is reported at all.
+				return !this.isFiltering() && this.isRowHidden(item) ? 'completed' : null;
 			},
 			(file, evt) => void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(file),
 		);
@@ -453,7 +456,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			// Refused or failed: nothing to answer for, and a watch left armed would
 			// answer for an unrelated pass. A refresh that already reported inside the
 			// await has cleared it itself, so this only ever disarms a live watch.
-			this.outcome.clear();
+			this.outcome.clear(item.file);
 			return false;
 		}
 		say();
