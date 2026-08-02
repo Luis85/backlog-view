@@ -11,6 +11,8 @@ files:
   - src/domain/itemTypes.ts
   - src/domain/model.ts
   - src/domain/viewOptions.ts
+  - src/domain/roadmap.ts
+  - src/domain/writePlan.ts
   - src/view/render/rows.ts
   - styles.css
 ---
@@ -89,7 +91,10 @@ date.
   indistinguishable from a commitment nobody made.
 - **2c — the note also carries a start date.** The milestone ignores it and still draws as
   a point. The type is the stronger statement, and reading the pair as a span would let a
-  stray property turn a deadline into a duration.
+  stray property turn a deadline into a duration. This has to happen in **derivation**,
+  not in drawing: a milestone is reduced to its target point *before* the ordinary span
+  checks run, or a stale start later than the target shelves it as a reversed span and no
+  rendering seam is ever reached.
 - **3a — the milestone folder is cleared.** It falls through to the home folder, like
   every other type whose folder is unset — one rule, no special case.
 - **4a — the row has no child type to offer.** Every create affordance is **absent**, not
@@ -171,7 +176,10 @@ exclusion belongs to `assignAll` in `src/domain/model.ts`, beside the context-ro
 resembles.
 The diamond itself already exists and needs a second way to be true: `barGeometry` in
 `src/domain/timeline.ts` and `barClasses` in `src/view/render/timeline.ts` derive it from
-equal stated ends today. Creation and filing are `src/view/interactions/create.ts`, and the
+equal stated ends today. Reaching them at all is `deriveBars` in `src/domain/roadmap.ts`,
+which is where a milestone must be reduced to its target point — it shelves a reversed
+span before any rendering runs, so a milestone carrying a stale start later than its
+target never gets as far as the geometry that would ignore it. Creation and filing are `src/view/interactions/create.ts`, and the
 menu entry that has to disappear with the button is `src/view/interactions/menu.ts`.
 
 Two seams in `src/view/render/rows.ts` are easy to miss and both fail loudly rather than

@@ -24,7 +24,7 @@ let one button write `type` and `order` into a document that is not a task.
 **Main flow**
 
 1. A base filtered with `file.inFolder(…)` returns every note living there.
-2. A note **belongs** to the backlog if it declares one of the six types, or has a parent
+2. A note **belongs** to the backlog if it declares one of the shipped types, or has a parent
    in any form: an explicit link, an empty root marker, a folder-inferred one, or a link
    that resolves to nothing.
 3. The test runs per **root subtree**, not per note: one participant keeps the whole
