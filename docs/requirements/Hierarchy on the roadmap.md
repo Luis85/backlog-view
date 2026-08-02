@@ -17,9 +17,3 @@ it.
 **Outcome** — The roadmap knows what is under what: which rung it shows is a choice,
 what sits below still counts, and crossing a lane is a real reparent through the real
 gate, never a visual shuffle.
-
-## Use cases
-
-- [[Lanes on the roadmap]] — one level of ancestry, and the roadmap's reparent axis.
-- [[Focus level picks the rows]] — which rung becomes rows.
-- [[Progress on the bar]] — done over total, derived where the tree derives it.

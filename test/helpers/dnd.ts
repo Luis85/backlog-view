@@ -5,6 +5,7 @@
  * surface the adapter touches — the same substitution the tree's drag tests make,
  * proven against the adapter by `test/view/pragmaticSpike.test.ts`.
  */
+import { vi } from 'vitest';
 
 export interface FakeDataTransfer {
 	setData: (type: string, value: string) => void;
@@ -41,11 +42,30 @@ export function dragEvent(type: string, dataTransfer: FakeDataTransfer, init: Mo
 	return evt;
 }
 
-/** Drag a board card onto a column, the whole gesture: start, enter, over, drop. */
-export function boardDrag(card: HTMLElement, column: HTMLElement): void {
+/**
+ * Drag a card onto a drop region, the whole gesture: start, enter, over, drop.
+ * One helper for the board's columns and the roadmap's buckets and shelf — the
+ * gesture is the same one, wired by the same controller.
+ */
+export function cardDrag(card: HTMLElement, region: HTMLElement): void {
 	const dt = fakeDataTransfer();
 	card.dispatchEvent(dragEvent('dragstart', dt));
-	column.dispatchEvent(dragEvent('dragenter', dt, { clientX: 10, clientY: 10 }));
-	column.dispatchEvent(dragEvent('dragover', dt, { clientX: 10, clientY: 10 }));
-	column.dispatchEvent(dragEvent('drop', dt, { clientX: 10, clientY: 10 }));
+	region.dispatchEvent(dragEvent('dragenter', dt, { clientX: 10, clientY: 10 }));
+	region.dispatchEvent(dragEvent('dragover', dt, { clientX: 10, clientY: 10 }));
+	region.dispatchEvent(dragEvent('drop', dt, { clientX: 10, clientY: 10 }));
+}
+
+/**
+ * What the view last announced. The live region is the drag library's shared
+ * `role="status"` node — one node for every card move, whichever projection and
+ * whichever input made it — updated on a timer so a focus change cannot interrupt
+ * it, so reading it means driving fake timers past that delay. `useViewHarness`
+ * clears the region between tests, or a stale announcement would answer for the
+ * next one.
+ */
+export async function announced(): Promise<string> {
+	await vi.advanceTimersByTimeAsync(1100);
+	// A DIRECT child of body: the library appends its region there, while the
+	// toolbar's busy indicator carries `role="status"` too and lives inside the view.
+	return document.body.querySelector(':scope > [role="status"]')?.textContent ?? '';
 }

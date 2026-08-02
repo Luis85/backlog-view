@@ -49,9 +49,13 @@ drag as a gated state write, and the focus level picking the cards; the drag use
 stays `Active` on the one criterion only [[WIP limits]] can exercise. The second
 built the ways to move a card **without** a drag — Alt+arrow, and a card menu whose
 Set state is the board's own columns — with every move, drag included, announcing
-itself in the same words from one live region. What remains under the epic — lanes,
-creation from a column, limits, policies, stamps, column collapse, and the touch
-verdict a device has to answer — is still design.
+itself in the same words from one live region. The third took the two things that
+could not wait: **date stamps**, because history is the one thing a board cannot
+reconstruct later and every unstamped transition is gone for good, and the rest of the
+board's **quick filter**, so a narrowed column says how much work it still holds and a
+match nothing on screen can reach names itself on the card that hides it. What remains
+under the epic — lanes, creation from a column, limits, policies, column collapse, and
+the touch verdict a device has to answer — is still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly
@@ -65,15 +69,21 @@ paragraph of prose before the shape asked the question.
 specified across six features and 18 use cases — the projection toggle grown to three
 positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
 parents span their children, scheduling as gated date writes, milestones as a type of
-their own, and lanes, focus and rollups carried over. Its first feature is built: the toggle's roadmap position, the
-declared axis with its collision checks, both frames read-only — buckets and stated
-bars — the unplaced shelf, and the roadmap's empty states. Everything that writes —
-moving between horizons, scheduling by drag, the lanes — is design still. Two
-decisions organize the epic: the axis is declared in the view options, never guessed
-from property names and never derived from dates; and planned dates are different keys
-from the board's transition stamps, so a plan can never overwrite a record. Every note
-states the precedent it rests on, from a survey of the roadmap literature, the major
-trackers and the Obsidian ecosystem run on 2026-08-01.
+their own, and lanes, focus and rollups carried over. Two features are built. The first
+was the projection: the toggle's roadmap position, the declared axis with its collision
+checks, both frames read-only — buckets and stated bars — the unplaced shelf, and the
+roadmap's empty states. The second gave the horizon axis its writes: a card moves between
+buckets by drag, by Alt+arrow or from its own menu, all three planning one value into the
+note's own horizon property through the one gate, undoable as one batch; the shelf is the
+target that un-places, removing the key rather than blanking it, and it stays reachable
+while empty because a target that exists only when occupied is one nothing can reach;
+and a bucket creates in place, its value riding the same single creation write. The
+dated axis is still read-only — scheduling by drag, the bar moves, the lanes and the
+milestone type are design. Two decisions organize the epic: the axis is declared in the
+view options, never guessed from property names and never derived from dates; and planned
+dates are different keys from the board's transition stamps, so a plan can never overwrite
+a record. Every note states the precedent it rests on, from a survey of the roadmap
+literature, the major trackers and the Obsidian ecosystem run on 2026-08-01.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a

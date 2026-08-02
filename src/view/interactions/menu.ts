@@ -2,9 +2,11 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
-import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasDateAxis, hasHorizonAxis } from '../../domain/roadmap';
+import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
+import { cardPaths, hiddenMatches } from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
@@ -54,6 +56,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	// there is no rank to move within and no sibling to indent under.
 	if (host.projection === 'tree') addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
+	addMatchSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi
@@ -193,7 +196,39 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
 	showMenuForClick(menu, evt);
 }
 
-/** One offer in Set state: the value it writes (null removes the key) and its name. */
+/**
+ * The matches hiding under this card, as menu entries.
+ *
+ * The board is one tab stop by design, so the match links on a card face carry
+ * `tabindex="-1"` — and the menu is their keyboard path, exactly as it is for the
+ * tree's add button and state chip. Without it those links would be pointer-only, and
+ * a match that only a mouse can reach is the very failure the card face exists to
+ * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
+ * not the card itself matched, for the same reason the face names them: a match below
+ * a matching card is a second result, and it has no card of its own to be reached by.
+ */
+function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	const board = host.projection === 'board' ? host.board?.board : null;
+	if (!board || !host.isFiltering()) return;
+	const carded = cardPaths(board);
+	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	if (matches.length === 0) return;
+	menu.addSeparator();
+	for (const match of matches) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(`Open match "${match.title}"`)
+				.setIcon('search')
+				.onClick((evt) => host.openItem(match, evt)),
+		);
+	}
+}
+
+/**
+ * One offer in Set state: the state it writes (null removes the key) and the name it
+ * wears. The two differ on the board, where the entry is named for the COLUMN rather
+ * than for its own value, so "No state" reads as a place instead of as a silence.
+ */
 interface StateChoice {
 	state: string | null;
 	label: string;
@@ -218,15 +253,9 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
 	const current = item.stateValue;
-	const listed = current !== null && values.some((v) => v.toLowerCase() === current.toLowerCase());
+	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
 	return all.map((state) => ({ state, label: state }));
-}
-
-/** True when this offer is the state the item already holds — no-state included. */
-function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
-	if (choice.state === null) return item.stateValue === null;
-	return item.stateValue !== null && item.stateValue.toLowerCase() === choice.state.toLowerCase();
 }
 
 /**
@@ -237,14 +266,27 @@ function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
 	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
-	return host.applySafely([{ file: item.file, state: choice.state }]);
+	// The tree's own Set state plans through the same function the board's moves do, so
+	// the date stamps ride it too: a history with holes in it, where which hole depends
+	// on whether the user was looking at the tree or the board, is worse than none.
+	return host.applySafely(computeStateWrites(item, choice.state, host.settings, todayStamp()));
 }
 
+/**
+ * Render Set state's offers, checking the one the item already holds.
+ *
+ * "Already holds" is asked of the PLAN — an entry is checked exactly when picking
+ * it would write nothing — rather than by a comparison written beside the plan and
+ * expected to agree with it. Those two drift the moment either side learns a case
+ * the other has not: an entry checked as current whose pick still writes spends the
+ * undo slot on a change nobody asked for. One question, asked once. `addHorizonItems`
+ * in `plan.ts` follows the same rule against its own planner.
+ */
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			if (isCurrentState(item, choice)) si.setChecked(true);
+			if (computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0) si.setChecked(true);
 		});
 	}
 }

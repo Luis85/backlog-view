@@ -87,6 +87,18 @@ export interface BacklogViewHost {
 	 */
 	isRowHidden(item: BacklogItem): boolean;
 	/**
+	 * The same rule with the quick filter suspended: the population a filtered count
+	 * is "of". Everything else that hides rows still applies — a stage's full count
+	 * is the work in it, not the work in it plus what another setting is hiding.
+	 */
+	isRowHiddenUnfiltered(item: BacklogItem): boolean;
+	/**
+	 * True when the quick filter matched this item ITSELF, rather than keeping it on
+	 * screen for a relative that matched. The distinction is what lets a card say
+	 * which of the things below it the search actually found.
+	 */
+	isFilterMatch(item: BacklogItem): boolean;
+	/**
 	 * True while the quick filter is narrowing the tree. Collapse state, dragging
 	 * and their affordances pause on exactly this condition — not on the raw input
 	 * text, which may be whitespace that filters nothing.
@@ -137,6 +149,15 @@ export interface BacklogViewHost {
 	 * plans nothing and resolves false, leaving the undo slot untouched.
 	 */
 	performBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
+	/**
+	 * Plan and apply the horizon write a roadmap move means — the target bucket's
+	 * value, or key removal for the shelf. The board's rule on the roadmap's
+	 * property: one path for all three inputs (a drop, an Alt+arrow, the card menu),
+	 * so no input can reach a bucket another cannot, and every move that lands
+	 * announces itself once. A move onto the card's own bucket plans nothing and
+	 * resolves false, leaving the undo slot untouched.
+	 */
+	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean>;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;

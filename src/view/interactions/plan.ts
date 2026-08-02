@@ -1,7 +1,7 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { CivilDate, readDate } from '../../domain/noteFields';
+import { CivilDate, readDate, sameValue } from '../../domain/noteFields';
 import { axisKeyFor, horizonMenuValues } from '../../domain/settings';
 import { computeHorizonWrites, computeScheduleWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
@@ -47,20 +47,40 @@ function horizonChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 
 /** Placement values match case-insensitively, the same matching that fills the buckets. */
 function includesValue(values: string[], value: string): boolean {
-	return values.some((v) => v.toLowerCase() === value.toLowerCase());
+	return values.some((v) => sameValue(v, value));
 }
 
-function isCurrentHorizon(item: BacklogItem, value: string): boolean {
-	const current = item.horizon.value;
-	return current !== null && includesValue([value], current);
+/**
+ * What picking a horizon does. In roadmap mode it takes the DRAG's own path, so a
+ * pick and a drop onto the same bucket are one write, one gate and — the part only
+ * this path can supply — one announcement, said once by `performHorizonMove` rather
+ * than by each input separately. Elsewhere there is no frame to announce into and
+ * the planned write goes straight through the gate. `chooseState` splits on the
+ * board for the same reason.
+ */
+function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<boolean> {
+	if (host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'horizons') {
+		return host.performHorizonMove(item, value);
+	}
+	return host.applySafely(computeHorizonWrites(item, value));
 }
 
-/** The Set horizon list: every bucket this base can place a row in, and the way out of them. */
+/**
+ * The Set horizon list: every bucket this base can place a row in, and the way out of
+ * them.
+ *
+ * An entry is checked exactly when picking it would write NOTHING — asked of the
+ * planner itself rather than by a comparison written beside it and expected to agree.
+ * Those two drift the moment either side learns a case the other has not, and the
+ * failure is silent in the worst direction: an entry that reads as current whose pick
+ * still writes, spending the one undo slot on a change nobody asked for. Set state
+ * follows the same rule against `computeStateWrites`.
+ */
 export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	for (const value of horizonChoices(host, item)) {
 		menu.addItem((si) => {
-			si.setTitle(value).onClick(() => void host.applySafely(computeHorizonWrites(item, value)));
-			if (isCurrentHorizon(item, value)) si.setChecked(true);
+			si.setTitle(value).onClick(() => void chooseHorizon(host, item, value));
+			if (computeHorizonWrites(item, value).length === 0) si.setChecked(true);
 		});
 	}
 	// Offered only while the note carries the key, so no entry here can write nothing —
@@ -72,7 +92,7 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
 		si
 			.setTitle('Clear horizon')
 			.setIcon('eraser')
-			.onClick(() => void host.applySafely(computeHorizonWrites(item, null))),
+			.onClick(() => void chooseHorizon(host, item, null)),
 	);
 }
 

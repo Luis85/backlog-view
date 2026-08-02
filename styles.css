@@ -575,6 +575,23 @@
 	height: var(--icon-s);
 }
 
+/* A touch user can produce neither the hover above nor a tab stop (these buttons are
+   `tabindex="-1"`, because the tree and the roadmap are each one stop), so without
+   this the control is not merely hidden — it is unreachable.
+
+   It sits HERE, immediately after the rule it overrides, rather than in the shared
+   `hover: none` block further down: a media query adds no specificity, so an override
+   written above the `opacity: 0` it is undoing simply loses the cascade and reveals
+   nothing. That shipped once. Each hover-revealed control therefore carries its own
+   reveal beside itself, where a later rule for the same selector cannot get in
+   between — and `test/view/rendering.test.ts` checks the ordering rather than
+   trusting this paragraph. */
+@media (hover: none) {
+	.pbl-add {
+		opacity: 1;
+	}
+}
+
 /* ------------------------------------------------------------------- badges */
 
 .pbl-badge {
@@ -944,9 +961,9 @@
 		display: none;
 	}
 
-	.pbl-add {
-		opacity: 1;
-	}
+	/* The two hover-revealed create buttons are NOT here: an override of `opacity: 0`
+	   has to come after the rule it overrides, and both of those rules are below this
+	   block. Each carries its own `hover: none` reveal beside itself instead. */
 
 	/* Revealed by row hover on a pointer device, which a touch user cannot produce —
 	   without this the inline tag editing has no reachable control at all. */
@@ -1297,9 +1314,12 @@
 	font-size: var(--font-ui-smaller);
 }
 
-/* The column highlight is the only drop signal — within-column order is derived,
-   so there is no between-cards edge to indicate. */
-.pbl-board-col.pbl-col-drop-over {
+/* The region highlight is the only drop signal a card drag gives — within a column
+   or a bucket the order is derived, so there is no between-cards edge to indicate.
+   One rule for every card target: a board column, a horizon bucket, the shelf. */
+.pbl-board-col.pbl-drop-over,
+.pbl-bucket.pbl-drop-over,
+.pbl-shelf.pbl-drop-over {
 	border-color: var(--interactive-accent);
 	border-style: solid;
 	box-shadow: 0 0 0 1px var(--interactive-accent) inset;
@@ -1395,6 +1415,55 @@
 .pbl-card-parent-icon .svg-icon {
 	width: 12px;
 	height: 12px;
+}
+
+/* The matches hiding under a card, while the quick filter is narrowing. Each is a
+   button because it opens a note — the search's own result has to be reachable, not
+   merely counted. Wraps rather than scrolls: a card is already the narrow thing. */
+.pbl-card-matches {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+}
+
+.pbl-card-matches-icon {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	color: var(--text-faint);
+}
+
+.pbl-card-matches-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-card-match {
+	padding: 0 var(--size-2-1);
+	height: auto;
+	line-height: 1.4;
+	box-shadow: none;
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-card-match:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-active-hover);
+}
+
+/* Filtered, the count is a pair ("3 of 12") — wider than a bare number and no longer
+   a quantity to read at a glance, so it stops competing with the column's name. */
+.pbl-board-col-count-filtered {
+	font-variant-numeric: tabular-nums;
+	color: var(--text-faint);
 }
 
 /* The row lays its columns out fixed-width so values align across rows; a card
@@ -1524,6 +1593,37 @@
 	overflow-y: auto;
 	flex: 1 1 auto;
 	min-height: var(--size-4-8);
+}
+
+/* Create into this bucket. Hidden until the bucket is hovered or the button takes
+   focus, exactly as the tree row's add button is: an affordance per bucket, not a
+   permanent row of plus signs across the roadmap. */
+.pbl-bucket-add {
+	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+.pbl-bucket:hover .pbl-bucket-add,
+.pbl-bucket-add:focus-visible {
+	opacity: 1;
+}
+
+.pbl-bucket-add .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* Reachable without hover, beside the rule it overrides — see `.pbl-add` above for
+   why the position is the whole point. */
+@media (hover: none) {
+	.pbl-bucket-add {
+		opacity: 1;
+	}
 }
 
 /* ----- the dated axis: the month grid, bars, and the today line */
@@ -1672,6 +1772,18 @@
 .pbl-roadmap-context {
 	border-style: dashed;
 	background-color: transparent;
+}
+
+/* An empty shelf takes no space — and is still the target that un-places, which a
+   strip appearing only while a drag is live can be and an absent element cannot.
+   The DOM keeps it so a drop has somewhere to land; this keeps it out of the way. */
+.pbl-shelf-empty {
+	display: none;
+}
+
+.pbl-dragging .pbl-shelf-empty {
+	display: flex;
+	border-style: dashed;
 }
 
 .pbl-shelf-header {

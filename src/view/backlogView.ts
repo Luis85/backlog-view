@@ -1,5 +1,6 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
+import { FilterState } from './filterState';
 import {
 	BacklogViewHost,
 	BoardSnapshot,
@@ -9,22 +10,23 @@ import {
 	Projection,
 	RoadmapSnapshot,
 } from './host';
-import { announceBoardMove, BoardDragController } from './interactions/boardDrag';
+import { announceBoardMove, announceHorizonMove, CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
-import { RoadmapAxis } from '../domain/roadmap';
-import { computeDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
+import { horizonSource, RoadmapAxis } from '../domain/roadmap';
+import { computeDropWrites, computeHorizonWrites, computeStateWrites, ItemWrite } from '../domain/writePlan';
+import { todayStamp } from '../domain/noteFields';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
-import { anchorScrollLeft, renderProjectionContent, ScrollAnchor } from './render/projections';
+import { renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
@@ -44,23 +46,21 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private treeEl: HTMLElement;
 	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
-	private boardDnd: BoardDragController;
+	private cardDnd: CardDragController;
 	/** The board of the last render; null while the view is not a board. */
 	board: BoardSnapshot | null = null;
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
-	/** What the scroller last drew and where today sat — see `anchorScrollLeft`. */
+	/** What the scroller last drew and where today sat — see `restoreScroll`. */
 	private scroll: ScrollAnchor = { content: '', todayLeft: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
-	filterText = '';
+	private readonly filter = new FilterState();
 	groupingIgnored = false;
 	private readonly collapse: CollapseState;
-	/** Paths visible under the active filter; null when no filter is set. */
-	private filterVisible: Set<string> | null = null;
 	private applying = false;
 	/**
 	 * Inverses of the most recent effective batch, in write order — the single-level,
@@ -109,7 +109,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			rootDropEl: this.rootDropEl,
 		});
 		this.dnd.setupRootDropZone();
-		this.boardDnd = new BoardDragController(this, this.viewEl);
+		this.cardDnd = new CardDragController(this, this.viewEl);
 		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
@@ -125,7 +125,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.resizeObserver?.disconnect();
 		this.collapse.dispose();
 		this.dnd.dispose();
-		this.boardDnd.dispose();
+		this.cardDnd.dispose();
 		this.viewEl.detach();
 	}
 
@@ -195,7 +195,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// overwritten by the very pass that is meant to honor it.
 		this.collapse.restore(this.viewEl);
 		this.collapse.collapseNewParents(this.model.items);
-		this.recomputeFilter();
+		this.filter.recompute(this.model);
 		this.render();
 	}
 
@@ -215,9 +215,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	// ------------------------------------------------------------- quick filter
 
+	get filterText(): string {
+		return this.filter.text;
+	}
+
 	setFilter(text: string): void {
-		this.filterText = text;
-		this.recomputeFilter();
+		this.filter.text = text;
+		this.filter.recompute(this.model);
 		this.renderTreeContent();
 	}
 
@@ -226,59 +230,61 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
+		return this.hidden(item, true);
+	}
+
+	isRowHiddenUnfiltered(item: BacklogItem): boolean {
+		return this.hidden(item, false);
+	}
+
+	isFilterMatch(item: BacklogItem): boolean {
+		return this.filter.matched(item.file.path);
+	}
+
+	/**
+	 * Row visibility, with the filter itself optionally lifted. One predicate answers
+	 * for the narrowed board and for the population its counts are measured against,
+	 * so the two cannot disagree about what "in this column" means.
+	 *
+	 * Lifting the filter is NOT the same as having no filter: while one is running it
+	 * suspends the completed-items toggle, and the population a count is "of" has to
+	 * keep that suspension. Measuring against the cleared board instead would count a
+	 * matched-but-otherwise-hidden card as "1 of 0" — each number defensible on its
+	 * own and the pair nonsense. What "of" means is what this filter is choosing among.
+	 */
+	private hidden(item: BacklogItem, applyFilter: boolean): boolean {
 		// While filtering, the filter alone decides — a match must be findable even
 		// when completed items are hidden, so hiding is suspended.
-		if (this.filterVisible !== null) {
-			if (!this.filterVisible.has(item.file.path)) return true;
+		if (this.filter.active) {
+			if (applyFilter && !this.filter.keeps(item.file.path)) return true;
 		} else if (this.hidingCompleted() && item.subtreeDone) {
 			return true;
 		}
 		// A context row is here only to place a result. Once nothing below it is
 		// visible it is an empty scaffold, so it goes with them — whatever hid them.
 		// One visible child is enough: a context child is itself subject to this rule.
-		if (item.outsideFilter) return !item.children.some((child) => !this.isRowHidden(child));
+		if (item.outsideFilter) return !item.children.some((child) => !this.hidden(child, applyFilter));
 		return false;
 	}
 
-	/** True when the completed-items toggle is actively hiding fully-done subtrees. */
+	/**
+	 * True when the completed-items toggle is actively hiding fully-done subtrees.
+	 * The filter's own suspension of it is structural — `hidden` only consults this
+	 * on the branch where no filter is in play.
+	 */
 	private hidingCompleted(): boolean {
-		return !this.settings.showCompleted && this.settings.stateKey !== '' && this.filterVisible === null;
+		return !this.settings.showCompleted && this.settings.stateKey !== '';
 	}
 
 	isFiltering(): boolean {
-		return this.filterVisible !== null;
-	}
-
-	/** Matches stay visible together with all their ancestors and descendants. */
-	private recomputeFilter(): void {
-		const model = this.model;
-		const needle = this.filterText.trim().toLowerCase();
-		if (!model || needle === '') {
-			this.filterVisible = null;
-			return;
-		}
-		const visible = new Set<string>();
-		const markSubtree = (item: BacklogItem) => {
-			visible.add(item.file.path);
-			for (const child of item.children) markSubtree(child);
-		};
-		const visit = (item: BacklogItem): boolean => {
-			const selfMatch = item.title.toLowerCase().includes(needle);
-			if (selfMatch) markSubtree(item);
-			let anyMatch = selfMatch;
-			for (const child of item.children) anyMatch = visit(child) || anyMatch;
-			if (anyMatch) visible.add(item.file.path);
-			return anyMatch;
-		};
-		for (const root of model.roots) visit(root);
-		this.filterVisible = visible;
+		return this.filter.active;
 	}
 
 	// ----------------------------------------------------------- collapse state
 
 	isCollapsed(path: string): boolean {
 		// While filtering, everything on a path to a match renders expanded.
-		return this.filterVisible === null && this.collapse.isCollapsed(path);
+		return !this.filter.active && this.collapse.isCollapsed(path);
 	}
 
 	setCollapsed(path: string, collapsed: boolean): boolean {
@@ -374,7 +380,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// dangling `aria-describedby` is read as no description at all.
 		this.treeEl.removeAttribute('aria-describedby');
 		this.dnd.onRenderStart();
-		this.boardDnd.onRenderStart();
+		this.cardDnd.onRenderStart();
 		this.viewEl.toggleClass('pbl-focused', model.focused);
 		// Collapse controls and drag grips are inert while a filter is active.
 		this.viewEl.toggleClass('pbl-filtering', this.isFiltering());
@@ -387,7 +393,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
 			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-state');
 		}
-		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.boardDnd);
+		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.cardDnd);
 		this.board = content.board;
 		this.roadmap = content.roadmap;
 		this.treeEl.setAttribute('role', content.role);
@@ -400,14 +406,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			this.selectBoardColumn(Math.min(this.selectedBoardColumn, content.board.colEls.length - 1));
 		}
 		// Both offsets belong to the content that made them — restored, corrected,
-		// reset or replaced by the anchor policy `anchorScrollLeft` states. Vertical
-		// keeps the same rule without the centering: same content keeps the reader's
-		// place, a switch starts at the top — a tree's depth means nothing to buckets.
-		const todayLeft = this.roadmap?.todayLeft ?? null;
-		const drawn = todayLeft != null ? 'dates' : this.roadmap ? 'horizons' : projection;
-		this.treeEl.scrollTop = drawn === this.scroll.content ? scrollTop : 0;
-		this.treeEl.scrollLeft = anchorScrollLeft(this.scroll, drawn, todayLeft, scrollLeft, this.treeEl.clientWidth);
-		this.scroll = { content: drawn, todayLeft };
+		// reset or replaced by the anchor policy `restoreScroll` states beside the
+		// fork that decides what was drawn.
+		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection, { top: scrollTop, left: scrollLeft });
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
 		if (projection !== 'tree') return;
@@ -428,26 +429,42 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	// -------------------------------------------------------------------- writes
 
-	async performBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
-		const writes = computeStateDropWrites(item, state);
-		// A move onto the card's own column: no write at all, and the undo slot keeps
-		// the batch it had — a batch that writes nothing must not cost the user the
-		// undo of the change before it. Nothing is announced either: "moved from
-		// Active to Active" reports a change that did not happen.
+	/**
+	 * The shape both card moves share: a planned batch, applied, then announced once
+	 * — whichever of the three inputs made it, a drag, an Alt+arrow or the card menu.
+	 * An empty batch resolves false and says nothing: a move onto the card's own
+	 * column or bucket must cost neither the undo slot it had nor a sentence about a
+	 * change that did not happen.
+	 *
+	 * `say` is a closure over vocabulary captured BEFORE the write, because a Bases
+	 * update arriving mid-batch is rebuilt into `this.board` / `this.roadmap` the
+	 * instant the batch ends — which is before the await below resolves. By then the
+	 * column or bucket just vacated may be gone with its last card, and naming the
+	 * move from the new render would report a place the user never touched.
+	 */
+	private async applyCardMove(item: BacklogItem, writes: ItemWrite[], say: () => void): Promise<boolean> {
 		if (writes.length === 0) return false;
-		// Read before the write, while the model still holds the state being left —
-		// and take the column vocabulary with it, for the same reason. A Bases update
-		// arriving mid-batch is rebuilt into `this.board` the instant the batch ends,
-		// which is BEFORE the await below resolves: by then the column just vacated
-		// may be gone (a stray column loses its last card), and naming the move from
-		// the new board would report a column the user never touched.
+		if (!(await this.applyMove(item, writes))) return false;
+		say();
+		return true;
+	}
+
+	async performBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
 		const from = item.stateValue;
 		const columns = this.board?.board;
-		if (!(await this.applyMove(item, writes))) return false;
-		// Every board move says what changed, whichever input made it — a drag, an
-		// Alt+arrow and the card menu all arrive here.
-		announceBoardMove(columns, item.title, from, state);
-		return true;
+		return this.applyCardMove(item, computeStateWrites(item, state, this.settings, todayStamp()), () =>
+			announceBoardMove(columns, item.title, from, state),
+		);
+	}
+
+	async performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {
+		// Both facts about where it came from, taken together: the reading alone cannot
+		// say whether the key was there, and an empty key is a real thing to clear.
+		const from = horizonSource(item);
+		const buckets = this.roadmap?.roadmap;
+		return this.applyCardMove(item, computeHorizonWrites(item, horizon), () =>
+			announceHorizonMove(buckets, item.title, from, horizon),
+		);
 	}
 
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
@@ -503,18 +520,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const batch = [...restores].reverse();
 		const tracker: ReplayTracker = { finished: 0 };
 		const ok = await this.runExclusively(batch.length, replayRun(this.app, batch, tracker), restores);
-		if (ok) {
-			// Rejoin any redo stranded by the failure this replay just recovered
-			// from, so the next undo re-applies the WHOLE batch, not only the tail.
-			this.lastUndo = this.recovery.completed(restores, this.lastUndo);
-		} else if (tracker.finished > 0 && tracker.finished < batch.length) {
-			// A replay that failed partway holds its place: the slot gets the
-			// unfinished remainder, so the next undo finishes taking the change back
-			// rather than redoing the restored prefix — whose redo waits in the
-			// stash. A throw on the FIRST file installed nothing, so the original
-			// slot (and any stash pointed at it) simply stays for the retry.
-			this.lastUndo = this.recovery.failed(restores, batch, tracker.finished, this.lastUndo);
-		}
+		// What the slot becomes is the recovery's question, not the gate's: a
+		// completed replay rejoins any redo stranded by the failure it recovered
+		// from, and one that failed partway holds its place with the unfinished
+		// remainder, so the next undo finishes taking the change back.
+		this.lastUndo = this.recovery.settle(ok, restores, batch, tracker, this.lastUndo);
 		// The gate's closing sync ran before this bookkeeping settled the slot — a
 		// consumed retry re-arms the carried redo AFTER setBusy(null) disabled the
 		// button — so publish the settled answer.

@@ -2,16 +2,17 @@
 type: Issue
 order: 80
 parent: "[[Product Backlog]]"
-status: Done
+status: Open
 priority: P2
 area: verification
-closed: 2026-08-01
 created: 2026-07-31
-source: PR #14
+source: PR #14; reopened 2026-08-02 for the roadmap
 files:
   - styles.css
   - src/view/render/toolbar.ts
   - src/view/render/rows.ts
+  - src/view/render/roadmap.ts
+  - src/view/render/timeline.ts
 ---
 
 # Smoke-test the visual changes in a real vault
@@ -68,17 +69,56 @@ child is still tellable from an open one.
 **Reduced motion** — with the OS setting on, spinners should step rather than spin and
 the busy chip should appear without a fade.
 
+## The roadmap (added 2026-08-02, unverified)
+
+Nothing below has ever been looked at. The first roadmap increment shipped its layout on
+jsdom structure tests alone, and the horizon writes added a second set of things only a
+pointer can exercise. Point a Base at `docs/` and switch to the roadmap.
+
+**The three-position toggle** — tree, board, roadmap as one segmented group. Check the
+active position reads as active without the group looking like three separate buttons,
+and that the axis picker beside it appears only with both a horizon property and a date
+property configured.
+
+**Bucket layout in a narrow pane** — buckets are `flex: 0 0 260px` and the frame is
+`min-width: max-content`, so a narrow pane should scroll sideways rather than squeeze
+them. Check the buckets keep their width and the pane scrolls.
+
+**The shelf pinned to the scrollport** — `position: sticky` with `width: 100cqw` inside a
+`max-content` frame. Pan the timeline sideways: the shelf, the context strip and the
+advisory must stay put and stay full-width, not slide off or collapse.
+
+**The timeline's sticky lead column and the today scroll** — entering the dated axis
+should land centred on today; the row labels should stay put as the grid pans.
+
+**Done bars keep their open-end fade** — a bar with no target date fades out at its open
+end, and it must still do so when the item is done (bars paint through
+`--pbl-bar-color`).
+
+**The empty shelf appearing mid-drag** — with every card placed, the shelf is
+`display: none`. Pick a card up: the strip should appear, dashed, at the scrollport
+width, and be a real drop target. This is the one item on this whole list that is a
+*behaviour* nobody can see in jsdom, because the class is asserted and the layout is not.
+
+**The drop-over highlight** — one class (`pbl-drop-over`) now serves board columns,
+buckets and the shelf. Check all three highlight identically, and that the board's
+highlight is unchanged from 0.3.0.
+
+**The bucket's New button** — a `+` in the bucket header, appearing on hover like the
+row's. Check it does not crowd the count badge and does not appear in the `Tab` order.
+
 ## Runs
 
 | Date | Against | Outcome |
 | --- | --- | --- |
 | 2026-08-01 | the PR #14 changes | Everything as intended; `styles.css` needed no adjustment. |
 | 2026-08-01 | **0.3.0** — extra-type badges, done rows without the strike-through | Confirmed by the maintainer: looks and feels fine. No change needed. |
+| — | the roadmap, both axes and the horizon writes | **Not run.** Reopened for it. |
 
 That second run is the one that mattered most, because the badge colours and the removed
 strike-through shipped in 0.3.0 on the strength of jsdom structure tests, which cannot see
-a pixel. **This note is closed but kept to be re-run**, not read as history: it is the
-checklist for any future change to `styles.css` or to the row's markup, and
+a pixel. **This note is a checklist to re-run, not a record**: it closes when it has
+been run and reopens with the next change to `styles.css` or to the view's markup, and
 `npm run test-build` against the `docs/` backlog makes it a ten-minute pass. Add a row
 above when you run it.
 
@@ -113,3 +153,9 @@ for good: no test in this repository will ever check what the plugin looks like,
 change to `styles.css` or to the toolbar's markup still needs eyes. `npm run test-build`
 is now the one-command path to those eyes, and this note stands as the checklist to
 re-run — reopen it, don't rewrite it.
+
+**Reopened 2026-08-02**, exactly that way: the roadmap section above is new and nothing
+in it has been looked at. Two increments of layout — the buckets, the timeline, the
+shelf's sticky trick — plus the horizon writes' own affordances shipped on tests that
+cannot see a pixel, which is a larger unverified surface than this note has ever carried
+at once. It closes again when someone has run it.

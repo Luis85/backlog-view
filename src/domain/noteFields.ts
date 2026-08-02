@@ -110,6 +110,19 @@ export function normalizeTag(input: string): string {
 	return /[^\p{N}]/u.test(tag) ? tag : '';
 }
 
+/**
+ * Two frontmatter values naming the same thing. Case-insensitive, because that is
+ * how every vocabulary in this view matches — a state to its column, a horizon to
+ * its bucket — and absence is a value rather than a missing one, so "no state" and
+ * "no horizon" compare like anything else. One predicate, because a plan that said
+ * "unchanged" on a different rule than the menu's checkmark would disagree about
+ * what the user is looking at.
+ */
+export function sameValue(a: string | null, b: string | null): boolean {
+	if (a === null || b === null) return a === b;
+	return a.toLowerCase() === b.toLowerCase();
+}
+
 export function readString(value: unknown): string | null {
 	if (typeof value === 'string') {
 		const trimmed = value.trim();
@@ -199,3 +212,26 @@ export function daysInMonth(year: number, month: number): number {
 	// Day 0 of the next month is this month's last day; pure calendar arithmetic.
 	return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
+
+/**
+ * Today as `YYYY-MM-DD` — the shape Obsidian's date properties parse, and the one
+ * this register already stamps `created:` and `closed:` with by hand.
+ *
+ * Built from the LOCAL date parts rather than `toISOString()`, which converts to UTC
+ * first: for anyone west of Greenwich an evening transition would be stamped
+ * tomorrow, and a stamp exists to say when work happened to the person it happened to.
+ *
+ * The one clock read in the domain, kept here beside `normalizeTag` for the same
+ * reason — this is the value format for a property, and the format is what has to be
+ * right. Planning stays pure by taking the result as an argument.
+ */
+export function todayStamp(): string {
+	return dateStamp(new Date());
+}
+
+/** The stamp for a given date, so the formatting is testable without the clock. */
+export function dateStamp(now: Date): string {
+	const pad = (n: number): string => String(n).padStart(2, '0');
+	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+

@@ -1,5 +1,4 @@
 /** Fixtures and accessors for the board projection, shared by the board view suites. */
-import { vi } from 'vitest';
 import { FakeVault } from './vault';
 import { Harness, makeView } from './view';
 
@@ -56,17 +55,4 @@ export function makeBoard(vault: FakeVault, extra: Record<string, unknown> = {})
 	const harness = makeView(vault, { ...BOARD_WORKFLOW, ...extra }, { collapsed: true });
 	harness.view.setProjection('board');
 	return harness;
-}
-
-/**
- * What the board last announced. The live region is the drag library's shared
- * `role="status"` node, updated on a timer so a focus change cannot interrupt it —
- * so reading it means driving fake timers past that delay. `useViewHarness` clears
- * the region between tests, or a stale announcement would answer for the next one.
- */
-export async function announced(): Promise<string> {
-	await vi.advanceTimersByTimeAsync(1100);
-	// A DIRECT child of body: the library appends its region there, while the
-	// toolbar's busy indicator carries `role="status"` too and lives inside the view.
-	return document.body.querySelector(':scope > [role="status"]')?.textContent ?? '';
 }

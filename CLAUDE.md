@@ -3,9 +3,10 @@
 Obsidian plugin registering a custom **Bases view** (`product-backlog`): a drag-and-drop
 work-item tree (Epic → Feature → PBI → Task) over notes in a flat folder, driven by
 `parent`/`order`/`type` frontmatter — with two more projections toggled per saved view:
-a kanban **board** whose columns are the configured workflow states, and a read-only
-**roadmap** drawing whichever axis the view options declare (horizon buckets, or a
-timeline from two date properties) with everything unplaceable on a counted shelf. The
+a kanban **board** whose columns are the configured workflow states, and a
+**roadmap** drawing whichever axis the view options declare (horizon buckets that a
+card can be moved between, or a read-only timeline from two date properties) with
+everything unplaceable on a counted shelf that is also the target that un-places. The
 mode and the roadmap-axis pick are UI state (vault-scoped localStorage, beside the
 collapse state), never a `.base` setting: base settings are saved on the view, working
 position on the device.
@@ -68,7 +69,7 @@ mirrors the same directories.
 | `domain/board.ts` | Board derivation: columns from the workflow, card assignment, context-card placement and sorting | node tests |
 | `domain/roadmap.ts` | Roadmap derivation: the declared axis, horizon buckets, timeline placement, the shelf partition, context handling | node tests |
 | `domain/timeline.ts` | Civil-date arithmetic: spans, the bounded month window, bar geometry — today is always injected | node tests |
-| `domain/writePlan.ts` | What a change *would* write: drop plans, ranking, backfill. Pure — applies nothing | node tests |
+| `domain/writePlan.ts` | What a change *would* write: drop plans (tree, state, horizon), ranking, backfill. Pure — applies nothing | node tests |
 | **`storage/`** | **The only place anything is persisted.** | |
 | `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |
 | `storage/baseFile.ts` | Writing the `.base` file itself | node tests |
@@ -78,15 +79,16 @@ mirrors the same directories.
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch, write gate | jsdom tests |
 | `view/selection.ts` | The one selection either projection holds — row/card by path, or a board column stop — and its aria bookkeeping | jsdom tests |
 | `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
+| `view/filterState.ts` | The quick filter's session state: the text, the match path that renders, the matches themselves | jsdom tests |
 | `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
-| `view/render/projections.ts` | The content-pane fork: which projection draws into the scroller, and the role/label the pane claims | jsdom tests |
+| `view/render/projections.ts` | The content-pane fork: which projection draws into the scroller, the role/label the pane claims, and where the scroll offsets belong | jsdom tests |
 | `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages — and the card body every projection shares | jsdom tests |
-| `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory | jsdom tests |
+| `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory — and, on the horizon axis, the drop targets and the per-bucket New | jsdom tests |
 | `view/render/timeline.ts` | The dated grid: month header, bars and milestones with exact-date tooltips, the today line | jsdom tests |
 | `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the roadmap's no-axis guidance | jsdom tests |
 | `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
-| `view/interactions/boardDrag.ts` | The board's drag: Pragmatic drag and drop wiring, column drops, announcements (ADR 0018) | jsdom tests |
+| `view/interactions/cardDrag.ts` | The card drag both projections share: Pragmatic wiring, drop targets that take their own plan, announcements (ADR 0018) | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
 | `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
@@ -138,9 +140,22 @@ depend on the effectful one.
   is the one that grows: split by subject before a file becomes the place tests hide. The
   Obsidian ruleset deliberately stops at `src/` — it is type-aware, and the test doubles
   exist to do what it forbids.
-- Known harness limits: `FakeVault` caches are static — after a write, assert frontmatter
-  rather than re-rendering; `entry.getValue()` returns null, so property chips render
-  empty in tests.
+- **An invariant asserted in a comment gets a test that fails without it, and the test is
+  watched failing.** Revert the fix, run it, see red, restore. Six of ten review findings
+  on one pull request were comments precisely stating the rule the code beside them
+  broke, so a confident paragraph is evidence of intent and of nothing else — see
+  `docs/issues/A comment that states a rule is not a check.md`. Twice, watching the test
+  fail was what showed it asserted less than it read as.
+- Known harness limits: nothing refreshes on its own — a write updates the vault and no
+  `onDataUpdated` follows, so a test that wants to see the result RE-RENDERED calls
+  `refresh(view, vault)` (or sets `vault.afterWrite`, which is how a Bases update is
+  interleaved with a batch). The model it rebuilds does see the write: `addFile` gives
+  the metadata cache the same frontmatter object `processFrontMatter` mutates — verified
+  2026-08-02, after this line claimed for months that the caches were static and cost a
+  legitimate test that was deleted rather than driven. A note added with NO frontmatter
+  is the real exception: the cache never gets an object for it, so writes to it stay
+  invisible to the model. `entry.getValue()` returns null, so property chips render empty
+  in tests.
 
 ## Invariants that bite
 
@@ -168,7 +183,10 @@ it would place an item above something the user can see. Ask that question of an
 code touching the tree; the "write safety with context rows, across every entry point"
 test in `test/view/contextRowWrites.test.ts` drives every interaction against a fixture
 with context rows above, beside and between results, so a new write path fails it
-without anyone predicting the surface.
+without anyone predicting the surface — and `test/view/contextCardWrites.test.ts` asks
+the same three questions of each CARD projection (the drag, the keyboard and menu paths
+a drag cannot take, the structural refusal behind both), because a card is a different
+set of entry points over the same rule.
 
 "Derived from the results" includes numbers computed *while walking the tree*, not just
 code that reads a model collection: `assignAll` traverses **through** a context row to
@@ -208,6 +226,39 @@ planned by `domain/writePlan.ts`, which touches nothing, and applied by
 write's inverse as it lands, so the last effective batch can always be taken back
 (`applyRestores`, compare-and-swap per key).
 
+### One move, three inputs — per projection
+
+A card move is a drop, an Alt+arrow and a menu pick landing on ONE host method
+(`performBoardMove`, `performHorizonMove`), which is the only place its batch is
+planned and the only place it is announced. Adding a fourth input means calling that
+method, never planning a write beside it; adding a projection means adding one such
+method, not a second idea of what a move is. Both share `applyCardMove`, which also
+states the capture rule: the vocabulary that will NAME the move is read before the
+await, because the batch's own refresh rebuilds `board`/`roadmap` before it resolves
+and the column or bucket just vacated may be gone with its last card.
+
+The two removal writes are the same shape twice — `removeStateKey` and
+`removeHorizonKey`, both on keys that may not be configured at all — so
+`writeOptional` in `storage/frontmatter.ts` is the single statement of "absence is a
+value, and never write to an empty key". A third such property adds a call, not a rule.
+
+A Set menu's **checkmark is asked of the PLAN** — an entry is checked exactly when
+picking it would write nothing — never by a comparison written beside the plan and
+expected to agree with it. Those two drifted the moment a second property joined: a
+horizon the reader refuses reads as no value, so comparing values checked `Unplaced`
+on a note whose key still held something, offering as current an action that removes a
+key and spends the undo slot.
+
+**A write can take its own note out of the base**, and nothing reports it. A filter can
+name the very property a move writes, so a legitimate write can make its own card
+vanish; the card leaves in silence, which is what
+`docs/requirements/Moving between horizons.md` extension 3b says should not happen. It
+was built once and removed — the mechanism belongs to `New cards in place`, and building
+it from one sentence took eleven review findings across seven rounds without reaching a
+correct rule. Read `docs/issues/The outcome report was built from one sentence.md`
+before building it again: the open question is that nothing correlates a Bases pass with
+a write, and a design that needs that correlation cannot be made to work here.
+
 
 ## Gotchas
 
@@ -217,6 +268,12 @@ write's inverse as it lands, so the last effective batch can always be taken bac
   should not be one. `isEmpty` is the opposite case: it IS in the typings, but on
   `ObjectValue` rather than the `Value` that `getValue()` returns, so testing for it
   is a genuine question about the value in hand.
+- Fallow resolves an interface's members through an **explicit type annotation**, not
+  through a property access: a host method reached only via `const host = ctx.host`
+  reports as an unused class member even though it is called. Annotate the local
+  (`const host: BacklogViewHost = ctx.host`) rather than reaching for
+  `usedClassMembers`, which is for members a framework invokes and would hide a
+  genuinely dead one.
 - Nothing here carries compatibility with older *plugin* versions. `minAppVersion`
   is the only compatibility boundary, and it is a floor, not a range — a shim for an
   Obsidian older than it is dead code by definition.

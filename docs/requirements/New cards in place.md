@@ -78,5 +78,16 @@ the base's filter, is a note the board writes and then cannot show.
 
 **Nothing yet — this note is design.** The gated flow, the folder inference and the
 context-parent exception are already `src/view/interactions/create.ts`; what the board
-adds is a preset state and the visibility check that turns "created but not shown" from a
-silent outcome into a reported one.
+adds is a preset state and creation from a column.
+
+The **visibility check** this note specifies — 4a and 4b, "created but not shown" turned
+from a silent outcome into a reported one — is the part to write the extensions for
+before writing it. It was built once, for moves, by [[Moving between horizons]]'s
+extension 3b, and taken back out after eleven review findings across seven rounds: every
+rule it needs was discovered by a reviewer after the code existed, and the last of them
+could not be settled without a design decision this note is the place to make. The
+account, the rules found so far and the open question are
+[[The outcome report was built from one sentence]]. Whoever builds it should read that
+first and add the extensions here — which pass answers, what two overlapping writes
+mean, what a second write to the same note does, and which of the two ways out of the
+view a message names.

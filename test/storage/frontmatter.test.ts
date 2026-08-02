@@ -80,6 +80,38 @@ describe('applyWrites', () => {
 		expect(again).toHaveLength(0);
 	});
 
+	it('writes the horizon on its own key, and removes it with a restorable inverse', async () => {
+		const vault = new FakeVault();
+		const planned = { ...settings, horizonKey: 'horizon' };
+		const item = vault.addFile('Item.md', { frontmatter: { order: 5 } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, planned, [{ file: item, axis: { horizon: 'Next' } }]);
+		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
+
+		// The shelf's drop: absence, never an empty string — and undo puts it back.
+		await applyWrites(vault.app, planned, [{ file: item, axis: { horizon: null } }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+		expect(vault.fm('Item.md')).toEqual({ order: 5 });
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
+
+		// Without a configured horizon property the write is dropped, not misfiled —
+		// the state key's rule, because it is the same rule.
+		await applyWrites(vault.app, settings, [{ file: item, axis: { horizon: 'Now' } }]);
+		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
+	});
+
+	it('carries a state and a horizon change in one write, each on its own key', async () => {
+		const vault = new FakeVault();
+		const both = { ...settings, stateKey: 'status', horizonKey: 'horizon' };
+		const item = vault.addFile('Item.md', { frontmatter: { status: 'New', horizon: 'Now' } });
+
+		await applyWrites(vault.app, both, [{ file: item, state: 'Active', axis: { horizon: null } }]);
+		expect(vault.fm('Item.md')).toEqual({ status: 'Active' });
+	});
+
 	it('applies tag deltas to what the note holds, and drops the key when it empties', async () => {
 		const vault = new FakeVault();
 		const tagged = { ...settings, tagsKey: 'tags' };
@@ -161,6 +193,43 @@ describe('createBacklogItem', () => {
 		expect(vault.fm(second.path)).toEqual({ type: 'PBI', order: 20 });
 	});
 
+	it('writes the bucket a note was created from, in the same single write', async () => {
+		const vault = new FakeVault();
+		const planned = { ...settings, horizonKey: 'horizon' };
+
+		const file = await createBacklogItem(vault.app, planned, {
+			folder: 'Backlog',
+			title: 'Planned',
+			typeName: 'Epic',
+			parent: null,
+			order: 10,
+			horizon: 'Later',
+		});
+
+		// One atomic write: the note never exists in a bucket its frontmatter does
+		// not claim, because there is no moment at which the placement is missing.
+		expect(vault.fm(file.path)).toEqual({ type: 'Epic', order: 10, horizon: 'Later' });
+
+		// No horizon asked for, and no horizon key configured: neither writes one.
+		const plain = await createBacklogItem(vault.app, planned, {
+			folder: 'Backlog',
+			title: 'Untriaged',
+			typeName: 'Epic',
+			parent: null,
+			order: 20,
+		});
+		expect(vault.fm(plain.path)).toEqual({ type: 'Epic', order: 20 });
+		const unconfigured = await createBacklogItem(vault.app, settings, {
+			folder: 'Backlog',
+			title: 'Nowhere',
+			typeName: 'Epic',
+			parent: null,
+			order: 30,
+			horizon: 'Later',
+		});
+		expect(vault.fm(unconfigured.path)).toEqual({ type: 'Epic', order: 30 });
+	});
+
 	it('pins parentless creations in folder mode', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });
@@ -187,5 +256,272 @@ describe('createBacklogItem', () => {
 			order: 10,
 		});
 		expect(file.path).toBe('Untitled.md');
+	});
+});
+
+/** Both stamp properties named, so the writer has somewhere to put them. */
+const stamping = { ...settings, stateKey: 'status', startedDateKey: 'started', finishedDateKey: 'finished' };
+
+describe('applying date stamps', () => {
+	it('stamps the start beside the state, in one write', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')).toEqual({ status: 'Active', started: '2026-08-02' });
+		// One processFrontMatter call, not two: a stamp is never a second write.
+		expect(vault.writeLog).toHaveLength(1);
+	});
+
+	it('keeps the earliest start, deciding against the live value', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', started: '2026-01-15' } });
+
+		// Rework: back into a started state, with a start already on the note. The
+		// planner offers the date every time and the writer is what declines it, so the
+		// measure keeps reporting the age of the work rather than the last restart.
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toBe('2026-01-15');
+	});
+
+	it('stamps no start when the note is already in the state being written', async () => {
+		// The model still said New; the note is already Active, with no start recorded.
+		// Picking Active writes a state the note already holds — no transition happened,
+		// so dating one would record a redundant selection rather than the moment work
+		// began, and spend the undo slot on it.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Active' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+
+		expect('started' in vault.fm('A.md')).toBe(false);
+		expect(inverses).toEqual([]);
+	});
+
+	it('compares that state case-insensitively, like every other state match', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'active' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect('started' in vault.fm('A.md')).toBe(false);
+	});
+
+	it('treats an empty start property as no start at all', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New', started: '  ' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toBe('2026-08-02');
+	});
+
+	it('treats an emptied list property as no start at all', async () => {
+		// Obsidian writes an emptied list property as `[]`, and the date readers call
+		// that absence. Reading it as a date already recorded would decline the stamp
+		// forever — write-once protecting a value that is not there.
+		const vault = new FakeVault();
+		const empty = vault.addFile('A.md', { frontmatter: { status: 'New', started: [] } });
+		const blank = vault.addFile('B.md', { frontmatter: { status: 'New', started: [''] } });
+
+		await applyWrites(vault.app, stamping, [
+			{ file: empty, state: 'Active', startedDate: '2026-08-02' },
+			{ file: blank, state: 'Active', startedDate: '2026-08-02' },
+		]);
+
+		expect(vault.fm('A.md')['started']).toBe('2026-08-02');
+		expect(vault.fm('B.md')['started']).toBe('2026-08-02');
+	});
+
+	it('leaves a list that actually holds a date alone', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New', started: ['2026-01-15'] } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toEqual(['2026-01-15']);
+	});
+
+	it('treats a date property inherited from Object as absent', async () => {
+		// `toString` is a legal frontmatter name. On a note that lacks it, `fm.toString`
+		// is the inherited FUNCTION — truthy, so a blank test reads it as a date already
+		// recorded and declines the stamp forever. This hazard has shipped three times in
+		// this codebase on other tables; it is why every configured-key read goes through
+		// `ownValue`.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		await applyWrites(vault.app, { ...stamping, startedDateKey: 'toString' }, [
+			{ file, state: 'Active', startedDate: '2026-08-02' },
+		]);
+
+		const fm = vault.fm('A.md');
+		expect(Object.prototype.hasOwnProperty.call(fm, 'toString')).toBe(true);
+		expect(fm['toString']).toBe('2026-08-02');
+	});
+
+	it('creates a `__proto__` date property instead of hitting the prototype setter', async () => {
+		// `__proto__` is a legal frontmatter name. Plain assignment reaches
+		// Object.prototype's setter, which ignores a string outright — so the state
+		// would change and its transition date vanish, with nothing to notice.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		await applyWrites(vault.app, { ...stamping, startedDateKey: '__proto__' }, [
+			{ file, state: 'Active', startedDate: '2026-08-02' },
+		]);
+
+		const fm = vault.fm('A.md');
+		expect(Object.prototype.hasOwnProperty.call(fm, '__proto__')).toBe(true);
+		expect(Object.getOwnPropertyDescriptor(fm, '__proto__')?.value).toBe('2026-08-02');
+		expect(fm['status']).toBe('Active');
+	});
+
+	it('keeps a `__proto__` tag list a list, rather than the object’s prototype', async () => {
+		// The worst shape of the same bug: assigning an ARRAY to `__proto__` does not
+		// drop the write, it replaces the object's prototype.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', {});
+
+		await applyWrites(vault.app, { ...stamping, tagsKey: '__proto__' }, [{ file, tags: { add: ['spike'] } }]);
+
+		const fm = vault.fm('A.md');
+		expect(Object.getOwnPropertyDescriptor(fm, '__proto__')?.value).toEqual(['spike']);
+		expect(Object.getPrototypeOf(fm)).toBe(Object.prototype);
+	});
+
+	it('stamps the finish on crossing INTO done', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Active' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Done', finish: { date: '2026-08-02', toDone: true } }]);
+
+		expect(vault.fm('A.md')['finished']).toBe('2026-08-02');
+	});
+
+	it('leaves the finish alone done-to-done — a re-label is not a new finish', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+		const settings = { ...stamping, doneValues: ['Done', 'Dropped'] };
+
+		await applyWrites(vault.app, settings, [{ file, state: 'Dropped', finish: { date: '2026-08-02', toDone: true } }]);
+
+		// Moving the date forward would rewrite the item's history to say the work took
+		// longer than it did.
+		expect(vault.fm('A.md')['finished']).toBe('2026-07-01');
+	});
+
+	it('removes the finish on crossing OUT of done', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', finish: { date: '2026-08-02', toDone: false } }]);
+
+		expect('finished' in vault.fm('A.md')).toBe(false);
+	});
+
+	it('judges the crossing on the note’s state, not the one the plan came from', async () => {
+		// The model said Active; the note is already Done, finished, by an edit the view
+		// has not seen yet. Moving it to New is a crossing OUT however stale the row was,
+		// and a New note carrying a finished date is exactly the lie the rule forbids.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'New', finish: { date: '2026-08-02', toDone: false } }]);
+
+		expect(vault.fm('A.md')['status']).toBe('New');
+		expect('finished' in vault.fm('A.md')).toBe(false);
+	});
+
+	it('reads the live state as tolerantly as the model does', async () => {
+		// `status: [Done]` is a state the model reads as "Done" — a one-item list is one
+		// of the shapes frontmatter takes. Reading it more strictly here would answer
+		// "no state" to a question the model answers "Done", and the boundary rule would
+		// believe the wrong one: reopening would keep a finish, and a re-label would
+		// overwrite the original date.
+		const vault = new FakeVault();
+		const listed = vault.addFile('A.md', { frontmatter: { status: ['Done'], finished: '2026-07-01' } });
+		const numeric = vault.addFile('B.md', { frontmatter: { status: 1, finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, { ...stamping, doneValues: ['Done', '1'] }, [
+			{ file: listed, state: 'Active', finish: { date: '2026-08-02', toDone: false } },
+			{ file: numeric, state: 'Active', finish: { date: '2026-08-02', toDone: false } },
+		]);
+
+		expect('finished' in vault.fm('A.md')).toBe(false);
+		expect('finished' in vault.fm('B.md')).toBe(false);
+	});
+
+	it('does not re-stamp a finish a list-valued state already crossed into', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: ['Done'], finished: '2026-07-01' } });
+		const settings = { ...stamping, doneValues: ['Done', 'Dropped'] };
+
+		await applyWrites(vault.app, settings, [{ file, state: 'Dropped', finish: { date: '2026-08-02', toDone: true } }]);
+
+		expect(vault.fm('A.md')['finished']).toBe('2026-07-01');
+	});
+
+	it('does not re-stamp a finish the note already crossed into', async () => {
+		// The mirror: the model said Active, the note is already Done. Writing Done again
+		// is not a new finish, so the original date stands.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Done', finish: { date: '2026-08-02', toDone: true } }]);
+
+		expect(vault.fm('A.md')['finished']).toBe('2026-07-01');
+	});
+
+	it('writes no stamp to a property the user has not named', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		// Every part of stamping is opt-in — an unnamed property is not one with a
+		// default name, so the date has nowhere to go and goes nowhere.
+		await applyWrites(vault.app, { ...settings, stateKey: 'status' }, [
+			{ file, state: 'Active', startedDate: '2026-08-02', finish: { date: '2026-08-02', toDone: true } },
+		]);
+
+		expect(vault.fm('A.md')).toEqual({ status: 'Active' });
+	});
+
+	it('takes the state and its dates back as one undo', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Active', started: '2026-01-15' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(
+			vault.app,
+			stamping,
+			[{ file, state: 'Done', finish: { date: '2026-08-02', toDone: true } }],
+			undefined,
+			(inv) => inverses.push(inv),
+		);
+		expect(vault.fm('A.md')).toEqual({ status: 'Done', started: '2026-01-15', finished: '2026-08-02' });
+
+		// One inverse covers both keys, because both rode one write.
+		expect(inverses).toHaveLength(1);
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('A.md')).toEqual({ status: 'Active', started: '2026-01-15' });
+	});
+
+	it('emits no inverse for a start it declined to write', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { started: '2026-01-15' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, stamping, [{ file, startedDate: '2026-08-02' }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+
+		// Nothing changed, so nothing is undoable — a declined stamp must not cost the
+		// user the undo of the change before it.
+		expect(inverses).toEqual([]);
 	});
 });

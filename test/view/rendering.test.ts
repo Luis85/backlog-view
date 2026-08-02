@@ -14,6 +14,25 @@ useViewHarness();
  */
 const styles = readFileSync('styles.css', 'utf8');
 
+/**
+ * Where the last rule naming `selector` and declaring `decl` starts, or -1. Grouped
+ * selector lists count, so the answer is about the CASCADE rather than about how the
+ * rule happens to be written — which is the one thing about appearance that is
+ * decidable here, with no browser to ask.
+ */
+function ruleAt(selector: string, decl: string, inMedia?: string): number {
+	const pattern = new RegExp(`^[\\t]*\\${selector}[,\\s][^{]*\\{[^}]*${decl}`, 'gm');
+	let found = -1;
+	for (const match of styles.matchAll(pattern)) {
+		const at = match.index;
+		// A nested rule belongs to the nearest @media opened before it.
+		const media = styles.lastIndexOf('@media', at);
+		const enclosing = media === -1 ? '' : styles.slice(media, styles.indexOf('{', media));
+		if (inMedia === undefined || (enclosing.includes(inMedia) && styles.lastIndexOf('\n}', at) < media)) found = at;
+	}
+	return found;
+}
+
 describe('rendering', () => {
 	it('styles every declared type — none falls through to bare text', () => {
 		// `renderBadge` has no fallback for a declared type, because the vocabulary is
@@ -78,6 +97,22 @@ describe('rendering', () => {
 		// finished item harder to read.
 		expect(rowByTitle(containerEl, 'Epic').classList.contains('pbl-done')).toBe(true);
 		expect(styles).not.toContain('line-through');
+	});
+
+	it('reveals every hover-hidden control on a hoverless device, in cascade order', () => {
+		// Both create buttons are hidden until hover and carry `tabindex="-1"`, so on a
+		// device with neither hover nor a tab stop the `hover: none` reveal is the ONLY
+		// thing that makes them reachable. A media query adds no specificity, so that
+		// reveal has to come after the `opacity: 0` it undoes — written above it, it
+		// loses to a same-specificity rule and silently reveals nothing, which is how
+		// the bucket button shipped unreachable on touch.
+		for (const selector of ['.pbl-add', '.pbl-bucket-add']) {
+			const hides = ruleAt(selector, 'opacity: 0;');
+			const reveals = ruleAt(selector, 'opacity: 1;', '(hover: none)');
+			expect(hides, `${selector} is expected to be hover-revealed`).toBeGreaterThan(-1);
+			expect(reveals, `${selector} needs a hover: none reveal`).toBeGreaterThan(-1);
+			expect(reveals, `${selector}'s reveal must come after the rule it overrides`).toBeGreaterThan(hides);
+		}
 	});
 
 	it('renders the hierarchy with badges, depths and tree semantics', () => {

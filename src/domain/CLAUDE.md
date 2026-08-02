@@ -125,6 +125,23 @@ in the root `CLAUDE.md` because it spans every layer.
   backfill and rollups never see them; `model.ignoredCount` carries the number for the
   toolbar advisory and the empty state. Turning the option off restores "every note is
   an item" — the fixture opt-out (`unscoped`) in the tests.
+- Every input that changes a state plans through `computeStateWrites` — a drop,
+  Alt+arrow, the board's Set state and the tree's. Not a tidiness rule: the date stamps
+  ride that plan, so a path that planned its own `{file, state}` would record a history
+  whose holes depended on which projection the user happened to be looking at. It stays
+  pure by taking the date as an argument; the clock is read once, in `todayStamp`
+  (`noteFields.ts`), from LOCAL date parts — `toISOString` stamps an evening transition
+  as tomorrow for everyone west of Greenwich.
+- The stamps ask about a state VALUE, not an item (`isStartedValue`, `isDoneValue`):
+  the state being written is one no item holds yet. The plan answers only what it can
+  know for certain — the state the user PICKED. Whether that crosses the done boundary
+  depends on the state being left, which only the note knows, so the plan carries
+  `finish: {date, toDone}` and `storage/` decides. `startedStates` empty means NOTHING
+  counts as started — a first column is a backlog as often as it is a start, and a
+  guessed default would date work nobody began. Both stamp keys join `configProblems`,
+  and the RESOLVED `tagsKey` joins it with them: it has already yielded to the four it
+  could collide with, so the only collision it can now report is a stamp aimed at the
+  tags property — the case the yielding rule never covered.
 - `model.results` is the Base's own rows and `model.items` is everything rendered.
   Anything answering "what is in this base" takes `results`; only rendering, navigation
   and collapse state take `items`.
@@ -219,3 +236,27 @@ in the root `CLAUDE.md` because it spans every layer.
 - Bucket order inside a bucket is the Base's own sort (`entryIndex`), the board's
   derived-order rule; the shelf and the timeline keep tree order — rows arrive from
   `roadmapRows` already in it, which is what "sibling order" on the shelf rests on.
+- A horizon move — from a drag, a key or either menu — is planned by
+  `computeHorizonWrites`, the same function the row's Set horizon uses: the target value
+  byte for byte, nothing for a re-pick of the placement the card already holds, and null
+  (remove the key) for the shelf. It clears on the KEY's presence rather than on the
+  reading, which is what makes the empty stub the backfill leaves a real thing to take
+  away rather than something already absent.
+- "Same placement" and "same state" are one question, answered by `sameValue` in
+  `noteFields.ts`: case-insensitive, with absence a value rather than a missing one. The
+  plan, the menu's checkmark and the keyboard ladder all ask it, because a plan that said
+  "unchanged" on a different rule than the checkmark would disagree about what the user
+  is looking at.
+- **Naming a move's two ends is two questions, not one.** They shared an answer and it
+  was wrong in both directions, so they are `targetLabel` and `placementLabel` now:
+  - the TARGET is where the user SENT it — the drawn bucket's casing when one exists,
+    else the picked value itself, never the shelf. Hiding can remove a value's only
+    carrier while `horizonChoices` goes on offering it (deliberately: what is reachable
+    must not depend on what is on screen), so a pick can name a bucket the frame is not
+    drawing, and the write still puts the note there.
+  - the SOURCE is what the note SAID, taken from `HorizonSource` — the reading plus
+    whether the key was there at all, captured together so a caller cannot take half.
+    Three things shelve a card and only ONE is nothing to clear: no key (`Unplaced`), an
+    empty key (`an empty horizon`), a key the axis refuses (`an unreadable horizon`).
+    Naming them alike reports a real, undo-consuming cleanup as "from Unplaced to
+    Unplaced" — a move that did not happen.

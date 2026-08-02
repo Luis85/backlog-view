@@ -55,6 +55,9 @@ what it belongs to — which a flat list of matches cannot say.
 ## Where it lives
 
 `src/view/backlogView.ts` (`filterText`, `setFilter`, `isFiltering`) ·
+`src/view/filterState.ts` (the needle, the match-path walk, and the two sets it
+keeps — see [[The quick filter on the board]] for why one set cannot answer both
+questions) ·
 `src/view/render/toolbar.ts` (the input, `syncFilterUi`) ·
 `src/view/render/rows.ts` (`renderTitleText` highlighting) ·
 `src/view/render/emptyStates.ts` (the no-match state).

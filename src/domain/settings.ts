@@ -48,6 +48,20 @@ export interface BacklogSettings {
 	propColumnWidth: number;
 	/** State values (case-insensitive) that count as done. */
 	doneValues: string[];
+	/**
+	 * Frontmatter key stamped with the date work started, or '' when start stamping
+	 * is off. History is the one thing a board cannot reconstruct later, so this
+	 * captures it as the transition happens — and captures nothing until it is named.
+	 */
+	startedDateKey: string;
+	/** Frontmatter key stamped with the date work finished, or '' when off. */
+	finishedDateKey: string;
+	/**
+	 * State values (case-insensitive) that count as work started. Empty means NOTHING
+	 * does: every part of stamping is opt-in, and a workflow's first column is a
+	 * backlog as often as it is a start — guessing would date work nobody began.
+	 */
+	startedStates: string[];
 	/** Workflow states offered by the state menus, in order; [] falls back to observed values. */
 	states: string[];
 	/** Render items whose whole subtree is done; when off they hide (the quick filter overrides). */
@@ -179,6 +193,9 @@ export function defaultSettings(): BacklogSettings {
 		tagsKey: 'tags',
 		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
 		doneValues: [...DEFAULT_DONE_VALUES],
+		startedDateKey: '',
+		finishedDateKey: '',
+		startedStates: [],
 		states: [],
 		showCompleted: true,
 		horizonKey: '',
@@ -217,6 +234,24 @@ export function stateMenuValues(settings: BacklogSettings, observedStates: strin
 }
 
 /**
+ * Whether a state value counts as done, by the same case-insensitive match the model
+ * and the board's columns already use. Takes a VALUE rather than an item because the
+ * stamps ask it of a state being written, which no item holds yet.
+ */
+export function isDoneValue(settings: BacklogSettings, state: string | null): boolean {
+	return state !== null && settings.doneValues.some((v) => v.toLowerCase() === state.toLowerCase());
+}
+
+/**
+ * Whether a state value counts as work started. Nothing does until the states are
+ * named: a first column is a backlog as often as it is a start, and a date is worse
+ * than no date when it says work began that nobody began.
+ */
+export function isStartedValue(settings: BacklogSettings, state: string | null): boolean {
+	return state !== null && settings.startedStates.some((v) => v.toLowerCase() === state.toLowerCase());
+}
+
+/**
  * The horizons Set horizon offers: the declared vocabulary, plus every value the
  * RESULTS actually carry that it does not name — which is exactly the bucket list
  * the roadmap draws, in the order it draws it (declared first, then each minted
@@ -249,6 +284,11 @@ export function configProblems(settings: BacklogSettings): string[] {
 	add('order', settings.orderKey);
 	add('type', settings.typeKey);
 	add('state', settings.stateKey);
+	// A stamp must never overwrite a key the plugin already owns, so the two join the
+	// gate rather than yielding quietly: a date written over someone's parent link is
+	// not a thing to recover from by noticing later.
+	add('started date', settings.startedDateKey);
+	add('finished date', settings.finishedDateKey);
 	// The roadmap's axis keys are write targets like the four above, and the rules
 	// they must never collide into are wider by one: start and target sharing one
 	// key cannot store a span, and a horizon sharing either is two semantics on one
@@ -259,9 +299,10 @@ export function configProblems(settings: BacklogSettings): string[] {
 	// `tagsKey` cannot collide with the four core properties by the time anything
 	// reads it — `resolveSettings` turns such a tags key off, because reporting it
 	// would block every write in a view that was working before the option existed.
-	// It does NOT yield to the axis keys: those are new options with no working
-	// views to protect, so pointing one at the tags key is a fresh mistake, and the
-	// honest answer is the same collision report every other pair gets.
+	// It does NOT yield to the newer options — the axis keys, or the stamps — which
+	// have no working views to protect, so pointing one of those at the tags key is
+	// a fresh mistake, and the honest answer is the collision report every other
+	// pair gets.
 	add('tags', settings.tagsKey);
 	for (const [key, users] of keys) {
 		if (users.length > 1) {
@@ -402,6 +443,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
+		startedDateKey: propKey('startedDateProperty', fallback.startedDateKey),
+		finishedDateKey: propKey('finishedDateProperty', fallback.finishedDateKey),
+		startedStates: dedupe(list('startedStates')),
 		states: dedupe(list('stateValues')),
 		showCompleted: bool('showCompleted', fallback.showCompleted),
 		horizonKey: propKey('horizonProperty', fallback.horizonKey),
