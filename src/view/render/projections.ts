@@ -24,6 +24,33 @@ export interface ProjectionContent {
 	label: string;
 }
 
+/** The scroller's memory across renders: what it drew, and where today sat. */
+export interface ScrollAnchor {
+	content: string;
+	todayLeft: number | null;
+}
+
+/**
+ * Where the horizontal scroll belongs after a render. An offset belongs to the
+ * content that made it: the same content restores it — corrected by how far
+ * today moved, because a data update can shift the timeline window's origin by
+ * months and a raw pixel offset would then show a different stretch of
+ * calendar — while a switch resets it, and entering the dated timeline centers
+ * on today. Tracked through the anchor, never read off the position: zero is a
+ * place a user can pan to.
+ */
+export function anchorScrollLeft(
+	anchor: ScrollAnchor,
+	drawn: string,
+	todayLeft: number | null,
+	saved: number,
+	viewport: number,
+): number {
+	if (drawn !== anchor.content) return todayLeft == null ? 0 : Math.max(todayLeft - viewport / 2, 0);
+	if (todayLeft != null && anchor.todayLeft != null) return Math.max(saved + (todayLeft - anchor.todayLeft), 0);
+	return saved;
+}
+
 export function renderProjectionContent(
 	projection: Projection,
 	ctx: RowContext,

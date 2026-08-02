@@ -265,6 +265,22 @@ describe('the shared scroller across projections', () => {
 		expect(scroller(containerEl).scrollLeft).toBe(0);
 	});
 
+	it('keeps the calendar position when a data update moves the window origin', () => {
+		const vault = datedVault();
+		const { view, containerEl } = roadmapView(vault, { ...DATES });
+		const before = view.roadmap?.todayLeft ?? 0;
+		// Panned so today's column sits at the viewport edge — a calendar position.
+		scroller(containerEl).scrollLeft = before;
+
+		// A note months earlier stretches the window's origin left; every date's
+		// pixel moves right by the same stretch, and the viewport must move with it.
+		vault.addFile('Old.md', { frontmatter: { type: 'Epic', order: 30, start: '2026-01-01', due: '2026-01-15' } });
+		refresh(view, vault);
+		const after = view.roadmap?.todayLeft ?? 0;
+		expect(after).toBeGreaterThan(before);
+		expect(scroller(containerEl).scrollLeft).toBe(after);
+	});
+
 	it('resets the offset when switching column projections — a pan belongs to its content', () => {
 		const vault = roadmapVault();
 		const { view, containerEl } = makeView(

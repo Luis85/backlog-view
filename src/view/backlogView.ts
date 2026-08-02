@@ -24,7 +24,7 @@ import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
-import { renderProjectionContent } from './render/projections';
+import { anchorScrollLeft, renderProjectionContent, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
@@ -49,8 +49,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	board: BoardSnapshot | null = null;
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
-	/** What the scroller last drew — a horizontal offset belongs to the content that made it. */
-	private scrolledContent = '';
+	/** What the scroller last drew and where today sat — see `anchorScrollLeft`. */
+	private scroll: ScrollAnchor = { content: '', todayLeft: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -401,17 +401,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		}
 		this.treeEl.scrollTop = scrollTop;
 		this.treeEl.scrollLeft = scrollLeft;
-		// A horizontal offset belongs to the content that made it: restored on a
-		// re-render of the same projection and axis (a data update must not move the
-		// view), reset on any switch (a board's pan means nothing to the buckets),
-		// and replaced on entering the dated timeline, which opens centered on today.
-		// Tracked, never read off the position — zero is a place a user can pan to.
+		// The horizontal offset belongs to the content that made it — restored,
+		// corrected, reset or replaced by the anchor policy `anchorScrollLeft` states.
 		const todayLeft = this.roadmap?.todayLeft ?? null;
 		const drawn = todayLeft != null ? 'dates' : this.roadmap ? 'horizons' : projection;
-		if (drawn !== this.scrolledContent) {
-			this.treeEl.scrollLeft = todayLeft == null ? 0 : Math.max(todayLeft - this.treeEl.clientWidth / 2, 0);
-		}
-		this.scrolledContent = drawn;
+		this.treeEl.scrollLeft = anchorScrollLeft(this.scroll, drawn, todayLeft, scrollLeft, this.treeEl.clientWidth);
+		this.scroll = { content: drawn, todayLeft };
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
 		if (projection !== 'tree') return;
