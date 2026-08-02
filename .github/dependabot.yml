@@ -1,0 +1,58 @@
+version: 2
+
+# Why this file exists: `npm run check` (ADR 0007) gates what a commit did, and it was
+# green on every commit while this repository's first `npm install` was pulling in three
+# already-patched advisories — one of them critical. The scaffold pinned vitest 2.1.9 and
+# esbuild 0.24.0, both over a year old the day they were written down. Nothing was wrong
+# with the gate: what a dependency arrives carrying is not a property of any diff, so no
+# commit-triggered check can see it. That needs a clock, and this is it. See ADR 0019.
+#
+# The division of labour: Dependabot *notices*, `npm run check` *verifies*. Every pull
+# request opened here runs the same five steps as any other, so an upgrade is proven the
+# way a feature is.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One pull request a week for the routine drift. These are dev dependencies at
+      # patch and minor: nothing here reaches the bundle a user loads, and reviewing
+      # eleven of them separately is how the whole batch ends up ignored instead.
+      dev-minor:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # TypeScript 7 is available and unusable here: typescript-eslint 8 declares
+      # `typescript >=4.8.4 <6.1.0`, so npm refuses the install outright (ERESOLVE) and
+      # lint — the layer rules, the write boundary — is what would be lost. Re-check when
+      # typescript-eslint ships TS 7 support, then delete this entry rather than widening
+      # it; the constraint is the peer range, not the major number.
+      - dependency-name: typescript
+        versions:
+          - ">=6"
+      # @types/node tracks the runtime floor in `engines`, not npm's newest. Types for a
+      # Node the plugin does not claim to support would typecheck and then fail in a
+      # vault. Raise this with `engines` and the CI matrix, in one deliberate commit.
+      - dependency-name: "@types/node"
+        versions:
+          - ">=23"
+
+  # What deliberately falls outside that group gets its own pull request: every major,
+  # and — at any level, patch included — the three @atlaskit packages, since the group is
+  # scoped to `development` and those are the only dependencies that reach `main.js`.
+  # ADR 0018 admits a runtime dependency against its *measured* bundle cost, and a bump
+  # is where that measurement can quietly stop being true. Reviewing one alongside ten
+  # dev bumps is how it would be waved through.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -25,7 +25,7 @@ half most likely to break untested.
 jsdom is not:
 
 - `test/helpers/obsidian-mock.ts` — a runtime stand-in for the `obsidian` module, aliased
-  in `vitest.config.ts`. Kept minimal: it grows exactly the surface a new test needs.
+  in `vitest.config.mts`. Kept minimal: it grows exactly the surface a new test needs.
 - `test/helpers/vault.ts` — `FakeVault`: metadata cache, vault, `processFrontMatter`, and
   a recorder for writes and navigation.
 - `test/helpers/view.ts` — the harness every view test shares.
