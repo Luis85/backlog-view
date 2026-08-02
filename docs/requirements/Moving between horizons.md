@@ -126,12 +126,13 @@ write. It sits on `applyCardMove`, so a board move that writes a state its own b
 excludes is reported by the same code — the hazard is one hazard, and a rule that held
 for one projection and not the other is the asymmetry this register keeps finding.
 
-Five rules govern it, none of them stated in this note, all five found by review rather
+Six rules govern it, none of them stated in this note, all six found by review rather
 than by design: the watch is armed BEFORE the write (the answering pass can land inside
 the write's own await), resolved by handle so a failed second move cannot drop an
 outstanding first, answered from the data pass alone and with the quick filter out of
 the verdict, held as a list whose oldest entry is the only one a pass may retire on
-"still there", and reported with the cause the view supplies rather than a guess.
+"still there", answered by the newest watch on a note alone so one departure cannot
+produce two notices, and reported with the cause the view supplies rather than a guess.
 
 **One known limit remains, and is deliberate**: that last rule assumes every data pass
 belongs to a queued write, and passes also arrive from an edit in another pane. One of

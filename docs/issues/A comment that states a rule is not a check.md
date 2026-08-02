@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-02
-source: PR #47 — ten review findings across five rounds, counted afterwards
+source: PR #47 — eleven review findings across six rounds, counted afterwards
 files:
   - src/view/interactions/menu.ts
   - src/view/backlogView.ts
@@ -18,7 +18,7 @@ files:
 ## The limitation
 
 This codebase writes its rules down in comments, at length and on purpose. That is
-worth doing and it is not verification: **in PR #47, six of ten review findings were
+worth doing and it is not verification: **in PR #47, six of eleven review findings were
 places where a comment nearby asserted the opposite of what the code did.**
 Not vague comments — precise ones, naming the exact invariant that was being broken.
 
@@ -81,7 +81,8 @@ ships with.
 ## Impact
 
 Six defects, all caught in review, none shipped. The cost was five review rounds on
-one pull request, and the honest reading is that review did the job a check could not:
+one pull request — six, of the six rounds it took — and the honest reading is that
+review did the job a check could not:
 this note exists so that the next person writing a confident comment knows it buys
 nothing on its own.
 

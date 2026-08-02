@@ -520,6 +520,29 @@ describe('a move whose value leaves the base', () => {
 		expect(Notice.messages.some((m) => m.includes('left the view'))).toBe(true);
 	});
 
+	it('reports a card moved twice once, not once per move', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+
+		// The second move's own response lands INSIDE its write — flushed by the gate
+		// on the way out — which is before the superseding that follows the await. Both
+		// watches on this card are therefore in the list when that pass reports, and
+		// both see the same "gone".
+		vault.afterWrite = () => {
+			(harness.view as unknown as Record<string, unknown>).data = {
+				data: vault.entries().filter((e) => e.file.path !== 'Now item.md'),
+			};
+			harness.view.onDataUpdated();
+		};
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Next'));
+		await flush();
+
+		expect(Notice.messages.filter((m) => m.includes('left the view'))).toHaveLength(1);
+	});
+
 	it('says nothing when the write never lands', async () => {
 		const vault = horizonVault();
 		// Parent and order share a key: the gate refuses the batch outright.

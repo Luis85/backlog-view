@@ -94,42 +94,56 @@ export class OutcomeWatch {
 	 * this write, and reporting that would blame the write for the filter.
 	 */
 	report(verdict: (file: TFile) => Vanished | null, open: (file: TFile, evt: MouseEvent) => void): void {
-		const waiting: Watch[] = [];
-		this.watched.forEach((note, index) => {
+		// Only the NEWEST watch on a note answers for it. A note has one current state,
+		// so an earlier write's watch cannot be asking a live question about it — and
+		// letting it try produced two notices about one card, since both watches saw
+		// the same "gone". The earlier ones are HELD rather than resolved: a newer
+		// write that then fails is dropped, and the watch it superseded has to still be
+		// there to take over. `landed` is what finally removes them, once the write
+		// they were superseded by is on disk.
+		const newest = new Map<string, Watch>();
+		for (const note of this.watched) newest.set(note.file.path, note);
+
+		const resolved = new Set<Watch>();
+		let answering = 0;
+		for (const note of this.watched) {
+			if (newest.get(note.file.path) !== note) continue;
 			const gone = verdict(note.file);
 			// Gone is final wherever it is seen: a result set that has stopped
 			// returning a note is not going to start again on this write's account.
 			if (gone) {
 				reportOne(note, gone, open);
-				return;
+				resolved.add(note);
+			} else if (answering === 0) {
+				// "Still shown" is only trustworthy for the OLDEST write still waiting.
+				// Writes are serialized and each produces one response, so the responses
+				// arrive in order: the first pass after a move is the PREVIOUS move's,
+				// computed before this one's value reached disk, and it lists this note
+				// only because it has not looked since. Retiring on it would mark a move
+				// answered that nothing has answered — the silence this class exists to
+				// prevent, one step further along than the single slot it replaced.
+				//
+				// Bounded by construction: the first answering watch always resolves, so
+				// every pass shortens the list while it is non-empty.
+				//
+				// KNOWN LIMIT, and it is the assumption in the paragraph above: that
+				// every pass belongs to a queued write. Passes also arrive from an edit
+				// in another pane, a rename, any vault change, and one of those landing
+				// between a move and its own response retires the move's watch on a
+				// result set that predates it. The move then leaves the base silently.
+				//
+				// It is left rather than patched because the correlation that would
+				// close it does not exist here. Checking that the note now carries what
+				// the write wrote proves the METADATA CACHE has seen it, which is
+				// upstream of the Bases query and true of a stale result set too;
+				// nothing in a result set says which write it was computed after.
+				// Recorded, with the two ways out, in
+				// `docs/issues/The outcome report was built from one sentence.md`.
+				resolved.add(note);
 			}
-			// "Still shown" is only trustworthy for the OLDEST write still waiting.
-			// Writes are serialized and each produces one response, so the responses
-			// arrive in order: the first pass after a move is the PREVIOUS move's,
-			// computed before this one's value reached disk, and it lists this note
-			// only because it has not looked since. Retiring on it would mark a move
-			// answered that nothing has answered — the silence this class exists to
-			// prevent, one step further along than the single slot it replaced.
-			//
-			// Bounded by construction: index 0 always resolves, so every pass shortens
-			// the list while it is non-empty, and each move's own response is the pass
-			// that finally reaches it.
-			//
-			// KNOWN LIMIT, and it is the assumption in the paragraph above: that every
-			// pass belongs to a queued write. Passes also arrive from elsewhere — an
-			// edit in another pane, a rename, a vault change — and one of those landing
-			// between a move and its own response retires the move's watch on a result
-			// set that predates it. The move then leaves the base silently.
-			//
-			// It is left rather than patched because the correlation that would close
-			// it does not exist here. Checking that the note now carries what the write
-			// wrote proves the METADATA CACHE has seen it, which is upstream of the
-			// Bases query and true of a stale result set too; nothing in a result set
-			// says which write it was computed after. Recorded, with the two ways out,
-			// in `docs/issues/The outcome report was built from one sentence.md`.
-			if (index > 0) waiting.push(note);
-		});
-		this.watched = waiting;
+			answering++;
+		}
+		this.watched = this.watched.filter((note) => !resolved.has(note));
 	}
 }
 

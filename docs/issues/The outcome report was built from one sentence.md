@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: design
 created: 2026-08-02
-source: PR #47 — four of five review rounds landed inside one unspecified mechanism
+source: PR #47 — five of six review rounds landed inside one unspecified mechanism
 files:
   - src/view/interactions/outcome.ts
   - src/view/backlogView.ts
@@ -40,10 +40,10 @@ The register's whole value is that a reader can trust that line.
 
 ## What it cost, measured
 
-Ten review findings across five rounds on PR #47. Two were in the horizon board
+Eleven review findings across six rounds on PR #47. Two were in the horizon board
 proper — the drag, the keyboard, the menu, creation, the shelf — both in the first
-round, and nothing there was reopened afterwards. **The other eight were in this
-mechanism, and rounds two through five consisted entirely of defects in the fix for the
+round, and nothing there was reopened afterwards. **The other nine were in this
+mechanism, and rounds two through six consisted entirely of defects in the fix for the
 previous round's defect:**
 
 | Round | Finding, each inside the previous round's fix |
@@ -56,6 +56,7 @@ previous round's defect:**
 | 4 | un-placing an unreadable value announced as a move to where the card already was |
 | 5 | resolving a watch by NOTE dropped an outstanding earlier move on the same card |
 | 5 | **an unrelated pass retires the oldest watch** — see below |
+| 6 | two watches on one card both answered a pass, so one departure produced two notices |
 
 Each is a rule that a written use case would have stated in a sentence, the way this
 register's extensions routinely do — *which pass answers*, *what happens when two moves
@@ -108,7 +109,12 @@ seventh will not either while the rule itself is undecided.
 
 Option 1 is cheaper and keeps a criterion that is currently *almost* satisfied — the
 round-five limit is the part no wording of the note would make true. Option 2 is the one
-that would have avoided all eight findings, and after five rounds it is the one to take.
+that would have avoided all nine findings, and after six rounds it is the one to take.
+
+Round six is worth reading as confirmation rather than as one more bug: it is a
+consequence of round five's own fix (watches held per write rather than per note), found
+one round later, in a mechanism whose every rule has been discovered this way. Nine
+findings is not a run of bad luck; it is what building without the extensions costs.
 
 ## Acceptance criteria
 
