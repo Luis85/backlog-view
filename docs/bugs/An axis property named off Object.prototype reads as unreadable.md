@@ -2,8 +2,9 @@
 type: Bug
 parent: "[[Horizons or dates]]"
 order: 20
-status: Open
+status: Done
 created: 2026-08-02
+closed: 2026-08-02
 area: domain
 source: audit during PR #44, after the same hazard was found twice in storage
 files:
@@ -70,6 +71,12 @@ share the call site.
 Worth doing at the same time: the other `fm?.[settings.…]` reads in `model.ts` are
 correct only by luck, since their readers happen to answer "absent" for a function.
 Routing them through the same helper costs nothing and removes the luck.
+
+Fixed as described, in `src/domain/noteFields.ts`, with the private twin in
+`src/storage/frontmatter.ts` deleted rather than left as a second statement. The rule had
+four homes and one of them was wrong; it now has one. The test that fails without it is
+"a horizon property named off Object.prototype" in `test/domain/prototypeKeys.test.ts`, watched
+failing before the fix landed.
 
 ## Evidence it is real
 
