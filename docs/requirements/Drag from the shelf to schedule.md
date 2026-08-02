@@ -5,6 +5,7 @@ order: 10
 status: Open
 priority: P2
 created: 2026-08-01
+due: 2026-09-10
 files:
   - src/domain/writePlan.ts
   - src/view/interactions/dragDrop.ts

@@ -9,6 +9,9 @@ views:
     stateProperty: note.status
     stateValues: "Open, Active, Done"
     doneValues: "Done, Dropped"
+    targetProperty: note.due
+    startProperty: note.start
+    horizonProperty: note.horizon
     order:
       - note.status
       - note.priority
