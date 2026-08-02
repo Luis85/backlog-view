@@ -363,7 +363,22 @@ function filingSection(settings: BacklogSettings): string[] {
 				'it in the tree. A note that names its parent is unaffected — the property always ' +
 				'wins — and so is one carrying the key empty, which pins it to the top level ' +
 				'instead of asking the folder. Either is the way to file a note anywhere and keep ' +
-				'its place. Below is where this view puts a note it creates, in this order:'
+				'its place.' +
+				// The inference runs over the notes this view LOADED, so a folder note the base
+				// leaves out is a parent it cannot find. With "Show parents outside the filter"
+				// on — the default — the ancestor is fetched from the vault and the promise above
+				// holds whatever the filter says; with it off, nothing fetches it, and the note
+				// draws where an unresolved link draws. Said only in the configuration where it
+				// is true, and about the drawing rather than the notes: the folder tree is
+				// unchanged, and so is what every other reader of these notes makes of it.
+				(settings.showOutsideParents
+					? ''
+					: ' One limit, and it is this view\'s rather than these notes\': the folder note ' +
+						'has to be one this base returns, since **Show parents outside the filter** is ' +
+						'off here. Where it is not returned there is nothing to hang from and the note ' +
+						'is drawn at the top level, exactly as an unresolved parent link is — its place ' +
+						'in the folder tree unchanged, and read as written by anything else.') +
+				' Below is where this view puts a note it creates, in this order:'
 			: 'Folders are filing, not hierarchy: the tree comes from the properties above, so a ' +
 				'note is in the right place wherever it lives. What follows is only where **this** ' +
 				'view puts a note it creates, in this order:',

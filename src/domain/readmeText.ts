@@ -71,7 +71,12 @@ export const list = (values: string[]): string =>
  * to survive it — bare, those are a mapping and a comment.
  */
 export function yamlScalar(value: string): string {
-	const safe = /^[A-Za-z][A-Za-z0-9 _./-]*$/.test(value) && !/^(true|false|null|yes|no|on|off)$/i.test(value);
+	// The safe form must END in a non-space as well as begin with a letter: a plain scalar
+	// is read without its trailing whitespace, so a key spelled `status ` — which a
+	// hand-edited `.base` can hold — would be emitted as `status : `, and the reader
+	// copying it defines `status`. A space INSIDE is ordinary and stays bare.
+	const safe =
+		/^[A-Za-z](?:[A-Za-z0-9 _./-]*[A-Za-z0-9_./-])?$/.test(value) && !/^(true|false|null|yes|no|on|off)$/i.test(value);
 	return safe ? value : `"${yamlEscape(value)}"`;
 }
 

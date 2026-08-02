@@ -222,6 +222,24 @@ the view options can rename.
   `storage/` would create `work/backlog` and file notes there while this README named
   `work\backlog`, sending exactly the outside editor it is written for to a folder this
   plugin never writes to.
+- **3r — the folder note a reader would hang a note from is outside the filter.** Folder
+  inference walks the notes this view LOADED (`inferFolderParent` reads `byPath`), so the
+  promise that an omitted key hangs a note from the folder note above it holds only while
+  that note is one the view has. With **Show parents outside the filter** on — the default
+  — `outsideParentSeed` fetches the ancestor from the vault and the promise holds whatever
+  the base's filter says; with it off, nothing fetches it and the note is drawn at the top
+  level, exactly as an unresolved link is. The caveat is generated only in the
+  configuration where it is true, and it is stated as a fact about the DRAWING: the folder
+  tree is unchanged, and so is what every other reader of these notes makes of it —
+  otherwise a document written for the editor outside Obsidian would report this view's
+  filter as a property of their notes.
+- **3s — a key or a value ends in a space.** It is quoted in the worked example. A plain
+  YAML scalar is read without its trailing whitespace, so a property key spelled
+  `status ` — which a hand-edited `.base` can hold, since a property id is not trimmed —
+  would be emitted as `status : ` and define `status`: a key one character away from the
+  one this view reads, from the block that exists to be copied. The same rule covers a
+  state observed with a trailing space. A space *inside* a value is ordinary and stays
+  bare, or every two-word property name would be quoted for nothing.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses

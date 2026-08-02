@@ -91,6 +91,15 @@ describe('a value inside the example block', () => {
 		expect(yamlScalar('bell\u0007')).toBe('"bell\\x07"');
 	});
 
+	it('quotes a value the reader would not get its whitespace back from', () => {
+		// A plain scalar is read without its trailing space, so `status ` bare emits
+		// `status : ...` and defines `status` — a key one character off the one this view
+		// reads, from an example promised as copyable. A space INSIDE is ordinary.
+		expect(yamlScalar('status ')).toBe('"status "');
+		expect(yamlScalar('due date')).toBe('due date');
+		expect(yamlScalar('a')).toBe('a');
+	});
+
 	it('escapes the upper control range too, where another line break hides', () => {
 		// YAML's printable set excludes U+0080–U+009F, and U+0085 is one of the breaks it
 		// FOLDS — the same silent redefinition as a newline, from a character nothing draws.

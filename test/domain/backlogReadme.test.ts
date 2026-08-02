@@ -350,6 +350,19 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('adds the keys *empty* to items that lack them and places nothing');
 	});
 
+	it('says a folder note the base leaves out cannot be a parent, where that is true', () => {
+		// Inference walks the notes this view LOADED. With outside parents on, the ancestor
+		// is fetched from the vault and the promise holds whatever the filter says; with it
+		// off, the child is drawn as a root — so the unconditional sentence is wrong in
+		// exactly one configuration, and the caveat belongs only there.
+		const hidden = readme(settingsWith({ folderHierarchy: true, showOutsideParents: false }));
+		expect(hidden).toContain('the folder note has to be one this base returns');
+		expect(hidden).toContain('drawn at the top level, exactly as an unresolved parent link is');
+
+		const loaded = readme(settingsWith({ folderHierarchy: true, showOutsideParents: true }));
+		expect(loaded).not.toContain('has to be one this base returns');
+	});
+
 	it('names creating in a bucket among the things that write a horizon', () => {
 		// The roadmap's buckets carry a New button, and `createBacklogItem` puts the
 		// bucket's value in the frontmatter it writes — a planning key on a note nobody
