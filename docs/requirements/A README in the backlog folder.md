@@ -102,7 +102,19 @@ the view options can rename.
   actually accepts — a parent as a wikilink, a bare name or an alias, and as the first
   entry of a list; a number written as a string — and every derived value is named as
   derived, so nothing writes back a level, a rollup or a board position that this plugin
-  computes and never stores ([[Board order is derived not stored]]).
+  computes and never stores ([[Board order is derived not stored]]). The ranking rule is
+  stated with its tie-break, and the tie-break is a **view** setting: siblings sharing a
+  number fall back to the order the base returned them in, not to anything in the notes.
+- **3e — the reader writes a type of their own.** It is kept and shown verbatim, and it
+  does **not** enrol a note that has no parent: the scope rule seeds only on the types
+  this plugin ships (`ALL_TYPES`), so a custom-typed root written to the letter of a
+  contract that said "declare a type" would be dropped by the very configuration the
+  document was generated from. Those two facts are one paragraph for that reason.
+- **3f — a value or a key contains markup.** Everything interpolated is user data: a state
+  named `Waiting | external` ends a table cell, a folder holding a backtick closes a code
+  span, and a key containing a colon turns the example's frontmatter into a different
+  mapping. Each value is fenced and escaped for the place it lands in, so the document a
+  reader copies from is the document the configuration describes.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when it carries the generated

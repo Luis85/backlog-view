@@ -105,6 +105,36 @@ describe('backlogReadmeContent', () => {
 		expect(backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Todo'] }), [])).toContain('status: Todo');
 	});
 
+	it('quotes a configured key in the example for the same reason', () => {
+		const content = backlogReadmeContent(settingsWith({ typeKey: 'kind: of' }), []);
+		expect(content).toContain('"kind: of": PBI');
+	});
+
+	it('keeps a value with markdown syntax inside the cell and the span it belongs to', () => {
+		// A pipe ends a table cell whatever it sits in, code span included; a backtick
+		// closes the span. Both are legal in a property name, a state and a folder.
+		const content = backlogReadmeContent(
+			settingsWith({ stateKey: 'status', states: ['Waiting | external'], parentKey: 'up`link' }),
+			[],
+		);
+		expect(content).toContain('| `Waiting \\| external` |');
+		expect(content).toContain('``up`link``');
+	});
+
+	it('says a type of the reader s own does not by itself enrol a parentless note', () => {
+		// pruneOutsideHierarchy seeds only on ALL_TYPES, so "declare a type" would send
+		// an outside editor to write a custom-typed root the view then drops.
+		const content = backlogReadmeContent(settingsWith({ hierarchyOnly: true }), []);
+		expect(content).toContain('declares one of the types **listed above**');
+		expect(content).toContain('does not by itself enrol a note that has no parent');
+	});
+
+	it('names the tie-break the model actually applies', () => {
+		const content = backlogReadmeContent(settingsWith(), []);
+		expect(content).toContain('the order the base itself returned them in');
+		expect(content).not.toContain('settled by file name');
+	});
+
 	it('follows the folder precedence this view actually applies', () => {
 		const flat = backlogReadmeContent(settingsWith({ homeFolder: 'work' }), []);
 		expect(flat).not.toContain('folder note');
@@ -122,7 +152,7 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('tells the reader how a note stays out of the backlog, per the scope setting', () => {
-		expect(backlogReadmeContent(settingsWith({ hierarchyOnly: true }), [])).toContain('Give it neither');
+		expect(backlogReadmeContent(settingsWith({ hierarchyOnly: true }), [])).toContain('Declare neither');
 		expect(backlogReadmeContent(settingsWith({ hierarchyOnly: false }), [])).toContain('treats **every** note it returns as an item');
 	});
 

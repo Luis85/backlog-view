@@ -107,11 +107,31 @@ function parentsOf(typeName: string): string[] {
 	return childTypeChoices(null).includes(typeName) ? ['*(nothing — it is a root)*', ...parents] : parents;
 }
 
-const code = (value: string): string => '`' + value + '`';
-const list = (values: string[]): string => (values.length > 0 ? values.map((v) => (v.startsWith('*') ? v : code(v))).join(', ') : '*(nothing)*');
+/**
+ * A value as an inline code span. Property names, states and folders are all user
+ * data, so the fence is as long as it has to be and a value that begins or ends with
+ * a backtick gets the padding spaces CommonMark strips again — a state called
+ * `` `todo` `` must render as itself rather than closing the span early.
+ */
+function code(value: string): string {
+	const longest = Math.max(0, ...[...value.matchAll(/`+/g)].map((m) => m[0].length));
+	const fence = '`'.repeat(longest + 1);
+	const pad = value.startsWith('`') || value.endsWith('`') ? ' ' : '';
+	return `${fence}${pad}${value}${pad}${fence}`;
+}
+
+/**
+ * The same, inside a table cell — where a pipe ends the cell whatever it sits in,
+ * code span included, and has to be escaped before the row is parsed. A state named
+ * `Waiting | external` otherwise silently becomes two columns.
+ */
+const cell = (value: string): string => code(value).replace(/\|/g, '\\|');
+
+const list = (values: string[]): string =>
+	values.length > 0 ? values.map((v) => (v.startsWith('*') ? v : cell(v))).join(', ') : '*(nothing)*';
 
 function typeSection(): string[] {
-	const rows = ALL_TYPES.map((t) => `| ${code(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
+	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
 	return [
 		'## The item types',
 		'',
@@ -132,15 +152,15 @@ function typeSection(): string[] {
 
 function fieldRows(settings: BacklogSettings): string[] {
 	const rows = [
-		`| ${code(settings.parentKey)} | Every item except a root | A link to the parent note: ${code('"[[Note name]]"')}. Quote it, or YAML reads the brackets as a list |`,
-		`| ${code(settings.orderKey)} | Every item | A number. The rank among the notes sharing a parent — see below |`,
-		`| ${code(settings.typeKey)} | Every item | One of the type names above |`,
+		`| ${cell(settings.parentKey)} | Every item except a root | A link to the parent note: ${code('"[[Note name]]"')}. Quote it, or YAML reads the brackets as a list |`,
+		`| ${cell(settings.orderKey)} | Every item | A number. The rank among the notes sharing a parent — see below |`,
+		`| ${cell(settings.typeKey)} | Every item | One of the type names above |`,
 	];
-	if (settings.stateKey) rows.push(`| ${code(settings.stateKey)} | Optional | The workflow state — see below |`);
-	if (settings.tagsKey) rows.push(`| ${code(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
-	if (settings.horizonKey) rows.push(`| ${code(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
-	if (settings.startKey) rows.push(`| ${code(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
-	if (settings.targetKey) rows.push(`| ${code(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
+	if (settings.stateKey) rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below |`);
+	if (settings.tagsKey) rows.push(`| ${cell(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
+	if (settings.horizonKey) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
+	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
+	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
 	return rows;
 }
 
@@ -161,9 +181,11 @@ function propertySection(settings: BacklogSettings): string[] {
 			'the item where it is rather than dropping it. Numbers may be written as strings.',
 		'',
 		settings.hierarchyOnly
-			? 'A note in this folder joins the backlog when it declares a type **or** a parent. ' +
-				'Give it neither and it stays an ordinary note — that is how a document like this ' +
-				'one sits here without becoming a work item.'
+			? 'A note in this folder joins the backlog when it declares one of the types **listed ' +
+				'above**, or has a parent. A type of your own is kept and shown, but it does not by ' +
+				'itself enrol a note that has no parent — give such a note a parent, or it stays out ' +
+				'of the tree. Declare neither and it stays an ordinary note, which is how a document ' +
+				'like this one sits here without becoming a work item.'
 			: 'This view treats **every** note it returns as an item, so a note with none of these ' +
 				'properties still appears, at the top level and untyped.',
 	];
@@ -178,9 +200,11 @@ function rankingSection(settings: BacklogSettings): string[] {
 			`unrelated ranks. The view writes them ${ORDER_SPACING} apart, leaving room to insert ` +
 			'without renumbering, and renumbers a group only when a move needs it.',
 		'',
-		'Two siblings may end up sharing a number. Nothing breaks — the tie is settled by ' +
-			'file name, so the order stays the same on every machine — but the pair moves as a ' +
-			'block until one is dragged, so keep them distinct when writing by hand.',
+		'Two siblings may end up sharing a number, and an item may carry none at all. Nothing ' +
+			'breaks: the tie is settled by the order the base itself returned them in — whatever ' +
+			'sort is configured in the Bases toolbar, file name by default — and items without a ' +
+			'number sort last. That means the tie-break is a view setting rather than a property ' +
+			'of these notes, so give siblings distinct numbers when writing by hand.',
 	];
 }
 
@@ -188,7 +212,7 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 	if (!settings.stateKey || states.length === 0) return [];
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
 	const rows = states.map(
-		(s) => `| ${code(s.value)} | ${done.has(s.value.toLowerCase()) ? 'Yes' : 'No'} | ${SOURCE_LABEL[s.source]} |`,
+		(s) => `| ${cell(s.value)} | ${done.has(s.value.toLowerCase()) ? 'Yes' : 'No'} | ${SOURCE_LABEL[s.source]} |`,
 	);
 	return [
 		'## Workflow states',
@@ -229,7 +253,7 @@ function planningSection(settings: BacklogSettings): string[] {
 
 function filingSection(settings: BacklogSettings): string[] {
 	const configured = ALL_TYPES.map((t) => ({ type: t, folder: folderForType(t, settings) })).filter((e) => e.folder);
-	const rows = configured.map((e) => `| ${code(e.type)} | ${code(e.folder ?? '')} |`);
+	const rows = configured.map((e) => `| ${cell(e.type)} | ${cell(e.folder ?? '')} |`);
 	return [
 		'## Where notes are filed',
 		'',
@@ -254,13 +278,16 @@ function filingSection(settings: BacklogSettings): string[] {
 function exampleSection(settings: BacklogSettings, states: StateEntry[]): string[] {
 	const feature = LEVELS[Math.min(1, LEVELS.length - 1)];
 	const child = LEVELS[Math.min(2, LEVELS.length - 1)];
+	// Keys are configurable and therefore user data too: one containing a colon would
+	// turn the line a reader copies into a different mapping, or into nothing valid.
+	const entry = (key: string, value: string): string => `${yamlScalar(key)}: ${value}`;
 	const lines = [
 		'---',
-		`${settings.typeKey}: ${child}`,
-		`${settings.parentKey}: "[[Checkout redesign]]"`,
-		`${settings.orderKey}: ${ORDER_SPACING * 2}`,
+		entry(settings.typeKey, child),
+		entry(settings.parentKey, '"[[Checkout redesign]]"'),
+		entry(settings.orderKey, String(ORDER_SPACING * 2)),
 	];
-	if (settings.stateKey && states.length > 0) lines.push(`${settings.stateKey}: ${yamlScalar(states[0].value)}`);
+	if (settings.stateKey && states.length > 0) lines.push(entry(settings.stateKey, yamlScalar(states[0].value)));
 	lines.push('---', '', `# Pay with a saved card`, '', 'Whatever the note is about.');
 	return [
 		'## A note, written by hand',
