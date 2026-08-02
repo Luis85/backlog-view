@@ -45,7 +45,7 @@ The domain guide states the rule outright: *"'Same placement' and 'same state' a
 
 **Files:**
 - Modify: `src/domain/writePlan.ts:5` (the import), `src/domain/writePlan.ts:250-252`, `src/domain/writePlan.ts:291-292`
-- Test: no new test. Covered by `test/domain/writePlan.test.ts` (state no-ops), `test/domain/writePlanAxis.test.ts` (horizon no-ops), `test/view/boardMoves.test.ts` and `test/view/roadmapMoves.test.ts` (the no-op must not cost the undo slot).
+- Test: no new test. Covered by `test/domain/board.test.ts` and `test/domain/stamps.test.ts` (state no-ops), `test/domain/writePlanAxis.test.ts` (horizon no-ops), `test/view/boardMoves.test.ts` and `test/view/roadmapMoves.test.ts` (the no-op must not cost the undo slot). (Corrected after review: the first draft named `test/domain/writePlan.test.ts` for the state no-op, but that file only imports `computeDropWrites`, `computeInitWrites`, `DropTarget` and `ORDER_SPACING` — it never calls `computeStateWrites`. `test/domain/board.test.ts` and `test/domain/stamps.test.ts` are the files that actually do.)
 
 **Interfaces:**
 - Consumes: `sameValue(a: string | null, b: string | null): boolean` from `src/domain/noteFields.ts:121`.
@@ -736,19 +736,19 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 The audit's largest cuts each reverse something this repository decided on purpose and wrote down, or change behaviour the guides describe. Writing them up as tasks would be me overruling a documented decision inside a refactoring plan, so each gets a brief instead. Say the word on any of them and I will expand it into tasks in this same shape.
 
-### A. The docs register gate — about 1400 lines
+### A. The docs register gate — about 1800 lines
 
-`docs-check.mjs` (565) plus `test/docs/checkerAccepts.test.ts` (263), `checkerRejects.test.ts` (300), `checkerRejectsAdrs.test.ts` (240), `surfaces.test.ts` (135) and `test/helpers/register.ts` (225): **1728 lines that ship nothing**, validating markdown grammar.
+**Corrected after review:** the first draft measured these six files and undercounted every one of them by 5-15%. Re-measured at `b7ed566` (`wc -l`, none of these files is touched by this branch): `docs-check.mjs` (589) plus `test/docs/checkerAccepts.test.ts` (302), `checkerRejects.test.ts` (306), `checkerRejectsAdrs.test.ts` (250), `surfaces.test.ts` (149) and `test/helpers/register.ts` (240): **1836 lines that ship nothing**, validating markdown grammar.
 
 What earns its place: unresolved wikilinks, dead `src/`/`test/` paths in living notes, and "no note names this module". Those three are about 80 lines and they catch real rot.
 
-What is arguable: use-case section ordering and duplicate-section counting, the extension-label step grammar, ADR supersession reciprocity *and* chronology, the ADR numbering-gap scan — and above all the 938 lines of tests proving the checker itself works in both directions.
+What is arguable: use-case section ordering and duplicate-section counting, the extension-label step grammar, ADR supersession reciprocity *and* chronology, the ADR numbering-gap scan — and above all the 1007 lines of tests proving the checker itself works in both directions.
 
 **The decision:** is `docs/` a product surface (it is the plugin's own dogfood fixture, opened as a vault by `npm run test-build`) or a notebook? If it is a product surface, the gate is proportionate and this finding is void. If it is a notebook, the gate costs more to maintain than the register it guards. Root `CLAUDE.md` argues the former, at length and from scars — which is why this is a brief and not a task.
 
 ### B. The three pragmatic-drag-and-drop dependencies
 
-ADR 0018 chose them. The tree's own drag is 178 lines of native HTML5 DnD (`src/view/interactions/dragDrop.ts`) and does the *harder* job — three drop zones per row, ratio-based zone math, hover-to-expand. The card drag is the easy case: a whole region is the target, no edge detection, no reordering, and `src/view/interactions/cardDrag.ts` is 155 lines of wiring around it.
+ADR 0018 chose them. The tree's own drag is 198 lines of native HTML5 DnD (`src/view/interactions/dragDrop.ts`) and does the *harder* job — three drop zones per row, ratio-based zone math, hover-to-expand. The card drag is the easy case: a whole region is the target, no edge detection, no reordering, and `src/view/interactions/cardDrag.ts` is 166 lines of wiring around it. (Corrected after review: the first draft undercounted both by roughly 10%.)
 
 **The decision:** does the auto-scroll behaviour justify the bundle? `autoScrollForElements` is the one piece that is genuinely fiddly to hand-roll. If it does, keep all three. If not, `-3 deps` and `cardDrag.ts` shrinks toward the tree's shape.
 
@@ -772,4 +772,10 @@ Reaching it takes: a batch lands, the user undoes it, a write throws mid-replay 
 
 ## Expected result
 
-Six commits, roughly **-60 lines of source and -55 lines of test**, no behaviour change, no dependency change, `npm run check` green on every commit. The larger cuts wait on the four decisions above.
+**Corrected after review:** this section originally predicted "roughly -60 lines of source and -55 lines of test". That estimate was wrong by roughly 3.5x on the source side. Measured against `git diff b7ed566..HEAD` (`src/` code lines via ESLint's own `max-lines` rule — the metric `skipBlankLines`/`skipComments` count, run with `max: 0` to read the reported total off each file, before and after):
+
+- `src/` **code lines**: **-17**, not -60. Per file: `settings.ts` -11, `vocabulary.ts` -4, `writePlan.ts` -3, `plan.ts` -3, `emptyStates.ts` **+4** (the two extracted shells cost more lines than the five call sites saved).
+- `src/` **physical lines** (git diff, blanks and comments included): **+16** — the doc comments the table and the shells picked up outweigh what the duplication removed.
+- `test/`: **-54 lines, -1 file, -1 test** — close to the -55 test-line estimate; `test/view/pragmaticSpike.test.ts` (55 lines, one test) is gone, `test/helpers/dnd.ts` lost two exports it no longer needs to share, and `test/view/rendering.test.ts` gained one assertion.
+
+Six commits, no behaviour change, no dependency change, `npm run check` green on every commit. What this branch actually buys is not fewer lines — on the source side it is close to a wash — but a single statement of several rules that were previously spelled out two or three times: `sameValue` for "same placement", one field → key table instead of a table plus a switch, one fold instead of three vocabulary collectors, two DOM shells instead of five hand-written copies. The larger cuts wait on the four decisions above.
