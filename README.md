@@ -530,11 +530,12 @@ matches no column, it sits in the no-state column.
   working agreement for that stage. Set one in the view options and it is readable from the
   column header and the column menu. A column minted from an observed value the workflow
   list doesn't name has no policy option and no menu entry for one.
-- **Date stamps.** A `finished` property, once configured, stamps a finish as a card moves
-  — riding the state write, so it never fires without a state property. The `started` stamp
-  needs one thing more: naming at least one state in **States that count as started** —
-  without that, the property is only ever created empty for you to fill by hand, never
-  stamped. Once both are configured, the two behave differently once work is reworked:
+- **Date stamps.** Both `started` and `finished` ride the state write, so neither fires
+  without a state property. Each also needs its own list to name at least one value —
+  `started` in **States that count as started** (empty by default), `finished` in
+  **States that count as done** (populated by default) — or the property is only ever
+  created empty for you to fill by hand, never stamped. Once both are configured, the two
+  behave differently once work is reworked:
   - **`started`** is written only while the property is empty, so the **earliest** start
     survives. Entering a started state again does not move it.
   - **`finished`** follows the done boundary. Completing an item stamps it; **reopening
