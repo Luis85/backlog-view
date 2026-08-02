@@ -19,9 +19,9 @@ files:
 a PBI or a Bug is actually *for* without leaving the view, **so that** I pick the right
 type deliberately instead of inferring it from a coloured badge.
 
-A **?** button in the toolbar opens the manual on its first section: the six item types,
-what each one is for, and how the view treats them. This use case builds the surface every
-other section then lands in.
+A **?** button in the toolbar opens the manual on its first section: every item type in
+the vocabulary, what each one is for, and how the view treats them. This use case builds
+the surface every other section then lands in.
 
 ## Use case
 
@@ -36,9 +36,8 @@ other section then lands in.
 
 1. The user clicks **?** in the toolbar.
 2. The manual opens on the types section, scrolled to the top.
-3. The section names each of the six types — `Epic`, `Feature`, `PBI`, `Task`, `Issue`,
-   `Bug` — with its intent and what the view offers under it, generated from the type
-   vocabulary rather than retyped beside it.
+3. The section names every type in the vocabulary — generated from `ALL_TYPES` rather
+   than retyped beside it — with its intent and what the view offers under it.
 4. It then states the three rules that decide behaviour and are invisible on screen: a
    child's level is one rung below its parent's *clamped at the deepest*, an untyped item
    is shown at the level its position implies, and a move does not re-type.

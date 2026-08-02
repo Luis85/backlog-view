@@ -280,6 +280,19 @@ free of runtime code so imports stay cycle-free.
   Removal actions (Clear horizon, Unschedule, an emptied field in the entry) appear
   only while the note CARRIES the key (`item.ownKeys`, presence not value), so no
   offered action can write nothing, and they delete the key rather than blanking it.
+- Schedule and the removal actions on the dated axis gate on `canSchedule` /
+  `placementEnds` (`interactions/plan.ts`), not on `hasDateAxis`: a milestone answers
+  `['target']` rather than both ends, and the two predicates agree for ordinary work and
+  diverge exactly where a milestone's only writable end is the target — offering the
+  entry there on `hasDateAxis` alone would open it onto a field list narrowed to nothing.
+- The dated axis draws a milestone as a line down the whole grid (`renderMilestoneLines`
+  in `render/timeline.ts`), one per DATE rather than per item so two milestones sharing a
+  day still read as one mark, behind the bars and under the today line — which keeps its
+  pixel and its place on top, the milestone's line stepping aside inside the same day
+  cell instead of either being suppressed. The line is decoration only: nothing about it
+  is focusable or written, so the milestone's own row carries the name and the exact
+  dates together in its accessible name, which is where a fact the line shows must also
+  be reachable without it.
 - On top of that, the HORIZON axis is directly manipulable and the dated axis is not,
   and the difference is structural rather than a flag: `renderRoadmap` passes the drag
   controller on only where a drop has a write behind it, so nothing on the timeline is

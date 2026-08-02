@@ -19,8 +19,8 @@ raised against an Epic or a PBI. A fifth rung would have to be *three* rungs at 
 
 ## Decision
 
-An **extra type** is a declared type that is **not a rung**. Its rank is a property of the
-type:
+An **extra type** is a declared type that is **not a rung** **and holds the deepest level**.
+Its rank is a property of the type:
 
 > It ranks at `EXTRA_TYPE_RANK` — the rung whose children are the deepest level — always,
 > and it has no `levelIndex`.
@@ -58,6 +58,14 @@ table of legal parent/child pairs:
   a Bug beside a PBI; arbitrary in principle.
 - Nothing is enforced. The rules decide what is *offered*; a drag may still put a Bug
   anywhere ([ADR 0009](0009-the-type-rules-are-advisory.md)).
+- **Amended 2026-08-02 (Milestones).** "A declared type that is not a rung" is the
+  **genus**, not the species. A marker is one too, and it occupies no rank at all — so the
+  definition as first written classified a milestone as the very thing it is not, and
+  pinned it at `EXTRA_TYPE_RANK` by that classification alone. The amendment is one
+  clause: what makes an extra type an extra type is the **pinned rank whose children are
+  Tasks**, and everything this record decides about `Issue` and `Bug` stands unchanged.
+  The pin-at-every-node consequence above holds for markers in the opposite direction —
+  the cascade **stops** at one, because there is no rank to descend from.
 
 ## Alternatives
 

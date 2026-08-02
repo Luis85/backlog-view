@@ -2,8 +2,9 @@
 type: Feature
 parent: "[[Product Roadmap]]"
 order: 60
-status: Open
+status: Done
 created: 2026-08-02
+closed: 2026-08-02
 source: user request
 ---
 
@@ -24,7 +25,7 @@ that has duration.
 - [[Milestones as their own type]] — the type, its date, its folder, and what it is not.
 - [[A milestone line across the plan]] — the date read across every bar, not just its own row.
 
-## Landmines, before implementation
+## Landmines, and where each was answered
 
 A seventh name in a vocabulary six things were written against is not one change, and the
 review of this specification found more traps than the specification did. They are
@@ -59,18 +60,18 @@ by hand.
 
 **The quiet ones.** Each does something plausible and wrong, and no test fails:
 
-| Where | What it does to a milestone |
-| --- | --- |
-| `rankOf` in `computeTypeChanges` (`src/domain/writePlan.ts`) | Recognises only extra types, so a marker nested in a moved subtree takes the positional rung and its descendants are retyped from a rank it does not have — the exemption on the dragged item alone does not reach it |
-| `renderFocusPicker` (`src/view/render/toolbar.ts`) | Builds its menu from `LEVELS` then `EXTRA_TYPES`, so the name a saved view may hold is one no user can pick |
-| `addScheduleItems` (`src/view/interactions/menu.ts`) | Offers Schedule whenever *either* date key is configured, so narrowing the fields to the target alone opens a modal with nothing in it |
-| The date rollup ([[Spans roll up the tree]], `src/domain/model.ts`) | Gathers evidence from every result descendant, so a hand-nested milestone's target becomes a dateless ancestor's inferred end — a deadline reported as work |
-| `deriveBars` (`src/domain/roadmap.ts`) | Shelves it as a reversed span when a stale start sits after the target — before any rendering seam runs |
-| `barGeometry` (`src/domain/timeline.ts`) | Clamps both ends into the window and still reports `milestone`, so a date beyond the clamped 60-month edge arrives as a one-day diamond at day 0 or the last day — a marker at a date nobody set. The same clamp misdraws any span lying wholly outside; the marker is the case this feature has to settle, because a diamond claims a date where a clipped end only claims a direction |
-| `scheduleFields`, `validateSchedule` (`src/view/interactions/plan.ts`) | Offers both ends and applies the span rule, so the entry can refuse a milestone the timeline draws, and can accept a start that leaves it shelved |
-| `carriesDates`, `unschedule` (same file) | Gates on either key and removes both, so Unschedule appears on a milestone with no milestone date, and deletes a start the feature only promised to ignore |
-| `renderRowTrailing` (`src/view/render/rows.ts`) | Renders an add button labelled from the first of no choices |
-| `test/docs/surfaces.test.ts` | Asserts the generated `typeFolder.<type>` keys for a hand-written list of six names, so a seventh is simply uncovered |
+| Where | What it does to a milestone | Answered by |
+| --- | --- | --- |
+| `rankOf` in `computeTypeChanges` (`src/domain/writePlan.ts`) | Recognises only extra types, so a marker nested in a moved subtree takes the positional rung and its descendants are retyped from a rank it does not have — the exemption on the dragged item alone does not reach it | The `stopsAt` early return in `computeTypeChanges`, applied at the dragged item and at every node of the descent walk |
+| `renderFocusPicker` (`src/view/render/toolbar.ts`) | Builds its menu from `LEVELS` then `EXTRA_TYPES`, so the name a saved view may hold is one no user can pick | `renderFocusPicker` reading `ALL_TYPES` |
+| `addScheduleItems` (`src/view/interactions/menu.ts`) | Offers Schedule whenever *either* date key is configured, so narrowing the fields to the target alone opens a modal with nothing in it | `canSchedule` |
+| The date rollup ([[Spans roll up the tree]], `src/domain/model.ts`) | Gathers evidence from every result descendant, so a hand-nested milestone's target becomes a dateless ancestor's inferred end — a deadline reported as work | The `self` line in `assignAll` |
+| `deriveBars` (`src/domain/roadmap.ts`) | Shelves it as a reversed span when a stale start sits after the target — before any rendering seam runs | `placeMarker` |
+| `barGeometry` (`src/domain/timeline.ts`) | Clamps both ends into the window and still reports `milestone`, so a date beyond the clamped 60-month edge arrives as a one-day diamond at day 0 or the last day — a marker at a date nobody set. The same clamp misdraws any span lying wholly outside; the marker is the case this feature has to settle, because a diamond claims a date where a clipped end only claims a direction | `BarGeometry.outside` |
+| `scheduleFields`, `validateSchedule` (`src/view/interactions/plan.ts`) | Offers both ends and applies the span rule, so the entry can refuse a milestone the timeline draws, and can accept a start that leaves it shelved | `placementEnds` |
+| `carriesDates`, `unschedule` (same file) | Gates on either key and removes both, so Unschedule appears on a milestone with no milestone date, and deletes a start the feature only promised to ignore | `placementEnds` again |
+| `renderRowTrailing` (`src/view/render/rows.ts`) | Renders an add button labelled from the first of no choices | The `childTypes.length === 0` guard |
+| `test/docs/surfaces.test.ts` | Asserts the generated `typeFolder.<type>` keys for a hand-written list of six names, so a seventh is simply uncovered | `ALL_TYPES` in `surfaces.test.ts` |
 
 The middle two are one trap wearing two coats, and worth naming as a rule rather than a
 pair: **a placement action must answer for the type it is acting on, on both the offering
@@ -84,23 +85,26 @@ the shelf drop and the bar slide and each keyboard equivalent
 only reason this is cheap: a rule stated per control is one control out of date the moment
 a fourth path appears.
 
-**The loud one is a gift.** `EXTRA_TYPE_STYLE` in `src/view/render/rows.ts` deliberately
+**The loud one is a gift.** `NON_RUNG_STYLE` in `src/view/render/rows.ts` deliberately
 has no fallback for a declared type, and a test asserts the table covers the vocabulary —
 so the badge is the one seam that refuses to be forgotten. That is what the others would
 look like if the same discipline reached them, which is the argument for adding a
 vocabulary-driven test rather than another remembered list.
 
-**Records and sibling specs to settle in the same change**, none of which is wrong today:
-[ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) is titled for six names
-and lists the extra types by hand;
-[ADR 0014](../adrs/0014-rank-extra-types-by-type-not-by-position.md) *defines* an extra
-type as "a declared type that is not a rung" and pins that definition at
-`EXTRA_TYPE_RANK`, which classifies a marker as the thing it is not — everything it
+**Records and sibling specs settled in the same change**, none of which was wrong before
+it:
+[ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) was titled for six names
+and listed the extra types by hand — amended to seven, keeping its filename and its
+number;
+[ADR 0014](../adrs/0014-rank-extra-types-by-type-not-by-position.md) *defined* an extra
+type as "a declared type that is not a rung" and pinned that definition at
+`EXTRA_TYPE_RANK`, which classified a marker as the thing it is not — everything it
 decides about `Issue` and `Bug` survives, and the amendment is to the definition's reach,
-not to the decision; the register's own checker (`docs-check.mjs`) holds a
-legal-parent table of six types, so the register cannot file a milestone of its own until
-it knows the name; and `docs/README.md`'s hierarchy table has no row for a type whose
-parent is nothing and whose children are nothing. [[Type names are data]],
+not to the decision; the register's own checker (`docs-check.mjs`) held a
+legal-parent table of six types and a root rule naming only `Epic`, so the register could
+not file a milestone of its own until it knew the name — it now does, and its own tests
+plant that case in both directions; and `docs/README.md`'s hierarchy table now has the row
+for a type whose parent is nothing and whose children are nothing. [[Type names are data]],
 [[What counts as a work item]], [[Types beside the ladder]] and [[Multilang]]'s own data
 table each pinned the count and no longer do, and both rollups now name the marker as an
 exception — the progress count in [[Rollups and hiding finished work]] and the date

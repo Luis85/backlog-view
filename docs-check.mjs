@@ -26,7 +26,15 @@ const LEGAL_CHILDREN = {
 	Task: new Set(),
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
+	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
+	Milestone: new Set(),
 };
+/**
+ * The types that legitimately have no parent. An `Epic` is a root by POSITION — the top
+ * of the ladder — and a `Milestone` is a root by NATURE: a release date is owned by the
+ * plan, not by an epic.
+ */
+const ROOT_TYPES = new Set(["Epic", "Milestone"]);
 /** The headings every use case carries, in the order `docs/README.md` documents. */
 const USE_CASE_SECTIONS = [
 	"**As**",
@@ -281,7 +289,9 @@ const siblings = new Map();
 for (const [name, note] of notes) {
 	if (!LEGAL_CHILDREN[note.type]) fail(note.file, `unknown type "${note.type}"`);
 	if (note.parent === null) {
-		if (note.type !== "Epic") fail(note.file, `${note.type} with no parent — only an Epic is a root`);
+		if (!ROOT_TYPES.has(note.type)) {
+			fail(note.file, `${note.type} with no parent — only ${[...ROOT_TYPES].join(" or ")} is a root`);
+		}
 	} else if (!notes.has(note.parent)) {
 		fail(note.file, `parent [[${note.parent}]] does not exist`);
 	} else {

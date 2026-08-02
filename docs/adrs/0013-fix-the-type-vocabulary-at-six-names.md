@@ -1,13 +1,13 @@
 ---
 adr: 13
-title: Fix the type vocabulary at six names
+title: Fix the type vocabulary at seven names
 status: Accepted
 date: 2026-08-01
 area: domain
 supersedes: 12
 ---
 
-# ADR 0013 — Fix the type vocabulary at six names
+# ADR 0013 — Fix the type vocabulary at seven names
 
 ## Context
 
@@ -25,6 +25,7 @@ The vocabulary is **fixed**, as constants, not options:
 ```
 LEVELS       = Epic · Feature · PBI · Task
 EXTRA_TYPES  = Issue · Bug
+MARKER_TYPES = Milestone
 ```
 
 Matched case-insensitively. The property *keys* stay configurable — pointing `type` at a
@@ -40,8 +41,8 @@ an asymmetry nobody chose, recorded in [[Assigning type on a move]].)
 
 - Every level rule has exactly **one list** to hold for, and it is four long. Whole
   categories of question stop existing: no collisions, no empty ladder, no rung count.
-- Each of the six gets a **shipped opinion** — a default folder, an icon, a badge colour —
-  because there are six of them and someone chose each one.
+- Each of the seven gets a **shipped opinion** — a default folder, an icon, a badge colour —
+  because there are seven of them and someone chose each one.
 - The badge renderer needs **no fallback** for a declared type. That is only safe because
   the vocabulary is fixed and a test asserts the tables cover it.
 - The options schema is static again — it still reads the config, but only to derive each
@@ -53,6 +54,13 @@ an asymmetry nobody chose, recorded in [[Assigning type on a move]].)
   deliberately, and the one thing to weigh if it is ever reconsidered.
 - Nothing was kept for compatibility. The options vanished and the values users had set
   stopped being read ([ADR 0016](0016-break-compatibility-freely-before-1-0.md)).
+- **Amended 2026-08-02 (Milestones).** The vocabulary is now **seven** names in **three**
+  categories. The filename still says six; it is kept because the record is addressed by
+  its number and renaming it would break every link that resolves today. Nothing this ADR
+  decided changed — the vocabulary is still fixed, still not an option, still matched
+  case-insensitively, and every one of the seven still gets a shipped opinion. What grew
+  is the count, which is exactly the kind of staleness a record absorbs rather than is
+  superseded by.
 
 ## Alternatives
 

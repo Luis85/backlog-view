@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Milestones]]"
 order: 20
-status: Open
+status: Done
 priority: P3
 created: 2026-08-02
+closed: 2026-08-02
 source: user request
 files:
   - src/domain/timeline.ts
@@ -114,15 +115,31 @@ nothing about the line is ever written anywhere.
 
 ## Where it lives
 
-Not built. The month window and the day-to-pixel geometry are `src/domain/timeline.ts`,
-where `barGeometry` clamps both ends into the window and reports `milestone` from the
-stated pair alone — so a point beyond the edge currently arrives at the renderer as a
-one-day milestone at day 0 or at the last day, which is the shape 1a refuses. The geometry
-has to answer "wholly outside" rather than clamping to it: `endDay < 0` or
-`startDay > lastDay`, which for a point is exactly "its date is not in the window".
-The grid, and the `pbl-today` line this extends, are `src/view/render/timeline.ts`, with
-the styling in `styles.css` beside it — where the collision of 1d is a matter of two 2px
-marks in a 4px day cell, so the room to draw both is already there and the rule is which
-one keeps the pixel. Driven in `test/domain/timeline.test.ts` and
-`test/view/roadmapFrame.test.ts`. It waits on [[Milestones as their own type]], which is
-what supplies a milestone to draw.
+The window edge is answered in `src/domain/timeline.ts`: `BarGeometry` gained an `outside`
+field — `endDay < 0 || startDay > lastDay` — true exactly when nothing of the span is
+inside the window, which for a point is exactly "its date is not in the window" (1a).
+`barGeometry` still clamps `startDay`/`spanDays` the way a clipped bar needs, but a reader
+now has to check `outside` before trusting them for a point. `src/view/render/timeline.ts`
+reads it in `barClasses`: an outside bar carries `pbl-bar-outside` plus the open-end class
+for the side it lies past, in the same open-end vocabulary a clipped bar already used,
+instead of drawing the clamped diamond the old code produced.
+
+The line itself is `renderMilestoneLines`, called once per render before the bar rows so
+the bars paint over it. It groups bars by `geometry.startDay` (1b — two milestones on one
+date collect into one entry) after skipping every non-marker bar and every `outside` one,
+then draws one full-height `.pbl-milestone-line` per day and one truncating label in the
+header track beside the month names, both positioned from the same `--pbl-milestone-left`
+custom property so the line and its label never drift apart. 1d's collision is `TODAY_NUDGE_PX`
+(2px): a milestone sharing today's day steps its line aside by that amount rather than
+either mark being suppressed, and the day cell is wide enough to hold both — the styling is
+in `styles.css`, beside `.pbl-today`, with a comment naming the badge's cyan
+(`--color-cyan-rgb`) rather than the purple that is already `.pbl-lvl-1` (Feature). The row's
+own accessible name — `${title} — ${dates}` — carries the name and dates together, which is
+where 4a's "no fact only under a hover" and the outside row's edge mark both resolve: nothing
+about a milestone exists only on the line.
+
+Driven in `test/domain/timeline.test.ts` (the `outside` geometry) and
+`test/view/roadmapFrame.test.ts` (the line, the label, the today collision, and the
+outside row's edge mark), with `test/helpers/roadmap.ts` carrying `rowFor`, `barFor` and
+`labelTexts` for the fixture support the new cases share. [[Milestones as their own type]]
+supplies the milestone the line draws.

@@ -50,8 +50,9 @@ the view options can rename.
    declared workflow when there is one and the observed values when there is not
    (`stateMenuValues`), **plus** the values observed outside a declared workflow, which
    `boardColumns` mints columns for and the state menus therefore offer.
-3. The document is generated: what the folder holds, the six type names with the ladder
-   and the two types beside it, the parent/child table, the frontmatter contract in this
+3. The document is generated: what the folder holds, every type name in the vocabulary —
+   the ladder, the extra types beside it, and the marker that sits on no rung at all —
+   the parent/child table, the frontmatter contract in this
    view's actual keys — the tags property among them, with the shapes it accepts, since a
    reader who does not know that key writes the conventional one and this view ignores it —
    the ranking rule, the workflow states and which of them count as done, the roadmap keys

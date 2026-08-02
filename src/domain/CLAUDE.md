@@ -92,6 +92,15 @@ in the root `CLAUDE.md` because it spans every layer.
   level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
   OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
   guided rather than refused.
+- A **marker** (`MARKER_TYPES`, `Milestone`) is the third category, and the inverse of an
+  extra type on all three counts: no rung, no children, no parent — `isMarkerType` is a
+  second predicate rather than a widened `isExtraType`, because the two answer opposite
+  questions. Three consequences follow, each stated once where it holds for every quantity
+  the walk gathers rather than at a call site: it is never counted and never dated evidence
+  (the `self` line in `assignAll`, beside the context-row skip it resembles), and the
+  autoType cascade's `stopsAt` predicate — `outsideFilter || isMarkerType`, the same shape
+  for the same reason — stops at a marker exactly as it stops at a row the Base excluded, so
+  the cascade descends from a rank only where one exists.
 - Each type's folder is **its own option** (`typeFolder.<lowercased type>`), one per type
   in the fixed vocabulary, so a folder is picked rather than spelled into a mapping.
   `typeFolderKey` is shared by the schema and the resolver, because a persisted key
