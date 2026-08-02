@@ -1,7 +1,19 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
 import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isExtraType } from './itemTypes';
-import { ParentRef, readNumber, readString, readTags, resolveParent, tagKey } from './noteFields';
+import {
+	absentReading,
+	CivilDate,
+	FieldReading,
+	ParentRef,
+	readDate,
+	readNumber,
+	readPlacement,
+	readString,
+	readTags,
+	resolveParent,
+	tagKey,
+} from './noteFields';
 import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
 
 /**
@@ -11,7 +23,7 @@ import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
  * placeholder values and a paragraph of prose asking readers to remember.
  *
  * `RawItem` → `LinkedItem` → `BacklogItem`, each extending the one before. Consumers
- * outside this module only ever meet `BacklogItem`, which still carries all 24 fields,
+ * outside this module only ever meet `BacklogItem`, which still carries all 27 fields,
  * so nothing downstream changes.
  */
 
@@ -61,6 +73,12 @@ interface RawItem {
 	tags: string[];
 	/** True when the state value matches one of the configured done values. */
 	done: boolean;
+	/** The roadmap horizon this note declares, if a horizon property is configured. */
+	horizon: FieldReading<string>;
+	/** The planned start date the note states, if a start property is configured. */
+	plannedStart: FieldReading<CivilDate>;
+	/** The planned target date the note states, if a target property is configured. */
+	plannedTarget: FieldReading<CivilDate>;
 }
 
 /**
@@ -238,10 +256,25 @@ function addItem(
 		stateValue,
 		tags: settings.tagsKey ? readTags(fm?.[settings.tagsKey]) : [],
 		done: stateValue !== null && doneValues.includes(stateValue.toLowerCase()),
+		horizon: readGated(settings.horizonKey, fm, readPlacement),
+		plannedStart: readGated(settings.startKey, fm, readDate),
+		plannedTarget: readGated(settings.targetKey, fm, readDate),
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
 	return seed;
+}
+
+/**
+ * A roadmap field read gated on its key being configured: an unconfigured field is
+ * simply absent, never invalid — there is nothing to refuse.
+ */
+function readGated<T>(
+	key: string,
+	fm: Record<string, unknown> | undefined,
+	read: (value: unknown) => FieldReading<T>,
+): FieldReading<T> {
+	return key ? read(fm?.[key]) : absentReading();
 }
 
 /**

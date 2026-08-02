@@ -1191,7 +1191,8 @@
 	background-color: var(--background-secondary);
 }
 
-.pbl-board-col-header {
+.pbl-board-col-header,
+.pbl-bucket-header {
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
@@ -1201,13 +1202,16 @@
 	color: var(--text-normal);
 }
 
-.pbl-board-col-name {
+.pbl-board-col-name,
+.pbl-bucket-name {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.pbl-board-col-count {
+.pbl-board-col-count,
+.pbl-bucket-count,
+.pbl-shelf-count {
 	margin-left: auto;
 	flex: 0 0 auto;
 	font-size: var(--font-ui-smaller);
@@ -1406,10 +1410,12 @@
 	width: 100%;
 }
 
-/* The board never drops columns for room the way the tree does — stale verdicts
-   from tree mode must not hide a card's cells. */
+/* The board and the roadmap never drop columns for room the way the tree does —
+   stale verdicts from tree mode must not hide a card's cells. */
 .pbl-view.pbl-board-mode .pbl-card .pbl-props,
-.pbl-view.pbl-board-mode .pbl-card .pbl-meta-col {
+.pbl-view.pbl-board-mode .pbl-card .pbl-meta-col,
+.pbl-view.pbl-roadmap-mode .pbl-card .pbl-props,
+.pbl-view.pbl-roadmap-mode .pbl-card .pbl-meta-col {
 	display: flex;
 }
 
@@ -1418,4 +1424,291 @@
 .pbl-board-advisory {
 	margin-top: var(--size-4-4);
 	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* ------------------------------------------------------------------ roadmap */
+
+/* The tree's "move to top level" strip has no meaning on an axis. */
+.pbl-roadmap-mode .pbl-root-drop {
+	display: none;
+}
+
+/* Time and buckets scroll sideways inside the same scroller the tree uses;
+   the pane itself never scrolls horizontally. The scroller is also the query
+   container that hands the pinned strips below their scrollport width. */
+.pbl-roadmap-mode .pbl-tree {
+	overflow-x: auto;
+	container-type: inline-size;
+}
+
+.pbl-roadmap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	min-width: max-content;
+}
+
+/* Pinned to the scrollport: a pan across months must never scroll the unplaced
+   work, the context strip or the advisory out of reach. Sticky needs a box
+   narrower than its containing block — the lead column's own trick — so the
+   strips take the scrollport's width inside the max-content frame. */
+.pbl-roadmap .pbl-shelf,
+.pbl-roadmap .pbl-roadmap-context,
+.pbl-roadmap .pbl-board-advisory {
+	position: sticky;
+	left: 0;
+	width: 100cqw;
+	align-self: flex-start;
+	box-sizing: border-box;
+}
+
+/* The projection toggle and the axis picker are segmented button groups. */
+.pbl-mode-toggle,
+.pbl-axis-picker {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+/* ----- the horizon axis: buckets, styled as the board's columns are */
+
+.pbl-roadmap-buckets {
+	display: flex;
+	align-items: stretch;
+	gap: var(--size-4-3);
+	min-height: 220px;
+}
+
+.pbl-bucket {
+	flex: 0 0 260px;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+/* A value the declared horizons do not name — present, visibly outside them. */
+.pbl-bucket-undeclared {
+	border-style: dashed;
+}
+
+.pbl-bucket-stray {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.pbl-bucket-stray .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-bucket-cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2);
+	overflow-y: auto;
+	flex: 1 1 auto;
+	min-height: var(--size-4-8);
+}
+
+/* ----- the dated axis: the month grid, bars, and the today line */
+
+.pbl-timeline {
+	position: relative;
+	width: max-content;
+}
+
+.pbl-timeline-header {
+	display: flex;
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	background-color: var(--background-primary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-lead {
+	flex: 0 0 var(--pbl-tl-lead);
+	width: var(--pbl-tl-lead);
+	min-width: 0;
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-1) var(--size-4-2);
+	background-color: var(--background-primary);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-lead .pbl-card-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-timeline-track {
+	position: relative;
+	flex: 0 0 var(--pbl-tl-days);
+	width: var(--pbl-tl-days);
+	display: flex;
+}
+
+.pbl-timeline-month {
+	flex: 0 0 var(--pbl-month-w);
+	width: var(--pbl-month-w);
+	padding: var(--size-4-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	border-left: 1px dashed var(--background-modifier-border);
+}
+
+/* A timeline row is a card wearing the row layout: the shell keeps the card's
+   selection and context styling while the geometry goes horizontal. */
+.pbl-card.pbl-timeline-row {
+	flex-direction: row;
+	align-items: stretch;
+	gap: 0;
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background-color: transparent;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-row .pbl-timeline-track {
+	min-height: 34px;
+}
+
+.pbl-bar {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	height: 14px;
+	border-radius: var(--radius-s);
+	/* One color for solid and open bars alike: states override the variable,
+	   never the background, so an open end can never reveal a solid backing. */
+	--pbl-bar-color: var(--interactive-accent);
+	background-color: var(--pbl-bar-color);
+}
+
+.pbl-timeline-row.pbl-done .pbl-bar {
+	--pbl-bar-color: var(--color-green);
+	opacity: 0.7;
+}
+
+/* A dateless or clipped end is styled open: the plan's gap stays visible
+   instead of being filled in, and the exact dates ride on the tooltip. */
+.pbl-bar-open-end {
+	background: linear-gradient(to right, var(--pbl-bar-color) 55%, transparent);
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.pbl-bar-open-start {
+	background: linear-gradient(to left, var(--pbl-bar-color) 55%, transparent);
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.pbl-bar-open-start.pbl-bar-open-end {
+	background: linear-gradient(to right, transparent, var(--pbl-bar-color) 35%, var(--pbl-bar-color) 65%, transparent);
+	border-radius: 0;
+}
+
+/* A point in time is not a span: equal stated ends render as the Gantt diamond. */
+.pbl-bar-milestone {
+	width: 12px;
+	height: 12px;
+	border-radius: var(--radius-s);
+	transform: translateY(-50%) rotate(45deg);
+}
+
+.pbl-today {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-today-left);
+	width: 2px;
+	z-index: 1;
+	background-color: var(--color-red);
+	opacity: 0.55;
+}
+
+/* ----- the shelf: what the axis cannot place, visible and counted */
+
+.pbl-shelf,
+.pbl-roadmap-context {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+/* Context stands beside the shelf, visibly not part of its count. */
+.pbl-roadmap-context {
+	border-style: dashed;
+	background-color: transparent;
+}
+
+.pbl-shelf-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-shelf-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.pbl-shelf-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-shelf-cards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	align-items: stretch;
+}
+
+.pbl-shelf-cards .pbl-card {
+	flex: 0 1 240px;
+}
+
+/* Why a value could not be read: the reason travels on the card it shelved. */
+.pbl-shelf-reason {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-warning);
+}
+
+.pbl-shelf-reason-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-shelf-reason-icon .svg-icon {
+	width: 12px;
+	height: 12px;
 }

@@ -54,7 +54,7 @@ export function boardVault(): FakeVault {
  */
 export function makeBoard(vault: FakeVault, extra: Record<string, unknown> = {}): Harness {
 	const harness = makeView(vault, { ...BOARD_WORKFLOW, ...extra }, { collapsed: true });
-	harness.view.setBoardMode(true);
+	harness.view.setProjection('board');
 	return harness;
 }
 

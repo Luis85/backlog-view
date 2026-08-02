@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasTag, normalizeTag, readTags } from '../../src/domain/noteFields';
+import { hasTag, normalizeTag, readDate, readPlacement, readTags } from '../../src/domain/noteFields';
 
 describe('readTags', () => {
 	it('reads a list or a single string, deduped case-insensitively and without the hash', () => {
@@ -70,5 +70,55 @@ describe('normalizeTag', () => {
 		// Decomposed é — the accent is a combining mark of its own
 		expect(normalizeTag('café')).toBe('café');
 		expect(normalizeTag('日本語')).toBe('日本語');
+	});
+});
+
+describe('readDate', () => {
+	it('reads the shapes frontmatter takes, unpadded digits included', () => {
+		expect(readDate('2026-08-01')).toEqual({ value: { year: 2026, month: 8, day: 1 }, invalid: false });
+		expect(readDate('2026-8-1')).toEqual({ value: { year: 2026, month: 8, day: 1 }, invalid: false });
+		expect(readDate(['2026-08-01'])).toEqual({ value: { year: 2026, month: 8, day: 1 }, invalid: false });
+	});
+
+	it('places a datetime by the civil date it spells, never a converted one', () => {
+		// Whatever the offset says, the note names this calendar day.
+		expect(readDate('2026-08-01T23:30:00+11:00').value).toEqual({ year: 2026, month: 8, day: 1 });
+		expect(readDate('2026-08-01 09:00').value).toEqual({ year: 2026, month: 8, day: 1 });
+	});
+
+	it('tells absence from refusal — the two mean different things on the roadmap', () => {
+		expect(readDate(undefined)).toEqual({ value: null, invalid: false });
+		expect(readDate(null)).toEqual({ value: null, invalid: false });
+		expect(readDate('  ')).toEqual({ value: null, invalid: false });
+		expect(readDate([])).toEqual({ value: null, invalid: false });
+		expect(readDate('next tuesday')).toEqual({ value: null, invalid: true });
+		expect(readDate(20260801)).toEqual({ value: null, invalid: true });
+		expect(readDate({ nested: true })).toEqual({ value: null, invalid: true });
+	});
+
+	it('refuses a date the calendar does not have rather than guessing', () => {
+		expect(readDate('2026-02-30').invalid).toBe(true);
+		expect(readDate('2026-13-01').invalid).toBe(true);
+		expect(readDate('2026-00-10').invalid).toBe(true);
+		// The leap day exists only when it does.
+		expect(readDate('2028-02-29').invalid).toBe(false);
+		expect(readDate('2026-02-29').invalid).toBe(true);
+	});
+});
+
+describe('readPlacement', () => {
+	it('reads with readString tolerances: lists take their first, scalars their text', () => {
+		expect(readPlacement('Now')).toEqual({ value: 'Now', invalid: false });
+		expect(readPlacement(['Next', 'Later'])).toEqual({ value: 'Next', invalid: false });
+		expect(readPlacement(3)).toEqual({ value: '3', invalid: false });
+	});
+
+	it('reads emptiness as absence and resistance as refusal', () => {
+		expect(readPlacement(undefined)).toEqual({ value: null, invalid: false });
+		expect(readPlacement('')).toEqual({ value: null, invalid: false });
+		expect(readPlacement('   ')).toEqual({ value: null, invalid: false });
+		expect(readPlacement([])).toEqual({ value: null, invalid: false });
+		expect(readPlacement({ nested: true })).toEqual({ value: null, invalid: true });
+		expect(readPlacement([{ nested: true }])).toEqual({ value: null, invalid: true });
 	});
 });

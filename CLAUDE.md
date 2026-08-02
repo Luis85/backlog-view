@@ -2,10 +2,13 @@
 
 Obsidian plugin registering a custom **Bases view** (`product-backlog`): a drag-and-drop
 work-item tree (Epic → Feature → PBI → Task) over notes in a flat folder, driven by
-`parent`/`order`/`type` frontmatter — with a second projection, a kanban **board** whose
-columns are the configured workflow states, toggled per saved view. The mode is UI
-state (vault-scoped localStorage, beside the collapse state), never a `.base` setting:
-base settings are saved on the view, working position on the device.
+`parent`/`order`/`type` frontmatter — with two more projections toggled per saved view:
+a kanban **board** whose columns are the configured workflow states, and a read-only
+**roadmap** drawing whichever axis the view options declare (horizon buckets, or a
+timeline from two date properties) with everything unplaceable on a counted shelf. The
+mode and the roadmap-axis pick are UI state (vault-scoped localStorage, beside the
+collapse state), never a `.base` setting: base settings are saved on the view, working
+position on the device.
 Requires Obsidian 1.10.2+ (Bases custom view API).
 
 ## Definition of done
@@ -63,19 +66,24 @@ mirrors the same directories.
 | `domain/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
 | `domain/dropTargets.ts` | Drop-target math and the `DropZone`/`DropTarget` vocabulary (zones, no-op/cycle/stale-link rules) | node tests |
 | `domain/board.ts` | Board derivation: columns from the workflow, card assignment, context-card placement and sorting | node tests |
+| `domain/roadmap.ts` | Roadmap derivation: the declared axis, horizon buckets, timeline placement, the shelf partition, context handling | node tests |
+| `domain/timeline.ts` | Civil-date arithmetic: spans, the bounded month window, bar geometry — today is always injected | node tests |
 | `domain/writePlan.ts` | What a change *would* write: drop plans, ranking, backfill. Pure — applies nothing | node tests |
 | **`storage/`** | **The only place anything is persisted.** | |
 | `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |
 | `storage/baseFile.ts` | Writing the `.base` file itself | node tests |
-| `storage/collapseStore.ts` | Per-view UI state (collapse sets + board mode) in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
+| `storage/collapseStore.ts` | Per-view UI state (collapse sets + projection mode + roadmap-axis pick) in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
 | **`view/`** | **DOM and interaction.** | |
 | `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch, write gate | jsdom tests |
 | `view/selection.ts` | The one selection either projection holds — row/card by path, or a board column stop — and its aria bookkeeping | jsdom tests |
 | `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
 | `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
-| `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages | jsdom tests |
-| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done | jsdom tests |
+| `view/render/projections.ts` | The content-pane fork: which projection draws into the scroller, and the role/label the pane claims | jsdom tests |
+| `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages — and the card body every projection shares | jsdom tests |
+| `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory | jsdom tests |
+| `view/render/timeline.ts` | The dated grid: month header, bars and milestones with exact-date tooltips, the today line | jsdom tests |
+| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the roadmap's no-axis guidance | jsdom tests |
 | `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/boardDrag.ts` | The board's drag: Pragmatic drag and drop wiring, column drops, announcements (ADR 0018) | jsdom tests |

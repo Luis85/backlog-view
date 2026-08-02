@@ -145,9 +145,20 @@ function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean
 }
 
 function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dnd: BoardDragController): void {
-	const host = ctx.host;
-	const selected = host.selectedPath === item.file.path;
-	const card = cardsEl.createDiv({
+	const card = createCard(ctx, cardsEl, item);
+	renderCardBody(ctx, card, item);
+	wireCardActivation(ctx, card, item);
+	dnd.wireCard(card, item);
+}
+
+/**
+ * A card's shell, registered in the row index so selection and targeted lookups
+ * reach it. Shared with the roadmap: a card is a result row wearing the card
+ * layout, whichever projection drew it.
+ */
+export function createCard(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem): HTMLElement {
+	const selected = ctx.host.selectedPath === item.file.path;
+	const card = containerEl.createDiv({
 		cls:
 			'pbl-card' +
 			(item.done ? ' pbl-done' : '') +
@@ -157,7 +168,16 @@ function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dn
 	});
 	card.dataset.path = item.file.path;
 	ctx.rows.set(item.file.path, card);
+	return card;
+}
 
+/**
+ * What a card shows — badge, title, the parent line, the resolved property
+ * columns, the rollup. One body for the board's cards and the roadmap's, so an
+ * item cannot look different per projection.
+ */
+export function renderCardBody(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+	const host = ctx.host;
 	const head = card.createDiv({ cls: 'pbl-card-head' });
 	renderBadge(host, head, item);
 	if (item.outsideFilter) {
@@ -183,17 +203,20 @@ function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dn
 
 	if (ctx.chips.length > 0) renderPropCells(ctx, card, item);
 	renderRollup(host, card, item);
+}
 
+/** Click opens (selecting first), middle-click opens in a new tab — every projection's cards. */
+export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
 	card.addEventListener('click', (evt) => {
-		host.selectItem(item, false);
-		host.openItem(item, evt);
+		ctx.host.selectItem(item, false);
+		ctx.host.openItem(item, evt);
 	});
 	card.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1) host.openItemInNewTab(item);
+		if (evt.button === 1) ctx.host.openItemInNewTab(item);
 	});
 	// The menu is the non-drag path, and on touch the only one — so a card carries it
-	// exactly as a row does. What it offers differs (see `buildItemMenu`): a card has
-	// no visible neighbours to rank against, and its Set state is the board's columns.
-	card.addEventListener('contextmenu', (evt) => showItemMenu(host, evt, item, childTypeChoices(item)));
-	dnd.wireCard(card, item);
+	// exactly as a row does, whichever projection drew it. What it offers differs per
+	// projection (see `buildItemMenu`): a board card has no visible neighbours to
+	// rank against, and its Set state is the board's columns.
+	card.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypeChoices(item)));
 }

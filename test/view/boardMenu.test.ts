@@ -220,7 +220,7 @@ describe('the board’s hidden instructions', () => {
 
 		// The description belongs to the board; in the tree it would describe an
 		// element that no longer exists, which reads as no description at all.
-		view.setBoardMode(false);
+		view.setProjection('tree');
 		expect(tree.getAttribute('aria-describedby')).toBeNull();
 	});
 

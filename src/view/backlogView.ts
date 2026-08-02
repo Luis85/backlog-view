@@ -1,22 +1,31 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
-import { BacklogViewHost, BoardSnapshot, BusyState, ChipProp, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
+import {
+	BacklogViewHost,
+	BoardSnapshot,
+	BusyState,
+	ChipProp,
+	PRODUCT_BACKLOG_VIEW_TYPE,
+	Projection,
+	RoadmapSnapshot,
+} from './host';
 import { announceBoardMove, BoardDragController } from './interactions/boardDrag';
 import { DragDropController } from './interactions/dragDrop';
-import { handleBoardKeydown, handleTreeKeydown } from './interactions/keyboard';
+import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
+import { RoadmapAxis } from '../domain/roadmap';
 import { computeDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
-import { renderBoard } from './render/board';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
-import { renderBoardNoWorkflowState, renderLoadingState } from './render/emptyStates';
-import { refreshRowChildren, renderTree } from './render/rows';
+import { renderLoadingState } from './render/emptyStates';
+import { anchorScrollLeft, renderProjectionContent, ScrollAnchor } from './render/projections';
+import { refreshRowChildren } from './render/rows';
 import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
@@ -36,8 +45,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
 	private boardDnd: BoardDragController;
-	/** The board of the last render; null while the view is a tree. */
+	/** The board of the last render; null while the view is not a board. */
 	board: BoardSnapshot | null = null;
+	/** The roadmap of the last render; null while the view is not a roadmap. */
+	roadmap: RoadmapSnapshot | null = null;
+	/** What the scroller last drew and where today sat — see `anchorScrollLeft`. */
+	private scroll: ScrollAnchor = { content: '', todayLeft: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -97,9 +110,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		});
 		this.dnd.setupRootDropZone();
 		this.boardDnd = new BoardDragController(this, this.viewEl);
-		this.treeEl.addEventListener('keydown', (evt) =>
-			this.boardMode ? handleBoardKeydown(this, evt) : handleTreeKeydown(this, evt),
-		);
+		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
@@ -124,24 +135,37 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	/**
-	 * True while this view shows the board. UI state, not a base setting: it lives
+	 * Which projection this view shows. UI state, not a base setting: it lives
 	 * beside the collapse state — per saved view, per device — never in the `.base`.
 	 */
-	get boardMode(): boolean {
-		return this.collapse.boardMode();
+	get projection(): Projection {
+		return this.collapse.projection();
 	}
 
-	setBoardMode(on: boolean): void {
-		if (on === this.boardMode) return;
-		this.collapse.setBoardMode(on);
+	setProjection(mode: Projection): void {
+		if (mode === this.projection) return;
+		this.collapse.setProjection(mode);
 		// No config was set, so no Bases refresh is coming: this render is the switch.
+		this.render();
+	}
+
+	/** The retained roadmap-axis pick for this saved view; null before the user picks. */
+	get axisPick(): string | null {
+		return this.collapse.axisPick();
+	}
+
+	setAxisPick(axis: RoadmapAxis): void {
+		if (axis === this.axisPick) return;
+		this.collapse.setAxisPick(axis);
+		// The pick is UI state like the mode: no Bases refresh is coming.
 		this.render();
 	}
 
 	/** Re-measure after a resize, and rebuild only if a column came or went. */
 	private onResize(): void {
-		// Board columns scroll horizontally instead of dropping; the fit ladder is the tree's.
-		if (this.boardMode) return;
+		// Board columns and the timeline scroll horizontally instead of dropping
+		// columns; the fit ladder is the tree's.
+		if (this.projection !== 'tree') return;
 		if (this.refit()) this.renderTreeContent();
 	}
 
@@ -342,15 +366,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		syncFilterUi(this, this.toolbarEl);
 		const model = this.model;
 		if (!model) return;
-		const board = this.boardMode;
-		this.viewEl.toggleClass('pbl-board-mode', board);
-		// The listbox role is a promise of options. The no-workflow guidance renders
-		// none, so it presents as a plain labelled region rather than an empty
-		// listbox a screen reader may announce as nothing at all — a board with
-		// columns always has options, because an empty column's stop is one.
-		const role = board ? (this.settings.stateKey ? 'listbox' : 'region') : 'tree';
-		this.treeEl.setAttribute('role', role);
-		this.treeEl.setAttribute('aria-label', board ? 'Product backlog board' : 'Product backlog');
+		const projection = this.projection;
+		this.viewEl.toggleClass('pbl-board-mode', projection === 'board');
+		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
 		// The keyboard instructions belong to the board and are rebuilt with it below;
 		// dropped here so the attribute never outlives the element it points at — a
 		// dangling `aria-describedby` is read as no description at all.
@@ -365,22 +383,34 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const scrollLeft = this.treeEl.scrollLeft;
 		this.treeEl.empty();
 		this.rowEls.clear();
-		if (board) {
+		if (projection !== 'tree') {
 			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
 			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-state');
-			this.renderBoardContent();
-		} else {
-			this.board = null;
-			// A column stop is board state; carrying it into the tree would leave the
-			// selection pointing at a projection that is no longer on screen.
-			this.selectBoardColumn(null);
-			renderTree(this.rowCtx(), this.treeEl);
 		}
-		this.treeEl.scrollTop = scrollTop;
-		this.treeEl.scrollLeft = scrollLeft;
+		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.boardDnd);
+		this.board = content.board;
+		this.roadmap = content.roadmap;
+		this.treeEl.setAttribute('role', content.role);
+		this.treeEl.setAttribute('aria-label', content.label);
+		// Column stops are board state: without a board on screen a held stop would
+		// point at a projection that no longer exists, so it is released; with one,
+		// it is clamped to the columns left, the way the card selection is carried.
+		if (content.board === null) this.selectBoardColumn(null);
+		else if (this.selectedBoardColumn !== null) {
+			this.selectBoardColumn(Math.min(this.selectedBoardColumn, content.board.colEls.length - 1));
+		}
+		// Both offsets belong to the content that made them — restored, corrected,
+		// reset or replaced by the anchor policy `anchorScrollLeft` states. Vertical
+		// keeps the same rule without the centering: same content keeps the reader's
+		// place, a switch starts at the top — a tree's depth means nothing to buckets.
+		const todayLeft = this.roadmap?.todayLeft ?? null;
+		const drawn = todayLeft != null ? 'dates' : this.roadmap ? 'horizons' : projection;
+		this.treeEl.scrollTop = drawn === this.scroll.content ? scrollTop : 0;
+		this.treeEl.scrollLeft = anchorScrollLeft(this.scroll, drawn, todayLeft, scrollLeft, this.treeEl.clientWidth);
+		this.scroll = { content: drawn, todayLeft };
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
-		if (board) return;
+		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.
@@ -388,28 +418,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			this.refitting = true;
 			this.renderTreeContent();
 			this.refitting = false;
-		}
-	}
-
-	/**
-	 * The board projection of the same model. Without a state property there is no
-	 * workflow to project, so board mode is guidance instead of columns — the one
-	 * case with no board, and never a blank pane.
-	 */
-	private renderBoardContent(): void {
-		if (!this.settings.stateKey) {
-			this.board = null;
-			// A held column stop is board state, and there is no board: releasing it
-			// here keeps the guidance screen from carrying a dangling active position.
-			this.selectBoardColumn(null);
-			renderBoardNoWorkflowState(this.treeEl);
-			return;
-		}
-		this.board = renderBoard(this.rowCtx(), this.treeEl, this.boardDnd);
-		// The selection may rest on a column rather than a card; carry it across the
-		// rebuild the way the card selection is carried, clamped to the columns left.
-		if (this.selectedBoardColumn !== null) {
-			this.selectBoardColumn(Math.min(this.selectedBoardColumn, this.board.colEls.length - 1));
 		}
 	}
 

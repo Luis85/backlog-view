@@ -6,9 +6,9 @@ status: Open
 priority: P1
 created: 2026-08-01
 files:
-  - src/domain/settings.ts
-  - src/domain/viewOptions.ts
+  - src/domain/roadmap.ts
   - src/domain/noteFields.ts
+  - src/view/render/roadmap.ts
 ---
 
 # Buckets from a horizon property
@@ -76,7 +76,11 @@ lost for holding an unexpected value ([[Every card has a column]]).
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The horizon property and values join
-`src/domain/settings.ts` and the schema in `src/domain/viewOptions.ts` beside the state
-options they mirror; the value is read off a note in `src/domain/noteFields.ts` the way
-every field is read.
+The read half shipped with [[A third projection]]: bucket derivation — declared order,
+case-insensitive matching, minted strays, results-only counts — is
+`src/domain/roadmap.ts`, the value is read by `readPlacement` in
+`src/domain/noteFields.ts`, and the columns render in `src/view/render/roadmap.ts`,
+driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`. What
+remains of this note is the write half — creating from a bucket with its value in the
+creation write — beside the moves [[Moving between horizons]] specifies, which is why
+it stays open.

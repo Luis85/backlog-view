@@ -52,6 +52,18 @@ export interface BacklogSettings {
 	states: string[];
 	/** Render items whose whole subtree is done; when off they hide (the quick filter overrides). */
 	showCompleted: boolean;
+	/** Frontmatter key holding the roadmap horizon, or '' when no bucket axis is configured. */
+	horizonKey: string;
+	/**
+	 * Declared horizon values, in roadmap order. Ships prefilled with Now, Next,
+	 * Later — a default vocabulary, not a fixed one — and clearing it unconfigures
+	 * the bucket axis: a horizon axis with no values is a board without stages.
+	 */
+	horizonValues: string[];
+	/** Frontmatter key holding the planned start date, or '' when unset. */
+	startKey: string;
+	/** Frontmatter key holding the planned target date, or '' when unset. */
+	targetKey: string;
 }
 
 /**
@@ -138,6 +150,12 @@ function typeFoldersFor(types: string[], read: (type: string) => string): Record
 	return folders;
 }
 export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
+/**
+ * The shipped horizon vocabulary — the canonical Now-Next-Later triple. A default
+ * the user edits freely, never a fixed list: the values are the user's own
+ * placements, exactly as the workflow states are.
+ */
+export const DEFAULT_HORIZON_VALUES = ['Now', 'Next', 'Later'];
 /** Property columns are fixed-width so values line up across rows; this is that width. */
 export const DEFAULT_PROP_COLUMN_WIDTH = 132;
 export const MIN_PROP_COLUMN_WIDTH = 80;
@@ -163,6 +181,10 @@ export function defaultSettings(): BacklogSettings {
 		doneValues: [...DEFAULT_DONE_VALUES],
 		states: [],
 		showCompleted: true,
+		horizonKey: '',
+		horizonValues: [...DEFAULT_HORIZON_VALUES],
+		startKey: '',
+		targetKey: '',
 	};
 }
 
@@ -196,11 +218,20 @@ export function configProblems(settings: BacklogSettings): string[] {
 	add('order', settings.orderKey);
 	add('type', settings.typeKey);
 	add('state', settings.stateKey);
-	// `tagsKey` is deliberately absent: unlike the four above it cannot collide by
-	// the time anything reads it, because `resolveSettings` turns a colliding tags
-	// key off. Reporting it here would instead block every write in a view that was
-	// working before this option existed — a base whose state property happens to be
-	// `tags` would upgrade into a read-only view.
+	// The roadmap's axis keys are write targets like the four above, and the rules
+	// they must never collide into are wider by one: start and target sharing one
+	// key cannot store a span, and a horizon sharing either is two semantics on one
+	// field — one rule over the whole set of configured write targets.
+	add('horizon', settings.horizonKey);
+	add('start', settings.startKey);
+	add('target', settings.targetKey);
+	// `tagsKey` cannot collide with the four core properties by the time anything
+	// reads it — `resolveSettings` turns such a tags key off, because reporting it
+	// would block every write in a view that was working before the option existed.
+	// It does NOT yield to the axis keys: those are new options with no working
+	// views to protect, so pointing one at the tags key is a fresh mistake, and the
+	// honest answer is the same collision report every other pair gets.
+	add('tags', settings.tagsKey);
 	for (const [key, users] of keys) {
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
@@ -342,5 +373,11 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
 		states: dedupe(list('stateValues')),
 		showCompleted: bool('showCompleted', fallback.showCompleted),
+		horizonKey: propKey('horizonProperty', fallback.horizonKey),
+		// A real default that must stay clearable: an emptied list means "no bucket
+		// axis", and only an option never touched falls back to Now, Next, Later.
+		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
+		startKey: propKey('startProperty', fallback.startKey),
+		targetKey: propKey('targetProperty', fallback.targetKey),
 	};
 }

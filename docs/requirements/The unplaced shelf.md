@@ -6,8 +6,9 @@ status: Open
 priority: P1
 created: 2026-08-01
 files:
-  - src/domain/model.ts
-  - src/view/render/rows.ts
+  - src/domain/roadmap.ts
+  - src/domain/noteFields.ts
+  - src/view/render/roadmap.ts
 ---
 
 # The unplaced shelf
@@ -77,7 +78,12 @@ evidence that undated ordering is a real need.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** Whether a result is placeable is a domain
-question answered where the rollups already are, in `src/domain/model.ts`, from fields
-read the way every field is read; the shelf itself is a new render file beside
-`src/view/render/rows.ts`, under the same budgets.
+Built with the first increment, except the drag. Whether a result places is a domain
+question answered in `src/domain/roadmap.ts` (`buildRoadmap`), from fields read the way
+every field is read — `readPlacement` and `readDate` in `src/domain/noteFields.ts`,
+whose absent-versus-invalid distinction is what lets a card say why. The shelf renders
+in `src/view/render/roadmap.ts`, driven in `test/domain/roadmap.test.ts` and
+`test/view/roadmapFrame.test.ts` (accessors in `test/helpers/roadmap.ts`). Step 4 — the
+drag off the shelf, and the empty shelf as a live drop target — waits for
+[[Moving between horizons]] and [[Drag from the shelf to schedule]], where those writes
+are specified, which is why this note stays open.

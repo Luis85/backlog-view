@@ -177,4 +177,31 @@ describe('the persisted view mode', () => {
 		expect(snapshot.collapsed.has('Epic.md')).toBe(true);
 		expect(snapshot.mode).toBeNull();
 	});
+
+	it('holds the roadmap the way it holds the board', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, mode: 'roadmap' });
+		expect(loadCollapseState(vault.app, id).mode).toBe('roadmap');
+	});
+
+	it('keeps the axis pick beside the mode, and keeps it alone', () => {
+		vault.addFile('Backlog.base');
+		// The pick is retained even at every other default: an entry with only an
+		// axis is still user state — restoring the cleared axis config restores it.
+		saveCollapseState(vault.app, id, { ...none, axis: 'dates' });
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.axis).toBe('dates');
+		expect(snapshot.mode).toBeNull();
+
+		// Cleared with everything else at defaults, the entry disappears whole.
+		saveCollapseState(vault.app, id, { ...none, axis: null });
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
+
+	it('drops a stored axis it does not recognize', () => {
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], axis: 'sideways' },
+		});
+		expect(loadCollapseState(vault.app, id).axis).toBeNull();
+	});
 });

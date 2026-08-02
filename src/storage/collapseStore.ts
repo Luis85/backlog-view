@@ -2,8 +2,8 @@ import { App, FileView } from 'obsidian';
 
 /**
  * Persistence for the state that is purely the user's working position: which
- * rows are open and which are shut, and which projection — tree or board — the
- * view is showing.
+ * rows are open and which are shut, which projection — tree, board or roadmap —
+ * the view is showing, and which roadmap axis it shows when both are configured.
  *
  * This deliberately does NOT go in the `.base` file. The rule: base settings are
  * saved on the view (the options in the `.base`); UI state is saved here, in
@@ -26,13 +26,23 @@ const MAX_PATHS = 4000;
 
 /** The value the `mode` field holds while the view is a board. */
 export const BOARD_MODE = 'board';
+/** The value the `mode` field holds while the view is a roadmap. */
+export const ROADMAP_MODE = 'roadmap';
+/**
+ * The values the `axis` field may hold — which roadmap axis this saved view shows
+ * when both are configured. Mirrors `RoadmapAxis` in `domain/roadmap.ts`; spelled
+ * here as strings because stored state is read defensively, not trusted as a type.
+ */
+const AXIS_VALUES = ['horizons', 'dates'];
 
 /** One view's working position: the rows it has settled, and its projection. */
 export interface CollapseSnapshot {
 	collapsed: Set<string>;
 	expanded: Set<string>;
-	/** `BOARD_MODE` while the view is a board; null or absent means the tree. */
+	/** `BOARD_MODE` or `ROADMAP_MODE`; null or absent means the tree. */
 	mode?: string | null;
+	/** The retained roadmap-axis pick; null or absent means the user never picked. */
+	axis?: string | null;
 }
 
 /** Which base view an entry belongs to. */
@@ -55,6 +65,8 @@ interface StoredEntry {
 	expanded: string[];
 	/** Absent while the view is a tree — the default needs no entry at all. */
 	mode?: string;
+	/** Absent until the user picks a roadmap axis; retained even while unused. */
+	axis?: string;
 }
 
 type StoredMap = Record<string, StoredEntry>;
@@ -153,6 +165,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 		collapsed: new Set(entry?.collapsed ?? []),
 		expanded: new Set(entry?.expanded ?? []),
 		mode: entry?.mode ?? null,
+		axis: entry?.axis ?? null,
 	};
 }
 
@@ -167,11 +180,13 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	const collapsed = [...snapshot.collapsed].slice(0, MAX_PATHS);
 	const expanded = [...snapshot.expanded].slice(0, MAX_PATHS - collapsed.length);
 	const mode = snapshot.mode ?? null;
-	// A view at its defaults — nothing settled, the tree — needs no entry at all.
-	if (collapsed.length === 0 && expanded.length === 0 && mode === null) delete map[key];
+	const axis = snapshot.axis ?? null;
+	// A view at its defaults — nothing settled, the tree, no pick — needs no entry.
+	if (collapsed.length === 0 && expanded.length === 0 && mode === null && axis === null) delete map[key];
 	else {
 		map[key] = { base: id.base, collapsed, expanded };
 		if (mode !== null) map[key].mode = mode;
+		if (axis !== null) map[key].axis = axis;
 	}
 	pruneMissingBases(app, map, key);
 	writeMap(app, map);
@@ -232,9 +247,14 @@ function readEntry(value: unknown): StoredEntry | null {
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
 	const entry: StoredEntry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
-	// The one mode this plugin has ever written; anything else is not trusted.
-	if (record.mode === BOARD_MODE) entry.mode = BOARD_MODE;
-	return entry.collapsed.length > 0 || entry.expanded.length > 0 || entry.mode !== undefined ? entry : null;
+	// The modes this plugin has ever written; anything else is not trusted, and an
+	// unrecognized value simply means the tree — the stored choice is user state,
+	// dropped rather than guessed at.
+	if (record.mode === BOARD_MODE || record.mode === ROADMAP_MODE) entry.mode = record.mode;
+	if (typeof record.axis === 'string' && AXIS_VALUES.includes(record.axis)) entry.axis = record.axis;
+	return entry.collapsed.length > 0 || entry.expanded.length > 0 || entry.mode !== undefined || entry.axis !== undefined
+		? entry
+		: null;
 }
 
 function readPaths(value: unknown): string[] {

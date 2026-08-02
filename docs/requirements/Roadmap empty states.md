@@ -7,6 +7,7 @@ priority: P2
 created: 2026-08-01
 files:
   - src/view/render/emptyStates.ts
+  - src/view/render/roadmap.ts
 ---
 
 # Roadmap empty states
@@ -81,7 +82,11 @@ names the option or the action it points at.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** `src/view/render/emptyStates.ts` already holds
-the tree's four answers and the reasoning for separating them; the roadmap's cases join
-the board's there rather than growing a second vocabulary of explanations somewhere
-else.
+Built with the first increment, except the targets. The no-axis guidance —
+missing-half wording included — is `renderRoadmapNoAxisState` in
+`src/view/render/emptyStates.ts`, beside the tree's and the board's answers; the
+frame-beside-advisory rule is `renderRoadmapAdvisory` in `src/view/render/roadmap.ts`.
+Driven in `test/view/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`. "Every
+region a drop target and every bucket a creation target" waits for the writes —
+[[Moving between horizons]], [[Drag from the shelf to schedule]] and the bucket's New
+flow ([[Buckets from a horizon property]]) — which is why this note stays open.

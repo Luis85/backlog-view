@@ -7,7 +7,8 @@ priority: P2
 created: 2026-08-01
 files:
   - src/domain/noteFields.ts
-  - src/domain/settings.ts
+  - src/domain/timeline.ts
+  - src/view/render/timeline.ts
 ---
 
 # Bars from two dates
@@ -78,7 +79,11 @@ date on a roadmap is indistinguishable from a decision.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** A tolerant date read joins the field readers in
-`src/domain/noteFields.ts` beside the tolerant number the orders already use; the
-property names resolve in `src/domain/settings.ts` beside the state property they
-mirror.
+The stated-dates half shipped with [[A third projection]]: the tolerant civil-date read
+is `readDate` in `src/domain/noteFields.ts` beside the tolerant number the orders use;
+spans, the bounded month window and the bar geometry are `src/domain/timeline.ts`,
+drawn — milestones, open ends, the exact-dates tooltips — by
+`src/view/render/timeline.ts`. Driven in `test/domain/timeline.test.ts`,
+`test/domain/noteFields.test.ts` and `test/view/roadmapFrame.test.ts`. The inferred
+parent spans wait for [[Spans roll up the tree]] — until they exist a dateless parent
+shelves like any other dateless result — which is why this note stays open.
