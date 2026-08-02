@@ -65,16 +65,33 @@ describe('writeBacklogReadme', () => {
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(updated);
 	});
 
-	it('refuses a readme another view of the same folder generated', async () => {
-		// Two views may share a home folder and configure different keys. Replacing the
-		// other one leaves the folder documenting keys half its readers do not use.
+	it('replaces another view s readme and reports whose it was', async () => {
+		// Two views may share a home folder and configure different keys. The folder holds
+		// one contract at a time, so the write goes through and the caller is told — the
+		// alternative, refusing, cannot tell this apart from an ordinary rename.
 		const theirs = `${readmeMarker('other/Other.base › Board')}\n\n# This folder is a product backlog\n`;
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);
 
 		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
 
-		expect(result.outcome).toBe('otherView');
-		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
+		expect(result).toEqual({
+			outcome: 'replaced',
+			path: 'docs/README_PRODUCT_BACKLOG.md',
+			previous: 'other/Other.base › Board',
+		});
+		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(GENERATED);
+	});
+
+	it('recognizes its own file after git has given it CRLF line endings', async () => {
+		// The vault this document is written for lives in a repository, and Windows
+		// checkouts arrive with \r. A marker that failed to match its own file there would
+		// report every regeneration as somebody else's document.
+		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', GENERATED.replace(/\n/g, '\r\n'));
+
+		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+
+		expect(result.outcome).toBe('updated');
+		expect(result.previous).toBeUndefined();
 	});
 
 	it('refuses a file of the same name that it did not write', async () => {

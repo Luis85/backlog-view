@@ -128,9 +128,10 @@ describe('the write backlog readme command', () => {
 		expect(Notice.messages.some((m) => m.includes('was not written by this plugin'))).toBe(true);
 	});
 
-	it('leaves the readme of another view over the same folder alone', async () => {
-		// Two bases, one home folder, different keys. Whichever view is run second must
-		// not quietly replace the first one's contract under a notice saying "Updated".
+	it('names the view whose readme it replaced, rather than saying only "updated"', async () => {
+		// Two bases, one home folder, different keys. The second view takes the folder's
+		// one readme — but never silently, which was the whole complaint against a
+		// generic marker.
 		const vault = openBacklog();
 		writeBacklogReadmeCommand(vault.app as never, false);
 		await flush();
@@ -142,8 +143,8 @@ describe('the write backlog readme command', () => {
 		writeBacklogReadmeCommand(vault.app as never, false);
 		await flush();
 
-		expect(vault.contents.get(README)).toBe(first);
-		expect(Notice.messages.some((m) => m.includes('documents a different view'))).toBe(true);
+		expect(vault.contents.get(README)).not.toBe(first);
+		expect(Notice.messages.some((m) => m.includes(`which documented "${BASE} › Backlog"`))).toBe(true);
 	});
 
 	it('refuses while the configuration contradicts itself', async () => {

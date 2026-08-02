@@ -4,7 +4,7 @@ import { configProblems } from '../domain/settings';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
 import { collapseStoreIdentity } from '../storage/collapseStore';
-import { ReadmeOutcome, writeBacklogReadme } from '../storage/readmeFile';
+import { ReadmeWriteResult, writeBacklogReadme } from '../storage/readmeFile';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
 
 /** A view that has its first result set — the only kind a README may be generated from. */
@@ -22,7 +22,7 @@ interface LoadedBacklogView {
 export const WRITE_README_COMMAND_ID = 'write-backlog-readme';
 
 /** What the user is told, per outcome. The two that wrote nothing say so plainly. */
-function outcomeNotice(outcome: ReadmeOutcome, path: string): string {
+function outcomeNotice({ outcome, path, previous }: ReadmeWriteResult): string {
 	switch (outcome) {
 		case 'created':
 			return `Wrote "${path}".`;
@@ -32,16 +32,21 @@ function outcomeNotice(outcome: ReadmeOutcome, path: string): string {
 			return `"${path}" already matches this view. Nothing was written.`;
 		case 'foreign':
 			return `"${path}" was not written by this plugin, so it was left alone. Move it aside to generate one.`;
-		case 'otherView':
-			return `"${path}" documents a different view of this folder, so it was left alone. Two views cannot share one readme.`;
+		case 'replaced':
+			return `Updated "${path}", which documented "${previous ?? ''}". A folder has one readme, so two views sharing it take turns.`;
 	}
 }
 
 /**
  * How the generated file names the view it came from: the base path and the view's own
  * name, which is exactly the identity the collapse store already resolves for its own
- * key. Falls back to the view name alone when the base cannot be resolved (an embedded
- * base) — a weaker identity, but still one that tells two views apart.
+ * key. Falls back to the view name alone for an embedded base, where no leaf answers
+ * for the file.
+ *
+ * Best-effort on purpose. The identity is **reported, never enforced** (`readmeSource`),
+ * so a weaker one costs a less specific notice — two embedded views both called
+ * `Backlog` take turns without being told whose document they replaced — and never a
+ * wrong write or a refusal to regenerate.
  */
 function viewSource(app: App, view: LiveBacklogView): string {
 	const identity = collapseStoreIdentity(app, view.viewEl, view.config.name);
@@ -63,8 +68,7 @@ async function writeReadmeForView(app: App, view: LoadedBacklogView): Promise<vo
 	}
 	const content = backlogReadmeContent(view.settings, view.model.observedStates, view.source);
 	try {
-		const { outcome, path } = await writeBacklogReadme(app, view.settings.homeFolder, content);
-		new Notice(outcomeNotice(outcome, path));
+		new Notice(outcomeNotice(await writeBacklogReadme(app, view.settings.homeFolder, content)));
 	} catch (e) {
 		console.error('Product Backlog: failed to write the backlog readme', e);
 		new Notice('Could not write the readme. See the developer console for details.');

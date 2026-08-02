@@ -1,6 +1,6 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import { ensureFolder } from './frontmatter';
-import { README_FILE_NAME, README_MARKER_PREFIX } from '../domain/backlogReadme';
+import { README_FILE_NAME, README_MARKER_PREFIX, readmeSource } from '../domain/backlogReadme';
 
 /**
  * Writing the backlog README — the second vault write that is not a work item, and
@@ -16,11 +16,13 @@ import { README_FILE_NAME, README_MARKER_PREFIX } from '../domain/backlogReadme'
  * refusal — a file of this name without the marker was written by somebody else and
  * is never replaced.
  */
-export type ReadmeOutcome = 'created' | 'updated' | 'unchanged' | 'foreign' | 'otherView';
+export type ReadmeOutcome = 'created' | 'updated' | 'unchanged' | 'foreign' | 'replaced';
 
 export interface ReadmeWriteResult {
 	outcome: ReadmeOutcome;
 	path: string;
+	/** On `replaced`: the view the old file named, for the notice that says so. */
+	previous?: string;
 }
 
 /**
@@ -35,8 +37,16 @@ function normalizedFolder(folder: string): string {
 	return trimmed ? normalizePath(trimmed) : '';
 }
 
-/** The marker line, which is the whole of a generated file's identity. */
-const firstLine = (text: string): string => text.slice(0, text.indexOf('\n') === -1 ? undefined : text.indexOf('\n'));
+/**
+ * The first line, without the carriage return git may have added on the way in. A
+ * vault kept in a repository is checked out with CRLF on Windows, and a marker that
+ * failed to match its own file there would break regeneration in exactly the workflow
+ * this document is written for.
+ */
+function firstLine(text: string): string {
+	const end = text.indexOf('\n');
+	return (end === -1 ? text : text.slice(0, end)).replace(/\r$/, '');
+}
 
 /** Where the README for `folder` lives — normalized, and at the vault root for ''. */
 export function readmePath(folder: string): string {
@@ -60,12 +70,16 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 		if (current === content) return { outcome: 'unchanged', path };
 		if (!current.startsWith(README_MARKER_PREFIX)) return { outcome: 'foreign', path };
 		// Generated, but by whom. Two views may share a home folder and configure
-		// different property keys, and a folder cannot hold two contracts: replacing the
-		// other one would leave the folder documenting keys half its readers do not use,
-		// under a notice that said "Updated".
-		if (firstLine(current) !== firstLine(content)) return { outcome: 'otherView', path };
+		// different property keys, and a folder holds one contract at a time — so the
+		// write goes through and the caller is told whose document it just replaced.
+		// Refusing instead would brick the ordinary cases: a renamed base or view, or a
+		// file git rewrote, all of which change the line without changing the owner.
+		const previous = readmeSource(firstLine(current));
+		const mine = readmeSource(firstLine(content));
 		await app.vault.modify(existing, content);
-		return { outcome: 'updated', path };
+		return previous !== null && previous !== mine
+			? { outcome: 'replaced', path, previous }
+			: { outcome: 'updated', path };
 	}
 	await ensureFolder(app, normalizedFolder(folder));
 	await app.vault.create(path, content);

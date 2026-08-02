@@ -50,6 +50,20 @@ export function readmeMarker(source: string): string {
 }
 
 /**
+ * The view a generated file names, or null when the line is not one of ours.
+ *
+ * Read rather than compared, because the identity is **reported, never enforced**: a
+ * base path and a view name are both things a user renames, and refusing a mismatch
+ * would leave a view unable to refresh its own document after an ordinary rename —
+ * a false refusal, found by someone who was doing something else, in exchange for
+ * catching a case where the honest fix is to tell them what they just replaced.
+ */
+export function readmeSource(line: string): string | null {
+	const match = new RegExp(`^${README_MARKER_PREFIX} from "(.*)"\\.`).exec(line.trimEnd());
+	return match ? match[1] : null;
+}
+
+/**
  * Where one offered state came from. Three sources, because the table says so out
  * loud and two of them would be a lie about the vault: a declared state is
  * configuration, an observed one is a value some note carries, and the **offered**
