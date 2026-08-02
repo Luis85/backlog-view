@@ -149,7 +149,12 @@ the view options can rename.
   missing type takes the level the position implies, and a type of the reader's own is
   kept. Stating them as required would have an outside editor add or replace metadata the
   model never asked for — the opposite failure to the one this note usually guards, and
-  the same cause.
+  the same cause. The parent property is the same question asked per configuration: it is
+  required of every non-root item in a flat backlog, and in folder mode it is the
+  *override* — a note without it hangs from the nearest folder note above
+  ([[Folder note hierarchy]]) — so the table asks for it only where the folder position is
+  not the answer. Calling it mandatory there would have a reader pin every note by hand
+  and switch off the inference the view was configured for.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when it carries the generated
@@ -179,7 +184,11 @@ the view options can rename.
   file with different line endings, so a refusal keyed on it would leave a view unable to
   refresh its own document after an ordinary rename. A false refusal is found by someone
   who was doing something else; being told what you replaced is found by reading the
-  notice.
+  notice. A base path is user data and an HTML comment carries neither `>` nor `--`, so
+  those are percent-escaped rather than dropped: two bases differing only in the
+  characters the line cannot hold are two bases, and one marker for both restores exactly
+  the silent replacement this extension exists to prevent. The escaping is reversible, so
+  the notice still names the view as its owner spelled it.
 - **5a — the write fails.** A notice says so and points at the console, like every other
   vault write this plugin makes.
 

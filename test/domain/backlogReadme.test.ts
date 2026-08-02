@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { backlogReadmeContent, readmeMarker, README_MARKER_PREFIX, readmeStates } from '../../src/domain/backlogReadme';
+import {
+	backlogReadmeContent,
+	readmeMarker,
+	README_MARKER_PREFIX,
+	readmeSource,
+	readmeStates,
+} from '../../src/domain/backlogReadme';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
@@ -29,6 +35,27 @@ describe('backlogReadmeContent', () => {
 		// The line names the view, so a second view over the same folder cannot mistake
 		// this file for its own — and whoever opens it can see where it came from.
 		expect(readme(settingsWith())).toContain(`${README_MARKER_PREFIX} from "${SOURCE}"`);
+	});
+
+	it('keeps two sources apart when only the comment-hostile characters differ', () => {
+		// `--` cannot sit in an HTML comment, and dropping or collapsing it gives two bases
+		// one marker: the second view then reads the first's file as its own and reports
+		// "Updated" for a contract it just replaced.
+		expect(readmeMarker('Product--Backlog.base › B')).not.toBe(readmeMarker('Product-Backlog.base › B'));
+		expect(readmeMarker('a<b')).not.toBe(readmeMarker('ab'));
+		// Whatever it escapes, the line stays a comment: no run of hyphens, no `>` before
+		// the terminator this function writes itself.
+		const marker = readmeMarker('a-->b--<c%2D>');
+		expect(marker.slice(README_MARKER_PREFIX.length, -4)).not.toMatch(/--|>/);
+	});
+
+	it('reads back the source it wrote, escapes and all', () => {
+		// It is shown to a user in a notice, so it has to come back spelled as they wrote
+		// it — including a literal `%2D`, which the escaping must not turn into a hyphen.
+		for (const source of ['work/Product Backlog.base › Backlog', 'Product--Backlog.base › B', 'a%2Db', '<a->']) {
+			expect(readmeSource(readmeMarker(source))).toBe(source);
+		}
+		expect(readmeSource('# not a marker at all')).toBeNull();
 	});
 
 	it('explains every type in the vocabulary', () => {
@@ -218,6 +245,15 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('Without one an item sorts after the ranked ones');
 		expect(content).toContain('Without one an item takes the level its position implies');
 		expect(content).toContain('or one of your own');
+	});
+
+	it('does not require the parent property on every non-root item in folder mode', () => {
+		// There the property is the OVERRIDE: a note without it hangs from the folder note
+		// above, so "every item except a root" sends an outside editor to pin each note by
+		// hand and switch off the inference the view is configured for.
+		const folderMode = readme(settingsWith({ folderHierarchy: true }), []);
+		expect(folderMode).toContain('| `parent` | Any item whose parent is not the folder note above it |');
+		expect(readme(settingsWith({ folderHierarchy: false }), [])).toContain('| `parent` | Every item except a root |');
 	});
 
 	it('says a type of the reader s own does not by itself enrol a parentless note', () => {
