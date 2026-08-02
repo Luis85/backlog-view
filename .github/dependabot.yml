@@ -28,12 +28,20 @@ updates:
     ignore:
       # TypeScript 7 is available and unusable here: typescript-eslint 8 declares
       # `typescript >=4.8.4 <6.1.0`, so npm refuses the install outright (ERESOLVE) and
-      # lint — the layer rules, the write boundary — is what would be lost. Re-check when
-      # typescript-eslint ships TS 7 support, then delete this entry rather than widening
-      # it; the constraint is the peer range, not the major number.
+      # lint — the layer rules, the write boundary — is what would be lost.
+      #
+      # Read that peer range literally: it *permits* 6.0.x. This entry said ">=6" and so
+      # blocked a version upstream allows — the mistake this file warns about, made in
+      # the safe-looking direction, in its own first commit. 6.0.3 is installed and green
+      # through all five steps of `npm run check`. The floor is 6.1 because that is where
+      # the peer range actually ends, and `package.json` pins `~6.0.3` rather than `^`
+      # for the same reason: a caret would resolve a 6.1 that typescript-eslint forbids.
+      #
+      # Re-check when typescript-eslint ships TS 7 support, then delete this entry rather
+      # than widening it; the constraint is the peer range, not the major number.
       - dependency-name: typescript
         versions:
-          - ">=6"
+          - ">=6.1"
       # @types/node tracks the runtime floor in `engines`, not npm's newest. Types for a
       # Node the plugin does not claim to support would typecheck and then fail in a
       # vault. Raise this with `engines` and the CI matrix, in one deliberate commit.
