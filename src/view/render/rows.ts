@@ -7,6 +7,7 @@ import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { byTypeName } from '../../domain/settings';
 import {
+	HORIZON_COL_WIDTH,
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
 	renderColumnHeader,
@@ -41,6 +42,7 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 		'--pbl-prop-col': `${ctx.host.settings.propColumnWidth}px`,
 		'--pbl-prop-count': String(ctx.chips.length),
 		'--pbl-state-col': `${STATE_COL_WIDTH}px`,
+		'--pbl-horizon-col': `${HORIZON_COL_WIDTH}px`,
 		'--pbl-meta-col': `${META_COL_WIDTH}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	});

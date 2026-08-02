@@ -1,8 +1,8 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { CivilDate, readDate, sameValue } from '../../domain/noteFields';
-import { axisKeyFor, horizonMenuValues } from '../../domain/settings';
+import { CivilDate, sameValue } from '../../domain/noteFields';
+import { horizonMenuValues, optionalKeyFor } from '../../domain/settings';
 import { computeHorizonWrites, computeScheduleWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 
@@ -20,7 +20,7 @@ import { SchedulePromptModal } from '../../ui/prompts';
 
 /** True when the note carries either configured date key — what Unschedule can take away. */
 export function carriesDates(item: BacklogItem): boolean {
-	return item.axisKeys.start || item.axisKeys.target;
+	return item.ownKeys.start || item.ownKeys.target;
 }
 
 /**
@@ -86,7 +86,7 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
 	// Offered only while the note carries the key, so no entry here can write nothing —
 	// and it removes the key rather than blanking it: untriaged is a state a note
 	// returns to, whereas an empty value would render as a bucket named nothing.
-	if (!item.axisKeys.horizon) return;
+	if (!item.ownKeys.horizon) return;
 	menu.addSeparator();
 	menu.addItem((si) =>
 		si
@@ -115,7 +115,7 @@ function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: stri
 	] as const;
 	const fields = [];
 	for (const end of ends) {
-		const key = axisKeyFor(host.settings, end.field);
+		const key = optionalKeyFor(host.settings, end.field);
 		if (key === '') continue;
 		fields.push({ field: end.field, name: key, value: end.reading.value ? formatCivil(end.reading.value) : '' });
 	}
@@ -123,30 +123,23 @@ function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: stri
 }
 
 /**
- * Why an entry cannot be written, or null. The two refusals are the two the timeline
- * already makes about a note's own dates ([[Bars from two dates]]): a value that
- * spells no calendar date, and a target before its start. A prompt that accepted
- * either would be the view creating the plan it refuses to guess at.
+ * Why an entry cannot be written, or null.
+ *
+ * One refusal, not two. The timeline makes two about a note's own dates
+ * ([[Bars from two dates]]) — a value that spells no calendar date, and a target
+ * before its start — and the first is no longer a question a prompt can be asked:
+ * the fields are native date inputs, which hand back `YYYY-MM-DD` or nothing at all.
+ * The planner keeps its own backstop for a value that arrives from anywhere else.
+ *
+ * That is also what makes the comparison a string comparison: zero-padded ISO dates
+ * order lexically exactly as the calendar orders them, and these two can be nothing
+ * else.
  */
 function validateSchedule(values: Record<string, string>): string | null {
-	const parsed: Record<string, CivilDate | null> = {};
-	for (const [field, value] of Object.entries(values)) {
-		if (value === '') {
-			parsed[field] = null;
-			continue;
-		}
-		const reading = readDate(value);
-		if (reading.value === null) return `"${value}" is not a date. Use YYYY-MM-DD.`;
-		parsed[field] = reading.value;
-	}
-	const start = parsed.start ?? null;
-	const target = parsed.target ?? null;
-	if (start && target && compareCivil(target, start) < 0) return 'The target date cannot be before the start date.';
+	const start = values.start ?? '';
+	const target = values.target ?? '';
+	if (start !== '' && target !== '' && target < start) return 'The target date cannot be before the start date.';
 	return null;
-}
-
-function compareCivil(a: CivilDate, b: CivilDate): number {
-	return a.year - b.year || a.month - b.month || a.day - b.day;
 }
 
 /**
@@ -179,7 +172,7 @@ function planFrom(item: BacklogItem, values: Record<string, string>): SchedulePl
 export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 	new SchedulePromptModal(host.app, {
 		heading: `Schedule "${item.title}"`,
-		description: 'Dates as YYYY-MM-DD. Leave a field empty to remove that date.',
+		description: 'Pick a date for each end, or clear a field to remove that date.',
 		fields: scheduleFields(host, item),
 		validate: validateSchedule,
 		onSubmit: (values) => void host.applySafely(computeScheduleWrites(item, planFrom(item, values))),

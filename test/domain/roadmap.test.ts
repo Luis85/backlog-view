@@ -347,10 +347,12 @@ describe('the writable horizon vocabulary', () => {
 });
 
 describe('which placement keys a note carries', () => {
+	/** The three placement fields of the record; the rest belong to the state and the stamps. */
 	function keysOf(frontmatter: Record<string, unknown>, settings = axisSettings()) {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, ...frontmatter } });
-		return buildModel(vault.app, vault.entries(), settings).items[0].axisKeys;
+		const { horizon, start, target } = buildModel(vault.app, vault.entries(), settings).items[0].ownKeys;
+		return { horizon, start, target };
 	}
 
 	it('reports presence, not value — an empty horizon is a key the note has', () => {

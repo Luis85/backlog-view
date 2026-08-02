@@ -28,7 +28,7 @@ import { chipProps, rowContext, RowContext, syncColumnFit } from './render/colum
 import { renderLoadingState } from './render/emptyStates';
 import { renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
-import { BacklogSettings, configProblems, defaultSettings, resolveSettings } from '../domain/settings';
+import { adoptableProperties, BacklogSettings, configProblems, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 
@@ -213,6 +213,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		);
 	}
 
+	adoptDefaultProperties(): OptionalProperty[] {
+		const adopting = adoptableProperties(this.config, this.settings);
+		for (const property of adopting) this.config.set(property.option, notePropertyId(property.suggested));
+		// Rebuilt now rather than left to the refresh a config change brings: the batch
+		// that follows is planned from this model, and one built before the binding reads
+		// every note as already carrying the keys just adopted — an unconfigured field
+		// carries no key at all.
+		if (adopting.length > 0) this.refreshFromData();
+		return adopting;
+	}
+
 	// ------------------------------------------------------------- quick filter
 
 	get filterText(): string {
@@ -391,7 +402,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.rowEls.clear();
 		if (projection !== 'tree') {
 			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
-			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-state');
+			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-horizon', 'pbl-hide-state');
 		}
 		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.cardDnd);
 		this.board = content.board;

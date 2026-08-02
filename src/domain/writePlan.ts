@@ -4,7 +4,15 @@ import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
 import { CivilDate, readDate } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
-import { AXIS_FIELDS, axisKeyFor, BacklogSettings, isDoneValue, isStartedValue, LEVELS } from './settings';
+import {
+	BacklogSettings,
+	isDoneValue,
+	isStartedValue,
+	LEVELS,
+	OPTIONAL_FIELDS,
+	OptionalField,
+	optionalKeyFor,
+} from './settings';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -65,6 +73,17 @@ export interface ItemWrite {
 	finish?: { date: string; toDone: boolean };
 	/** The roadmap's placement properties; fields left out are not touched. */
 	axis?: AxisWrite;
+	/**
+	 * Optional properties to CREATE, empty, where the note does not carry them — the
+	 * backfill's whole vocabulary for "this feature needs a property and the note has
+	 * none". Named by field rather than by key, like every other write here, so the
+	 * writer resolves them and the rule that no key without a property behind it is
+	 * ever written stays a property of the boundary.
+	 *
+	 * A stub is not a value: the note gains an editable, empty property and keeps the
+	 * state, horizon and dates it had — which is none — so nothing moves.
+	 */
+	stubs?: OptionalField[];
 }
 
 export interface TagDelta {
@@ -267,7 +286,7 @@ export function computeHorizonWrites(item: BacklogItem, value: string | null): I
 	if (value === null) {
 		// Nothing to take away: an item with no horizon key is already untriaged, and
 		// a removal write there would consume an undo slot for a change nobody made.
-		return item.axisKeys.horizon ? [{ file: item.file, axis: { horizon: null } }] : [];
+		return item.ownKeys.horizon ? [{ file: item.file, axis: { horizon: null } }] : [];
 	}
 	const current = item.horizon.value;
 	if (current !== null && current.toLowerCase() === value.toLowerCase()) return [];
@@ -301,7 +320,7 @@ export function computeScheduleWrites(item: BacklogItem, plan: SchedulePlan): It
 
 /** One end of a schedule, or undefined when writing it would change nothing. */
 function planDate(item: BacklogItem, field: 'start' | 'target', value: string | null): string | null | undefined {
-	if (value === null) return item.axisKeys[field] ? null : undefined;
+	if (value === null) return item.ownKeys[field] ? null : undefined;
 	const parsed = readDate(value);
 	// The entry refuses an unreadable date before it gets here; this is the backstop
 	// that keeps the rule true of the planner too — no date is ever guessed at.
@@ -357,29 +376,27 @@ function renumberWrites(
 }
 
 /**
- * Empty values for the configured axis keys this note does not carry, or null when
- * it carries them all. Creating the key is the whole of what a backfill can honestly
- * do here: the property becomes visible and editable in Obsidian's own property
- * editor, while the item keeps the placement it had — none — so pressing the button
- * moves nothing on the roadmap, the same promise it already makes about the tree.
- * Writing a horizon or a date instead would invent a plan, which on a roadmap is
- * indistinguishable from a decision.
+ * The configured optional keys this note does not carry. Creating the key empty is
+ * the whole of what a backfill can honestly do for these: the property becomes
+ * visible and editable in Obsidian's own property editor, while the item keeps the
+ * state, the horizon and the dates it had — none — so pressing the button moves
+ * nothing on the board or the roadmap, the same promise it already makes about the
+ * tree. Writing a state or a placement instead would invent a plan, which on a
+ * roadmap is indistinguishable from a decision.
  */
-function missingAxisWrite(item: BacklogItem, settings: BacklogSettings): AxisWrite | null {
-	const axis: AxisWrite = {};
-	let missing = false;
-	for (const field of AXIS_FIELDS) {
+function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
+	const stubs: OptionalField[] = [];
+	for (const field of OPTIONAL_FIELDS) {
 		// A named horizon property with no values is an UNCONFIGURED bucket axis — the
 		// axis the roadmap declines to draw and the menu declines to set. Creating its
 		// key here would be the one write left on an axis nothing else acknowledges,
-		// which is the incoherence `hasHorizonAxis` exists to prevent. The date fields
+		// which is the incoherence `hasHorizonAxis` exists to prevent. The other fields
 		// need no such test: a key of '' is exactly what unconfigured means for them.
 		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
-		if (axisKeyFor(settings, field) === '' || item.axisKeys[field]) continue;
-		axis[field] = '';
-		missing = true;
+		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
+		stubs.push(field);
 	}
-	return missing ? axis : null;
+	return stubs;
 }
 
 /**
@@ -401,16 +418,16 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
 		write.typeName = LEVELS[childLevelIndex(item.parent)];
 		needed = true;
 	}
-	const axis = missingAxisWrite(item, settings);
-	if (axis) {
-		write.axis = axis;
+	const stubs = missingKeyStubs(item, settings);
+	if (stubs.length > 0) {
+		write.stubs = stubs;
 		needed = true;
 	}
 	return needed ? write : null;
 }
 
 /**
- * Fill in missing order, type and placement properties across the whole hierarchy
+ * Fill in missing order, type and optional properties across the whole hierarchy
  * without touching values that already exist. Walks the real tree, so a focused view
  * still backfills hidden ancestors and branches outside the focus level.
  */

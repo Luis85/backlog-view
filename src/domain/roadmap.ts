@@ -172,7 +172,7 @@ export interface HorizonSource {
  * capturing "where it came from" before an await cannot capture half of it.
  */
 export function horizonSource(item: BacklogItem): HorizonSource {
-	return { reading: item.horizon, keyPresent: item.axisKeys.horizon };
+	return { reading: item.horizon, keyPresent: item.ownKeys.horizon };
 }
 
 /**

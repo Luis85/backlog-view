@@ -78,6 +78,33 @@ describe('the board projection', () => {
 		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
 	});
 
+	it('offers one press that sets the workflow up, and draws the columns right after', async () => {
+		const vault = boardVault();
+		const { containerEl, view } = boardView(vault, {});
+		expect(columnsOf(containerEl)).toHaveLength(0);
+
+		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// The same action the toolbar's backfill runs — one idea of what setting this
+		// view up means, so the empty frame cannot offer something the button does not.
+		expect(view.settings.stateKey).toBe('status');
+		expect(columnsOf(containerEl).length).toBeGreaterThan(0);
+		// The state key lands empty: every card is where it was, in no state at all.
+		expect(vault.fm('Feature B2.md')['status']).toBe('');
+		expect(vault.fm('Epic A.md')['status']).toBe('New');
+	});
+
+	it('withholds the setup button when the state property is one the user cleared', () => {
+		// The roadmap's properties are still untouched, so something IS adoptable — but
+		// binding them would leave the board saying exactly what it says now. The button
+		// answers for this frame, never for what the action can do elsewhere.
+		const { containerEl } = boardView(boardVault(), { stateProperty: '' });
+
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No workflow to show');
+		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();
+	});
+
 	it('falls back to the observed states when no list is configured', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });

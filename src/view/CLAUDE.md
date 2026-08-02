@@ -82,6 +82,13 @@ free of runtime code so imports stay cycle-free.
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
   value) plus the item's own unlisted value, so the current state can always render
   checked.
+- **The horizon chip is that same shape over the placement** (`renderHorizonChip`,
+  beside the state chip in `render/columns.ts`): rendered on `hasHorizonAxis` — the one
+  definition of a configured bucket axis, never a second opinion — static for a context
+  row, and opening `showHorizonMenu`, which is `addHorizonItems`, which is what the row
+  menu's Set horizon is. Two surfaces, one builder: they cannot offer different values
+  or disagree about which is checked. A property with an interactive chip is skipped by
+  `chipProps`, so the row never draws it twice with only one of them editable.
 - The tree opens collapsed for a parent nobody has ruled on — `collapseNewParents`
   collapses each one the first time it is seen, tracked in `settled` so a data update
   never undoes what the user expanded, and a restored session is not re-collapsed by the
@@ -95,7 +102,8 @@ free of runtime code so imports stay cycle-free.
 ## Controls
 
 - Row layout is columnar: `.pbl-row-spacer` is the flexible middle, and everything after
-  it (`.pbl-props` → `.pbl-state-col` → `.pbl-meta-col`) is fixed-width, so values line
+  it (`.pbl-props` → `.pbl-horizon-col` → `.pbl-state-col` → `.pbl-meta-col`) is
+  fixed-width, so values line
   up across rows regardless of title length and indent. Every configured column renders
   on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
   after it would shift per row. Widths live on the tree element as `--pbl-prop-col` /
@@ -108,7 +116,10 @@ free of runtime code so imports stay cycle-free.
   whole: `columnFit` derives the threshold from the *configured* width and count — a
   fixed CSS breakpoint would clip two 280px columns in a 700px pane — and
   `syncColumnFit` beside it applies the verdict, toggling `pbl-hide-props` /
-  `pbl-hide-meta` / `pbl-hide-state`. The two live in one file because a threshold
+  `pbl-hide-meta` / `pbl-hide-horizon` / `pbl-hide-state` — in that order of usefulness,
+  the state chip surviving longest because it summarizes a row on its own. Every column a
+  row can carry has to be in that budget: one drawn but not summed does not drop, it
+  overflows. The two live in one file because a threshold
   computed in one place and applied in another is one edit from disagreeing; the view
   keeps only the policy of when to re-measure, driving it from a `ResizeObserver`
   (absent in jsdom, and `clientWidth` is 0 there, so tests stub it and call the render
@@ -267,7 +278,7 @@ free of runtime code so imports stay cycle-free.
   the collected order and the minted order are not always the same, and the frame on
   screen is the one that can be checked. Membership never narrows with what is hidden.
   Removal actions (Clear horizon, Unschedule, an emptied field in the entry) appear
-  only while the note CARRIES the key (`item.axisKeys`, presence not value), so no
+  only while the note CARRIES the key (`item.ownKeys`, presence not value), so no
   offered action can write nothing, and they delete the key rather than blanking it.
 - On top of that, the HORIZON axis is directly manipulable and the dated axis is not,
   and the difference is structural rather than a flag: `renderRoadmap` passes the drag

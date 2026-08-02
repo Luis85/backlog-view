@@ -4,7 +4,7 @@ import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ItemWrite } from '../domain/writePlan';
-import { BacklogSettings } from '../domain/settings';
+import { BacklogSettings, OptionalProperty } from '../domain/settings';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
@@ -168,6 +168,19 @@ export interface BacklogViewHost {
 	openItemToSide(item: BacklogItem): void;
 	/** Open the row context menu at the item's row — the keyboard path (Menu key / Shift+F10). */
 	showContextMenuFor(item: BacklogItem): void;
+
+	/**
+	 * Bind this view's suggested key for every optional property nobody has named yet
+	 * — the state, the stamps and the roadmap's placement keys — and rebuild against
+	 * them. The one write to the `.base` that is not a user turning an option: it is
+	 * what makes the features that need a property usable without hand-editing a note
+	 * first, since an unnamed property is one Obsidian's own picker cannot offer.
+	 *
+	 * Returns what it bound, so the caller can say so. Nothing already set is touched
+	 * and nothing CLEARED is revived (see `adoptableProperties`), so pressing it twice
+	 * binds nothing the second time.
+	 */
+	adoptDefaultProperties(): OptionalProperty[];
 
 	render(): void;
 	/**

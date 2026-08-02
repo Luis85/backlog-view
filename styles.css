@@ -468,6 +468,14 @@
 	overflow: hidden;
 }
 
+.pbl-horizon-col {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	width: var(--pbl-horizon-col, 116px);
+	overflow: hidden;
+}
+
 .pbl-meta-col {
 	display: flex;
 	align-items: center;
@@ -698,6 +706,10 @@
 	display: none;
 }
 
+.pbl-view.pbl-hide-horizon .pbl-horizon-col {
+	display: none;
+}
+
 .pbl-prop {
 	display: flex;
 	align-items: center;
@@ -853,8 +865,11 @@
 	height: 11px;
 }
 
-/* Clickable workflow-state chip (a real button, minus the default button chrome) */
-.pbl-state-chip {
+/* Clickable workflow-state and horizon chips (real buttons, minus the button chrome).
+   One shape for two properties: they sit in adjacent columns on the same row, and a
+   second look would read as a second kind of thing. */
+.pbl-state-chip,
+.pbl-horizon-chip {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -878,7 +893,8 @@
 	cursor: var(--cursor);
 }
 
-.pbl-state-chip:not(.pbl-state-static):hover {
+.pbl-state-chip:not(.pbl-state-static):hover,
+.pbl-horizon-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
@@ -889,7 +905,8 @@
 	opacity: 0.75;
 }
 
-.pbl-state-chip .svg-icon {
+.pbl-state-chip .svg-icon,
+.pbl-horizon-chip .svg-icon {
 	width: var(--icon-xs);
 	height: var(--icon-xs);
 }
@@ -909,7 +926,8 @@
 	border-color: rgba(var(--color-green-rgb), 0.35);
 }
 
-.pbl-state-chip.pbl-state-unset {
+.pbl-state-chip.pbl-state-unset,
+.pbl-horizon-chip.pbl-horizon-unset {
 	color: var(--text-faint);
 	border-style: dashed;
 }

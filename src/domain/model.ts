@@ -13,7 +13,7 @@ import {
 	readTags,
 	resolveParent,
 } from './noteFields';
-import { ALL_TYPES, AXIS_FIELDS, AxisField, axisKeyFor, BacklogSettings, LEVELS } from './settings';
+import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
 import { collectObservedHorizons, collectObservedStates, collectObservedTags } from './vocabulary';
 
 /**
@@ -80,13 +80,13 @@ interface RawItem {
 	/** The planned target date the note states, if a target property is configured. */
 	plannedTarget: FieldReading<CivilDate>;
 	/**
-	 * Which configured axis keys the note CARRIES — presence, not value, and the two
-	 * are different questions here: an empty horizon reads as absent (untriaged) while
-	 * the key is still on the note. Removal actions offer themselves on presence, so
-	 * none of them can write nothing, and the backfill fills exactly its complement.
+	 * Which configured optional keys the note CARRIES — presence, not value, and the
+	 * two are different questions here: an empty horizon reads as absent (untriaged)
+	 * while the key is still on the note. Removal actions offer themselves on presence,
+	 * so none of them can write nothing, and the backfill fills exactly its complement.
 	 * False for a field whose property is unconfigured — there is no key to carry.
 	 */
-	axisKeys: Record<AxisField, boolean>;
+	ownKeys: Record<OptionalField, boolean>;
 }
 
 /**
@@ -275,7 +275,7 @@ function addItem(
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
-		axisKeys: readAxisKeys(fm, settings),
+		ownKeys: readOwnKeys(fm, settings),
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
@@ -295,16 +295,19 @@ function readGated<T>(
 }
 
 /**
- * Which configured axis keys the note has, asked of the frontmatter directly: a
+ * Which configured optional keys the note has, asked of the frontmatter directly: a
  * reader answers what a value MEANS, and an empty horizon means untriaged whether
  * or not the key is there. Own properties only — every note inherits `constructor`
  * and `toString`, and a base whose horizon property is named one of those would
  * report a gap as filled on every note in the vault.
  */
-function readAxisKeys(fm: Record<string, unknown> | undefined, settings: BacklogSettings): Record<AxisField, boolean> {
-	const present = {} as Record<AxisField, boolean>;
-	for (const field of AXIS_FIELDS) {
-		const key = axisKeyFor(settings, field);
+function readOwnKeys(
+	fm: Record<string, unknown> | undefined,
+	settings: BacklogSettings,
+): Record<OptionalField, boolean> {
+	const present = {} as Record<OptionalField, boolean>;
+	for (const field of OPTIONAL_FIELDS) {
+		const key = optionalKeyFor(settings, field);
 		present[field] = key !== '' && fm !== undefined && Object.prototype.hasOwnProperty.call(fm, key);
 	}
 	return present;

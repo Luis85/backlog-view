@@ -210,16 +210,29 @@ in the root `CLAUDE.md` because it spans every layer.
 - The roadmap's placement properties are written like the state property and planned
   like every other change: `computeHorizonWrites` / `computeScheduleWrites` produce an
   `AxisWrite`, where **null means remove the key** (absence is the value that means
-  untriaged or unscheduled) and only the backfill ever writes `''` — creating the key
-  without placing anything, which is the one thing it can do without inventing a plan.
-  `axisKeyFor` is the single field → key mapping, so the planner, the writer and the
-  backfill cannot spell the three-way switch differently. A re-pick of the value an
-  item already holds plans nothing (case-insensitive for horizons, civil-date equality
-  for dates — re-confirming `2026-8-1` must not rewrite it as `2026-08-01`).
-- `item.axisKeys` is PRESENCE, `item.horizon` / `plannedStart` / `plannedTarget` are
-  VALUE, and they answer different questions: an empty horizon reads as untriaged while
-  the key is still there to clear. Removal actions gate on presence so none of them can
-  write nothing; the backfill fills exactly its complement.
+  untriaged or unscheduled) and no value is ever `''` — creating a key without placing
+  anything is a different write, `ItemWrite.stubs`, and it is the only thing the
+  backfill can do here without inventing a plan. A re-pick of the value an item already
+  holds plans nothing (case-insensitive for horizons, civil-date equality for dates —
+  re-confirming `2026-8-1` must not rewrite it as `2026-08-01`).
+- **Every write target beyond `parent`/`order`/`type` is one vocabulary**, declared once
+  in `settings.ts`: `OptionalField` and the `PROPERTY_TABLE` behind
+  `OPTIONAL_PROPERTIES`, which carries per field the option that names it, the key it
+  suggests, and the label a collision reports it by. Five readers depend on that being
+  one statement — the view options' pickers (whose placeholder IS the suggestion),
+  `optionalKeyFor` (the single field → key mapping the planner, the writer, the model's
+  presence test and the backfill all share), `configProblems`, `adoptableProperties`,
+  and the backfill's stubs. The table is keyed by field so the compiler catches a field
+  the union declares and nobody described; `AxisField` is a narrower type over the same
+  keys, not a second vocabulary.
+- Adoption (`adoptableProperties`) asks the **config**, not the settings: cleared and
+  never-set resolve identically, and only never-set may adopt a default — turning a
+  property off is a decision. It also refuses a suggestion whose key another property
+  owns, since binding it would report as a collision and block every write in the view.
+- `item.ownKeys` is PRESENCE, `item.horizon` / `plannedStart` / `plannedTarget` /
+  `stateValue` are VALUE, and they answer different questions: an empty horizon reads as
+  untriaged while the key is still there to clear. Removal actions gate on presence so
+  none of them can write nothing; the backfill fills exactly its complement.
 - The roadmap field readers are tri-state (`FieldReading` in `noteFields.ts`): absence
   and refusal are different facts — absent is untriaged (shelved silently), invalid
   shelves with the reason on the card. Collapsing them would turn "can't read this" into
