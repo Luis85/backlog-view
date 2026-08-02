@@ -69,12 +69,29 @@ export class OutcomeWatch {
 	 * this write, and reporting that would blame the write for the filter.
 	 */
 	report(verdict: (file: TFile) => Vanished | null, open: (file: TFile, evt: MouseEvent) => void): void {
-		const notes = this.watched;
-		this.watched = [];
-		for (const note of notes) {
+		const waiting: WatchedNote[] = [];
+		this.watched.forEach((note, index) => {
 			const gone = verdict(note.file);
-			if (gone) reportOne(note, gone, open);
-		}
+			// Gone is final wherever it is seen: a result set that has stopped
+			// returning a note is not going to start again on this write's account.
+			if (gone) {
+				reportOne(note, gone, open);
+				return;
+			}
+			// "Still shown" is only trustworthy for the OLDEST write still waiting.
+			// Writes are serialized and each produces one response, so the responses
+			// arrive in order: the first pass after a move is the PREVIOUS move's,
+			// computed before this one's value reached disk, and it lists this note
+			// only because it has not looked since. Retiring on it would mark a move
+			// answered that nothing has answered — the silence this class exists to
+			// prevent, one step further along than the single slot it replaced.
+			//
+			// Bounded by construction: index 0 always resolves, so every pass shortens
+			// the list while it is non-empty, and each move's own response is the pass
+			// that finally reaches it.
+			if (index > 0) waiting.push(note);
+		});
+		this.watched = waiting;
 	}
 }
 

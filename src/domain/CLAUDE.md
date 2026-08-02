@@ -221,4 +221,7 @@ in the root `CLAUDE.md` because it spans every layer.
 - `bucketLabelFor` is the roadmap's `columnLabelFor`: anything naming a placement out
   loud reads it from there, so a message can only say what renders. Its fallback is the
   shelf — for absence, and for a value naming no bucket, since a result the axis did not
-  place is on the shelf and there is nowhere else it could be.
+  place is on the shelf and there is nowhere else it could be. Naming a card's CURRENT
+  placement takes `placementLabel` and the whole READING instead: absence and refusal
+  both shelve the card, so a value-only account of un-placing an unreadable value says
+  "from Unplaced to Unplaced" about a change that really happened.

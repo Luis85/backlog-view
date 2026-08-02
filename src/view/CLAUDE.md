@@ -213,7 +213,10 @@ free of runtime code so imports stay cycle-free.
   excluded from the verdict — a filter the user typed hides cards too, and blaming a
   move for it would be the same mistake in a different place. The view supplies the
   REASON (`filtered` or `completed`), because the two are different messages and a
-  report naming the wrong one sends the reader to fix the wrong setting. The way back is a real `<button>`: a notice is ordinary UI outside
+  report naming the wrong one sends the reader to fix the wrong setting. A pass takes
+  "gone" from anyone and "still there" only from the oldest waiting write: responses
+  arrive in write order, so the first pass after a move is the previous move's and
+  knows nothing about this one. The way back is a real `<button>`: a notice is ordinary UI outside
   the tree's one-tab-stop model, so an `<a>` with no `href` would put the only escape
   from a vanished card out of a keyboard's reach.
 - Context cards are never wired as draggables, and `performBoardMove` still rides

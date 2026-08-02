@@ -4,7 +4,8 @@ import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
-import { bucketLabelFor, RoadmapModel } from '../../domain/roadmap';
+import { FieldReading } from '../../domain/noteFields';
+import { bucketLabelFor, placementLabel, RoadmapModel } from '../../domain/roadmap';
 
 /**
  * The class every card drop target wears while a card hovers it. One name for the
@@ -41,14 +42,19 @@ export function announceBoardMove(
 	announceMove(title, columnLabelFor(board, from), columnLabelFor(board, to));
 }
 
+/**
+ * `from` is the whole READING, not a value: a key the axis refuses to read shelves
+ * the card exactly as an absent one does, so a value-only account of a cleanup
+ * would say "from Unplaced to Unplaced" about a change that really happened.
+ */
 export function announceHorizonMove(
 	roadmap: RoadmapModel | null | undefined,
 	title: string,
-	from: string | null,
+	from: FieldReading<string>,
 	to: string | null,
 ): void {
 	if (!roadmap) return;
-	announceMove(title, bucketLabelFor(roadmap, from), bucketLabelFor(roadmap, to));
+	announceMove(title, placementLabel(roadmap, from), bucketLabelFor(roadmap, to));
 }
 
 /**

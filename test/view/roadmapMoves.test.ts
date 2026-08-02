@@ -341,6 +341,18 @@ describe('what a horizon move announces', () => {
 		expect(await announced()).toBe('Moved "Later item" from Later to Now');
 	});
 
+	it('names an unreadable value rather than calling a cleanup a move to where it is', async () => {
+		vi.useFakeTimers();
+		const vault = new FakeVault();
+		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 10, horizon: { when: 'soon' } } });
+		const { containerEl } = makeRoadmap(vault);
+
+		// The card sits on the shelf and stays there, but its key held something and
+		// now does not. "From Unplaced to Unplaced" would report that as no change.
+		cardDrag(cardByTitle(containerEl, 'Garbled'), shelf(containerEl));
+		expect(await announced()).toBe('Moved "Garbled" from an unreadable horizon to Unplaced');
+	});
+
 	it('names the shelf in both directions, never a silence', async () => {
 		vi.useFakeTimers();
 		const vault = horizonVault();
@@ -465,6 +477,27 @@ describe('a move whose value leaves the base', () => {
 		moveThenRequery(harness, vault, ['Now item.md', 'Later item.md']);
 		expect(Notice.messages.filter((m) => m.includes('left the view'))).toHaveLength(2);
 		expect(Notice.messages.some((m) => m.includes('"Now item"'))).toBe(true);
+		expect(Notice.messages.some((m) => m.includes('"Later item"'))).toBe(true);
+	});
+
+	it('does not let an older move’s refresh answer for a newer one', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+		cardDrag(cardByTitle(harness.containerEl, 'Later item'), bucketByName(harness.containerEl, 'Now'));
+		await flush();
+
+		// The first move's response arrives: it was computed before the second move's
+		// value reached disk, so it still lists that note — which says nothing about
+		// whether the second move survived its own write.
+		moveThenRequery(harness, vault, ['Now item.md']);
+		expect(Notice.messages.filter((m) => m.includes('left the view'))).toHaveLength(1);
+		expect(Notice.messages.some((m) => m.includes('"Now item"'))).toBe(true);
+
+		// The second move's own response is the pass that can answer it.
+		moveThenRequery(harness, vault, ['Now item.md', 'Later item.md']);
 		expect(Notice.messages.some((m) => m.includes('"Later item"'))).toBe(true);
 	});
 

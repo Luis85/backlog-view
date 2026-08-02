@@ -1,6 +1,6 @@
 import { firstPlacedIndex } from './board';
 import { BacklogItem, BacklogModel } from './model';
-import { sameValue } from './noteFields';
+import { FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
 import { DateSpan, daysBetween } from './timeline';
 
@@ -95,6 +95,8 @@ export interface RoadmapModel {
 
 /** What the shelf is called wherever a placement is named out loud. */
 export const SHELF_LABEL = 'Unplaced';
+/** And what a key holding something this axis refuses to read is called. */
+const UNREADABLE_LABEL = 'an unreadable horizon';
 
 /**
  * What to call the place a horizon value sits in — found by the same
@@ -108,6 +110,17 @@ export const SHELF_LABEL = 'Unplaced';
 export function bucketLabelFor(roadmap: RoadmapModel, value: string | null): string {
 	if (value === null) return SHELF_LABEL;
 	return roadmap.buckets.find((bucket) => sameValue(bucket.value, value))?.value ?? SHELF_LABEL;
+}
+
+/**
+ * What a card's CURRENT placement is called, taken from the whole reading rather
+ * than from its value. Absence and refusal both shelve the card, so `value` alone
+ * cannot tell them apart — and the difference is the whole account of a cleanup:
+ * removing a value the axis could not read is a real, undoable change, and naming
+ * both ends "Unplaced" would report it as a move that did not happen.
+ */
+export function placementLabel(roadmap: RoadmapModel, reading: FieldReading<string>): string {
+	return reading.invalid ? UNREADABLE_LABEL : bucketLabelFor(roadmap, reading.value);
 }
 
 /**

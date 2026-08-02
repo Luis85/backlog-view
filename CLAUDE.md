@@ -257,7 +257,13 @@ what is refused is silence. Three rules, each of which was got wrong once:
   to fix a setting that is not the cause.
 - **A list, not a slot.** A move whose refresh has not arrived does not stop the user
   making another, and a slot drops the first one's answer — the silence this exists to
-  prevent. Every data pass drains the list whole.
+  prevent.
+- **A pass answers "gone" for anyone, and "still there" only for the OLDEST waiting
+  write.** Writes are serialized and each produces one response, so responses arrive in
+  order: the first pass after a move is the PREVIOUS move's, computed before this one's
+  value reached disk, and it lists the note only because it has not looked since.
+  Retiring on it marks a move answered that nothing answered. Index 0 always resolves,
+  so the list still shortens on every pass.
 
 
 ## Gotchas

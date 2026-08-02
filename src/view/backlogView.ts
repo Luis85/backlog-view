@@ -472,7 +472,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	async performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {
-		const from = item.horizon.value;
+		const from = item.horizon;
 		const buckets = this.roadmap?.roadmap;
 		return this.applyCardMove(item, computeHorizonDropWrites(item, horizon), () =>
 			announceHorizonMove(buckets, item.title, from, horizon),
