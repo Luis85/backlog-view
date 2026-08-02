@@ -2,17 +2,15 @@
 type: PBI
 parent: "[[Creating items]]"
 order: 80
-status: Open
+status: Done
 priority: P2
 created: 2026-08-02
 source: user request
 files:
-  - src/commands/scaffold.ts
-  - src/storage/baseFile.ts
-  - src/domain/settings.ts
-  - src/domain/itemTypes.ts
-  - src/domain/writePlan.ts
-  - src/domain/noteFields.ts
+  - src/domain/backlogReadme.ts
+  - src/storage/readmeFile.ts
+  - src/commands/readme.ts
+  - src/view/registry.ts
 ---
 
 # A README in the backlog folder
@@ -51,9 +49,10 @@ the view options can rename.
    `boardColumns` mints columns for and the state menus therefore offer.
 3. The document is generated: what the folder holds, the six type names with the ladder
    and the two types beside it, the parent/child table, the frontmatter contract in this
-   view's actual keys, the ranking rule, the workflow states and which of them count as
-   done, the roadmap keys when an axis is configured, where each type is filed, and a
-   worked example note per type.
+   view's actual keys — the tags property among them, with the shapes it accepts, since a
+   reader who does not know that key writes the conventional one and this view ignores it —
+   the ranking rule, the workflow states and which of them count as done, the roadmap keys
+   when an axis is configured, where each type is filed, and a worked example note.
 4. It is written as `README_PRODUCT_BACKLOG.md` in the resolved home folder, which is
    created if it does not exist.
 5. A notice names the path it wrote.
@@ -167,15 +166,21 @@ and a test that keeps both honest is worth more than either.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The generator is pure text from `BacklogSettings`
-and belongs in `src/domain/`, beside `src/domain/writePlan.ts`, which is the existing
-example of a module that decides *what* a change would say and applies none of it; the
-vocabulary it reads is `src/domain/settings.ts` and `src/domain/itemTypes.ts`, and the
-tolerant reading rules it has to describe are `src/domain/noteFields.ts`. The bytes land
-from `src/storage/`, beside `src/storage/baseFile.ts` — the one existing vault write that
-is not a work item, and the reason "everything that puts bytes in the vault is in
-`storage/`" has no exception to remember. The command joins `src/main.ts` next to
-`create-backlog`, acting on the active view rather than on the vault at large, and the
-flow it borrows is `src/commands/scaffold.ts`.
-Tests: the generator is a node test beside `test/domain/`; the write and the refusals are
-jsdom tests beside `test/commands/scaffold.test.ts` and `test/storage/baseFile.test.ts`.
+`src/domain/backlogReadme.ts` (`backlogReadmeContent`, `readmeStates`, `README_MARKER` —
+pure text from the settings and the offered states, applying nothing, beside
+`src/domain/writePlan.ts` which decides what a change would say the same way) ·
+`src/storage/readmeFile.ts` (`writeBacklogReadme`, `readmePath` — the four outcomes, the
+marker check and the no-op, beside `src/storage/baseFile.ts`, the other vault write that
+is not a work item) · `src/commands/readme.ts` (`write-backlog-readme`: the configuration
+gate, the notices, the `checkCallback` that hides the command with no view) ·
+`src/view/registry.ts` (the live views, and which one the workspace is showing) ·
+`src/storage/collapseStore.ts` (`owningBasePath`, the leaf walk both the store and the
+registry ask) · `src/view/backlogView.ts` (announces itself while loaded) ·
+`src/main.ts` (registration).
+The vocabulary the document is generated from is `src/domain/settings.ts` and
+`src/domain/itemTypes.ts`; the tolerant reading rules it describes are
+`src/domain/noteFields.ts`, and the ranking step is `src/domain/writePlan.ts`.
+Tests: `test/domain/backlogReadme.test.ts` (what the document says, and that it says it
+from the configuration), `test/storage/readmeFile.test.ts` (created, unchanged, updated,
+refused), `test/commands/readme.test.ts` (the command end to end through a real view, and
+the registry).

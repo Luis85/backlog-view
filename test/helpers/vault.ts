@@ -35,6 +35,8 @@ export class FakeVault {
 	triggers: unknown[][] = [];
 	/** Leaves iterateAllLeaves walks — how the view finds the base file it belongs to. */
 	leaves: { view: unknown }[] = [];
+	/** What workspace.getActiveFile() answers; null unless a test opens something. */
+	activeFile: TFile | null = null;
 	/** Vault-scoped localStorage, as Obsidian's load/saveLocalStorage present it. */
 	localStorage = new Map<string, unknown>();
 	/** Paths whose processFrontMatter throws — how tests make a batch fail partway. */
@@ -57,6 +59,8 @@ export class FakeVault {
 			iterateAllLeaves: (cb: (leaf: { view: unknown }) => unknown) => {
 				for (const leaf of this.leaves) cb(leaf);
 			},
+			/** The file a command sees as active — how the view registry picks a view. */
+			getActiveFile: () => this.activeFile,
 		},
 		loadLocalStorage: (key: string) => this.localStorage.get(key) ?? null,
 		saveLocalStorage: (key: string, data: unknown) => {
@@ -103,6 +107,10 @@ export class FakeVault {
 			on: (name: string, cb: (file: TFile, oldPath: string) => void) => {
 				if (name === 'rename') this.renameHandlers.push(cb);
 				return { name };
+			},
+			read: async (file: TFile) => this.contents.get(file.path) ?? '',
+			modify: async (file: TFile, content: string) => {
+				this.contents.set(file.path, content);
 			},
 		},
 		fileManager: {

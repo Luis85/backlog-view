@@ -20,6 +20,7 @@ import { RoadmapAxis } from '../domain/roadmap';
 import { computeDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
+import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
@@ -39,7 +40,12 @@ export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	type = PRODUCT_BACKLOG_VIEW_TYPE;
 
-	private viewEl: HTMLElement;
+	/**
+	 * The view's own element. Public because it is this view's only identity: the
+	 * registry finds the leaf drawing it, which is how a palette command reaches the
+	 * view the user is looking at (`view/registry.ts`).
+	 */
+	readonly viewEl: HTMLElement;
 	private toolbarEl: HTMLElement;
 	private treeEl: HTMLElement;
 	private rootDropEl: HTMLElement;
@@ -119,9 +125,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			// changes when the vertical scrollbar appears, which the view's box does not.
 			this.resizeObserver.observe(this.treeEl);
 		}
+		// Announced, not read: `this.app` is assigned after construction, so the registry
+		// only holds the reference and asks the workspace about it later.
+		rememberBacklogView(this);
 	}
 
 	onunload(): void {
+		forgetBacklogView(this);
 		this.resizeObserver?.disconnect();
 		this.collapse.dispose();
 		this.dnd.dispose();

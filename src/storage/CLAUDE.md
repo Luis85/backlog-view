@@ -35,6 +35,13 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
+- Two writes here are not work items — the `.base` file and the generated README — and
+  both are in this directory for the same reason: "everything that puts bytes in the vault
+  is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also
+  the one write that may REPLACE an existing file, so it reads before writing: identical
+  content is a no-op (a repository must not get a commit for regenerating the same
+  document), and content without the generated marker is somebody else's file and is
+  refused. Neither may be decided from the file name alone.
 
 ## Collapse state, and the view mode beside it
 
