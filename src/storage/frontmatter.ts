@@ -160,10 +160,19 @@ function applyStamps(
 	write: ItemWrite,
 	leaving: string | null,
 ): void {
-	if (write.startedDate !== undefined && settings.startedDateKey && isBlank(fm[settings.startedDateKey])) {
-		// Write-once, decided against the LIVE value rather than the planner's snapshot:
-		// the earliest start survives rework, and the row that planned this can be a
-		// refresh behind the note.
+	// A start records a TRANSITION, so one has to have happened. Both halves are asked
+	// of the LIVE value rather than the planner's snapshot, because the row that planned
+	// this can be a refresh behind the note: it must actually MOVE the note to another
+	// state — a stale row can propose the state the note already holds, and stamping
+	// that would date a redundant selection rather than the moment work began, and
+	// spend the undo slot doing it — and the property must still be empty, so the
+	// earliest start survives rework.
+	if (
+		write.startedDate !== undefined &&
+		settings.startedDateKey &&
+		movesState(leaving, write.state) &&
+		isBlank(fm[settings.startedDateKey])
+	) {
 		fm[settings.startedDateKey] = write.startedDate;
 	}
 	if (write.finish === undefined || !settings.finishedDateKey) return;
@@ -176,6 +185,16 @@ function applyStamps(
 	if (write.finish.toDone === wasDone) return;
 	if (write.finish.toDone) fm[settings.finishedDateKey] = write.finish.date;
 	else delete fm[settings.finishedDateKey];
+}
+
+/**
+ * Whether this write actually moves the note to a different state, by the same
+ * case-insensitive match the planner and the board's columns use. A write carrying no
+ * state moves nothing.
+ */
+function movesState(leaving: string | null, state: string | undefined): boolean {
+	if (state === undefined) return false;
+	return leaving === null || leaving.toLowerCase() !== state.toLowerCase();
 }
 
 /** Whether a frontmatter value counts as "no date yet" — absent, null, or empty text. */

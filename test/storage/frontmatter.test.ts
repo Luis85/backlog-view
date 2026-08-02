@@ -217,6 +217,32 @@ describe('applying date stamps', () => {
 		expect(vault.fm('A.md')['started']).toBe('2026-01-15');
 	});
 
+	it('stamps no start when the note is already in the state being written', async () => {
+		// The model still said New; the note is already Active, with no start recorded.
+		// Picking Active writes a state the note already holds — no transition happened,
+		// so dating one would record a redundant selection rather than the moment work
+		// began, and spend the undo slot on it.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Active' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+
+		expect('started' in vault.fm('A.md')).toBe(false);
+		expect(inverses).toEqual([]);
+	});
+
+	it('compares that state case-insensitively, like every other state match', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'active' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect('started' in vault.fm('A.md')).toBe(false);
+	});
+
 	it('treats an empty start property as no start at all', async () => {
 		const vault = new FakeVault();
 		const file = vault.addFile('A.md', { frontmatter: { status: 'New', started: '  ' } });

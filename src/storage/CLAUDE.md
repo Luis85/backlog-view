@@ -41,8 +41,11 @@ can be checked by reading one directory.
   join `touchedKeys`: a key listed there but unchanged emits no inverse anyway.
 - **Both stamp decisions are made HERE, against the live note, not in the plan** — the
   row that planned a write can be a refresh behind it, exactly as with tags. The start
-  is write-once: it lands only where the property is empty, so the earliest start
-  survives rework. The finish carries `{date, toDone}` and this module compares
+  asks two things of the live note: that the write actually MOVES it to another state
+  (a stale row can propose the state it already holds, and dating that records a
+  redundant selection rather than the moment work began — and spends the undo slot on
+  it), and that the property is still empty, so the earliest start survives rework.
+  The finish carries `{date, toDone}` and this module compares
   `toDone` against the state the note is actually LEAVING (read before the state write
   replaces it): crossing in stamps, crossing out deletes, and done-to-done leaves it
   alone. Deciding that from the model's idea of the old state left a note that was
