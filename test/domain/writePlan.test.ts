@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BacklogItem } from '../../src/domain/model';
 import { buildModel } from '../../src/domain/model';
-import { computeDropWrites, computeInitWrites, DropTarget, ORDER_SPACING } from '../../src/domain/writePlan';
+import { computeDropWrites, computeInitWrites, computeTypeChanges, DropTarget, ORDER_SPACING } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -380,6 +380,52 @@ describe('computeDropWrites', () => {
 		const parent = get('Feature B2');
 		const writes = computeDropWrites(dragged, { parent, siblings: [], insertIndex: 0 }, settings);
 		expect(writes[0].order).toBe(ORDER_SPACING);
+	});
+});
+
+describe('computeTypeChanges', () => {
+	it('does not retype a dragged marker, and does not touch what hangs beneath it', () => {
+		// A marker occupies no rung, so there is no rank to descend from. `rankOf` would
+		// hand it the POSITIONAL one and renumber its subtree from a rank it does not
+		// have — the failure the existing comment describes for extra types, reached by a
+		// new name. The precedent for the shape is outsideFilter: where the cascade cannot
+		// say what a rung is, it stops rather than guesses.
+		const vault = new FakeVault();
+		vault.addFile('An epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
+		vault.addFile('Prep.md', { frontmatter: { type: 'PBI' }, parentLink: 'Ship 1.0' });
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
+		const dragged = model.byPath.get('Ship 1.0.md') as BacklogItem;
+		const parent = model.byPath.get('An epic.md') as BacklogItem;
+
+		const { typeField, cascade } = computeTypeChanges(dragged, parent, autoTyped, true);
+		expect(typeField).toBeUndefined();
+		expect(cascade).toEqual([]);
+	});
+
+	it('skips a marker nested inside a moved subtree, and its whole branch with it', () => {
+		const vault = new FakeVault();
+		vault.addFile('An epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// A declared type's own effectiveLevelIndex is its LEVEL, not its tree position
+		// (`computeLevel`) — a sibling Epic would give the drop the same rung "A feature"
+		// already occupies and retype nothing, proving nothing about the exemption's
+		// scope. One rung deeper makes the move a real reparent, so "A story" HAS to be
+		// retyped for this test to say what its name claims.
+		vault.addFile('Other epic.md', { frontmatter: { type: 'Feature', order: 20 } });
+		vault.addFile('A feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'An epic' });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI' }, parentLink: 'A feature' });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' }, parentLink: 'A feature' });
+		vault.addFile('Prep.md', { frontmatter: { type: 'PBI' }, parentLink: 'Ship 1.0' });
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
+		const dragged = model.byPath.get('A feature.md') as BacklogItem;
+		const parent = model.byPath.get('Other epic.md') as BacklogItem;
+
+		const { cascade } = computeTypeChanges(dragged, parent, autoTyped, true);
+		const touched = cascade.map((w) => w.file.path);
+		expect(touched).not.toContain('Ship 1.0.md');
+		expect(touched).not.toContain('Prep.md');
+		// The sibling ON the ladder is still retyped — the exemption must not reach a rung.
+		expect(touched).toContain('A story.md');
 	});
 });
 

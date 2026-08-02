@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
+import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex } from './itemTypes';
 import { CivilDate, readDate } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import {
@@ -176,6 +176,21 @@ export function computeTypeChanges(
 	if (!parentChanged || !settings.autoType) return { cascade };
 
 	/**
+	 * Where the cascade STOPS. A marker occupies no rung, so nothing beneath one can be
+	 * ranked from it, and the marker itself has no position to be retyped by — the same
+	 * shape, and the same reason, as a row the Base excluded: where this walk cannot say
+	 * what a rung is, it stops rather than guesses. Stopping at the dragged item covers
+	 * both halves at once — the marker keeps its type, and so does anything hand-nested
+	 * beneath it — which is why `rankOf` below never meets one and stays a question about
+	 * extra types alone.
+	 *
+	 * It must NOT reach the ladder: `Epic`, `Feature`, `PBI` and `Task` are declared *as
+	 * rungs*, and exempting them would undo `Assigning type on a move` wholesale.
+	 */
+	const stopsAt = (item: BacklogItem): boolean => item.outsideFilter || isMarkerType(item.typeName);
+	if (stopsAt(dragged)) return { cascade };
+
+	/**
 	 * The rung an item occupies after the move. A declared extra type carries its own,
 	 * pinned — that is what makes a Bug's children Tasks under an Epic as under a PBI —
 	 * and everything else takes the rung its position gives it.
@@ -209,9 +224,10 @@ export function computeTypeChanges(
 		for (const child of node.children) {
 			// The cascade stops at a note the Base excluded — a filter can leave one
 			// *between* two results (Epic and PBI returned, the Feature between them
-			// not). We may not retype it, and retyping only the levels below it would
-			// leave a worse ladder than leaving that branch as it stands.
-			if (child.outsideFilter) continue;
+			// not) — and at a marker, which has no rung for the branch below to descend
+			// from. We may not retype either, and retyping only the levels below one
+			// would leave a worse ladder than leaving that branch as it stands.
+			if (stopsAt(child)) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
 				const targetLevel = LEVELS[childLevel];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
