@@ -10,6 +10,7 @@ files:
   - src/domain/settings.ts
   - src/domain/itemTypes.ts
   - src/domain/model.ts
+  - test/domain/milestones.test.ts
   - src/domain/viewOptions.ts
   - src/domain/roadmap.ts
   - src/domain/writePlan.ts
