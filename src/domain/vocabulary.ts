@@ -23,33 +23,43 @@ interface VocabularySource {
 }
 
 /**
+ * The rule the three collectors below share, stated once: walk the loaded items,
+ * **skip every context row** — an excluded note's value is not this base's
+ * vocabulary — and keep the first casing of each distinct value, in the order the
+ * walk met it. `key` is how identity is decided; the tags collector passes `tagKey`
+ * rather than lowercasing again, because tag identity is that function's to define.
+ */
+function firstSeen(
+	all: VocabularySource[],
+	valuesOf: (item: VocabularySource) => string[],
+	key: (value: string) => string = (value) => value.toLowerCase(),
+): string[] {
+	const seen = new Map<string, string>();
+	for (const item of all) {
+		if (item.outsideFilter) continue;
+		for (const value of valuesOf(item)) {
+			if (!seen.has(key(value))) seen.set(key(value), value);
+		}
+	}
+	return [...seen.values()];
+}
+
+/**
  * First occurrence of every state value, sorted for the state menus: open states
  * alphabetically, done states after them. Deduped case-insensitively, keeping
  * the casing seen first.
  */
 export function collectObservedStates(all: VocabularySource[], settings: BacklogSettings): string[] {
-	const seen = new Map<string, string>();
-	for (const item of all) {
-		if (item.outsideFilter) continue;
-		if (item.stateValue !== null && !seen.has(item.stateValue.toLowerCase())) {
-			seen.set(item.stateValue.toLowerCase(), item.stateValue);
-		}
-	}
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
-	const values = [...seen.values()].sort((a, b) => a.localeCompare(b));
+	const values = firstSeen(all, (item) => (item.stateValue === null ? [] : [item.stateValue])).sort((a, b) =>
+		a.localeCompare(b),
+	);
 	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
 }
 
 /** Every tag the results carry, alphabetical and deduped case-insensitively. */
 export function collectObservedTags(all: VocabularySource[]): string[] {
-	const seen = new Map<string, string>();
-	for (const item of all) {
-		if (item.outsideFilter) continue;
-		for (const tag of item.tags) {
-			if (!seen.has(tagKey(tag))) seen.set(tagKey(tag), tag);
-		}
-	}
-	return [...seen.values()].sort((a, b) => a.localeCompare(b));
+	return firstSeen(all, (item) => item.tags, tagKey).sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -69,11 +79,5 @@ export function collectObservedTags(all: VocabularySource[]): string[] {
  * targets depend on what is on screen.
  */
 export function collectObservedHorizons(all: VocabularySource[]): string[] {
-	const seen = new Map<string, string>();
-	for (const item of all) {
-		if (item.outsideFilter) continue;
-		const value = item.horizon.value;
-		if (value !== null && !seen.has(value.toLowerCase())) seen.set(value.toLowerCase(), value);
-	}
-	return [...seen.values()];
+	return firstSeen(all, (item) => (item.horizon.value === null ? [] : [item.horizon.value]));
 }
