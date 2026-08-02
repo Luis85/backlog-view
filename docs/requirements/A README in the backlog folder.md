@@ -165,7 +165,11 @@ the view options can rename.
   property, so a date recorded by hand is kept, and a finish follows the done boundary in
   both directions. Each is named only where it can actually fire: both ride a state write,
   so neither is mentioned without a state property, and a start with no states counting as
-  started is an inert key like a horizon property with no values (**3a**).
+  started is an inert key like a horizon property with no values (**3a**). Which states
+  *are* started is named too, beside the workflow table where the done values already are:
+  the stamp reads the configured list rather than the table, so a started value the
+  workflow does not offer is named as well — without it, writing a state would put a date
+  on a note for a reason the document never gave.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses

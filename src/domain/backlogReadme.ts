@@ -352,6 +352,29 @@ function unlistedDone(settings: BacklogSettings, states: StateEntry[]): string[]
 	];
 }
 
+/**
+ * Which states start the clock, named the way the done values are. The start stamp
+ * fires on entering one of them, and nothing else in the document says which they are:
+ * a reader could otherwise not tell whether writing `Doing` is about to put a date on
+ * their note. Like `unlistedDone`, it names values the workflow does not offer, since
+ * matching runs against the configured list rather than against the table.
+ */
+function startedStates(settings: BacklogSettings, states: StateEntry[]): string[] {
+	if (!stampsStart(settings)) return [];
+	const listed = new Set(states.map((s) => s.value.toLowerCase()));
+	const unlisted = settings.startedStates.filter((v) => v && !listed.has(v.toLowerCase()));
+	return [
+		'',
+		`Work counts as **started** at ${settings.startedStates.map(code).join(', ')} — entering one ` +
+			`of those is what stamps ${code(settings.startedDateKey)}.` +
+			(unlisted.length > 0
+				? ` ${unlisted.map(code).join(', ')} ${unlisted.length === 1 ? 'is' : 'are'} not offered as ` +
+					`${unlisted.length === 1 ? 'a state' : 'states'} here, and still counts: the stamp reads ` +
+					'this list, not the workflow above.'
+				: ''),
+	];
+}
+
 function stateSection(settings: BacklogSettings, states: StateEntry[]): string[] {
 	if (!settings.stateKey || states.length === 0) return [];
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
@@ -376,6 +399,7 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 		// value missing from the table above still finishes an item — silently, from the
 		// reader's point of view, since nothing else here would have mentioned it.
 		...unlistedDone(settings, states),
+		...startedStates(settings, states),
 	];
 }
 

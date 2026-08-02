@@ -306,6 +306,26 @@ describe('backlogReadmeContent', () => {
 		expect(stamping).toContain('written for you, by a state change');
 		expect(stamping).toContain('only into an empty property');
 		expect(stamping).toContain('leaving one removes it again');
+		// And WHICH states start the clock. Done values are named in the table; started
+		// ones are named nowhere else, so writing `Active` would put a date on a note for
+		// reasons the document never gave.
+		expect(stamping).toContain('Work counts as **started** at `Active`');
+	});
+
+	it('names a started state the workflow does not offer', () => {
+		// The stamp matches the configured list, not the table — the same asymmetry the
+		// done values have, and the same silence if it goes unsaid.
+		const content = readme(
+			settingsWith({
+				stateKey: 'status',
+				states: ['Todo', 'Done'],
+				startedStates: ['Doing'],
+				startedDateKey: 'started',
+			}),
+			[],
+		);
+		expect(content).toContain('Work counts as **started** at `Doing`');
+		expect(content).toContain('is not offered as a state here, and still counts');
 	});
 
 	it('does not advertise a stamp key that can never fire', () => {
