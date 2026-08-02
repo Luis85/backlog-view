@@ -35,7 +35,7 @@ leave alone), creation from a column ([[New cards in place]]), lanes
 
 ## Architecture
 
-Four layers, in the order the change moves through them. Nothing here reaches upward, and
+Five layers, in the order the change moves through them. Nothing here reaches upward, and
 no write path learns about limits at all.
 
 ### 1. Configuration — `src/domain/viewOptions.ts`
@@ -92,17 +92,31 @@ type table for exactly this reason.
 `byTypeName`'s body moves to a `byName(table, name)` that all three tables share;
 `byTypeName` stays as a one-line delegate rather than being renamed. The rename would be
 tidier and would collide with the milestones branch in a file it is already editing; the
-delegate costs three lines and collides with nothing.
+delegate costs three lines and collides with nothing. `typeFoldersFor` is already the
+table builder these two need with one type hard-coded, so it generalises into `nameTable`
+and the old one is deleted rather than joined by a sibling.
 
-`overLimit(settings, column)` sits here with the rest of the vocabulary's rules. It reads
-`column.fullCount`, never `column.count`, per extension 4a: *a filter that made an
-over-limit column look under its limit would turn a search into a lie about the work.*
+Done states are filtered out of `wipLimits` **here**, not only in the schema. Refusing
+the option is what a user sees; refusing the value is what survives a `.base` file that
+was hand-edited, or a state that was marked done after its limit was set.
+
+### 3. Derivation — `src/domain/board.ts`
+
+`BoardColumn` carries its own `limit: number | null` and `policy: string`, read once by
+`workflowColumns` as it builds the column from the configured state. That is one lookup
+site rather than one per consumer, and it puts the guarded read next to the only place
+that knows a column's state is user data.
+
+`overBy(col)` returns how many cards a column holds beyond what was agreed — 0 at the
+limit, under it, or with no limit. It reads `col.fullCount`, never `col.count`, per
+extension 4a: *a filter that made an over-limit column look under its limit would turn a
+search into a lie about the work.*
 
 **No write path imports it.** That is the cheapest possible enforcement of the guarantee —
 *a limit never refuses a write* — because a planner that cannot see a limit cannot consult
 one.
 
-### 3. Rendering — `src/view/render/board.ts`
+### 4. Rendering — `src/view/render/board.ts`
 
 The header gains three things, each absent when unconfigured:
 
@@ -125,7 +139,7 @@ case earns. The smoke-test note below is where a live vault gets to disagree.
 `showColumnMenu`, beside the existing `showItemMenu`: a `Menu` with the policy as its one
 entry, opened from the header's `contextmenu`.
 
-### 4. Keyboard — `src/view/interactions/keyboard.ts`
+### 5. Keyboard — `src/view/interactions/keyboard.ts`
 
 `keyboard.ts:248` already handles ContextMenu and Shift+F10 on the board, but its body
 reads the selected **card** and does nothing on a column stop. It gains the column branch,
@@ -159,17 +173,22 @@ Node tests (`test/domain/`):
 - `overLimit` — unset is not zero, at the limit is not over, and the predicate reads
   `fullCount` while a filter narrows `count`.
 
-jsdom tests (`test/view/`):
+jsdom tests:
 
-- The header: the limit span, the over-limit icon and class, the absence of every one of
-  them unconfigured, and the spoken label in both the filtered and unfiltered cases.
-- The affordance and `aria-describedby`, and the menu from both pointer and Shift+F10.
+- The header, in `test/view/board.test.ts`: the limit span, the over-limit icon and class,
+  the absence of every one of them unconfigured, and the spoken label filtered and not.
+- A new `test/view/columnAgreements.test.ts` for the rest — the affordance and its
+  `aria-describedby`, the menu from pointer and from the column stop, and the invariant
+  below. New rather than more of `test/view/boardMenu.test.ts`, which is 311 lines against
+  a 450-line budget.
 
 One invariant test, stated from the rule rather than from the implementation, in the shape
 `test/view/contextCardWrites.test.ts` uses for the context-row rule: **every board write
 path still applies with a column over its limit** — the drag, the Alt+arrow and the menu,
-each driven against a board whose target column is already over. A fourth input added later
-fails it without anyone predicting the surface.
+each driven against a board whose target column is already over. All three land on
+`performBoardMove`, so all three fail together when a refusal is planted there, which is
+how the test gets watched failing. A fourth input added later fails it without anyone
+predicting the surface.
 
 Each new assertion is watched failing before the code that satisfies it is written, per the
 project's own rule that a comment stating an invariant is not a check.
