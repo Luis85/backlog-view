@@ -91,6 +91,12 @@ const YAML_ESCAPES = new Map([
  * view uses, silently, which is the whole failure this document exists to prevent. Other
  * control characters make it not parse at all.
  *
+ * BOTH control ranges, not just the ASCII one: YAML's printable set excludes `U+0080`
+ * through `U+009F` as well, and `U+0085` is one of the line breaks it folds — the same
+ * silent redefinition as a newline, from a character nothing renders. A key can hold one
+ * legitimately, since frontmatter can spell it `\x85` and this reader decodes it before
+ * the value ever reaches here.
+ *
  * Built by walking the characters rather than by a regex, because a class covering the
  * control range is exactly what `no-control-regex` forbids, and a suppression here would
  * be hiding the rule rather than answering it.
@@ -101,7 +107,7 @@ function yamlEscape(value: string): string {
 			const named = YAML_ESCAPES.get(char);
 			if (named !== undefined) return named;
 			const code = char.codePointAt(0) ?? 0;
-			return code < 0x20 || code === 0x7f ? `\\x${code.toString(16).padStart(2, '0')}` : char;
+			return code < 0x20 || (code >= 0x7f && code <= 0x9f) ? `\\x${code.toString(16).padStart(2, '0')}` : char;
 		})
 		.join('');
 }

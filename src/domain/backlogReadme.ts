@@ -326,12 +326,26 @@ function planningSection(settings: BacklogSettings): string[] {
 			...(hasHorizonAxis(settings) ? ['Set horizon and Clear horizon'] : []),
 			...(hasDateAxis(settings) ? ['Schedule and Unschedule'] : []),
 		];
+		// The writers, each named only where it can fire. Creating in place is the one that
+		// is not an edit to an existing note at all: the roadmap's buckets carry a New
+		// button, and the bucket's value goes into the frontmatter the note is created with.
+		const writers = [
+			`the view's own placement ${actions.length > 1 ? 'actions' : 'action'} — ${actions.join(', ')}, ` +
+				'each writing or removing exactly the keys named here',
+			...(hasHorizonAxis(settings)
+				? [
+						`**New** inside a horizon on the roadmap, which writes that horizon into the note ` +
+							'it creates, in the same write that creates it',
+					]
+				: []),
+			'**Assign missing properties**, which adds the keys *empty* to items that lack them and ' +
+				'places nothing',
+		];
+		const joined =
+			writers.length > 1 ? `${writers.slice(0, -1).join('; ')}; and ${writers[writers.length - 1]}` : writers[0];
 		lines.push(
-			'These are a **plan**, and the only things that write them are you, the view\'s own ' +
-				`placement ${actions.length > 1 ? 'actions' : 'action'} — ${actions.join(', ')}, each ` +
-				'writing or removing exactly the keys named here — and **Assign missing properties**, ' +
-				'which adds the keys *empty* to items that lack them and places nothing. Nothing ' +
-				'writes them as a side effect of a move, a state change or a rename.',
+			`These are a **plan**, and the only things that write them are you, ${joined}. Nothing writes ` +
+				'them as a side effect of a move, a state change or a rename.',
 		);
 	}
 	return lines.length > 0 ? ['## Planning', '', ...lines.flatMap((l) => [l, ''])].slice(0, -1) : [];

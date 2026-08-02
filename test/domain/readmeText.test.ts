@@ -90,4 +90,16 @@ describe('a value inside the example block', () => {
 		expect(yamlScalar('back\\slash "quoted"')).toBe('"back\\\\slash \\"quoted\\""');
 		expect(yamlScalar('bell\u0007')).toBe('"bell\\x07"');
 	});
+
+	it('escapes the upper control range too, where another line break hides', () => {
+		// YAML's printable set excludes U+0080–U+009F, and U+0085 is one of the breaks it
+		// FOLDS — the same silent redefinition as a newline, from a character nothing draws.
+		// Frontmatter can spell either as `\x85`, so a key really can arrive holding one.
+		expect(yamlScalar('next\u0085line')).toBe('"next\\x85line"');
+		expect(yamlScalar('pad\u0080')).toBe('"pad\\x80"');
+		expect(yamlScalar('app\u009f')).toBe('"app\\x9f"');
+		// Nothing above the range: an accented state or an emoji is printable text, and
+		// escaping it would show a reader a value they cannot write back.
+		expect(yamlScalar('café ☕')).toBe('"café ☕"');
+	});
 });

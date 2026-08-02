@@ -350,6 +350,24 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('adds the keys *empty* to items that lack them and places nothing');
 	});
 
+	it('names creating in a bucket among the things that write a horizon', () => {
+		// The roadmap's buckets carry a New button, and `createBacklogItem` puts the
+		// bucket's value in the frontmatter it writes — a planning key on a note nobody
+		// ever placed, which a list of writers made only of the placement actions and the
+		// backfill leaves a reader unable to explain.
+		const content = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'], startKey: '', targetKey: '' }));
+		expect(content).toContain('**New** inside a horizon on the roadmap');
+		expect(content).toContain('in the same write that creates it');
+	});
+
+	it('does not claim creation writes a date, in a view with no horizons', () => {
+		// Only a bucket creates in place: the dated axis is read-only, and nothing puts a
+		// planned date on a note the view creates.
+		const dated = readme(settingsWith({ horizonKey: '', startKey: 'start', targetKey: 'due' }));
+		expect(dated).toContain('Schedule and Unschedule');
+		expect(dated).not.toContain('**New** inside a horizon');
+	});
+
 	it('applies folder inference to an omitted parent key, not an empty one', () => {
 		// An empty key is `explicitRoot`: the model deliberately skips inference for it, so
 		// grouping it with "does not name a parent" would have a reader expect a pinned root

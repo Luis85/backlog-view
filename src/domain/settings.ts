@@ -1,4 +1,4 @@
-import { BasesViewConfig, parsePropertyId } from 'obsidian';
+import { BasesViewConfig, normalizePath, parsePropertyId } from 'obsidian';
 
 /**
  * Resolved, ready-to-use configuration for one Product Backlog view.
@@ -318,9 +318,21 @@ interface ConfigReaders {
 	clearable: <T>(key: string, def: T, parse: () => T) => T;
 }
 
-/** A user-typed folder path, trimmed and stripped of surrounding slashes. */
-function folderPath(value: string): string {
-	return value.trim().replace(/^\/+|\/+$/g, '');
+/**
+ * A user-typed folder path as the VAULT spells it: trimmed, stripped of the separators
+ * either side, and normalized. One answer, because a folder setting is read by three
+ * kinds of code that must agree — `storage/` creates the folder and puts files in it,
+ * the creation prompt tells the user where a note will land, and the generated README
+ * tells an editor outside Obsidian where to file one. A hand-edited or Windows-shaped
+ * `work\backlog` normalized only at the write would have the document name a folder
+ * this plugin never writes to.
+ *
+ * Both separators are stripped before the guard, since `normalizePath` answers `/` — the
+ * vault root spelled as a folder that does not exist — for anything that normalizes away.
+ */
+export function vaultFolder(value: string): string {
+	const trimmed = value.trim().replace(/^[\\/]+|[\\/]+$/g, '');
+	return trimmed ? normalizePath(trimmed) : '';
 }
 
 /**
@@ -334,7 +346,7 @@ function resolveFolders(
 	fallback: BacklogSettings,
 ): Pick<BacklogSettings, 'homeFolder' | 'typeFolders'> {
 	const { str, clearable } = read;
-	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => folderPath(str('homeFolder')));
+	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => vaultFolder(str('homeFolder')));
 	return {
 		homeFolder,
 		// One option per type, so a folder is picked rather than typed into a mapping,
@@ -342,7 +354,7 @@ function resolveFolders(
 		// the value that applies, and moving the home folder moves every untouched one.
 		typeFolders: typeFoldersFor(types, (type) =>
 			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
-				folderPath(str(typeFolderKey(type))),
+				vaultFolder(str(typeFolderKey(type))),
 			),
 		),
 	};

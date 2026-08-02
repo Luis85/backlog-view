@@ -1,6 +1,6 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { hasTag, normalizeTag, readString, readTags } from '../domain/noteFields';
-import { AXIS_FIELDS, axisKeyFor, BacklogSettings, isDoneValue } from '../domain/settings';
+import { AXIS_FIELDS, axisKeyFor, BacklogSettings, isDoneValue, vaultFolder } from '../domain/settings';
 import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
 /**
@@ -393,8 +393,7 @@ export interface NewItemSpec {
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
 export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
-	const trimmed = spec.folder.trim().replace(/^\/+|\/+$/g, '');
-	const folder = trimmed ? normalizePath(trimmed) : '';
+	const folder = vaultFolder(spec.folder);
 	await ensureFolder(app, folder);
 
 	const base = sanitizeTitle(spec.title);

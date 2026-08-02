@@ -1,5 +1,6 @@
-import { App, normalizePath } from 'obsidian';
+import { App } from 'obsidian';
 import { ensureFolder } from './frontmatter';
+import { vaultFolder } from '../domain/settings';
 import { README_FILE_NAME, readmeSource } from '../domain/readmeMarker';
 
 /**
@@ -26,18 +27,6 @@ export interface ReadmeWriteResult {
 }
 
 /**
- * The folder as the vault spells it, or '' for the root. Everything here derives from
- * this one answer: a hand-edited or Windows-shaped `homeFolder` (`work\backlog`, a
- * doubled separator) must not have the file created under one spelling while the
- * folder is created under another — which is a create that fails on a parent that
- * exists.
- */
-function normalizedFolder(folder: string): string {
-	const trimmed = folder.trim().replace(/^\/+|\/+$/g, '');
-	return trimmed ? normalizePath(trimmed) : '';
-}
-
-/**
  * The first line, without what a round trip through another editor adds either side of
  * it: the carriage return a Windows checkout arrives with, and the byte-order mark an
  * editor may write when it saves the file as UTF-8. Both leave the document identical
@@ -51,9 +40,14 @@ function firstLine(text: string): string {
 	return (end === -1 ? text : text.slice(0, end)).replace(/^\uFEFF/, '').replace(/\r$/, '');
 }
 
-/** Where the README for `folder` lives — normalized, and at the vault root for ''. */
+/**
+ * Where the README for `folder` lives — at the vault root for ''. Through `vaultFolder`,
+ * the same answer the resolved settings and the document itself carry: the file must not
+ * be created under one spelling while its folder is created under another, which is a
+ * create that fails on a parent that exists.
+ */
 export function readmePath(folder: string): string {
-	const dir = normalizedFolder(folder);
+	const dir = vaultFolder(folder);
 	return dir ? `${dir}/${README_FILE_NAME}` : README_FILE_NAME;
 }
 
@@ -110,7 +104,7 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 		if (owner === null) return { outcome: 'foreign', path };
 		return owner !== mine ? { outcome: 'replaced', path, previous: owner } : { outcome: 'updated', path };
 	}
-	await ensureFolder(app, normalizedFolder(folder));
+	await ensureFolder(app, vaultFolder(folder));
 	await app.vault.create(path, content);
 	return { outcome: 'created', path };
 }

@@ -139,7 +139,12 @@ the view options can rename.
   mapping, and a line break in either splits the table row it sits in — a row is one line,
   and half a table is not a table. Each value is fenced and escaped for the place it lands
   in, and a break is shown the way the example block spells it rather than emitted, so the
-  document a reader copies from is the document the configuration describes.
+  document a reader copies from is the document the configuration describes. The rule
+  covers the characters nothing draws as well as the ones that do: frontmatter can spell a
+  control character as an escape, and YAML folds `U+0085` into a space exactly as it folds
+  a newline while refusing most of the range around it — so an example carrying one either
+  fails to parse or defines a key other than the one shown, from a value that looks empty
+  on screen.
 - **3g — the reader wants to put an item at the top level.** The contract states the
   **empty** parent value, not only the link-shaped one, because that is what this plugin
   writes for a top-level item and because in folder mode the two differ: an empty value
@@ -203,6 +208,20 @@ the view options can rename.
   grouping "does not name a parent" with "hangs from the folder note above" would have an
   outside editor expect a pinned root to be nested. Inference is stated as what it is: the
   answer for a note that **omits** the key.
+- **3p — a planning key is written by creating a note, not by editing one.** The
+  roadmap's buckets carry a **New** button, and the bucket's value rides the creation
+  write (`createBacklogItem`), so a note can hold a horizon nobody ever placed. The list
+  of writers names it wherever it can fire — which is the horizon axis and only there: no
+  surface creates a note with a planned date, and a list that implied one would have a
+  reader looking for a control the view does not have (**3a**'s rule, applied to a writer
+  rather than to a section).
+- **3q — a folder path was hand-edited in the `.base` file.** The `.base` is text, and a
+  Windows or doubled separator survives an edit made outside the options — so the folder
+  settings are resolved to the spelling the vault uses (`vaultFolder`), once, before
+  anything reads them. Normalizing at the write alone is what makes the document wrong:
+  `storage/` would create `work/backlog` and file notes there while this README named
+  `work\backlog`, sending exactly the outside editor it is written for to a folder this
+  plugin never writes to.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses
@@ -337,12 +356,16 @@ gate, the notices, the `checkCallback` that hides the command with no view) ·
 `getActiveViewOfType` cannot return a Bases view, which is drawn inside a leaf rather than
 being one) · `src/view/backlogView.ts` (announces itself while loaded) ·
 `src/main.ts` (registration).
-The vocabulary the document is generated from is `src/domain/settings.ts` and
+The vocabulary the document is generated from is `src/domain/settings.ts` — which is also
+where a folder setting becomes the vault's own spelling (`vaultFolder`), so the document,
+the creation prompt and the writes in `src/storage/` name one folder — and
 `src/domain/itemTypes.ts`; the tolerant reading rules it describes are
 `src/domain/noteFields.ts`, and the ranking step is `src/domain/writePlan.ts`.
 Tests: `test/domain/backlogReadme.test.ts` (what the document says, and that it says it
 from the configuration), `test/domain/readmeText.test.ts` (the escaping rules per place,
 so the document's own tests are about what it says rather than about backslashes),
+`test/domain/settings.test.ts` (the folder settings resolved to the vault's spelling, so
+the document and the writes cannot name different folders),
 `test/storage/readmeFile.test.ts` (created, unchanged, updated,
 refused), `test/commands/readme.test.ts` (the command end to end through a real view, and
 the registry).
