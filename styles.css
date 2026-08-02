@@ -1766,7 +1766,40 @@
 	border-radius: 0;
 }
 
-/* A point in time is not a span: equal stated ends render as the Gantt diamond. */
+/* An inference is a summary the view drew, not a plan somebody made. Outlined
+   rather than filled, so the two never read alike at a glance — and the border
+   inherits --pbl-bar-color, so a done subtree's inferred bar stays green. */
+.pbl-bar-inferred {
+	background: none;
+	border: 1px dashed var(--pbl-bar-color);
+}
+
+/* .pbl-bar-open-start.pbl-bar-open-end is a two-class compound (0,2,0), which
+   outranks the single-class .pbl-bar-inferred (0,1,0) regardless of source
+   order — a window clamp can clip both ends of an inferred bar at once (see
+   MAX_TIMELINE_MONTHS in domain/timeline.ts), and without this rule the
+   gradient would win back the fill. Match the compound's own specificity to
+   override it explicitly rather than reordering rules or reaching for
+   !important. */
+.pbl-bar-open-start.pbl-bar-open-end.pbl-bar-inferred {
+	background: none;
+}
+
+/* An outlined bar cannot say "open" with the gradient: `background: none` is
+   what makes it an outline at all, and it wins the equal-specificity tie
+   against .pbl-bar-open-*, so an inferred bar missing an end would draw as a
+   closed box. Say it the way an outline can — leave that side unclosed. This
+   is the ordinary case, not an edge one: a backlog that states target dates
+   and no start dates infers every parent's end and leaves every start open. */
+.pbl-bar-inferred.pbl-bar-open-start {
+	border-left: none;
+}
+
+.pbl-bar-inferred.pbl-bar-open-end {
+	border-right: none;
+}
+
+/* A point in time is not a span: an equal pair, stated or inferred, renders as the Gantt diamond. */
 .pbl-bar-milestone {
 	width: 12px;
 	height: 12px;

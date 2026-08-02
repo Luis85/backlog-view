@@ -115,6 +115,36 @@ describe('rendering', () => {
 		}
 	});
 
+	it('beats the double-clipped gradient on specificity, not on source order', () => {
+		// .pbl-bar-open-start.pbl-bar-open-end is a two-class compound selector —
+		// specificity (0,2,0) — which outranks the single-class .pbl-bar-inferred
+		// (0,1,0) no matter which rule is written later, unlike the equal-specificity
+		// pairs the hover-reveal test above checks by order. jsdom does not compute a
+		// cascade winner, so the only thing decidable here is that the override rule's
+		// OWN selector matches all three classes — (0,3,0), which beats the two-class
+		// gradient by construction rather than by position in the file.
+		const override = ruleAt('.pbl-bar-open-start.pbl-bar-open-end.pbl-bar-inferred', 'background: none;');
+		expect(override, 'a three-class rule is needed to beat the two-class gradient on specificity').toBeGreaterThan(
+			-1,
+		);
+	});
+
+	it('leaves an inferred bar unclosed at an end it has no date for', () => {
+		// The open-end cue is a background gradient, and `background: none` is what
+		// makes an inferred bar an outline — same specificity, so the outline wins and
+		// the fade is gone. An outline says "continues" by not closing that side, and
+		// each rule needs both classes (0,2,0) to beat .pbl-bar-open-* on its own.
+		// This is the ordinary case: a backlog stating targets and no starts infers
+		// every parent's end and leaves every start open.
+		for (const [side, edge] of [
+			['start', 'border-left: none;'],
+			['end', 'border-right: none;'],
+		]) {
+			const rule = ruleAt(`.pbl-bar-inferred.pbl-bar-open-${side}`, edge);
+			expect(rule, `an inferred bar open at its ${side} must not close that side`).toBeGreaterThan(-1);
+		}
+	});
+
 	it('renders the hierarchy with badges, depths and tree semantics', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

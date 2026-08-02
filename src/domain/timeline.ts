@@ -50,6 +50,33 @@ function utc(date: CivilDate): number {
 	return Date.UTC(date.year, date.month - 1, date.day);
 }
 
+/**
+ * The earlier of two optional dates — absence is not a bound, so a null end
+ * yields the other. Ties keep `a`, which is the accumulator at every call site
+ * and makes the fold stable.
+ */
+export function earliest(a: CivilDate | null, b: CivilDate | null): CivilDate | null {
+	if (a === null || b === null) return a ?? b;
+	return daysBetween(a, b) < 0 ? b : a;
+}
+
+/** The later of two optional dates, by the same rule as `earliest`. */
+export function latest(a: CivilDate | null, b: CivilDate | null): CivilDate | null {
+	if (a === null || b === null) return a ?? b;
+	return daysBetween(a, b) > 0 ? b : a;
+}
+
+/**
+ * True when both ends are stated and the target precedes the start. Such a pair
+ * is a typo to fix, never a span: `deriveBars` shelves the item that states one,
+ * and the rollup walk refuses it as evidence, because an inference standing in
+ * for a value that needs correcting is exactly what hides the correction. One
+ * statement of the rule, since it is asked in two layers.
+ */
+export function reversedSpan(start: CivilDate | null, target: CivilDate | null): boolean {
+	return start !== null && target !== null && daysBetween(start, target) < 0;
+}
+
 /** `2026-08-01` — the register's own date format, and the tooltip's. */
 export function formatCivil(date: CivilDate): string {
 	const pad = (n: number, width: number) => String(n).padStart(width, '0');
@@ -110,16 +137,17 @@ export function timelineWindow(spans: DateSpan[], today: CivilDate): TimelineWin
 /**
  * Where a span sits in the window, in whole days from its start. Ends are
  * inclusive — a one-day span is one day wide — and an end the note does not
- * state borrows the other, so a single date renders at the date it has. Equal
- * stated ends are the milestone case, a point in time rather than a span.
- * Reversed spans never reach here: they shelve as unreadable.
+ * state borrows the other, so a single date renders at the date it has. An
+ * equal pair, stated or inferred, is the milestone case, a point in time
+ * rather than a span. Reversed spans never reach here: they shelve as
+ * unreadable.
  */
 export interface BarGeometry {
 	/** First day of the bar, clamped into the window. */
 	startDay: number;
 	/** Days the bar covers inside the window, at least 1. */
 	spanDays: number;
-	/** True when the note states both ends and they are the same day. */
+	/** True when both ends land on the same day, whether stated or inferred. */
 	milestone: boolean;
 	/** True when that end runs past the window's edge and was clamped to it. */
 	clippedStart: boolean;

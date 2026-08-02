@@ -91,7 +91,10 @@ target that un-places, removing the key rather than blanking it, and it stays re
 while empty because a target that exists only when occupied is one nothing can reach;
 and a bucket creates in place, its value riding the same single creation write. The
 dated axis is still read-only — scheduling by drag, the bar moves, the lanes and the
-milestone type are design. Two decisions organize the epic: the axis is declared in the
+milestone type are design — but it now shows the tree rather than only its stated bars:
+a parent with no dates of its own spans its dated descendants, endpoint by endpoint,
+drawn as the inference it is and written nowhere. Two decisions organize the epic: the
+axis is declared in the
 view options, never guessed from property names and never derived from dates; and planned
 dates are different keys from the board's transition stamps, so a plan can never overwrite
 a record. Every note states the precedent it rests on, from a survey of the roadmap

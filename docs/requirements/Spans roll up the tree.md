@@ -2,11 +2,14 @@
 type: PBI
 parent: "[[The timeline]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
   - src/domain/model.ts
+  - src/domain/timeline.ts
+  - src/domain/roadmap.ts
+  - src/view/render/timeline.ts
 ---
 
 # Spans roll up the tree
@@ -105,9 +108,53 @@ it.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The gathering runs in the rollup walk in
-`src/domain/model.ts`, which already traverses through context rows without counting
-them — one walk, one statement of the invariant, and the span inherits it for free. The
-marker exclusion lands in the same place and is inherited the same way: whichever of these
-two notes ships second states nothing new, because both exceptions belong to the walk
-rather than to a quantity gathered in it.
+The gathering runs in `assignAll`, the same rollup walk in `src/domain/model.ts` that
+computes the progress counts, under the same `outsideFilter` gate: a context row's own
+dates contribute nothing, while the walk still traverses through it to the results
+below — one walk, one statement of the invariant, and the span inherits it for free.
+`earliest`/`latest` live in `src/domain/timeline.ts` beside the rest of the civil-date
+arithmetic, as the pickers where a null end is never a bound. The endpoint-by-endpoint
+merge is `inferSpan` in `src/domain/roadmap.ts`, beside the shelving it shares a
+decision with: a stated date always wins, an empty end fills from evidence of its own
+kind, an inference may extend a statement but never contradict it (evidence on the
+wrong side of a stated end is dropped and that end stays open), crossed evidence covers
+both known dates with both ends inferred, and a parent whose own pair is reversed still
+shelves with its reason rather than taking an inference. `src/view/render/timeline.ts`
+draws the result — the `pbl-bar-inferred` class (outlined, not filled) and " — inferred
+from children" in the bar's aria-label and tooltip.
+
+Driven in `test/domain/timeline.test.ts` (the date pickers),
+`test/domain/modelDateEvidence.test.ts` (the walk gathering `descendantStart`/
+`descendantTarget` by kind, never from the item itself), `test/domain/modelContextRows.test.ts`
+(the context-row exclusion), `test/domain/roadmap.test.ts` (`inferSpan`'s merge rules,
+including the crossed and reversed cases), and `test/view/roadmapFrame.test.ts` and
+`test/view/rendering.test.ts` (the inferred class and label reaching the DOM), with
+`test/helpers/vault.ts` carrying the fixture support the new cases share.
+
+**Not yet built: extension 1b's marker exclusion.** The `Milestone` type does not exist
+yet, so nothing excludes a hand-nested marker's date from an ancestor's inferred span.
+It lands in the same walk and is inherited the same way, with
+[[Milestones as their own type]] — that note's spec already says so.
+
+**Not yet built either: extension 2d's "both ends open".** Crossed evidence is meant to
+draw with both ends OPEN — the gradient fade of `pbl-bar-open-start` / `pbl-bar-open-end`.
+What shipped instead is a closed dashed bar: `inferredStart` and `inferredEnd` are both
+true, but no `pbl-bar-open-*` class joins them, so the ends are hard dashed edges rather
+than faded ones. This is a deliberate decision, not an oversight: the whole bar is
+already dashed, which says "not stated"; the gradient fade means "no date at this end at
+all", a different fact, and drawing both together for the crossed case would be two
+signals for one meaning.
+
+**Not yet built either: extension 2a's "faded where partly unknown".** A wholly inferred
+bar and a half-inferred one (one end stated, the other filled from below) both carry only
+`pbl-bar-inferred` — there is no second, fainter state distinguishing "partly unknown"
+from "wholly unknown". `src/view/render/timeline.ts` names this itself, in a `ponytail:`
+comment beside `barClasses`. Deliberate, for the same reason as 2d: an inferred end is
+uncertain by construction, so a second visual state needs a boolean nobody can see the
+difference of.
+
+**Not yet built either: the acceptance criterion that a context parent's inferred span
+describes its visible results only.** `deriveBars` in `src/domain/roadmap.ts` still routes
+every `outsideFilter` row to `roadmap.context` before a span is ever computed for it, so a
+context parent gets no bar at all, inferred or otherwise — it just stands beside the
+shelf, same as before spans rolled up.

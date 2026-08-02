@@ -213,6 +213,22 @@ export class FakeVault {
 		return file;
 	}
 
+	/**
+	 * Replace a file's frontmatter after `addFile`, as an out-of-band edit rather than
+	 * a `processFrontMatter` write — it does not append to `writeLog`. Keeps whatever
+	 * `parent` key `addFile`'s `parentLink` set up, so a caller editing only the dated
+	 * fields does not have to re-wire the parent link.
+	 */
+	setFrontmatter(path: string, frontmatter: Record<string, unknown>): void {
+		const existing = this.frontmatter.get(path) ?? {};
+		const fm = { ...frontmatter };
+		if ('parent' in existing && !('parent' in fm)) fm['parent'] = existing['parent'];
+		this.frontmatter.set(path, fm);
+		const cache = this.caches.get(path) ?? {};
+		cache.frontmatter = fm;
+		this.caches.set(path, cache);
+	}
+
 	/** Per-file property values served through the BasesEntry stand-ins (keyed by property id). */
 	entryValues = new Map<string, Record<string, unknown>>();
 
