@@ -144,6 +144,26 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('``up`link``');
 	});
 
+	it('documents the empty parent value, and what it means in folder mode', () => {
+		// The plugin writes an empty value to move an item to the top level, and folder
+		// mode reads an ABSENT key as "infer from the folder note" — so an outside editor
+		// deleting the key gets a different tree from the one the plugin would write.
+		const folderMode = backlogReadmeContent(settingsWith({ folderHierarchy: true }), []);
+		expect(folderMode).toContain('is not the same as no key at all');
+		expect(folderMode).toContain('an empty value pins the note to the top level');
+		expect(backlogReadmeContent(settingsWith({ folderHierarchy: false }), [])).toContain(
+			'Omitting the key entirely means the same thing here',
+		);
+	});
+
+	it('does not claim every note in the folder is a work item', () => {
+		// The scope paragraph further down says the opposite, and a reader acting on the
+		// opening line would treat a meeting note as backlog.
+		const content = backlogReadmeContent(settingsWith({ hierarchyOnly: true }), []);
+		expect(content).not.toContain('Every note here is one work item');
+		expect(content).toContain('notes that carry none of them stay ordinary notes');
+	});
+
 	it('says a type of the reader s own does not by itself enrol a parentless note', () => {
 		// pruneOutsideHierarchy seeds only on ALL_TYPES, so "declare a type" would send
 		// an outside editor to write a custom-typed root the view then drops.

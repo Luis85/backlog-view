@@ -152,7 +152,7 @@ function typeSection(): string[] {
 
 function fieldRows(settings: BacklogSettings): string[] {
 	const rows = [
-		`| ${cell(settings.parentKey)} | Every item except a root | A link to the parent note: ${code('"[[Note name]]"')}. Quote it, or YAML reads the brackets as a list |`,
+		`| ${cell(settings.parentKey)} | Every item except a root | A link to the parent note: ${code('"[[Note name]]"')}. Quote it, or YAML reads the brackets as a list. Present but empty means the top level |`,
 		`| ${cell(settings.orderKey)} | Every item | A number. The rank among the notes sharing a parent — see below |`,
 		`| ${cell(settings.typeKey)} | Every item | One of the type names above |`,
 	];
@@ -179,6 +179,16 @@ function propertySection(settings: BacklogSettings): string[] {
 			`alias (${code('"[[Note name|what it reads as]]"')}) and a YAML list whose first entry ` +
 			'is any of those all resolve to the same note. A link that resolves to nothing leaves ' +
 			'the item where it is rather than dropping it. Numbers may be written as strings.',
+		'',
+		settings.folderHierarchy
+			? `A key with **no value** — ${code(`${settings.parentKey}:`)} and nothing after it — is not ` +
+				'the same as no key at all, and in this view the difference decides the tree: an ' +
+				'empty value pins the note to the top level, while omitting the key lets the folder ' +
+				'note above it become the parent. That is also what this plugin writes when it moves ' +
+				'something to the top.'
+			: `A key with **no value** — ${code(`${settings.parentKey}:`)} and nothing after it — reads ` +
+				'as the top level, which is what this plugin writes when it moves something there. ' +
+				'Omitting the key entirely means the same thing here.',
 		'',
 		settings.hierarchyOnly
 			? 'A note in this folder joins the backlog when it declares one of the types **listed ' +
@@ -348,10 +358,12 @@ export function backlogReadmeContent(settings: BacklogSettings, observedStates: 
 			'',
 			'# This folder is a product backlog',
 			'',
-			'Every note here is one work item, and the hierarchy between them lives in ' +
-				'frontmatter rather than in folders. That is on purpose: the notes stay plain ' +
-				'markdown, so they can be read, written and reviewed in any editor, with or ' +
-				'without Obsidian and the Product Backlog view that generated this file.',
+			'A note here becomes a work item by carrying the properties below — the folder does ' +
+				'not make it one, and notes that carry none of them stay ordinary notes. The ' +
+				'hierarchy between the items lives in frontmatter rather than in folders, on ' +
+				'purpose: they stay plain markdown, so they can be read, written and reviewed in ' +
+				'any editor, with or without Obsidian and the Product Backlog view that generated ' +
+				'this file.',
 			'',
 			'This document is generated from that view\'s configuration, so the property names ' +
 				'below are the ones this backlog actually uses.',

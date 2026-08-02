@@ -120,6 +120,12 @@ the view options can rename.
   span, and a key containing a colon turns the example's frontmatter into a different
   mapping. Each value is fenced and escaped for the place it lands in, so the document a
   reader copies from is the document the configuration describes.
+- **3g — the reader wants to put an item at the top level.** The contract states the
+  **empty** parent value, not only the link-shaped one, because that is what this plugin
+  writes for a top-level item and because in folder mode the two differ: an empty value
+  pins the note where it is, while deleting the key hands it to the folder note above it.
+  A document that showed only links would have an outside editor delete the key and get a
+  different tree from the one the same action produces here.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when it carries the generated
