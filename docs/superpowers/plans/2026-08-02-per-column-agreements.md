@@ -504,10 +504,13 @@ write path imports `overBy` at all — the cheapest possible guarantee that a li
 refuses nothing.
 
 Driven by `test/domain/settings.test.ts`, `test/domain/viewOptions.test.ts`,
-`test/domain/board.test.ts`, `test/view/board.test.ts` and — for the guarantee —
-`test/view/columnAgreements.test.ts`, which drives every board write path against a
-column already over its limit.
+`test/domain/board.test.ts` and `test/view/board.test.ts`.
 ```
+
+**Do not name `test/view/columnAgreements.test.ts` here yet.** `docs-check.mjs` rule 4
+*errors* on a `src/` or `test/` path a requirement names that does not exist — it lists
+stale paths only for `tasks/`, `issues/` and `bugs/`. That file arrives in Task 5, so
+Task 8 is where both notes gain their reference to it.
 
 In `docs/requirements/Explicit policies on the column.md`, replace its `## Where it lives`:
 
@@ -521,9 +524,11 @@ column carries its own policy (`src/domain/board.ts`); the header's affordance a
 `buildColumnMenu` in `src/view/interactions/menu.ts`, opened by the header and by
 `src/view/interactions/keyboard.ts` on the selected column stop.
 
-Driven by `test/domain/viewOptions.test.ts`, `test/domain/board.test.ts` and
-`test/view/columnAgreements.test.ts`.
+Driven by `test/domain/viewOptions.test.ts` and `test/domain/board.test.ts`.
 ```
+
+Same rule as above: `test/view/columnAgreements.test.ts` is Task 8's to add, once it
+exists.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -1363,7 +1368,30 @@ into a column already over one, then checks the column still says it is over —
 move happening and the board reporting it are one criterion, not two.
 ```
 
-- [ ] **Step 2: Write the limitation Issue**
+- [ ] **Step 2: Name the new test file in the two use cases**
+
+Task 2 deliberately left `test/view/columnAgreements.test.ts` out of both notes, because
+`docs-check.mjs` rule 4 *errors* on a path a requirement names that does not exist. It
+exists now, and rule 7 is the other half of the same gate: every file under `test/` must
+be named by at least one note, so leaving it unnamed fails the check from the opposite
+direction.
+
+Append to `## Where it lives` in `docs/requirements/WIP limits.md`:
+
+```markdown
+The guarantee that a limit refuses nothing is driven by
+`test/view/columnAgreements.test.ts`, which puts the drop, the Alt+arrow and the menu
+each into a column already over its limit.
+```
+
+Append to `## Where it lives` in `docs/requirements/Explicit policies on the column.md`:
+
+```markdown
+The affordance, the menu and the keyboard path are driven by
+`test/view/columnAgreements.test.ts`.
+```
+
+- [ ] **Step 3: Write the limitation Issue**
 
 Create `docs/issues/A renamed state orphans its limit.md`:
 
@@ -1418,7 +1446,7 @@ the more annoying half; losing a limit at least announces itself the next time t
 column fills up.
 ```
 
-- [ ] **Step 3: Write the verification Issue**
+- [ ] **Step 4: Write the verification Issue**
 
 Create `docs/issues/Smoke test the column agreements.md`:
 
@@ -1475,7 +1503,7 @@ Run `npm run test-build`, open this repository as a vault, and open
 Not yet run.
 ```
 
-- [ ] **Step 4: Update the register's own summary**
+- [ ] **Step 5: Update the register's own summary**
 
 In `docs/README.md`, in the **Product Kanban** paragraph, after the sentence describing the third increment, add:
 
@@ -1492,17 +1520,17 @@ creation from a column will later share.
 
 Adjust the following sentence — the one listing what remains under the epic — to drop limits and policies from it.
 
-- [ ] **Step 5: Run the register check**
+- [ ] **Step 6: Run the register check**
 
 Run: `npm run docs`
 Expected: PASS. Every `[[wikilink]]` must resolve, every `src/` and `test/` path a requirement names must exist, no two siblings may share an `order`, and both new Issues must have a legal parent — a `PBI` may parent an `Issue`.
 
-- [ ] **Step 6: Run the full check**
+- [ ] **Step 7: Run the full check**
 
 Run: `npm run check`
 Expected: PASS — all five steps.
 
-- [ ] **Step 7: Commit and push**
+- [ ] **Step 8: Commit and push**
 
 ```bash
 git add docs
