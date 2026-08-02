@@ -208,7 +208,9 @@ the view options can rename.
   file with different line endings, so a refusal keyed on it would leave a view unable to
   refresh its own document after an ordinary rename. A false refusal is found by someone
   who was doing something else; being told what you replaced is found by reading the
-  notice. A base path is user data and an HTML comment carries neither `>` nor `--`, so
+  notice. What the notice names is read from the bytes the write actually replaced, not
+  from the ones read a moment earlier — with a third view in the race those are different
+  documents, and naming the wrong one is the failure this notice exists to prevent. A base path is user data and an HTML comment carries neither `>` nor `--`, so
   those are percent-escaped rather than dropped: two bases differing only in the
   characters the line cannot hold are two bases, and one marker for both restores exactly
   the silent replacement this extension exists to prevent. The escaping is reversible, so
@@ -251,7 +253,10 @@ the view options can rename.
   no frontmatter write happens on any note.
 - The generated file carries no `type` and no `parent`, so it cannot enrol itself into the
   backlog it documents.
-- A file at that path without the generated marker is never overwritten. One this plugin
+- A file at that path without the generated marker is never overwritten, and a line that
+  only *resembles* one is not a marker: both halves must be there and the interior must be
+  text the encoder would have produced, since a hand-written comment around a raw `>` is
+  somebody's own file. One this plugin
   did generate always can be — including after a rename, and after git has rewritten its
   line endings — and when the marker names another view, the notice says which.
 - The worked example claims only what a rank can mean: a number places an item relative to

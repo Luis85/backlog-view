@@ -69,6 +69,21 @@ describe('backlogReadmeContent', () => {
 		expect(readmeSource(`${readmeMarker('work/B.base › B')}  `)).toBe('work/B.base › B');
 	});
 
+	it('refuses an interior this module could not have written', () => {
+		// Both halves copied, and something in between that `encodeSource` never emits: a
+		// raw `>` or a run of hyphens. Such a line is somebody's own comment or a corrupted
+		// one, and answering "ours" hands the whole file to the writer.
+		const around = (interior: string): string =>
+			`${README_MARKER_PREFIX} from "${interior}". Rewritten in full whenever it is regenerated. -->`;
+		expect(readmeSource(around('a>b'))).toBeNull();
+		expect(readmeSource(around('a--b'))).toBeNull();
+		expect(readmeSource(around('a<b'))).toBeNull();
+		// What the encoder does produce still parses, including a lone hyphen and a
+		// literal percent escape the user typed.
+		expect(readmeSource(around('work/Product-Backlog.base › B'))).toBe('work/Product-Backlog.base › B');
+		expect(readmeSource(around('a%252Db'))).toBe('a%2Db');
+	});
+
 	it('explains every type in the vocabulary', () => {
 		const content = readme(settingsWith(), []);
 		for (const type of ALL_TYPES) expect(typeRow(content, type)).toContain(type);

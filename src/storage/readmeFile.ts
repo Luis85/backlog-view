@@ -81,8 +81,7 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 		// whole file to `modify` on the strength of an opening somebody could write in a
 		// comment of their own — and a half-written marker, from a truncated write or a
 		// bad merge, is exactly the file most worth not overwriting.
-		const previous = readmeSource(firstLine(current));
-		if (previous === null) return { outcome: 'foreign', path };
+		if (readmeSource(firstLine(current)) === null) return { outcome: 'foreign', path };
 		// Generated, but by whom. Two views may share a home folder and configure
 		// different property keys, and a folder holds one contract at a time — so the
 		// write goes through and the caller is told whose document it just replaced.
@@ -96,13 +95,20 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 		// the time the write lands. Sync, another Obsidian window or a second command can
 		// land in that gap. The callback re-asks the one question that matters if they did:
 		// still ours? Otherwise it hands the file back exactly as found.
-		let raced = false;
+		// An array rather than a nullable local: the callback runs synchronously, but
+		// narrowing after a closure assignment does not survive the type checker.
+		const replaced: (string | null)[] = [];
 		await app.vault.process(existing, (live) => {
-			raced = readmeSource(firstLine(live)) === null;
-			return raced ? live : content;
+			replaced.push(readmeSource(firstLine(live)));
+			return replaced[0] === null ? live : content;
 		});
-		if (raced) return { outcome: 'foreign', path };
-		return previous !== mine ? { outcome: 'replaced', path, previous } : { outcome: 'updated', path };
+		// Reported from the bytes actually replaced, not from the ones read a moment
+		// earlier: if the file that lost the race was a THIRD view's, `previous` names a
+		// document this write did not touch — and the notice exists precisely to say which
+		// one it did.
+		const owner = replaced[0] ?? null;
+		if (owner === null) return { outcome: 'foreign', path };
+		return owner !== mine ? { outcome: 'replaced', path, previous: owner } : { outcome: 'updated', path };
 	}
 	await ensureFolder(app, normalizedFolder(folder));
 	await app.vault.create(path, content);

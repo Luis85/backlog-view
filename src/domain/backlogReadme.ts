@@ -104,7 +104,15 @@ export function readmeMarker(source: string): string {
 export function readmeSource(line: string): string | null {
 	const trimmed = line.trimEnd();
 	if (!trimmed.startsWith(MARKER_OPEN) || !trimmed.endsWith(MARKER_CLOSE)) return null;
-	return decodeSource(trimmed.slice(MARKER_OPEN.length, trimmed.length - MARKER_CLOSE.length));
+	const encoded = trimmed.slice(MARKER_OPEN.length, trimmed.length - MARKER_CLOSE.length);
+	const source = decodeSource(encoded);
+	// The interior has to be something `encodeSource` would have PRODUCED, not merely
+	// something `decodeSource` can read: a raw `>` or `--` in there is a line this module
+	// cannot have written, so a hand-written comment that copies both halves around one
+	// is somebody's own file — and answering "ours" hands the whole of it to the writer.
+	// Re-encoding is the check because the mapping is injective: canonical text is its own
+	// round trip, and nothing else is.
+	return encodeSource(source) === encoded ? source : null;
 }
 
 /**

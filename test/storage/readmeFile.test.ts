@@ -138,6 +138,27 @@ describe('writeBacklogReadme', () => {
 		expect(file).toBeDefined();
 	});
 
+	it('names the document it actually replaced, not the one it read a moment earlier', async () => {
+		// A third view wins the same race: the write is still permitted — the file is one
+		// of ours — but the notice must name what this write took over, or it reports a
+		// document nobody touched.
+		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		const theirs = `${readmeMarker('third/Third.base › Planning')}\n\n# This folder is a product backlog\n`;
+		const process = vault.app.vault.process;
+		vault.app.vault.process = async (f: never, fn: (data: string) => string) => {
+			vault.contents.set('docs/README_PRODUCT_BACKLOG.md', theirs);
+			return process(f, fn);
+		};
+
+		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+
+		expect(result).toEqual({
+			outcome: 'replaced',
+			path: 'docs/README_PRODUCT_BACKLOG.md',
+			previous: 'third/Third.base › Planning',
+		});
+	});
+
 	it('refuses a file of the same name that it did not write', async () => {
 		const theirs = '# My own notes about this folder\n';
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);
