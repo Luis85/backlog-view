@@ -209,16 +209,6 @@ the view options can rename.
   grouping "does not name a parent" with "hangs from the folder note above" would have an
   outside editor expect a pinned root to be nested. Inference is stated as what it is: the
   answer for a note that **omits** the key.
-- **3p — a placement key is written by a drag, and a stamp key by the backfill.** Both
-  lists name every writer or they mislead: a card dropped into a bucket goes through
-  `performHorizonMove` like the menu does, and the backfill stubs the stamp keys exactly
-  as it stubs the planning ones. "Nothing writes them as a side effect of a move" is
-  scoped to a move in the **hierarchy** for the same reason.
-- **3q — a stamp key nothing can stamp is still a key the view creates.** The backfill
-  stubs every configured date key, so a row gated on "can a state reach this" left the
-  view creating one the document never mentioned. It is named whenever the key is
-  configured, as **yours to fill** where no state stamps it — while the rule above still
-  refuses to claim a state change writes it.
 - **3p — a planning key is written by creating a note, not by editing one.** The
   roadmap's buckets carry a **New** button, and the bucket's value rides the creation
   write (`createBacklogItem`), so a note can hold a horizon nobody ever placed. The list
@@ -254,6 +244,16 @@ the view options can rename.
   SHOW such a value are padded for the mirror-image reason: CommonMark strips one space
   from each end of a span that has one at both, so the same key drawn in the tables and
   written in the example would otherwise be two different keys in one document.
+- **3t — a placement key is written by a drag, and a stamp key by the backfill.** Both
+  lists name every writer or they mislead: a card dropped into a bucket goes through
+  `performHorizonMove` like the menu does, and the backfill stubs the stamp keys exactly
+  as it stubs the planning ones. "Nothing writes them as a side effect of a move" is
+  scoped to a move in the **hierarchy** for the same reason.
+- **3u — a stamp key nothing can stamp is still a key the view creates.** The backfill
+  stubs every configured date key, so a row gated on "can a state reach this" left the
+  view creating one the document never mentioned. It is named whenever the key is
+  configured, as **yours to fill** where no state stamps it — while the rule above still
+  refuses to claim a state change writes it.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses
