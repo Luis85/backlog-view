@@ -1096,18 +1096,22 @@ both use cases point at it. (Task 2 could not do this in advance: rule 4 *errors
 path a requirement names that does not exist yet. The file has to arrive first, in the
 same task.)
 
+**Each sentence must be true of the file as it stands at the end of this task**, not of
+the file the increment will eventually have. A register that asserts test coverage which
+does not exist is worse than one that is merely incomplete: the gate checks that the path
+exists, never that the prose is true of it, so nothing but care catches an aspirational
+claim. Tasks 6 and 7 each widen their own sentence as they make it true.
+
 Append to `## Where it lives` in `docs/requirements/WIP limits.md`:
 
 ```markdown
-The guarantee that a limit refuses nothing is driven by
-`test/view/columnAgreements.test.ts`, which puts the drop, the Alt+arrow and the menu
-each into a column already over its limit.
+`test/view/columnAgreements.test.ts` is where this use case's own checks live.
 ```
 
 Append to `## Where it lives` in `docs/requirements/Explicit policies on the column.md`:
 
 ```markdown
-The affordance, the menu and the keyboard path are driven by
+The affordance, its description and the column menu are driven by
 `test/view/columnAgreements.test.ts`.
 ```
 
@@ -1224,15 +1228,28 @@ and the tail of `handleBoardKeydown` gains the column case:
 Run: `npx vitest run test/view/columnAgreements.test.ts test/view/boardMoves.test.ts test/view/keyboard.test.ts`
 Expected: PASS. The last two are in the run because `isMenuKey` was extracted out of a path they already cover.
 
-- [ ] **Step 5: Run the full check**
+- [ ] **Step 5: Say so in the register**
+
+The keyboard path is true of `test/view/columnAgreements.test.ts` now, and was not
+before. Extend the sentence Task 5 added to `## Where it lives` in
+`docs/requirements/Explicit policies on the column.md` so it reads:
+
+```markdown
+The affordance, its description, the column menu and the keyboard path onto it are
+driven by `test/view/columnAgreements.test.ts`.
+```
+
+- [ ] **Step 6: Run the full check**
 
 Run: `npm run check`
-Expected: PASS.
+Expected: PASS — including fallow, which was reporting `showColumnMenuFor` as an unused
+class member because this task's branch is its only caller. If fallow still reports it,
+say so rather than adding the member to `usedClassMembers`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/view/interactions/keyboard.ts test/view/columnAgreements.test.ts
+git add src/view/interactions/keyboard.ts test/view/columnAgreements.test.ts "docs/requirements/Explicit policies on the column.md"
 git commit -m "Reach a column's policy from the keyboard"
 ```
 
@@ -1331,15 +1348,27 @@ method and the test is weaker than it reads.
 
 Then revert. This is the "watch it failing" step the project's own rule requires.
 
-- [ ] **Step 3: Run the full check**
+- [ ] **Step 3: Say so in the register**
+
+The guarantee now has its check, and did not before. Extend the sentence Task 5 added to
+`## Where it lives` in `docs/requirements/WIP limits.md` so it reads:
+
+```markdown
+`test/view/columnAgreements.test.ts` is where this use case's own checks live,
+including the guarantee that a limit refuses nothing: it puts the drop, the Alt+arrow
+and the menu each into a column already over its limit, then checks the column still
+says it is over.
+```
+
+- [ ] **Step 4: Run the full check**
 
 Run: `npm run check`
 Expected: PASS, with `git diff src/` showing the temporary refusal is gone.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add test/view/columnAgreements.test.ts
+git add test/view/columnAgreements.test.ts "docs/requirements/WIP limits.md"
 git commit -m "Check that no board write path is refused by a limit"
 ```
 
