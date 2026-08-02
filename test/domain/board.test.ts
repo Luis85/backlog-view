@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boardColumns, NO_STATE_COLLISION_LABEL, NO_STATE_LABEL } from '../../src/domain/board';
+import { boardColumns, BoardColumn, NO_STATE_COLLISION_LABEL, NO_STATE_LABEL, overBy } from '../../src/domain/board';
 import { buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
@@ -271,6 +271,73 @@ describe('computeStateWrites', () => {
 
 	it('plans nothing for a stateless card dropped on the no-state column', () => {
 		expect(computeStateWrites(item(null), null, settings, TODAY)).toEqual([]);
+	});
+});
+
+describe('a column carries its own agreement', () => {
+	const limited = {
+		...settings,
+		wipLimits: { active: 2 } as Record<string, number>,
+		columnPolicies: { active: 'Someone is actually working on it' } as Record<string, string>,
+	};
+
+	function board(vault: FakeVault, s = limited) {
+		const model = buildModel(vault.app, vault.entries(), s);
+		return boardColumns(model, s, everything);
+	}
+
+	function column(vault: FakeVault, label: string, s = limited) {
+		const col = board(vault, s).columns.find((c) => c.label === label);
+		if (!col) throw new Error(`column not found: ${label}`);
+		return col;
+	}
+
+	function vaultWith(...states: string[]): FakeVault {
+		const vault = new FakeVault();
+		states.forEach((status, i) => vault.addFile(`A${i}.md`, { frontmatter: { type: 'Epic', order: i, status } }));
+		return vault;
+	}
+
+	it('reads the limit and the policy off the settings, keyed by its own state', () => {
+		const col = column(vaultWith('Active'), 'Active');
+		expect(col.limit).toBe(2);
+		expect(col.policy).toBe('Someone is actually working on it');
+	});
+
+	it('leaves an unconfigured column with no limit and no policy', () => {
+		const col = column(vaultWith('New'), 'New');
+		expect(col.limit).toBeNull();
+		expect(col.policy).toBe('');
+	});
+
+	it('gives the no-state column neither, without reading a key off Object.prototype', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const col = column(vault, NO_STATE_LABEL);
+		expect(col.limit).toBeNull();
+		expect(col.policy).toBe('');
+	});
+
+	it('counts the overage from the FULL population, never the matches', () => {
+		// Extension 4a: a filter that made an over-limit column look under its limit
+		// would turn a search into a lie about the work.
+		const vault = vaultWith('Active', 'Active', 'Active');
+		const model = buildModel(vault.app, vault.entries(), limited);
+		const filtered = boardColumns(
+			model,
+			limited,
+			(item) => item.file.path === 'A0.md',
+			() => true,
+		);
+		const col = filtered.columns.find((c) => c.label === 'Active');
+		expect(col?.count).toBe(1);
+		expect(col?.fullCount).toBe(3);
+		expect(overBy(col as BoardColumn)).toBe(1);
+	});
+
+	it('is not over at the limit, and never over without one', () => {
+		expect(overBy(column(vaultWith('Active', 'Active'), 'Active'))).toBe(0);
+		expect(overBy(column(vaultWith('New', 'New', 'New'), 'New'))).toBe(0);
 	});
 });
 
