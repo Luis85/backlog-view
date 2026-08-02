@@ -6,12 +6,12 @@ status: Open
 priority: P1
 area: verification
 created: 2026-08-02
-source: PR #47 — six commits, zero workflow runs, while sibling branches ran normally
+source: PR #47 — one workflow run across eight commits, while sibling branches ran normally
 files:
   - .github/workflows/ci.yml
 ---
 
-# CI never ran on the branch that needed it
+# CI ran once in eight commits
 
 ## Why this exists
 
@@ -27,10 +27,17 @@ already-merged pull request. In the same window the same workflow ran normally f
 `claude/backlog-horizon-roadmap-props-7sxo7b` (05:28). The only check that reported was
 GitGuardian.
 
+It then ran, once, on the seventh commit — both legs, both green — and has not run on
+either commit since. **One run out of eight**, which is the more useful reading than
+either "it is broken" or "it started working": the trigger is intermittent, so a green
+PR page can mean the gate passed, or that it last passed several commits ago and has
+been silent since. Neither the checks tab nor the mergeability state distinguishes them.
+
 That is a worse failure than a red build and a quieter one. A red build is information;
 **a gate that does not run looks exactly like a gate with nothing to say**, and the PR
 page shows no missing check to notice. It was found by asking the Actions API which runs
-existed, not by reading the PR.
+existed, not by reading the PR — and the intermittency was found the same way, by
+checking again after a later push rather than by trusting the one green result.
 
 The consequence for #47 specifically: everything reported green was
 `npm run check` run locally, so the **Windows leg is unverified** — the one leg this
@@ -52,8 +59,9 @@ tree. Candidates, in the order worth eliminating:
 
 1. **Actions disabled or restricted for the actor** that pushed and opened the PR —
    pushes made with some tokens deliberately do not trigger workflows, to stop
-   workflows triggering themselves. That sibling branches *did* run weakens this but
-   does not eliminate it, since they may have been opened differently.
+   workflows triggering themselves. That sibling branches *did* run weakens this, and
+   the one run on this branch weakens it further: a blanket restriction would not fire
+   once.
 2. **A concurrency or spending limit** silently dropping runs. Visible in the Actions
    tab as skipped or queued runs; there were none.
 3. **A transient GitHub-side miss.** The cheapest thing to rule out: closing and
@@ -67,7 +75,8 @@ treats the symptom, and the first thing to learn is *which* of the three it was.
 ## Acceptance criteria
 
 - The cause is identified rather than worked around — a PR opened the same way runs
-  `ci.yml` on both platforms.
+  `ci.yml` on both platforms, **on every commit**. One run in eight is the symptom to
+  explain; a single green result is not evidence the cause is gone.
 - PR #47's tree is verified on Windows before it merges, by a run rather than by
   argument. Nothing in this repository can check that locally, which is the whole
   reason the leg exists.
@@ -81,5 +90,9 @@ treats the symptom, and the first thing to learn is *which* of the three it was.
 
 Open. Recorded rather than fixed because the lever is outside the tree, and because the
 finding worth keeping is not "CI was flaky" but **the failure mode**: a check that never
-ran presents as a check that had nothing to say. Every other verification note in this
-folder assumes the gate runs; this is the one that says to confirm it did.
+ran presents as a check that had nothing to say — and an intermittent one presents as a
+check that passed, several commits ago, with nothing on the page to say which.
+
+Every other verification note in this folder assumes the gate runs. This is the one that
+says to confirm it did — and the title is the reminder: not "CI is broken", which would
+have been noticed, but a rate nobody checks.
