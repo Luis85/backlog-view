@@ -1563,15 +1563,16 @@ Expected: PASS. Every `[[wikilink]]` must resolve, every `src/` and `test/` path
 Run: `npm run check`
 Expected: PASS — all five steps.
 
-- [ ] **Step 7: Commit and push**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add docs
 git commit -m "Close the column agreements, and record what a vault still has to answer"
-git push -u origin claude/next-increment-brainstorm-ev1n6l
 ```
 
-Then open a pull request for the branch, ready for review.
+**Do not push and do not open a pull request from this task.** The branch gets one
+whole-branch review after every task is complete, and pushing before it would publish work
+the review has not seen.
 
 ---
 

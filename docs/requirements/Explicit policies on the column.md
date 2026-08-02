@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Columns from the workflow]]"
 order: 50
-status: Open
+status: Done
 priority: P3
 created: 2026-08-01
+closed: 2026-08-02
 files:
   - src/domain/viewOptions.ts
 ---
@@ -33,8 +34,9 @@ difference between a board that shows states and one that shows the working agre
 
 1. The user writes a short policy for a configured state in the view options.
 2. That state's column header gains an affordance.
-3. Pointing at the affordance shows the text; the column's context menu — the one it
-   already offers for creation — carries it too, so it is reachable without a pointer.
+3. Pointing at the affordance shows the text; the column's context menu — introduced
+   by this use case, and the shell [[New cards in place]] later hangs creation off —
+   carries it too, so it is reachable without a pointer.
 4. Assistive technology hears the policy as the column's description.
 
 **Extensions**
@@ -54,8 +56,9 @@ difference between a board that shows states and one that shows the working agre
   one option per state the way the per-type folder options already are.
 - A column whose state has a policy shows an affordance on its header, and the text
   is reachable without new tab stops: by pointer on the affordance, and from the
-  column's context menu — the same menu the selected column already offers for
-  creation — with assistive technology hearing it as the column's description.
+  column's context menu — introduced by this use case, and the shell
+  [[New cards in place]] later hangs creation off — with assistive technology
+  hearing it as the column's description.
 - Policies render. Nothing enforces them — a card moves into a column whether or not
   its policy is met, exactly as the ladder guides and never refuses.
 - With no policies configured, headers are unchanged: no empty affordances.

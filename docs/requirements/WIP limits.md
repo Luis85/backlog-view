@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Columns from the workflow]]"
 order: 30
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
+closed: 2026-08-02
 files:
   - src/domain/settings.ts
   - src/domain/viewOptions.ts
