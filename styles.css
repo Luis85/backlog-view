@@ -1831,6 +1831,39 @@
 	opacity: 0.55;
 }
 
+/* A milestone's line runs the grid's full height at its date, behind the bars. Same
+   shape as .pbl-today and deliberately a lower layer: today stays on top because it is
+   the reader's own mark, and the two sit side by side inside one day cell. Cyan to match
+   the milestone badge (--color-cyan-rgb) — purple is already .pbl-lvl-1 (Feature). */
+.pbl-milestone-line {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-milestone-left);
+	width: 2px;
+	z-index: 0;
+	background-color: var(--color-cyan);
+	opacity: 0.55;
+}
+
+/* In the header band, so the name reads where the months do. Backed, because it sits
+   over the month labels; truncating, because horizontal space is what a pane runs out
+   of first and the full name is one hover away. */
+.pbl-milestone-label {
+	position: absolute;
+	top: 0;
+	left: var(--pbl-milestone-left);
+	max-width: 140px;
+	padding: var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--color-cyan);
+	background-color: var(--background-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+}
+
 /* ----- the shelf: what the axis cannot place, visible and counted */
 
 .pbl-shelf,

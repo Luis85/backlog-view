@@ -87,3 +87,8 @@ export function barFor(containerEl: HTMLElement, title: string): HTMLElement {
 	if (!row) throw new Error(`row not found: ${title}`);
 	return barOf(row);
 }
+
+/** Every milestone line's label text, in the order the header draws them. */
+export function labelTexts(containerEl: HTMLElement): string[] {
+	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label')).map((l) => l.textContent ?? '');
+}

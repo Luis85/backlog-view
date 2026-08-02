@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
+import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import {
@@ -10,6 +11,7 @@ import {
 	bucketCountOf,
 	bucketNames,
 	bucketsOf,
+	labelTexts,
 	rowFor,
 	shelfCountOf,
 	shelfIsEmptyStrip,
@@ -22,6 +24,8 @@ useViewHarness();
 
 const HORIZONS = { horizonProperty: 'note.horizon' };
 const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
+/** `todayCivil()` reads the same live clock, so this always names its date. */
+const TODAY_ISO = todayStamp();
 
 function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { base?: string } = {}) {
 	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
@@ -201,6 +205,88 @@ describe('a marker on the dated axis', () => {
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
+	});
+});
+
+describe('milestone lines', () => {
+	it('draws one line per readable milestone inside the window, each with a row of its own', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		vault.addFile('A story.md', {
+			frontmatter: { type: 'PBI', order: 20, start: '2026-09-01', due: '2026-10-01' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(1);
+		// Every line has a row: no milestone is visible only as a line.
+		expect(rowFor(containerEl, 'Ship 1.0')).not.toBeNull();
+		expect(labelTexts(containerEl)).toEqual(['Ship 1.0']);
+	});
+
+	it('draws one line naming both when two milestones share a date', () => {
+		// Two lines a pixel apart read as one and quietly misreport the count.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		vault.addFile('Contract ends.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-12-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(1);
+		expect(labelTexts(containerEl)).toEqual(['Ship 1.0 · Contract ends']);
+	});
+
+	it('draws no line for a milestone outside the window, and none for a context row', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2200-01-01' } });
+		vault.addFile('Excluded.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-12-01' } });
+		vault.addFile('Result.md', {
+			frontmatter: { type: 'Epic', order: 30, due: '2026-09-01' },
+			parentLink: 'Excluded',
+		});
+		const { view, containerEl } = roadmapView(vault, { ...DATES });
+
+		// A line across every result is derived FROM the results, and a context row is
+		// never a source of one: exclude 'Excluded' from the base's own results — its
+		// explicit parent link on Result pulls it back in as context, not a result.
+		(view as unknown as { data: unknown }).data = {
+			data: vault.entries().filter((e) => e.file.path !== 'Excluded.md'),
+		};
+		view.onDataUpdated();
+
+		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
+	});
+
+	it('draws a milestone dated today beside the today line, with today keeping its pixel', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: TODAY_ISO } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const px = (sel: string, prop: string) =>
+			Number.parseFloat(containerEl.querySelector<HTMLElement>(sel)?.style.getPropertyValue(prop) ?? '');
+		expect(px('.pbl-milestone-line', '--pbl-milestone-left')).toBe(px('.pbl-today', '--pbl-today-left') + 2);
+		expect(containerEl.querySelectorAll('.pbl-today')).toHaveLength(1);
+	});
+
+	it('hides a line exactly when its row hides', () => {
+		// The visibility rule travels with the item, not with the projection.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', {
+			frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01', status: 'Done' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', showCompleted: false });
+
+		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
+		expect(rowFor(containerEl, 'Ship 1.0')).toBeNull();
+	});
+
+	it('makes neither the line nor its label a second selection stop', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const line = containerEl.querySelector<HTMLElement>('.pbl-milestone-line');
+		expect(line?.getAttribute('aria-hidden')).toBe('true');
+		expect(line?.hasAttribute('tabindex')).toBe(false);
+		expect(containerEl.querySelector('.pbl-milestone-label')?.closest('[role="option"]')).toBeNull();
 	});
 });
 
