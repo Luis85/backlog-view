@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { writeBacklogReadmeCommand } from '../../src/commands/readme';
-import { README_MARKER } from '../../src/domain/backlogReadme';
+import { README_MARKER_PREFIX } from '../../src/domain/backlogReadme';
 import { defaultSettings } from '../../src/domain/settings';
 import { activeBacklogView, forgetBacklogView, rememberBacklogView } from '../../src/view/registry';
 import { FileView, Notice } from '../helpers/obsidian-mock';
@@ -70,7 +70,9 @@ describe('the write backlog readme command', () => {
 		await flush();
 
 		const content = vault.contents.get(README) ?? '';
-		expect(content.startsWith(README_MARKER)).toBe(true);
+		expect(content.startsWith(README_MARKER_PREFIX)).toBe(true);
+		// The marker names the view that wrote it, base and view name both.
+		expect(content).toContain(`from "${BASE} › Backlog"`);
 		expect(content).toContain('| `up` |');
 		// The state vocabulary is the one the view offers, which no setting holds: this
 		// base declares no workflow, so the value on the one note is what it has.
@@ -124,6 +126,24 @@ describe('the write backlog readme command', () => {
 
 		expect(vault.contents.get(README)).toBe('# Notes I keep here myself\n');
 		expect(Notice.messages.some((m) => m.includes('was not written by this plugin'))).toBe(true);
+	});
+
+	it('leaves the readme of another view over the same folder alone', async () => {
+		// Two bases, one home folder, different keys. Whichever view is run second must
+		// not quietly replace the first one's contract under a notice saying "Updated".
+		const vault = openBacklog();
+		writeBacklogReadmeCommand(vault.app as never, false);
+		await flush();
+		const first = vault.contents.get(README);
+		Notice.reset();
+
+		makeView(vault, { homeFolder: 'work', parentProperty: 'note.up' }, { base: 'work/Other.base' });
+		vault.activeView = vault.leaves[1].view;
+		writeBacklogReadmeCommand(vault.app as never, false);
+		await flush();
+
+		expect(vault.contents.get(README)).toBe(first);
+		expect(Notice.messages.some((m) => m.includes('documents a different view'))).toBe(true);
 	});
 
 	it('refuses while the configuration contradicts itself', async () => {

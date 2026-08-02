@@ -1,6 +1,6 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import { ensureFolder } from './frontmatter';
-import { README_FILE_NAME, README_MARKER } from '../domain/backlogReadme';
+import { README_FILE_NAME, README_MARKER_PREFIX } from '../domain/backlogReadme';
 
 /**
  * Writing the backlog README — the second vault write that is not a work item, and
@@ -16,7 +16,7 @@ import { README_FILE_NAME, README_MARKER } from '../domain/backlogReadme';
  * refusal — a file of this name without the marker was written by somebody else and
  * is never replaced.
  */
-export type ReadmeOutcome = 'created' | 'updated' | 'unchanged' | 'foreign';
+export type ReadmeOutcome = 'created' | 'updated' | 'unchanged' | 'foreign' | 'otherView';
 
 export interface ReadmeWriteResult {
 	outcome: ReadmeOutcome;
@@ -34,6 +34,9 @@ function normalizedFolder(folder: string): string {
 	const trimmed = folder.trim().replace(/^\/+|\/+$/g, '');
 	return trimmed ? normalizePath(trimmed) : '';
 }
+
+/** The marker line, which is the whole of a generated file's identity. */
+const firstLine = (text: string): string => text.slice(0, text.indexOf('\n') === -1 ? undefined : text.indexOf('\n'));
 
 /** Where the README for `folder` lives — normalized, and at the vault root for ''. */
 export function readmePath(folder: string): string {
@@ -55,7 +58,12 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 	if (existing instanceof TFile) {
 		const current = await app.vault.read(existing);
 		if (current === content) return { outcome: 'unchanged', path };
-		if (!current.startsWith(README_MARKER)) return { outcome: 'foreign', path };
+		if (!current.startsWith(README_MARKER_PREFIX)) return { outcome: 'foreign', path };
+		// Generated, but by whom. Two views may share a home folder and configure
+		// different property keys, and a folder cannot hold two contracts: replacing the
+		// other one would leave the folder documenting keys half its readers do not use,
+		// under a notice that said "Updated".
+		if (firstLine(current) !== firstLine(content)) return { outcome: 'otherView', path };
 		await app.vault.modify(existing, content);
 		return { outcome: 'updated', path };
 	}

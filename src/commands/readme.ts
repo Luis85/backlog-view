@@ -3,13 +3,16 @@ import { backlogReadmeContent } from '../domain/backlogReadme';
 import { configProblems } from '../domain/settings';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
+import { collapseStoreIdentity } from '../storage/collapseStore';
 import { ReadmeOutcome, writeBacklogReadme } from '../storage/readmeFile';
-import { activeBacklogView } from '../view/registry';
+import { activeBacklogView, LiveBacklogView } from '../view/registry';
 
 /** A view that has its first result set — the only kind a README may be generated from. */
 interface LoadedBacklogView {
 	settings: BacklogSettings;
 	model: BacklogModel;
+	/** Which view this is, for the marker: a folder cannot hold two contracts. */
+	source: string;
 }
 
 /**
@@ -29,7 +32,20 @@ function outcomeNotice(outcome: ReadmeOutcome, path: string): string {
 			return `"${path}" already matches this view. Nothing was written.`;
 		case 'foreign':
 			return `"${path}" was not written by this plugin, so it was left alone. Move it aside to generate one.`;
+		case 'otherView':
+			return `"${path}" documents a different view of this folder, so it was left alone. Two views cannot share one readme.`;
 	}
+}
+
+/**
+ * How the generated file names the view it came from: the base path and the view's own
+ * name, which is exactly the identity the collapse store already resolves for its own
+ * key. Falls back to the view name alone when the base cannot be resolved (an embedded
+ * base) — a weaker identity, but still one that tells two views apart.
+ */
+function viewSource(app: App, view: LiveBacklogView): string {
+	const identity = collapseStoreIdentity(app, view.viewEl, view.config.name);
+	return identity ? `${identity.base} › ${identity.view}` : view.config.name;
 }
 
 /**
@@ -45,7 +61,7 @@ async function writeReadmeForView(app: App, view: LoadedBacklogView): Promise<vo
 		new Notice(`Fix the view configuration first: ${problems.join('; ')}.`);
 		return;
 	}
-	const content = backlogReadmeContent(view.settings, view.model.observedStates);
+	const content = backlogReadmeContent(view.settings, view.model.observedStates, view.source);
 	try {
 		const { outcome, path } = await writeBacklogReadme(app, view.settings.homeFolder, content);
 		new Notice(outcomeNotice(outcome, path));
@@ -68,6 +84,8 @@ export function writeBacklogReadmeCommand(app: App, checking: boolean): boolean 
 	// one whose whole state vocabulary is missing. "Not loaded" is not an answer, so
 	// the command withholds itself for the moment it takes to become one.
 	if (view === null || view.model === null) return false;
-	if (!checking) void writeReadmeForView(app, { settings: view.settings, model: view.model });
+	if (!checking) {
+		void writeReadmeForView(app, { settings: view.settings, model: view.model, source: viewSource(app, view) });
+	}
 	return true;
 }

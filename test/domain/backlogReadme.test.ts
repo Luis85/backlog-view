@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backlogReadmeContent, README_MARKER, readmeStates } from '../../src/domain/backlogReadme';
+import { backlogReadmeContent, readmeMarker, README_MARKER_PREFIX, readmeStates } from '../../src/domain/backlogReadme';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
@@ -11,6 +11,11 @@ import { ORDER_SPACING } from '../../src/domain/writePlan';
 
 const settingsWith = (over: Partial<BacklogSettings> = {}): BacklogSettings => ({ ...defaultSettings(), ...over });
 
+/** Which view generated the document — the identity its marker carries. */
+const SOURCE = 'work/Product Backlog.base › Backlog';
+const readme = (settings: BacklogSettings, observed: string[] = []): string =>
+	backlogReadmeContent(settings, observed, SOURCE);
+
 /** The row of the type table for one type — the table is the contract, so rows are read whole. */
 function typeRow(content: string, typeName: string): string {
 	const row = content.split('\n').find((line) => line.startsWith(`| \`${typeName}\` |`));
@@ -20,16 +25,19 @@ function typeRow(content: string, typeName: string): string {
 
 describe('backlogReadmeContent', () => {
 	it('opens with the marker that identifies its own output', () => {
-		expect(backlogReadmeContent(settingsWith(), []).startsWith(README_MARKER)).toBe(true);
+		expect(readme(settingsWith()).startsWith(readmeMarker(SOURCE))).toBe(true);
+		// The line names the view, so a second view over the same folder cannot mistake
+		// this file for its own — and whoever opens it can see where it came from.
+		expect(readme(settingsWith())).toContain(`${README_MARKER_PREFIX} from "${SOURCE}"`);
 	});
 
 	it('explains every type in the vocabulary', () => {
-		const content = backlogReadmeContent(settingsWith(), []);
+		const content = readme(settingsWith(), []);
 		for (const type of ALL_TYPES) expect(typeRow(content, type)).toContain(type);
 	});
 
 	it('reads the type table off childTypeChoices, not off the ladder', () => {
-		const content = backlogReadmeContent(settingsWith(), []);
+		const content = readme(settingsWith(), []);
 		// The clamp at the deepest rung: a Task holds a Task, which the ladder read
 		// literally would deny — and the + button on the row would then contradict it.
 		expect(typeRow(content, 'Task')).toContain('| `Task` |');
@@ -40,7 +48,7 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('names the keys this view uses, not the shipped defaults', () => {
-		const content = backlogReadmeContent(settingsWith({ parentKey: 'up', orderKey: 'rank', typeKey: 'kind' }), []);
+		const content = readme(settingsWith({ parentKey: 'up', orderKey: 'rank', typeKey: 'kind' }), []);
 		expect(content).toContain('| `up` |');
 		expect(content).toContain('| `rank` |');
 		expect(content).toContain('| `kind` |');
@@ -51,22 +59,22 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('documents the tags property when one is configured, and not when it is off', () => {
-		expect(backlogReadmeContent(settingsWith({ tagsKey: 'labels' }), [])).toContain('| `labels` |');
-		expect(backlogReadmeContent(settingsWith({ tagsKey: '' }), [])).not.toContain('Tags, as a YAML list');
+		expect(readme(settingsWith({ tagsKey: 'labels' }), [])).toContain('| `labels` |');
+		expect(readme(settingsWith({ tagsKey: '' }), [])).not.toContain('Tags, as a YAML list');
 	});
 
 	it('states the ranking step the planner actually uses', () => {
-		expect(backlogReadmeContent(settingsWith(), [])).toContain(`${ORDER_SPACING} apart`);
+		expect(readme(settingsWith(), [])).toContain(`${ORDER_SPACING} apart`);
 	});
 
 	it('omits the sections whose properties are unset', () => {
-		const bare = backlogReadmeContent(settingsWith({ stateKey: '', horizonKey: '', startKey: '', targetKey: '' }), ['Doing']);
+		const bare = readme(settingsWith({ stateKey: '', horizonKey: '', startKey: '', targetKey: '' }), ['Doing']);
 		expect(bare).not.toContain('## Workflow states');
 		expect(bare).not.toContain('## Planning');
 	});
 
 	it('describes the horizon and date axes when they are configured', () => {
-		const content = backlogReadmeContent(
+		const content = readme(
 			settingsWith({ horizonKey: 'horizon', horizonValues: ['Now', 'Later'], startKey: 'start', targetKey: 'due' }),
 			[],
 		);
@@ -77,7 +85,7 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('names a done value the workflow does not offer, because writing it still finishes an item', () => {
-		const content = backlogReadmeContent(
+		const content = readme(
 			settingsWith({ stateKey: 'status', states: ['Todo', 'Active'], doneValues: ['Done', 'Closed'] }),
 			[],
 		);
@@ -86,7 +94,7 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('says nothing about unlisted done values when the workflow lists them all', () => {
-		const content = backlogReadmeContent(
+		const content = readme(
 			settingsWith({ stateKey: 'status', states: ['Todo', 'Done'], doneValues: ['Done'] }),
 			[],
 		);
@@ -94,7 +102,7 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('does not call the planning properties read-only, because the row menu writes them', () => {
-		const content = backlogReadmeContent(settingsWith({ startKey: 'start', targetKey: 'due' }), []);
+		const content = readme(settingsWith({ startKey: 'start', targetKey: 'due' }), []);
 		expect(content).toContain('Schedule and Unschedule');
 		expect(content).not.toContain('writes neither');
 	});
@@ -102,7 +110,7 @@ describe('backlogReadmeContent', () => {
 	it('describes the timeline when only one date property is configured', () => {
 		// Either key alone is a configured axis, so a view with one must not be told it
 		// has no roadmap at all.
-		const content = backlogReadmeContent(settingsWith({ startKey: '', targetKey: 'due', horizonKey: '' }), []);
+		const content = readme(settingsWith({ startKey: '', targetKey: 'due', horizonKey: '' }), []);
 		expect(content).toContain('## Planning');
 		expect(content).toContain('`due` is the planned date');
 		expect(content).toContain('drawn as a milestone');
@@ -111,66 +119,66 @@ describe('backlogReadmeContent', () => {
 	it('does not advertise a horizon property whose values have been cleared', () => {
 		// Same gate the menu and the planner use: a horizon key with no values is an axis
 		// nothing renders and nothing writes, so a row for it would name an inert key.
-		const inert = backlogReadmeContent(settingsWith({ horizonKey: 'horizon', horizonValues: [] }), []);
+		const inert = readme(settingsWith({ horizonKey: 'horizon', horizonValues: [] }), []);
 		expect(inert).not.toContain('`horizon`');
 		expect(inert).not.toContain('## Planning');
 
-		const live = backlogReadmeContent(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }), []);
+		const live = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }), []);
 		expect(live).toContain('| `horizon` | Optional |');
 	});
 
 	it('says an undeclared horizon gets its own bucket rather than being shelved', () => {
-		const content = backlogReadmeContent(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }), []);
+		const content = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }), []);
 		expect(content).toContain('it gets a horizon of its own, after the declared ones');
 	});
 
 	it('warns that a folder move is a hierarchy move in folder mode, and not otherwise', () => {
-		const folderMode = backlogReadmeContent(settingsWith({ folderHierarchy: true }), []);
+		const folderMode = readme(settingsWith({ folderHierarchy: true }), []);
 		expect(folderMode).toContain('moving such a note moves it in the tree');
 		expect(folderMode).toContain('the property always wins');
-		expect(backlogReadmeContent(settingsWith({ folderHierarchy: false }), [])).toContain(
+		expect(readme(settingsWith({ folderHierarchy: false }), [])).toContain(
 			'Folders are filing, not hierarchy',
 		);
 	});
 
 	it('marks a declared workflow as declared and observed values as observed', () => {
-		const declared = backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Todo', 'Done'] }), []);
+		const declared = readme(settingsWith({ stateKey: 'status', states: ['Todo', 'Done'] }), []);
 		expect(declared).toContain('| `Todo` | No | Declared in the view |');
 		expect(declared).toContain('| `Done` | Yes | Declared in the view |');
 
-		const observed = backlogReadmeContent(settingsWith({ stateKey: 'status', states: [] }), ['Doing']);
+		const observed = readme(settingsWith({ stateKey: 'status', states: [] }), ['Doing']);
 		expect(observed).toContain('| `Doing` | No | Observed in these notes |');
 	});
 
 	it('lists a stray value a declared workflow does not name, because the board still offers it', () => {
-		const content = backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Todo'] }), ['Blocked']);
+		const content = readme(settingsWith({ stateKey: 'status', states: ['Todo'] }), ['Blocked']);
 		expect(content).toContain('| `Blocked` | No | Observed in these notes |');
 	});
 
 	it('does not claim a done value nothing carries was observed', () => {
 		// With no workflow declared, the menus append a done value so finishing work is
 		// reachable. Calling that observed would be a statement about the vault, and false.
-		const content = backlogReadmeContent(settingsWith({ stateKey: 'status', states: [], doneValues: ['Done'] }), ['Doing']);
+		const content = readme(settingsWith({ stateKey: 'status', states: [], doneValues: ['Done'] }), ['Doing']);
 		expect(content).toContain('| `Doing` | No | Observed in these notes |');
 		expect(content).toContain('| `Done` | Yes | Offered so work can be marked done |');
 	});
 
 	it('quotes a state in the example when writing it bare would change what it means', () => {
-		const yamlHostile = backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Needs: review'] }), []);
+		const yamlHostile = readme(settingsWith({ stateKey: 'status', states: ['Needs: review'] }), []);
 		expect(yamlHostile).toContain('status: "Needs: review"');
 		// A plain value stays plain — the example is meant to read as the notes do.
-		expect(backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Todo'] }), [])).toContain('status: Todo');
+		expect(readme(settingsWith({ stateKey: 'status', states: ['Todo'] }), [])).toContain('status: Todo');
 	});
 
 	it('quotes a configured key in the example for the same reason', () => {
-		const content = backlogReadmeContent(settingsWith({ typeKey: 'kind: of' }), []);
+		const content = readme(settingsWith({ typeKey: 'kind: of' }), []);
 		expect(content).toContain('"kind: of": PBI');
 	});
 
 	it('keeps a value with markdown syntax inside the cell and the span it belongs to', () => {
 		// A pipe ends a table cell whatever it sits in, code span included; a backtick
 		// closes the span. Both are legal in a property name, a state and a folder.
-		const content = backlogReadmeContent(
+		const content = readme(
 			settingsWith({ stateKey: 'status', states: ['Waiting | external'], parentKey: 'up`link' }),
 			[],
 		);
@@ -182,10 +190,10 @@ describe('backlogReadmeContent', () => {
 		// The plugin writes an empty value to move an item to the top level, and folder
 		// mode reads an ABSENT key as "infer from the folder note" — so an outside editor
 		// deleting the key gets a different tree from the one the plugin would write.
-		const folderMode = backlogReadmeContent(settingsWith({ folderHierarchy: true }), []);
+		const folderMode = readme(settingsWith({ folderHierarchy: true }), []);
 		expect(folderMode).toContain('is not the same as no key at all');
 		expect(folderMode).toContain('an empty value pins the note to the top level');
-		expect(backlogReadmeContent(settingsWith({ folderHierarchy: false }), [])).toContain(
+		expect(readme(settingsWith({ folderHierarchy: false }), [])).toContain(
 			'Omitting the key entirely means the same thing here',
 		);
 	});
@@ -193,11 +201,11 @@ describe('backlogReadmeContent', () => {
 	it('opens with the scope this view is actually configured for', () => {
 		// Both directions: the opening and the scope paragraph further down are one claim
 		// said twice, and a reader acting on a wrong opening files a meeting note as backlog.
-		const scoped = backlogReadmeContent(settingsWith({ hierarchyOnly: true }), []);
+		const scoped = readme(settingsWith({ hierarchyOnly: true }), []);
 		expect(scoped).not.toContain('Every note here is one work item');
 		expect(scoped).toContain('notes that carry none of them stay ordinary notes');
 
-		const unscoped = backlogReadmeContent(settingsWith({ hierarchyOnly: false }), []);
+		const unscoped = readme(settingsWith({ hierarchyOnly: false }), []);
 		expect(unscoped).toContain('Every note this view returns is a work item');
 		expect(unscoped).not.toContain('stay ordinary notes');
 	});
@@ -206,7 +214,7 @@ describe('backlogReadmeContent', () => {
 		// A note enrolled by its parent alone is legal: a missing order sorts last and a
 		// missing type takes the position's level, so "every item" would have an outside
 		// editor add metadata the model never asked for.
-		const content = backlogReadmeContent(settingsWith(), []);
+		const content = readme(settingsWith(), []);
 		expect(content).toContain('Without one an item sorts after the ranked ones');
 		expect(content).toContain('Without one an item takes the level its position implies');
 		expect(content).toContain('or one of your own');
@@ -215,53 +223,53 @@ describe('backlogReadmeContent', () => {
 	it('says a type of the reader s own does not by itself enrol a parentless note', () => {
 		// pruneOutsideHierarchy seeds only on ALL_TYPES, so "declare a type" would send
 		// an outside editor to write a custom-typed root the view then drops.
-		const content = backlogReadmeContent(settingsWith({ hierarchyOnly: true }), []);
+		const content = readme(settingsWith({ hierarchyOnly: true }), []);
 		expect(content).toContain('declares one of the types **listed above**');
 		expect(content).toContain('does not by itself enrol a note that has no parent');
 	});
 
 	it('names the tie-break the model actually applies', () => {
-		const content = backlogReadmeContent(settingsWith(), []);
+		const content = readme(settingsWith(), []);
 		expect(content).toContain('the order the base itself returned them in');
 		expect(content).not.toContain('settled by file name');
 	});
 
 	it('follows the folder precedence this view actually applies', () => {
-		const flat = backlogReadmeContent(settingsWith({ homeFolder: 'work' }), []);
+		const flat = readme(settingsWith({ homeFolder: 'work' }), []);
 		expect(flat).not.toContain('folder note');
 		expect(flat).toContain('1. The folder configured for the type');
 
-		const folderMode = backlogReadmeContent(settingsWith({ folderHierarchy: true, homeFolder: 'work' }), []);
+		const folderMode = readme(settingsWith({ folderHierarchy: true, homeFolder: 'work' }), []);
 		expect(folderMode).toContain("1. Beside the parent's folder note");
 		expect(folderMode).toContain('Skipped when the parent is a note the view is showing from outside its own filter.');
 		expect(folderMode).toContain('2. The folder configured for the type');
 	});
 
 	it('says what a move does to the type, per this view s setting', () => {
-		expect(backlogReadmeContent(settingsWith({ autoType: false }), [])).toContain('never rewrites its type');
-		expect(backlogReadmeContent(settingsWith({ autoType: true }), [])).toContain('re-type what it moves');
+		expect(readme(settingsWith({ autoType: false }), [])).toContain('never rewrites its type');
+		expect(readme(settingsWith({ autoType: true }), [])).toContain('re-type what it moves');
 	});
 
 	it('does not say a declared type is redrawn at the level its position implies', () => {
 		// computeLevel keeps a declared ladder type's own level; only an untyped note takes
 		// the position's. Saying otherwise describes the badge wrong for exactly the
 		// mismatched hierarchy the sentence exists to explain.
-		const content = backlogReadmeContent(settingsWith(), []);
+		const content = readme(settingsWith(), []);
 		expect(content).toContain('a type you declare is the type you keep');
 		expect(content).toContain('Only a note with **no** type takes the level its position implies');
 	});
 
 	it('tells the reader how a note stays out of the backlog, per the scope setting', () => {
-		expect(backlogReadmeContent(settingsWith({ hierarchyOnly: true }), [])).toContain('Declare neither');
-		expect(backlogReadmeContent(settingsWith({ hierarchyOnly: false }), [])).toContain('treats **every** note it returns as an item');
+		expect(readme(settingsWith({ hierarchyOnly: true }), [])).toContain('Declare neither');
+		expect(readme(settingsWith({ hierarchyOnly: false }), [])).toContain('treats **every** note it returns as an item');
 	});
 
 	it('is byte-identical for the same inputs and different for different states', () => {
 		const settings = settingsWith({ stateKey: 'status' });
-		expect(backlogReadmeContent(settings, ['Doing'])).toBe(backlogReadmeContent(settings, ['Doing']));
+		expect(readme(settings, ['Doing'])).toBe(readme(settings, ['Doing']));
 		// Two bases with identical settings and different states in their notes must not
 		// document the same vocabulary — the states are not a setting.
-		expect(backlogReadmeContent(settings, ['Doing'])).not.toBe(backlogReadmeContent(settings, ['Blocked']));
+		expect(readme(settings, ['Doing'])).not.toBe(readme(settings, ['Blocked']));
 	});
 });
 

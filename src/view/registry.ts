@@ -12,9 +12,11 @@ import { BacklogSettings } from '../domain/settings';
  * and the workspace decides which of them is active.
  */
 
-/** What a command needs of a view: where it is drawn, and what it is showing. */
+/** What a command needs of a view: where it is drawn, what it is called, what it shows. */
 export interface LiveBacklogView {
 	readonly viewEl: HTMLElement;
+	/** The saved view's own name — half of the identity a generated file carries. */
+	readonly config: { name: string };
 	readonly settings: BacklogSettings;
 	readonly model: BacklogModel | null;
 }

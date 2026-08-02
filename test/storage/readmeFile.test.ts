@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { README_MARKER } from '../../src/domain/backlogReadme';
+import { readmeMarker } from '../../src/domain/backlogReadme';
 import { readmePath, writeBacklogReadme } from '../../src/storage/readmeFile';
 import { FakeVault } from '../helpers/vault';
 
@@ -9,7 +9,8 @@ import { FakeVault } from '../helpers/vault';
  * team keeping the vault in git actually notices.
  */
 
-const GENERATED = `${README_MARKER}\n\n# This folder is a product backlog\n`;
+const MARKER = readmeMarker('work/Backlog.base › Backlog');
+const GENERATED = `${MARKER}\n\n# This folder is a product backlog\n`;
 
 let vault: FakeVault;
 
@@ -62,6 +63,18 @@ describe('writeBacklogReadme', () => {
 
 		expect(result.outcome).toBe('updated');
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(updated);
+	});
+
+	it('refuses a readme another view of the same folder generated', async () => {
+		// Two views may share a home folder and configure different keys. Replacing the
+		// other one leaves the folder documenting keys half its readers do not use.
+		const theirs = `${readmeMarker('other/Other.base › Board')}\n\n# This folder is a product backlog\n`;
+		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);
+
+		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+
+		expect(result.outcome).toBe('otherView');
+		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
 	});
 
 	it('refuses a file of the same name that it did not write', async () => {
