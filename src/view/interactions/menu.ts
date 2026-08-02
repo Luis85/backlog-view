@@ -186,6 +186,15 @@ export function showStateMenu(host: BacklogViewHost, evt: MouseEvent, item: Back
 	showMenuForClick(menu, evt);
 }
 
+/** Horizon menu for the row's horizon chip — the same list the row menu's Set horizon offers. */
+export function showHorizonMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
+	evt.preventDefault();
+	evt.stopPropagation();
+	const menu = new Menu();
+	addHorizonItems(host, menu, item);
+	showMenuForClick(menu, evt);
+}
+
 /** Tag picker for the row's add-tag button. */
 export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
 	// Like the state chip: the click belongs to the control, not to the row it sits on.

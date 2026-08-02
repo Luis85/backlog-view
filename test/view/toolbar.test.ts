@@ -3,7 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
-import { fixture, flush, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import {
+	fixture,
+	flush,
+	key,
+	makeView,
+	noOptionalProperties,
+	refresh,
+	rowByTitle,
+	titlesOf,
+	treeOf,
+	useViewHarness,
+} from '../helpers/view';
 
 useViewHarness();
 
@@ -15,13 +26,88 @@ describe('toolbar backfill', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Untyped.md', { parentLink: 'Epic' });
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, noOptionalProperties());
 
 		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 
 		expect(vault.fm('Untyped.md')['type']).toBe('Feature');
 		expect(Notice.messages.some((m) => m.includes('updated 1 item'))).toBe(true);
+	});
+
+	it('binds the properties nobody has named, and creates them empty on every item', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// The loop this breaks: a property no note carries cannot be picked in the view
+		// options, and a property the options do not name cannot be written to a note.
+		const { containerEl, config, view } = makeView(vault);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(config.values).toMatchObject({
+			stateProperty: 'note.status',
+			startedDateProperty: 'note.started',
+			finishedDateProperty: 'note.finished',
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+		// Every one of them on the note, empty: the features are usable and nothing was
+		// decided for the user — no state, no horizon, no dates.
+		expect(vault.fm('Epic.md')).toEqual({
+			type: 'Epic',
+			order: 10,
+			status: '',
+			started: '',
+			finished: '',
+			horizon: '',
+			start: '',
+			due: '',
+		});
+		expect(view.settings.stateKey).toBe('status');
+		expect(Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due'))).toBe(
+			true,
+		);
+	});
+
+	it('binds nothing a second time, and nothing the user cleared', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl, config, view } = makeView(vault, { horizonProperty: '' });
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		const afterFirst = config.setCalls.length;
+		// Nothing refreshes on its own in this harness, and the second press has to be
+		// planned against what the first one wrote.
+		refresh(view, vault);
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// A cleared property is a decision this action must not overrule, and a second
+		// press has nothing left to bind or to fill.
+		expect(config.values['horizonProperty']).toBe('');
+		expect(vault.fm('Epic.md')['horizon']).toBeUndefined();
+		expect(config.setCalls).toHaveLength(afterFirst);
+		expect(Notice.messages.at(-1)).toBe('All items already have the properties this view writes.');
+	});
+
+	it('never blanks a value written since the plan was made', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Later.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const { containerEl } = makeView(vault);
+		// The row that planned this can be a refresh behind the note, so presence is
+		// asked of the live note at the write boundary rather than trusted from the plan.
+		vault.afterWrite = (path) => {
+			if (path === 'Epic.md') vault.fm('Later.md')['status'] = 'Active';
+		};
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(vault.fm('Later.md')['status']).toBe('Active');
 	});
 
 	it('creates the configured placement keys empty, moving nothing on the roadmap', async () => {
@@ -48,7 +134,7 @@ describe('toolbar backfill', () => {
 	it('says so when every property this view writes is already there', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, noOptionalProperties());
 
 		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
@@ -57,11 +143,27 @@ describe('toolbar backfill', () => {
 		expect(Notice.messages.some((m) => m.includes('already have the properties'))).toBe(true);
 	});
 
+	it('claims nothing for a batch that failed partway', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Untyped.md', { parentLink: 'Epic' });
+		vault.failWrites.add('Untyped.md');
+		const { containerEl } = makeView(vault, noOptionalProperties());
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// The failure has already reported itself; a count on top of it would claim
+		// the batch landed.
+		expect(Notice.messages.some((m) => m.includes('updated'))).toBe(false);
+		expect(Notice.messages.some((m) => m.includes('Failed to update'))).toBe(true);
+	});
+
 	it('does not claim success when the backfill is blocked', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Untyped.md', { parentLink: 'Epic' });
-		const { containerEl } = makeView(vault, { orderProperty: 'note.parent' });
+		const { containerEl, config } = makeView(vault, { orderProperty: 'note.parent' });
 
 		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
@@ -69,6 +171,9 @@ describe('toolbar backfill', () => {
 		expect(vault.writeLog).toHaveLength(0);
 		expect(Notice.messages.some((m) => m.includes('updated'))).toBe(false);
 		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+		// And the options are left alone too: binding properties into a view whose keys
+		// already collide would change the configuration and then refuse every write.
+		expect(config.setCalls).toEqual([]);
 	});
 });
 
@@ -322,7 +427,7 @@ describe('long operations stay legible and non-blocking', () => {
 
 	it('rebuilds once after a batch, not once per file it writes', async () => {
 		const vault = backfillFixture();
-		const { containerEl, view } = makeView(vault);
+		const { containerEl, view } = makeView(vault, noOptionalProperties());
 		let renders = 0;
 		const real = view.render.bind(view);
 		(view as unknown as { render: () => void }).render = () => {
@@ -344,7 +449,7 @@ describe('long operations stay legible and non-blocking', () => {
 
 	it('withholds the backfill command while a batch is already running', async () => {
 		const vault = backfillFixture();
-		const { containerEl } = makeView(vault);
+		const { containerEl } = makeView(vault, noOptionalProperties());
 		const initBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-write-ctl');
 		const seen: boolean[] = [];
 		onEachWrite(vault, () => seen.push(initBtn?.disabled ?? false));

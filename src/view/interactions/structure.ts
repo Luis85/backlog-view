@@ -3,6 +3,7 @@ import { reorderableGroup } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { DropTarget } from '../../domain/dropTargets';
+import { configProblems } from '../../domain/settings';
 import { computeInitWrites } from '../../domain/writePlan';
 
 /**
@@ -102,22 +103,40 @@ export function indent(host: BacklogViewHost, item: BacklogItem): void {
 }
 
 /**
- * Backfill the properties this view writes — type, order, and the roadmap's
- * placement keys where an axis is configured — across the tree, without overwriting
- * anything that already has a value.
+ * Set this view's properties up: bind the suggested key for every optional property
+ * the options do not name yet, then backfill the properties this view writes — type,
+ * order, and an empty key for each optional property a note lacks — across the tree,
+ * without overwriting anything that already has a value.
+ *
+ * The two halves are one action because neither is any use alone. A key nothing
+ * names cannot be created on a note, and a property no note carries is one Obsidian's
+ * own picker cannot offer — which is the loop this button exists to break: the
+ * features that need a property to work were unreachable without hand-editing a note
+ * first, and then binding it by hand as well.
  */
 export async function runInit(host: BacklogViewHost): Promise<void> {
+	// The config gate covers the frontmatter batch below, and it has to cover the
+	// options this action writes too: binding properties into a view whose keys
+	// already collide would change the configuration and then refuse every write.
+	const problems = configProblems(host.settings);
+	if (problems.length > 0) {
+		new Notice(`Fix the view options first: ${problems[0]}`);
+		return;
+	}
+	// Binding first: an unnamed property has no key for the backfill to fill in, and
+	// the plan below is made against what this adopts.
+	const adopted = host.adoptDefaultProperties();
 	const model = host.model;
 	if (!model) return;
 	const writes = computeInitWrites(model, host.settings);
-	if (writes.length === 0) {
-		new Notice('All items already have the properties this view writes.');
-		return;
-	}
 	// applySafely reports its own notices when blocked or failing — only claim
-	// success when the whole batch actually went through.
-	const applied = await host.applySafely(writes);
-	if (applied) {
-		new Notice(`Product Backlog: updated ${writes.length} item${writes.length === 1 ? '' : 's'}.`);
-	}
+	// success for the writes when the whole batch actually went through.
+	const applied = writes.length > 0 && (await host.applySafely(writes));
+	const done: string[] = [];
+	if (adopted.length > 0) done.push(`set up ${adopted.map((property) => property.suggested).join(', ')}`);
+	if (applied) done.push(`updated ${writes.length} item${writes.length === 1 ? '' : 's'}`);
+	if (done.length > 0) new Notice(`Product Backlog: ${done.join(' and ')}.`);
+	// Nothing bound and nothing to write is the one case with no outcome to report;
+	// a failed batch has already reported itself.
+	else if (writes.length === 0) new Notice('All items already have the properties this view writes.');
 }

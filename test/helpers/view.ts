@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { ProductBacklogView } from '../../src/view/backlogView';
+import { OPTIONAL_PROPERTIES } from '../../src/domain/settings';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig } from './vault';
 import { FileView, Menu, Modal, Notice } from './obsidian-mock';
@@ -64,6 +65,19 @@ export function makeView(
 	view.onDataUpdated();
 	if (!collapsed) expandAll(containerEl);
 	return { view, config, containerEl };
+}
+
+/**
+ * View options with every optional property explicitly CLEARED, merged over whatever
+ * the test sets itself. A view built from `{}` has none of them named, so the backfill
+ * would bind all six and stub a key on every note — which is the point of that action
+ * and pure noise in a test about anything else. Clearing is how a user says "not this
+ * one", so a suite that says it here is describing a settled view, not disabling a rule.
+ */
+export function noOptionalProperties(values: Record<string, unknown> = {}): Record<string, unknown> {
+	const cleared: Record<string, unknown> = {};
+	for (const property of OPTIONAL_PROPERTIES) cleared[property.option] = '';
+	return { ...cleared, ...values };
 }
 
 export function expandAll(containerEl: HTMLElement): void {

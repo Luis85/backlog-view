@@ -1,6 +1,6 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { hasTag, normalizeTag, readString, readTags } from '../domain/noteFields';
-import { AXIS_FIELDS, axisKeyFor, BacklogSettings, isDoneValue, vaultFolder } from '../domain/settings';
+import { AXIS_FIELDS, BacklogSettings, isDoneValue, OptionalField, optionalKeyFor, vaultFolder } from '../domain/settings';
 import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
 /**
@@ -109,6 +109,14 @@ function applyInto(
 		if (value === null) delete fm[key];
 		else setOwn(fm, key, value);
 	}
+	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
+	// here rather than trusted from the plan for the reason the tag delta and the start
+	// stamp are: the row that planned this can be a refresh behind the note, and a value
+	// written since — by hand, by another view, by a write earlier in this same batch —
+	// would be blanked by a stub that believed the plan.
+	for (const key of stubKeys(settings, write.stubs)) {
+		if (!rawValueOf(fm, key).present) setOwn(fm, key, '');
+	}
 	const applied =
 		write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
 	// The stored delta is the one that UNDOES what was applied.
@@ -143,7 +151,20 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.startedDate !== undefined && settings.startedDateKey) keys.push(settings.startedDateKey);
 	if (write.finish !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
 	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
+	for (const key of stubKeys(settings, write.stubs)) keys.push(key);
 	return keys;
+}
+
+/**
+ * The configured keys a write's stubs name. Unconfigured fields drop out here, which
+ * is the state key's rule applied to the one write that creates keys rather than
+ * setting them: never a key no property names. Applying and capturing read this same
+ * list, exactly as they do `axisEntries` — a key written but not captured would be a
+ * change no undo could reach.
+ */
+function stubKeys(settings: BacklogSettings, stubs?: OptionalField[]): string[] {
+	if (!stubs) return [];
+	return stubs.map((field) => optionalKeyFor(settings, field)).filter((key) => key !== '');
 }
 
 /**
@@ -248,7 +269,7 @@ function axisEntries(settings: BacklogSettings, axis?: AxisWrite): { key: string
 	if (!axis) return [];
 	const entries: { key: string; value: string | null }[] = [];
 	for (const field of AXIS_FIELDS) {
-		const key = axisKeyFor(settings, field);
+		const key = optionalKeyFor(settings, field);
 		const value = axis[field];
 		if (key !== '' && value !== undefined) entries.push({ key, value });
 	}

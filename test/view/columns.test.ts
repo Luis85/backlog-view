@@ -116,6 +116,78 @@ describe('property columns', () => {
 		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
 	});
 
+	it('gives the horizon its own column, between the properties and the state', () => {
+		const vault = new FakeVault();
+		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		vault.entryValues.set('Placed.md', {
+			'note.horizon': { toString: () => 'Now' },
+			'note.points': { toString: () => '5' },
+		});
+		const { containerEl, config, view } = makeView(vault, {
+			horizonProperty: 'note.horizon',
+			stateProperty: 'note.status',
+		});
+		// The horizon property is among the visible ones — the chip replaces its cell,
+		// exactly as the state chip does, so the value is never shown twice.
+		config.order = ['note.horizon', 'note.points'];
+		view.onDataUpdated();
+
+		const header = treeOf(containerEl).querySelector('.pbl-cols');
+		expect(Array.from(header?.querySelectorAll('.pbl-col-label') ?? []).map((el) => el.textContent)).toEqual([
+			'points',
+			'horizon',
+			'status',
+			'Progress',
+		]);
+		const row = rowByTitle(containerEl, 'Placed');
+		expect(Array.from(row.querySelectorAll('.pbl-prop-value')).map((el) => el.textContent)).toEqual(['5']);
+		expect(row.querySelector('.pbl-horizon-col .pbl-state-text')?.textContent).toBe('Now');
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-horizon-col')).toBe('116px');
+	});
+
+	it('drops the horizon column before the state chip, and budgets for it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		const { containerEl, view } = makeView(vault, {
+			horizonProperty: 'note.horizon',
+			stateProperty: 'note.status',
+		});
+		const tree = treeOf(containerEl);
+		const viewEl = containerEl.querySelector('.pbl-view');
+		const paneWidth = (px: number) => {
+			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
+			view.onDataUpdated();
+		};
+
+		paneWidth(700);
+		expect(viewEl?.classList.contains('pbl-hide-horizon')).toBe(false);
+
+		// A column the budget did not account for would be one that overflows instead
+		// of dropping: the state chip survives longest, the placement goes first.
+		paneWidth(450);
+		expect(viewEl?.classList.contains('pbl-hide-horizon')).toBe(true);
+		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(false);
+
+		paneWidth(400);
+		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(true);
+	});
+
+	it('has no horizon column while the bucket axis is unconfigured', () => {
+		// A horizon property with no declared values is the axis the roadmap declines
+		// to draw — and a chip whose menu could set nothing is the same lie.
+		const vault = new FakeVault();
+		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		vault.entryValues.set('Placed.md', { 'note.horizon': { toString: () => 'Now' } });
+		const { containerEl, config, view } = makeView(vault, { horizonProperty: 'note.horizon', horizonValues: '' });
+		config.order = ['note.horizon'];
+		view.onDataUpdated();
+
+		expect(containerEl.querySelector('.pbl-horizon-col')).toBeNull();
+		// And the property goes back to being an ordinary column, since nothing else
+		// is showing it now.
+		expect(rowByTitle(containerEl, 'Placed').querySelector('.pbl-prop-value')?.textContent).toBe('Now');
+	});
+
 	it('has no header when no properties are shown', () => {
 		const { containerEl } = makeView(fixture(), { stateProperty: 'note.status' });
 		expect(containerEl.querySelector('.pbl-cols')).toBeNull();

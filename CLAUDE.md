@@ -32,8 +32,8 @@ gate: `test/docs/checkerAccepts.test.ts` and `test/docs/checkerRejects.test.ts` 
 planted trees in both directions, so a rule quietly lost fails a test, and a legal form it
 starts refusing does too — the direction that blocks a contributor rather than letting one
 through. Obsidian itself
-cannot run here — the jsdom test harness below is the substitute; say so honestly when a
-change still needs a live-vault smoke test.
+cannot run here — the jsdom test harness ([`test/CLAUDE.md`](test/CLAUDE.md)) is the
+substitute; say so honestly when a change still needs a live-vault smoke test.
 
 `npm run test-build` is the handover for exactly those cases: it bundles into
 `.obsidian/plugins/<id>/` in the repository root (gitignored), so the human can open
@@ -59,7 +59,7 @@ mirrors the same directories.
 | --- | --- | --- |
 | `src/main.ts` | Registers the view via `registerBasesView`, plus the command | — |
 | **`domain/`** | **The backlog itself. Reads the vault, never writes it; never touches the DOM.** | |
-| `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation | node tests |
+| `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation, the optional-property table every layer reads a key through | node tests |
 | `domain/viewOptions.ts` | The declarative Bases view-options schema (its `key`s are persisted user data) | node tests |
 | `domain/itemTypes.ts` | The type vocabulary: the level ladder, and the extra types that sit beside it | node tests |
 | `domain/noteFields.ts` | Reading a work item's fields off a note: wikilink/bare/alias/list parents, tolerant numbers | node tests |
@@ -90,18 +90,18 @@ mirrors the same directories.
 | `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages — and the card body every projection shares | jsdom tests |
 | `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory — and, on the horizon axis, the drop targets and the per-bucket New | jsdom tests |
 | `view/render/timeline.ts` | The dated grid: month header, bars and milestones with exact-date tooltips, the today line | jsdom tests |
-| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the roadmap's no-axis guidance | jsdom tests |
-| `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
+| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the board's and roadmap's unconfigured guidance and the one-press setup beside it | jsdom tests |
+| `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, the state and horizon chips, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/cardDrag.ts` | The card drag both projections share: Pragmatic wiring, drop targets that take their own plan, announcements (ADR 0018) | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
-| `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
+| `view/interactions/structure.ts` | Move/indent/outdent, and the setup action (bind the missing properties, then backfill) | jsdom + node |
 | `view/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
 | `view/interactions/plan.ts` | The roadmap's placement writes from a row: set/clear horizon, schedule, unschedule | jsdom tests |
 | `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
 | `view/interactions/undo.ts` | The undo replay: the slot, the partial-failure remainder, and `UndoRecovery` | jsdom tests |
-| `src/ui/prompts.ts` | New-item, folder and schedule prompts (+ folder suggest) | jsdom tests |
+| `src/ui/prompts.ts` | New-item, folder and schedule prompts (native date fields + folder suggest) | jsdom tests |
 | `src/ui/valueSuggest.ts` | Shared `AbstractInputSuggest` base the folder and tag suggesters extend | jsdom tests |
 | `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
 | `src/commands/readme.ts` | "Write backlog readme" command: the config gate, the outcomes, the active-view check | jsdom tests |
@@ -120,28 +120,10 @@ depend on the effectful one.
 
 ## Testing
 
-- `test/helpers/obsidian-mock.ts` — runtime stand-in for the `obsidian` module (aliased in
-  `vitest.config.mts`). Extend it when new obsidian API surface is used; keep it minimal.
-- `test/helpers/dom.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
-  `addClass`, `setCssProps`, …) for jsdom files. Call `installObsidianDom()` at module top.
-- `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
-  recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
-  `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
-- `test/helpers/view.ts` — the view harness every `test/view/*.test.ts` file shares:
-  `makeView`, `refresh`, `fixture`, the row/tree accessors, `drag`, `key`, `stubRect`,
-  `flush`, `submitPrompt`, and `useViewHarness()` for the per-test reset. Call
-  `useViewHarness()` at the top of the file; the helper installs no hooks by itself.
-- `test/helpers/register.ts` — a whole miniature repository (`docs/`, `src/`, `test/`)
-  written to a throwaway directory and handed to the REAL `docs-check.mjs` as a subprocess.
-  The gate is a script — top-level await, paths relative to the working directory,
-  `process.exit` for its verdict — so it is run the way CI runs it rather than refactored
-  into something importable; a seam built for the test is the thing that would get tested.
-  `baseRegister()` is one valid tree and every case is a single delta against it, so a
-  failure names a rule rather than a document.
-- View tests (`test/view/*.test.ts`, one file per subject) drive REAL interactions: dispatch
-  `dragstart`/`dragover`/`drop` (stub `getBoundingClientRect` for drop zones — jsdom returns
-  zeros, and `dataTransfer` is absent unless the test supplies one), `keydown`, `click`,
-  `contextmenu` (grab the menu via `Menu.lastShown`). Async writes need `await flush()`.
+The harness itself — the helpers, what a view test drives, and the limits of the jsdom
+substitute — lives in [`test/CLAUDE.md`](test/CLAUDE.md), loaded when you are working
+there. What stays here binds while you are editing `src/`:
+
 - `test/**` has its own lint budget (`max-lines: 450`), because the one suite without a cap
   is the one that grows: split by subject before a file becomes the place tests hide. The
   Obsidian ruleset deliberately stops at `src/` — it is type-aware, and the test doubles
@@ -152,16 +134,6 @@ depend on the effectful one.
   broke, so a confident paragraph is evidence of intent and of nothing else — see
   `docs/issues/A comment that states a rule is not a check.md`. Twice, watching the test
   fail was what showed it asserted less than it read as.
-- Known harness limits: nothing refreshes on its own — a write updates the vault and no
-  `onDataUpdated` follows, so a test that wants to see the result RE-RENDERED calls
-  `refresh(view, vault)` (or sets `vault.afterWrite`, which is how a Bases update is
-  interleaved with a batch). The model it rebuilds does see the write: `addFile` gives
-  the metadata cache the same frontmatter object `processFrontMatter` mutates — verified
-  2026-08-02, after this line claimed for months that the caches were static and cost a
-  legitimate test that was deleted rather than driven. A note added with NO frontmatter
-  is the real exception: the cache never gets an object for it, so writes to it stay
-  invisible to the model. `entry.getValue()` returns null, so property chips render empty
-  in tests.
 
 ## Invariants that bite
 
@@ -231,6 +203,16 @@ planned by `domain/writePlan.ts`, which touches nothing, and applied by
 `storage/frontmatter.ts`, which is the only module that may — and which captures each
 write's inverse as it lands, so the last effective batch can always be taken back
 (`applyRestores`, compare-and-swap per key).
+
+One action also writes the **`.base` itself**: `runInit` (the toolbar's ✨, and the
+board's and roadmap's unconfigured empty states) binds this view's suggested key for
+every optional property nobody has named, and then backfills those keys onto the notes.
+The two halves are one action because neither works alone — Obsidian's picker offers
+the properties a vault HAS, so a property no note carries cannot be picked, and a
+property nothing names cannot be written to a note. It runs the `configProblems` gate
+itself before touching either: an action that changed the configuration and then had
+every write refused would leave the view worse than it found it. Everything about
+*which* properties those are lives in `domain/settings.ts` — see `src/domain/CLAUDE.md`.
 
 ### One move, three inputs — per projection
 

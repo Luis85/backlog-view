@@ -94,7 +94,7 @@ export function renderProjectionContent(
 function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
 	const label = 'Product backlog board';
 	if (!ctx.host.settings.stateKey) {
-		renderBoardNoWorkflowState(treeEl);
+		renderBoardNoWorkflowState(ctx.host, treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
 	}
 	return { board: renderBoard(ctx, treeEl, dnd), roadmap: null, role: 'listbox', label };

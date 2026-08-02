@@ -390,7 +390,7 @@ function handleRoadmapMoveKey(
 	// the shelf drop and Clear horizon plan for the same card. Indexing it at stop 0
 	// made the shelf edge look like an edge for it, and the keyboard alone could not
 	// express a move its two siblings both could.
-	const offLadder = card.horizon.value === null && card.axisKeys.horizon;
+	const offLadder = card.horizon.value === null && card.ownKeys.horizon;
 	const target = offLadder && step < 0 ? 0 : current + step;
 	// The edges hold rather than wrap: a card in the last bucket has nowhere further
 	// to advance, and wrapping would un-place it unasked.

@@ -269,6 +269,31 @@ export class ButtonComponent {
 	}
 }
 
+/**
+ * The icon-only button a Setting hangs beside its control. A real <button> like the
+ * CTA above, so a test presses it the way a user does — the clear button on a date
+ * field is the only way "leave a field empty" is reachable without segment-by-segment
+ * keyboard work.
+ */
+export class ExtraButtonComponent {
+	extraSettingsEl: HTMLElement;
+	constructor(containerEl: HTMLElement) {
+		this.extraSettingsEl = containerEl.createEl('button', { cls: 'extra-setting-button' });
+	}
+	setIcon(icon: string): this {
+		this.extraSettingsEl.dataset.icon = icon;
+		return this;
+	}
+	setTooltip(tooltip: string): this {
+		this.extraSettingsEl.setAttribute('aria-label', tooltip);
+		return this;
+	}
+	onClick(cb: () => unknown): this {
+		this.extraSettingsEl.addEventListener('click', cb);
+		return this;
+	}
+}
+
 export class DropdownComponent {
 	selectEl: HTMLSelectElement;
 	constructor(containerEl: HTMLElement) {
@@ -312,6 +337,10 @@ export class Setting {
 	}
 	addDropdown(cb: (drop: DropdownComponent) => unknown): this {
 		cb(new DropdownComponent(this.settingEl));
+		return this;
+	}
+	addExtraButton(cb: (btn: ExtraButtonComponent) => unknown): this {
+		cb(new ExtraButtonComponent(this.settingEl));
 		return this;
 	}
 }
