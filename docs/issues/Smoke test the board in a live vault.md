@@ -54,7 +54,7 @@ carries states.
 
 | Date | Against | Outcome |
 | --- | --- | --- |
-| 2026-08-02 | **0.3.0** on Windows desktop, after the esbuild 0.28 and TypeScript 6 upgrades (PRs #45, #48) | Every desktop line passes. The plugin loads clean, cards drag between columns, the mode toggle and collapsed columns survive a restart, auto-scroll engages only toward a pane edge, the drag preview reads over both themes, reduced motion behaves, and a few hundred cards render and drag without jank. Nothing needed adjusting in `styles.css`. |
+| 2026-08-02 | **0.3.0** on Windows desktop, after the esbuild 0.28 and TypeScript 6 upgrades (PRs #45, #48) | The plugin loads clean, cards drag between columns, the mode toggle and collapsed columns survive a restart, auto-scroll engages only toward a pane edge, the drag preview reads over both themes, reduced motion behaves, and a few hundred cards render and drag without jank. Nothing needed adjusting in `styles.css`. Partial: see the unrun lines below. |
 
 That run also carried a second job. `@atlaskit` is the only third-party code in
 `main.js`, and esbuild is what inlines it, so dragging a card is what verified the
@@ -62,8 +62,15 @@ bundler major end to end — the one thing the structural bundle checks in PR #4
 not do. A `-noEmit` compiler bump cannot reach the bundle at all, so TypeScript 6 needed
 nothing here.
 
-**Two lines remain unrun, and they are why this issue stays open:**
+**Three lines remain unrun, and they are why this issue stays open:**
 
+- **Themes** — light and dark were exercised only incidentally, by the drag preview
+  staying legible over both. The line's actual subjects were not inspected — column
+  headers, over-limit signals and done styling, each readable without colour being the
+  only difference — and **no community theme was used**.
+  [[Light, dark and reduced motion]] requires the theme be *named* when it is:
+  "checked against a community theme" is not evidence a year later if nobody wrote down
+  which one. So this line needs a named theme, not a re-assertion.
 - **Touch, on a phone or tablet** — unanswerable without a device, and the one carrying
   a real decision rather than a check: whether drag ships on touch or stays menu-only.
   See [[Pragmatic drag and drop for the board]].
