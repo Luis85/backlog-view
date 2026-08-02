@@ -2,13 +2,15 @@
 type: PBI
 parent: "[[The horizon board]]"
 order: 10
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
+closed: 2026-08-02
 files:
   - src/domain/roadmap.ts
   - src/domain/noteFields.ts
   - src/view/render/roadmap.ts
+  - src/view/interactions/create.ts
 ---
 
 # Buckets from a horizon property
@@ -80,7 +82,25 @@ The read half shipped with [[A third projection]]: bucket derivation — declare
 case-insensitive matching, minted strays, results-only counts — is
 `src/domain/roadmap.ts`, the value is read by `readPlacement` in
 `src/domain/noteFields.ts`, and the columns render in `src/view/render/roadmap.ts`,
-driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`. What
-remains of this note is the write half — creating from a bucket with its value in the
-creation write — beside the moves [[Moving between horizons]] specifies, which is why
-it stays open.
+driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`.
+
+The write half is the bucket's own New button, added to the header in
+`src/view/render/roadmap.ts`. It runs the one gated creation flow —
+`promptCreateItem` in `src/view/interactions/create.ts`, which now takes what the
+surface a note was created FROM adds to it — and the placement rides the single
+`createBacklogItem` call in `src/storage/frontmatter.ts` beside the type, the rank and
+the parent link. One write, so there is no moment at which the note exists in a bucket
+its frontmatter does not claim; everything that governed creation before still governs
+it, type folders and the config-problems gate included. Driven in
+`test/view/roadmapMoves.test.ts` and `test/storage/frontmatter.test.ts`.
+
+Two clauses are worth stating rather than leaving to be inferred. Step 4's date chip
+needs no roadmap-specific code: a card renders the Base's own visible properties
+through the body it shares with the board ([[What a card shows]]), so a view that shows
+a date property shows it on the card, in a bucket, without the axis being dates. And
+the half of the board's new-card rule this note does NOT claim is the outcome check —
+saying so when the note just created is not on the next render. That hazard is real
+here too (a base can filter on the horizon property itself, excluding the very bucket
+it was created into), it is [[New cards in place]]'s criterion, and it is unbuilt on
+the board as well; when it lands there it should land here, since both are one
+question asked of one creation flow.

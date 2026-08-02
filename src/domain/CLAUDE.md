@@ -206,3 +206,19 @@ in the root `CLAUDE.md` because it spans every layer.
 - Bucket order inside a bucket is the Base's own sort (`entryIndex`), the board's
   derived-order rule; the shelf and the timeline keep tree order — rows arrive from
   `roadmapRows` already in it, which is what "sibling order" on the shelf rests on.
+- A horizon move is planned by `computeHorizonDropWrites` in `writePlan.ts`, shaped
+  exactly like `computeStateDropWrites`: the target value byte for byte, nothing for a
+  move onto the placement the card already holds, `removeHorizonKey` for the shelf.
+  The one asymmetry with the state plan is `invalid`: a key holding something the reader
+  refuses still HAS something to un-place, while a key the reader already reads as
+  absence (missing, or empty) does not — un-placing that would change the note without
+  changing anything the roadmap says about it.
+- "Same placement" and "same state" are one question, answered by `sameValue` in
+  `noteFields.ts`: case-insensitive, with absence a value rather than a missing one. The
+  plan, the menu's checkmark and the keyboard ladder all ask it, because a plan that said
+  "unchanged" on a different rule than the checkmark would disagree about what the user
+  is looking at.
+- `bucketLabelFor` is the roadmap's `columnLabelFor`: anything naming a placement out
+  loud reads it from there, so a message can only say what renders. Its fallback is the
+  shelf — for absence, and for a value naming no bucket, since a result the axis did not
+  place is on the shelf and there is nowhere else it could be.

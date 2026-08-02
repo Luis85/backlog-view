@@ -1,5 +1,6 @@
 import { firstPlacedIndex } from './board';
 import { BacklogItem, BacklogModel } from './model';
+import { sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
 import { DateSpan, daysBetween } from './timeline';
 
@@ -90,6 +91,23 @@ export interface RoadmapModel {
 	context: BacklogItem[];
 	/** Results placed on the axis; placed plus shelved equals the visible row set. */
 	placedCount: number;
+}
+
+/** What the shelf is called wherever a placement is named out loud. */
+export const SHELF_LABEL = 'Unplaced';
+
+/**
+ * What to call the place a horizon value sits in — found by the same
+ * case-insensitive match that placed the cards, with the shelf as the answer for
+ * absence and for a value naming no bucket: a result the axis did not place is on
+ * the shelf, which is the only other place it can be. Anything naming a placement
+ * out loud (a move announcement, a menu entry) reads it from here rather than from
+ * the raw string, exactly as the board's `columnLabelFor` does — or it would name
+ * a bucket the user cannot see.
+ */
+export function bucketLabelFor(roadmap: RoadmapModel, value: string | null): string {
+	if (value === null) return SHELF_LABEL;
+	return roadmap.buckets.find((bucket) => sameValue(bucket.value, value))?.value ?? SHELF_LABEL;
 }
 
 /**

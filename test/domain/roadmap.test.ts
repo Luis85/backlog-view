@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel, BacklogModel } from '../../src/domain/model';
-import { activeAxis, buildRoadmap, configuredAxes, RoadmapAxis } from '../../src/domain/roadmap';
+import { activeAxis, bucketLabelFor, buildRoadmap, configuredAxes, RoadmapAxis, SHELF_LABEL } from '../../src/domain/roadmap';
+import { computeHorizonDropWrites } from '../../src/domain/writePlan';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -239,5 +240,77 @@ describe('context rows on the roadmap', () => {
 		expect(roadmap.bars).toEqual([]);
 		expect(titles(roadmap.context)).toEqual(['Epic']);
 		expect(roadmap.shelf).toEqual([]);
+	});
+});
+
+describe('the label a placement is named by', () => {
+	function roadmapWith(...values: (string | null)[]) {
+		const settings = axisSettings();
+		const vault = new FakeVault();
+		values.forEach((value, i) => {
+			vault.addFile(`${i}.md`, {
+				frontmatter: { type: 'Epic', order: (i + 1) * 10, ...(value !== null ? { horizon: value } : {}) },
+			});
+		});
+		return roadmapOf(buildModel(vault.app, vault.entries(), settings), settings, 'horizons');
+	}
+
+	it('names the bucket a value renders under, in the bucket’s own casing', () => {
+		const roadmap = roadmapWith('now', 'Someday');
+
+		// Matched the way the cards were placed, and named the way the screen shows —
+		// the declared casing for a declared bucket, the minted one for a stray.
+		expect(bucketLabelFor(roadmap, 'NOW')).toBe('Now');
+		expect(bucketLabelFor(roadmap, 'someday')).toBe('Someday');
+	});
+
+	it('names the shelf for absence, and for a value no bucket shows', () => {
+		const roadmap = roadmapWith(null);
+
+		expect(bucketLabelFor(roadmap, null)).toBe(SHELF_LABEL);
+		// A result the axis did not place is on the shelf — the only other place there
+		// is — so a message about it says the shelf rather than a bucket nobody sees.
+		expect(bucketLabelFor(roadmap, 'Gone')).toBe(SHELF_LABEL);
+	});
+});
+
+describe('computeHorizonDropWrites', () => {
+	function item(horizon: unknown) {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {
+			frontmatter: { type: 'Epic', order: 10, ...(horizon !== undefined ? { horizon } : {}) },
+		});
+		return buildModel(vault.app, vault.entries(), axisSettings()).results[0];
+	}
+
+	it('writes the target bucket’s value, untransformed', () => {
+		const card = item('Now');
+		expect(computeHorizonDropWrites(card, 'Later')).toEqual([{ file: card.file, horizon: 'Later' }]);
+	});
+
+	it('plans nothing for a drop on the card’s own bucket, case-insensitively', () => {
+		expect(computeHorizonDropWrites(item('later'), 'Later')).toEqual([]);
+	});
+
+	it('removes the key for a drop on the shelf', () => {
+		const writes = computeHorizonDropWrites(item('Now'), null);
+		expect(writes).toHaveLength(1);
+		expect(writes[0].removeHorizonKey).toBe(true);
+		expect(writes[0].horizon).toBeUndefined();
+	});
+
+	it('plans nothing for an unplaced card dropped on the shelf', () => {
+		expect(computeHorizonDropWrites(item(undefined), null)).toEqual([]);
+		// An empty value is absence to the reader, so there is nothing to un-place:
+		// rewriting the note would change it without changing what the roadmap says.
+		expect(computeHorizonDropWrites(item(''), null)).toEqual([]);
+	});
+
+	it('un-places a value the reader refuses — shelved is not the same as unset', () => {
+		const card = item({ when: 'soon' });
+		expect(card.horizon).toEqual({ value: null, invalid: true });
+		expect(computeHorizonDropWrites(card, null)).toEqual([{ file: card.file, removeHorizonKey: true }]);
+		// And it takes a value like anything else: the reading was refused, not the note.
+		expect(computeHorizonDropWrites(card, 'Now')).toEqual([{ file: card.file, horizon: 'Now' }]);
 	});
 });

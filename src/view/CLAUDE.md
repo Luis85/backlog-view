@@ -177,18 +177,23 @@ free of runtime code so imports stay cycle-free.
   the `.base`: base settings are saved on the view, working position in localStorage.
   `setProjection` re-renders itself, because no config was set and no Bases refresh is
   coming; the roadmap-axis pick (`setAxisPick`) follows the same rule.
-- `BoardDragController` collects every adapter registration's cleanup and runs them at
-  the top of each render pass: the board is rebuilt wholesale, and pragmatic listeners
-  left on detached elements would fire against a board that no longer exists. Its
-  `dispose` also clears the live region, a shared singleton on `document.body`.
+- `CardDragController` (in `interactions/cardDrag.ts`) is ONE controller for both card
+  projections. It collects every adapter registration's cleanup and runs them at the top
+  of each render pass: the projection is rebuilt wholesale, and pragmatic listeners left
+  on detached elements would fire against a board that no longer exists. Its `dispose`
+  also clears the live region, a shared singleton on `document.body`. `wireDropTarget`
+  takes what a drop MEANS as a callback — a column writes a state, a bucket writes a
+  horizon, the shelf removes one — so the controller resolves the dragged card and never
+  decides a write. Every target wears one drop-over class (`pbl-drop-over`).
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
 - **One move, three inputs.** A drop, Alt+Left/Right and the card menu's Set state all
   call `performBoardMove`; none of them plans its own write. That is also the only
-  place a move is announced (`announceBoardMove`, which lives in `boardDrag.ts`
+  place a move is announced (`announceBoardMove`, which lives in `cardDrag.ts`
   because that module owns the live region and cleans it up) — three callers
   announcing separately is how they come to say different things about one change.
+  The roadmap's horizon move is the same rule, on `performHorizonMove`.
   The message names COLUMNS via `columnLabelFor`, never the raw value, so it says what
   is on screen: "No state" rather than a silence, and the yielded "Unset" rather than
   a name a real state has taken.
@@ -200,10 +205,11 @@ free of runtime code so imports stay cycle-free.
   because every entry in it is defined by a row's visible neighbours.
 - Context cards are never wired as draggables, and `performBoardMove` still rides
   `applySafely`, whose outside-filter refusal is the structural backstop — the board
-  block in `test/view/contextRowWrites.test.ts` drives both, and drives the keyboard
+  block in `test/view/contextCardWrites.test.ts` drives both, and drives the keyboard
   and menu paths too: a keyboard can SELECT what a drag was never wired to pick up, so
-  the refusal has to hold where the drag could not reach. Column counts are result
-  cards only; a context card is placement, not population.
+  the refusal has to hold where the drag could not reach. The roadmap block beside it
+  asks the same three questions. Column counts are result cards only; a context card is
+  placement, not population.
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by
   `uniqueElementId` because that attribute resolves across the whole document and two
@@ -220,15 +226,34 @@ free of runtime code so imports stay cycle-free.
 
 ## The roadmap projection
 
-- Read-only by design in this increment: no drag wiring, no lift, no menu writes —
-  scheduling and horizon moves are their own feature and arrive with their write
-  plans. What IS interactive: opening (click/Enter), the shared tag pills on result
-  cards (the card body is the board's), the toolbar. Everything else renders.
+- The HORIZON axis writes; the dated axis does not, and the difference is structural
+  rather than a flag: `renderRoadmap` passes the drag controller on only where a drop
+  has a write behind it, so nothing on the timeline is draggable and the shelf there is
+  not a target. A projection must not offer a gesture it cannot keep — scheduling is its
+  own feature, arriving with its own plans.
+- What IS interactive on the horizon axis: a bucket and the shelf are drop targets, a
+  result card is a drag source (a context card never is), Alt+Left/Right steps one
+  placement, and the card menu's Set horizon offers the RENDERED buckets plus the shelf
+  — the board's rule, so the menu's targets and the drag's are one set by construction.
+  Everywhere: opening (click/Enter), the shared tag pills, the toolbar.
+- The Alt+arrow ladder leads with the SHELF, then the buckets as they render. The shelf
+  is the roadmap's no-state column — where un-placing lives, and where an untriaged card
+  enters the axis from, which is also where the specified lift arrives from the shelf
+  (`docs/requirements/Keyboard and menu on the roadmap.md`). Edges hold rather than wrap.
+- An EMPTY shelf still renders on the horizon axis, carrying `pbl-shelf-empty`: the DOM
+  keeps it so a drop has somewhere to land, and the stylesheet keeps it out of the layout
+  until a drag is live. A target that exists only while it is occupied is one nothing can
+  ever reach. Whether it actually appears under a dragged card is a vault check.
 - A roadmap card is the board's card: `createCard` / `renderCardBody` /
   `wireCardActivation` are exported from `render/board.ts` and shared, so an item
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
+- A bucket's New button runs the ordinary gated creation flow with the bucket's value as
+  a `CreatePlacement`, written inside the same `createBacklogItem` call as the type and
+  the rank. One write, so no note ever exists in a bucket its frontmatter does not claim.
+  It is `tabindex="-1"` like the tree's `.pbl-add`: the pane is one tab stop and a bucket
+  is not yet a keyboard stop of its own.
 - The axis is resolved per render (`activeAxis(settings, axisPick)`), never stored
   resolved: the pick is retained in the collapse store even while its axis is
   unconfigured, so restoring the configuration restores the choice. The picker renders

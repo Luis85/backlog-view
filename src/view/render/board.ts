@@ -4,7 +4,7 @@ import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './
 import { renderBadge, renderTitleText } from './rows';
 import { BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
-import { BoardDragController } from '../interactions/boardDrag';
+import { CardDragController } from '../interactions/cardDrag';
 import { showItemMenu } from '../interactions/menu';
 import { boardColumns, BoardColumn, BoardModel } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
@@ -16,7 +16,7 @@ import { BacklogItem } from '../../domain/model';
  * title, the same resolved property columns, the rollup — so switching projections
  * costs no information about an item.
  */
-export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDragController): BoardSnapshot {
+export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
 	const host = ctx.host;
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
@@ -25,7 +25,7 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: BoardDra
 	renderBoardInstructions(boardEl);
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
 	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd));
-	dnd.wireBoard(boardEl);
+	dnd.wireScroller(boardEl);
 	renderBoardAdvisory(ctx, boardEl, board);
 	return { board, colEls };
 }
@@ -84,7 +84,7 @@ function renderColumn(
 	ctx: RowContext,
 	colsEl: HTMLElement,
 	col: BoardColumn,
-	dnd: BoardDragController,
+	dnd: CardDragController,
 ): HTMLElement {
 	// The no-state column earns its room only while it holds cards; empty, it
 	// shrinks to a leading drop strip so clearing a state by drag stays possible
@@ -102,8 +102,10 @@ function renderColumn(
 	renderColumnHeader(colEl, col, strip);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
 	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd);
-	dnd.wireColumn(colEl, col);
-	dnd.wireBoard(cardsEl);
+	// What a drop on this column MEANS is the board's; the controller only resolves
+	// the card that was dragged and hands it here.
+	dnd.wireDropTarget(colEl, (item) => void ctx.host.performBoardMove(item, col.state));
+	dnd.wireScroller(cardsEl);
 	return colEl;
 }
 
@@ -144,7 +146,7 @@ function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean
 	else if (col.state === null) setTooltip(colEl, 'Items without the state property — dropping a card here removes it');
 }
 
-function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dnd: BoardDragController): void {
+function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dnd: CardDragController): void {
 	const card = createCard(ctx, cardsEl, item);
 	renderCardBody(ctx, card, item);
 	wireCardActivation(ctx, card, item);

@@ -81,9 +81,8 @@ export async function applyWrites(
 			}
 			if (write.order !== undefined) fm[settings.orderKey] = write.order;
 			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
-			// The stateKey may be unset (progress tracking off) — never write to an empty key.
-			if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
-			else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+			writeOptional(fm, settings.stateKey, write.state, write.removeStateKey);
+			writeOptional(fm, settings.horizonKey, write.horizon, write.removeHorizonKey);
 			const applied =
 				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
 			// The stored delta is the one that UNDOES what was applied.
@@ -95,6 +94,24 @@ export async function applyWrites(
 	}
 }
 
+/**
+ * A property whose write may equally be a REMOVAL, on a key that may not be
+ * configured at all. The state and the horizon are that shape twice — progress
+ * tracking off, no bucket axis — and one helper is what keeps "absence is a value,
+ * and never write to an empty key" a single decision rather than a pair of them
+ * that can drift.
+ */
+function writeOptional(
+	fm: Record<string, unknown>,
+	key: string,
+	value: string | undefined,
+	remove: boolean | undefined,
+): void {
+	if (!key) return;
+	if (remove) delete fm[key];
+	else if (value !== undefined) fm[key] = value;
+}
+
 /** The frontmatter keys this write will touch, in the order they are written. */
 function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	const keys: string[] = [];
@@ -102,6 +119,7 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
+	if ((write.removeHorizonKey || write.horizon !== undefined) && settings.horizonKey) keys.push(settings.horizonKey);
 	return keys;
 }
 
@@ -237,6 +255,11 @@ export interface NewItemSpec {
 	typeName: string;
 	parent: TFile | null;
 	order: number;
+	/**
+	 * The horizon the note is created into, when it is created from a bucket.
+	 * Undefined everywhere else — a placement nobody chose is not one to write.
+	 */
+	horizon?: string;
 }
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
@@ -260,6 +283,9 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// intentionally top-level note — pin it with an explicitly empty parent.
 	else if (settings.folderHierarchy) fm[settings.parentKey] = '';
 	fm[settings.orderKey] = spec.order;
+	// Created from a bucket: the placement rides the same single write, so the note
+	// never exists in a bucket its own frontmatter does not claim.
+	if (spec.horizon !== undefined && settings.horizonKey) fm[settings.horizonKey] = spec.horizon;
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Scheduling work]]"
 order: 30
-status: Open
+status: Active
 priority: P2
 created: 2026-08-01
 files:
@@ -119,8 +119,24 @@ rather than deferred behind it.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The lift state machine joins
-`src/view/interactions/keyboard.ts` beside the tree's navigation; the actions join the
-one context menu in `src/view/interactions/menu.ts`, which already decides what an
-excluded item is offered; the date entry is a prompt beside the new-item prompts in
-`src/ui/prompts.ts`.
+**Partly built.** [[Moving between horizons]] shipped the horizon axis's two non-pointer
+paths, because a write with no keyboard route is a write this register does not ship:
+`handleRoadmapMoveKey` in `src/view/interactions/keyboard.ts` steps the selected card
+one placement on Alt+Left/Right, over a ladder that leads with the shelf — where 2b
+already says a lift entering from the shelf should arrive — and `Set horizon` in
+`src/view/interactions/menu.ts` offers the rendered buckets plus the shelf, withheld
+whole on a context row (2a) and absent wherever no buckets render (4b's rule, read off
+the render rather than off the settings). Both plan the identical batch the drag plans,
+through `performHorizonMove`. Driven in `test/view/roadmapMoves.test.ts`.
+
+What remains is everything this note is actually about. The **lift** — Space, arrows,
+Space, Escape, with Tab shifting the grip along a bar — is a state machine that has no
+code yet and joins `src/view/interactions/keyboard.ts` beside the tree's navigation;
+Alt+arrow is a single-dimension shortcut, not a lift, and cannot carry the combined
+lane-plus-axis move. The **date entry** is a prompt beside the new-item prompts in
+`src/ui/prompts.ts`, and schedule, unschedule and clear horizon are menu actions in
+`src/view/interactions/menu.ts` — the removal pair gated on the note carrying the key
+(4a), which the current Set horizon expresses only as its shelf entry. Move to lane
+waits on [[Lanes on the roadmap]]. Until the lift lands, the roadmap's dated axis has
+no non-pointer moves *and no pointer ones either*, which is the honest state: nothing
+there is reachable only by pointer, because nothing there writes at all.

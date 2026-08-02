@@ -16,9 +16,3 @@ can only be moused is a plan some people cannot make.
 **Outcome** — Scheduling is ordinary backlog editing: what a gesture will write is
 shown before it is written, it applies through the same gate as every other write, one
 undo takes it back — and none of it is pointer-only.
-
-## Use cases
-
-- [[Drag from the shelf to schedule]] — onto the plan, and back off it.
-- [[Move and resize a bar]] — slide the plan without touching the record.
-- [[Keyboard and menu on the roadmap]] — every move, without a pointer.

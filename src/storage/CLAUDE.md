@@ -35,6 +35,15 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
+- A property that may be REMOVED as well as written, on a key that may not be configured
+  at all, goes through `writeOptional` — state and horizon are that shape twice, and one
+  helper is what keeps "absence is a value, and never write to an empty key" a single
+  decision. A third such property adds a call, not a rule. `touchedKeys` has to learn the
+  key too, or the write lands with no inverse and undo silently skips it.
+- `createBacklogItem` writes everything a new note gets in ONE call — type, parent,
+  order, and the horizon when it was created from a bucket. A create-then-update pair
+  could fail in between and leave a note in a bucket its frontmatter does not claim,
+  which is the same argument the hierarchy properties were already there for.
 
 ## Collapse state, and the view mode beside it
 

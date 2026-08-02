@@ -65,15 +65,21 @@ paragraph of prose before the shape asked the question.
 specified across five features and 15 use cases — the projection toggle grown to three
 positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
 parents span their children, scheduling as gated date writes, and lanes, focus and
-rollups carried over. Its first feature is built: the toggle's roadmap position, the
-declared axis with its collision checks, both frames read-only — buckets and stated
-bars — the unplaced shelf, and the roadmap's empty states. Everything that writes —
-moving between horizons, scheduling by drag, the lanes — is design still. Two
-decisions organize the epic: the axis is declared in the view options, never guessed
-from property names and never derived from dates; and planned dates are different keys
-from the board's transition stamps, so a plan can never overwrite a record. Every note
-states the precedent it rests on, from a survey of the roadmap literature, the major
-trackers and the Obsidian ecosystem run on 2026-08-01.
+rollups carried over. Two features are built. The first was the projection: the
+toggle's roadmap position, the declared axis with its collision checks, both frames
+read-only — buckets and stated bars — the unplaced shelf, and the roadmap's empty
+states. The second gave the horizon axis its writes: a card moves between buckets by
+drag, by Alt+arrow or from its own menu, all three planning one value into the note's
+own horizon property through the one gate, undoable as one batch; the shelf is the
+target that un-places, removing the key rather than blanking it, and it stays reachable
+while empty because a target that exists only when occupied is one nothing can reach;
+and a bucket creates in place, its value riding the same single creation write. The
+dated axis is still read-only — scheduling by drag, the bar moves and the lanes are
+design. Two decisions organize the epic: the axis is declared in the view options,
+never guessed from property names and never derived from dates; and planned dates are
+different keys from the board's transition stamps, so a plan can never overwrite a
+record. Every note states the precedent it rests on, from a survey of the roadmap
+literature, the major trackers and the Obsidian ecosystem run on 2026-08-01.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a

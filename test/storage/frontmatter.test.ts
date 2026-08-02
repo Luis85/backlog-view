@@ -80,6 +80,38 @@ describe('applyWrites', () => {
 		expect(again).toHaveLength(0);
 	});
 
+	it('writes the horizon on its own key, and removes it with a restorable inverse', async () => {
+		const vault = new FakeVault();
+		const planned = { ...settings, horizonKey: 'horizon' };
+		const item = vault.addFile('Item.md', { frontmatter: { order: 5 } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, planned, [{ file: item, horizon: 'Next' }]);
+		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
+
+		// The shelf's drop: absence, never an empty string — and undo puts it back.
+		await applyWrites(vault.app, planned, [{ file: item, removeHorizonKey: true }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+		expect(vault.fm('Item.md')).toEqual({ order: 5 });
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
+
+		// Without a configured horizon property the write is dropped, not misfiled —
+		// the state key's rule, because it is the same rule.
+		await applyWrites(vault.app, settings, [{ file: item, horizon: 'Now' }]);
+		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
+	});
+
+	it('carries a state and a horizon change in one write, each on its own key', async () => {
+		const vault = new FakeVault();
+		const both = { ...settings, stateKey: 'status', horizonKey: 'horizon' };
+		const item = vault.addFile('Item.md', { frontmatter: { status: 'New', horizon: 'Now' } });
+
+		await applyWrites(vault.app, both, [{ file: item, state: 'Active', removeHorizonKey: true }]);
+		expect(vault.fm('Item.md')).toEqual({ status: 'Active' });
+	});
+
 	it('applies tag deltas to what the note holds, and drops the key when it empties', async () => {
 		const vault = new FakeVault();
 		const tagged = { ...settings, tagsKey: 'tags' };
@@ -159,6 +191,43 @@ describe('createBacklogItem', () => {
 		});
 		expect(second.path).toBe('Backlog/Items/My- Story 1.md');
 		expect(vault.fm(second.path)).toEqual({ type: 'PBI', order: 20 });
+	});
+
+	it('writes the bucket a note was created from, in the same single write', async () => {
+		const vault = new FakeVault();
+		const planned = { ...settings, horizonKey: 'horizon' };
+
+		const file = await createBacklogItem(vault.app, planned, {
+			folder: 'Backlog',
+			title: 'Planned',
+			typeName: 'Epic',
+			parent: null,
+			order: 10,
+			horizon: 'Later',
+		});
+
+		// One atomic write: the note never exists in a bucket its frontmatter does
+		// not claim, because there is no moment at which the placement is missing.
+		expect(vault.fm(file.path)).toEqual({ type: 'Epic', order: 10, horizon: 'Later' });
+
+		// No horizon asked for, and no horizon key configured: neither writes one.
+		const plain = await createBacklogItem(vault.app, planned, {
+			folder: 'Backlog',
+			title: 'Untriaged',
+			typeName: 'Epic',
+			parent: null,
+			order: 20,
+		});
+		expect(vault.fm(plain.path)).toEqual({ type: 'Epic', order: 20 });
+		const unconfigured = await createBacklogItem(vault.app, settings, {
+			folder: 'Backlog',
+			title: 'Nowhere',
+			typeName: 'Epic',
+			parent: null,
+			order: 30,
+			horizon: 'Later',
+		});
+		expect(vault.fm(unconfigured.path)).toEqual({ type: 'Epic', order: 30 });
 	});
 
 	it('pins parentless creations in folder mode', async () => {

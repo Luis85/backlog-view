@@ -2,6 +2,8 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
+import { sameValue } from '../../domain/noteFields';
+import { RoadmapModel, SHELF_LABEL } from '../../domain/roadmap';
 import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -39,6 +41,10 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
 		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+		// The roadmap's Set horizon is the drag's equal on the axis being drawn, so it
+		// is offered exactly where buckets are: the non-pointer path to the same write.
+		const buckets = renderedBuckets(host);
+		if (buckets) addSetHorizonMenu(host, menu, item, buckets);
 		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	}
 	menu.addSeparator();
@@ -187,9 +193,14 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
 	showMenuForClick(menu, evt);
 }
 
-/** One offer in Set state: the value it writes (null removes the key) and its name. */
-interface StateChoice {
-	state: string | null;
+/**
+ * One offer in a Set menu: the value it writes (null removes the key) and the name
+ * it wears. Shared by Set state and Set horizon, because they are the same offer
+ * over different properties — one shape means the checkmark, the removal entry and
+ * the "names what is on screen" rule are each decided once.
+ */
+interface ValueChoice {
+	value: string | null;
 	label: string;
 }
 
@@ -207,20 +218,29 @@ interface StateChoice {
  * keep in step. The labels come from the columns too, so the entry a user picks is
  * named exactly as the column they can see.
  */
-function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
+function stateChoices(host: BacklogViewHost, item: BacklogItem): ValueChoice[] {
 	const board = host.projection === 'board' ? host.board?.board : null;
-	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
+	if (board) return board.columns.map((col) => ({ value: col.state, label: col.label }));
 	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
 	const current = item.stateValue;
-	const listed = current !== null && values.some((v) => v.toLowerCase() === current.toLowerCase());
+	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
-	return all.map((state) => ({ state, label: state }));
+	return all.map((state) => ({ value: state, label: state }));
 }
 
-/** True when this offer is the state the item already holds — no-state included. */
-function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
-	if (choice.state === null) return item.stateValue === null;
-	return item.stateValue !== null && item.stateValue.toLowerCase() === choice.state.toLowerCase();
+/**
+ * What Set horizon offers: the roadmap's own BUCKETS, read off the render for the
+ * reason the board's Set state reads its columns — every target a drop can reach,
+ * the menu offers, by construction rather than by two lists agreeing — plus the
+ * shelf, whose write removes the key. Declared and minted buckets alike, since
+ * observed vocabulary is writable vocabulary; a context row contributes to neither,
+ * because it never minted a bucket in the first place.
+ */
+function horizonChoices(roadmap: RoadmapModel): ValueChoice[] {
+	return [
+		{ value: null, label: SHELF_LABEL },
+		...roadmap.buckets.map((bucket) => ({ value: bucket.value, label: bucket.value })),
+	];
 }
 
 /**
@@ -229,18 +249,40 @@ function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
  * announcement — and that path is also the only one that can express the no-state
  * entry, which the tree's list never offers.
  */
-function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
-	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
-	return host.applySafely([{ file: item.file, state: choice.state }]);
+function chooseState(host: BacklogViewHost, item: BacklogItem, choice: ValueChoice): Promise<boolean> {
+	if (host.projection === 'board' || choice.value === null) return host.performBoardMove(item, choice.value);
+	return host.applySafely([{ file: item.file, state: choice.value }]);
+}
+
+/**
+ * Render one Set menu's offers, checking the one the item already holds. The
+ * checkmark asks the same question the write plan asks — `sameValue`, absence
+ * included — so the menu can never show an entry as current that picking would
+ * rewrite, nor offer as a change one that would write nothing.
+ */
+function addValueItems(
+	menu: Menu,
+	choices: ValueChoice[],
+	current: string | null,
+	pick: (choice: ValueChoice) => void,
+): void {
+	for (const choice of choices) {
+		menu.addItem((si) => {
+			si.setTitle(choice.label).onClick(() => pick(choice));
+			if (sameValue(current, choice.value)) si.setChecked(true);
+		});
+	}
 }
 
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	for (const choice of stateChoices(host, item)) {
-		menu.addItem((si) => {
-			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			if (isCurrentState(item, choice)) si.setChecked(true);
-		});
-	}
+	addValueItems(menu, stateChoices(host, item), item.stateValue, (choice) => void chooseState(host, item, choice));
+}
+
+/** Set horizon's offers, taking the drag's own path exactly as Set state does. */
+function addHorizonItems(host: BacklogViewHost, menu: Menu, item: BacklogItem, roadmap: RoadmapModel): void {
+	addValueItems(menu, horizonChoices(roadmap), item.horizon.value, (choice) => {
+		void host.performHorizonMove(item, choice.value);
+	});
 }
 
 /**
@@ -256,6 +298,25 @@ function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	menu.addItem((mi) => {
 		mi.setTitle('Set state').setIcon('circle-check');
 		addStateItems(host, submenuOf(mi), item);
+	});
+}
+
+/**
+ * The buckets this menu can offer, or null when there are none on screen to name.
+ * Gated on the RENDERED roadmap rather than on the horizon property alone: the
+ * offers are the rendered buckets, so on the timeline — or in any projection that
+ * is not the roadmap — there is no vocabulary to speak in, and an entry naming
+ * buckets nothing shows would be the menu describing a different screen.
+ */
+function renderedBuckets(host: BacklogViewHost): RoadmapModel | null {
+	const roadmap = host.projection === 'roadmap' ? host.roadmap?.roadmap : null;
+	return roadmap && roadmap.axis === 'horizons' ? roadmap : null;
+}
+
+function addSetHorizonMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem, roadmap: RoadmapModel): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set horizon').setIcon('map');
+		addHorizonItems(host, submenuOf(mi), item, roadmap);
 	});
 }
 

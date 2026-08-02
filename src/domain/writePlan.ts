@@ -2,6 +2,7 @@ import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
+import { sameValue } from './noteFields';
 import { BacklogSettings, LEVELS } from './settings';
 
 /**
@@ -35,6 +36,14 @@ export interface ItemWrite {
 	 * `removeParentKey`: absence is a value here, never written as an empty string.
 	 */
 	removeStateKey?: boolean;
+	/** New value for the horizon property; ignored when no horizon property is configured. */
+	horizon?: string;
+	/**
+	 * Remove the horizon property entirely — the shelf's drop, un-placing the item.
+	 * The same first-class removal `removeStateKey` already is: an item with no
+	 * horizon is untriaged, while an empty value would read as a bucket named nothing.
+	 */
+	removeHorizonKey?: boolean;
 	/**
 	 * Tags to add and remove (without '#'). A delta rather than the new list,
 	 * because the row it came from can be a refresh behind the note: two removals
@@ -182,8 +191,30 @@ export function computeStateDropWrites(item: BacklogItem, state: string | null):
 	if (state === null) {
 		return current === null ? [] : [{ file: item.file, removeStateKey: true }];
 	}
-	if (current !== null && current.toLowerCase() === state.toLowerCase()) return [];
+	if (sameValue(current, state)) return [];
 	return [{ file: item.file, state }];
+}
+
+/**
+ * The write a bucket drop plans — the state drop's own shape, on the roadmap's own
+ * property. The target bucket's value goes to disk byte for byte, minted buckets
+ * included: observed vocabulary is writable vocabulary, exactly as it is on the
+ * board. Dropping on the bucket the card already sits in (case-insensitively, the
+ * same matching that placed it there) plans nothing, so the batch cannot cost the
+ * caller's undo slot; dropping on the shelf removes the key rather than blanking it.
+ */
+export function computeHorizonDropWrites(item: BacklogItem, horizon: string | null): ItemWrite[] {
+	const reading = item.horizon;
+	if (horizon === null) {
+		// `invalid` is what tells "the key holds something this reader refuses" from
+		// "there is nothing there": both shelve the card, and only the first has
+		// anything to un-place. A key the reader already treats as absence — missing,
+		// or empty — is left exactly as it is, since un-placing it would change the
+		// note without changing anything the roadmap says about it.
+		return reading.value === null && !reading.invalid ? [] : [{ file: item.file, removeHorizonKey: true }];
+	}
+	if (sameValue(reading.value, horizon)) return [];
+	return [{ file: item.file, horizon }];
 }
 
 /** The order value for the insertion slot, or null when the group needs renumbering. */

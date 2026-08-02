@@ -10,6 +10,7 @@ import {
 	bucketNames,
 	bucketsOf,
 	shelfCountOf,
+	shelfIsEmptyStrip,
 	shelfOf,
 	shelfTitles,
 	timelineRows,
@@ -113,11 +114,25 @@ describe('the unplaced shelf', () => {
 		expect(shelfCountOf(containerEl)).toBe('2');
 	});
 
-	it('takes no space at all when everything places', () => {
+	it('holds nothing when everything places, and is still the target that un-places', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
 		const { containerEl } = roadmapView(vault, { ...HORIZONS });
 
+		// On the horizon axis the empty shelf stays in the DOM and out of the layout:
+		// it is where a card goes to be un-placed, and a target that exists only
+		// while it is occupied is one nothing can ever reach.
+		expect(shelfTitles(containerEl)).toEqual([]);
+		expect(shelfIsEmptyStrip(containerEl)).toBe(true);
+	});
+
+	it('is absent on the dated axis until something shelves — no write means no target', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		// Scheduling by drag is its own feature; an empty strip promising a drop the
+		// timeline cannot write would be the projection making an offer it cannot keep.
 		expect(shelfOf(containerEl)).toBeNull();
 	});
 
@@ -183,7 +198,8 @@ describe('context rows on the roadmap', () => {
 		expect(card?.hasClass('pbl-card-context')).toBe(true);
 		expect(card?.getAttribute('aria-description')).toContain('shown for context');
 		expect(bucketCountOf(bucketByName(containerEl, 'Now'))).toBe('0');
-		expect(shelfOf(containerEl)).toBeNull();
+		// Never shelved: the shelf is a statement about the results.
+		expect(shelfTitles(containerEl)).toEqual([]);
 	});
 
 	it('stands beside the shelf when its value would mint a bucket — and never shelves', () => {
@@ -192,7 +208,7 @@ describe('context rows on the roadmap', () => {
 		expect(bucketNames(containerEl)).toEqual(['Now', 'Next', 'Later']);
 		const strip = containerEl.querySelector('.pbl-roadmap-context');
 		expect(strip?.querySelector('.pbl-card-title')?.textContent).toBe('Epic');
-		expect(shelfOf(containerEl)).toBeNull();
+		expect(shelfTitles(containerEl)).toEqual([]);
 	});
 
 	it('is never placed by its own dates on the timeline', () => {

@@ -1,5 +1,7 @@
-import { BacklogViewHost, BoardSnapshot } from '../host';
+import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { sameValue } from '../../domain/noteFields';
+import { RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
 
 /** Items currently rendered, top to bottom, honoring collapsed subtrees and the filter. */
@@ -295,34 +297,96 @@ function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolea
  * cards in reading order: axis, then shelf, then context. Arrows in either pair
  * step the selection (buckets and the shelf lay out sideways, the timeline
  * stacks, so both pairs work everywhere), Home and End reach the edges, Enter
- * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes. The lift-move-drop gestures
- * are the scheduling feature's work, beside the writes they commit.
+ * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes, and Alt+Left/Right moves the
+ * selected card one bucket. The lift that carries a move across two dimensions at
+ * once is the scheduling feature's work, on the unmodified Space key, so it
+ * arrives beside this rather than contending with it.
  */
 function handleRoadmapKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	// Keys bubbling out of a focused control drive that control alone, and the
-	// chrome keys run first, exactly as on the board. Alt is reserved whole: the
-	// roadmap's move vocabulary is the lift the scheduling feature specifies, and
-	// until it lands a modified arrow must not silently move the selection instead.
+	// chrome keys run first, exactly as on the board.
 	if (evt.target !== evt.currentTarget) return;
 	if (handleBoardChromeKey(host, evt)) return;
-	if (evt.altKey) return;
-	const cards = host.roadmap?.cards ?? [];
+	const snapshot = host.roadmap;
+	const cards = snapshot?.cards ?? [];
 	if (cards.length === 0) return;
 	const currentIdx = host.selectedPath ? cards.findIndex((c) => c.file.path === host.selectedPath) : -1;
-	// Navigation is unmodified keys only; other chords fall through to the card
-	// keys, so Ctrl+Enter and Shift+F10 mean here what they mean everywhere.
-	if (!evt.ctrlKey && !evt.metaKey && !evt.shiftKey) {
-		const next = nextRoadmapIndex(cards.length, currentIdx, evt.key);
-		if (next !== null) {
-			evt.preventDefault();
-			host.selectItem(cards[next]);
-			return;
-		}
+	if (evt.altKey) {
+		// Alt ALONE is the move modifier, never a second way to navigate — the board's
+		// rule, for the board's reason: a chord aimed at Obsidian, the OS or assistive
+		// technology must not land as a frontmatter write.
+		const altOnly = !evt.ctrlKey && !evt.metaKey && !evt.shiftKey;
+		if (altOnly && snapshot && currentIdx >= 0) handleRoadmapMoveKey(host, snapshot, cards[currentIdx], evt);
+		return;
 	}
+	if (handleRoadmapNavigationKey(host, cards, currentIdx, evt)) return;
 	// The selected card takes the board's own card keys — Enter opens, and the
 	// menu keys reach the one context menu, which cards that are not tab stops
 	// have no other keyboard route to.
 	if (currentIdx >= 0) handleBoardCardKey(host, cards[currentIdx], evt);
+}
+
+/** Arrow/Home/End selection movement; true when the key was one of those. */
+function handleRoadmapNavigationKey(
+	host: BacklogViewHost,
+	cards: BacklogItem[],
+	currentIdx: number,
+	evt: KeyboardEvent,
+): boolean {
+	// Navigation is unmodified keys only; other chords fall through to the card
+	// keys, so Ctrl+Enter and Shift+F10 mean here what they mean everywhere.
+	if (evt.ctrlKey || evt.metaKey || evt.shiftKey) return false;
+	const next = nextRoadmapIndex(cards.length, currentIdx, evt.key);
+	if (next === null) return false;
+	evt.preventDefault();
+	host.selectItem(cards[next]);
+	return true;
+}
+
+/**
+ * The placements an Alt+arrow steps through on the horizon axis: the shelf first,
+ * then the buckets as they render.
+ *
+ * The shelf leads deliberately, and it is the one place this ladder does NOT follow
+ * reading order — the arrows walk the cards axis-first and reach the shelf last.
+ * A move ladder is not a reading order: the shelf is the roadmap's no-state column,
+ * which the board puts first for the same reason, it is where un-placing lives, and
+ * an untriaged card stepping onto the axis should arrive at the FIRST bucket, which
+ * is exactly where the lift `docs/requirements/Keyboard and menu on the roadmap.md`
+ * specifies enters from the shelf. Ordering it last would make "advance" un-place
+ * finished triage and make entry land in the last horizon.
+ *
+ * Null on the dated axis: those moves are the scheduling feature's, and a shortcut
+ * that quietly did something else instead would be worse than one that does nothing.
+ */
+function horizonStops(roadmap: RoadmapModel): (string | null)[] | null {
+	if (roadmap.axis !== 'horizons') return null;
+	return [null, ...roadmap.buckets.map((bucket) => bucket.value)];
+}
+
+/** Alt+Left/Right: the selected card moves one bucket, by the drop's own write. */
+function handleRoadmapMoveKey(
+	host: BacklogViewHost,
+	snapshot: RoadmapSnapshot,
+	card: BacklogItem,
+	evt: KeyboardEvent,
+): void {
+	if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
+	const stops = horizonStops(snapshot.roadmap);
+	// Not this projection's chord to swallow on the dated axis — and never a context
+	// card: the same rule that keeps it out of the draggables, applied where a
+	// keyboard could otherwise reach past them. Both bail BEFORE preventDefault, so a
+	// key this handler does not act on is left to whatever else wants it.
+	if (!stops || card.outsideFilter) return;
+	evt.preventDefault();
+	// An unreadable value shelves the card, and `sameValue` reads it as absence —
+	// so the stop it moves from is the one it is drawn in, not the one it claims.
+	const current = stops.findIndex((stop) => sameValue(stop, card.horizon.value));
+	const target = current + (evt.key === 'ArrowRight' ? 1 : -1);
+	// The edges hold rather than wrap: a card in the last bucket has nowhere further
+	// to advance, and wrapping would un-place it unasked.
+	if (current < 0 || target < 0 || target >= stops.length) return;
+	void host.performHorizonMove(card, stops[target]);
 }
 
 /** The card a navigation key moves to, or null for a key that is not navigation. */

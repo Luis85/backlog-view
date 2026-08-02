@@ -1286,9 +1286,12 @@
 	font-size: var(--font-ui-smaller);
 }
 
-/* The column highlight is the only drop signal — within-column order is derived,
-   so there is no between-cards edge to indicate. */
-.pbl-board-col.pbl-col-drop-over {
+/* The region highlight is the only drop signal a card drag gives — within a column
+   or a bucket the order is derived, so there is no between-cards edge to indicate.
+   One rule for every card target: a board column, a horizon bucket, the shelf. */
+.pbl-board-col.pbl-drop-over,
+.pbl-bucket.pbl-drop-over,
+.pbl-shelf.pbl-drop-over {
 	border-color: var(--interactive-accent);
 	border-style: solid;
 	box-shadow: 0 0 0 1px var(--interactive-accent) inset;
@@ -1515,6 +1518,29 @@
 	min-height: var(--size-4-8);
 }
 
+/* Create into this bucket. Hidden until the bucket is hovered or the button takes
+   focus, exactly as the tree row's add button is: an affordance per bucket, not a
+   permanent row of plus signs across the roadmap. */
+.pbl-bucket-add {
+	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+.pbl-bucket:hover .pbl-bucket-add,
+.pbl-bucket-add:focus-visible {
+	opacity: 1;
+}
+
+.pbl-bucket-add .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
 /* ----- the dated axis: the month grid, bars, and the today line */
 
 .pbl-timeline {
@@ -1661,6 +1687,18 @@
 .pbl-roadmap-context {
 	border-style: dashed;
 	background-color: transparent;
+}
+
+/* An empty shelf takes no space — and is still the target that un-places, which a
+   strip appearing only while a drag is live can be and an absent element cannot.
+   The DOM keeps it so a drop has somewhere to land; this keeps it out of the way. */
+.pbl-shelf-empty {
+	display: none;
+}
+
+.pbl-dragging .pbl-shelf-empty {
+	display: flex;
+	border-style: dashed;
 }
 
 .pbl-shelf-header {
