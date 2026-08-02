@@ -15,12 +15,21 @@
  * A value as an inline code span. The fence is as long as it has to be, and a value that
  * begins or ends with a backtick gets the padding spaces CommonMark strips again — a state
  * called `` `todo` `` must render as itself rather than closing the span early.
+ *
+ * The padding answers a second value too, and for the same reason read the other way
+ * round: CommonMark strips ONE space from each end of a span whose content both begins
+ * and ends with a space, so a key spelled ` status ` — a property id is not trimmed —
+ * would be drawn as `status`, a different key from the one the example writes and the
+ * view reads. Padding it feeds the stripper the spaces it wants. A value that is nothing
+ * but spaces is the exception the rule itself makes (it strips nothing there), so padding
+ * it would ADD two, and a space at one end only is never stripped.
  */
 export function code(value: string): string {
 	const shown = oneLine(value);
 	const longest = Math.max(0, ...[...shown.matchAll(/`+/g)].map((m) => m[0].length));
 	const fence = '`'.repeat(longest + 1);
-	const pad = shown.startsWith('`') || shown.endsWith('`') ? ' ' : '';
+	const stripped = shown.startsWith(' ') && shown.endsWith(' ') && shown.trim() !== '';
+	const pad = shown.startsWith('`') || shown.endsWith('`') || stripped ? ' ' : '';
 	return `${fence}${pad}${shown}${pad}${fence}`;
 }
 

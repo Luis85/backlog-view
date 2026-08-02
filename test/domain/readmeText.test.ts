@@ -20,6 +20,17 @@ describe('a value inside an inline code span', () => {
 		expect(code('`todo`')).toBe('`` `todo` ``');
 	});
 
+	it('keeps the spaces a span would otherwise be read without', () => {
+		// CommonMark strips one space from each end of a span whose content begins AND ends
+		// with one, so ` status ` — a property id is not trimmed — would draw as `status`,
+		// a different key from the one the example writes. The padding feeds that stripper.
+		expect(code(' status ')).toBe('`  status  `');
+		// A space at one end only is never stripped, and a value that is nothing but spaces
+		// is the case the rule exempts — padding either would show a value nobody typed.
+		expect(code('status ')).toBe('`status `');
+		expect(code(' ')).toBe('` `');
+	});
+
 	it('spells a line break rather than emitting one', () => {
 		// A table row is one line: a value carrying a break would end the row in the middle
 		// and the rest of the table would stop being a table.

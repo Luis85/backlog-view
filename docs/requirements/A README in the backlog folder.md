@@ -239,7 +239,10 @@ the view options can rename.
   would be emitted as `status : ` and define `status`: a key one character away from the
   one this view reads, from the block that exists to be copied. The same rule covers a
   state observed with a trailing space. A space *inside* a value is ordinary and stays
-  bare, or every two-word property name would be quoted for nothing.
+  bare, or every two-word property name would be quoted for nothing. The code spans that
+  SHOW such a value are padded for the mirror-image reason: CommonMark strips one space
+  from each end of a span that has one at both, so the same key drawn in the tables and
+  written in the example would otherwise be two different keys in one document.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses
