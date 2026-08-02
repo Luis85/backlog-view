@@ -94,10 +94,10 @@ In `computeStateWrites`, replace these two lines:
 with:
 
 ```typescript
-	// One question, one answer: `sameValue` is what the menu's checkmark asks too, so a
-	// plan that says "unchanged" cannot disagree with the tick the user is looking at.
 	if (sameValue(item.stateValue, state)) return [];
 ```
+
+**Corrected after review:** this step originally also added a two-line comment explaining why `sameValue` is the one answer. The final review pointed out that a de-duplication task had thereby duplicated prose — the comment restated `sameValue`'s own definition-site doc comment nearly verbatim, and `computeHorizonWrites` below got no equivalent, so the file was inconsistent about it too. The comment is not part of this step. The reasoning lives with the definition in `src/domain/noteFields.ts`, which is where it belongs.
 
 This is exact, not merely equivalent: `sameValue(null, null)` is `true`, `sameValue(null, 'x')` and `sameValue('x', null)` are `false`, and two non-null values compare lowercased — the three branches the deleted expression spelled out by hand.
 
@@ -774,8 +774,15 @@ Reaching it takes: a batch lands, the user undoes it, a write throws mid-replay 
 
 **Corrected after review:** this section originally predicted "roughly -60 lines of source and -55 lines of test". That estimate was wrong by roughly 3.5x on the source side. Measured against `git diff b7ed566..HEAD` (`src/` code lines via ESLint's own `max-lines` rule — the metric `skipBlankLines`/`skipComments` count, run with `max: 0` to read the reported total off each file, before and after):
 
-- `src/` **code lines**: **-17**, not -60. Per file: `settings.ts` -11, `vocabulary.ts` -4, `writePlan.ts` -3, `plan.ts` -3, `emptyStates.ts` **+4** (the two extracted shells cost more lines than the five call sites saved).
-- `src/` **physical lines** (git diff, blanks and comments included): **+16** — the doc comments the table and the shells picked up outweigh what the duplication removed.
-- `test/`: **-54 lines, -1 file, -1 test** — close to the -55 test-line estimate; `test/view/pragmaticSpike.test.ts` (55 lines, one test) is gone, `test/helpers/dnd.ts` lost two exports it no longer needs to share, and `test/view/rendering.test.ts` gained one assertion.
+- `src/` **code lines**: **-17**, not -60. Per file: `settings.ts` -11, `vocabulary.ts` -4, `writePlan.ts` -3, `plan.ts` -3, `emptyStates.ts` **+4** (the two extracted shells cost more lines than the five call sites saved). These are stable figures: every later commit on this branch touched comments or tests, neither of which the code-line metric counts.
+- `src/` and `test/` **physical lines**: read them, do not trust a number written here —
 
-Six commits, no behaviour change, no dependency change, `npm run check` green on every commit. What this branch actually buys is not fewer lines — on the source side it is close to a wash — but a single statement of several rules that were previously spelled out two or three times: `sameValue` for "same placement", one field → key table instead of a table plus a switch, one fold instead of three vocabulary collectors, two DOM shells instead of five hand-written copies. The larger cuts wait on the four decisions above.
+```bash
+git diff --shortstat b7ed566..HEAD -- src test
+```
+
+  Source comes out slightly *positive* (the doc comments the table and the shells picked up outweigh what the duplication removed) and `test/` comes out around fifty lines down, dominated by `test/view/pragmaticSpike.test.ts` (55 lines, one test) going away; `test/helpers/dnd.ts` un-exported three helpers it no longer shares, and `rendering.test.ts` and `filter.test.ts` each gained one assertion.
+
+  **Why a command and not a figure.** The first version of this section stated exact physical-line counts, and they were wrong within the same review round that produced them: they were measured before a sibling commit in that very round deleted two comment lines and added two test lines. Any statement a document makes about the size of its own diff is false as soon as one more commit lands, and this branch is *about* not stating things that cannot be checked. So the durable claim is below and the volatile numbers are a command.
+
+No behaviour change, no dependency change, `npm run check` green on every commit. What this branch actually buys is not fewer lines — on the source side it is close to a wash — but a single statement of several rules that were previously spelled out two or three times: `sameValue` for "same placement", one field → key table instead of a table plus a switch, one fold instead of three vocabulary collectors, two DOM shells instead of five hand-written copies. The larger cuts wait on the four decisions above.
