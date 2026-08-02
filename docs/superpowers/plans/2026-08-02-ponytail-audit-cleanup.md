@@ -155,7 +155,9 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 `src/domain/timeline.ts:54` exports `formatCivil` and `src/view/render/timeline.ts` already imports it. `src/view/interactions/plan.ts:100` defines a second, near-identical copy.
 
-They differ in one way: the domain one pads the year to four digits, the private one does not. That difference is currently unreachable — `readDate` (`src/domain/noteFields.ts:199`) requires `^(\d{4})-`, so no `CivilDate` in the model can carry a year below 1000 — which is exactly why this is a deduplication and not a bug fix. Do not claim it fixes anything.
+They differ in one way: the domain one pads the year to four digits, the private one does not.
+
+**Corrected after review:** the first draft of this brief claimed that difference was unreachable because `readDate` (`src/domain/noteFields.ts:199`) requires `^(\d{4})-`. That is wrong — `\d{4}` matches four digit *characters*, not a value ≥ 1000, so a note spelling `0050-01-01` yields `year: 50` and the padding difference is real. It is still not a regression, and the direction matters: unpadded `50-01-01` is not a valid `<input type="date">` value and the field would silently blank, while the padded form round-trips. So this task is a deduplication that happens to close a latent hole. Do not present it as a bug fix in the commit message; do not present it as unreachable either.
 
 **Files:**
 - Modify: `src/view/interactions/plan.ts` (imports, and delete lines 99-103)
