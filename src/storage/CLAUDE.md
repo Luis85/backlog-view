@@ -73,6 +73,19 @@ can be checked by reading one directory.
   never written to an unconfigured key, and a null REMOVES rather than blanks. Applying
   and capturing read the same `axisEntries` list — a key written but not captured would
   be a change no undo could reach, which is exactly how a hole gets in.
+- Two writes here are not work items — the `.base` file and the generated README — and
+  both are in this directory for the same reason: "everything that puts bytes in the vault
+  is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also
+  the one write that may REPLACE an existing file, so it reads before writing: identical
+  content is a no-op (a repository must not get a commit for regenerating the same
+  document), and content whose first line does not parse whole as the generated marker is
+  somebody else's file and is refused. Neither may be decided from the file name alone.
+  The replacement itself goes through `Vault.process`, Obsidian's atomic read-modify-write,
+  and re-asks "still ours?" inside the callback: the permission is about CONTENT, and
+  `read` then `modify` answers it about content that need not still be there when the
+  write lands. It is read-then-`process` rather than `process` alone because the two
+  outcomes that write nothing promise exactly that, and a callback returning the file
+  unchanged has still been through a save.
 - `createBacklogItem` writes everything a new note gets in ONE call — type, parent,
   order, and the horizon when it was created from a bucket. A create-then-update pair
   could fail in between and leave a note in a bucket its frontmatter does not claim,

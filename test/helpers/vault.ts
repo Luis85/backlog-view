@@ -35,6 +35,8 @@ export class FakeVault {
 	triggers: unknown[][] = [];
 	/** Leaves iterateAllLeaves walks — how the view finds the base file it belongs to. */
 	leaves: { view: unknown }[] = [];
+	/** The view the workspace calls active; null unless a test focuses a leaf. */
+	activeView: unknown = null;
 	/** Vault-scoped localStorage, as Obsidian's load/saveLocalStorage present it. */
 	localStorage = new Map<string, unknown>();
 	/** Paths whose processFrontMatter throws — how tests make a batch fail partway. */
@@ -57,6 +59,12 @@ export class FakeVault {
 			iterateAllLeaves: (cb: (leaf: { view: unknown }) => unknown) => {
 				for (const leaf of this.leaves) cb(leaf);
 			},
+			/**
+			 * The active leaf's view — how the registry finds the backlog view a command
+			 * should act on. Tests set `activeView` to one of the leaves' FileViews.
+			 */
+			getActiveViewOfType: (ctor: abstract new (...args: never[]) => unknown) =>
+				this.activeView instanceof ctor ? this.activeView : null,
 		},
 		loadLocalStorage: (key: string) => this.localStorage.get(key) ?? null,
 		saveLocalStorage: (key: string, data: unknown) => {
@@ -79,6 +87,8 @@ export class FakeVault {
 		vault: {
 			getAbstractFileByPath: (path: string) =>
 				this.files.get(path) ?? (this.folders.has(path) ? { path } : null),
+			/** Files only, as the real one is: a folder at this path answers null. */
+			getFileByPath: (path: string) => this.files.get(path) ?? null,
 			getAllLoadedFiles: () =>
 				[...this.folders].map((path) => {
 					const folder = new TFolder();
@@ -103,6 +113,18 @@ export class FakeVault {
 			on: (name: string, cb: (file: TFile, oldPath: string) => void) => {
 				if (name === 'rename') this.renameHandlers.push(cb);
 				return { name };
+			},
+			read: async (file: TFile) => this.contents.get(file.path) ?? '',
+			modify: async (file: TFile, content: string) => {
+				this.contents.set(file.path, content);
+			},
+			// Obsidian's atomic read-modify-write. Kept honest about the one thing it
+			// exists for: the callback is handed what is on disk NOW, which a test can
+			// change between the caller's read and this call to drive the raced path.
+			process: async (file: TFile, fn: (data: string) => string) => {
+				const next = fn(this.contents.get(file.path) ?? '');
+				this.contents.set(file.path, next);
+				return next;
 			},
 		},
 		fileManager: {

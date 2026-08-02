@@ -346,6 +346,16 @@ free of runtime code so imports stay cycle-free.
   front for that reason: afterwards the stray column the card just vacated may be gone
   with its last card, and naming the move from the new board reports a column the user
   never touched.
+- A view announces itself to `registry.ts` while it is loaded (constructor in,
+  `onunload` out) because a palette command has no view: a Bases view is drawn *inside*
+  a leaf's file view rather than being one, so `getActiveViewOfType` cannot find it.
+  Which live view is active is answered by the workspace, and by the **leaf** rather
+  than its file: `getActiveViewOfType(FileView)` gives the active leaf, and the view it
+  contains is the one to act on. One base open in two split panes is two views with two
+  configurations and one path, so a file-path match picks whichever was constructed
+  last — and a "most recent" flag is worse still, going stale pointing at a base the
+  user has closed.
+  Registration is announcement only: it may not read `this.app`, for the reason below.
 - A Bases view is handed its `app` **after** construction, so nothing in the
   `ProductBacklogView` constructor may read `this.app`. This has bitten twice — the
   collapse controller and the rename listener — and the jsdom tests catch it instantly,

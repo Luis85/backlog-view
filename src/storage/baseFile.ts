@@ -1,5 +1,6 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import { ensureFolder } from './frontmatter';
+import { vaultFolder } from '../domain/settings';
 
 /**
  * Writing the `.base` file itself — the one vault write that is not a work item.
@@ -43,8 +44,7 @@ function yamlQuote(value: string): string {
 
 /** Create the backlog folder (if needed) and a configured .base file inside it. */
 export async function createBacklogBase(app: App, folderInput: string): Promise<TFile> {
-	const trimmed = folderInput.trim().replace(/^\/+|\/+$/g, '');
-	const folder = trimmed ? normalizePath(trimmed) : DEFAULT_BACKLOG_FOLDER;
+	const folder = vaultFolder(folderInput) || DEFAULT_BACKLOG_FOLDER;
 	await ensureFolder(app, folder);
 
 	let path = normalizePath(`${folder}/${BASE_FILE_NAME}.base`);

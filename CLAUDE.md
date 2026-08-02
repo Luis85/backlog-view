@@ -70,12 +70,18 @@ mirrors the same directories.
 | `domain/roadmap.ts` | Roadmap derivation: the declared axis, horizon buckets, timeline placement, the shelf partition, context handling | node tests |
 | `domain/timeline.ts` | Civil-date arithmetic: spans, the bounded month window, bar geometry — today is always injected | node tests |
 | `domain/writePlan.ts` | What a change *would* write: drop plans (tree, state, horizon), ranking, backfill. Pure — applies nothing | node tests |
+| `domain/backlogReadme.ts` | The README a backlog folder carries: the schema in the view's own keys, generated from configuration and the offered states. Pure text | node tests |
+| `domain/readmeText.ts` | Putting a configured value into that text without it changing meaning: the code span, the table cell, the copyable YAML | node tests |
+| `domain/readmeStamps.ts` | The dates the view writes by itself: which states stamp them, the rows that name them, the rule that says so | node tests |
+| `domain/readmeMarker.ts` | What the generated README *is*: its file name, and the one line saying which view wrote it | node tests |
 | **`storage/`** | **The only place anything is persisted.** | |
 | `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |
 | `storage/baseFile.ts` | Writing the `.base` file itself | node tests |
+| `storage/readmeFile.ts` | Writing the generated README: the marker check, the identical-file no-op, the refusal | node tests |
 | `storage/collapseStore.ts` | Per-view UI state (collapse sets + projection mode + roadmap-axis pick) in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
 | **`view/`** | **DOM and interaction.** | |
 | `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
+| `view/registry.ts` | The live views, and which one the workspace is showing — how a palette command reaches a Bases view | jsdom tests |
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch, write gate | jsdom tests |
 | `view/selection.ts` | The one selection either projection holds — row/card by path, or a board column stop — and its aria bookkeeping | jsdom tests |
 | `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
@@ -99,6 +105,7 @@ mirrors the same directories.
 | `src/ui/prompts.ts` | New-item, folder and schedule prompts (native date fields + folder suggest) | jsdom tests |
 | `src/ui/valueSuggest.ts` | Shared `AbstractInputSuggest` base the folder and tag suggesters extend | jsdom tests |
 | `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
+| `src/commands/readme.ts` | "Write backlog readme" command: the config gate, the outcomes, the active-view check | jsdom tests |
 
 Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites` /
 `createBacklogItem`), and every write path — including creation — goes through the

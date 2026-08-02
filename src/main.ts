@@ -1,5 +1,6 @@
 import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
+import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
 import { rekeyBase } from './storage/collapseStore';
 import { getViewOptions } from './domain/viewOptions';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
@@ -24,6 +25,14 @@ export default class ProductBacklogPlugin extends Plugin {
 			// Obsidian prefixes command names with the plugin name in the palette.
 			name: 'Create backlog',
 			callback: () => promptCreateBacklogBase(this.app),
+		});
+		this.addCommand({
+			id: WRITE_README_COMMAND_ID,
+			name: 'Write backlog readme',
+			// A check callback, not a plain one: the document is generated from the active
+			// view's configuration, so with no such view there is nothing to describe and
+			// the command hides rather than writing something from the defaults.
+			checkCallback: (checking) => writeBacklogReadmeCommand(this.app, checking),
 		});
 	}
 }

@@ -61,6 +61,25 @@ describe('resolveSettings', () => {
 		expect(settings.homeFolder).toBe('Backlog/Items');
 	});
 
+	it('resolves a hand-edited folder to the spelling the vault uses', () => {
+		// The `.base` file is text somebody may edit outside the options, and a Windows or
+		// doubled separator survives that edit. `storage/` normalizes on the way to disk, so
+		// a setting left raw here is a folder the generated README names and this plugin
+		// never writes to — the document sending an outside editor somewhere else.
+		const settings = resolveSettings(
+			fakeConfig({ homeFolder: 'work\\backlog', 'typeFolder.bug': 'work//backlog//defects/' }),
+		);
+		expect(settings.homeFolder).toBe('work/backlog');
+		expect(settings.typeFolders.bug).toBe('work/backlog/defects');
+	});
+
+	it('reads a folder of separators alone as no folder at all', () => {
+		// `normalizePath` answers '/' for anything that normalizes away — the vault root
+		// spelled as a folder that does not exist, which would be created as one.
+		expect(resolveSettings(fakeConfig({ homeFolder: '\\\\' })).homeFolder).toBe('');
+		expect(resolveSettings(fakeConfig({ homeFolder: '   ' })).homeFolder).toBe('');
+	});
+
 	it('leaves re-typing on move switched off unless it is asked for', () => {
 		// A move is a move, not a re-classification. The option is for people who want
 		// the ladder enforced on every drag, and it waits to be asked.
