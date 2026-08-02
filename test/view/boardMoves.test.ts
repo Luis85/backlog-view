@@ -337,37 +337,6 @@ describe('the quick filter on the board', () => {
 	});
 });
 
-describe('a board move that takes its card off screen', () => {
-	it('names completed hiding as the reason, not the base’s filter', async () => {
-		const vault = boardVault();
-		const { view, containerEl } = board(vault, { showCompleted: false });
-
-		// The move finishes the item, and finished items are hidden — the card leaves
-		// for a reason this view chose, not one the Base did. A message blaming the
-		// filter would send the reader to fix a setting that is not the cause.
-		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
-		await flush();
-		refresh(view, vault);
-
-		expect(Notice.messages.some((m) => m.includes('completed items are hidden'))).toBe(true);
-		expect(Notice.messages.some((m) => m.includes('filter'))).toBe(false);
-	});
-
-	it('offers the same way back to the note', async () => {
-		const vault = boardVault();
-		const { view, containerEl } = board(vault, { showCompleted: false });
-
-		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Done'));
-		await flush();
-		refresh(view, vault);
-
-		Notice.last?.messageEl
-			.querySelector<HTMLElement>('.pbl-notice-open')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(vault.opened.map((o) => o.path)).toEqual(['Epic A.md']);
-	});
-});
-
 describe('hiding finished work on the board', () => {
 	it('hides fully-done subtrees with the tree’s own predicate, columns intact', () => {
 		const { containerEl } = board(boardVault(), { showCompleted: false });

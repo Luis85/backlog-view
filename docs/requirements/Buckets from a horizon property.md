@@ -101,7 +101,7 @@ a date property shows it on the card, in a bucket, without the axis being dates.
 the half of the board's new-card rule this note does NOT claim is the outcome check —
 saying so when the note just created is not on the next render. The hazard is real here
 too: a base can filter on the horizon property itself, excluding the very bucket the
-note was created into. The mechanism now exists — `src/view/interactions/outcome.ts`,
-built for moves by [[Moving between horizons]] — and wiring creation to it is
-[[New cards in place]]'s criterion rather than this note's, because it is one question
-asked of one creation flow and belongs where that flow's rules are written.
+note was created into. It is [[New cards in place]]'s criterion rather than this note's,
+it is unbuilt there, and one attempt at building it for moves was taken back out —
+[[The outcome report was built from one sentence]] is why, and is what to read before
+attempting it again.

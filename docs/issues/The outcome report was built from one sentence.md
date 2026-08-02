@@ -2,14 +2,15 @@
 type: Issue
 order: 30
 parent: "[[The horizon board]]"
-status: Open
+status: Done
 priority: P2
 area: design
 created: 2026-08-02
-source: PR #47 — five of six review rounds landed inside one unspecified mechanism
+closed: 2026-08-02
+source: PR #47 — six of seven review rounds landed inside one unspecified mechanism
 files:
-  - src/view/interactions/outcome.ts
-  - src/view/backlogView.ts
+  - docs/requirements/New cards in place.md
+  - docs/requirements/Moving between horizons.md
 ---
 
 # The outcome report was built from one sentence
@@ -40,11 +41,11 @@ The register's whole value is that a reader can trust that line.
 
 ## What it cost, measured
 
-Eleven review findings across six rounds on PR #47. Two were in the horizon board
+Thirteen review findings across seven rounds on PR #47. Two were in the horizon board
 proper — the drag, the keyboard, the menu, creation, the shelf — both in the first
-round, and nothing there was reopened afterwards. **The other nine were in this
-mechanism, and rounds two through six consisted entirely of defects in the fix for the
-previous round's defect:**
+round, and nothing there was reopened in the six rounds after. **The other eleven were
+in this mechanism, and rounds two through seven consisted entirely of defects in the fix
+for the previous round's defect:**
 
 | Round | Finding, each inside the previous round's fix |
 | --- | --- |
@@ -57,6 +58,8 @@ previous round's defect:**
 | 5 | resolving a watch by NOTE dropped an outstanding earlier move on the same card |
 | 5 | **an unrelated pass retires the oldest watch** — see below |
 | 6 | two watches on one card both answered a pass, so one departure produced two notices |
+| 7 | the newest-only fix left the held watch unremovable, so it fired later as a stale notice |
+| 7 | superseding removed the queue slot that would have consumed the earlier response |
 
 Each is a rule that a written use case would have stated in a sentence, the way this
 register's extensions routinely do — *which pass answers*, *what happens when two moves
@@ -87,42 +90,49 @@ It is therefore recorded as a known limit in `outcome.ts` rather than patched a 
 time. Its cost is a missed notice in a narrow race — the behaviour everywhere else in
 the plugin before this PR — and never a wrong write or a wrong report.
 
-## What a real fix would look like
+## The decision taken
 
-Two options, and the choice is the maintainer's. **Round five moves the recommendation
-firmly to the second**: six rounds of narrowing have not reached a correct rule, and the
-seventh will not either while the rule itself is undecided.
+**Option 2: the mechanism came out.** `src/view/interactions/outcome.ts`, its wiring in
+`applyCardMove`, its tests and the `pbl-notice-open` styling were removed from PR #47 on
+2026-08-02, and [[Moving between horizons]] now records extension 3b as unbuilt. All
+eleven findings left with it. What remained is the horizon board itself — drag, keyboard,
+menu, creation, the shelf — which drew two findings in round one and was not reopened in
+the six rounds after, and which passed CI on Ubuntu and Windows.
 
-1. **Write the use case, then keep the code.** [[New cards in place]] gains the
-   extensions the five rounds discovered — the answering-pass rule, overlapping writes,
-   a second write to the same note, the two causes and their two messages — and
-   `outcome.ts` becomes its implementation rather than an inference. The code satisfies
-   all of them but the last; what is missing is the note that says why, in a place a
-   reader looks, and a decision on the one it cannot satisfy.
-2. **Lift the mechanism out of the horizon board.** `outcome.ts`, its wiring in
-   `applyCardMove`, its four tests and the `pbl-notice-open` styling move to their own
-   change against [[New cards in place]], and [[Moving between horizons]] stays honest
-   by recording 3b as unbuilt until then — including its own known limit, which no
-   amount of narrowing has closed. The board needs the same mechanism for
-   creation, so it is not roadmap work sitting in the wrong place — it is shared work
-   that arrived through the roadmap's door.
+The alternative was to keep the code and write the extensions around it. It was rejected
+for one reason: the last finding cannot be settled by wording. A pass cannot be
+correlated with a write from anything the view can see, so the note would have had to
+describe a rule nobody has yet chosen — which is writing the specification after the
+code all over again, with the code voting.
 
-Option 1 is cheaper and keeps a criterion that is currently *almost* satisfied — the
-round-five limit is the part no wording of the note would make true. Option 2 is the one
-that would have avoided all nine findings, and after six rounds it is the one to take.
+## What the next attempt needs
 
-Round six is worth reading as confirmation rather than as one more bug: it is a
-consequence of round five's own fix (watches held per write rather than per note), found
-one round later, in a mechanism whose every rule has been discovered this way. Nine
-findings is not a run of bad luck; it is what building without the extensions costs.
+Written as extensions on [[New cards in place]] **before** any code, because every one
+of these was discovered by a reviewer after the fact:
+
+1. **Which pass answers a write.** The trap: a data pass arrives from any vault change,
+   not only from the write in hand, and nothing in a Bases result set says which write
+   it was computed after. Checking that the note now carries the written value does not
+   help — that proves the metadata cache saw it, which is upstream of the query and
+   equally true of a stale result set. A design that does not need the correlation
+   (quiescence, a debounce, comparing successive result sets) is the likely answer.
+2. **Two writes outstanding at once**, on different notes and on the same note, with the
+   second one failing.
+3. **Which of the two ways out is named** — the Base rejected the note, or the same
+   write finished it while completed items are hidden. Different messages: each sends
+   the reader to a different setting.
+4. **What the report offers.** A notice with a way back to the note, reachable without a
+   pointer.
+
+Rules 2 to 4 were reached and are in PR #47's history if the next attempt wants them.
+Rule 1 is the open one.
 
 ## Acceptance criteria
 
-- Whichever option is taken, no note claims a mechanism is built while its rules live
-  only in source comments — which is what the state after round one amounted to.
-- The round-five limit is closed by a design decision recorded before any more code,
-  not by another narrowing of which pass may answer.
-- If option 1: the extensions are written from the four rounds' findings, not
-  paraphrased from the code, so the note can disagree with the implementation.
-- If option 2: [[Moving between horizons]] records 3b as unbuilt on the same commit the
-  code leaves, so the register never over-claims in the gap.
+- ~~The register never over-claims in the gap: [[Moving between horizons]] records 3b as
+  unbuilt on the same commit the code leaves.~~ Done — both landed together.
+- ~~No note claims a mechanism is built while its rules live only in source comments.~~
+  Done.
+- **Open, and inherited by [[New cards in place]]**: rule 1 above is decided and written
+  down before the mechanism is built again. This note closes because its decision is
+  taken; that criterion travels to the note that owns the mechanism.

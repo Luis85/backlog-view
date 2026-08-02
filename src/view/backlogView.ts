@@ -19,7 +19,6 @@ import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis } from '../domain/roadmap';
 import { computeDropWrites, computeHorizonDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
-import { OutcomeWatch } from './interactions/outcome';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
@@ -70,8 +69,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private lastUndo: RestoreWrite[] | null = null;
 	/** Keeps undo and redo coherent when a replay fails partway — see UndoRecovery. */
 	private readonly recovery = new UndoRecovery();
-	/** Answers for a moved note that the write's own refresh may have taken off screen. */
-	private readonly outcome = new OutcomeWatch();
 	/** A data update that arrived mid-batch and is waiting for it to finish. */
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
@@ -200,22 +197,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.collapse.collapseNewParents(this.model.items);
 		this.recomputeFilter();
 		this.render();
-		// The pass a write asked for is the pass that can say what became of it. Still
-		// a result, and still not hidden by a rule the WRITE could have tripped —
-		// which the quick filter never is, so an active filter is not part of the
-		// verdict. Without that clause, a filter typed between a move and the requery
-		// it triggered would read as the move having hidden the note.
-		this.outcome.report(
-			(file) => {
-				const item = this.model?.byPath.get(file.path);
-				if (!item || item.outsideFilter) return 'filtered';
-				// Still a result, so anything hiding it now is this view's own doing —
-				// and with the filter ruled out, the completed-subtree rule is what is
-				// left. A write CAN cause that one, which is why it is reported at all.
-				return !this.isFiltering() && this.isRowHidden(item) ? 'completed' : null;
-			},
-			(file, evt) => void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(file),
-		);
 	}
 
 	/**
@@ -442,26 +423,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	private async applyCardMove(item: BacklogItem, writes: ItemWrite[], say: () => void): Promise<boolean> {
 		if (writes.length === 0) return false;
-		// A move can write a value this base filters out. That is the filter speaking,
-		// not the write failing — so the card leaving is reported, with a way back to
-		// the note, rather than prevented or passed over in silence.
-		//
-		// Armed BEFORE the write, for the same reason the vocabulary above is captured
-		// before it: the data pass this write triggers can land INSIDE the await, when
-		// `runExclusively` flushes a deferred update in its `finally`. Arming after
-		// would miss exactly the refresh that was meant to answer, and leave the watch
-		// to answer for whatever pass came next instead.
-		const watch = this.outcome.after(item.file, item.title);
-		if (!(await this.applyMove(item, writes))) {
-			// Refused or failed: nothing to answer for, and a watch left armed would
-			// answer for an unrelated pass. By handle, not by note — an earlier move on
-			// the same card may have landed and still be waiting for its own refresh.
-			this.outcome.dropped(watch);
-			return false;
-		}
-		// Landed, so any earlier watch on this note is answering about a value the
-		// note no longer holds.
-		this.outcome.landed(watch);
+		if (!(await this.applyMove(item, writes))) return false;
 		say();
 		return true;
 	}

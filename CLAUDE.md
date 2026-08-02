@@ -88,7 +88,6 @@ mirrors the same directories.
 | `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/cardDrag.ts` | The card drag both projections share: Pragmatic wiring, drop targets that take their own plan, announcements (ADR 0018) | jsdom tests |
-| `view/interactions/outcome.ts` | What became of a note a write changed: detected on the next data pass, never predicted | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
 | `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
@@ -248,35 +247,15 @@ horizon the reader refuses reads as no value, so comparing values checked `Unpla
 on a note whose key still held something, offering as current an action that removes a
 key and spends the undo slot.
 
-**A write can take its own note out of the base.** A filter can name the very property
-a move writes, so `applyCardMove` registers the moved note with `OutcomeWatch` and the
-data pass that write triggers answers for whether it still shows — by outcome, never
-predicted, because a Bases filter is opaque here. The write stands and stays undoable;
-what is refused is silence. Three rules, each of which was got wrong once:
-
-- **Armed BEFORE the write**, for the same reason the announcement's vocabulary is
-  captured before it — the answering pass can land INSIDE the await, when
-  `runExclusively` flushes a deferred update in its `finally`. Cleared when the batch
-  is refused or fails, or the watch answers for an unrelated pass instead.
-- **Reported from the DATA pass only.** A re-render the user caused (typing in the
-  quick filter) would otherwise blame the write for the filter.
-- **The quick filter is no part of the verdict**, for the same reason: it is the
-  user's doing and never a write's, so a filter typed between a move and the requery
-  it triggered must not read as the move having hidden the note. Completed-subtree
-  hiding IS part of it — that one a write can cause.
-- **The caller supplies the reason, not just a boolean.** There are two ways out and
-  they are different messages: the Base rejected the note, or the same write finished
-  it while completed items are hidden. A report naming the wrong one sends the reader
-  to fix a setting that is not the cause.
-- **A list, not a slot.** A move whose refresh has not arrived does not stop the user
-  making another, and a slot drops the first one's answer — the silence this exists to
-  prevent.
-- **A pass answers "gone" for anyone, and "still there" only for the OLDEST waiting
-  write.** Writes are serialized and each produces one response, so responses arrive in
-  order: the first pass after a move is the PREVIOUS move's, computed before this one's
-  value reached disk, and it lists the note only because it has not looked since.
-  Retiring on it marks a move answered that nothing answered. Index 0 always resolves,
-  so the list still shortens on every pass.
+**A write can take its own note out of the base**, and nothing reports it. A filter can
+name the very property a move writes, so a legitimate write can make its own card
+vanish; the card leaves in silence, which is what
+`docs/requirements/Moving between horizons.md` extension 3b says should not happen. It
+was built once and removed — the mechanism belongs to `New cards in place`, and building
+it from one sentence took eleven review findings across seven rounds without reaching a
+correct rule. Read `docs/issues/The outcome report was built from one sentence.md`
+before building it again: the open question is that nothing correlates a Bases pass with
+a write, and a design that needs that correlation cannot be made to work here.
 
 
 ## Gotchas

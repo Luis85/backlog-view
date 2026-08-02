@@ -10,7 +10,6 @@ files:
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
   - src/view/interactions/cardDrag.ts
-  - src/view/interactions/outcome.ts
   - src/view/render/roadmap.ts
 ---
 
@@ -116,37 +115,20 @@ reads its columns. Driven by synthetic drag events, keys and menus in
 round-trip in `test/storage/frontmatter.test.ts`, and the context-row invariant across
 every roadmap entry point in `test/view/contextCardWrites.test.ts`.
 
-Extension 3b — a move whose new value takes the note out of the Base's own results —
-is `src/view/interactions/outcome.ts`. It is detected by OUTCOME rather than
-predicted, because a Bases filter is opaque to this view: the move registers the note,
-and the data pass that write triggers answers for whether it still shows, reporting
-with a notice that carries the way back to it. Deliberately answered from the data pass
-and not from every render, or a quick filter the user typed would be blamed on the
-write. It sits on `applyCardMove`, so a board move that writes a state its own base
-excludes is reported by the same code — the hazard is one hazard, and a rule that held
-for one projection and not the other is the asymmetry this register keeps finding.
+**Extension 3b is NOT built.** A move whose new value takes the note out of the Base's
+own results applies, and the card leaves on the refresh, in silence — the behaviour
+everywhere else in the plugin, and not what this note asks for. It was built once and
+taken back out: the mechanism belongs to [[New cards in place]], which is still design,
+and building it from this note's one sentence cost eleven review findings across seven
+rounds without reaching a correct rule. The whole account, and what has to be decided
+before it is built again, is [[The outcome report was built from one sentence]].
 
-Six rules govern it, none of them stated in this note, all six found by review rather
-than by design: the watch is armed BEFORE the write (the answering pass can land inside
-the write's own await), resolved by handle so a failed second move cannot drop an
-outstanding first, answered from the data pass alone and with the quick filter out of
-the verdict, held as a list whose oldest entry is the only one a pass may retire on
-"still there", answered by the newest watch on a note alone so one departure cannot
-produce two notices, and reported with the cause the view supplies rather than a guess.
-
-**One known limit remains, and is deliberate**: that last rule assumes every data pass
-belongs to a queued write, and passes also arrive from an edit in another pane. One of
-those between a move and its own response retires the watch early, and the move then
-leaves the base silently. Nothing in a result set says which write it was computed
-after, so closing it is a design decision rather than a narrowing. That, and the choice
-between writing these rules down and moving the mechanism to the note that owns it, are
-[[The outcome report was built from one sentence]].
-
-Still Active, not Done, on two honest counts. The lift — Space, arrows, Space, Escape —
-is [[Keyboard and menu on the roadmap]]'s, and this note's 1b is met by the shortcut and
-the menu until it lands. And 1a's lane clause cannot be exercised at all: with
-[[Lanes on the roadmap]] unbuilt there is no second dimension for a same-bucket drop to
-cross, so "the reparent is planned alone" is specified and untested. What a live vault
+Still Active, not Done, on three honest counts. 3b is the first, above. The lift —
+Space, arrows, Space, Escape — is [[Keyboard and menu on the roadmap]]'s, and this
+note's 1b is met by the shortcut and the menu until it lands. And 1a's lane clause
+cannot be exercised at all: with [[Lanes on the roadmap]] unbuilt there is no second
+dimension for a same-bucket drop to cross, so "the reparent is planned alone" is
+specified and untested. What a live vault
 still has to confirm is the drag itself — jsdom dispatches the events but paints
 nothing, so the bucket highlight, the empty shelf appearing mid-drag and the drop
 feeling like a drop are [[Smoke test the visual changes]]'s to check.
