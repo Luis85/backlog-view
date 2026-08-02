@@ -1773,6 +1773,20 @@
 	background: none;
 }
 
+/* An outlined bar cannot say "open" with the gradient: `background: none` is
+   what makes it an outline at all, and it wins the equal-specificity tie
+   against .pbl-bar-open-*, so an inferred bar missing an end would draw as a
+   closed box. Say it the way an outline can — leave that side unclosed. This
+   is the ordinary case, not an edge one: a backlog that states target dates
+   and no start dates infers every parent's end and leaves every start open. */
+.pbl-bar-inferred.pbl-bar-open-start {
+	border-left: none;
+}
+
+.pbl-bar-inferred.pbl-bar-open-end {
+	border-right: none;
+}
+
 /* A point in time is not a span: an equal pair, stated or inferred, renders as the Gantt diamond. */
 .pbl-bar-milestone {
 	width: 12px;

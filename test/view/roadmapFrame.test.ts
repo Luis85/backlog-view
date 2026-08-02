@@ -145,6 +145,22 @@ describe('the dated frame', () => {
 		expect(epic.getAttribute('aria-label')).toBe('2026-08-01 → 2026-09-30 — inferred from children');
 	});
 
+	it('an inferred bar with no evidence of one kind is marked inferred AND open there', () => {
+		// The ordinary shape of a backlog that states target dates and no start
+		// dates: nothing below supplies a start, so the epic's own start has no
+		// evidence of its kind and stays open while its end is inferred. Both cues
+		// have to survive together — the styles carry a rule for exactly this pair.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A.md', { frontmatter: { type: 'Feature', order: 10, due: '2026-09-30' }, parentLink: 'Epic' });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const epic = barOf(timelineRows(containerEl)[0]);
+		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
+		expect(epic.hasClass('pbl-bar-open-start')).toBe(true);
+		expect(epic.getAttribute('aria-label')).toBe('Target 2026-09-30, start not set — inferred from children');
+	});
+
 	it('an inferred equal pair renders as the milestone diamond too, not just a stated one', () => {
 		const vault = new FakeVault();
 		// The epic states nothing; its only child states an equal start and due.

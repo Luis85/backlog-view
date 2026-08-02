@@ -129,6 +129,22 @@ describe('rendering', () => {
 		);
 	});
 
+	it('leaves an inferred bar unclosed at an end it has no date for', () => {
+		// The open-end cue is a background gradient, and `background: none` is what
+		// makes an inferred bar an outline — same specificity, so the outline wins and
+		// the fade is gone. An outline says "continues" by not closing that side, and
+		// each rule needs both classes (0,2,0) to beat .pbl-bar-open-* on its own.
+		// This is the ordinary case: a backlog stating targets and no starts infers
+		// every parent's end and leaves every start open.
+		for (const [side, edge] of [
+			['start', 'border-left: none;'],
+			['end', 'border-right: none;'],
+		]) {
+			const rule = ruleAt(`.pbl-bar-inferred.pbl-bar-open-${side}`, edge);
+			expect(rule, `an inferred bar open at its ${side} must not close that side`).toBeGreaterThan(-1);
+		}
+	});
+
 	it('renders the hierarchy with badges, depths and tree semantics', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
