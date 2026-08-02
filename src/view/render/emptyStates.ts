@@ -11,6 +11,32 @@ import { adoptableProperties, LEVELS, OptionalField } from '../../domain/setting
  */
 
 /**
+ * The shell every piece of *guidance* shares — icon, title, hint — returned so the
+ * caller can add the one action that differs. Written once because the class names are
+ * the contract `docs/requirements/One stylesheet per concern.md` maps to this module,
+ * and five hand-written copies of them are five places a rename has to land.
+ */
+function guidanceShell(treeEl: HTMLElement, icon: string, title: string, hint: string): HTMLElement {
+	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
+	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), icon);
+	empty.createDiv({ cls: 'pbl-empty-title', text: title });
+	empty.createDiv({ cls: 'pbl-empty-hint', text: hint });
+	return empty;
+}
+
+/**
+ * The lighter shell the two *transient* states share — nothing is wrong, something is
+ * merely hidden — one line of text and a way back, on its own class so the stylesheet
+ * can treat it differently from guidance.
+ */
+function noticeShell(treeEl: HTMLElement, icon: string, text: string): HTMLElement {
+	const empty = treeEl.createDiv({ cls: 'pbl-empty-filter' });
+	setIcon(empty.createDiv({ cls: 'pbl-empty-filter-icon' }), icon);
+	empty.createDiv({ text });
+	return empty;
+}
+
+/**
  * Shown from construction until Bases delivers the first result set. There is no
  * model to render before that, and a blank pane reads as a broken view rather than
  * a working one — the first render replaces this wholesale.
@@ -25,13 +51,12 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): vo
 	const model = host.model;
 	const focused = model?.focused ?? false;
 	const topLevel = focused && model ? newItemType(host.settings, model) : LEVELS[0];
-	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
-	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'list-tree');
-	empty.createDiv({
-		cls: 'pbl-empty-title',
-		text: focused ? `No ${topLevel} items` : 'No backlog items',
-	});
-	empty.createDiv({ cls: 'pbl-empty-hint', text: emptyHint(host, focused, topLevel) });
+	const empty = guidanceShell(
+		treeEl,
+		'list-tree',
+		focused ? `No ${topLevel} items` : 'No backlog items',
+		emptyHint(host, focused, topLevel),
+	);
 	const btn = empty.createEl('button', { cls: 'mod-cta' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	btn.createSpan({ text: `New ${topLevel}` });
@@ -60,16 +85,14 @@ function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): s
  * set and where, never a blank pane.
  */
 export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLElement): void {
-	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
-	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'square-kanban');
-	empty.createDiv({ cls: 'pbl-empty-title', text: 'No workflow to show' });
-	empty.createDiv({
-		cls: 'pbl-empty-hint',
-		text:
-			'The board is a projection of your workflow, and this view has no state property yet. ' +
+	const empty = guidanceShell(
+		treeEl,
+		'square-kanban',
+		'No workflow to show',
+		'The board is a projection of your workflow, and this view has no state property yet. ' +
 			'Set "State property" in the view options — and optionally "Workflow states (in order)" — ' +
 			'and the board will draw one column per state.',
-	});
+	);
 	renderSetupCta(host, empty, ['state']);
 }
 
@@ -81,19 +104,17 @@ export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLEl
  * rather than inventing a vocabulary.
  */
 export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElement): void {
-	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
-	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'map');
-	empty.createDiv({ cls: 'pbl-empty-title', text: 'No axis to show' });
 	const halfConfigured = host.settings.horizonKey !== '' && host.settings.horizonValues.length === 0;
 	const horizonHalf = halfConfigured
 		? 'A horizon property is set, but "Horizons (in order)" is empty — fill it to get Now-Next-Later buckets'
 		: 'Set "Horizon property" and "Horizons (in order)" for Now-Next-Later buckets';
-	empty.createDiv({
-		cls: 'pbl-empty-hint',
-		text:
-			'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. ' +
+	const empty = guidanceShell(
+		treeEl,
+		'map',
+		'No axis to show',
+		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. ' +
 			`${horizonHalf}, or set "Start date property" or "Target date property" for a timeline.`,
-	});
+	);
 	renderSetupCta(host, empty, ['horizon', 'start', 'target']);
 }
 
@@ -122,9 +143,7 @@ function renderSetupCta(host: BacklogViewHost, empty: HTMLElement, fixes: Option
 }
 
 export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
-	const empty = treeEl.createDiv({ cls: 'pbl-empty-filter' });
-	setIcon(empty.createDiv({ cls: 'pbl-empty-filter-icon' }), 'search-x');
-	empty.createDiv({ text: `No items match "${host.filterText.trim()}".` });
+	const empty = noticeShell(treeEl, 'search-x', `No items match "${host.filterText.trim()}".`);
 	const btn = empty.createEl('button', { text: 'Clear filter' });
 	btn.addEventListener('click', () => {
 		host.setFilter('');
@@ -134,9 +153,7 @@ export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElemen
 
 /** Everything is done and hidden — celebrate, and offer the way back. */
 export function renderAllDoneState(host: BacklogViewHost, treeEl: HTMLElement, total: number): void {
-	const empty = treeEl.createDiv({ cls: 'pbl-empty-filter' });
-	setIcon(empty.createDiv({ cls: 'pbl-empty-filter-icon' }), 'circle-check');
-	empty.createDiv({ text: `All ${total} item${total === 1 ? ' is' : 's are'} done and hidden.` });
+	const empty = noticeShell(treeEl, 'circle-check', `All ${total} item${total === 1 ? ' is' : 's are'} done and hidden.`);
 	const btn = empty.createEl('button', { text: 'Show completed items' });
 	btn.addEventListener('click', () => host.config.set('showCompleted', true));
 }

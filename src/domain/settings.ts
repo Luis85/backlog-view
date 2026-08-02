@@ -229,6 +229,13 @@ export function defaultSettings(): BacklogSettings {
 export type OptionalField = 'state' | 'startedDate' | 'finishedDate' | 'horizon' | 'start' | 'target';
 
 /**
+ * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
+ * rather than `keyof BacklogSettings` so the table below can only name a string-valued
+ * key: `keyof` would let a boolean option through and `optionalKeyFor` would return one.
+ */
+type OptionalSettingsKey = 'stateKey' | 'startedDateKey' | 'finishedDateKey' | 'horizonKey' | 'startKey' | 'targetKey';
+
+/**
  * One such property: the option that names it, the key it adopts when nothing does,
  * and what it is called out loud. One table, four readers — the view options draw
  * their picker from it, `configProblems` reports collisions by its labels,
@@ -244,6 +251,8 @@ export interface OptionalProperty {
 	suggested: string;
 	/** What the property is called wherever a collision or an adoption is reported. */
 	label: string;
+	/** The `BacklogSettings` field this property's configured key is resolved into. */
+	settingsKey: OptionalSettingsKey;
 }
 
 /**
@@ -254,14 +263,14 @@ export interface OptionalProperty {
  * plain string keys, whose insertion order `Object.keys` preserves by definition.
  */
 const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
-	state: { option: 'stateProperty', suggested: 'status', label: 'state' },
-	startedDate: { option: 'startedDateProperty', suggested: 'started', label: 'started date' },
-	finishedDate: { option: 'finishedDateProperty', suggested: 'finished', label: 'finished date' },
+	state: { option: 'stateProperty', suggested: 'status', label: 'state', settingsKey: 'stateKey' },
+	startedDate: { option: 'startedDateProperty', suggested: 'started', label: 'started date', settingsKey: 'startedDateKey' },
+	finishedDate: { option: 'finishedDateProperty', suggested: 'finished', label: 'finished date', settingsKey: 'finishedDateKey' },
 	// The roadmap's three, whose suggestions follow the ecosystem's own vocabulary
 	// (the Tasks plugin's `start` and `due`) without assuming it.
-	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon' },
-	start: { option: 'startProperty', suggested: 'start', label: 'start' },
-	target: { option: 'targetProperty', suggested: 'due', label: 'target' },
+	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon', settingsKey: 'horizonKey' },
+	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
+	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */
@@ -280,22 +289,14 @@ export const OPTIONAL_PROPERTIES: OptionalProperty[] = OPTIONAL_FIELDS.map(optio
 export type AxisField = 'horizon' | 'start' | 'target';
 export const AXIS_FIELDS: AxisField[] = ['horizon', 'start', 'target'];
 
-/** The frontmatter key one optional field is stored under; '' when it is unconfigured. */
+/**
+ * The frontmatter key one optional field is stored under; '' when it is unconfigured.
+ * Read off `PROPERTY_TABLE`, so the field → key mapping is stated exactly once: a
+ * switch beside the table was a second statement of it, and the compiler only ever
+ * checked one of them for completeness.
+ */
 export function optionalKeyFor(settings: BacklogSettings, field: OptionalField): string {
-	switch (field) {
-		case 'state':
-			return settings.stateKey;
-		case 'startedDate':
-			return settings.startedDateKey;
-		case 'finishedDate':
-			return settings.finishedDateKey;
-		case 'horizon':
-			return settings.horizonKey;
-		case 'start':
-			return settings.startKey;
-		default:
-			return settings.targetKey;
-	}
+	return settings[PROPERTY_TABLE[field].settingsKey];
 }
 
 /** The property id a frontmatter key is named by in the view options. */

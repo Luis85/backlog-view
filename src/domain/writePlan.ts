@@ -2,7 +2,7 @@ import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex } from './itemTypes';
-import { CivilDate, readDate } from './noteFields';
+import { CivilDate, readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import {
 	BacklogSettings,
@@ -271,9 +271,7 @@ export function computeStateWrites(
 	settings: BacklogSettings,
 	today: string,
 ): ItemWrite[] {
-	const current = item.stateValue;
-	const same = state === null ? current === null : current !== null && current.toLowerCase() === state.toLowerCase();
-	if (same) return [];
+	if (sameValue(item.stateValue, state)) return [];
 	const write: ItemWrite = state === null ? { file: item.file, removeStateKey: true } : { file: item.file, state };
 	return [{ ...write, ...stampWrites(state, settings, today) }];
 }
@@ -312,8 +310,7 @@ export function computeHorizonWrites(item: BacklogItem, value: string | null): I
 		// a removal write there would consume an undo slot for a change nobody made.
 		return item.ownKeys.horizon ? [{ file: item.file, axis: { horizon: null } }] : [];
 	}
-	const current = item.horizon.value;
-	if (current !== null && current.toLowerCase() === value.toLowerCase()) return [];
+	if (sameValue(item.horizon.value, value)) return [];
 	return [{ file: item.file, axis: { horizon: value } }];
 }
 
