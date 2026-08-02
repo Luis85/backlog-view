@@ -25,7 +25,13 @@ const REPORT_MS = 10000;
  */
 export type Vanished = 'filtered' | 'completed';
 
-interface WatchedNote {
+/**
+ * One write waiting on the pass that answers for it. Identity is the token: the
+ * caller holds the object it armed and hands it back, so resolving a write can
+ * never resolve a DIFFERENT write to the same note — which is what a path-keyed
+ * handle did, dropping an outstanding first move when a second one failed.
+ */
+export interface Watch {
 	file: TFile;
 	/** Captured with the note, because by report time the item may be gone. */
 	title: string;
@@ -41,22 +47,41 @@ export class OutcomeWatch {
 	 * a file reference and a string, so it needs no cap — one that dropped the oldest
 	 * would lose exactly what this is keeping.
 	 */
-	private watched: WatchedNote[] = [];
+	private watched: Watch[] = [];
 
 	/**
 	 * A write is going out to this note; the next data pass answers for whether it
 	 * still shows. Armed BEFORE the write, never after: the pass that answers can
-	 * land inside the write's own await. A note moved twice before its refresh is
-	 * answered for once, under the title it now carries.
+	 * land inside the write's own await. Returns the handle the caller resolves it
+	 * with once the write is done.
 	 */
-	after(file: TFile, title: string): void {
-		this.watched = this.watched.filter((note) => note.file.path !== file.path);
-		this.watched.push({ file, title });
+	after(file: TFile, title: string): Watch {
+		const watch: Watch = { file, title };
+		this.watched.push(watch);
+		return watch;
 	}
 
-	/** The write never landed, so there is nothing to answer for. */
-	clear(file: TFile): void {
-		this.watched = this.watched.filter((note) => note.file.path !== file.path);
+	/** The write never landed, so there is nothing to answer for — this one only. */
+	dropped(watch: Watch): void {
+		this.watched = this.watched.filter((note) => note !== watch);
+	}
+
+	/**
+	 * The write landed. Any EARLIER watch on the same note is superseded: the note
+	 * now holds this write's value, so whether the previous one would have taken it
+	 * off screen is a question about a state that no longer exists.
+	 *
+	 * Superseding happens HERE and not at arming time. Arming replaced the earlier
+	 * watch outright, so a second move that then failed at the write left the first
+	 * — which had landed, and whose refresh was still coming — with nothing watching
+	 * it at all.
+	 */
+	landed(watch: Watch): void {
+		const upto = this.watched.indexOf(watch);
+		if (upto < 0) return;
+		this.watched = this.watched.filter(
+			(note, index) => note === watch || index > upto || note.file.path !== watch.file.path,
+		);
 	}
 
 	/**
@@ -69,7 +94,7 @@ export class OutcomeWatch {
 	 * this write, and reporting that would blame the write for the filter.
 	 */
 	report(verdict: (file: TFile) => Vanished | null, open: (file: TFile, evt: MouseEvent) => void): void {
-		const waiting: WatchedNote[] = [];
+		const waiting: Watch[] = [];
 		this.watched.forEach((note, index) => {
 			const gone = verdict(note.file);
 			// Gone is final wherever it is seen: a result set that has stopped
@@ -89,13 +114,26 @@ export class OutcomeWatch {
 			// Bounded by construction: index 0 always resolves, so every pass shortens
 			// the list while it is non-empty, and each move's own response is the pass
 			// that finally reaches it.
+			//
+			// KNOWN LIMIT, and it is the assumption in the paragraph above: that every
+			// pass belongs to a queued write. Passes also arrive from elsewhere — an
+			// edit in another pane, a rename, a vault change — and one of those landing
+			// between a move and its own response retires the move's watch on a result
+			// set that predates it. The move then leaves the base silently.
+			//
+			// It is left rather than patched because the correlation that would close
+			// it does not exist here. Checking that the note now carries what the write
+			// wrote proves the METADATA CACHE has seen it, which is upstream of the
+			// Bases query and true of a stale result set too; nothing in a result set
+			// says which write it was computed after. Recorded, with the two ways out,
+			// in `docs/issues/The outcome report was built from one sentence.md`.
 			if (index > 0) waiting.push(note);
 		});
 		this.watched = waiting;
 	}
 }
 
-function reportOne(note: WatchedNote, gone: Vanished, open: (file: TFile, evt: MouseEvent) => void): void {
+function reportOne(note: Watch, gone: Vanished, open: (file: TFile, evt: MouseEvent) => void): void {
 	const why =
 		gone === 'completed'
 			? `"${note.title}" is finished, and completed items are hidden, so it left the view.`

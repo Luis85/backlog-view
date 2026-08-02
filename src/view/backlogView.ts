@@ -451,14 +451,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// `runExclusively` flushes a deferred update in its `finally`. Arming after
 		// would miss exactly the refresh that was meant to answer, and leave the watch
 		// to answer for whatever pass came next instead.
-		this.outcome.after(item.file, item.title);
+		const watch = this.outcome.after(item.file, item.title);
 		if (!(await this.applyMove(item, writes))) {
 			// Refused or failed: nothing to answer for, and a watch left armed would
-			// answer for an unrelated pass. A refresh that already reported inside the
-			// await has cleared it itself, so this only ever disarms a live watch.
-			this.outcome.clear(item.file);
+			// answer for an unrelated pass. By handle, not by note — an earlier move on
+			// the same card may have landed and still be waiting for its own refresh.
+			this.outcome.dropped(watch);
 			return false;
 		}
+		// Landed, so any earlier watch on this note is answering about a value the
+		// note no longer holds.
+		this.outcome.landed(watch);
 		say();
 		return true;
 	}

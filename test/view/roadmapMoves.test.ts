@@ -501,6 +501,25 @@ describe('a move whose value leaves the base', () => {
 		expect(Notice.messages.some((m) => m.includes('"Later item"'))).toBe(true);
 	});
 
+	it('keeps an earlier move’s watch when a second move on the same card fails', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+
+		// A second move on the same card, which fails at the write. Resolving that by
+		// NOTE rather than by handle used to drop the first move's watch with it — and
+		// the first move had landed, with its own refresh still on the way.
+		vault.failWrites.add('Now item.md');
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Next'));
+		await flush();
+		vault.failWrites.clear();
+
+		moveThenRequery(harness, vault, ['Now item.md']);
+		expect(Notice.messages.some((m) => m.includes('left the view'))).toBe(true);
+	});
+
 	it('says nothing when the write never lands', async () => {
 		const vault = horizonVault();
 		// Parent and order share a key: the gate refuses the batch outright.

@@ -139,9 +139,22 @@ depend on the effectful one.
   is the one that grows: split by subject before a file becomes the place tests hide. The
   Obsidian ruleset deliberately stops at `src/` — it is type-aware, and the test doubles
   exist to do what it forbids.
-- Known harness limits: `FakeVault` caches are static — after a write, assert frontmatter
-  rather than re-rendering; `entry.getValue()` returns null, so property chips render
-  empty in tests.
+- **An invariant asserted in a comment gets a test that fails without it, and the test is
+  watched failing.** Revert the fix, run it, see red, restore. Six of ten review findings
+  on one pull request were comments precisely stating the rule the code beside them
+  broke, so a confident paragraph is evidence of intent and of nothing else — see
+  `docs/issues/A comment that states a rule is not a check.md`. Twice, watching the test
+  fail was what showed it asserted less than it read as.
+- Known harness limits: nothing refreshes on its own — a write updates the vault and no
+  `onDataUpdated` follows, so a test that wants to see the result RE-RENDERED calls
+  `refresh(view, vault)` (or sets `vault.afterWrite`, which is how a Bases update is
+  interleaved with a batch). The model it rebuilds does see the write: `addFile` gives
+  the metadata cache the same frontmatter object `processFrontMatter` mutates — verified
+  2026-08-02, after this line claimed for months that the caches were static and cost a
+  legitimate test that was deleted rather than driven. A note added with NO frontmatter
+  is the real exception: the cache never gets an object for it, so writes to it stay
+  invisible to the model. `entry.getValue()` returns null, so property chips render empty
+  in tests.
 
 ## Invariants that bite
 

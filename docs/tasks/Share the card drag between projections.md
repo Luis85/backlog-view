@@ -71,9 +71,12 @@ The two card blocks read alike on purpose: the same three questions — the drag
 paths a keyboard and a menu reach that a drag cannot, and the structural refusal
 behind both — asked once per projection.
 
-`src/view/backlogView.ts` also went two lines over ITS budget, which turned out to be
-the useful part of the exercise: two extractions came out of it that were overdue
-anyway. `restoreScroll` moved beside `anchorScrollLeft` in `render/projections.ts`,
-where the policy it applies already lived, and `UndoRecovery.settle` took the
-"completed or failed partway" branch out of the view and put it with the recovery
-bookkeeping it belongs to. Neither was on this task's list; the cap found them.
+`src/view/backlogView.ts` also went over ITS budget, twice, which turned out to be the
+useful part of the exercise: three extractions came out of it that were overdue anyway.
+`restoreScroll` moved beside `anchorScrollLeft` in `render/projections.ts`, where the
+policy it applies already lived; `UndoRecovery.settle` took the "completed or failed
+partway" branch out of the view and put it with the recovery bookkeeping it belongs to;
+and `matchingPaths` — the quick filter's match-path walk — moved to `domain/model.ts`,
+because which rows a needle admits is a question about the tree, leaving the view only
+the policy that an empty needle is no filter rather than an empty one. None was on this
+task's list; the cap found all three, one per round of review that added a line.
