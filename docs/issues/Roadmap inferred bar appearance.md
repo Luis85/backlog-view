@@ -15,7 +15,11 @@ A verification to run.
 
 ## Why this exists
 
-**This has never been looked at.** [[Spans roll up the tree]] shipped the
+**Looked at once**, in the maintainer's 2026-08-02 pre-release run, which reported no
+problems. That is not the per-point record this note asks for, so it stays open — and its
+sharpest point is a judgement rather than a check: whether an unclosed dashed edge reads as
+"this continues, unknown" or as a rendering glitch. The acceptance criteria below ask for
+that written down either way, and it has not been. [[Spans roll up the tree]] shipped the
 `pbl-bar-inferred` class (outlined rather than filled) on jsdom structure tests alone —
 the class reaching the DOM is checked, the pixel it produces is not — and it has stayed
 unrun through every roadmap increment since. `docs/Product Backlog.base` now gives

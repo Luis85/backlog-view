@@ -28,10 +28,10 @@ export function resolveParent(app: App, file: TFile, cache: CachedMetadata | nul
 
 	// Fallback: raw frontmatter value, e.g. a plain note name without brackets.
 	const fm = cache.frontmatter;
-	const raw: unknown = fm?.[parentKey];
+	const raw: unknown = ownValue(fm, parentKey);
 	const rawValue: unknown = Array.isArray(raw) ? raw[0] : raw;
 	if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
-		const keyPresent = !!fm && parentKey in fm;
+		const keyPresent = raw !== undefined;
 		return { file: null, hasValue: false, explicitRoot: keyPresent };
 	}
 	const linkpath = linkpathFromRawValue(rawValue);
@@ -140,6 +140,24 @@ export function readNumber(value: unknown): number | null {
 		if (Number.isFinite(parsed)) return parsed;
 	}
 	return null;
+}
+
+/**
+ * A note's OWN value for a user-configured key, or undefined when it has none.
+ *
+ * Frontmatter keys are user data, so `fm[key]` is not safe: `toString`, `constructor`
+ * and `valueOf` are all legal property names, and on a note that lacks them the lookup
+ * returns the inherited FUNCTION. The readers below answer "absent" to one by luck;
+ * `readPlacement` and `readDate` exist to tell absent from unreadable, so they answer
+ * REFUSED, and a whole backlog shelves itself as unreadable.
+ *
+ * The rule had been written down four times before this function existed — `byName` in
+ * `settings.ts`, a private twin in `storage/frontmatter.ts`, a comment in `model.ts`'s
+ * `readOwnKeys`, and not at all in the `readGated` two lines above it. It lives here,
+ * beside the readers that consume it, so there is one place left to get it wrong.
+ */
+export function ownValue(fm: Record<string, unknown> | undefined, key: string): unknown {
+	return fm !== undefined && Object.prototype.hasOwnProperty.call(fm, key) ? fm[key] : undefined;
 }
 
 /**

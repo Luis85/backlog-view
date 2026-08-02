@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-02
-source: Feature Test epic; new this increment, never looked at
+source: Feature Test epic; first looked at in the 2026-08-02 pre-release run
 ---
 
 # Roadmap milestone appearance
@@ -17,7 +17,11 @@ A verification to run.
 
 The whole milestone feature — the diamond, the full-height line, the label and its
 truncation, the collision with today — shipped on jsdom class assertions alone.
-**Nothing below has ever been looked at.** [[Ship the roadmap epic]] is the first real
+**Looked at once**, in the maintainer's 2026-08-02 pre-release run, which reported no
+problems. That is not the per-point record this note asks for, so it stays open — and the
+point that matters most is the two-milestones-a-few-weeks-apart case, whose outcome is what
+decides between the three candidate fixes in [[Nearby milestone labels cover each other]].
+No such decision has been recorded, so that question is still entirely open. [[Ship the roadmap epic]] is the first real
 milestone in the register, so it is the first chance to look at any of it.
 
 ## How to check

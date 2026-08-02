@@ -11,6 +11,7 @@ import {
 	readPlacement,
 	readString,
 	readTags,
+	ownValue,
 	resolveParent,
 } from './noteFields';
 import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
@@ -263,7 +264,7 @@ function addItem(
 	// Resolved even when the ancestors are not being loaded: the scope test below
 	// still has to see that this note is anchored in the hierarchy.
 	const seed = outsideParentSeed(app, file, parentRef, settings);
-	const stateValue = settings.stateKey ? readString(fm?.[settings.stateKey]) : null;
+	const stateValue = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	const doneValues = settings.doneValues.map((v) => v.toLowerCase());
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
@@ -272,15 +273,15 @@ function addItem(
 		entry,
 		outsideFilter: entry === null,
 		title: file.basename,
-		typeName: readString(fm?.[settings.typeKey]),
-		order: readNumber(fm?.[settings.orderKey]),
+		typeName: readString(ownValue(fm, settings.typeKey)),
+		order: readNumber(ownValue(fm, settings.orderKey)),
 		entryIndex: store.all.length,
 		parentPath: parentRef.file?.path ?? null,
 		hasParentValue: parentRef.hasValue,
 		parentExists: seed !== null,
 		explicitRoot: parentRef.explicitRoot,
 		stateValue,
-		tags: settings.tagsKey ? readTags(fm?.[settings.tagsKey]) : [],
+		tags: settings.tagsKey ? readTags(ownValue(fm, settings.tagsKey)) : [],
 		done: stateValue !== null && doneValues.includes(stateValue.toLowerCase()),
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
@@ -301,7 +302,7 @@ function readGated<T>(
 	fm: Record<string, unknown> | undefined,
 	read: (value: unknown) => FieldReading<T>,
 ): FieldReading<T> {
-	return key ? read(fm?.[key]) : absentReading();
+	return key ? read(ownValue(fm, key)) : absentReading();
 }
 
 /**
@@ -318,7 +319,7 @@ function readOwnKeys(
 	const present = {} as Record<OptionalField, boolean>;
 	for (const field of OPTIONAL_FIELDS) {
 		const key = optionalKeyFor(settings, field);
-		present[field] = key !== '' && fm !== undefined && Object.prototype.hasOwnProperty.call(fm, key);
+		present[field] = key !== '' && ownValue(fm, key) !== undefined;
 	}
 	return present;
 }

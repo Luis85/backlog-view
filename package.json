@@ -1,7 +1,7 @@
 {
   "name": "product-backlog-view",
   "version": "0.3.0",
-  "description": "Obsidian Bases view that displays notes as a sortable product backlog tree of Epics, Features, PBIs and Tasks with drag-and-drop, inspired by Azure DevOps Boards.",
+  "description": "Obsidian Bases view that displays notes as a product backlog: a drag-and-drop tree of Epics, Features, PBIs and Tasks, a kanban board with WIP limits, and a roadmap, inspired by Azure DevOps Boards.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

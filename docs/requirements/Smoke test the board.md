@@ -12,8 +12,11 @@ source: user request
 The board projection over the same backlog: columns, cards, and state writes gated the
 same way the tree's are, checked once against a real vault.
 
-**Outcome** — Every case below has been looked at, with the result written into its own
-`Issue`'s Runs table, so a stale check is visible rather than assumed.
+**Outcome** — **Run by the maintainer on 2026-08-02** in an `npm run test-build` vault
+ahead of the `0.4.0` release: nothing on the list needed adjusting. That is a run of the
+whole list and not a per-case record — each `Issue` below still asks for its own points
+written down as pass or fail, and each stays open until they are, so a stale check is
+visible rather than assumed.
 
 ## Use cases
 

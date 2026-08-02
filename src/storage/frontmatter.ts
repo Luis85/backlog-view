@@ -1,5 +1,5 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
-import { hasTag, normalizeTag, readString, readTags } from '../domain/noteFields';
+import { hasTag, normalizeTag, ownValue, readString, readTags } from '../domain/noteFields';
 import { AXIS_FIELDS, BacklogSettings, isDoneValue, OptionalField, optionalKeyFor, vaultFolder } from '../domain/settings';
 import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
@@ -229,21 +229,6 @@ function movesState(leaving: string | null, state: string | undefined): boolean 
  */
 function setOwn(fm: Record<string, unknown>, key: string, value: unknown): void {
 	Object.defineProperty(fm, key, { value, writable: true, enumerable: true, configurable: true });
-}
-
-/**
- * A note's OWN value for a user-configured key, or undefined when it has none.
- *
- * Frontmatter keys are user data, so `fm[key]` is not safe: `toString`, `constructor`
- * and `valueOf` are all legal property names, and on a note that lacks them the lookup
- * returns the inherited FUNCTION — truthy, so a blank test reports "a date is already
- * recorded" for a note that has none, and the stamp is declined forever. The rule is
- * old here (`byName` in `domain/settings.ts` says it has shipped three times), and
- * the answer is the same one: a function to reach for, not a rule to remember. Every
- * live read of a configured key in this module goes through it.
- */
-function ownValue(fm: Record<string, unknown>, key: string): unknown {
-	return Object.prototype.hasOwnProperty.call(fm, key) ? fm[key] : undefined;
 }
 
 /**

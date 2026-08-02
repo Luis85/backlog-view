@@ -27,8 +27,9 @@ Azure DevOps Boards.
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
-  - **`type`** — one of six: the ladder `Epic → Feature → PBI → Task`, or the **extra
-    types** `Issue` and `Bug` that sit beside it rather than on it.
+  - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue` and
+    `Bug` that sit beside it rather than on it, or `Milestone` — a marker on neither, which
+    states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
@@ -103,6 +104,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 
 | Action | How |
 | --- | --- |
+| Switch projection | Toolbar toggle — **backlog tree**, **kanban board**, **roadmap**. See [The board](#the-board) and [The roadmap](#the-roadmap) |
 | Expand / collapse | Click the chevron, or use the toolbar buttons |
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
 | Re-order among siblings | Drag a row and drop it **between** two rows |
@@ -325,10 +327,10 @@ asks nothing and creates it straight away.
 red, distinct from the four level colours. They rank with `PBI`, so focusing that level
 shows them beside it rather than hiding them.
 
-**The six types are fixed.** That is deliberate: a configurable vocabulary means every
+**The type vocabulary is fixed.** That is deliberate: a configurable vocabulary means every
 rule about levels has to hold for any list someone can type, and the reward is a rename.
 A note typed anything else keeps its own name on the badge and is carried through the
-ladder as before — nothing is rejected, it simply is not one of the six.
+ladder as before — nothing is rejected, it simply is not one of the shipped names.
 
 None of this is enforced. The ladder has always guided what the view *offers* and what it
 *writes* without refusing a move you make deliberately, and extra types follow the same
@@ -478,6 +480,149 @@ Sibling order is a number (`10, 20, 30…`). Dropping between two items assigns 
 value; when the gap gets too small the view transparently renumbers that sibling group.
 Items without an `order` sort after ranked siblings, alphabetically.
 
+## The board
+
+The same backlog read as a kanban board: one column per workflow state, and one card per
+item the view is showing. Switch with the toolbar's **Show as kanban board** button.
+
+**Focus decides what a card is.** With no focus set, every result gets a card. Focus a
+level — *Feature*, say — and the cards are the features, with their PBIs and tasks
+represented beneath them rather than scattered across the columns as cards of their own.
+That is the same re-rooting the tree does, and it is usually what you want from a board:
+one card per thing you are tracking, at the altitude you are tracking it.
+
+**The projection is working position, not configuration.** Which of the three a view is
+showing is remembered per saved view, per device, beside the collapse state — it is never
+written to the `.base`, so opening the same backlog on another machine does not move
+anyone else's view.
+
+The board needs a **state property**. Without one it shows guidance and a button that sets
+it up. The **Workflow states (in order)** list is optional: with it, those are the columns,
+in that order. Without it, the board draws the states your notes actually carry — plus a
+done column even if nothing is in it yet, when none of the states you carry already
+counts as done, so marking an item done is always one click away. And even with a list
+configured, a value one of your **results** carries that the list omits still gets a
+column, so no card of yours is ever homeless.
+
+Only your results mint columns. A card the Base's filter excluded, shown as context, never
+adds a column for its own state — that state is not your board's vocabulary. If its value
+matches no column, it sits in the no-state column.
+
+| Action | How |
+| --- | --- |
+| Move a card | Drag it to another column, press <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or right-click → **Set state** |
+| Clear an item's state | Drop it on the column for items with no state — this **removes** the property rather than blanking it |
+| Read a column's agreement | Hover the column header, or open the column menu |
+| Create in a column | Toolbar **New**, then drag — creation from a column is not built yet |
+
+- **Columns** are the no-state column first, then **Workflow states (in order)** if you
+  set it — or, left unconfigured, the states your notes actually carry plus a done
+  column even if nothing is in it yet, when none of those already counts as done — and
+  finally one more column per observed result value neither names, so a stray status
+  still gets a column of its own rather than losing its card.
+- **WIP limits** are set per state in the view options — for every state **except the done
+  ones**, since a finished column is a record rather than a queue and capping it would mean
+  nothing. A limit **reads the column's full population, not the filtered count**, so
+  narrowing the view cannot make an overcommitted stage look calm. It signals in colour, in
+  shape and in words — and it **refuses nothing**. Going over a limit is information, not a
+  locked door.
+- **Policies** are a sentence per **configured** workflow column, done ones included — the
+  working agreement for that stage. Set one in the view options and it is readable from the
+  column header and the column menu. A column minted from an observed value the workflow
+  list doesn't name has no policy option and no menu entry for one.
+- **Date stamps.** Both `started` and `finished` ride the state write, so neither fires
+  without a state property. Each also needs its own list to name at least one value —
+  `started` in **States that count as started** (empty by default), `finished` in
+  **States that count as done** (populated by default) — or the property is only ever
+  created empty for you to fill by hand, never stamped. Once both are configured, the two
+  behave differently once work is reworked:
+  - **`started`** is written only while the property is empty, so the **earliest** start
+    survives. Entering a started state again does not move it.
+  - **`finished`** follows the done boundary. Completing an item stamps it; **reopening
+    clears it**, because an item back in progress must not claim a finish it no longer has;
+    completing again stamps the new date. Moving between two done states — `Done` becoming
+    `Dropped` — is a re-labelling and writes nothing.
+- **Cards outside the base's filter** appear only on a **focused** board: a focus-level item
+  the filter excluded still gets an inert card, so its results have somewhere to sit.
+  Unfocused, the board is results only — an excluded item never gets a card without a focus
+  level pointing at it. Either way, a context card carries no control that would write to it.
+
+Every move — drag, keyboard or menu — is the same gated write, announced in the same words,
+and taken back by the same <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>.
+
+## The roadmap
+
+The same backlog on a time axis. Switch with the toolbar's **Show as roadmap** button. The
+mode persists exactly as the board's does.
+
+**The axis is declared, never guessed.** The roadmap draws whichever axis the view options
+configure — it does not infer one from property names and never derives horizons from dates.
+There are two:
+
+| Axis | Configured by | Writable |
+| --- | --- | --- |
+| **Horizons** | **Horizons (in order)** plus a horizon property | Yes |
+| **Timeline** | A start date property, a target date property, or **either one alone** | From the row menu, for any end the item can actually use — no drag gestures on the bars yet |
+
+With both configured, an axis picker appears in the toolbar — **Show horizons** and
+**Show timeline**. With only one, there is no choice to make and the picker stays away.
+
+| Action | How |
+| --- | --- |
+| Move between horizons | Drag the card, press <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or right-click → **Set horizon** |
+| Un-place an item (horizons axis only) | Drag it to the shelf — this removes the horizon property |
+| Create in a horizon | The **+** on the bucket, which files the new item with that horizon already set |
+| Set dates | Right-click → **Schedule** / **Unschedule** |
+
+- **Buckets** are the values in **Horizons (in order)** — a Now / Next / Later axis, or
+  whatever you name — plus one more for any result whose horizon value the list omits, the
+  same carve-out the board's columns make. Every move is one gated write, undoable as one
+  batch.
+- **The shelf** — labelled **Unplaced** on screen — holds the **results** the axis could not
+  place, with a count. **On the horizons axis** it is also the drop target that *un-places*:
+  dropping there removes the key rather than blanking it, and it stays reachable while
+  empty, because a target that only exists when occupied is one nothing can reach. **On the
+  timeline it is display-only** — nothing on the dated axis is draggable, so there is no
+  un-place gesture there; an item lands on the shelf by having its dates cleared from the
+  row menu instead.
+
+  Items your Base's filter excluded are **not** on the shelf and not in its count. On a
+  **focused** roadmap, a focus-level item the filter excluded is shown as context so its
+  children have somewhere to hang, not because it is work you have left unplanned. **On
+  the timeline** every excluded item goes straight to a **Context** strip beside the
+  shelf. **On the horizons axis**, one whose horizon value matches an existing bucket
+  sits in that bucket instead — only one with no value, or a value no bucket names,
+  reaches the Context strip. Unfocused, the roadmap draws results only and no context
+  strip appears at all.
+- **The timeline** draws a bar from each item's dates. **One date property is enough** —
+  a target-only roadmap of milestones and deadlines, or a start-only plan, are both
+  supported. **A parent with no dates of its own spans its dated descendants**, endpoint to
+  endpoint, drawn as the inference it is and written to no note — for an ordinary work
+  item. A milestone is its target date alone: with none of its own, it goes to the shelf,
+  **Unplaced**, whatever dates its children carry.
+- **Dates are set from the row**, not from the bar: right-click → **Schedule** or
+  **Unschedule**, on any projection — the tree, the board and the roadmap all reach the
+  same row menu, deliberately: a write reachable only from roadmap mode would be a
+  projection disagreeing about what the backlog can do. What this release does *not* have
+  is a gesture on the bar itself — dragging one to move it, dragging its edge to resize, or
+  dragging an item off the shelf onto a date. Those are specified and not yet built.
+
+  **Schedule appears only when the item has an end it can use.** A milestone is its target
+  date alone, so on a roadmap configured with a start property and no target, milestones
+  offer no Schedule at all — there is nothing they could legally write. The entry is
+  withheld rather than opened onto nothing.
+- **Milestones** are a type of their own: on no rung of the ladder, offered no child types,
+  and **counted in no rollup** — a milestone states a date rather than work, so a progress
+  bar must not count it. One is drawn at its target date, from the target property alone;
+  a `start` on a milestone is ignored, never rewritten and never removed.
+
+  Like every other type rule here, this **guides rather than refuses**: drag a milestone
+  under an Epic, or write a `parent` on one by hand, and the link is kept — the same
+  advisory-not-enforced rule the types section above states. What the type withholds is the
+  offer, not the possibility.
+- **Planned dates are different properties from the board's transition stamps**, so a plan
+  can never overwrite a record of what actually happened.
+
 ## View options
 
 Open the view options in the Bases toolbar to configure:
@@ -489,11 +634,21 @@ Open the view options in the Bases toolbar to configure:
 | Item type property | `type` | Hierarchy level of the item |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
+| Infer hierarchy from folder notes | off | Folder mode: a folder's own note is the parent of the notes beside it, so a child needs no explicit `parent` link |
 | Assign item type when moving | off | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
+| Workflow states (in order) | *(off)* | The board's columns, in that order. Left unset, the board draws the states your notes actually carry, plus a done column even if nothing is in it yet, so marking an item done is always one click away |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
+| States that count as started | *(off)* | Which state values start the clock — entering one stamps the started date |
+| WIP limit for *&lt;state&gt;* | *(off)* | **One per configured state that is not a done state** — a finished column is a record, not a queue, so it is never offered a limit. The most items that stage should hold. Reads the full column, not the filtered count, and refuses nothing |
+| Policy for *&lt;state&gt;* | *(off)* | **One per configured state**, done ones included. The working agreement for that column, readable from its header and menu |
 | Home folder | `docs` | The folder the backlog lives under; every type folder below defaults to a subfolder of it |
-| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Horizon property | *(off)* | Note property holding the roadmap's horizon; with **Horizons (in order)** it makes the bucket axis |
+| Horizons (in order) | `Now, Next, Later` | The buckets the horizon axis draws, in order. Naming a **Horizon property** is enough to turn the axis on — the values ship populated, so you only need to edit this list to rename or add buckets |
+| Start date property / Target date property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
+| Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
+| Show completed items | on | Off hides fully-done subtrees from every projection (only while a state property is set); nothing about ranking or rollups changes |
+| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |
