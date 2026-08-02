@@ -53,9 +53,14 @@ date.
 1. `Milestone` is a name in the fixed vocabulary beside `Issue` and `Bug` — a declared
    type that is not a rung on the ladder, so nothing ever retypes it by position. It takes
    the shipped opinion every declared name gets: a folder, an **icon and a badge colour**.
-   The badge renderer has no fallback for a declared type on purpose (ADR 0013), so the
-   seventh name is not optional styling — a milestone left out of that table renders as an
-   unknown type, and the test asserting the table covers the vocabulary fails.
+   The badge renderer has no fallback for a declared type on purpose
+   ([ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md)), so the seventh name
+   is not optional styling — a milestone left out of that table renders as an unknown type,
+   and the test asserting the table covers the vocabulary fails. That ADR is also the one
+   record this type dates: it is titled for **six** names and lists the two extra types by
+   hand, and while a seventh does not reverse its decision — the vocabulary stays fixed,
+   which was the whole point — the record's own text stops being true the moment this
+   ships. Resolving it belongs to the change that makes it wrong, not to this note.
 2. Its date is the roadmap's configured target property — the same key a bar's end is read
    from, read the same tolerant civil way — and its note body is its description.
 3. It files into its own folder, picked per view like every other type's
