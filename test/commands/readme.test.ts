@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { writeBacklogReadmeCommand } from '../../src/commands/readme';
-import { README_MARKER_PREFIX } from '../../src/domain/backlogReadme';
+import { README_MARKER_PREFIX } from '../../src/domain/readmeMarker';
 import { defaultSettings } from '../../src/domain/settings';
 import { activeBacklogView, forgetBacklogView, rememberBacklogView } from '../../src/view/registry';
 import { FileView, Notice } from '../helpers/obsidian-mock';

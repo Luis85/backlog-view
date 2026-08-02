@@ -1,6 +1,6 @@
 import { App, normalizePath } from 'obsidian';
 import { ensureFolder } from './frontmatter';
-import { README_FILE_NAME, readmeSource } from '../domain/backlogReadme';
+import { README_FILE_NAME, readmeSource } from '../domain/readmeMarker';
 
 /**
  * Writing the backlog README — the second vault write that is not a work item, and

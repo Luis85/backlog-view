@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { readmeMarker, README_MARKER_PREFIX } from '../../src/domain/backlogReadme';
+import { readmeMarker, README_MARKER_PREFIX } from '../../src/domain/readmeMarker';
 import { readmePath, writeBacklogReadme } from '../../src/storage/readmeFile';
 import { FakeVault } from '../helpers/vault';
 

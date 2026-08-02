@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-	backlogReadmeContent,
-	readmeMarker,
-	README_MARKER_PREFIX,
-	readmeSource,
-	readmeStates,
-} from '../../src/domain/backlogReadme';
+import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
+import { readmeMarker, README_MARKER_PREFIX, readmeSource } from '../../src/domain/readmeMarker';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
@@ -67,6 +62,16 @@ describe('backlogReadmeContent', () => {
 		expect(readmeSource(README_MARKER_PREFIX)).toBeNull();
 		// And the whole line still round-trips with its trailing whitespace trimmed.
 		expect(readmeSource(`${readmeMarker('work/B.base › B')}  `)).toBe('work/B.base › B');
+	});
+
+	it('encodes a line break, which would cost the marker its whole job', () => {
+		// A view name can hold one — a hand-edited `.base` spells it — and the reader only
+		// ever sees the first line: left literal, every regeneration would read a truncated
+		// marker and call this plugin's own document somebody else's.
+		const marker = readmeMarker('work/B.base › Sprint\nplanning');
+		expect(marker.includes('\n')).toBe(false);
+		expect(readmeSource(marker)).toBe('work/B.base › Sprint\nplanning');
+		expect(readmeSource(readmeMarker('a\rb'))).toBe('a\rb');
 	});
 
 	it('refuses an interior this module could not have written', () => {
@@ -221,6 +226,15 @@ describe('backlogReadmeContent', () => {
 		expect(yamlHostile).toContain('status: "Needs: review"');
 		// A plain value stays plain — the example is meant to read as the notes do.
 		expect(readme(settingsWith({ stateKey: 'status', states: ['Todo'] }), [])).toContain('status: Todo');
+	});
+
+	it('escapes a line break in the example rather than emitting it', () => {
+		// Quoting is not escaping: YAML folds a literal break inside a double-quoted
+		// scalar, so the key a reader copies would not be the key this view reads.
+		const content = readme(settingsWith({ typeKey: 'kind\nof', stateKey: 'status', states: ['a\tb'] }));
+		expect(content).toContain('"kind\\nof": PBI');
+		expect(content).toContain('status: "a\\tb"');
+		expect(content.split('```markdown')[1].split('```')[0]).not.toMatch(/[\t]/);
 	});
 
 	it('quotes a configured key in the example for the same reason', () => {

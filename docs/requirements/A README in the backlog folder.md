@@ -8,6 +8,7 @@ created: 2026-08-02
 source: user request
 files:
   - src/domain/backlogReadme.ts
+  - src/domain/readmeMarker.ts
   - src/storage/readmeFile.ts
   - src/commands/readme.ts
   - src/view/registry.ts
@@ -281,9 +282,13 @@ and a test that keeps both honest is worth more than either.
 
 ## Where it lives
 
-`src/domain/backlogReadme.ts` (`backlogReadmeContent`, `readmeStates`, `README_MARKER` —
-pure text from the settings and the offered states, applying nothing, beside
-`src/domain/writePlan.ts` which decides what a change would say the same way) ·
+`src/domain/backlogReadme.ts` (`backlogReadmeContent`, `readmeStates` — pure text from the
+settings and the offered states, applying nothing, beside `src/domain/writePlan.ts` which
+decides what a change would say the same way) · `src/domain/readmeMarker.ts` (what the
+file *is* rather than what it says: `README_FILE_NAME`, `readmeMarker`, `readmeSource` and
+the encoding that keeps a source on one line — its own module because the writer needs the
+identity without the prose, and a rule about identity should not be read out of four
+hundred lines of document) ·
 `src/storage/readmeFile.ts` (`writeBacklogReadme`, `readmePath` — the four outcomes, the
 marker check and the no-op, beside `src/storage/baseFile.ts`, the other vault write that
 is not a work item) · `src/commands/readme.ts` (`write-backlog-readme`: the configuration
