@@ -64,7 +64,11 @@ problem actually is, without pretending either is a Feature.
   rows offer only `Task`, and ask nothing.
 - A parentless `Issue` or `Bug` stays in the model — a recognised type is enough to belong.
 - Each has its own icon and badge colour, distinct from every level's and from each other's.
-- The vocabulary is fixed at six names and is not a user setting.
+- The vocabulary is fixed and is not a user setting. Its length is deliberately not stated
+  here: what this note fixes is the *category* — `Issue` and `Bug` are the extra types, and
+  a name added elsewhere in the vocabulary is not one of them unless it takes every rule
+  above ([[Milestones as their own type]] is the case that proved the distinction worth
+  drawing).
 
 ## The request
 

@@ -23,10 +23,14 @@ can move the whole backlog later by changing one setting.
 **Main flow**
 
 1. A **home folder** (default `docs`) is the parent of everything the view creates.
-2. Each type has its **own folder picker** — `typeFolder.epic`, `typeFolder.feature`,
-   `typeFolder.pbi`, `typeFolder.task`, `typeFolder.issue`, `typeFolder.bug`, one per name
-   in the vocabulary — each defaulting to a subfolder of the home folder: `requirements`
-   for the three planning levels, then `tasks`, `issues`, `bugs`.
+2. Each type has its **own folder picker**, generated as `typeFolder.<lowercased name>` —
+   `typeFolder.epic`, `typeFolder.feature`, `typeFolder.pbi`, `typeFolder.task`,
+   `typeFolder.issue`, `typeFolder.bug` today — **one per name in the vocabulary, whatever
+   that vocabulary is**, each defaulting to a subfolder of the home folder: `requirements`
+   for the three planning levels, then `tasks`, `issues`, `bugs`. The keys are *derived*
+   rather than listed, so a name added to the vocabulary brings its picker and its default
+   with it and no enumeration here has to be remembered
+   ([[Milestones as their own type]] adds the seventh).
 3. The modal resolves the folder for the chosen type and shows it.
 4. Changing the type in the modal changes the folder shown, immediately.
 5. The note is created there.

@@ -59,8 +59,12 @@ why a row you expected is not on screen.
   options section.
 - **4a — a note is missing entirely.** The ignored-notes test runs per **root component**,
   not per note: a whole root and everything under it is skipped only when nothing in it
-  qualifies — no **supported** type (one of the six the plugin declares, so `type:
-  meeting-note` does not count), no parent, no parent link at all. An untyped container
+  qualifies — no **supported** type (one the plugin declares, whatever the shipped
+  vocabulary holds, so `type: meeting-note` does not count), no parent, no parent link at
+  all. The manual reads the vocabulary rather than reciting its length, because its whole
+  promise is to predict the same rows `pruneOutsideHierarchy` keeps: a count written here
+  would teach the wrong answer the moment a name is added, and a manual that is confidently
+  wrong is worse than one that is vague. An untyped container
   above a typed Epic is therefore kept, and so is an untyped child of a typed item.
 - **4b — a row shows the `↳` marker.** It is an ancestor the Base's filter excluded,
   loaded so matches keep their place. It renders and it parents; it is never counted, and
