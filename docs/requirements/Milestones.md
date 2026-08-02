@@ -41,15 +41,30 @@ two different things at four call sites — `computeLevel` and `collectFocusRoot
 
 The vocabulary takes a **third category** instead — a declared marker, no rung, no
 children, no parent — with `ALL_TYPES` as the union, which is what earns the name its
-folder, its focusability and its admission to the hierarchy without any of those rules
-learning a special case. Exactly one predicate then changes, by *widening*: the cascade's
-retype exemption belongs to every **declared** type rather than to extra types alone.
-Getting this backwards is what the rest of this list is downstream of.
+folder, its admission to the hierarchy and its acceptance as a focus without any of those
+rules learning a special case. Getting this backwards is what the rest of this list is
+downstream of.
+
+**The second landmine is the word "declared".** The cascade's retype exemption widens to
+the declared **non-rung** types — the extra types and the markers — and stopping the
+sentence one word early exempts the ladder as well, which would leave a PBI dropped under
+an Epic a PBI and undo [[Assigning type on a move]] wholesale. `Epic`, `Feature`, `PBI` and
+`Task` are declared *as rungs*; "declared pins" was only ever a rule about names that
+occupy none.
+
+**The third is that the union carries less than it looks like it does.** `ALL_TYPES`
+membership is a domain fact, and two of the things this feature promises are not domain
+facts at all: what a picker offers, and what a menu offers. Both enumerate the categories
+by hand.
 
 **The quiet ones.** Each does something plausible and wrong, and no test fails:
 
 | Where | What it does to a milestone |
 | --- | --- |
+| `rankOf` in `computeTypeChanges` (`src/domain/writePlan.ts`) | Recognises only extra types, so a marker nested in a moved subtree takes the positional rung and its descendants are retyped from a rank it does not have — the exemption on the dragged item alone does not reach it |
+| `renderFocusPicker` (`src/view/render/toolbar.ts`) | Builds its menu from `LEVELS` then `EXTRA_TYPES`, so the name a saved view may hold is one no user can pick |
+| `addScheduleItems` (`src/view/interactions/menu.ts`) | Offers Schedule whenever *either* date key is configured, so narrowing the fields to the target alone opens a modal with nothing in it |
+| The date rollup ([[Spans roll up the tree]], `src/domain/model.ts`) | Gathers evidence from every result descendant, so a hand-nested milestone's target becomes a dateless ancestor's inferred end — a deadline reported as work |
 | `deriveBars` (`src/domain/roadmap.ts`) | Shelves it as a reversed span when a stale start sits after the target — before any rendering seam runs |
 | `scheduleFields`, `validateSchedule` (`src/view/interactions/plan.ts`) | Offers both ends and applies the span rule, so the entry can refuse a milestone the timeline draws, and can accept a start that leaves it shelved |
 | `carriesDates`, `unschedule` (same file) | Gates on either key and removes both, so Unschedule appears on a milestone with no milestone date, and deletes a start the feature only promised to ignore |
@@ -69,12 +84,21 @@ vocabulary-driven test rather than another remembered list.
 
 **Records and sibling specs to settle in the same change**, none of which is wrong today:
 [ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) is titled for six names
-and lists the extra types by hand; the register's own checker (`docs-check.mjs`) holds a
+and lists the extra types by hand;
+[ADR 0014](../adrs/0014-rank-extra-types-by-type-not-by-position.md) *defines* an extra
+type as "a declared type that is not a rung" and pins that definition at
+`EXTRA_TYPE_RANK`, which classifies a marker as the thing it is not — everything it
+decides about `Issue` and `Bug` survives, and the amendment is to the definition's reach,
+not to the decision; the register's own checker (`docs-check.mjs`) holds a
 legal-parent table of six types, so the register cannot file a milestone of its own until
 it knows the name; and `docs/README.md`'s hierarchy table has no row for a type whose
 parent is nothing and whose children are nothing. [[Type names are data]],
-[[What counts as a work item]] and [[Types beside the ladder]] each pinned the count and no
-longer do, and [[Rollups and hiding finished work]] now names the marker as the second
-exception to "a rollup counts every descendant the Base returned" — unpinning was
-the fix, because a requirement that states a number goes stale in silence while one that
-reads the vocabulary fails out loud.
+[[What counts as a work item]], [[Types beside the ladder]] and [[Multilang]]'s own data
+table each pinned the count and no longer do, and both rollups now name the marker as an
+exception — the progress count in [[Rollups and hiding finished work]] and the date
+evidence in [[Spans roll up the tree]] — stated in each note's guarantee rather than only
+in its criteria, since a criterion that contradicts its own use case is not a
+specification. Unpinning was the fix everywhere it was available, because a requirement
+that states a number goes stale in silence while one that reads the vocabulary fails out
+loud; the two rollups are the exception to the unpinning, because a second exclusion is
+something a walk genuinely gained rather than a count that went out of date.

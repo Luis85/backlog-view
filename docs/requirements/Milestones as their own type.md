@@ -63,11 +63,20 @@ date.
    The badge renderer has no fallback for a declared type on purpose
    ([ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md)), so the seventh name
    is not optional styling — a milestone left out of that table renders as an unknown type,
-   and the test asserting the table covers the vocabulary fails. That ADR is also the one
-   record this type dates: it is titled for **six** names and lists the two extra types by
-   hand, and while a seventh does not reverse its decision — the vocabulary stays fixed,
-   which was the whole point — the record's own text stops being true the moment this
-   ships. Resolving it belongs to the change that makes it wrong, not to this note.
+   and the test asserting the table covers the vocabulary fails. **Two** accepted records
+   are dated by this type, and neither is reversed by it — both are accurate about the code
+   as it stands, and both stop being true the moment a marker ships, which is why resolving
+   them belongs to the change that makes them wrong rather than to this note:
+   [ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) is titled for **six**
+   names and lists the two extra types by hand, while the vocabulary stays fixed, which was
+   its whole point; and
+   [ADR 0014](../adrs/0014-rank-extra-types-by-type-not-by-position.md) opens its decision
+   by *defining* an extra type as "a declared type that is not a rung", which a marker also
+   is — so the definition, left as it stands, classifies a milestone as the very thing this
+   note says it is not, and pins it at `EXTRA_TYPE_RANK` by that classification alone.
+   Everything 0014 decides stays true of `Issue` and `Bug`; what dates is the definition's
+   reach, and the amendment is one clause — declared-not-a-rung is the genus, and the pinned
+   rank is what makes an extra type the species of it that holds Tasks.
 2. Its date is the roadmap's configured target property — the same key a bar's end is read
    from, read the same tolerant civil way — and its note body is its description.
 3. It files into its own folder, picked per view like every other type's
