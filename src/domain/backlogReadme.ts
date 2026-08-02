@@ -362,8 +362,11 @@ function rulesSection(settings: BacklogSettings): string[] {
 		'## What the view will and will not do to these notes',
 		'',
 		'- **The type rules are advisory.** They decide what the view *offers*; nothing is ' +
-			'refused. A note whose type does not match its position is drawn at the level its ' +
-			`position implies${settings.autoType ? ' and, in this view, re-typed to match when it is moved' : ', and moving it does not rewrite its type'}.`,
+			`refused, and a type you declare is the type you keep: a ${code(LEVELS[LEVELS.length - 1])} ` +
+			`under an ${code(LEVELS[0])} stays one, at its own level, however oddly it sits. Only a ` +
+			'note with **no** type takes the level its position implies, and a type this plugin ' +
+			'does not ship sits one rung below its parent so its own children continue the ladder.' +
+			`${settings.autoType ? ' In this view a move does re-type what it moves, to match where it lands.' : ' Moving a note never rewrites its type.'}`,
 		'- **Only the properties above are written.** Prose, headings and any other frontmatter ' +
 			'are left alone.',
 		'- **Levels, progress and board position are derived, never stored.** Do not write them ' +

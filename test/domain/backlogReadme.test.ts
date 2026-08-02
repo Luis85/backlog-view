@@ -213,8 +213,17 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('says what a move does to the type, per this view s setting', () => {
-		expect(backlogReadmeContent(settingsWith({ autoType: false }), [])).toContain('moving it does not rewrite its type');
-		expect(backlogReadmeContent(settingsWith({ autoType: true }), [])).toContain('re-typed to match when it is moved');
+		expect(backlogReadmeContent(settingsWith({ autoType: false }), [])).toContain('never rewrites its type');
+		expect(backlogReadmeContent(settingsWith({ autoType: true }), [])).toContain('re-type what it moves');
+	});
+
+	it('does not say a declared type is redrawn at the level its position implies', () => {
+		// computeLevel keeps a declared ladder type's own level; only an untyped note takes
+		// the position's. Saying otherwise describes the badge wrong for exactly the
+		// mismatched hierarchy the sentence exists to explain.
+		const content = backlogReadmeContent(settingsWith(), []);
+		expect(content).toContain('a type you declare is the type you keep');
+		expect(content).toContain('Only a note with **no** type takes the level its position implies');
 	});
 
 	it('tells the reader how a note stays out of the backlog, per the scope setting', () => {

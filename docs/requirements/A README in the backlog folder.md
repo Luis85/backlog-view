@@ -101,10 +101,14 @@ the view options can rename.
   there, moving a note with no parent property **is** a hierarchy change, and the way to
   file freely is to name the parent, which always wins over the inference.
 - **3c — the reader wants to know what the plugin will refuse.** Almost nothing: the type
-  rules decide what is *offered*, never what is accepted, so a hand-written note with a
-  `Task` under an `Epic` renders at the level its position implies and is not rewritten.
-  The README says so, because an outside editor that expects validation will trust a
-  silence that means nothing.
+  rules decide what is *offered*, never what is accepted. "Advisory" is scoped to what is
+  offered and never stretched into what is *shown*: a declared type keeps its own level and
+  its own badge however oddly it sits, and only an untyped note is drawn at the level its
+  position implies. Saying otherwise would describe the badge wrong for exactly the
+  mismatched hierarchy the sentence exists to explain. So a hand-written `Task` under an
+  `Epic` is accepted, stays a `Task`, and is rewritten by nothing unless this view assigns
+  types on a move. The README says all of it, because an outside editor that expects
+  validation will trust a silence that means nothing.
 - **3d — the reader is a program.** Every field is stated with the forms the reader
   actually accepts — a parent as a wikilink, a bare name or an alias, and as the first
   entry of a list; a number written as a string — and every derived value is named as
