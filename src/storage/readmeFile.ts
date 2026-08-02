@@ -23,10 +23,22 @@ export interface ReadmeWriteResult {
 	path: string;
 }
 
+/**
+ * The folder as the vault spells it, or '' for the root. Everything here derives from
+ * this one answer: a hand-edited or Windows-shaped `homeFolder` (`work\backlog`, a
+ * doubled separator) must not have the file created under one spelling while the
+ * folder is created under another — which is a create that fails on a parent that
+ * exists.
+ */
+function normalizedFolder(folder: string): string {
+	const trimmed = folder.trim().replace(/^\/+|\/+$/g, '');
+	return trimmed ? normalizePath(trimmed) : '';
+}
+
 /** Where the README for `folder` lives — normalized, and at the vault root for ''. */
 export function readmePath(folder: string): string {
-	const trimmed = folder.trim().replace(/^\/+|\/+$/g, '');
-	return trimmed ? normalizePath(`${trimmed}/${README_FILE_NAME}`) : README_FILE_NAME;
+	const dir = normalizedFolder(folder);
+	return dir ? `${dir}/${README_FILE_NAME}` : README_FILE_NAME;
 }
 
 /**
@@ -47,7 +59,7 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 		await app.vault.modify(existing, content);
 		return { outcome: 'updated', path };
 	}
-	await ensureFolder(app, folder.trim().replace(/^\/+|\/+$/g, ''));
+	await ensureFolder(app, normalizedFolder(folder));
 	await app.vault.create(path, content);
 	return { outcome: 'created', path };
 }

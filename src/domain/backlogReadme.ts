@@ -154,8 +154,8 @@ function typeSection(): string[] {
 function fieldRows(settings: BacklogSettings): string[] {
 	const rows = [
 		`| ${cell(settings.parentKey)} | Every item except a root | A link to the parent note: ${code('"[[Note name]]"')}. Quote it, or YAML reads the brackets as a list. Present but empty means the top level |`,
-		`| ${cell(settings.orderKey)} | Every item | A number. The rank among the notes sharing a parent — see below |`,
-		`| ${cell(settings.typeKey)} | Every item | One of the type names above |`,
+		`| ${cell(settings.orderKey)} | Anything you want ranked | A number. The rank among the notes sharing a parent — see below. Without one an item sorts after the ranked ones |`,
+		`| ${cell(settings.typeKey)} | Anything you want typed | One of the type names above, or one of your own. Without one an item takes the level its position implies |`,
 	];
 	if (settings.stateKey) rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below |`);
 	if (settings.tagsKey) rows.push(`| ${cell(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
@@ -392,8 +392,12 @@ export function backlogReadmeContent(settings: BacklogSettings, observedStates: 
 			'',
 			'# This folder is a product backlog',
 			'',
-			'A note here becomes a work item by carrying the properties below — the folder does ' +
-				'not make it one, and notes that carry none of them stay ordinary notes. The ' +
+			(settings.hierarchyOnly
+				? 'A note here becomes a work item by carrying the properties below — the folder ' +
+					'does not make it one, and notes that carry none of them stay ordinary notes. '
+				: 'Every note this view returns is a work item, whether or not it carries the ' +
+					'properties below — that is how this view is configured. ') +
+				'The ' +
 				'hierarchy between the items lives in frontmatter rather than in folders, on ' +
 				'purpose: they stay plain markdown, so they can be read, written and reviewed in ' +
 				'any editor, with or without Obsidian and the Product Backlog view that generated ' +

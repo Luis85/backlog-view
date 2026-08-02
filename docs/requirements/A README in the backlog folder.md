@@ -144,6 +144,12 @@ the view options can rename.
   Unschedule write and remove exactly these keys. What it states instead is the rule that
   survives — nothing writes them as a side effect of a move, a state change or a rename —
   which is the guarantee an outside editor actually needs.
+- **3j — a property is optional and the table says it is required.** `order` and `type`
+  are both optional on a note the parent link enrols: a missing order sorts last, a
+  missing type takes the level the position implies, and a type of the reader's own is
+  kept. Stating them as required would have an outside editor add or replace metadata the
+  model never asked for — the opposite failure to the one this note usually guards, and
+  the same cause.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when it carries the generated

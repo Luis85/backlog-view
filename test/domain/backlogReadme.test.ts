@@ -190,12 +190,26 @@ describe('backlogReadmeContent', () => {
 		);
 	});
 
-	it('does not claim every note in the folder is a work item', () => {
-		// The scope paragraph further down says the opposite, and a reader acting on the
-		// opening line would treat a meeting note as backlog.
-		const content = backlogReadmeContent(settingsWith({ hierarchyOnly: true }), []);
-		expect(content).not.toContain('Every note here is one work item');
-		expect(content).toContain('notes that carry none of them stay ordinary notes');
+	it('opens with the scope this view is actually configured for', () => {
+		// Both directions: the opening and the scope paragraph further down are one claim
+		// said twice, and a reader acting on a wrong opening files a meeting note as backlog.
+		const scoped = backlogReadmeContent(settingsWith({ hierarchyOnly: true }), []);
+		expect(scoped).not.toContain('Every note here is one work item');
+		expect(scoped).toContain('notes that carry none of them stay ordinary notes');
+
+		const unscoped = backlogReadmeContent(settingsWith({ hierarchyOnly: false }), []);
+		expect(unscoped).toContain('Every note this view returns is a work item');
+		expect(unscoped).not.toContain('stay ordinary notes');
+	});
+
+	it('does not require an order or a type on every item', () => {
+		// A note enrolled by its parent alone is legal: a missing order sorts last and a
+		// missing type takes the position's level, so "every item" would have an outside
+		// editor add metadata the model never asked for.
+		const content = backlogReadmeContent(settingsWith(), []);
+		expect(content).toContain('Without one an item sorts after the ranked ones');
+		expect(content).toContain('Without one an item takes the level its position implies');
+		expect(content).toContain('or one of your own');
 	});
 
 	it('says a type of the reader s own does not by itself enrol a parentless note', () => {

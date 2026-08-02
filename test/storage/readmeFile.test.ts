@@ -34,6 +34,16 @@ describe('writeBacklogReadme', () => {
 		expect(vault.folders.has('work/backlog')).toBe(true);
 	});
 
+	it('creates the folder under the same spelling it writes the file under', async () => {
+		// A hand-edited or Windows-shaped home folder: creating `work\backlog` and then
+		// writing `work/backlog/README...` is a create whose parent does not exist.
+		const result = await writeBacklogReadme(vault.app as never, 'work\\\\backlog//', GENERATED);
+
+		expect(result).toEqual({ outcome: 'created', path: 'work/backlog/README_PRODUCT_BACKLOG.md' });
+		expect([...vault.folders]).toContain('work/backlog');
+		expect([...vault.folders].some((f) => f.includes('\\'))).toBe(false);
+	});
+
 	it('writes nothing when the file already matches', async () => {
 		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
 		const before = vault.contents.get('docs/README_PRODUCT_BACKLOG.md');
