@@ -350,6 +350,17 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('a move in the **hierarchy**');
 	});
 
+	it('names a stamp key nothing can stamp, because the backfill still creates it', () => {
+		// startedStates empty is the default: missingKeyStubs stubs every configured key, so
+		// omitting the row left the view creating one the document never mentions.
+		const inert = readme(settingsWith({ stateKey: 'status', startedDateKey: 'started', startedStates: [] }));
+		expect(inert).toContain('| `started` | Yours to fill |');
+		expect(inert).toContain('which nothing in this view stamps');
+		// And with no state property at all, the finish is in the same position.
+		const noState = readme(settingsWith({ stateKey: '', finishedDateKey: 'finished' }));
+		expect(noState).toContain('| `finished` | Yours to fill |');
+	});
+
 	it('names the backfill among the things that write a stamp key', () => {
 		// missingKeyStubs covers the stamp fields too: the keys appear empty, with no state
 		// transition anywhere, and the rule said a state change is what writes them.
@@ -478,24 +489,23 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('is not offered as a state here, and still counts');
 	});
 
-	it('does not advertise a stamp key that can never fire', () => {
-		// Both stamps ride a state write, and a start needs a state that counts as started:
-		// each of those unmet is a key the view never touches, and a row for it would name
-		// one — the inert-horizon rule, asked of the other two dates.
+	it('does not claim a state change writes a stamp key nothing can stamp', () => {
+		// The key is still NAMED — the backfill creates it — but the rule that says a state
+		// change writes it must not fire for a stamp no state can reach.
 		const noStartedStates = readme(
 			settingsWith({ stateKey: 'status', startedStates: [], startedDateKey: 'started', finishedDateKey: 'finished' }),
 			[],
 		);
-		expect(noStartedStates).not.toContain('| `started` |');
-		expect(noStartedStates).toContain('| `finished` |');
+		expect(noStartedStates).toContain('| `started` | Yours to fill |');
+		expect(noStartedStates).toContain('| `finished` | Stamped by the view |');
 		expect(noStartedStates).not.toContain('only into an empty property');
 
 		const noState = readme(
 			settingsWith({ stateKey: '', startedStates: ['Active'], startedDateKey: 'started', finishedDateKey: 'finished' }),
 			[],
 		);
-		expect(noState).not.toContain('| `started` |');
-		expect(noState).not.toContain('| `finished` |');
+		expect(noState).toContain('| `started` | Yours to fill |');
+		expect(noState).toContain('| `finished` | Yours to fill |');
 		expect(noState).not.toContain('written for you, by a state change');
 	});
 

@@ -8,6 +8,7 @@ created: 2026-08-02
 source: user request
 files:
   - src/domain/backlogReadme.ts
+  - src/domain/readmeStamps.ts
   - src/domain/readmeText.ts
   - src/domain/readmeMarker.ts
   - src/storage/readmeFile.ts
@@ -213,6 +214,11 @@ the view options can rename.
   `performHorizonMove` like the menu does, and the backfill stubs the stamp keys exactly
   as it stubs the planning ones. "Nothing writes them as a side effect of a move" is
   scoped to a move in the **hierarchy** for the same reason.
+- **3q — a stamp key nothing can stamp is still a key the view creates.** The backfill
+  stubs every configured date key, so a row gated on "can a state reach this" left the
+  view creating one the document never mentioned. It is named whenever the key is
+  configured, as **yours to fill** where no state stamps it — while the rule above still
+  refuses to claim a state change writes it.
 - **3p — a planning key is written by creating a note, not by editing one.** The
   roadmap's buckets carry a **New** button, and the bucket's value rides the creation
   write (`createBacklogItem`), so a note can hold a horizon nobody ever placed. The list
@@ -369,7 +375,7 @@ decides what a change would say the same way) · `src/domain/readmeText.ts` (`co
 copyable YAML without it changing meaning: the fence that grows, the pipe an HTML entity
 carries past the row scan, the control characters a quoted scalar still folds. Its own
 module because every defect this document has shipped has been one of those rather than a
-sentence) · `src/domain/readmeMarker.ts` (what the
+sentence) · `src/domain/readmeStamps.ts` (the dates the view writes by itself — the two predicates, the rows, the rule, and the states that reach them, which have to agree with each other) · `src/domain/readmeMarker.ts` (what the
 file *is* rather than what it says: `README_FILE_NAME`, `readmeMarker`, `readmeSource` and
 the encoding that keeps a source on one line — its own module because the writer needs the
 identity without the prose, and a rule about identity should not be read out of four

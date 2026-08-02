@@ -1,6 +1,7 @@
 import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, stateMenuValues } from './settings';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
+import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { cell, code, list, yamlScalar } from './readmeText';
 import { hasDateAxis, hasHorizonAxis } from './roadmap';
 import { ORDER_SPACING } from './writePlan';
@@ -119,19 +120,6 @@ function typeSection(settings: BacklogSettings): string[] {
 	];
 }
 
-/**
- * Whether this view ever stamps a start, and whether it ever stamps a finish. The
- * property row and the rule below it ask through these rather than restating the
- * condition, so the table cannot name a key the rule says nothing writes.
- *
- * Both ride a state write (`stampWrites`), so neither can fire without a state
- * property; a start additionally needs states that count as started, since with none
- * declared nothing ever enters one — an inert key, gated exactly as a horizon
- * property with no values is.
- */
-const stampsStart = (s: BacklogSettings): boolean => s.stateKey !== '' && s.startedDateKey !== '' && s.startedStates.length > 0;
-const stampsFinish = (s: BacklogSettings): boolean => s.stateKey !== '' && s.finishedDateKey !== '';
-
 function fieldRows(settings: BacklogSettings): string[] {
 	// In folder mode the property is how you OVERRIDE the folder note above, so calling
 	// it required would have an outside editor pin every note by hand and switch off the
@@ -151,14 +139,7 @@ function fieldRows(settings: BacklogSettings): string[] {
 	// other row does — a document that named only what a reader writes would leave two
 	// keys appearing in these notes with nothing to explain them, and would make the
 	// "only the properties above are written" rule below false.
-	if (stampsStart(settings))
-		rows.push(
-			`| ${cell(settings.startedDateKey)} | Stamped by the view | The date work started, ${code('YYYY-MM-DD')}. Written when the state is changed **in the view** to a started one, and only while the key is empty — a date you write by hand stands |`,
-		);
-	if (stampsFinish(settings))
-		rows.push(
-			`| ${cell(settings.finishedDateKey)} | Stamped by the view | The date work finished, ${code('YYYY-MM-DD')}. Written when the state is changed **in the view** to a done one, and removed when a change there leaves one |`,
-		);
+	rows.push(...stampRows(settings));
 	// The same gate the menu and the planner use: a horizon property with no values is an
 	// axis nothing renders and nothing writes, and a row for it would advertise an inert key.
 	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
@@ -239,29 +220,6 @@ function unlistedDone(settings: BacklogSettings, states: StateEntry[]): string[]
 	];
 }
 
-/**
- * Which states start the clock, named the way the done values are. The start stamp
- * fires on entering one of them, and nothing else in the document says which they are:
- * a reader could otherwise not tell whether writing `Doing` is about to put a date on
- * their note. Like `unlistedDone`, it names values the workflow does not offer, since
- * matching runs against the configured list rather than against the table.
- */
-function startedStates(settings: BacklogSettings, states: StateEntry[]): string[] {
-	if (!stampsStart(settings)) return [];
-	const listed = new Set(states.map((s) => s.value.toLowerCase()));
-	const unlisted = settings.startedStates.filter((v) => v && !listed.has(v.toLowerCase()));
-	return [
-		'',
-		`Work counts as **started** at ${settings.startedStates.map(code).join(', ')} — entering one ` +
-			`of those is what stamps ${code(settings.startedDateKey)}.` +
-			(unlisted.length > 0
-				? ` ${unlisted.map(code).join(', ')} ${unlisted.length === 1 ? 'is' : 'are'} not offered as ` +
-					`${unlisted.length === 1 ? 'a state' : 'states'} here, and still counts: the stamp reads ` +
-					'this list, not the workflow above.'
-				: ''),
-	];
-}
-
 function stateSection(settings: BacklogSettings, states: StateEntry[]): string[] {
 	if (!settings.stateKey || states.length === 0) return [];
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
@@ -286,7 +244,7 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 		// value missing from the table above still finishes an item — silently, from the
 		// reader's point of view, since nothing else here would have mentioned it.
 		...unlistedDone(settings, states),
-		...startedStates(settings, states),
+		...startedStates(settings, states.map((e) => e.value)),
 	];
 }
 
@@ -448,33 +406,6 @@ function rulesSection(settings: BacklogSettings): string[] {
 		'- **A note nothing links to is still a note.** An unresolved parent leaves the item at ' +
 			'the top level rather than hiding it.',
 		...stampRule(settings),
-	];
-}
-
-/**
- * The stamped dates, stated as the exception they are: everything else in this document
- * is written because someone asked for it, and these two are written because a state
- * changed. A reader told only "these are the properties" would keep them by hand, or
- * read a date that moved as an edit somebody made.
- */
-function stampRule(settings: BacklogSettings): string[] {
-	const keys = [stampsStart(settings) && settings.startedDateKey, stampsFinish(settings) && settings.finishedDateKey];
-	const named = keys.filter((k): k is string => k !== false && k !== '');
-	if (named.length === 0) return [];
-	return [
-		`- **${named.map(code).join(' and ')} ${named.length === 1 ? 'is' : 'are'} written for you, by a ` +
-			'state change made in the view.** The one thing here written as a side effect of ' +
-			'something else — and in the same edit as the state, so one undo takes back both. ' +
-			'Editing the state property directly, here or in any other editor, stamps nothing: ' +
-			'the dates record what the view was asked to do, so a history it never saw is a ' +
-			'history it cannot write. **Assign missing properties** adds these keys *empty* to ' +
-			'items that lack them, which is the one way one appears without a state change. ' +
-			(stampsStart(settings)
-				? 'The start is written only into an empty property, so a date you record yourself is kept. '
-				: '') +
-			(stampsFinish(settings)
-				? 'The finish follows the boundary in both directions: reaching a done state writes it, and leaving one removes it again.'
-				: ''),
 	];
 }
 
