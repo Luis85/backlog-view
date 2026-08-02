@@ -39,16 +39,15 @@ export function forgetBacklogView(view: LiveBacklogView): void {
  * whichever view happened to be constructed last. Containment is the only thing that
  * distinguishes them, and it is also what the leaf already knows.
  *
- * Later registrations still win *within* one leaf, which is where the ambiguity is
- * harmless: a leaf draws one view at a time, so a second contained view is one being
- * swapped in.
+ * **Ambiguity is answered with null, not with a guess.** A note holding two embedded
+ * backlog bases puts both inside one leaf, and picking either would generate one base's
+ * contract over the other's file — a wrong answer that looks like a right one. The
+ * command withholds itself instead, which is the same thing it does when no view is
+ * active at all.
  */
 export function activeBacklogView(app: App): LiveBacklogView | null {
 	const leafView = app.workspace.getActiveViewOfType(FileView);
 	if (!leafView) return null;
-	let found: LiveBacklogView | null = null;
-	for (const view of live) {
-		if (leafView.containerEl.contains(view.viewEl)) found = view;
-	}
-	return found;
+	const found = [...live].filter((view) => leafView.containerEl.contains(view.viewEl));
+	return found.length === 1 ? found[0] : null;
 }

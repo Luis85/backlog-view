@@ -76,6 +76,29 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('`due`');
 	});
 
+	it('names a done value the workflow does not offer, because writing it still finishes an item', () => {
+		const content = backlogReadmeContent(
+			settingsWith({ stateKey: 'status', states: ['Todo', 'Active'], doneValues: ['Done', 'Closed'] }),
+			[],
+		);
+		expect(content).toContain('`Done`, `Closed` are not offered as states here');
+		expect(content).toContain('what makes an item finished is this list, not the workflow above');
+	});
+
+	it('says nothing about unlisted done values when the workflow lists them all', () => {
+		const content = backlogReadmeContent(
+			settingsWith({ stateKey: 'status', states: ['Todo', 'Done'], doneValues: ['Done'] }),
+			[],
+		);
+		expect(content).not.toContain('not offered as');
+	});
+
+	it('does not call the planning properties read-only, because the row menu writes them', () => {
+		const content = backlogReadmeContent(settingsWith({ startKey: 'start', targetKey: 'due' }), []);
+		expect(content).toContain('Schedule and Unschedule');
+		expect(content).not.toContain('writes neither');
+	});
+
 	it('describes the timeline when only one date property is configured', () => {
 		// Either key alone is a configured axis, so a view with one must not be told it
 		// has no roadmap at all.

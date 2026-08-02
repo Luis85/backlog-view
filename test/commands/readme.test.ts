@@ -49,16 +49,18 @@ describe('the write backlog readme command', () => {
 
 	it('withholds itself while the view is still waiting for its first result set', () => {
 		const vault = openBacklog();
-		// A view drawn in the same leaf that has not been handed data yet: an empty
-		// observed-state list here is "not loaded", not "no states", and generating from
-		// it would strip a good readme of its whole vocabulary.
-		const loading = { viewEl: leafElOf(vault, 0).createDiv(), settings: defaultSettings(), model: null };
+		// Its own leaf: a view that has not been handed data yet. An empty observed-state
+		// list here is "not loaded", not "no states", and generating from it would strip a
+		// good readme of its whole vocabulary.
+		const leafEl = document.body.createDiv();
+		const leaf = new FileView(vault.addFile('other/Other.base'), leafEl);
+		const loading = { viewEl: leafEl.createDiv(), settings: defaultSettings(), model: null };
 		rememberBacklogView(loading);
+		vault.activeView = leaf;
 
 		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(false);
 
 		forgetBacklogView(loading);
-		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(true);
 	});
 
 	it('writes the readme into the view s home folder, from the view s own settings', async () => {
@@ -170,6 +172,19 @@ describe('the live view registry', () => {
 
 		vault.activeView = vault.leaves[0].view;
 		expect(activeBacklogView(vault.app as never)).not.toBe(other.view);
+	});
+
+	it('answers nothing when one leaf holds two backlog views', () => {
+		// A note with two embedded bases: picking either would generate one base's
+		// contract over the other's file, which is a wrong answer that looks right.
+		const vault = openBacklog();
+		const second = { viewEl: leafElOf(vault, 0).createDiv(), settings: defaultSettings(), model: null };
+		rememberBacklogView(second);
+
+		expect(activeBacklogView(vault.app as never)).toBeNull();
+
+		forgetBacklogView(second);
+		expect(activeBacklogView(vault.app as never)).not.toBeNull();
 	});
 
 	it('tells two leaves showing the same base apart', () => {

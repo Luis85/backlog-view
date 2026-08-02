@@ -64,7 +64,9 @@ the view options can rename.
   wrong is worse than saying nothing: an agent that trusts it writes `type` into a base
   that reads `kind`. "Active" is the **leaf**, never the file: one base open in two split
   panes is two views with two configurations answering to one path, and only the leaf
-  tells them apart.
+  tells them apart. Where the leaf itself is ambiguous — a note embedding two backlog
+  bases — the answer is nothing rather than either of them: generating one base's
+  contract over the other's file is a wrong answer that reads as a right one.
 - **1b — the active view has not had its first result set yet.** Also withheld. An empty
   observed-state list then means "not loaded", not "no states", and generating from it
   would replace a good README with one missing the whole vocabulary — the failure is
@@ -126,6 +128,15 @@ the view options can rename.
   pins the note where it is, while deleting the key hands it to the folder note above it.
   A document that showed only links would have an outside editor delete the key and get a
   different tree from the one the same action produces here.
+- **3h — a configured done value is not one of the workflow's states.** It is named
+  anyway. What finishes an item is the done list, not the state list, so a workflow of
+  `Todo, Active` beside a done value of `Done` means writing `Done` completes the item
+  while nothing in the states table would have said so.
+- **3i — the planning properties are called read-only.** They are not, and the document
+  must not say they are: the row menu's Set horizon, Clear horizon, Schedule and
+  Unschedule write and remove exactly these keys. What it states instead is the rule that
+  survives — nothing writes them as a side effect of a move, a state change or a rename —
+  which is the guarantee an outside editor actually needs.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when it carries the generated

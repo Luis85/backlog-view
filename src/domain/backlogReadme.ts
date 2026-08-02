@@ -218,6 +218,23 @@ function rankingSection(settings: BacklogSettings): string[] {
 	];
 }
 
+/**
+ * The done values this workflow does not offer. Writing one still finishes an item —
+ * `doneValues` is what the model matches, whatever the state list says — so a reader
+ * whose workflow omits `Done` has to be told that writing it anyway means done.
+ */
+function unlistedDone(settings: BacklogSettings, states: StateEntry[]): string[] {
+	const listed = new Set(states.map((s) => s.value.toLowerCase()));
+	const missing = settings.doneValues.filter((v) => v && !listed.has(v.toLowerCase()));
+	if (missing.length === 0) return [];
+	return [
+		'',
+		`${missing.map(code).join(', ')} ${missing.length === 1 ? 'is' : 'are'} not offered as ` +
+			`${missing.length === 1 ? 'a state' : 'states'} here, but ${missing.length === 1 ? 'it counts' : 'they count'} ` +
+			'as done wherever written: what makes an item finished is this list, not the workflow above.',
+	];
+}
+
 function stateSection(settings: BacklogSettings, states: StateEntry[]): string[] {
 	if (!settings.stateKey || states.length === 0) return [];
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
@@ -238,6 +255,10 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 				'these notes carry, so a new one written here becomes a state this backlog has.'
 			: 'These are the declared states. A value outside the list still shows, in a column of ' +
 				'its own, so nothing is lost by writing one — it just sits outside the workflow.',
+		// Done-matching runs against the configured values, not against the workflow, so a
+		// value missing from the table above still finishes an item — silently, from the
+		// reader's point of view, since nothing else here would have mentioned it.
+		...unlistedDone(settings, states),
 	];
 }
 
@@ -259,15 +280,22 @@ function planningSection(settings: BacklogSettings): string[] {
 	if (dateKeys.length === 2) {
 		lines.push(
 			`${code(settings.startKey)} and ${code(settings.targetKey)} are the planned dates, ` +
-				`written ${code('YYYY-MM-DD')}. The roadmap reads them and writes neither. An item ` +
-				'stating only one of the two is a milestone on that date; a target earlier than its ' +
-				'start is set aside rather than drawn backwards.',
+				`written ${code('YYYY-MM-DD')}. An item stating only one of the two is a milestone on ` +
+				'that date; a target earlier than its start is set aside rather than drawn backwards.',
 		);
 	} else if (dateKeys.length === 1) {
 		lines.push(
-			`${code(dateKeys[0])} is the planned date, written ${code('YYYY-MM-DD')}. The roadmap ` +
-				'reads it and does not write it. It is the only date property configured here, so ' +
-				'every item that states one is drawn as a milestone rather than as a span.',
+			`${code(dateKeys[0])} is the planned date, written ${code('YYYY-MM-DD')}. It is the only ` +
+				'date property configured here, so every item that states one is drawn as a ' +
+				'milestone rather than as a span.',
+		);
+	}
+	if (lines.length > 0) {
+		lines.push(
+			'These are a **plan**, and the only things that write them are you and the view\'s own ' +
+				'placement actions — Set horizon and Clear horizon, Schedule and Unschedule, each ' +
+				'writing or removing exactly the keys named here. Nothing writes them as a side ' +
+				'effect of a move, a state change or a rename.',
 		);
 	}
 	return lines.length > 0 ? ['## Planning', '', ...lines.flatMap((l) => [l, ''])].slice(0, -1) : [];
