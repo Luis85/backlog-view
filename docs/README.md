@@ -62,10 +62,10 @@ a card created into a state the base excludes — and every one of those was a
 paragraph of prose before the shape asked the question.
 
 **Product Roadmap** is the third projection: the same backlog on a time axis,
-specified across five features and 15 use cases — the projection toggle grown to three
+specified across six features and 18 use cases — the projection toggle grown to three
 positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
-parents span their children, scheduling as gated date writes, and lanes, focus and
-rollups carried over. Its first feature is built: the toggle's roadmap position, the
+parents span their children, scheduling as gated date writes, milestones as a type of
+their own, and lanes, focus and rollups carried over. Its first feature is built: the toggle's roadmap position, the
 declared axis with its collision checks, both frames read-only — buckets and stated
 bars — the unplaced shelf, and the roadmap's empty states. Everything that writes —
 moving between horizons, scheduling by drag, the lanes — is design still. Two
