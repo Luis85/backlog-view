@@ -296,6 +296,36 @@ describe('applying date stamps', () => {
 		expect(fm['toString']).toBe('2026-08-02');
 	});
 
+	it('creates a `__proto__` date property instead of hitting the prototype setter', async () => {
+		// `__proto__` is a legal frontmatter name. Plain assignment reaches
+		// Object.prototype's setter, which ignores a string outright — so the state
+		// would change and its transition date vanish, with nothing to notice.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		await applyWrites(vault.app, { ...stamping, startedDateKey: '__proto__' }, [
+			{ file, state: 'Active', startedDate: '2026-08-02' },
+		]);
+
+		const fm = vault.fm('A.md');
+		expect(Object.prototype.hasOwnProperty.call(fm, '__proto__')).toBe(true);
+		expect(Object.getOwnPropertyDescriptor(fm, '__proto__')?.value).toBe('2026-08-02');
+		expect(fm['status']).toBe('Active');
+	});
+
+	it('keeps a `__proto__` tag list a list, rather than the object’s prototype', async () => {
+		// The worst shape of the same bug: assigning an ARRAY to `__proto__` does not
+		// drop the write, it replaces the object's prototype.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', {});
+
+		await applyWrites(vault.app, { ...stamping, tagsKey: '__proto__' }, [{ file, tags: { add: ['spike'] } }]);
+
+		const fm = vault.fm('A.md');
+		expect(Object.getOwnPropertyDescriptor(fm, '__proto__')?.value).toEqual(['spike']);
+		expect(Object.getPrototypeOf(fm)).toBe(Object.prototype);
+	});
+
 	it('stamps the finish on crossing INTO done', async () => {
 		const vault = new FakeVault();
 		const file = vault.addFile('A.md', { frontmatter: { status: 'Active' } });

@@ -100,14 +100,14 @@ function applyInto(
 	applyHierarchy(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
-	else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
 	applyStamps(fm, settings, write, leaving);
 	// The roadmap's placement keys, by the same two rules: never an unconfigured key,
 	// and a null REMOVES rather than blanks — unscheduled is a state a note returns
 	// to, not a pair of empty strings.
 	for (const { key, value } of axisEntries(settings, write.axis)) {
 		if (value === null) delete fm[key];
-		else fm[key] = value;
+		else setOwn(fm, key, value);
 	}
 	const applied =
 		write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
@@ -120,14 +120,14 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 	if (write.removeParentKey) {
 		delete fm[settings.parentKey];
 	} else if (write.parent !== undefined) {
-		if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
+		if (write.parent !== null) setOwn(fm, settings.parentKey, wikilinkTo(app, write.parent, write.file.path));
 		// In folder mode a deleted key would just re-infer the folder parent;
 		// an explicitly empty value pins the item to the top level instead.
-		else if (settings.folderHierarchy) fm[settings.parentKey] = '';
+		else if (settings.folderHierarchy) setOwn(fm, settings.parentKey, '');
 		else delete fm[settings.parentKey];
 	}
-	if (write.order !== undefined) fm[settings.orderKey] = write.order;
-	if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
+	if (write.order !== undefined) setOwn(fm, settings.orderKey, write.order);
+	if (write.typeName !== undefined) setOwn(fm, settings.typeKey, write.typeName);
 }
 
 /** The frontmatter keys this write will touch, in the order they are written. */
@@ -173,7 +173,7 @@ function applyStamps(
 		movesState(leaving, write.state) &&
 		isBlank(ownValue(fm, settings.startedDateKey))
 	) {
-		fm[settings.startedDateKey] = write.startedDate;
+		setOwn(fm, settings.startedDateKey, write.startedDate);
 	}
 	if (write.finish === undefined || !settings.finishedDateKey) return;
 	// Only CROSSING the boundary writes, and the crossing is measured from the state
@@ -183,7 +183,7 @@ function applyStamps(
 	// never claims a finish it no longer has.
 	const wasDone = isDoneValue(settings, leaving);
 	if (write.finish.toDone === wasDone) return;
-	if (write.finish.toDone) fm[settings.finishedDateKey] = write.finish.date;
+	if (write.finish.toDone) setOwn(fm, settings.finishedDateKey, write.finish.date);
 	else delete fm[settings.finishedDateKey];
 }
 
@@ -195,6 +195,19 @@ function applyStamps(
 function movesState(leaving: string | null, state: string | undefined): boolean {
 	if (state === undefined) return false;
 	return leaving === null || leaving.toLowerCase() !== state.toLowerCase();
+}
+
+/**
+ * Write a note's OWN property for a user-configured key.
+ *
+ * `fm[key] = value` is not safe when the user names the property `__proto__`: plain
+ * assignment reaches `Object.prototype`'s setter instead of creating a key, which
+ * SILENTLY drops a string or a number — the state changes and its date vanishes — and
+ * for the tag list, which is an array, actually replaces the object's prototype. A
+ * defined own property is what YAML round-trips, for every key including that one.
+ */
+function setOwn(fm: Record<string, unknown>, key: string, value: unknown): void {
+	Object.defineProperty(fm, key, { value, writable: true, enumerable: true, configurable: true });
 }
 
 /**
@@ -311,7 +324,7 @@ function restoreInto(
 			outcome.conflicts++;
 			continue;
 		}
-		if (entry.prior.present) fm[entry.key] = entry.prior.value;
+		if (entry.prior.present) setOwn(fm, entry.key, entry.prior.value);
 		else delete fm[entry.key];
 		changed.push({ key: entry.key, prior: entry.written, written: entry.prior });
 	}
@@ -363,7 +376,7 @@ function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta
 	// A delta that changes nothing leaves the note alone, rather than rewriting the
 	// value into a different shape for no reason.
 	if (added.length === 0 && removed.length === 0) return null;
-	if (next.length > 0) fm[key] = next;
+	if (next.length > 0) setOwn(fm, key, next);
 	else delete fm[key];
 	return { add: added, remove: removed };
 }
@@ -392,11 +405,11 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// One atomic write: a create-then-update pair could fail in between and leave
 	// a blank note without its hierarchy properties behind.
 	const fm: Record<string, unknown> = { [settings.typeKey]: spec.typeName };
-	if (spec.parent) fm[settings.parentKey] = wikilinkTo(app, spec.parent, path);
+	if (spec.parent) setOwn(fm, settings.parentKey, wikilinkTo(app, spec.parent, path));
 	// In folder mode a missing parent key would let folder inference nest this
 	// intentionally top-level note — pin it with an explicitly empty parent.
-	else if (settings.folderHierarchy) fm[settings.parentKey] = '';
-	fm[settings.orderKey] = spec.order;
+	else if (settings.folderHierarchy) setOwn(fm, settings.parentKey, '');
+	setOwn(fm, settings.orderKey, spec.order);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

@@ -50,6 +50,12 @@ can be checked by reading one directory.
   replaces it): crossing in stamps, crossing out deletes, and done-to-done leaves it
   alone. Deciding that from the model's idea of the old state left a note that was
   already done, moved to a not-done state, still carrying its finish.
+- Every WRITE of a user-configured key goes through `setOwn`, never `fm[key] = value`:
+  `__proto__` is a legal property name, and plain assignment reaches
+  `Object.prototype`'s setter instead of creating a key — silently dropping a string
+  or a number (the state changes, its date vanishes) and, for the tag list, replacing
+  the object's prototype with the array. `Object.defineProperty` is what round-trips
+  through YAML for every key including that one.
 - Every live read of a USER-CONFIGURED key goes through `ownValue`, never `fm[key]`:
   `toString`, `constructor` and `valueOf` are legal property names, and on a note
   lacking them the lookup returns the inherited function — truthy, so a blank test
