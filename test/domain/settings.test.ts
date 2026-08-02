@@ -118,6 +118,15 @@ describe('resolveSettings', () => {
 		expect(settings.columnPolicies['done']).toBe('Nothing left to do');
 	});
 
+	it('refuses a limit on a state that is done by DEFAULT, with doneValues unset', () => {
+		// The commonest configuration there is: nobody sets `doneValues`, so it falls
+		// back to DEFAULT_DONE_VALUES — and a set built from the raw config value would
+		// be empty and grant `Done` a limit the rest of the app says it cannot have.
+		const settings = resolveSettings(fakeConfig({ stateValues: 'New, Done', 'wipLimit.done': '3' }));
+		expect(settings.doneValues).toContain('Done');
+		expect(settings.wipLimits['done']).toBeUndefined();
+	});
+
 	it('treats an unparseable limit as no limit, never as zero', () => {
 		// A `.base` file is hand-editable, so every one of these can arrive. An unset
 		// limit is NOT a limit of zero — extension 1a says so, and zero would put every

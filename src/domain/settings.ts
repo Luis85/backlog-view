@@ -592,8 +592,15 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	};
 
 	const doneValues = list('doneValues');
+	// The EFFECTIVE list, not the raw config value: `doneValues` below falls back to
+	// DEFAULT_DONE_VALUES when nobody sets it, and every other "is this state done"
+	// reader (model.ts, board.ts, backlogReadme.ts) goes through that resolved field —
+	// so the exclusion set has to be built from the same list it is returned as, or a
+	// `.base` that relies on the defaults grants `Done` a limit the rest of the app
+	// says it cannot have.
+	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
 	const states = dedupe(list('stateValues'));
-	const doneSet = new Set(doneValues.map((v) => v.toLowerCase()));
+	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
 	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
@@ -624,7 +631,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
-		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
+		doneValues: effectiveDoneValues,
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
 		startedDateKey: propKey('startedDateProperty', fallback.startedDateKey),
