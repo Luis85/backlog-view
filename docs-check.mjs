@@ -393,7 +393,9 @@ for (const [, note] of notes) {
 	const flow = /\*\*Main flow\*\*\n+([\s\S]*?)(?=\n(?:\*\*[A-Z]|## ))/.exec(text);
 	const steps = new Set([...(flow?.[1] ?? "").matchAll(/^(\d+)\. /gm)].map(([, n]) => Number(n)));
 	if (steps.size === 0) fail(note.file, "main flow has no numbered steps");
-	const labels = [];
+	// Every extension is labelled, and departs from a step that exists. Their ORDER on the
+	// page is deliberately not checked: it is the one property here a reader fixes by
+	// reading, and the two rules above are what stop a label from meaning nothing.
 	for (const [bullet] of bullets) {
 		const label = /^[-*+] \*\*(\d+)([a-z]) — /.exec(bullet);
 		if (!label) {
@@ -404,11 +406,6 @@ for (const [, note] of notes) {
 		if (steps.size > 0 && !steps.has(step)) {
 			fail(note.file, `extension ${label[1]}${label[2]} departs from step ${step}, which the main flow does not have`);
 		}
-		labels.push([step, label[2]]);
-	}
-	const ordered = [...labels].sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1]));
-	if (labels.some(([step, letter], i) => ordered[i][0] !== step || ordered[i][1] !== letter)) {
-		fail(note.file, "extensions are not in step order");
 	}
 }
 
@@ -481,10 +478,6 @@ for (const file of adrFiles) {
 	// Consequences before Decision is a different document.
 	checkSections(file, text, ADR_SECTIONS, "ADR");
 }
-for (let n = 1; n <= Math.max(0, ...numbers.keys()); n++) {
-	if (!numbers.has(n)) fail("docs/adrs", `no ADR ${String(n).padStart(4, "0")} — numbering has a gap`);
-}
-
 /**
  * Supersession, resolved once every number is known. A chain that names a record which
  * does not exist is worse than none: it reads as history and leads nowhere. Both ends are
@@ -562,7 +555,18 @@ async function collectTs(dir, keep) {
 
 // Every `.ts` under both trees, helpers included: `test/helpers/view.ts` is the harness
 // every view test is written against, so it is at least as worth naming as a suite.
-const sources = [...(await collectTs("src", (n) => n.endsWith(".ts"))), ...(await collectTs("test", (n) => n.endsWith(".ts")))];
+/**
+ * `src/` only. This is the check that finds *missing* notes rather than wrong ones, and
+ * it earns that for modules: the architecture table names one per concern, so a module
+ * nothing describes is a gap someone has to answer for.
+ *
+ * `test/` used to be here too and paid for itself in friction rather than defects. What
+ * it actually asserts is that a path token appears somewhere under `docs/` — satisfiable
+ * by mentioning the file and describing nothing — so it taxed every new test file with a
+ * register edit while guaranteeing no reader anything. The suite's shape is documented
+ * where it belongs, in `test/CLAUDE.md` and in the task notes that split it.
+ */
+const sources = await collectTs("src", (n) => n.endsWith(".ts"));
 /**
  * The paths the docs actually name, as whole tokens. `allText.includes(file)` credited a
  * *mistyped* path with naming the real one — `src/main.tsx` contains `src/main.ts` — so a

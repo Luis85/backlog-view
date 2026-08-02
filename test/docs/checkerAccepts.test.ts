@@ -288,6 +288,45 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+
+	// The three below are legal because a rule was REMOVED, which is the one way a legal
+	// form arrives without anybody writing it. Each pins a deliberate cut so re-adding the
+	// rule goes red here rather than quietly costing a contributor an edit — the same
+	// service this file does for forms the register merely happens not to use.
+
+	it('accepts a gap in the ADR numbering', async () => {
+		// A reserved or abandoned number harms nothing. The failure the gap rule read as —
+		// a record something still points at going missing — is caught properly by the
+		// supersede checks, which resolve their targets against the numbers that exist.
+		const files = baseRegister();
+		files['docs/adrs/0003-the-third-decision.md'] = adr(3, 'the-third-decision');
+		files['docs/adrs/README.md'] += '- [0003](0003-the-third-decision.md)\n';
+
+		await expectAccepted(files);
+	});
+
+	it('accepts extensions written out of step order', async () => {
+		// Every bullet is still labelled and still departs from a step the main flow has —
+		// those two are what stop a label meaning nothing. Where they sit on the page is
+		// the one property here a reader fixes by reading.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			extensions: '- **2b — the second** — because.\n- **2a — the first** — because.',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a test file no note names', async () => {
+		// `src/` still has to be named: the architecture table claims one note per concern,
+		// so a module nothing describes is a real gap. A test file is not — the rule only
+		// ever asserted that a path token appears somewhere under `docs/`, which is
+		// satisfiable by mentioning the file and describing nothing.
+		const files = baseRegister();
+		files['test/unnamed.test.ts'] = 'export const spec = 1;\n';
+
+		await expectAccepted(files);
+	});
 });
 
 /**

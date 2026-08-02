@@ -27,7 +27,9 @@ framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
 `usedClassMembers`, not suppressed inline. `docs-check.mjs` gates `docs/` the same way:
 the register's hierarchy and sibling orders, every wikilink, every source path a current
 note names, the use-case shape, the ADR frontmatter — and the check that finds *missing*
-notes, since every module and test file must be named by at least one. That gate has a
+notes, since every module in `src/` must be named by at least one. `test/` is deliberately
+outside that rule: naming a path is not describing it, so the check bought a register edit
+per new test file and nothing else. That gate has a
 gate: `test/docs/checkerAccepts.test.ts` and `test/docs/checkerRejects.test.ts` run it over
 planted trees in both directions, so a rule quietly lost fails a test, and a legal form it
 starts refusing does too — the direction that blocks a contributor rather than letting one
