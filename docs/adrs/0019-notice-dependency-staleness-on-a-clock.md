@@ -76,13 +76,18 @@ measurement stops being true unnoticed.
 Two upgrades are refused on purpose and recorded in the config rather than in someone's
 memory:
 
-- **TypeScript stays on 5.x.** 7.0.2 is released; `typescript-eslint` 8 declares
-  `typescript >=4.8.4 <6.1.0`, so npm refuses the install outright rather than warning.
+- **TypeScript goes to 6.0 and stops there.** 7.0.2 is released; `typescript-eslint` 8
+  declares `typescript >=4.8.4 <6.1.0`, so npm refuses 7 outright rather than warning.
   What TypeScript 7 would cost is lint — the layer direction and the write boundary of
   [ADR 0003](0003-four-layers-enforced-by-lint.md) and
   [ADR 0004](0004-one-write-boundary-planning-separate-from-applying.md) are ESLint
-  rules. The constraint is the peer range, not the major number, so the entry is deleted
-  when upstream moves, never widened.
+  rules. Read literally, though, that same range **permits 6.0.x**, and this ADR shipped
+  an `ignore` entry of `">=6"` that blocked a version upstream allows. TypeScript 6.0.3
+  was published 2026-04-16 — before this repository's first commit — and it installs
+  without conflict and passes all five steps with no source change. So the pin is
+  `~6.0.3`: a tilde, not a caret, because 6.1 is exactly where the peer range ends. The
+  constraint is the peer range, not the major number, so the entry is deleted when
+  upstream moves, never widened.
 - **`@types/node` tracks `engines`, not npm's newest.** Types for a Node this plugin does
   not claim to support would typecheck here and fail in a vault. It moves when the
   runtime floor moves, in the same commit.
@@ -105,7 +110,11 @@ memory:
   request with no comment.
 - Those `ignore` entries are a place that can go stale in exactly the way this project
   dislikes: silent, and wrong in the safe-looking direction. Nothing checks them. The
-  mitigation is that each names the *upstream fact* that would end it.
+  mitigation is that each names the *upstream fact* that would end it — and the
+  TypeScript entry proved the hazard immediately, shipping as `">=6"` against a peer
+  range that stops at 6.1. Naming the fact is what made the error findable: the range was
+  written down beside the entry, so checking the claim took one reading rather than an
+  archaeology dig.
 - The version floors in `package.json` now match what CI has actually run, so a fresh
   `npm install` cannot resolve something older than what was verified.
 - `obsidian` was specified as `latest` and is now `^1.13.1`. `latest` is not a range: it

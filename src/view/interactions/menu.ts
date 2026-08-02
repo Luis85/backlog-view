@@ -3,10 +3,12 @@ import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
 import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { hasDateAxis, hasHorizonAxis } from '../../domain/roadmap';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
+import { addHorizonItems, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
@@ -39,6 +41,10 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
 		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+		// Per axis, and absent rather than inert when one is not configured — the state
+		// chip's own rule, applied to the two placement properties.
+		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
+		if (hasDateAxis(host.settings)) addScheduleItems(host, menu, item);
 		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	}
 	menu.addSeparator();
@@ -257,6 +263,36 @@ function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 		mi.setTitle('Set state').setIcon('circle-check');
 		addStateItems(host, submenuOf(mi), item);
 	});
+}
+
+/**
+ * The roadmap's placement properties, from the row: the horizons as a submenu (its
+ * foot clears the key), the dates as an entry that opens the schedule prompt. The
+ * writes themselves live in `interactions/plan.ts` — this file decides what a row is
+ * offered, not what a placement means.
+ */
+function addSetHorizonMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set horizon').setIcon('signpost');
+		addHorizonItems(host, submenuOf(mi), item);
+	});
+}
+
+function addScheduleItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) =>
+		mi
+			.setTitle('Schedule')
+			.setIcon('calendar-range')
+			.onClick(() => promptSchedule(host, item)),
+	);
+	// Like Clear horizon: offered only while there is something to remove.
+	if (!carriesDates(item)) return;
+	menu.addItem((mi) =>
+		mi
+			.setTitle('Unschedule')
+			.setIcon('calendar-off')
+			.onClick(() => void unschedule(host, item)),
+	);
 }
 
 /** Tag editing on the keyboard path — the same list the row's + button offers. */

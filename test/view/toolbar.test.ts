@@ -9,7 +9,7 @@ useViewHarness();
 
 describe('toolbar backfill', () => {
 	const initButton = (containerEl: HTMLElement) =>
-		containerEl.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]');
+		containerEl.querySelector<HTMLElement>('[aria-label="Assign missing properties"]');
 
 	it('backfills missing properties and reports the count', async () => {
 		const vault = new FakeVault();
@@ -22,6 +22,39 @@ describe('toolbar backfill', () => {
 
 		expect(vault.fm('Untyped.md')['type']).toBe('Feature');
 		expect(Notice.messages.some((m) => m.includes('updated 1 item'))).toBe(true);
+	});
+
+	it('creates the configured placement keys empty, moving nothing on the roadmap', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Now' } });
+		const { containerEl, view } = makeView(vault, {
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// The property now exists and is editable in Obsidian's own editor, while the
+		// item keeps the placement it had — none. A value here would invent a plan.
+		expect(vault.fm('Epic.md')).toMatchObject({ horizon: '', start: '', due: '' });
+		expect(view.model?.byPath.get('Epic.md')?.horizon.value).toBeNull();
+		// What already had a value keeps it: the button fills gaps, it does not tidy.
+		expect(vault.fm('Placed.md')['horizon']).toBe('Now');
+	});
+
+	it('says so when every property this view writes is already there', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+		expect(Notice.messages.some((m) => m.includes('already have the properties'))).toBe(true);
 	});
 
 	it('does not claim success when the backfill is blocked', async () => {
@@ -101,7 +134,7 @@ describe('toolbar controls are reachable without a mouse', () => {
 		// responds to a click is invisible to Tab, so a div here is a real defect.
 		for (const label of [
 			'New item of another type',
-			'Assign missing type and order properties',
+			'Assign missing properties',
 			'Expand all',
 			'Collapse all',
 			'Hide completed items',
@@ -221,7 +254,7 @@ describe('long operations stay legible and non-blocking', () => {
 
 	function runBackfill(containerEl: HTMLElement): void {
 		containerEl
-			.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]')
+			.querySelector<HTMLElement>('[aria-label="Assign missing properties"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 	}
 

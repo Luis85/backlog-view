@@ -94,9 +94,10 @@ mirrors the same directories.
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
 | `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
 | `view/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
+| `view/interactions/plan.ts` | The roadmap's placement writes from a row: set/clear horizon, schedule, unschedule | jsdom tests |
 | `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
 | `view/interactions/undo.ts` | The undo replay: the slot, the partial-failure remainder, and `UndoRecovery` | jsdom tests |
-| `src/ui/prompts.ts` | New-item and folder prompts (+ folder suggest) | jsdom tests |
+| `src/ui/prompts.ts` | New-item, folder and schedule prompts (+ folder suggest) | jsdom tests |
 | `src/ui/valueSuggest.ts` | Shared `AbstractInputSuggest` base the folder and tag suggesters extend | jsdom tests |
 | `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
 | `src/commands/readme.ts` | "Write backlog readme" command: the config gate, the outcomes, the active-view check | jsdom tests |
@@ -230,9 +231,10 @@ write's inverse as it lands, so the last effective batch can always be taken bac
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
 - Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
   also says why `npm audit` is deliberately NOT a sixth step. Two upgrades are refused on
-  purpose, with the reason in `.github/dependabot.yml`: **TypeScript stays on 5.x**
-  (`typescript-eslint` 8 declares `typescript <6.1.0`, so npm refuses 7 outright with
-  ERESOLVE, and lint is what would be lost), and **`@types/node` tracks the `engines`
+  purpose, with the reason in `.github/dependabot.yml`: **TypeScript is held at `~6.0.3`**
+  (`typescript-eslint` 8 declares `typescript <6.1.0`, so 6.0.x is permitted and 7 is
+  refused outright with ERESOLVE, and lint is what would be lost — the tilde IS that peer
+  ceiling, so do not make it a caret), and **`@types/node` tracks the `engines`
   floor**, not npm's newest. Do not "fix" either by widening the range.
 - Work is tracked in `docs/`, which is a backlog **in this plugin's own schema** and the
   layout the view ships as its default — `requirements/` (Epic → Feature → PBI),

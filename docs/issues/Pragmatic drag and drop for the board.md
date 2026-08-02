@@ -85,5 +85,10 @@ Two of the three are answered; the issue stays open for the device verdict alone
   `@atlaskit/pragmatic-drag-and-drop` 2.0.1 (element adapter), `-auto-scroll` 3.0.0
   and `-live-region` 2.0.0, all verified Apache-2.0 at install; the hitbox package
   stayed out, as decided.
+- **Desktop drag, confirmed in a vault 2026-08-02**: cards drag between columns on
+  Windows desktop, with the column highlight as the only drop signal and auto-scroll
+  engaging only toward a pane edge — checked against a bundle rebuilt by esbuild 0.28,
+  so the library survives the bundler major intact.
 - **Touch**: still a question for a device, owned by
-  [[Smoke test the board in a live vault]].
+  [[Smoke test the board in a live vault]]. A desktop run cannot answer it, and the
+  2026-08-02 one did not.
