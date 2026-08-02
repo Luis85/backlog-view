@@ -129,6 +129,13 @@ whole on a context row (2a) and absent wherever no buckets render (4b's rule, re
 the render rather than off the settings). Both plan the identical batch the drag plans,
 through `performHorizonMove`. Driven in `test/view/roadmapMoves.test.ts`.
 
+It also inherits one concrete gap from [[Buckets from a horizon property]]: a bucket's
+New button is pointer-only, because a bucket is not a keyboard stop for anything to be
+done to. **Bucket stops are this note's step 1** — arrows moving the selection across
+the roadmap's regions — and creating into the selected bucket is what they are first
+needed for. The capability is not lost meanwhile (the toolbar's New plus Alt+arrow
+reaches the same place), only the one-gesture path.
+
 What remains is everything this note is actually about. The **lift** — Space, arrows,
 Space, Escape, with Tab shifting the grip along a bar — is a state machine that has no
 code yet and joins `src/view/interactions/keyboard.ts` beside the tree's navigation;

@@ -944,7 +944,11 @@
 		display: none;
 	}
 
-	.pbl-add {
+	/* Both hover-revealed create buttons: the tree row's and the roadmap bucket's.
+	   A touch user cannot produce the hover, and neither button is in the tab order,
+	   so without this the control is not merely hidden — it is unreachable. */
+	.pbl-add,
+	.pbl-bucket-add {
 		opacity: 1;
 	}
 

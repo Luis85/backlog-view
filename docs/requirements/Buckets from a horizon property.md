@@ -2,10 +2,9 @@
 type: PBI
 parent: "[[The horizon board]]"
 order: 10
-status: Done
+status: Active
 priority: P1
 created: 2026-08-01
-closed: 2026-08-02
 files:
   - src/domain/roadmap.ts
   - src/domain/noteFields.ts
@@ -93,6 +92,18 @@ the parent link. One write, so there is no moment at which the note exists in a 
 its frontmatter does not claim; everything that governed creation before still governs
 it, type folders and the config-problems gate included. Driven in
 `test/view/roadmapMoves.test.ts` and `test/storage/frontmatter.test.ts`.
+
+**The button is the one thing here a keyboard cannot press**, which is why this note
+stays Active. It carries `tabindex="-1"` because the pane is one tab stop, and unlike
+the tree's add button it has no menu entry standing behind it: a bucket is not a
+keyboard stop, so there is nothing to select and act on. What is lost is the gesture,
+not the capability — the toolbar's New button is an ordinary tab stop and Alt+arrow
+walks the new card into any bucket, reaching the same note in the same bucket two
+keystrokes later. Closing it properly means bucket stops, which
+[[Keyboard and menu on the roadmap]] already specifies as arrows moving across the
+roadmap's regions. Touch is fixed rather than deferred: the stylesheet reveals the
+button under `hover: none`, or a device with no hover and no tab stop could not reach
+it at all.
 
 Two clauses are worth stating rather than leaving to be inferred. Step 4's date chip
 needs no roadmap-specific code: a card renders the Base's own visible properties

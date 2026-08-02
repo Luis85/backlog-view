@@ -109,9 +109,18 @@ function renderBucket(
  * would offer — with this bucket's own value written in the creation write, so a
  * note never exists in a bucket its frontmatter does not claim.
  *
- * `tabindex="-1"` like the tree's add button: the pane is one tab stop, and a
- * bucket is not yet a keyboard stop of its own, so this is a pointer affordance
- * until the roadmap's own keyboard vocabulary lands.
+ * `tabindex="-1"` like the tree's add button, because the pane is one tab stop — but
+ * unlike the tree's, this one has no keyboard equivalent behind it: a bucket is not a
+ * keyboard stop, so nothing selects one to act on. What is NOT lost is the capability,
+ * only the shortcut: the toolbar's New button is an ordinary tab stop, and Alt+arrow
+ * walks the new card into any bucket, so the same note in the same place is two
+ * keystrokes further away rather than out of reach. Closing the gap properly means
+ * bucket stops, which is `docs/requirements/Keyboard and menu on the roadmap.md`'s
+ * work — its main flow already has arrows moving across the roadmap's regions.
+ *
+ * The stylesheet has to reveal it on hoverless devices explicitly (`hover: none`), or
+ * a touch user gets neither the hover nor the tab stop and the control is unreachable
+ * rather than merely hidden.
  */
 function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBucket): void {
 	const host = ctx.host;
