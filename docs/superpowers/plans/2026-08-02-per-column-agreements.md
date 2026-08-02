@@ -1088,20 +1088,38 @@ In `src/view/backlogView.ts`, beside `showContextMenuFor`:
 
 Import `buildColumnMenu` from `./interactions/menu`.
 
-- [ ] **Step 9: Run the full check**
+- [ ] **Step 9: Name the new test file in the two use cases**
+
+`docs-check.mjs` rule 7 requires every file under `test/` to be named by at least one
+note, so creating `test/view/columnAgreements.test.ts` fails the register check until
+both use cases point at it. (Task 2 could not do this in advance: rule 4 *errors* on a
+path a requirement names that does not exist yet. The file has to arrive first, in the
+same task.)
+
+Append to `## Where it lives` in `docs/requirements/WIP limits.md`:
+
+```markdown
+The guarantee that a limit refuses nothing is driven by
+`test/view/columnAgreements.test.ts`, which puts the drop, the Alt+arrow and the menu
+each into a column already over its limit.
+```
+
+Append to `## Where it lives` in `docs/requirements/Explicit policies on the column.md`:
+
+```markdown
+The affordance, the menu and the keyboard path are driven by
+`test/view/columnAgreements.test.ts`.
+```
+
+- [ ] **Step 10: Run the full check**
 
 Run: `npm run check`
 Expected: PASS. If fallow reports `showColumnMenuFor` as an unused class member, it is because the keyboard branch that calls it lands in Task 6 — finish Task 6 before diagnosing further, and if it still reports, annotate the local (`const host: BacklogViewHost = ctx.host`) rather than adding it to `usedClassMembers`.
 
-`npm run docs` will fail here until Task 2's `## Where it lives` sections name
-`test/view/columnAgreements.test.ts`: every test file must be named by at least one note.
-If Task 2 is already done, this passes; if it is not, do that edit now rather than
-skipping the check.
-
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add src/view/render/board.ts src/view/interactions/menu.ts src/view/host.ts src/view/backlogView.ts styles.css test/helpers/obsidian-mock.ts test/view/columnAgreements.test.ts
+git add src/view/render/board.ts src/view/interactions/menu.ts src/view/host.ts src/view/backlogView.ts styles.css test/helpers/obsidian-mock.ts test/view/columnAgreements.test.ts "docs/requirements/WIP limits.md" "docs/requirements/Explicit policies on the column.md"
 git commit -m "Put the column's working agreement on the column"
 ```
 
@@ -1368,30 +1386,7 @@ into a column already over one, then checks the column still says it is over —
 move happening and the board reporting it are one criterion, not two.
 ```
 
-- [ ] **Step 2: Name the new test file in the two use cases**
-
-Task 2 deliberately left `test/view/columnAgreements.test.ts` out of both notes, because
-`docs-check.mjs` rule 4 *errors* on a path a requirement names that does not exist. It
-exists now, and rule 7 is the other half of the same gate: every file under `test/` must
-be named by at least one note, so leaving it unnamed fails the check from the opposite
-direction.
-
-Append to `## Where it lives` in `docs/requirements/WIP limits.md`:
-
-```markdown
-The guarantee that a limit refuses nothing is driven by
-`test/view/columnAgreements.test.ts`, which puts the drop, the Alt+arrow and the menu
-each into a column already over its limit.
-```
-
-Append to `## Where it lives` in `docs/requirements/Explicit policies on the column.md`:
-
-```markdown
-The affordance, the menu and the keyboard path are driven by
-`test/view/columnAgreements.test.ts`.
-```
-
-- [ ] **Step 3: Write the limitation Issue**
+- [ ] **Step 2: Write the limitation Issue**
 
 Create `docs/issues/A renamed state orphans its limit.md`:
 
@@ -1446,7 +1441,7 @@ the more annoying half; losing a limit at least announces itself the next time t
 column fills up.
 ```
 
-- [ ] **Step 4: Write the verification Issue**
+- [ ] **Step 3: Write the verification Issue**
 
 Create `docs/issues/Smoke test the column agreements.md`:
 
@@ -1503,7 +1498,7 @@ Run `npm run test-build`, open this repository as a vault, and open
 Not yet run.
 ```
 
-- [ ] **Step 5: Update the register's own summary**
+- [ ] **Step 4: Update the register's own summary**
 
 In `docs/README.md`, in the **Product Kanban** paragraph, after the sentence describing the third increment, add:
 
@@ -1520,17 +1515,17 @@ creation from a column will later share.
 
 Adjust the following sentence — the one listing what remains under the epic — to drop limits and policies from it.
 
-- [ ] **Step 6: Run the register check**
+- [ ] **Step 5: Run the register check**
 
 Run: `npm run docs`
 Expected: PASS. Every `[[wikilink]]` must resolve, every `src/` and `test/` path a requirement names must exist, no two siblings may share an `order`, and both new Issues must have a legal parent — a `PBI` may parent an `Issue`.
 
-- [ ] **Step 7: Run the full check**
+- [ ] **Step 6: Run the full check**
 
 Run: `npm run check`
 Expected: PASS — all five steps.
 
-- [ ] **Step 8: Commit and push**
+- [ ] **Step 7: Commit and push**
 
 ```bash
 git add docs
