@@ -145,7 +145,10 @@ the view options can rename.
   control character as an escape, and YAML folds `U+0085` into a space exactly as it folds
   a newline while refusing most of the range around it — so an example carrying one either
   fails to parse or defines a key other than the one shown, from a value that looks empty
-  on screen.
+  on screen. The same holds at the other end of the plane, where YAML's printable set stops
+  one character short of `U+FFFF`: the two noncharacters above it are as forbidden in the
+  source as a control character and reach a value the same way, so they are escaped rather
+  than emitted — a configuration that parsed must not produce an example that does not.
 - **3g — the reader wants to put an item at the top level.** The contract states the
   **empty** parent value, not only the link-shaped one, because that is what this plugin
   writes for a top-level item and because in folder mode the two differ: an empty value
@@ -306,8 +309,18 @@ the view options can rename.
   characters the line cannot hold are two bases, and one marker for both restores exactly
   the silent replacement this extension exists to prevent. The escaping is reversible, so
   the notice still names the view as its owner spelled it.
+- **4e — the file appears while the command is creating it.** Another window, another
+  command or a sync client can land the path between the check that found nothing there
+  and the create, which then refuses. The file that arrived is a file like any other, so
+  it gets the questions **4a**, **4b** and **4d** ask rather than a generic failure: an
+  identical document is still the no-op, somebody else's is still the refusal that leaves
+  it alone. The same race `Vault.process` closes for the replacement, closed at the end
+  where the document did not exist yet — a document arriving a moment sooner must not turn
+  an outcome the rules already name into an error.
 - **5a — the write fails.** A notice says so and points at the console, like every other
-  vault write this plugin makes.
+  vault write this plugin makes. That is the create whose path is still empty afterwards —
+  permissions, a full disk — and not the one **4e** answers: reporting a document written
+  where none is would be worse than the error.
 
 ## Acceptance criteria
 

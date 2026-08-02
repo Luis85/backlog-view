@@ -122,4 +122,15 @@ describe('a value inside the example block', () => {
 		// escaping it would show a reader a value they cannot write back.
 		expect(yamlScalar('café ☕')).toBe('"café ☕"');
 	});
+
+	it('escapes the two noncharacters YAML stops just below', () => {
+		// U+FFFE and U+FFFF are outside YAML's printable set exactly as a control character
+		// is, and arrive the same way — escaped in a hand-edited file and decoded before this.
+		// Emitted raw, the block promised as copyable fails to parse though the configuration
+		// it came from parsed. `\\u` because `\\x` spells a byte.
+		expect(yamlScalar('non\uFFFEchar')).toBe('"non\\ufffechar"');
+		expect(yamlScalar('non\uFFFFchar')).toBe('"non\\uffffchar"');
+		// U+FFFD, the character the printable set ends AT, is text and stays as itself.
+		expect(yamlScalar('lost \uFFFD')).toBe('"lost \uFFFD"');
+	});
 });

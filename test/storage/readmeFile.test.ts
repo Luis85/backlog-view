@@ -159,6 +159,35 @@ describe('writeBacklogReadme', () => {
 		});
 	});
 
+	it('asks the ordinary questions of a file that appeared while it was creating one', async () => {
+		// The other end of the race `process` closes: sync or a second window can land the
+		// file between the lookup and the create, which then rejects. That file is one the
+		// rules already cover — here it is somebody else's, so the outcome is the refusal
+		// rather than a generic failure, and the file is left alone.
+		const theirs = '# My own notes about this folder\n';
+		const create = vault.app.vault.create;
+		vault.app.vault.create = async (path: string, content: string) => {
+			await create('docs/README_PRODUCT_BACKLOG.md', theirs);
+			return create(path, content);
+		};
+
+		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+
+		expect(result.outcome).toBe('foreign');
+		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
+	});
+
+	it('reports a create that failed for its own reason', async () => {
+		// The re-read is for a file that APPEARED. With the path still empty the create failed
+		// on something else — permissions, a full disk — and swallowing that would report a
+		// document written that is not there.
+		vault.app.vault.create = async () => {
+			throw new Error('EACCES');
+		};
+
+		await expect(writeBacklogReadme(vault.app as never, 'docs', GENERATED)).rejects.toThrow('EACCES');
+	});
+
 	it('refuses a file of the same name that it did not write', async () => {
 		const theirs = '# My own notes about this folder\n';
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);

@@ -111,6 +111,13 @@ const YAML_ESCAPES = new Map([
  * legitimately, since frontmatter can spell it `\x85` and this reader decodes it before
  * the value ever reaches here.
  *
+ * And the two noncharacters at the top of the plane, which that set ends just below:
+ * `U+FFFE` and `U+FFFF` are as forbidden in YAML source as a control character, and
+ * arrive by the same route — spelled `\uFFFE` in a hand-edited `.base` or note, decoded
+ * long before this. Escaped again they are legal; emitted raw they make the one block
+ * this document promises is copyable fail to parse, having come from a configuration
+ * that parsed. `\u` rather than `\x`, which YAML only spells a byte with.
+ *
  * Built by walking the characters rather than by a regex, because a class covering the
  * control range is exactly what `no-control-regex` forbids, and a suppression here would
  * be hiding the rule rather than answering it.
@@ -121,7 +128,8 @@ function yamlEscape(value: string): string {
 			const named = YAML_ESCAPES.get(char);
 			if (named !== undefined) return named;
 			const code = char.codePointAt(0) ?? 0;
-			return code < 0x20 || (code >= 0x7f && code <= 0x9f) ? `\\x${code.toString(16).padStart(2, '0')}` : char;
+			if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) return `\\x${code.toString(16).padStart(2, '0')}`;
+			return code === 0xfffe || code === 0xffff ? `\\u${code.toString(16)}` : char;
 		})
 		.join('');
 }
