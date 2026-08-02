@@ -1518,6 +1518,19 @@
 	height: 14px;
 }
 
+/* The policy affordance sits with the column's other markers, muted until pointed at:
+   an agreement is reference material, not a status. */
+.pbl-board-col-policy {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.pbl-board-col-policy .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
 /* The row lays its columns out fixed-width so values align across rows; a card
    stacks the same cells instead. The card is the exception, so the card opts out. */
 .pbl-card .pbl-props {

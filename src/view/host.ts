@@ -168,6 +168,8 @@ export interface BacklogViewHost {
 	openItemToSide(item: BacklogItem): void;
 	/** Open the row context menu at the item's row — the keyboard path (Menu key / Shift+F10). */
 	showContextMenuFor(item: BacklogItem): void;
+	/** Open the column's own menu, anchored to the column that index names. */
+	showColumnMenuFor(index: number): void;
 
 	/**
 	 * Bind this view's suggested key for every optional property nobody has named yet

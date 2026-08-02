@@ -70,3 +70,6 @@ column carries its own policy (`src/domain/board.ts`); the header's affordance a
 `src/view/interactions/keyboard.ts` on the selected column stop.
 
 Driven by `test/domain/viewOptions.test.ts` and `test/domain/board.test.ts`.
+
+The affordance, the menu and the keyboard path are driven by
+`test/view/columnAgreements.test.ts`.

@@ -5,7 +5,7 @@ import { renderBadge, renderTitleText } from './rows';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
-import { showItemMenu } from '../interactions/menu';
+import { showColumnMenu, showItemMenu } from '../interactions/menu';
 import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches, overBy } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
@@ -184,6 +184,25 @@ function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean
 	// the one column whose drop REMOVES rather than writes has to say so somewhere
 	// a real state named like it cannot.
 	else if (col.state === null) setTooltip(colEl, 'Items without the state property — dropping a card here removes it');
+	renderColumnPolicy(header, col);
+}
+
+/**
+ * The column's working agreement, described rather than named: the policy says
+ * what the column is FOR, and folding it into the accessible NAME would make
+ * speech input target a column by a paragraph. Extension 3a keeps it off the tab
+ * order — the affordance is a span, and the keyboard path is the column's menu.
+ * A column with nothing agreed gets no affordance at all (extension 1a).
+ */
+function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
+	if (!col.policy) return;
+	const description = header.createSpan({ cls: 'pbl-sr-only', text: col.policy });
+	description.id = uniqueElementId('pbl-col-policy');
+	header.setAttribute('aria-describedby', description.id);
+	const affordance = header.createSpan({ cls: 'pbl-board-col-policy' });
+	setIcon(affordance, 'info');
+	setTooltip(affordance, col.policy);
+	header.addEventListener('contextmenu', (evt) => showColumnMenu(evt, col.policy));
 }
 
 function renderCard(
