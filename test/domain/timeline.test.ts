@@ -3,7 +3,9 @@ import { CivilDate } from '../../src/domain/noteFields';
 import {
 	barGeometry,
 	daysBetween,
+	earliest,
 	formatCivil,
+	latest,
 	MAX_TIMELINE_MONTHS,
 	timelineWindow,
 } from '../../src/domain/timeline';
@@ -96,5 +98,31 @@ describe('bar geometry', () => {
 
 	it('refuses a fully dateless span — deriveBars never admits one', () => {
 		expect(() => barGeometry(window, { start: null, target: null })).toThrow();
+	});
+});
+
+describe('earliest and latest', () => {
+	const march = { year: 2026, month: 3, day: 1 };
+	const june = { year: 2026, month: 6, day: 1 };
+
+	it('takes whichever end exists when the other is absent', () => {
+		expect(earliest(null, june)).toEqual(june);
+		expect(earliest(march, null)).toEqual(march);
+		expect(latest(null, june)).toEqual(june);
+		expect(latest(march, null)).toEqual(march);
+		expect(earliest(null, null)).toBeNull();
+		expect(latest(null, null)).toBeNull();
+	});
+
+	it('orders by civil date, not by argument position', () => {
+		expect(earliest(june, march)).toEqual(march);
+		expect(earliest(march, june)).toEqual(march);
+		expect(latest(june, march)).toEqual(june);
+		expect(latest(march, june)).toEqual(june);
+	});
+
+	it('keeps the first argument when the two are the same day', () => {
+		expect(earliest(march, { ...march })).toBe(march);
+		expect(latest(march, { ...march })).toBe(march);
 	});
 });

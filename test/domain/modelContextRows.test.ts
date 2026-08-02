@@ -9,6 +9,11 @@ function names(items: { title: string }[]): string[] {
 	return items.map((i) => i.title);
 }
 
+/** Stand-in for a Base filtered to one level or state. */
+function only(vault: FakeVault, ...paths: string[]) {
+	return vault.entries().filter((e) => paths.includes(e.file.path));
+}
+
 describe('buildModel with parents outside the filter', () => {
 	/** A three-level chain; the Base's filter returns only the PBI. */
 	function chainVault(): FakeVault {
@@ -17,11 +22,6 @@ describe('buildModel with parents outside the filter', () => {
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
 		return vault;
-	}
-
-	/** Stand-in for a Base filtered to one level or state. */
-	function only(vault: FakeVault, ...paths: string[]) {
-		return vault.entries().filter((e) => paths.includes(e.file.path));
 	}
 
 	it('rebuilds the whole ancestor chain above a match', () => {
@@ -257,5 +257,32 @@ describe('hierarchy scope when context rows are not loaded', () => {
 		// No folder note above it, no type, no link — genuinely not a work item
 		expect(model.items).toHaveLength(0);
 		expect(model.ignoredCount).toBe(1);
+	});
+});
+
+describe('date evidence and context rows', () => {
+	const dated = { ...settings, startKey: 'start', targetKey: 'due' };
+
+	it('a context row’s own dates stretch nothing, and the results below it still reach up', () => {
+		const vault = new FakeVault();
+		// The feature is context — decades wide, and none of it this base's plan.
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2020-01-01', due: '2030-01-01' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Story.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-05-01', due: '2026-05-20' },
+			parentLink: 'Feature',
+		});
+
+		// Only the story comes back from the Base; the epic and feature are context.
+		const model = buildModel(vault.app, only(vault, 'Story.md'), dated);
+		const epic = model.roots[0];
+		expect(epic.outsideFilter).toBe(true);
+
+		// Traversed *through* the context feature to the result below it.
+		expect(epic.descendantStart).toEqual({ year: 2026, month: 5, day: 1 });
+		expect(epic.descendantTarget).toEqual({ year: 2026, month: 5, day: 20 });
 	});
 });

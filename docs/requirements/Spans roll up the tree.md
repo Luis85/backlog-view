@@ -105,9 +105,17 @@ it.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The gathering runs in the rollup walk in
-`src/domain/model.ts`, which already traverses through context rows without counting
-them — one walk, one statement of the invariant, and the span inherits it for free. The
-marker exclusion lands in the same place and is inherited the same way: whichever of these
-two notes ships second states nothing new, because both exceptions belong to the walk
-rather than to a quantity gathered in it.
+The gathering runs in the rollup walk in `src/domain/model.ts`, which already traverses
+through context rows without counting them — one walk, one statement of the invariant,
+and the span inherits it for free. `earliest`/`latest` live in `src/domain/timeline.ts`
+beside the rest of the civil-date arithmetic. Driven in `test/domain/timeline.test.ts`
+(the date pickers) and `test/domain/modelDateEvidence.test.ts` (the walk gathering
+`descendantStart`/`descendantTarget` by kind, never from the item itself), with the
+context-row exclusion covered by `test/domain/modelContextRows.test.ts`.
+
+**Not yet built: rendering.** The gathered evidence (`BacklogItem.descendantStart` /
+`.descendantTarget`) is not yet consumed anywhere — no dateless parent draws an inferred
+bar, no styling marks one as inferred, and the marker exclusion (extension 1b) is not
+implemented. The marker exclusion lands in the same walk and is inherited the same way:
+whichever of these ships next states nothing new, because both exceptions belong to the
+walk rather than to a quantity gathered in it.

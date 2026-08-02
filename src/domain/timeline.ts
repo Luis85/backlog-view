@@ -50,6 +50,22 @@ function utc(date: CivilDate): number {
 	return Date.UTC(date.year, date.month - 1, date.day);
 }
 
+/**
+ * The earlier of two optional dates — absence is not a bound, so a null end
+ * yields the other. Ties keep `a`, which is the accumulator at every call site
+ * and makes the fold stable.
+ */
+export function earliest(a: CivilDate | null, b: CivilDate | null): CivilDate | null {
+	if (a === null || b === null) return a ?? b;
+	return daysBetween(a, b) < 0 ? b : a;
+}
+
+/** The later of two optional dates, by the same rule as `earliest`. */
+export function latest(a: CivilDate | null, b: CivilDate | null): CivilDate | null {
+	if (a === null || b === null) return a ?? b;
+	return daysBetween(a, b) > 0 ? b : a;
+}
+
 /** `2026-08-01` — the register's own date format, and the tooltip's. */
 export function formatCivil(date: CivilDate): string {
 	const pad = (n: number, width: number) => String(n).padStart(width, '0');

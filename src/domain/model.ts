@@ -14,6 +14,7 @@ import {
 	resolveParent,
 } from './noteFields';
 import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
+import { earliest, latest } from './timeline';
 import { collectObservedHorizons, collectObservedStates, collectObservedTags } from './vocabulary';
 
 /**
@@ -129,6 +130,15 @@ export interface BacklogItem extends LinkedItem {
 	doneDescendants: number;
 	/** True when the item and every descendant are done — the unit hidden by "Show completed items". */
 	subtreeDone: boolean;
+	/**
+	 * Earliest start and latest target stated by a RESULT below this item — the
+	 * evidence a dateless parent's bar is inferred from, never a value written
+	 * anywhere. Null when nothing below states a date of that kind. Gathered by
+	 * the same walk and the same exclusion as the progress counts: a context
+	 * row's own dates are not this base's plan, though the results beneath it are.
+	 */
+	descendantStart: CivilDate | null;
+	descendantTarget: CivilDate | null;
 }
 
 export interface BacklogModel {
@@ -521,6 +531,8 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 		items.push(item);
 		let count = 0;
 		let done = 0;
+		let start: CivilDate | null = null;
+		let target: CivilDate | null = null;
 		for (const child of item.children) {
 			const sub = assign(child, depth + 1);
 			// Traverse *through* a context row to the results below it, but never count
@@ -529,20 +541,35 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 			const self = child.outsideFilter ? 0 : 1;
 			count += self + sub.count;
 			done += (child.done ? self : 0) + sub.done;
+			// Dates gather under the same exclusion, for the same reason: an excluded
+			// note's dates are not this base's plan, so they stretch nothing — while
+			// the results beneath it still reach their ancestors. `FieldReading.value`
+			// is null for an absent key AND for a value the reader refuses, so a typo
+			// is not evidence without a branch saying so.
+			if (self === 1) {
+				start = earliest(start, child.plannedStart.value);
+				target = latest(target, child.plannedTarget.value);
+			}
+			start = earliest(start, sub.start);
+			target = latest(target, sub.target);
 		}
 		item.descendantCount = count;
 		item.doneDescendants = done;
 		item.subtreeDone = item.done && done === count;
-		return { count, done };
+		item.descendantStart = start;
+		item.descendantTarget = target;
+		return { count, done, start, target };
 	};
 	for (const root of promoted.roots) assign(root, 0);
 	return { ...promoted, items };
 }
 
-/** What a subtree contributes to its parent's counts. */
+/** What a subtree contributes to its parent's counts and to its span. */
 interface Rollup {
 	count: number;
 	done: number;
+	start: CivilDate | null;
+	target: CivilDate | null;
 }
 
 /** Focused rendering re-roots the tree visually; effective levels stay untouched. */
