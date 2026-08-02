@@ -105,16 +105,16 @@ the view options can rename.
 - **4c — the home folder sits inside the base's filter**, so the new file is a note the
   base returns. It carries no `type` and no `parent`, so the scope rule leaves it out of
   the tree ([[What counts as a work item]]) — the same way this register's own
-  `docs/README.md` sits in the folder it describes. Three configurations, not one: with
-  "Ignore notes outside the hierarchy" on — the default — it is pruned and the toolbar
-  advisory counts it; with it off nothing is pruned, `ignoredCount` is zero and there is no
-  advisory, so it simply renders as an untyped root; and in **folder mode** it is a work
-  item whatever its frontmatter omits, because inference reads a note's *position* rather
-  than its fields — a folder note anywhere above it becomes its parent, so it hangs in the
-  tree under that note and is counted like any other item. Declaring no `type` and no
-  `parent` is what keeps it out of the first two, and nothing in the schema can opt it out
-  of the third: that is a limitation to state in this note rather than a promise to make
-  and break.
+  `docs/README.md` sits in the folder it describes. What its own frontmatter can promise is
+  only that it **declares** nothing: with "Ignore notes outside the hierarchy" on — the
+  default — it is then pruned and the toolbar advisory counts it, and with the option off
+  nothing is pruned at all, `ignoredCount` is zero, there is no advisory and it renders as
+  an untyped root. Two things enrol it anyway, and neither is a field it could omit
+  differently: **folder mode**, where inference reads a note's *position* — a folder note
+  anywhere above it becomes its parent — and **a work item naming it as parent**, which
+  keeps the whole root subtree, the README included, as an untyped container. Both are the
+  scope rule working as specified ([[What counts as a work item]]); the limitation to state
+  here is that a generated file cannot opt out of a hierarchy other notes put it in.
 - **5a — the write fails.** A notice says so and points at the console, like every other
   vault write this plugin makes.
 
