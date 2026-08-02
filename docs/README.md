@@ -66,23 +66,23 @@ a card created into a state the base excludes — and every one of those was a
 paragraph of prose before the shape asked the question.
 
 **Product Roadmap** is the third projection: the same backlog on a time axis,
-specified across five features and 15 use cases — the projection toggle grown to three
+specified across six features and 18 use cases — the projection toggle grown to three
 positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
-parents span their children, scheduling as gated date writes, and lanes, focus and
-rollups carried over. Two features are built. The first was the projection: the
-toggle's roadmap position, the declared axis with its collision checks, both frames
-read-only — buckets and stated bars — the unplaced shelf, and the roadmap's empty
-states. The second gave the horizon axis its writes: a card moves between buckets by
-drag, by Alt+arrow or from its own menu, all three planning one value into the note's
-own horizon property through the one gate, undoable as one batch; the shelf is the
+parents span their children, scheduling as gated date writes, milestones as a type of
+their own, and lanes, focus and rollups carried over. Two features are built. The first
+was the projection: the toggle's roadmap position, the declared axis with its collision
+checks, both frames read-only — buckets and stated bars — the unplaced shelf, and the
+roadmap's empty states. The second gave the horizon axis its writes: a card moves between
+buckets by drag, by Alt+arrow or from its own menu, all three planning one value into the
+note's own horizon property through the one gate, undoable as one batch; the shelf is the
 target that un-places, removing the key rather than blanking it, and it stays reachable
 while empty because a target that exists only when occupied is one nothing can reach;
 and a bucket creates in place, its value riding the same single creation write. The
-dated axis is still read-only — scheduling by drag, the bar moves and the lanes are
-design. Two decisions organize the epic: the axis is declared in the view options,
-never guessed from property names and never derived from dates; and planned dates are
-different keys from the board's transition stamps, so a plan can never overwrite a
-record. Every note states the precedent it rests on, from a survey of the roadmap
+dated axis is still read-only — scheduling by drag, the bar moves, the lanes and the
+milestone type are design. Two decisions organize the epic: the axis is declared in the
+view options, never guessed from property names and never derived from dates; and planned
+dates are different keys from the board's transition stamps, so a plan can never overwrite
+a record. Every note states the precedent it rests on, from a survey of the roadmap
 literature, the major trackers and the Obsidian ecosystem run on 2026-08-01.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
@@ -213,7 +213,7 @@ the lesson, and a limitation written as a Bug reads as something someone is abou
 | Kind | Answers | Sections |
 | --- | --- | --- |
 | `Epic` | Why this body of work exists, and what "done" means beneath it | Prose · why it exists · definition of done |
-| `Feature` | What outcome one coherent slice delivers | Prose · **Outcome** |
+| `Feature` | What outcome one coherent slice delivers | Prose · **Outcome** · *optionally* Landmines |
 | `PBI` | What someone does, step by step, and every way it can go otherwise | The use-case shape below — **enforced** |
 | `Task` | A piece of engineering work, and the evidence that justified it | Evidence · Why it matters · Approach · Acceptance criteria · Risks · Outcome |
 | `Issue` | A question, a decision taken, or a limitation accepted | Varies by which — see below |
@@ -240,6 +240,29 @@ any child becoming harder to judge, it was a heading.
 A Feature states an **outcome** — one sentence, in the user's terms, about what is true
 once the feature exists. Nothing else belongs here: detail written at feature level is
 detail no use case owns.
+
+**One optional exception: `## Landmines, before implementation`.** A feature may carry a
+section naming the traps that sit in the code its use cases will touch — and it earns that
+section only when the hazard belongs to the feature as a whole rather than to any one use
+case. The test is ownership, not usefulness: **if a use case could hold it, it must.** What
+qualifies is the part no use case can state alone — the **order** the work has to be done
+in, and the seams that fail *silently* when it is done in the wrong one. What does not is a
+rule about one flow, which is an extension of that flow and belongs beside the step it
+complicates.
+
+[[Milestones]] is the worked example, and the reason the exception exists. Adding a seventh
+name to a fixed vocabulary meets `EXTRA_TYPES` first, which is the wrong list and the
+obvious one; getting that backwards is what every other trap in that feature was downstream
+of. No use case owns "do this before that", and a reader who met the traps one use case at
+a time would meet them in the order that hides the ordering. Write it in the shape that
+section uses — the ordering rule first, then the quiet seams against the loud one, then the
+records to settle in the same change — because naming which failures are *silent* is most of
+the value.
+
+Like the rest of the Feature and Task conventions this section is **not gated**: `npm run
+docs` checks the use-case and ADR shapes and nothing here. A feature without it is the
+normal case, and one carrying it under a hazard a use case should have owned is worse than
+one without.
 
 A Feature does not also keep its own list of the PBIs that deliver it. That fact already
 exists once, as each PBI's own `parent` link, and a hand-written second copy of it goes

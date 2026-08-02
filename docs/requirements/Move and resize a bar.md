@@ -79,9 +79,16 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   the bar's duration: the start takes the step, the target follows at the bar's own
   day count. Re-planning when is not re-planning how long; only an end drag changes
   duration, because that is what a resize is.
-- **2a — an end is dragged past the other.** It clamps at equal — a milestone — and never
-  crosses: a reversed span is unreadable ([[Bars from two dates]]), so no gesture may
-  write one.
+- **1g — the bar is a marker's.** A diamond offers **no end grips**: a point has no
+  duration to resize, and an end handle on it could only invent one. Its body slide moves
+  the **target alone** by the calendar step, and a stale start the type ignores is not
+  carried along — sliding a date the projection never drew would write a plan the reader
+  was never shown ([[Milestones as their own type]]). This is 1a's rule reached by the
+  type rather than by a missing value: what a gesture may move is what the item's own
+  projection says it has.
+- **2a — an end is dragged past the other.** It clamps at equal — the diamond a coincident
+  pair draws ([[Bars from two dates]]), which is the shape and not the type — and never
+  crosses: a reversed span is unreadable, so no gesture may write one.
 - **3a — the write is refused.** Refused whole and loudly; indicators clear, the bar
   renders where the note still says, nothing half-slides.
 - **3b — the written dates take the note outside the Base's filter.** The write stands
@@ -100,6 +107,9 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   writes exactly the preview. Deltas
   preserve the value's own precision: a datetime keeps its time of day and its shape
   on disk.
+- A marker's diamond takes no end grip at all, and its body slide writes the target alone —
+  never a start, neither one it lacks nor a stale one the type ignores
+  ([[Milestones as their own type]]).
 - Within its lane, a bar gesture is a single-note write: no sibling renumbering, no
   cascade to children, nothing else touched. A drag that also crosses a lane is the
   combined batch [[Lanes on the roadmap]] specifies, never a second write path.

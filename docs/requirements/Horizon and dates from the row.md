@@ -149,6 +149,12 @@ belong to the **item**, not to the mode, and this is where the tree got them.
 - **Clear horizon** and **Unschedule** appear only while the note carries the key they
   would remove, remove the key rather than blanking it, and undo restores the value; an
   emptied field in the entry removes that end alone.
+- The date paths ask for **the ends the item's type has**, which for everything with a
+  duration is every configured end. A marker states one date and has no span, so Schedule
+  asks it for the target alone and applies no span rule, and Unschedule gates on and
+  removes that key alone ([[Milestones as their own type]]). The rule is the same one
+  stated from the type's side: an action must not offer an end the type does not use, or
+  delete one it merely ignores.
 - An unconfigured axis contributes no menu action and no write — a horizon property whose
   values list is cleared is unconfigured, the same axis the roadmap declines to draw.
 - A row the Base excluded offers none of these actions; a batch naming one is refused

@@ -62,7 +62,7 @@ to change per locale, because nothing reads it back.
 
 | Data | Where it is read back |
 | --- | --- |
-| Type names (`Epic`, `Feature`, `PBI`, `Task`, `Issue`, `Bug`) | `type:` frontmatter; matched by `focusTarget`, `isExtraType`, `byTypeName` |
+| Type names — the whole shipped vocabulary, `ALL_TYPES`, whatever its length | `type:` frontmatter; matched by `focusTarget`, `isExtraType`, `byTypeName` |
 | View-option keys | Persisted in the `.base` file, read by `resolveSettings` |
 | `typeFolder.<type>` keys | Derived from the type name — a translated type is a different key |
 | State values, done values | The user's own workflow, echoed on the chip |

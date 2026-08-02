@@ -41,8 +41,11 @@ date on a roadmap is indistinguishable from a decision.
 3. A result with one date renders at the date it has: one grid cell wide, its dateless
    end styled open, so the plan's gap stays visible instead of being filled in.
 4. A result whose start equals its target renders as a milestone diamond — the Gantt
-   convention — because a point in time is not a span, and no sixth-plus-one type or
-   extra field is needed to say so.
+   convention — because a point in time is not a span, and no extra field is needed to say
+   so: two dates that agree already say it. What that does *not* cover is a deadline
+   stated once, which step 3 draws open-ended because for work with duration a missing end
+   is a real gap; [[Milestones as their own type]] is that case, and the diamond it draws
+   is this one reached by a second route.
 
 **Extensions**
 

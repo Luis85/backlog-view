@@ -37,7 +37,7 @@ it.
 1. The walk that computes rollups gathers each subtree's date evidence by kind — the
    earliest known start and the latest known target among its results, starts only
    ever standing for starts and targets only for targets — results only, traversing
-   through context rows without counting them.
+   through context rows and markers without counting either.
 2. A dateless parent over dated descendants renders the gathered span, styled as
    inferred so a reader can tell a plan somebody made from a summary the view drew.
 3. A parent's supplied dates win endpoint by endpoint: a parent with both renders
@@ -58,6 +58,13 @@ it.
 - **1a — a context row carries dates.** They stretch nothing: a span is derived from the
   Base's results, and an excluded note's dates are not this base's plan. A context parent
   placed by focus infers from its visible results only — the rollup rule unchanged.
+- **1b — a marker is nested in the subtree.** Its date is not evidence and stretches
+  nothing. A milestone is a point somebody committed to, not a record of when work
+  happens ([[Milestones as their own type]]), so a release date hand-placed under an epic
+  must not become that epic's inferred end — the bar would then report a deadline as
+  progress. This is the same exclusion the progress count makes and the second exception
+  the walk carries, for a different reason than 1a: not a row from outside the results,
+  but a result that is not work.
 - **2a — some children are dated and some are not.** The bar renders the known span and
   fades at the end the undated children leave uncertain — the Plans convention: honesty
   drawn into the pixels rather than a number pretending to be complete.
@@ -91,10 +98,16 @@ it.
   typo is surfaced, never papered over.
 - Context rows' dates never contribute to any span, and a context parent's inferred
   span describes its visible results only.
+- A marker's date never contributes to any span either, wherever it sits: an epic over a
+  hand-nested milestone infers from its work alone, and infers nothing at all when the
+  milestone is the only dated thing beneath it ([[Milestones as their own type]]).
 - A subtree with no dates at all shelves.
 
 ## Where it lives
 
 **Nothing yet — this note is design.** The gathering runs in the rollup walk in
 `src/domain/model.ts`, which already traverses through context rows without counting
-them — one walk, one statement of the invariant, and the span inherits it for free.
+them — one walk, one statement of the invariant, and the span inherits it for free. The
+marker exclusion lands in the same place and is inherited the same way: whichever of these
+two notes ships second states nothing new, because both exceptions belong to the walk
+rather than to a quantity gathered in it.
