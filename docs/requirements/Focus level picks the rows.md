@@ -85,6 +85,12 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
 
 ## Where it lives
 
-**Nothing yet — this note is design.** Which types rank beside a level is
-`src/domain/itemTypes.ts`, and focus re-rooting is already in the model; the roadmap
-asks the same question of the same code and answers it with rows rather than cards.
+The row set and the context forms shipped with [[A third projection]]: `roadmapRows`
+in `src/domain/roadmap.ts` asks the focus question the board asks — rendered roots
+when focused, every result otherwise — and a focused context item places only into a
+bucket that already exists, or stands beside the shelf apart from its count, never on
+the timeline by its own dates (driven in `test/domain/roadmap.test.ts` and
+`test/view/roadmapFrame.test.ts`). Which types rank beside a level is
+`src/domain/itemTypes.ts`, already shared. The inferred spans, the fills counting
+below-focus results, and the quick filter's descendant naming remain this note's work,
+which is why it stays open.

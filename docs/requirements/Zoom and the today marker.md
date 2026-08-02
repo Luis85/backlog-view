@@ -75,7 +75,11 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The zoom control joins
-`src/view/render/toolbar.ts` beside the focus level; the per-device memory joins the
-per-screen state `src/storage/collapseStore.ts` already keeps, under the same identity
-and pruning rules.
+**Mostly design still.** The first increment ships the fixed month scale, the today
+line and the opening scroll to it (`src/domain/timeline.ts`,
+`src/view/render/timeline.ts`); the discrete zooms and their snapping cells, the
+jump-to-today control, the per-device zoom memory and the narrow-pane shelf compaction
+remain this note's work — the zoom control joining `src/view/render/toolbar.ts` beside
+the focus level, the memory joining the per-screen state
+`src/storage/collapseStore.ts` already keeps, under the same identity and pruning
+rules.

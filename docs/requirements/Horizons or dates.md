@@ -2,12 +2,14 @@
 type: PBI
 parent: "[[A third projection]]"
 order: 20
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 files:
   - src/domain/settings.ts
   - src/domain/viewOptions.ts
+  - src/domain/roadmap.ts
+  - src/storage/collapseStore.ts
 ---
 
 # Horizons or dates
@@ -90,7 +92,11 @@ and the placeholders suggest the ecosystem's own names (the Tasks plugin's `star
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The axis properties and their resolution join
-`src/domain/settings.ts` beside the state property they mirror, and the declarative
-schema entries join `src/domain/viewOptions.ts`; the key-collision rule extends the
-checks already gating every write.
+The axis options are `horizonProperty`, `horizonValues`, `startProperty` and
+`targetProperty` — a group in `src/domain/viewOptions.ts`, resolved in
+`src/domain/settings.ts` beside the state property they mirror, where `configProblems`
+refuses the collisions. Axis resolution is `configuredAxes` / `activeAxis` in
+`src/domain/roadmap.ts`; the pick persists beside the mode in
+`src/storage/collapseStore.ts`, and the toolbar control is `renderAxisPicker` in
+`src/view/render/toolbar.ts`. Driven in `test/domain/roadmap.test.ts`,
+`test/domain/settings.test.ts` and `test/view/roadmap.test.ts`.

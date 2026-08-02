@@ -281,7 +281,7 @@ describe('the board keyboard', () => {
 		key(tree, 'ArrowRight');
 		expect(view.selectedBoardColumn).toBe(0);
 
-		view.setBoardMode(false);
+		view.setProjection('tree');
 
 		// Board state must not point at a projection no longer on screen.
 		expect(view.selectedBoardColumn).toBeNull();

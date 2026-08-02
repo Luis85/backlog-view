@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
+import { flush, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
 import { boardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf } from '../helpers/board';
 
@@ -22,7 +22,7 @@ function boardView(
 	opts: { base?: string } = {},
 ) {
 	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
-	harness.view.setBoardMode(true);
+	harness.view.setProjection('board');
 	return harness;
 }
 
@@ -156,12 +156,13 @@ describe('the projection toggle', () => {
 	it('persists in localStorage per saved view — never in the base file', () => {
 		const vault = boardVault();
 		const first = makeView(vault, { ...WORKFLOW }, { base: 'Backlog.base' });
-		const toggle = first.containerEl.querySelector<HTMLButtonElement>('.pbl-mode-toggle');
-		expect(toggle?.getAttribute('aria-label')).toBe('Show as kanban board');
+		const toggle = projectionButton(first.containerEl, 'Show as kanban board');
+		expect(toggle.getAttribute('aria-pressed')).toBe('false');
 
 		// The click flips the projection in place — no config write, no Bases refresh.
-		toggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		toggle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(columnsOf(first.containerEl).length).toBeGreaterThan(0);
+		expect(projectionButton(first.containerEl, 'Show as kanban board').getAttribute('aria-pressed')).toBe('true');
 		// The rule itself: base settings go on the view; UI state never touches it.
 		expect(first.config.setCalls.some((c) => c.key === 'viewMode')).toBe(false);
 		first.view.onunload();
@@ -171,11 +172,11 @@ describe('the projection toggle', () => {
 		document.body.empty();
 		const second = makeView(vault, { ...WORKFLOW }, { base: 'Backlog.base', collapsed: true });
 		expect(columnsOf(second.containerEl).length).toBeGreaterThan(0);
-		const back = second.containerEl.querySelector<HTMLButtonElement>('.pbl-mode-toggle');
-		expect(back?.getAttribute('aria-label')).toBe('Show as backlog tree');
 
 		// And toggling back to the tree clears the field rather than storing a default.
-		back?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		projectionButton(second.containerEl, 'Show as backlog tree').dispatchEvent(
+			new MouseEvent('click', { bubbles: true }),
+		);
 		second.view.onunload();
 		expect(storedEntries(vault)['Backlog.base#Backlog']?.mode).toBeUndefined();
 	});
@@ -225,7 +226,7 @@ describe('focus on the board', () => {
 		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
-		view.setBoardMode(true);
+		view.setProjection('board');
 		return { view, config, containerEl, vault };
 	}
 

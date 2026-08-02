@@ -327,7 +327,7 @@ describe('write safety with context rows, across the board’s entry points', ()
 		});
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
-		view.setBoardMode(true);
+		view.setProjection('board');
 		return { view, containerEl, vault };
 	}
 

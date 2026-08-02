@@ -102,6 +102,62 @@ describe('configProblems', () => {
 		expect(settings.tagsKey).toBe('');
 		expect(configProblems(settings)).toEqual([]);
 	});
+
+	it('refuses an axis key colliding with a key the plugin owns', () => {
+		const clash = configProblems({ ...defaultSettings(), horizonKey: 'parent' });
+		expect(clash).toHaveLength(1);
+		expect(clash[0]).toContain('parent and horizon');
+	});
+
+	it('refuses axis keys colliding with each other — start and target cannot share', () => {
+		// One key cannot store a span, and a horizon sharing either is two semantics
+		// on one field.
+		const span = configProblems({ ...defaultSettings(), startKey: 'when', targetKey: 'when' });
+		expect(span).toHaveLength(1);
+		expect(span[0]).toContain('start and target');
+
+		const mixed = configProblems({ ...defaultSettings(), horizonKey: 'plan', startKey: 'plan' });
+		expect(mixed[0]).toContain('horizon and start');
+	});
+
+	it('refuses an axis key aimed at the tags key — a fresh mistake, not a legacy view', () => {
+		const settings = resolveSettings(fakeConfig({ horizonProperty: 'note.tags' }));
+		expect(settings.tagsKey).toBe('tags');
+		const clash = configProblems(settings);
+		expect(clash).toHaveLength(1);
+		expect(clash[0]).toContain('horizon and tags');
+	});
+});
+
+describe('resolveSettings roadmap options', () => {
+	it('reads the axis properties, unset by default — the axis is declared, never guessed', () => {
+		const defaults = resolveSettings(fakeConfig());
+		expect(defaults.horizonKey).toBe('');
+		expect(defaults.startKey).toBe('');
+		expect(defaults.targetKey).toBe('');
+
+		const configured = resolveSettings(
+			fakeConfig({ horizonProperty: 'note.horizon', startProperty: 'note.start', targetProperty: 'note.due' }),
+		);
+		expect(configured.horizonKey).toBe('horizon');
+		expect(configured.startKey).toBe('start');
+		expect(configured.targetKey).toBe('due');
+	});
+
+	it('ships the horizon values prefilled and keeps a cleared list cleared', () => {
+		// A default vocabulary, not a fixed one: untouched falls back to the canonical
+		// triple, edited is honored, and cleared means "no bucket axis" — not a reset.
+		expect(resolveSettings(fakeConfig()).horizonValues).toEqual(['Now', 'Next', 'Later']);
+		expect(resolveSettings(fakeConfig({ horizonValues: 'This quarter, Beyond' })).horizonValues).toEqual([
+			'This quarter',
+			'Beyond',
+		]);
+		expect(resolveSettings(fakeConfig({ horizonValues: '' })).horizonValues).toEqual([]);
+		expect(resolveSettings(fakeConfig({ horizonValues: 'Now, now, Later' })).horizonValues).toEqual([
+			'Now',
+			'Later',
+		]);
+	});
 });
 
 describe('resolveSettings display options', () => {

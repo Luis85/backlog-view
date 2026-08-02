@@ -130,6 +130,77 @@ export function readNumber(value: unknown): number | null {
 }
 
 /**
+ * A calendar date as the note spells it — year, month (1–12), day — with no time
+ * and no zone. The roadmap places by civil dates deliberately: converting to the
+ * viewer's zone would put the same note in different cells on different devices.
+ */
+export interface CivilDate {
+	year: number;
+	month: number;
+	day: number;
+}
+
+/**
+ * A field read that tells absence from refusal. The two mean different things on
+ * the roadmap — an absent placement is work not yet triaged, while a value the
+ * reader refuses shelves the item with the reason visible — so a reader that
+ * collapsed them would turn "can't read this" into a silent "not planned".
+ */
+export interface FieldReading<T> {
+	value: T | null;
+	/** True when the key holds a value this reader refuses to guess at. */
+	invalid: boolean;
+}
+
+export function absentReading<T>(): FieldReading<T> {
+	return { value: null, invalid: false };
+}
+
+/**
+ * A single placement value (a roadmap horizon), read with `readString`'s
+ * tolerances: a list takes its first entry, numbers and booleans read as their
+ * text. What resists even that — an object, a list of unreadable entries — is
+ * invalid rather than absent, and an empty value is absence, not refusal.
+ */
+export function readPlacement(value: unknown): FieldReading<string> {
+	if (value === null || value === undefined) return absentReading();
+	const text = readString(value);
+	if (text !== null) return { value: text, invalid: false };
+	const emptyish = typeof value === 'string' || (Array.isArray(value) && value.length === 0);
+	return { value: null, invalid: !emptyish };
+}
+
+/**
+ * Tolerant civil-date read, beside the tolerant number the orders use. Accepts
+ * the shapes frontmatter takes — `2026-08-01`, a datetime with any suffix, a
+ * quoted string, a list's first entry — and places by the civil date the value
+ * spells: the leading year-month-day, never converted to the viewer's zone.
+ * A value that exists but spells no calendar date is invalid, never guessed at.
+ */
+export function readDate(value: unknown): FieldReading<CivilDate> {
+	if (value === null || value === undefined) return absentReading();
+	if (Array.isArray(value)) return value.length > 0 ? readDate(value[0]) : absentReading();
+	if (typeof value !== 'string') return { value: null, invalid: true };
+	const text = value.trim();
+	if (text.length === 0) return absentReading();
+	const match = /^(\d{4})-(\d{1,2})-(\d{1,2})([Tt\s].*)?$/.exec(text);
+	if (!match) return { value: null, invalid: true };
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
+		return { value: null, invalid: true };
+	}
+	return { value: { year, month, day }, invalid: false };
+}
+
+/** Month lengths, leap years included — what makes `2026-02-30` invalid, not a guess. */
+export function daysInMonth(year: number, month: number): number {
+	// Day 0 of the next month is this month's last day; pure calendar arithmetic.
+	return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/**
  * Today as `YYYY-MM-DD` — the shape Obsidian's date properties parse, and the one
  * this register already stamps `created:` and `closed:` with by hand.
  *
@@ -150,3 +221,4 @@ export function dateStamp(now: Date): string {
 	const pad = (n: number): string => String(n).padStart(2, '0');
 	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+

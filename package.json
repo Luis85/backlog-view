@@ -25,18 +25,18 @@
   "author": "Luis85",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^22.20.1",
     "@typescript-eslint/parser": "^8.65.0",
-    "@vitest/coverage-v8": "^2.1.9",
-    "esbuild": "^0.24.0",
-    "eslint": "^9.39.5",
+    "@vitest/coverage-v8": "^4.1.10",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.8.0",
     "eslint-plugin-obsidianmd": "^0.4.1",
     "fallow": "^3.10.0",
     "jsdom": "^30.0.1",
-    "obsidian": "latest",
-    "typescript": "^5.6.3",
+    "obsidian": "^1.13.1",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22"

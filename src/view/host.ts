@@ -2,10 +2,18 @@ import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
+import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ItemWrite } from '../domain/writePlan';
 import { BacklogSettings } from '../domain/settings';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
+
+/**
+ * The three readings of one backlog. UI state, not a base setting: the choice
+ * lives beside the collapse state in vault-scoped localStorage — per saved view,
+ * per device — and never in the `.base`.
+ */
+export type Projection = 'tree' | 'board' | 'roadmap';
 
 /**
  * A visible property resolved into a column: the id to read, the label the header
@@ -34,6 +42,18 @@ export interface BusyState {
 export interface BoardSnapshot {
 	board: BoardModel;
 	colEls: HTMLElement[];
+}
+
+/**
+ * The roadmap as last rendered: the derived model, and the rendered cards in
+ * reading order — axis first, then the shelf, then the context strip — which is
+ * the order the keyboard walks.
+ */
+export interface RoadmapSnapshot {
+	roadmap: RoadmapModel;
+	cards: BacklogItem[];
+	/** Pixel offset of the today line inside the grid, or null on the horizon axis. */
+	todayLeft: number | null;
 }
 
 /**
@@ -94,15 +114,26 @@ export interface BacklogViewHost {
 	setCollapsed(path: string, collapsed: boolean): boolean;
 
 	/**
-	 * True while this view shows the board projection. UI state, not a base
-	 * setting: it lives beside the collapse state in vault-scoped localStorage —
-	 * per saved view, per device — and never in the `.base`.
+	 * Which projection this view shows. UI state, not a base setting: it lives
+	 * beside the collapse state in vault-scoped localStorage — per saved view,
+	 * per device — and never in the `.base`.
 	 */
-	readonly boardMode: boolean;
-	/** Flip the projection and re-render; the collapse store persists the choice. */
-	setBoardMode(on: boolean): void;
-	/** The board of the last render, or null while the view is a tree (or has no workflow). */
+	readonly projection: Projection;
+	/** Switch the projection and re-render; the collapse store persists the choice. */
+	setProjection(mode: Projection): void;
+	/** The board of the last render, or null while the view is not a board (or has no workflow). */
 	readonly board: BoardSnapshot | null;
+	/** The roadmap of the last render, or null while the view is not a roadmap (or has no axis). */
+	readonly roadmap: RoadmapSnapshot | null;
+	/**
+	 * The retained roadmap-axis pick for this saved view, or null before the user
+	 * ever picks. Retained even while its axis is unconfigured — restoring the
+	 * configuration restores the choice — so read the axis to draw through
+	 * `activeAxis`, never from this directly.
+	 */
+	readonly axisPick: string | null;
+	/** Pick which axis this saved view shows; the collapse store persists it. */
+	setAxisPick(axis: RoadmapAxis): void;
 	/**
 	 * The column the board selection rests on when no card is selected — an empty
 	 * column is still a keyboard stop, or an empty board could not be driven at all.

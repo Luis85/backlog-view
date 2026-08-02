@@ -71,7 +71,7 @@ describe('the quick filter on the board', () => {
 		treeSide.view.setFilter('Epic A');
 
 		// The toggle switches in place — the filter is session state in both projections.
-		treeSide.view.setBoardMode(true);
+		treeSide.view.setProjection('board');
 
 		expect(cardTitles(treeSide.containerEl)).toEqual(['Epic A']);
 		const input = treeSide.containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');

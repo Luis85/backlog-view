@@ -98,6 +98,13 @@ export function treeOf(containerEl: HTMLElement): HTMLElement {
 	return tree;
 }
 
+/** One position of the toolbar's projection toggle, found by its accessible name. */
+export function projectionButton(containerEl: HTMLElement, label: string): HTMLButtonElement {
+	const btn = containerEl.querySelector<HTMLButtonElement>(`.pbl-mode-btn[aria-label="${label}"]`);
+	if (!btn) throw new Error(`projection button not found: ${label}`);
+	return btn;
+}
+
 /** Wait for the async frontmatter writes queued by an interaction. */
 export function flush(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));

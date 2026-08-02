@@ -71,6 +71,29 @@ export function renderBoardNoWorkflowState(treeEl: HTMLElement): void {
 	});
 }
 
+/**
+ * Roadmap mode with no axis configured: guidance naming both ways to get one and
+ * where each is set. The one roadmap case with no frame — a frame here would be
+ * a lie about an axis that does not exist — and when a horizon property is set
+ * but its values were cleared, the guidance names the half that is missing
+ * rather than inventing a vocabulary.
+ */
+export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
+	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'map');
+	empty.createDiv({ cls: 'pbl-empty-title', text: 'No axis to show' });
+	const halfConfigured = host.settings.horizonKey !== '' && host.settings.horizonValues.length === 0;
+	const horizonHalf = halfConfigured
+		? 'A horizon property is set, but "Horizons (in order)" is empty — fill it to get Now-Next-Later buckets'
+		: 'Set "Horizon property" and "Horizons (in order)" for Now-Next-Later buckets';
+	empty.createDiv({
+		cls: 'pbl-empty-hint',
+		text:
+			'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. ' +
+			`${horizonHalf}, or set "Start date property" or "Target date property" for a timeline.`,
+	});
+}
+
 export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const empty = treeEl.createDiv({ cls: 'pbl-empty-filter' });
 	setIcon(empty.createDiv({ cls: 'pbl-empty-filter-icon' }), 'search-x');

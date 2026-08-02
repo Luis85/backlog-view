@@ -2,10 +2,13 @@
 
 Obsidian plugin registering a custom **Bases view** (`product-backlog`): a drag-and-drop
 work-item tree (Epic → Feature → PBI → Task) over notes in a flat folder, driven by
-`parent`/`order`/`type` frontmatter — with a second projection, a kanban **board** whose
-columns are the configured workflow states, toggled per saved view. The mode is UI
-state (vault-scoped localStorage, beside the collapse state), never a `.base` setting:
-base settings are saved on the view, working position on the device.
+`parent`/`order`/`type` frontmatter — with two more projections toggled per saved view:
+a kanban **board** whose columns are the configured workflow states, and a read-only
+**roadmap** drawing whichever axis the view options declare (horizon buckets, or a
+timeline from two date properties) with everything unplaceable on a counted shelf. The
+mode and the roadmap-axis pick are UI state (vault-scoped localStorage, beside the
+collapse state), never a `.base` setting: base settings are saved on the view, working
+position on the device.
 Requires Obsidian 1.10.2+ (Bases custom view API).
 
 ## Definition of done
@@ -17,7 +20,7 @@ npm run check   # build + lint + coverage-thresholded tests + fallow + docs regi
 All five must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
 produced a defect this repository could not see. Coverage thresholds
-(vitest.config.ts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
+(vitest.config.mts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
 duplication, complexity/CRAP (fed by the vitest coverage file) and dependency hygiene —
 framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
 `usedClassMembers`, not suppressed inline. `docs-check.mjs` gates `docs/` the same way:
@@ -63,11 +66,13 @@ mirrors the same directories.
 | `domain/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
 | `domain/dropTargets.ts` | Drop-target math and the `DropZone`/`DropTarget` vocabulary (zones, no-op/cycle/stale-link rules) | node tests |
 | `domain/board.ts` | Board derivation: columns from the workflow, card assignment, context-card placement and sorting | node tests |
+| `domain/roadmap.ts` | Roadmap derivation: the declared axis, horizon buckets, timeline placement, the shelf partition, context handling | node tests |
+| `domain/timeline.ts` | Civil-date arithmetic: spans, the bounded month window, bar geometry — today is always injected | node tests |
 | `domain/writePlan.ts` | What a change *would* write: drop plans, ranking, backfill. Pure — applies nothing | node tests |
 | **`storage/`** | **The only place anything is persisted.** | |
 | `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |
 | `storage/baseFile.ts` | Writing the `.base` file itself | node tests |
-| `storage/collapseStore.ts` | Per-view UI state (collapse sets + board mode) in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
+| `storage/collapseStore.ts` | Per-view UI state (collapse sets + projection mode + roadmap-axis pick) in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
 | **`view/`** | **DOM and interaction.** | |
 | `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch, write gate | jsdom tests |
@@ -75,8 +80,11 @@ mirrors the same directories.
 | `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
 | `view/filterState.ts` | The quick filter's session state: the text, the match path that renders, the matches themselves | jsdom tests |
 | `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
-| `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages | jsdom tests |
-| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done | jsdom tests |
+| `view/render/projections.ts` | The content-pane fork: which projection draws into the scroller, and the role/label the pane claims | jsdom tests |
+| `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages — and the card body every projection shares | jsdom tests |
+| `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory | jsdom tests |
+| `view/render/timeline.ts` | The dated grid: month header, bars and milestones with exact-date tooltips, the today line | jsdom tests |
+| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the roadmap's no-axis guidance | jsdom tests |
 | `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/boardDrag.ts` | The board's drag: Pragmatic drag and drop wiring, column drops, announcements (ADR 0018) | jsdom tests |
@@ -105,7 +113,7 @@ depend on the effectful one.
 ## Testing
 
 - `test/helpers/obsidian-mock.ts` — runtime stand-in for the `obsidian` module (aliased in
-  `vitest.config.ts`). Extend it when new obsidian API surface is used; keep it minimal.
+  `vitest.config.mts`). Extend it when new obsidian API surface is used; keep it minimal.
 - `test/helpers/dom.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
   `addClass`, `setCssProps`, …) for jsdom files. Call `installObsidianDom()` at module top.
 - `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
@@ -223,6 +231,13 @@ write's inverse as it lands, so the last effective batch can always be taken bac
   `normalizePath` on user paths, no global `app`.
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
+- Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
+  also says why `npm audit` is deliberately NOT a sixth step. Two upgrades are refused on
+  purpose, with the reason in `.github/dependabot.yml`: **TypeScript is held at `~6.0.3`**
+  (`typescript-eslint` 8 declares `typescript <6.1.0`, so 6.0.x is permitted and 7 is
+  refused outright with ERESOLVE, and lint is what would be lost — the tilde IS that peer
+  ceiling, so do not make it a caret), and **`@types/node` tracks the `engines`
+  floor**, not npm's newest. Do not "fix" either by widening the range.
 - Work is tracked in `docs/`, which is a backlog **in this plugin's own schema** and the
   layout the view ships as its default — `requirements/` (Epic → Feature → PBI),
   `tasks/`, `issues/`, `bugs/`. Every note states the evidence it rests on. Closed notes

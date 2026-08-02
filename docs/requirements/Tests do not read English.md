@@ -70,7 +70,7 @@ not been reworded. The first is the test's purpose. The second is a hostage.
 - A small number of assertions genuinely *are* about text — that the English catalog
   reads in sentence case, that a translated option label is quoted into the hint that
   names it. Those stay, and they say in a comment that the wording is the subject.
-- Coverage thresholds do not drop. They only ever go up (`vitest.config.ts`), and moving
+- Coverage thresholds do not drop. They only ever go up (`vitest.config.mts`), and moving
   assertions is not a reason for an exception.
 - `test/**` keeps its 450-line budget. If the locale plumbing pushes a file over, the
   file splits by subject — the rule the suite already lives by.
@@ -82,4 +82,4 @@ the per-test reset, so the resolved
 locale belongs beside it · `test/helpers/obsidian-mock.ts` is where `getLanguage` gets a
 stand-in · `test/view/state.test.ts` holds an assertion matching a notice by its English
 text today, which is the shape that changes.
-Config: `vitest.config.ts` carries the coverage thresholds that must not drop.
+Config: `vitest.config.mts` carries the coverage thresholds that must not drop.

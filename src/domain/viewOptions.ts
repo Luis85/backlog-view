@@ -3,6 +3,7 @@ import {
 	ALL_TYPES,
 	DEFAULT_DONE_VALUES,
 	DEFAULT_HOME_FOLDER,
+	DEFAULT_HORIZON_VALUES,
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
@@ -34,7 +35,7 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	// here regardless would make every picker in a `Roadmap` base advertise a folder the
 	// creation flow does not use, and restoring that shown default would move the type.
 	const homeFolder = config ? resolveSettings(config).homeFolder : DEFAULT_HOME_FOLDER;
-	return [hierarchyGroup(), progressGroup(), newItemsGroup(homeFolder), displayGroup()];
+	return [hierarchyGroup(), progressGroup(), roadmapGroup(), newItemsGroup(homeFolder), displayGroup()];
 }
 
 function hierarchyGroup(): BasesAllOptions {
@@ -151,6 +152,50 @@ function progressGroup(): BasesAllOptions {
 				key: 'showCompleted',
 				displayName: 'Show completed items',
 				default: true,
+			},
+		],
+	};
+}
+
+/**
+ * The roadmap's axis, declared rather than detected: a horizon property with its
+ * ordered values makes the bucket axis, a start and a target property make the
+ * timeline, and nothing is ever picked by name-matching. The placeholders suggest
+ * the ecosystem's own vocabulary (the Tasks plugin's `start` and `due`) without
+ * assuming it.
+ */
+function roadmapGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Roadmap',
+		items: [
+			{
+				type: 'property',
+				key: 'horizonProperty',
+				displayName: 'Horizon property',
+				placeholder: 'horizon',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'horizonValues',
+				displayName: 'Horizons (in order)',
+				default: DEFAULT_HORIZON_VALUES.join(', '),
+				placeholder: DEFAULT_HORIZON_VALUES.join(', '),
+			},
+			{
+				type: 'property',
+				key: 'startProperty',
+				displayName: 'Start date property',
+				placeholder: 'start',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'property',
+				key: 'targetProperty',
+				displayName: 'Target date property',
+				placeholder: 'due',
+				filter: notePropsOnly,
 			},
 		],
 	};

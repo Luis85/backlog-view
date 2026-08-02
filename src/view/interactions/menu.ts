@@ -48,7 +48,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	// The move section is tree shape: every entry in it is defined by the row's
 	// visible NEIGHBOURS, and a card has none — within-column order is derived, so
 	// there is no rank to move within and no sibling to indent under.
-	if (!host.boardMode) addMoveSection(host, menu, item);
+	if (host.projection === 'tree') addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
 	addMatchSection(host, menu, item);
 	menu.addSeparator();
@@ -200,7 +200,7 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * prevent: found, counted in the rollup, and impossible to get to.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const board = host.boardMode ? host.board?.board : null;
+	const board = host.projection === 'board' ? host.board?.board : null;
 	if (!board || !host.isFiltering() || host.isFilterMatch(item)) return;
 	const carded = cardPaths(board);
 	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
@@ -237,7 +237,7 @@ interface StateChoice {
  * named exactly as the column they can see.
  */
 function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
-	const board = host.boardMode ? host.board?.board : null;
+	const board = host.projection === 'board' ? host.board?.board : null;
 	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
 	const current = item.stateValue;
@@ -259,7 +259,7 @@ function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
  * entry, which the tree's list never offers.
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
-	if (host.boardMode || choice.state === null) return host.performBoardMove(item, choice.state);
+	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
 	// The tree's own Set state plans through the same function the board's moves do, so
 	// the date stamps ride it too: a history with holes in it, where which hole depends
 	// on whether the user was looking at the tree or the board, is worse than none.

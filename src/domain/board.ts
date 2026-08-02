@@ -201,9 +201,11 @@ export function columnLabelFor(board: BoardModel, state: string | null): string 
  * Where a context card sorts: the earliest `entryIndex` among the visible results
  * it places — the only ordering consistent with existing only to place them. Its
  * own `entryIndex` is a load position, not a sort position: ancestors are loaded
- * after every result and would all sink to the bottom.
+ * after every result and would all sink to the bottom. Exported for the roadmap's
+ * buckets, which sort context cards by the same rule so the same focused items
+ * cannot appear in a different order per projection.
  */
-function firstPlacedIndex(item: BacklogItem, visible: (item: BacklogItem) => boolean): number {
+export function firstPlacedIndex(item: BacklogItem, visible: (item: BacklogItem) => boolean): number {
 	let min = Number.POSITIVE_INFINITY;
 	for (const child of item.children) {
 		if (!visible(child)) continue;

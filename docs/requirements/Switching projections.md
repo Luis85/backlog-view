@@ -86,8 +86,9 @@ The mode is the `mode` field of the collapse store's per-view entry
 (`src/storage/collapseStore.ts`), restored and debounce-saved by
 `src/view/collapseState.ts` with the collapse sets it lives beside — so base renames
 and view renames migrate it for free. The toolbar toggle (`renderModeToggle` in
-`src/view/render/toolbar.ts`) flips it through `setBoardMode` on the host, and
-`src/view/backlogView.ts` dispatches the render on `boardMode`, swapping the scroller
-between tree and listbox roles over the same model, undo slot and filter state. Driven
-in `test/view/board.test.ts` (the store round-trip in
+`src/view/render/toolbar.ts` — three positions since the roadmap joined,
+[[Three projections, one toggle]]) sets it through `setProjection` on the host, and
+`src/view/backlogView.ts` dispatches the render on the projection, swapping the
+scroller between tree and listbox roles over the same model, undo slot and filter
+state. Driven in `test/view/board.test.ts` (the store round-trip in
 `test/storage/collapseStore.test.ts`).

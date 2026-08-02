@@ -59,5 +59,5 @@ file you want is the file you would have named.
 
 `test/helpers/view.ts` (the shared harness) · `test/helpers/vault.ts` (`FakeVault`) ·
 `test/helpers/obsidian-mock.ts` · `test/helpers/dom.ts` ·
-`vitest.config.ts` (thresholds) · `eslint.config.mjs` (`test/**` line budget).
+`vitest.config.mts` (thresholds) · `eslint.config.mjs` (`test/**` line budget).
 Done by: [[Split the view test suite]], [[Cover the drag and drop branches]].
