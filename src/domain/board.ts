@@ -122,6 +122,21 @@ export function boardColumns(
 }
 
 /**
+ * What to call the column a state value sits in — by the same case-insensitive
+ * match that placed the cards, and with the same fallback: a value naming no
+ * column gathers under no-state, so a message about it has to say no-state too.
+ * Anything that names a column out loud (a move announcement, a menu entry) reads
+ * it from here rather than from the raw string, or it would name a column the user
+ * cannot see.
+ */
+export function columnLabelFor(board: BoardModel, state: string | null): string {
+	// Columns always lead with the no-state column — `boardColumns` builds it first.
+	const noState = board.columns[0]?.label ?? NO_STATE_LABEL;
+	if (state === null) return noState;
+	return board.columns.find((col) => col.state?.toLowerCase() === state.toLowerCase())?.label ?? noState;
+}
+
+/**
  * Where a context card sorts: the earliest `entryIndex` among the visible results
  * it places — the only ordering consistent with existing only to place them. Its
  * own `entryIndex` is a load position, not a sort position: ancestors are loaded

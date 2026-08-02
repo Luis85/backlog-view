@@ -95,17 +95,20 @@ free of runtime code so imports stay cycle-free.
   `.pbl-row` before falling back to the empty states. Columns never shrink (a shrunk
   column no longer sits under its header), so a pane too narrow for them drops them
   whole: `columnFit` derives the threshold from the *configured* width and count — a
-  fixed CSS breakpoint would clip two 280px columns in a 700px pane — and the view
-  toggles `pbl-hide-props` / `pbl-hide-meta` / `pbl-hide-state` from a `ResizeObserver`
+  fixed CSS breakpoint would clip two 280px columns in a 700px pane — and
+  `syncColumnFit` beside it applies the verdict, toggling `pbl-hide-props` /
+  `pbl-hide-meta` / `pbl-hide-state`. The two live in one file because a threshold
+  computed in one place and applied in another is one edit from disagreeing; the view
+  keeps only the policy of when to re-measure, driving it from a `ResizeObserver`
   (absent in jsdom, and `clientWidth` is 0 there, so tests stub it and call the render
   path). Two things make the measurement honest: it happens *after* the rows render, so
   the scrollbar that `overflow-y: auto` may have just added is already taking its width,
   and the observer watches the **tree**, whose content box shrinks when that scrollbar
   appears — the view's own box does not. A verdict that changes after a render triggers
   exactly one more pass (`refitting`), since the second pass measures the same tree.
-  The indent term comes from `ctx.maxDepth`, an output of the render rather than a
+  The indent term comes from `ctx.rows`, the index the render just filled rather than a
   second walk of the model: the pass that drew the rows is the one that knows which
-  rows are on screen. Everything the threshold counts has to be *bounded in CSS and summed here*:
+  rows are on screen, and a collapse shrinks it in the same pass it happens in. Everything the threshold counts has to be *bounded in CSS and summed here*:
   `ROW_LEAD_WIDTH` is written as its terms (padding, grip, chevron, capped badge, title
   min-width, the orphan and outside markers, spacer, add button) so it can be checked
   against `styles.css`, the badge carries a `max-width` for that reason, indent is added
@@ -181,10 +184,31 @@ free of runtime code so imports stay cycle-free.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
-- Context cards are never wired as draggables, and `performBoardDrop` still rides
+- **One move, three inputs.** A drop, Alt+Left/Right and the card menu's Set state all
+  call `performBoardMove`; none of them plans its own write. That is also the only
+  place a move is announced (`announceBoardMove`, which lives in `boardDrag.ts`
+  because that module owns the live region and cleans it up) — three callers
+  announcing separately is how they come to say different things about one change.
+  The message names COLUMNS via `columnLabelFor`, never the raw value, so it says what
+  is on screen: "No state" rather than a silence, and the yielded "Unset" rather than
+  a name a real state has taken.
+- The board's Set state offers `host.board`'s **rendered columns**, not a list rebuilt
+  from the settings — that is what makes "every target a drag can reach, the menu can
+  too" true by construction rather than by two lists agreeing. `stateMenuValues` alone
+  cannot supply it: it returns only the configured states when a list is set, and
+  knows nothing of no-state. The same builder skips the tree's move section on a card,
+  because every entry in it is defined by a row's visible neighbours.
+- Context cards are never wired as draggables, and `performBoardMove` still rides
   `applySafely`, whose outside-filter refusal is the structural backstop — the board
-  block in `test/view/contextRowWrites.test.ts` drives both. Column counts are result
+  block in `test/view/contextRowWrites.test.ts` drives both, and drives the keyboard
+  and menu paths too: a keyboard can SELECT what a drag was never wired to pick up, so
+  the refusal has to hold where the drag could not reach. Column counts are result
   cards only; a context card is placement, not population.
+- The board is one tab stop and its shortcuts are invisible, so it carries hidden
+  instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by
+  `uniqueElementId` because that attribute resolves across the whole document and two
+  boards can sit in split panes; the view drops the attribute on every render pass, so
+  it can never outlive the element it names.
 - The selection is ONE thing across projections: a row/card by path, or — board only —
   a column stop (`SelectionController`), because an empty column must stay reachable
   by keyboard. Anything that takes the card selection releases the column stop, and
@@ -224,6 +248,14 @@ free of runtime code so imports stay cycle-free.
 
 ## Lifecycle
 
+- Anything an awaited write reports on has to be **captured before the await**. The
+  Bases update that arrives mid-batch is deferred and then flushed in
+  `runExclusively`'s `finally` — synchronously, before the awaited write resolves — so
+  code reading view state after the await already sees the rebuilt model.
+  `performBoardMove` takes both the state being left and the column vocabulary up
+  front for that reason: afterwards the stray column the card just vacated may be gone
+  with its last card, and naming the move from the new board reports a column the user
+  never touched.
 - A Bases view is handed its `app` **after** construction, so nothing in the
   `ProductBacklogView` constructor may read `this.app`. This has bitten twice — the
   collapse controller and the rename listener — and the jsdom tests catch it instantly,

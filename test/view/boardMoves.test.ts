@@ -4,28 +4,18 @@ import { FakeVault } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
 import { flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { boardDrag } from '../helpers/dnd';
-import { cardByTitle, cardTitles, columnByName, columnsOf, countOf } from '../helpers/board';
+import {
+	BOARD_WORKFLOW,
+	boardVault,
+	cardByTitle,
+	cardTitles,
+	columnByName,
+	columnsOf,
+	countOf,
+	makeBoard as board,
+} from '../helpers/board';
 
 useViewHarness();
-
-const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Active, Done' };
-
-function boardVault(): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
-	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
-	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 10, status: 'Done' }, parentLink: 'Epic B' });
-	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic B' });
-	return vault;
-}
-
-function board(vault: FakeVault, extra: Record<string, unknown> = {}) {
-	// The mode is UI state, not a base setting: flipped through the host, as the
-	// toolbar does, never through the config.
-	const harness = makeView(vault, { ...WORKFLOW, ...extra }, { collapsed: true });
-	harness.view.setProjection('board');
-	return harness;
-}
 
 describe('dragging a card to a new state', () => {
 	it('dropping on a column writes that state’s canonical value', async () => {
@@ -212,18 +202,24 @@ describe('the board keyboard', () => {
 		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
 	});
 
-	it('reserves modified arrows for the moves to come', () => {
-		const { containerEl } = board(boardVault());
+	it('never navigates on a modified arrow — Alt moves the card, Shift is not ours', async () => {
+		const vault = boardVault();
+		const { containerEl } = board(vault);
 		const tree = treeOf(containerEl);
 		key(tree, 'ArrowRight');
 		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
 
-		// Alt+arrow is the deferred card-move shortcut; navigating on it instead
-		// would teach exactly the wrong reflex. Other chords are not ours to swallow.
+		// Alt+arrow moves the CARD (see test/view/boardMenu.test.ts), so the selection
+		// stays put; navigating on it instead would teach exactly the wrong reflex.
 		key(tree, 'ArrowRight', { altKey: true });
 		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
+		await flush();
+		expect(vault.fm('Feature B2.md')['status']).toBe('New');
+
+		// Shift+arrow is neither: other chords are not this handler's to swallow.
 		key(tree, 'ArrowRight', { shiftKey: true });
 		expect(cardByTitle(containerEl, 'Feature B2').hasClass('pbl-selected')).toBe(true);
+		expect(vault.writeLog).toHaveLength(1);
 	});
 
 	it('slash reaches the quick filter', () => {
@@ -329,7 +325,7 @@ describe('the quick filter on the board', () => {
 
 	it('carries over a projection switch instead of clearing', () => {
 		const vault = boardVault();
-		const treeSide = makeView(vault, { ...WORKFLOW });
+		const treeSide = makeView(vault, { ...BOARD_WORKFLOW });
 		treeSide.view.setFilter('Epic A');
 
 		// The toggle switches in place — the filter is session state in both projections.

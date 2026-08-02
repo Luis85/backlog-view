@@ -130,11 +130,13 @@ export interface BacklogViewHost {
 	readonly selectedBoardColumn: number | null;
 	selectBoardColumn(index: number | null): void;
 	/**
-	 * Plan and apply the state write a drop on a board column means — the canonical
-	 * value, or key removal for the no-state column. A drop on the card's own column
+	 * Plan and apply the state write a board move means — the canonical value, or key
+	 * removal for the no-state column. One path for all three inputs (a drop, an
+	 * Alt+arrow, the card menu), so no input can reach a target another cannot, and
+	 * every move that lands announces itself once. A move onto the card's own column
 	 * plans nothing and resolves false, leaving the undo slot untouched.
 	 */
-	performBoardDrop(item: BacklogItem, state: string | null): Promise<boolean>;
+	performBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;

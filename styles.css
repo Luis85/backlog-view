@@ -1146,6 +1146,21 @@
 
 /* -------------------------------------------------------------------- board */
 
+/* Text for assistive tech only — the board's keyboard instructions. Clipped
+   rather than `display: none`, which would take it out of the accessibility tree
+   and leave `aria-describedby` describing nothing. */
+.pbl-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
 /* The tree's "move to top level" strip has no meaning between columns. */
 .pbl-board-mode .pbl-root-drop {
 	display: none;

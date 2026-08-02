@@ -351,6 +351,28 @@ describe('write safety with context rows, across the board’s entry points', ()
 		expect(touched).toContain('PBI.md');
 	});
 
+	it('never writes to a context card from the keyboard or the menu either', async () => {
+		const { view, containerEl, vault } = boardStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+		expect(mid?.outsideFilter).toBe(true);
+		const tree = treeOf(containerEl);
+
+		// Selected as a card and moved with the shortcut: the path a drag cannot take
+		// (a context card is never wired as a draggable) and a keyboard can.
+		view.selectItem(mid as never);
+		key(tree, 'ArrowRight', { altKey: true });
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+
+		// And the menu, the one path that works everywhere: it withholds every entry
+		// that would edit this note — Set state included, which on the board is the
+		// drag's equal and so must be withheld exactly as the drag is.
+		view.showContextMenuFor(mid as never);
+		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
+		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
+		expect(vault.writeLog).toEqual([]);
+	});
+
 	it('refuses the whole batch if a board write ever names a context item', async () => {
 		const { view, vault } = boardStressView();
 		const mid = view.model?.byPath.get('Mid.md');
@@ -358,7 +380,7 @@ describe('write safety with context rows, across the board’s entry points', ()
 
 		// No UI produces this — that is the point: the last line of defence is
 		// structural, so a future entry point cannot reopen the hole by omission.
-		const applied = await view.performBoardDrop(mid as never, 'New');
+		const applied = await view.performBoardMove(mid as never, 'New');
 
 		expect(applied).toBe(false);
 		expect(vault.writeLog).toEqual([]);

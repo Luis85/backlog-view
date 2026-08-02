@@ -39,6 +39,8 @@ export class FakeVault {
 	localStorage = new Map<string, unknown>();
 	/** Paths whose processFrontMatter throws — how tests make a batch fail partway. */
 	failWrites = new Set<string>();
+	/** Called as each write lands — how tests interleave a Bases update with a batch. */
+	afterWrite: ((path: string) => void) | null = null;
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 
@@ -111,6 +113,10 @@ export class FakeVault {
 				fn(fm);
 				this.frontmatter.set(file.path, fm);
 				this.writeLog.push({ path: file.path, fm: { ...fm } });
+				// How a test reproduces Bases noticing the vault change while the batch
+				// is still running — the view defers that update and rebuilds on the way
+				// out, so anything read after the await sees the rebuilt board.
+				this.afterWrite?.(file.path);
 			},
 		},
 	};

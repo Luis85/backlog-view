@@ -9,7 +9,7 @@ import {
 	Projection,
 	RoadmapSnapshot,
 } from './host';
-import { BoardDragController } from './interactions/boardDrag';
+import { announceBoardMove, BoardDragController } from './interactions/boardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
@@ -22,7 +22,7 @@ import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
-import { applyColumnFit, chipProps, rowContext, RowContext } from './render/columns';
+import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { renderProjectionContent } from './render/projections';
 import { refreshRowChildren } from './render/rows';
@@ -129,23 +129,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.viewEl.detach();
 	}
 
-	/**
-	 * Drop the columns a pane this narrow cannot hold, measured after the rows are
-	 * in place: an empty tree has no scrollbar, and its width is not the width the
-	 * columns will actually get. The depth term comes off the row index — `rowEls`
-	 * holds exactly what was rendered, so a collapse shrinks it the same pass —
-	 * because indent is part of what a row needs, and expanding a deep branch can
-	 * be what makes the columns stop fitting.
-	 */
-	private syncColumnFit(): boolean {
-		const width = this.treeEl.clientWidth;
-		// Zero while detached or before the first layout: keep the last decision.
-		if (width === 0) return false;
-		let depth = 0;
-		for (const path of this.rowEls.keys()) {
-			depth = Math.max(depth, this.model?.byPath.get(path)?.depth ?? 0);
-		}
-		return applyColumnFit(this.viewEl, this.settings, this.chips.length, depth, width);
+	/** Re-measure the pane and apply the column ladder to what is currently rendered. */
+	private refit(): boolean {
+		return syncColumnFit(this.rowCtx(), this.viewEl, this.treeEl);
 	}
 
 	/**
@@ -180,7 +166,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Board columns and the timeline scroll horizontally instead of dropping
 		// columns; the fit ladder is the tree's.
 		if (this.projection !== 'tree') return;
-		if (this.syncColumnFit()) this.renderTreeContent();
+		if (this.refit()) this.renderTreeContent();
 	}
 
 	onDataUpdated(): void {
@@ -360,7 +346,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		refreshRowChildren(this.rowCtx(), item, row);
 		// Expanding or collapsing changes the deepest rendered row, and with it the
 		// room the columns have left — in both directions.
-		if (this.syncColumnFit()) this.renderTreeContent();
+		if (this.refit()) this.renderTreeContent();
 		// The selection may have been inside the subtree that just collapsed.
 		this.selection.resyncAfterRender();
 	}
@@ -383,6 +369,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const projection = this.projection;
 		this.viewEl.toggleClass('pbl-board-mode', projection === 'board');
 		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
+		// The keyboard instructions belong to the board and are rebuilt with it below;
+		// dropped here so the attribute never outlives the element it points at — a
+		// dangling `aria-describedby` is read as no description at all.
+		this.treeEl.removeAttribute('aria-describedby');
 		this.dnd.onRenderStart();
 		this.boardDnd.onRenderStart();
 		this.viewEl.toggleClass('pbl-focused', model.focused);
@@ -428,7 +418,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.
-		if (this.syncColumnFit() && !this.refitting) {
+		if (this.refit() && !this.refitting) {
 			this.refitting = true;
 			this.renderTreeContent();
 			this.refitting = false;
@@ -442,28 +432,45 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	// -------------------------------------------------------------------- writes
 
-	async performBoardDrop(item: BacklogItem, state: string | null): Promise<boolean> {
+	async performBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
 		const writes = computeStateDropWrites(item, state);
-		// A drop on the card's own column: no write at all, and the undo slot keeps
+		// A move onto the card's own column: no write at all, and the undo slot keeps
 		// the batch it had — a batch that writes nothing must not cost the user the
-		// undo of the change before it.
+		// undo of the change before it. Nothing is announced either: "moved from
+		// Active to Active" reports a change that did not happen.
 		if (writes.length === 0) return false;
-		const card = this.rowEls.get(item.file.path);
-		card?.classList.add('pbl-pending');
-		const applied = await this.applySafely(writes);
-		if (!applied) card?.classList.remove('pbl-pending');
-		return applied;
+		// Read before the write, while the model still holds the state being left —
+		// and take the column vocabulary with it, for the same reason. A Bases update
+		// arriving mid-batch is rebuilt into `this.board` the instant the batch ends,
+		// which is BEFORE the await below resolves: by then the column just vacated
+		// may be gone (a stray column loses its last card), and naming the move from
+		// the new board would report a column the user never touched.
+		const from = item.stateValue;
+		const columns = this.board?.board;
+		if (!(await this.applyMove(item, writes))) return false;
+		// Every board move says what changed, whichever input made it — a drag, an
+		// Alt+arrow and the card menu all arrive here.
+		announceBoardMove(columns, item.title, from, state);
+		return true;
 	}
 
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
 		// Dropping into a collapsed parent reveals where the item landed.
 		if (target.parent) this.setCollapsed(target.parent.file.path, false);
-		const writes = computeDropWrites(dragged, target, this.settings);
-		// Mark the moved row until the Bases refresh re-renders it in place.
-		const row = this.rowElFor(dragged);
+		await this.applyMove(dragged, computeDropWrites(dragged, target, this.settings));
+	}
+
+	/**
+	 * Apply a move and mark its row pending until the Bases refresh re-renders it in
+	 * place. Both projections move items, so both need the same holding signal —
+	 * cleared only on failure, because success is followed by the row's replacement.
+	 */
+	private async applyMove(item: BacklogItem, writes: ItemWrite[]): Promise<boolean> {
+		const row = this.rowElFor(item);
 		row?.classList.add('pbl-pending');
 		const applied = await this.applySafely(writes);
 		if (!applied) row?.classList.remove('pbl-pending');
+		return applied;
 	}
 
 	async applySafely(writes: ItemWrite[]): Promise<boolean> {

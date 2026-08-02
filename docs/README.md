@@ -44,11 +44,14 @@ the backlog/board toggle, columns from the workflow the view options define, car
 moves as gated state writes, and the hierarchy showing through on the board. Every
 note states the precedent or the codebase seam it rests on, from a survey of the
 Kanban Guide, the major trackers and the Obsidian ecosystem run on 2026-08-01. The
-first increment is built: the toggle, the columns, the cards, desktop drag as a
-gated state write, and the focus level picking the cards; the drag use case stays
-`Active` on the one criterion only [[WIP limits]] can exercise. What remains under
-the epic — menu and touch moves, lanes, creation from columns, limits, policies,
-stamps, column collapse — is still design.
+first increment built the projection: the toggle, the columns, the cards, desktop
+drag as a gated state write, and the focus level picking the cards; the drag use case
+stays `Active` on the one criterion only [[WIP limits]] can exercise. The second
+built the ways to move a card **without** a drag — Alt+arrow, and a card menu whose
+Set state is the board's own columns — with every move, drag included, announcing
+itself in the same words from one live region. What remains under the epic — lanes,
+creation from a column, limits, policies, stamps, column collapse, and the touch
+verdict a device has to answer — is still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly

@@ -185,8 +185,26 @@ const exists = async (file) => {
 	}
 };
 
+/**
+ * A note's text, with its line endings normalized on the way in.
+ *
+ * Every structural question below is asked of `\n`: `frontmatter` opens with `^---\n`, and
+ * the **Main flow** and **Extensions** blocks are found by `\*\*Extensions\*\*\n+`. None of
+ * them match `\r\n`, and `\r\n` is what an ordinary Windows clone has — Git for Windows
+ * checks out CRLF by default whatever the object store holds. So the gate read the whole
+ * register as typeless and reported 136 problems about documents that were correct: a false
+ * failure, on every note at once, and the one direction this project holds is more expensive
+ * to get wrong. It was invisible because the workflow ran on Ubuntu alone.
+ *
+ * Done once, here, rather than by teaching twenty patterns about `\r`. A per-pattern fix is
+ * twenty chances to forget one and leaves the next pattern added starting out wrong; and the
+ * subject of every rule in this file is the document's structure, never which bytes the
+ * checkout happened to use to end a line.
+ */
+const readText = async (file) => (await readFile(file, "utf8")).replaceAll("\r\n", "\n");
+
 const files = (await walk(DOCS)).sort();
-const texts = new Map(await Promise.all(files.map(async (f) => [f, await readFile(f, "utf8")])));
+const texts = new Map(await Promise.all(files.map(async (f) => [f, await readText(f)])));
 const stems = new Set(files.map((f) => path.basename(f, ".md")));
 const allText = [...texts.values()].join("\n");
 
