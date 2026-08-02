@@ -12,4 +12,5 @@ knows the level, the parent and the rank; asking the user to write them by hand 
 asking them to do the one job this plugin exists to do.
 
 **Outcome** — New work items exist with correct properties, in the right folder, from a
-title and nothing else.
+title and nothing else — and the folder they land in can explain its own schema to someone
+reading it without this plugin.
