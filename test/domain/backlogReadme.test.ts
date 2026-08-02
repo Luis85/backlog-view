@@ -202,7 +202,21 @@ describe('backlogReadmeContent', () => {
 		const content = readme(settingsWith({ startKey: '', targetKey: 'due', horizonKey: '' }), []);
 		expect(content).toContain('## Planning');
 		expect(content).toContain('`due` is the planned date');
-		expect(content).toContain('drawn as a milestone');
+		expect(content).toContain('drawn as a point in time');
+		// A target-only view places a marker perfectly well, so it earns no exception.
+		expect(content).not.toContain('this view cannot place one');
+	});
+
+	it('tells a start-only view it cannot place a marker at all', () => {
+		// The generated document is a contract with editors outside Obsidian, and the
+		// sentences above describe a point reached by how many dates an item STATES. A
+		// marker is a point by TYPE: `placeMarker` reads the target key alone, so here it
+		// shelves whatever it states — and `canSchedule` withholds the entry that would fix
+		// it. Left unsaid, the README tells a user to write the one date it documents and
+		// the milestone stays unplaced with no control offered to correct it.
+		const startOnly = readme(settingsWith({ startKey: 'start', targetKey: '', horizonKey: '' }), []);
+		expect(startOnly).toContain('`Milestone` is the exception, and this view cannot place one');
+		expect(startOnly).toContain('the only date property here is `start`');
 	});
 
 	it('does not advertise a horizon property whose values have been cleared', () => {

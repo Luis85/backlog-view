@@ -294,14 +294,34 @@ function planningSection(settings: BacklogSettings): string[] {
 	if (dateKeys.length === 2) {
 		lines.push(
 			`${code(settings.startKey)} and ${code(settings.targetKey)} are the planned dates, ` +
-				`written ${code('YYYY-MM-DD')}. An item stating only one of the two is a milestone on ` +
-				'that date; a target earlier than its start is set aside rather than drawn backwards.',
+				`written ${code('YYYY-MM-DD')}. An item stating only one of the two is drawn as a point ` +
+				'on that date; a target earlier than its start is set aside rather than drawn backwards.',
 		);
 	} else if (dateKeys.length === 1) {
 		lines.push(
 			`${code(dateKeys[0])} is the planned date, written ${code('YYYY-MM-DD')}. It is the only ` +
 				'date property configured here, so every item that states one is drawn as a ' +
-				'milestone rather than as a span.',
+				'point in time rather than as a span.',
+		);
+	}
+	// Both sentences above describe a point reached by how many dates an item STATES, and a
+	// marker is a point by TYPE — so they are wrong for one wherever the target key is not
+	// the one configured. A `Milestone` handed the start property states a date this view
+	// will never place it by, and the entry that would correct that is withheld for the same
+	// reason, so the document would be promising a placement the projection contradicts.
+	// Say which key a marker actually reads, in the one voice this file has.
+	if (dateKeys.length > 0 && settings.targetKey === '') {
+		lines.push(
+			`A ${code(MARKER_TYPES[0])} is the exception, and this view cannot place one: a marker's ` +
+				`date is the **target** property, and the only date property here is ` +
+				`${code(settings.startKey)}. One waits, unplaced, until a target property is picked — ` +
+				'and Schedule is withheld from it rather than opened onto a date its own type ignores.',
+		);
+	} else if (dateKeys.length === 2) {
+		lines.push(
+			`A ${code(MARKER_TYPES[0])} is the exception: it is a point by **type** rather than by how ` +
+				`many dates it states, so it reads ${code(settings.targetKey)} alone. A ` +
+				`${code(settings.startKey)} on one is ignored — never rewritten, and never removed.`,
 		);
 	}
 	if (lines.length > 0) {
