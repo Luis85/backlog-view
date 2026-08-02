@@ -203,7 +203,7 @@ the lesson, and a limitation written as a Bug reads as something someone is abou
 | Kind | Answers | Sections |
 | --- | --- | --- |
 | `Epic` | Why this body of work exists, and what "done" means beneath it | Prose · why it exists · definition of done |
-| `Feature` | What outcome one coherent slice delivers | Prose · **Outcome** |
+| `Feature` | What outcome one coherent slice delivers | Prose · **Outcome** · *optionally* Landmines |
 | `PBI` | What someone does, step by step, and every way it can go otherwise | The use-case shape below — **enforced** |
 | `Task` | A piece of engineering work, and the evidence that justified it | Evidence · Why it matters · Approach · Acceptance criteria · Risks · Outcome |
 | `Issue` | A question, a decision taken, or a limitation accepted | Varies by which — see below |
@@ -230,6 +230,29 @@ any child becoming harder to judge, it was a heading.
 A Feature states an **outcome** — one sentence, in the user's terms, about what is true
 once the feature exists. Nothing else belongs here: detail written at feature level is
 detail no use case owns.
+
+**One optional exception: `## Landmines, before implementation`.** A feature may carry a
+section naming the traps that sit in the code its use cases will touch — and it earns that
+section only when the hazard belongs to the feature as a whole rather than to any one use
+case. The test is ownership, not usefulness: **if a use case could hold it, it must.** What
+qualifies is the part no use case can state alone — the **order** the work has to be done
+in, and the seams that fail *silently* when it is done in the wrong one. What does not is a
+rule about one flow, which is an extension of that flow and belongs beside the step it
+complicates.
+
+[[Milestones]] is the worked example, and the reason the exception exists. Adding a seventh
+name to a fixed vocabulary meets `EXTRA_TYPES` first, which is the wrong list and the
+obvious one; getting that backwards is what every other trap in that feature was downstream
+of. No use case owns "do this before that", and a reader who met the traps one use case at
+a time would meet them in the order that hides the ordering. Write it in the shape that
+section uses — the ordering rule first, then the quiet seams against the loud one, then the
+records to settle in the same change — because naming which failures are *silent* is most of
+the value.
+
+Like the rest of the Feature and Task conventions this section is **not gated**: `npm run
+docs` checks the use-case and ADR shapes and nothing here. A feature without it is the
+normal case, and one carrying it under a hazard a use case should have owned is worse than
+one without.
 
 A Feature does not also keep its own list of the PBIs that deliver it. That fact already
 exists once, as each PBI's own `parent` link, and a hand-written second copy of it goes
