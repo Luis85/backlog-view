@@ -566,7 +566,7 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
 | Action | How |
 | --- | --- |
 | Move between horizons | Drag the card, press <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or right-click → **Set horizon** |
-| Un-place an item | Drag it to the shelf — this removes the horizon property |
+| Un-place an item (horizons axis only) | Drag it to the shelf — this removes the horizon property |
 | Create in a horizon | The **+** on the bucket, which files the new item with that horizon already set |
 | Set dates | Right-click → **Schedule** / **Unschedule** |
 
@@ -575,9 +575,12 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
   same carve-out the board's columns make. Every move is one gated write, undoable as one
   batch.
 - **The shelf** — labelled **Unplaced** on screen — holds the **results** the axis could not
-  place, with a count, and is also the drop target that *un-places*: dropping there removes
-  the key rather than blanking it. It stays reachable while empty, because a target that
-  only exists when occupied is one nothing can reach.
+  place, with a count. **On the horizons axis** it is also the drop target that *un-places*:
+  dropping there removes the key rather than blanking it, and it stays reachable while
+  empty, because a target that only exists when occupied is one nothing can reach. **On the
+  timeline it is display-only** — nothing on the dated axis is draggable, so there is no
+  un-place gesture there; an item lands on the shelf by having its dates cleared from the
+  row menu instead.
 
   Items your Base's filter excluded are **not** on the shelf and not in its count. On a
   **focused** roadmap, a focus-level item the filter excluded appears in a separate

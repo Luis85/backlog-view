@@ -25,7 +25,8 @@ and each stays open until they are, so a stale check is visible rather than assu
   drag and drop, the shelf as the un-placing target, and the empty shelf mid-drag.
 - [[Roadmap dated axis month header]] — true month lengths and header-to-bar alignment.
 - [[Roadmap inferred bar appearance]] — solid vs. dashed, the done green override, and
-  whether an unclosed dashed edge reads as open. **Never checked.**
+  whether an unclosed dashed edge reads as open. **Seen once, 2026-08-02; no per-point
+  record yet.**
 - [[Roadmap milestone appearance]] — the cyan badge, the diamond, the full-height line
   and its label, two milestones on one date, today's collision, label truncation, and a
-  milestone past the window edge. **Never checked.**
+  milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
