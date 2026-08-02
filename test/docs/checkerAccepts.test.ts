@@ -257,6 +257,17 @@ describe('the gate accepts valid documents', () => {
 		expect(result.output).toContain('src/gone.ts');
 	});
 
+	it('accepts a superpowers spec or plan with no backlog frontmatter', async () => {
+		// docs/superpowers/ is where the brainstorming and writing-plans skills save their
+		// own design specs and implementation plans (CLAUDE.md) — plain markdown, never a
+		// backlog note or an ADR, so it carries none of the frontmatter those require.
+		const files = baseRegister();
+		files['docs/superpowers/specs/2026-08-02-example-design.md'] = '# Example design\n\nSome decisions.\n';
+		files['docs/superpowers/plans/2026-08-02-example.md'] = '# Example Implementation Plan\n\nSteps.\n';
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a supersession chain declared from both ends', async () => {
 		const files = baseRegister();
 		files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', {

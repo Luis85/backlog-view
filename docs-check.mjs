@@ -57,8 +57,13 @@ const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "tes
 const LIVING = [path.join(DOCS, "requirements"), path.join(DOCS, "adrs")];
 /** Anywhere beneath one of them: `walk` finds nested notes, so the rule has to reach them. */
 const isLiving = (file) => LIVING.some((dir) => file.startsWith(dir + path.sep));
-/** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
-const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
+/**
+ * The only files legitimately outside the work-item hierarchy: ADRs, the index pages, and
+ * `superpowers/` — where the `brainstorming` and `writing-plans` skills save design specs
+ * and implementation plans (CLAUDE.md). Those are plain markdown, never a backlog note or
+ * an ADR, so they carry none of the frontmatter this file requires of everything else.
+ */
+const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|superpowers[/\\].*|README)\.md$/;
 
 const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
