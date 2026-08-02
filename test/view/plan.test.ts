@@ -180,6 +180,36 @@ describe('scheduling from the row', () => {
 		expect('due' in vault.fm('Planned.md')).toBe(false);
 	});
 
+	it('writes nothing when a prompt opened on empty keys is confirmed unchanged', async () => {
+		const vault = planVault();
+		// The stub the backfill leaves: the keys exist, holding nothing.
+		vault.addFile('Stubbed.md', { frontmatter: { type: 'Epic', order: 40, start: '', due: '' } });
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Stubbed').item('Schedule')?.click();
+		submitSchedule(['', '']);
+		await flush();
+
+		// A field that ARRIVED blank states nothing, so confirming must not delete the
+		// key and spend the undo slot. Unschedule is the way to take one away.
+		expect(vault.writeLog).toEqual([]);
+		expect('start' in vault.fm('Stubbed.md')).toBe(true);
+	});
+
+	it('still clears a date the note does state when its field is emptied', async () => {
+		const vault = planVault();
+		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 40, start: 'someday' } });
+		const { containerEl } = makeView(vault, AXES);
+
+		// An unreadable value arrives blank; confirming replaces it rather than
+		// writing it back — the entry asks for a date and that was not one.
+		menuFor(containerEl, 'Garbled').item('Schedule')?.click();
+		submitSchedule(['', '']);
+		await flush();
+
+		expect('start' in vault.fm('Garbled.md')).toBe(false);
+	});
+
 	it('refuses a date it cannot read, keeping the prompt open and the note untouched', async () => {
 		const vault = planVault();
 		const { containerEl } = makeView(vault, AXES);

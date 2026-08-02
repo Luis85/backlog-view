@@ -113,10 +113,16 @@ belong to the **item**, not to the mode, and this is where the tree got them.
   horizon's: absence is a value, never an empty string.
 - **4d — the note states a date the reader refuses.** Its field arrives blank rather than
   holding the unreadable value, so confirming replaces it instead of writing it back.
-- **4e — the note carries transition stamps.** Untouched. Plan and record are different
+- **4e — a field arrived blank and is confirmed unchanged.** Nothing is written, even
+  where the key exists holding an empty value — the stub the backfill creates
+  ([[Backfill missing properties]]). A blank field removes what the note *states*, and a
+  field that arrived blank states nothing; deleting the key for pressing Save would spend
+  the undo slot on a change nobody made. **Unschedule** stays the deliberate way to take
+  a key away, and still removes an empty one.
+- **4f — the note carries transition stamps.** Untouched. Plan and record are different
   keys, deliberately: scheduling from the tree may no more reach a stamped key than
   scheduling from the timeline may ([[Stamp when work starts and finishes]]).
-- **4f — the note already carries dates.** **Unschedule** appears — only then — removing
+- **4g — the note already carries dates.** **Unschedule** appears — only then — removing
   the configured date keys in one batch, and undo restores their values.
 - **5a — the same change is made from the board or the roadmap.** One context menu, one
   planner, one gate: the batch is identical whichever projection the row was in.
@@ -139,8 +145,9 @@ belong to the **item**, not to the mode, and this is where the tree got them.
   whole.
 - Transition stamps and every other key the plugin owns stay untouched by these writes; a
   colliding axis property gates writes like every other collision.
-- Re-picking the value an item already holds, or re-confirming the dates it already
-  states, writes nothing and keeps the previous undo.
+- Re-picking the value an item already holds, or re-confirming the entry unchanged,
+  writes nothing and keeps the previous undo — including an entry whose fields arrived
+  blank because the keys exist but hold nothing.
 - **Not yet:** that the batch a menu action produces is identical to the one the
   equivalent roadmap gesture produces. Nothing on the roadmap writes yet
   ([[Moving between horizons]], [[Drag from the shelf to schedule]]), so the criterion

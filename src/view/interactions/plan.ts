@@ -115,13 +115,28 @@ function compareCivil(a: CivilDate, b: CivilDate): number {
 	return a.year - b.year || a.month - b.month || a.day - b.day;
 }
 
-/** The plan an entry means: a date per configured end, '' meaning that end goes. */
-function planFrom(values: Record<string, string>): SchedulePlan {
+/**
+ * The plan an entry means: a date per configured end, and a blank field meaning that
+ * end goes.
+ *
+ * A blank field only removes something the note actually STATES — a date, or a value
+ * the reader refuses (which confirming replaces rather than writes back). A field that
+ * *arrived* blank states nothing, so confirming the prompt untouched writes nothing,
+ * even where the key exists holding an empty value: the backfill creates exactly that
+ * stub, and opening the entry on one and pressing Save must not delete it and spend
+ * the undo slot. Unschedule is the deliberate way to take a key away, and it still is.
+ */
+function planFrom(item: BacklogItem, values: Record<string, string>): SchedulePlan {
 	const plan: SchedulePlan = {};
 	for (const field of ['start', 'target'] as const) {
 		const value = values[field];
 		if (value === undefined) continue;
-		plan[field] = value === '' ? null : value;
+		if (value !== '') {
+			plan[field] = value;
+			continue;
+		}
+		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
+		if (reading.value !== null || reading.invalid) plan[field] = null;
 	}
 	return plan;
 }
@@ -133,7 +148,7 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 		description: 'Dates as YYYY-MM-DD. Leave a field empty to remove that date.',
 		fields: scheduleFields(host, item),
 		validate: validateSchedule,
-		onSubmit: (values) => void host.applySafely(computeScheduleWrites(item, planFrom(values))),
+		onSubmit: (values) => void host.applySafely(computeScheduleWrites(item, planFrom(item, values))),
 	}).open();
 }
 
