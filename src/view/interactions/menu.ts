@@ -3,14 +3,14 @@ import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
-import { hasDateAxis, hasHorizonAxis } from '../../domain/roadmap';
+import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { cardPaths, hiddenMatches } from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
-import { addHorizonItems, carriesDates, promptSchedule, unschedule } from './plan';
+import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
@@ -44,9 +44,13 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		addSetTypeMenu(host, menu, item);
 		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
 		// Per axis, and absent rather than inert when one is not configured — the state
-		// chip's own rule, applied to the two placement properties.
+		// chip's own rule.
 		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
-		if (hasDateAxis(host.settings)) addScheduleItems(host, menu, item);
+		// Per axis, and absent rather than inert when one is not configured — the state
+		// chip's own rule. `canSchedule` rather than `hasDateAxis`: the two agree for work
+		// and diverge for a milestone on a start-only vault, where the narrowed entry
+		// would open asking for nothing at all.
+		if (canSchedule(host.settings, item)) addScheduleItems(host, menu, item);
 		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	}
 	menu.addSeparator();

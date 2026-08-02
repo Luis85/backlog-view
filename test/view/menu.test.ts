@@ -182,6 +182,21 @@ describe('context menu', () => {
 
 });
 
+describe('placement actions on a milestone', () => {
+	it('withholds Schedule from a milestone on a start-only vault, and keeps it for work', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10 } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20 } });
+		const { containerEl } = makeView(vault, { startProperty: 'note.start' });
+
+		rowByTitle(containerEl, 'Ship 1.0').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).not.toContain('Schedule');
+
+		rowByTitle(containerEl, 'A story').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Schedule');
+	});
+});
+
 describe('focused structure operations', () => {
 	it('outdents a child of a rootless focus row against the real top level', async () => {
 		const vault = new FakeVault();
