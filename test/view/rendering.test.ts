@@ -90,6 +90,26 @@ describe('rendering', () => {
 		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
 	});
 
+	it('withholds every create affordance on a row that can hold nothing', () => {
+		// Absent, not empty. `addLabel` builds its text from `childTypes[0]`, so an empty
+		// list renders "New undefined" and opens a modal with no type to pick — the same
+		// answer the context-row rule gives: remove the control rather than let it fail at
+		// the end.
+		const vault = new FakeVault();
+		vault.addFile('An epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
+		const { containerEl } = makeView(vault);
+
+		const row = rowByTitle(containerEl, 'Ship 1.0');
+		expect(row.querySelector('.pbl-add')).toBeNull();
+		expect(rowByTitle(containerEl, 'An epic').querySelector('.pbl-add')).not.toBeNull();
+
+		row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles.filter((t) => t.startsWith('New '))).toEqual([]);
+		expect(titles.some((t) => t.includes('undefined'))).toBe(false);
+	});
+
 	it('mutes a done row without striking its title through', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });

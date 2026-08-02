@@ -264,6 +264,11 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem, childTypes: string[]): void {
 	renderRowColumns(ctx, row, item);
 
+	// A row that can hold nothing gets no button, rather than one labelled from the first
+	// of no choices — `New undefined`, opening a modal with no type to pick. The context
+	// menu's `New <child>` disappears with it, by having nothing to loop over.
+	if (childTypes.length === 0) return;
+
 	// A native button so assistive tech can activate it, with no Tab stop — the same
 	// bargain the state chip makes: the tree keeps its single-tab-stop model, and the
 	// context menu carries the documented keyboard path (New <child>).
