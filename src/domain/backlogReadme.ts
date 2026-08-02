@@ -237,15 +237,27 @@ function planningSection(settings: BacklogSettings): string[] {
 		lines.push(
 			`${code(settings.horizonKey)} places an item in a planning horizon: ` +
 				`${settings.horizonValues.map(code).join(', ')}. A value outside that list is not ` +
-				'guessed at — the item is set aside as unplaced, with the value shown.',
+				'lost and not guessed at — it gets a horizon of its own, after the declared ones, ' +
+				'the same way a state nobody declared still gets a column. What is set aside is an ' +
+				'item with no value at all, or one written in a way the reader cannot make a ' +
+				'horizon of.',
 		);
 	}
-	if (settings.startKey && settings.targetKey) {
+	// Either key alone is a configured axis — a milestone-only roadmap is coherent, and
+	// `configuredAxes` says so — and a view with one would otherwise get no section at all.
+	const dateKeys = [settings.startKey, settings.targetKey].filter(Boolean);
+	if (dateKeys.length === 2) {
 		lines.push(
 			`${code(settings.startKey)} and ${code(settings.targetKey)} are the planned dates, ` +
 				`written ${code('YYYY-MM-DD')}. The roadmap reads them and writes neither. An item ` +
 				'stating only one of the two is a milestone on that date; a target earlier than its ' +
 				'start is set aside rather than drawn backwards.',
+		);
+	} else if (dateKeys.length === 1) {
+		lines.push(
+			`${code(dateKeys[0])} is the planned date, written ${code('YYYY-MM-DD')}. The roadmap ` +
+				'reads it and does not write it. It is the only date property configured here, so ' +
+				'every item that states one is drawn as a milestone rather than as a span.',
 		);
 	}
 	return lines.length > 0 ? ['## Planning', '', ...lines.flatMap((l) => [l, ''])].slice(0, -1) : [];
@@ -257,9 +269,15 @@ function filingSection(settings: BacklogSettings): string[] {
 	return [
 		'## Where notes are filed',
 		'',
-		'Folders are filing, not hierarchy: the tree comes from the properties above, so a ' +
-			'note is in the right place wherever it lives. What follows is only where **this** ' +
-			'view puts a note it creates, in this order:',
+		settings.folderHierarchy
+			? 'In this view folders are **also** hierarchy: a note with no parent property hangs ' +
+				'from the nearest folder note above it, so moving such a note moves it in the tree. ' +
+				'A note that names its parent is unaffected — the property always wins — which is ' +
+				'the way to file a note anywhere and keep its place. Below is where this view puts ' +
+				'a note it creates, in this order:'
+			: 'Folders are filing, not hierarchy: the tree comes from the properties above, so a ' +
+				'note is in the right place wherever it lives. What follows is only where **this** ' +
+				'view puts a note it creates, in this order:',
 		'',
 		...(settings.folderHierarchy
 			? [

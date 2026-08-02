@@ -76,6 +76,29 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('`due`');
 	});
 
+	it('describes the timeline when only one date property is configured', () => {
+		// Either key alone is a configured axis, so a view with one must not be told it
+		// has no roadmap at all.
+		const content = backlogReadmeContent(settingsWith({ startKey: '', targetKey: 'due', horizonKey: '' }), []);
+		expect(content).toContain('## Planning');
+		expect(content).toContain('`due` is the planned date');
+		expect(content).toContain('drawn as a milestone');
+	});
+
+	it('says an undeclared horizon gets its own bucket rather than being shelved', () => {
+		const content = backlogReadmeContent(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }), []);
+		expect(content).toContain('it gets a horizon of its own, after the declared ones');
+	});
+
+	it('warns that a folder move is a hierarchy move in folder mode, and not otherwise', () => {
+		const folderMode = backlogReadmeContent(settingsWith({ folderHierarchy: true }), []);
+		expect(folderMode).toContain('moving such a note moves it in the tree');
+		expect(folderMode).toContain('the property always wins');
+		expect(backlogReadmeContent(settingsWith({ folderHierarchy: false }), [])).toContain(
+			'Folders are filing, not hierarchy',
+		);
+	});
+
 	it('marks a declared workflow as declared and observed values as observed', () => {
 		const declared = backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Todo', 'Done'] }), []);
 		expect(declared).toContain('| `Todo` | No | Declared in the view |');

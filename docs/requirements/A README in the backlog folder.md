@@ -82,7 +82,9 @@ the view options can rename.
 - **3a — a property is unset.** The section is omitted rather than rendered around a blank
   key: no state property means no states section, and no horizon or dates means no roadmap
   section. The README describes the view in front of the reader, not the one the options
-  could make.
+  could make. "Unset" is the axis's own definition of it, not a guess: **either** date key
+  alone is a configured axis (`configuredAxes`), so a milestone-only roadmap gets its
+  section and is described as the milestone-only thing it is.
 - **3b — the home folder or a type folder was renamed.** The paths come from the resolved
   settings, so the README names where notes actually go. It states the whole precedence and
   not the configured path alone, because the configured path is not the answer in every
@@ -93,6 +95,9 @@ the view options can rename.
   that named the type folder as *the* destination would send an outside editor to the wrong
   folder in exactly the mode where the folder tree is the hierarchy; one that named the
   parent's folder unconditionally would send it to a folder this plugin deliberately avoids.
+  In folder mode the section also stops saying that a note is correct wherever it lives —
+  there, moving a note with no parent property **is** a hierarchy change, and the way to
+  file freely is to name the parent, which always wins over the inference.
 - **3c — the reader wants to know what the plugin will refuse.** Almost nothing: the type
   rules decide what is *offered*, never what is accepted, so a hand-written note with a
   `Task` under an `Epic` renders at the level its position implies and is not rewritten.
