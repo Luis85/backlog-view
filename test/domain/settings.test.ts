@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	adoptableProperties,
+	byName,
 	configProblems,
 	defaultSettings,
 	horizonMenuValues,
@@ -90,6 +91,58 @@ describe('resolveSettings', () => {
 	it('scopes the view to the hierarchy unless the toggle is turned off', () => {
 		expect(resolveSettings(fakeConfig()).hierarchyOnly).toBe(true);
 		expect(resolveSettings(fakeConfig({ hierarchyOnly: false })).hierarchyOnly).toBe(false);
+	});
+
+	it('reads a WIP limit and a policy for each configured state', () => {
+		const settings = resolveSettings(
+			fakeConfig({
+				stateValues: 'New, In review, Done',
+				doneValues: 'Done',
+				'wipLimit.in review': '3',
+				'columnPolicy.in review': 'Reviewed by someone who did not write it',
+			}),
+		);
+		expect(settings.wipLimits['in review']).toBe(3);
+		expect(settings.columnPolicies['in review']).toBe('Reviewed by someone who did not write it');
+	});
+
+	it('refuses a limit on a done state, even one hand-written into the base', () => {
+		// Extension 1b: WIP is what sits between started and finished, so a done
+		// column has no limit — and the SETTINGS are where that is decided, not the
+		// schema, or a key left behind by re-marking a state as done would revive it.
+		const settings = resolveSettings(
+			fakeConfig({ stateValues: 'New, Done', doneValues: 'Done', 'wipLimit.done': '2', 'columnPolicy.done': 'Nothing left to do' }),
+		);
+		expect(settings.wipLimits['done']).toBeUndefined();
+		// A policy is not a limit: a done column can carry a working agreement.
+		expect(settings.columnPolicies['done']).toBe('Nothing left to do');
+	});
+
+	it('treats an unparseable limit as no limit, never as zero', () => {
+		// A `.base` file is hand-editable, so every one of these can arrive. An unset
+		// limit is NOT a limit of zero — extension 1a says so, and zero would put every
+		// column permanently over.
+		for (const raw of ['', '   ', '0', '-2', 'three', '2.5', 'NaN']) {
+			const settings = resolveSettings(fakeConfig({ stateValues: 'New', 'wipLimit.new': raw }));
+			expect(settings.wipLimits['new'], `limit from ${JSON.stringify(raw)}`).toBeUndefined();
+		}
+		expect(resolveSettings(fakeConfig({ stateValues: 'New', 'wipLimit.new': ' 4 ' })).wipLimits['new']).toBe(4);
+	});
+
+	it('keys a state named after something on Object.prototype without inheriting it', () => {
+		// State values are user data. `table['constructor']` finds a function, and every
+		// truthy guard downstream passes — the defect this project has now shipped three
+		// times on three different tables.
+		const settings = resolveSettings(fakeConfig({ stateValues: 'constructor, toString', 'wipLimit.constructor': '2' }));
+		expect(settings.wipLimits['constructor']).toBe(2);
+		expect(byName(settings.wipLimits, 'toString')).toBeUndefined();
+		expect(byName(settings.columnPolicies, 'constructor')).toBeUndefined();
+	});
+
+	it('ignores a limit or policy for a state the workflow does not name', () => {
+		const settings = resolveSettings(fakeConfig({ stateValues: 'New', 'wipLimit.archived': '1', 'columnPolicy.archived': 'gone' }));
+		expect(settings.wipLimits['archived']).toBeUndefined();
+		expect(settings.columnPolicies['archived']).toBeUndefined();
 	});
 });
 

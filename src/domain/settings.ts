@@ -49,6 +49,19 @@ export interface BacklogSettings {
 	/** State values (case-insensitive) that count as done. */
 	doneValues: string[];
 	/**
+	 * WIP limit per column, keyed by LOWERCASED state value. Absent means unlimited,
+	 * which is NOT a limit of zero. Done states never appear here whatever the `.base`
+	 * holds: WIP is what sits between started and finished, and capping the archive is
+	 * a different idea wearing the same word.
+	 */
+	wipLimits: Record<string, number>;
+	/**
+	 * The working agreement written on a column, keyed by LOWERCASED state value.
+	 * Absent means none, and a column with none shows no affordance at all. Unlike a
+	 * limit, a done column may carry one.
+	 */
+	columnPolicies: Record<string, string>;
+	/**
 	 * Frontmatter key stamped with the date work started, or '' when start stamping
 	 * is off. History is the one thing a board cannot reconstruct later, so this
 	 * captures it as the transition happens — and captures nothing until it is named.
@@ -125,10 +138,15 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
  * It lives here rather than in `itemTypes.ts`, which is where it reads more naturally,
  * because that module imports this one and the dependency cannot run both ways.
  */
-export function byTypeName<T>(table: Record<string, T>, typeName: string | null): T | undefined {
-	if (typeName === null) return undefined;
-	const key = typeName.toLowerCase();
+export function byName<T>(table: Record<string, T>, name: string | null): T | undefined {
+	if (name === null) return undefined;
+	const key = name.toLowerCase();
 	return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
+/** The same lookup, named for the table it was written for. */
+export function byTypeName<T>(table: Record<string, T>, typeName: string | null): T | undefined {
+	return byName(table, typeName);
 }
 
 /**
@@ -138,6 +156,40 @@ export function byTypeName<T>(table: Record<string, T>, typeName: string | null)
  */
 export function typeFolderKey(typeName: string): string {
 	return `typeFolder.${typeName.toLowerCase()}`;
+}
+
+/**
+ * The persisted option key for one state's WIP limit. Shared by the schema that
+ * declares the option and the resolver that reads it back, for the reason
+ * {@link typeFolderKey} gives: a key spelled twice is a key that can differ, and this
+ * one is user data in a `.base` file.
+ *
+ * @expected-unused Only this file's own `resolveSettings` calls it so far; the schema
+ * half of that sharing (`viewOptions.ts`) is the next task in this increment. Once it
+ * imports this, fallow reports this tag stale — that is the signal to delete it.
+ */
+export function wipLimitKey(state: string): string {
+	return `wipLimit.${state.toLowerCase()}`;
+}
+
+/**
+ * The persisted option key for one state's column policy.
+ *
+ * @expected-unused Same reason as {@link wipLimitKey}: awaiting `viewOptions.ts`.
+ */
+export function columnPolicyKey(state: string): string {
+	return `columnPolicy.${state.toLowerCase()}`;
+}
+
+/**
+ * A WIP limit as read from a hand-editable `.base`: a whole number of one or more, or
+ * null for no limit. Everything else — empty, blank, zero, negative, fractional,
+ * non-numeric — is no limit, because an unset limit is not a limit of zero and a
+ * column pinned permanently over its limit says nothing at all.
+ */
+function parseWipLimit(raw: string): number | null {
+	const n = Number(raw.trim());
+	return Number.isInteger(n) && n >= 1 ? n : null;
 }
 
 /**
@@ -152,16 +204,19 @@ export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FO
 	return homeFolder ? `${homeFolder}/${sub}` : sub;
 }
 
-/** Folders for every given type, keyed lowercase, skipping the ones with none. */
-function typeFoldersFor(types: string[], read: (type: string) => string): Record<string, string> {
-	// Null-prototype: type names are user data, so a type called `constructor` must be
-	// a plain key rather than a collision with something inherited off Object.
-	const folders: Record<string, string> = Object.create(null) as Record<string, string>;
-	for (const type of types) {
-		const folder = read(type);
-		if (folder) folders[type.toLowerCase()] = folder;
+/**
+ * A table keyed by lowercased name, skipping every name the reader has no value for.
+ * Null-prototype, because the names are user data: a type or a state called
+ * `constructor` must be a plain key rather than a collision with something inherited
+ * off `Object`. Read it back with {@link byName}, never with a bare index.
+ */
+function nameTable<T>(names: string[], read: (name: string) => T | null): Record<string, T> {
+	const table: Record<string, T> = Object.create(null) as Record<string, T>;
+	for (const name of names) {
+		const value = read(name);
+		if (value !== null) table[name.toLowerCase()] = value;
 	}
-	return folders;
+	return table;
 }
 export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
 /**
@@ -187,12 +242,14 @@ export function defaultSettings(): BacklogSettings {
 		showChips: true,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
-		typeFolders: typeFoldersFor(ALL_TYPES, (t) => defaultTypeFolder(t)),
+		typeFolders: nameTable(ALL_TYPES, (t) => defaultTypeFolder(t) || null),
 		focusLevel: '',
 		stateKey: '',
 		tagsKey: 'tags',
 		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
 		doneValues: [...DEFAULT_DONE_VALUES],
+		wipLimits: nameTable<number>([], () => null),
+		columnPolicies: nameTable<string>([], () => null),
 		startedDateKey: '',
 		finishedDateKey: '',
 		startedStates: [],
@@ -460,10 +517,10 @@ function resolveFolders(
 		// One option per type, so a folder is picked rather than typed into a mapping,
 		// and each default sits under the resolved home folder — the value in the box is
 		// the value that applies, and moving the home folder moves every untouched one.
-		typeFolders: typeFoldersFor(types, (type) =>
+		typeFolders: nameTable(types, (type) =>
 			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
 				vaultFolder(str(typeFolderKey(type))),
-			),
+			) || null,
 		),
 	};
 }
@@ -535,6 +592,11 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	};
 
 	const doneValues = list('doneValues');
+	const states = dedupe(list('stateValues'));
+	const doneSet = new Set(doneValues.map((v) => v.toLowerCase()));
+	// Limits are refused for done states HERE rather than only in the schema, so a key
+	// left in the `.base` by re-marking a state as done cannot revive its limit.
+	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
 	const folders = resolveFolders({ str, clearable }, ALL_TYPES, fallback);
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
@@ -563,10 +625,12 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
+		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
+		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
 		startedDateKey: propKey('startedDateProperty', fallback.startedDateKey),
 		finishedDateKey: propKey('finishedDateProperty', fallback.finishedDateKey),
 		startedStates: dedupe(list('startedStates')),
-		states: dedupe(list('stateValues')),
+		states,
 		showCompleted: bool('showCompleted', fallback.showCompleted),
 		horizonKey: propKey('horizonProperty', fallback.horizonKey),
 		// A real default that must stay clearable: an emptied list means "no bucket
