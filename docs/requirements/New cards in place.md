@@ -78,5 +78,12 @@ the base's filter, is a note the board writes and then cannot show.
 
 **Nothing yet — this note is design.** The gated flow, the folder inference and the
 context-parent exception are already `src/view/interactions/create.ts`; what the board
-adds is a preset state and the visibility check that turns "created but not shown" from a
-silent outcome into a reported one.
+adds is a preset state and creation from a column.
+
+The **visibility check** this note specifies — 4a and 4b, "created but not shown" turned
+from a silent outcome into a reported one — now exists as
+`src/view/interactions/outcome.ts`, built for moves by [[Moving between horizons]] and
+detecting exactly what this note asks for: not a result on the next pass, or a result
+the completed-items rule swallowed. Creation reuses it by registering the new note the
+same way a move registers a moved one. The preset state, creation from a column and the
+lane rules are what remain.

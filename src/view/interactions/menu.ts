@@ -4,7 +4,12 @@ import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { RoadmapModel, SHELF_LABEL } from '../../domain/roadmap';
-import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import {
+	computeHorizonDropWrites,
+	computeStateDropWrites,
+	computeTypeChanges,
+	ItemWrite,
+} from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
@@ -255,34 +260,47 @@ function chooseState(host: BacklogViewHost, item: BacklogItem, choice: ValueChoi
 }
 
 /**
- * Render one Set menu's offers, checking the one the item already holds. The
- * checkmark asks the same question the write plan asks — `sameValue`, absence
- * included — so the menu can never show an entry as current that picking would
- * rewrite, nor offer as a change one that would write nothing.
+ * Render one Set menu's offers, checking the one the item already holds.
+ *
+ * "Already holds" is asked of the PLAN — an entry is checked exactly when picking
+ * it would write nothing — rather than by a comparison written beside the plan and
+ * expected to agree with it. Those two drifted the moment a second property joined:
+ * a horizon the reader refuses reads as no value, so comparing values checked
+ * `Unplaced` on a note whose key still held something, offering as current an
+ * action that removes a key and spends the undo slot. One question, asked once, and
+ * a checkmark can no longer disagree with what picking it does.
  */
 function addValueItems(
 	menu: Menu,
 	choices: ValueChoice[],
-	current: string | null,
+	plan: (choice: ValueChoice) => ItemWrite[],
 	pick: (choice: ValueChoice) => void,
 ): void {
 	for (const choice of choices) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => pick(choice));
-			if (sameValue(current, choice.value)) si.setChecked(true);
+			if (plan(choice).length === 0) si.setChecked(true);
 		});
 	}
 }
 
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	addValueItems(menu, stateChoices(host, item), item.stateValue, (choice) => void chooseState(host, item, choice));
+	addValueItems(
+		menu,
+		stateChoices(host, item),
+		(choice) => computeStateDropWrites(item, choice.value),
+		(choice) => void chooseState(host, item, choice),
+	);
 }
 
 /** Set horizon's offers, taking the drag's own path exactly as Set state does. */
 function addHorizonItems(host: BacklogViewHost, menu: Menu, item: BacklogItem, roadmap: RoadmapModel): void {
-	addValueItems(menu, horizonChoices(roadmap), item.horizon.value, (choice) => {
-		void host.performHorizonMove(item, choice.value);
-	});
+	addValueItems(
+		menu,
+		horizonChoices(roadmap),
+		(choice) => computeHorizonDropWrites(item, choice.value),
+		(choice) => void host.performHorizonMove(item, choice.value),
+	);
 }
 
 /**

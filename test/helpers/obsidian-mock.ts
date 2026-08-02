@@ -64,11 +64,29 @@ export class TFile {
 
 export class Notice {
 	static messages: string[] = [];
-	constructor(message: string) {
+	/** The most recent notice, so a test can reach an action rendered inside it. */
+	static last: Notice | null = null;
+	hidden = false;
+	private el: HTMLElement | null = null;
+
+	constructor(message: string, _duration?: number) {
 		Notice.messages.push(message);
+		Notice.last = this;
 	}
+
+	/** Built on demand: the node-environment suites construct notices with no DOM. */
+	get messageEl(): HTMLElement {
+		this.el ??= document.createElement('div');
+		return this.el;
+	}
+
+	hide(): void {
+		this.hidden = true;
+	}
+
 	static reset(): void {
 		Notice.messages = [];
+		Notice.last = null;
 	}
 }
 

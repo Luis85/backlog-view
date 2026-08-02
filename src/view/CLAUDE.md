@@ -203,6 +203,11 @@ free of runtime code so imports stay cycle-free.
   cannot supply it: it returns only the configured states when a list is set, and
   knows nothing of no-state. The same builder skips the tree's move section on a card,
   because every entry in it is defined by a row's visible neighbours.
+- A card move that lands registers its note with `OutcomeWatch` (`interactions/
+  outcome.ts`), and `refreshFromData` answers for it once: still a result, still not
+  hidden, or a notice naming what happened with a link back to the note. Answered from
+  the data pass and nowhere else — a filter the user just typed hides cards too, and
+  reporting that would blame the move for it.
 - Context cards are never wired as draggables, and `performBoardMove` still rides
   `applySafely`, whose outside-filter refusal is the structural backstop — the board
   block in `test/view/contextCardWrites.test.ts` drives both, and drives the keyboard

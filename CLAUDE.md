@@ -88,6 +88,7 @@ mirrors the same directories.
 | `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/cardDrag.ts` | The card drag both projections share: Pragmatic wiring, drop targets that take their own plan, announcements (ADR 0018) | jsdom tests |
+| `view/interactions/outcome.ts` | What became of a note a write changed: detected on the next data pass, never predicted | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
 | `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
@@ -226,6 +227,20 @@ The two removal writes are the same shape twice — `removeStateKey` and
 `removeHorizonKey`, both on keys that may not be configured at all — so
 `writeOptional` in `storage/frontmatter.ts` is the single statement of "absence is a
 value, and never write to an empty key". A third such property adds a call, not a rule.
+
+A Set menu's **checkmark is asked of the PLAN** — an entry is checked exactly when
+picking it would write nothing — never by a comparison written beside the plan and
+expected to agree with it. Those two drifted the moment a second property joined: a
+horizon the reader refuses reads as no value, so comparing values checked `Unplaced`
+on a note whose key still held something, offering as current an action that removes a
+key and spends the undo slot.
+
+**A write can take its own note out of the base.** A filter can name the very property
+a move writes, so `applyCardMove` registers the moved note with `OutcomeWatch` and the
+data pass that write triggers answers for whether it still shows — by outcome, never
+predicted, because a Bases filter is opaque here. Reported from the DATA pass only: a
+re-render the user caused (typing in the quick filter) would otherwise blame the write
+for the filter. The write stands and stays undoable; what is refused is silence.
 
 
 ## Gotchas

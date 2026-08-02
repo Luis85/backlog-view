@@ -99,8 +99,9 @@ needs no roadmap-specific code: a card renders the Base's own visible properties
 through the body it shares with the board ([[What a card shows]]), so a view that shows
 a date property shows it on the card, in a bucket, without the axis being dates. And
 the half of the board's new-card rule this note does NOT claim is the outcome check —
-saying so when the note just created is not on the next render. That hazard is real
-here too (a base can filter on the horizon property itself, excluding the very bucket
-it was created into), it is [[New cards in place]]'s criterion, and it is unbuilt on
-the board as well; when it lands there it should land here, since both are one
-question asked of one creation flow.
+saying so when the note just created is not on the next render. The hazard is real here
+too: a base can filter on the horizon property itself, excluding the very bucket the
+note was created into. The mechanism now exists — `src/view/interactions/outcome.ts`,
+built for moves by [[Moving between horizons]] — and wiring creation to it is
+[[New cards in place]]'s criterion rather than this note's, because it is one question
+asked of one creation flow and belongs where that flow's rules are written.

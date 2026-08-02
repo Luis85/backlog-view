@@ -1689,6 +1689,15 @@
 	background-color: transparent;
 }
 
+/* The way back to a note a write took out of this base's results. It lives inside
+   Obsidian's own notice, so only the affordance is styled here. */
+.pbl-notice-open {
+	display: block;
+	margin-top: var(--size-4-1);
+	cursor: var(--cursor-link, pointer);
+	text-decoration: underline;
+}
+
 /* An empty shelf takes no space — and is still the target that un-places, which a
    strip appearing only while a drag is live can be and an absent element cannot.
    The DOM keeps it so a drop has somewhere to land; this keeps it out of the way. */

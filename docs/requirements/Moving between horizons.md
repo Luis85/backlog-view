@@ -10,6 +10,7 @@ files:
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
   - src/view/interactions/cardDrag.ts
+  - src/view/interactions/outcome.ts
   - src/view/render/roadmap.ts
 ---
 
@@ -114,6 +115,16 @@ reads its columns. Driven by synthetic drag events, keys and menus in
 `test/helpers/dnd.ts`), the plan in `test/domain/roadmap.test.ts`, the storage
 round-trip in `test/storage/frontmatter.test.ts`, and the context-row invariant across
 every roadmap entry point in `test/view/contextCardWrites.test.ts`.
+
+Extension 3b — a move whose new value takes the note out of the Base's own results —
+is `src/view/interactions/outcome.ts`. It is detected by OUTCOME rather than
+predicted, because a Bases filter is opaque to this view: the move registers the note,
+and the data pass that write triggers answers for whether it still shows, reporting
+with a notice that carries the way back to it. Deliberately answered from the data pass
+and not from every render, or a quick filter the user typed would be blamed on the
+write. It sits on `applyCardMove`, so a board move that writes a state its own base
+excludes is reported by the same code — the hazard is one hazard, and a rule that held
+for one projection and not the other is the asymmetry this register keeps finding.
 
 Still Active, not Done, on two honest counts. The lift — Space, arrows, Space, Escape —
 is [[Keyboard and menu on the roadmap]]'s, and this note's 1b is met by the shortcut and

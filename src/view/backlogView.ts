@@ -13,12 +13,13 @@ import { announceBoardMove, announceHorizonMove, CardDragController } from './in
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildItemMenu } from './interactions/menu';
-import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
+import { BacklogItem, BacklogModel, buildModel, matchingPaths } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis } from '../domain/roadmap';
 import { computeDropWrites, computeHorizonDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
+import { OutcomeWatch } from './interactions/outcome';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
@@ -69,6 +70,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private lastUndo: RestoreWrite[] | null = null;
 	/** Keeps undo and redo coherent when a replay fails partway — see UndoRecovery. */
 	private readonly recovery = new UndoRecovery();
+	/** Answers for a moved note that the write's own refresh may have taken off screen. */
+	private readonly outcome = new OutcomeWatch();
 	/** A data update that arrived mid-batch and is waiting for it to finish. */
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
@@ -197,6 +200,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.collapse.collapseNewParents(this.model.items);
 		this.recomputeFilter();
 		this.render();
+		// The pass a write asked for is the pass that can say what became of it.
+		this.outcome.report(
+			(file) => {
+				const item = this.model?.byPath.get(file.path);
+				return !!item && !item.outsideFilter && !this.isRowHidden(item);
+			},
+			(file, evt) => void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(file),
+		);
 	}
 
 	/**
@@ -249,29 +260,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return this.filterVisible !== null;
 	}
 
-	/** Matches stay visible together with all their ancestors and descendants. */
+	/**
+	 * Matches stay visible together with all their ancestors and descendants. Which
+	 * paths those are is a tree question (`matchingPaths`); what is left here is the
+	 * view's own policy — an empty needle is no filter at all, not an empty one.
+	 */
 	private recomputeFilter(): void {
-		const model = this.model;
 		const needle = this.filterText.trim().toLowerCase();
-		if (!model || needle === '') {
-			this.filterVisible = null;
-			return;
-		}
-		const visible = new Set<string>();
-		const markSubtree = (item: BacklogItem) => {
-			visible.add(item.file.path);
-			for (const child of item.children) markSubtree(child);
-		};
-		const visit = (item: BacklogItem): boolean => {
-			const selfMatch = item.title.toLowerCase().includes(needle);
-			if (selfMatch) markSubtree(item);
-			let anyMatch = selfMatch;
-			for (const child of item.children) anyMatch = visit(child) || anyMatch;
-			if (anyMatch) visible.add(item.file.path);
-			return anyMatch;
-		};
-		for (const root of model.roots) visit(root);
-		this.filterVisible = visible;
+		this.filterVisible = this.model && needle !== '' ? matchingPaths(this.model.roots, needle) : null;
 	}
 
 	// ----------------------------------------------------------- collapse state
@@ -440,6 +436,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (writes.length === 0) return false;
 		if (!(await this.applyMove(item, writes))) return false;
 		say();
+		// A move can write a value this base filters out. That is the filter speaking,
+		// not the write failing — so the card leaving is reported, with a way back to
+		// the note, rather than prevented or passed over in silence.
+		this.outcome.after(item.file, item.title);
 		return true;
 	}
 

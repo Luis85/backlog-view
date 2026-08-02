@@ -55,6 +55,9 @@ what it belongs to — which a flat list of matches cannot say.
 ## Where it lives
 
 `src/view/backlogView.ts` (`filterText`, `setFilter`, `isFiltering`) ·
+`src/domain/model.ts` (`matchingPaths` — which rows a needle admits is a question
+about the tree, so the walk lives with the tree and the view keeps the policy that an
+empty needle is no filter rather than an empty one) ·
 `src/view/render/toolbar.ts` (the input, `syncFilterUi`) ·
 `src/view/render/rows.ts` (`renderTitleText` highlighting) ·
 `src/view/render/emptyStates.ts` (the no-match state).

@@ -283,6 +283,23 @@ describe('moving between horizons without a drag', () => {
 		expect(vault.fm('Now item.md')['horizon']).toBe('Later');
 	});
 
+	it('checks nothing for an unreadable value — every entry there would write', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 10, horizon: { when: 'soon' } } });
+		const { view } = makeRoadmap(vault);
+
+		view.showContextMenuFor(view.model?.byPath.get('Garbled.md') as never);
+		const submenu = Menu.lastShown?.item('Set horizon')?.submenu;
+
+		// The card is on the shelf, but its key still holds something, so picking
+		// Unplaced REMOVES that value — a write, and a spent undo slot. A checkmark
+		// there would offer a mutation as the state the note is already in.
+		expect(submenu?.items.filter((i) => i.checked)).toEqual([]);
+		submenu?.item('Unplaced')?.clickHandler?.();
+		await flush();
+		expect('horizon' in vault.fm('Garbled.md')).toBe(false);
+	});
+
 	it('the menu’s shelf entry removes the key, the drop’s own write', async () => {
 		const vault = horizonVault();
 		const { view } = makeRoadmap(vault);
@@ -377,5 +394,76 @@ describe('creating from a bucket', () => {
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+	});
+});
+
+describe('a move whose value leaves the base', () => {
+	/** Move a card, then hand back the results a base filtering on that value returns. */
+	function moveThenRequery(harness: ReturnType<typeof makeRoadmap>, vault: FakeVault, dropped: string[]) {
+		(harness.view as unknown as Record<string, unknown>).data = {
+			data: vault.entries().filter((e) => !dropped.includes(e.file.path)),
+		};
+		harness.view.onDataUpdated();
+	}
+
+	it('says so on the write’s own refresh, and offers the way back to the note', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+		expect(vault.fm('Now item.md')['horizon']).toBe('Later');
+
+		// The base filters on the very property the move wrote, so the requery it
+		// triggered no longer returns the note. The write stands — that is what was
+		// asked for — and the card leaving is the filter speaking, said out loud.
+		moveThenRequery(harness, vault, ['Now item.md']);
+		expect(Notice.messages.some((m) => m.includes('no longer matches this base'))).toBe(true);
+
+		const action = Notice.last?.messageEl.querySelector<HTMLElement>('.pbl-notice-open');
+		expect(action?.textContent).toBe('Open the note');
+		action?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(vault.opened.map((o) => o.path)).toEqual(['Now item.md']);
+	});
+
+	it('still undoes it — the note is gone from the view, not from the slot', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Later'));
+		await flush();
+		moveThenRequery(harness, vault, ['Now item.md']);
+
+		key(treeOf(harness.containerEl), 'z', { ctrlKey: true });
+		await flush();
+		expect(vault.fm('Now item.md')['horizon']).toBe('Now');
+	});
+
+	it('says nothing when the note is still a result', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Next'));
+		await flush();
+		moveThenRequery(harness, vault, []);
+
+		expect(Notice.messages).toEqual([]);
+	});
+
+	it('never blames the write for a filter the user typed', async () => {
+		const vault = horizonVault();
+		const harness = makeRoadmap(vault);
+
+		cardDrag(cardByTitle(harness.containerEl, 'Now item'), bucketByName(harness.containerEl, 'Next'));
+		await flush();
+		// A quick filter hides the card too, and reporting THAT would blame the move
+		// for something the user just did. Only the data pass answers for a write.
+		harness.view.setFilter('zzz');
+		expect(Notice.messages).toEqual([]);
+
+		// And the answer still arrives when the data pass finally comes.
+		harness.view.setFilter('');
+		moveThenRequery(harness, vault, ['Now item.md']);
+		expect(Notice.messages.some((m) => m.includes('no longer matches this base'))).toBe(true);
 	});
 });
