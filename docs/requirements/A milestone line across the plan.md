@@ -63,9 +63,12 @@ nothing about the line is ever written anywhere.
   stays in the tooltip. Horizontal space is the scarce resource in an Obsidian pane — the
   first-hand lesson the ecosystem's timeline beta reports — so the line survives the
   narrowing and the text is what gives way.
-- **3a — "Show completed items" is off and the milestone's subtree is done.** The row
-  hides and the line hides with it: the visibility rule travels with the item, not with the
-  projection, exactly as it does on the shelf.
+- **3a — "Show completed items" is off and the milestone is done.** The row hides and the
+  line hides with it: the visibility rule travels with the item, not with the projection,
+  exactly as it does on the shelf. This is the reader's own control and not a rollup —
+  [[Milestones as their own type]] keeps a milestone out of every *aggregate*, which is a
+  rule about what its status does to other rows and never a claim that its own row
+  outlives a filter.
 - **4a — the reader cannot use a pointer.** The diamond is the tab stop and the line is
   decoration of it, so no fact about a milestone exists only under a hover. The
   keyboard obligation the epic carries is met by the row, not by the line.

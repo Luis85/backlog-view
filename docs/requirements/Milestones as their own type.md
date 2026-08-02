@@ -44,7 +44,7 @@ date.
 | **Actor** | Backlog owner |
 | **Trigger** | The user creates a milestone, or the view builds the tree over a note typed `Milestone` |
 | **Preconditions** | None for the type itself; drawing it on the dated axis needs the target property the roadmap already configures ([[Horizons or dates]]) |
-| **Guarantee** | A milestone is a marker and never work: it takes no children, enters no rollup and no progress figure wherever it sits, and its own status can neither advance a bar nor hide a subtree. Nothing about its date is inferred, swapped or written by rendering it. |
+| **Guarantee** | A milestone is a marker and never work: it takes no children, and it aggregates into nothing — no ancestor's rollup, progress figure or done-subtree state, wherever it sits — so its own status can neither advance a bar nor hide work that has not moved. Its own row is a separate question with the ordinary answer: it narrows under the reader's visibility controls exactly as any other row does. Nothing about its date is inferred, swapped or written by rendering it. |
 
 **Main flow**
 
@@ -57,8 +57,9 @@ date.
 4. It is offered at the **top level only**, and offers no child types of its own.
 5. On the dated axis it renders as a diamond at its date, with no open end, because
    nothing is missing.
-6. Everywhere else it is an ordinary row that counts for nothing: no rollup, no progress
-   figure, no done-subtree hiding computed from it.
+6. Everywhere else it is an ordinary row that **aggregates** into nothing: no ancestor's
+   rollup, progress figure or done-subtree state is ever computed from it. Its own status
+   remains its own, and its own row narrows under the ordinary visibility controls.
 
 **Extensions**
 
@@ -84,9 +85,15 @@ date.
   it places by the horizon property if it carries one, and shelves if it does not. Its
   date is never read as a horizon — the epic's own rule, and the reason the axis is
   declared rather than detected.
-- **6a — the milestone is marked done.** Its status is its own record and renders on it,
-  and stops there: no parent's progress moves because a date passed, and no subtree hides
-  because a marker in it is finished ([[Rollups and hiding finished work]]).
+- **6a — the milestone is marked done.** Nothing *around* it moves: no ancestor's progress
+  advances because a date passed, and no subtree hides because the marker in it is
+  finished ([[Rollups and hiding finished work]]). The milestone's **own** row is the other
+  question and takes the ordinary answer — with "Show completed items" off it hides like
+  any finished row, because that control states what the reader wants on screen rather
+  than what counts as progress. Never counted is a rule about aggregation, never an
+  exemption from the reader's own controls; the context-row rule draws the same line for
+  the same reason, and a marker that outlived every control would be the one row a filter
+  could not clear.
 
 ## Acceptance criteria
 
@@ -100,8 +107,11 @@ date.
   when cleared.
 - It is offered only at the top level and offers no child type. Nothing refuses one placed
   elsewhere by hand, and none is ever retyped by position.
-- It enters no rollup, no progress figure and no done-subtree computation, wherever it
-  sits in the tree.
+- It contributes to no ancestor's rollup, progress figure or done-subtree state, wherever
+  it sits in the tree — while its own row narrows under "Show completed items" and the
+  quick filter exactly as any other row does, and its line goes with it
+  ([[A milestone line across the plan]]). The two are different rules and the note must
+  not be read as one: never counted is about aggregation, not about visibility.
 - On the dated axis it draws as a diamond at its date with no open end; an unreadable date
   shelves it with the reason visible; on the bucket axis it places by its horizon or
   shelves, and its date is never read as one.
