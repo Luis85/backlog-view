@@ -318,6 +318,21 @@ describe('a column carries its own agreement', () => {
 		expect(col.policy).toBe('');
 	});
 
+	it('does not read a limit or policy off Object.prototype for a state named "constructor"', () => {
+		// Plain object literals, not null-prototype: `active` above merely fails to
+		// collide, this is the case that actually exercises the guard. With no OWN
+		// `constructor` key, a bare index would find the inherited Object function.
+		const collision = {
+			...settings,
+			states: ['constructor'],
+			wipLimits: {} as Record<string, number>,
+			columnPolicies: {} as Record<string, string>,
+		};
+		const col = column(vaultWith('constructor'), 'constructor', collision);
+		expect(col.limit).toBeNull();
+		expect(col.policy).toBe('');
+	});
+
 	it('counts the overage from the FULL population, never the matches', () => {
 		// Extension 4a: a filter that made an over-limit column look under its limit
 		// would turn a search into a lie about the work.

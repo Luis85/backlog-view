@@ -238,7 +238,7 @@ function setOwn(fm: Record<string, unknown>, key: string, value: unknown): void 
  * and `valueOf` are all legal property names, and on a note that lacks them the lookup
  * returns the inherited FUNCTION — truthy, so a blank test reports "a date is already
  * recorded" for a note that has none, and the stamp is declined forever. The rule is
- * old here (`byTypeName` in `domain/settings.ts` says it has shipped three times), and
+ * old here (`byName` in `domain/settings.ts` says it has shipped three times), and
  * the answer is the same one: a function to reach for, not a rule to remember. Every
  * live read of a configured key in this module goes through it.
  */

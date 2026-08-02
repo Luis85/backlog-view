@@ -90,6 +90,20 @@ const VISUAL_DEPTH = {
 };
 
 /**
+ * `board.ts` states its own guarantee in a comment: "Nothing that PLANS a write
+ * imports this" — a WIP limit is display math over a count, never a refusal, which is
+ * the cheapest guarantee a limit can make (`docs/requirements/WIP limits.md`). This
+ * guards `overBy` itself, not limits in general: `settings.wipLimits` stays reachable
+ * from every planner, since every planner takes `BacklogSettings` whole — only the
+ * derived "how far over" belongs to the chrome that draws it.
+ */
+const OVERBY = {
+	selector: "ImportSpecifier[imported.name='overBy']",
+	message:
+		'overBy (src/domain/board.ts) is the board column’s over-limit display math, imported only by src/view/render/ where it is drawn. A limit refuses nothing, and a planner that cannot see overBy cannot start consulting one.',
+};
+
+/**
  * Flat config sets a rule wholesale per file: a narrower block REPLACES the wider one's
  * options rather than adding to them, so two blocks matching the same file would leave
  * it with only the later one's selectors — silently dropping the rest.
@@ -102,6 +116,7 @@ const VISUAL_DEPTH = {
 const STORAGE = 'src/storage/**/*.ts';
 const MENU = 'src/view/interactions/menu.ts';
 const RANKING = ['src/domain/writePlan.ts', 'src/view/interactions/create.ts'];
+const RENDER = 'src/view/render/**/*.ts';
 
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
@@ -141,30 +156,38 @@ export default defineConfig([
 	forbidden('ui', ['view', 'commands', 'domain', 'storage'], 'ui/ holds standalone dialogs; it must stay free of app structure.'),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
 	// -- invariants that are checked rather than described -----------------------
-	// Four disjoint regions of src/; see the note above `syntaxRules`.
+	// Five disjoint regions of src/; see the note above `syntaxRules`.
 	{
-		// Everything that is not one of the three special cases below.
+		// Everything that is not one of the four special cases below.
 		files: ['src/**/*.ts'],
-		ignores: [STORAGE, MENU, ...RANKING],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR]),
+		ignores: [STORAGE, MENU, RENDER, ...RANKING],
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY]),
 	},
 	{
 		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else
-		// about it is special — the menu rule still does.
+		// about it is special — the menu rule and the overBy rule still do.
 		files: [STORAGE],
-		rules: syntaxRules([MENU_ANCHOR]),
+		rules: syntaxRules([MENU_ANCHOR, OVERBY]),
 	},
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
-		// allowed to make it. It writes nothing, so the boundary still applies.
+		// allowed to make it. It writes nothing and plans nothing, so both other rules hold.
 		files: [MENU],
-		rules: syntaxRules([...WRITE_BOUNDARY]),
+		rules: syntaxRules([...WRITE_BOUNDARY, OVERBY]),
 	},
 	{
 		// Ranking code: what it writes is an order among real siblings, and a type is
-		// the rung its parent chain puts it on — never the depth it is drawn at.
+		// the rung its parent chain puts it on — never the depth it is drawn at. It plans
+		// writes, which is exactly what overBy must stay out of.
 		files: RANKING,
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH]),
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY]),
+	},
+	{
+		// view/render/ is the one region allowed to import overBy: it draws the column,
+		// never plans a write. The write boundary and the menu-anchor rule still apply —
+		// nothing here is exempt from those, only from OVERBY.
+		files: [RENDER],
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR]),
 	},
 	{
 		// Everything but `test/`, rather than `src/**` by name: a `files` pattern is

@@ -56,8 +56,11 @@ The menu is the answer on every platform either way.
   same one. Whether native drag fires from touch on Obsidian mobile is a claim the engine
   makes and the smoke test settles; the menu does not depend on the answer.
 - **2a — the selection lands on a column with no cards.** The column itself is the stop,
-  where Enter and the context menu offer that column's creation. An empty board is fully
-  drivable by keyboard, or it is a board that cannot be started from.
+  and its context menu opens today — carrying the column's agreed policy when one is
+  set, nothing when none is. Creation from that stop is not built: it waits on
+  [[New cards in place]], scoped in "Where it lives" below. An empty board is fully
+  drivable by keyboard for what exists today, or it is a board that cannot be started
+  from once creation lands.
 - **3a — there is no Alt+Up/Down for rank.** Deliberately: within-column order is derived,
   not stored ([[Board order is derived not stored]]), so a rank shortcut would promise
   something the board does not keep. The pair is free for lanes
@@ -76,8 +79,9 @@ The menu is the answer on every platform either way.
 - The board is one tab stop, like the tree: arrows move the selection across cards and
   columns, Home and End reach the edges, Enter opens the note, `/` reaches the quick
   filter, Ctrl/Cmd+Z undoes. A column with no card to select is still a stop — the
-  selection rests on the column itself, where Enter and the context menu offer that
-  column's creation — so an empty board is fully drivable by keyboard.
+  selection rests on the column itself, and its context menu opens there carrying the
+  column's policy — so an empty board is drivable by keyboard for what exists today;
+  creation from that stop still waits on [[New cards in place]].
 - Alt+Left and Alt+Right move the selected card one column, writing the same batch a
   drop writes. There is deliberately no Alt+Up/Down *rank* — within-column order is
   derived ([[Board order is derived not stored]]) — which leaves the pair free for

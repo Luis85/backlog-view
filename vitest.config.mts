@@ -17,8 +17,13 @@ export default defineConfig({
 			// Registration glue that needs the real Obsidian Plugin runtime.
 			exclude: ['src/main.ts'],
 			reporter: ['text-summary', 'json', 'lcov'],
-			// Measured 97.5/93.0/99.2/99.1 — thresholds sit just below to catch regressions
-			// without being brittle. Raise them as coverage grows, never lower.
+			// Measured 97.76/93.43/99.07/99.12 — thresholds sit just below to catch
+			// regressions without being brittle. Raise them as coverage grows, never lower.
+			// Functions dipped from a prior 99.2: the per-column-agreements increment's
+			// `wipLimits`/`columnPolicies` defaults call `nameTable` with an empty
+			// vocabulary, so its `() => null` reader is never invoked — dead by construction,
+			// not a gap this suite left. Its threshold stays put rather than chasing a
+			// figure the increment itself moved down.
 			//
 			// Those numbers replace an earlier 98.9/94.3/99.5/98.9, and NO test was lost
 			// between them: vitest 4 remaps v8's byte ranges onto AST nodes by default —
@@ -27,8 +32,8 @@ export default defineConfig({
 			// old figure was flattering. Statements has the least room of the four, so
 			// that is the one a thin change will trip first.
 			thresholds: {
-				statements: 97,
-				branches: 92,
+				statements: 97.5,
+				branches: 93,
 				functions: 98,
 				lines: 97,
 			},

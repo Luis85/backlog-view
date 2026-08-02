@@ -154,11 +154,6 @@ export function byName<T>(table: Record<string, T>, name: string | null): T | un
 	return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
 }
 
-/** The same lookup, named for the table it was written for. */
-export function byTypeName<T>(table: Record<string, T>, typeName: string | null): T | undefined {
-	return byName(table, typeName);
-}
-
 /**
  * The persisted option key for one type's folder. Shared by the schema that declares
  * these options and the resolver that reads them back, because a key spelled twice is
@@ -203,7 +198,7 @@ function parseWipLimit(raw: string): number | null {
  * generated per view, so the default in each box follows the home folder above it.
  */
 export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FOLDER): string {
-	const sub = byTypeName(DEFAULT_TYPE_SUBFOLDERS, typeName);
+	const sub = byName(DEFAULT_TYPE_SUBFOLDERS, typeName);
 	if (!sub) return '';
 	return homeFolder ? `${homeFolder}/${sub}` : sub;
 }
