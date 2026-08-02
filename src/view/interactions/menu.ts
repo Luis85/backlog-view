@@ -2,9 +2,11 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
-import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { todayStamp } from '../../domain/noteFields';
 import { hasDateAxis, hasHorizonAxis } from '../../domain/roadmap';
 import { stateMenuValues } from '../../domain/settings';
+import { cardPaths, hiddenMatches } from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
@@ -54,6 +56,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	// there is no rank to move within and no sibling to indent under.
 	if (host.projection === 'tree') addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
+	addMatchSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi
@@ -193,6 +196,34 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
 	showMenuForClick(menu, evt);
 }
 
+/**
+ * The matches hiding under this card, as menu entries.
+ *
+ * The board is one tab stop by design, so the match links on a card face carry
+ * `tabindex="-1"` — and the menu is their keyboard path, exactly as it is for the
+ * tree's add button and state chip. Without it those links would be pointer-only, and
+ * a match that only a mouse can reach is the very failure the card face exists to
+ * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
+ * not the card itself matched, for the same reason the face names them: a match below
+ * a matching card is a second result, and it has no card of its own to be reached by.
+ */
+function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	const board = host.projection === 'board' ? host.board?.board : null;
+	if (!board || !host.isFiltering()) return;
+	const carded = cardPaths(board);
+	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	if (matches.length === 0) return;
+	menu.addSeparator();
+	for (const match of matches) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(`Open match "${match.title}"`)
+				.setIcon('search')
+				.onClick((evt) => host.openItem(match, evt)),
+		);
+	}
+}
+
 /** One offer in Set state: the value it writes (null removes the key) and its name. */
 interface StateChoice {
 	state: string | null;
@@ -237,7 +268,10 @@ function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
 	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
-	return host.applySafely([{ file: item.file, state: choice.state }]);
+	// The tree's own Set state plans through the same function the board's moves do, so
+	// the date stamps ride it too: a history with holes in it, where which hole depends
+	// on whether the user was looking at the tree or the board, is worse than none.
+	return host.applySafely(computeStateWrites(item, choice.state, host.settings, todayStamp()));
 }
 
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {

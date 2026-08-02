@@ -1397,6 +1397,55 @@
 	height: 12px;
 }
 
+/* The matches hiding under a card, while the quick filter is narrowing. Each is a
+   button because it opens a note — the search's own result has to be reachable, not
+   merely counted. Wraps rather than scrolls: a card is already the narrow thing. */
+.pbl-card-matches {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+}
+
+.pbl-card-matches-icon {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	color: var(--text-faint);
+}
+
+.pbl-card-matches-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-card-match {
+	padding: 0 var(--size-2-1);
+	height: auto;
+	line-height: 1.4;
+	box-shadow: none;
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-card-match:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-active-hover);
+}
+
+/* Filtered, the count is a pair ("3 of 12") — wider than a bare number and no longer
+   a quantity to read at a glance, so it stops competing with the column's name. */
+.pbl-board-col-count-filtered {
+	font-variant-numeric: tabular-nums;
+	color: var(--text-faint);
+}
+
 /* The row lays its columns out fixed-width so values align across rows; a card
    stacks the same cells instead. The card is the exception, so the card opts out. */
 .pbl-card .pbl-props {

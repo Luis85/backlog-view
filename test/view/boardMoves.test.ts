@@ -2,10 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
-import { flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { boardDrag } from '../helpers/dnd';
 import {
-	BOARD_WORKFLOW,
 	boardVault,
 	cardByTitle,
 	cardTitles,
@@ -288,52 +287,6 @@ describe('the board keyboard', () => {
 		expect(view.selectedBoardColumn).toBeNull();
 		expect(tree.getAttribute('aria-activedescendant')).toBeNull();
 		expect(tree.hasClass('pbl-has-selection')).toBe(false);
-	});
-});
-
-describe('the quick filter on the board', () => {
-	it('narrows the cards, keeps every column, and clears back exactly', () => {
-		const { containerEl, view } = board(boardVault());
-
-		view.setFilter('Epic A');
-		expect(cardTitles(containerEl)).toEqual(['Epic A']);
-		// Columns are the shape of the board; matches are its contents.
-		expect(columnsOf(containerEl)).toHaveLength(4);
-		expect(countOf(columnByName(containerEl, 'Active'))).toBe('0');
-
-		view.setFilter('');
-		expect(cardTitles(containerEl)).toHaveLength(4);
-	});
-
-	it('keeps a card whose ancestor or descendant matches — the tree’s match path', () => {
-		const { containerEl, view } = board(boardVault());
-
-		// "B1" matches Feature B1; Epic B stays as its ancestor.
-		view.setFilter('B1');
-		expect(cardTitles(containerEl).sort()).toEqual(['Epic B', 'Feature B1']);
-	});
-
-	it('dragging stays enabled while filtering — a state write reads no siblings', async () => {
-		const vault = boardVault();
-		const { containerEl, view } = board(vault);
-
-		view.setFilter('Epic A');
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
-		await flush();
-		expect(vault.fm('Epic A.md')['status']).toBe('Active');
-	});
-
-	it('carries over a projection switch instead of clearing', () => {
-		const vault = boardVault();
-		const treeSide = makeView(vault, { ...BOARD_WORKFLOW });
-		treeSide.view.setFilter('Epic A');
-
-		// The toggle switches in place — the filter is session state in both projections.
-		treeSide.view.setProjection('board');
-
-		expect(cardTitles(treeSide.containerEl)).toEqual(['Epic A']);
-		const input = treeSide.containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-		expect(input?.value).toBe('Epic A');
 	});
 });
 

@@ -78,6 +78,7 @@ mirrors the same directories.
 | `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch, write gate | jsdom tests |
 | `view/selection.ts` | The one selection either projection holds — row/card by path, or a board column stop — and its aria bookkeeping | jsdom tests |
 | `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
+| `view/filterState.ts` | The quick filter's session state: the text, the match path that renders, the matches themselves | jsdom tests |
 | `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
 | `view/render/projections.ts` | The content-pane fork: which projection draws into the scroller, and the role/label the pane claims | jsdom tests |
 | `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages — and the card body every projection shares | jsdom tests |
@@ -217,6 +218,12 @@ write's inverse as it lands, so the last effective batch can always be taken bac
   should not be one. `isEmpty` is the opposite case: it IS in the typings, but on
   `ObjectValue` rather than the `Value` that `getValue()` returns, so testing for it
   is a genuine question about the value in hand.
+- Fallow resolves an interface's members through an **explicit type annotation**, not
+  through a property access: a host method reached only via `const host = ctx.host`
+  reports as an unused class member even though it is called. Annotate the local
+  (`const host: BacklogViewHost = ctx.host`) rather than reaching for
+  `usedClassMembers`, which is for members a framework invokes and would hide a
+  genuinely dead one.
 - Nothing here carries compatibility with older *plugin* versions. `minAppVersion`
   is the only compatibility boundary, and it is a floor, not a range — a shim for an
   Obsidian older than it is dead code by definition.

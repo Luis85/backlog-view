@@ -35,6 +35,40 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
+- Date stamps (`startedDate`, `finish`) are FIELDS of the state write that caused them,
+  applied inside the same `processFrontMatter` call — never a second write. That is
+  what makes one undo take back the state and its dates together, and it is why they
+  join `touchedKeys`: a key listed there but unchanged emits no inverse anyway.
+- **Both stamp decisions are made HERE, against the live note, not in the plan** — the
+  row that planned a write can be a refresh behind it, exactly as with tags. The start
+  asks two things of the live note: that the write actually MOVES it to another state
+  (a stale row can propose the state it already holds, and dating that records a
+  redundant selection rather than the moment work began — and spends the undo slot on
+  it), and that the property is still empty, so the earliest start survives rework.
+  The finish carries `{date, toDone}` and this module compares
+  `toDone` against the state the note is actually LEAVING (read before the state write
+  replaces it): crossing in stamps, crossing out deletes, and done-to-done leaves it
+  alone. Deciding that from the model's idea of the old state left a note that was
+  already done, moved to a not-done state, still carrying its finish.
+- Every WRITE of a user-configured key goes through `setOwn`, never `fm[key] = value`:
+  `__proto__` is a legal property name, and plain assignment reaches
+  `Object.prototype`'s setter instead of creating a key — silently dropping a string
+  or a number (the state changes, its date vanishes) and, for the tag list, replacing
+  the object's prototype with the array. `Object.defineProperty` is what round-trips
+  through YAML for every key including that one.
+- Every live read of a USER-CONFIGURED key goes through `ownValue`, never `fm[key]`:
+  `toString`, `constructor` and `valueOf` are legal property names, and on a note
+  lacking them the lookup returns the inherited function — truthy, so a blank test
+  reports a date already recorded and the stamp is declined forever. `byTypeName` in
+  `domain/settings.ts` says this hazard has shipped three times on other tables; this
+  is the same answer for frontmatter, and `rawValueOf` was already doing it alone.
+- A live value read here must go through the **same tolerant reader the model used**
+  (`readString` for the state, as `buildModel` does). Frontmatter takes shapes a strict
+  read misses — a one-item list, a number, a boolean — and a stricter read here answers
+  "no state" to the question the model answers "Done". Two answers to one question is
+  how the boundary rule came to keep a finish on a reopened item and overwrite it on a
+  re-label. The rule generalizes past the stamps: reading a live value the model also
+  reads means borrowing its reader, not writing a second one.
 - The roadmap's placement keys (`ItemWrite.axis`) follow the state key's two rules:
   never written to an unconfigured key, and a null REMOVES rather than blanks. Applying
   and capturing read the same `axisEntries` list — a key written but not captured would
