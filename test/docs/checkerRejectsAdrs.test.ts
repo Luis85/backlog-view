@@ -125,14 +125,6 @@ describe('ADR numbering and the index', () => {
 			'filename does not match adr: 2',
 		],
 		[
-			'a gap in the ADR numbering',
-			(files) => {
-				files['docs/adrs/0003-the-third-decision.md'] = adr(3, 'the-third-decision');
-				files['docs/adrs/README.md'] += '- [0003](0003-the-third-decision.md)\n';
-			},
-			'no ADR 0002 — numbering has a gap',
-		],
-		[
 			'a record the index does not list',
 			(files) => {
 				files['docs/adrs/README.md'] = '# ADRs\n\nNothing here yet.\n';

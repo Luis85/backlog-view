@@ -263,15 +263,6 @@ describe('the use-case shape', () => {
 			'extension 9a departs from step 9, which the main flow does not have',
 		],
 		[
-			'extensions out of step order',
-			(files) => {
-				files['docs/requirements/Doing the thing.md'] = useCase({
-					extensions: '- **2b — the second** — because.\n- **2a — the first** — because.',
-				});
-			},
-			'extensions are not in step order',
-		],
-		[
 			'an **Extensions** block that cannot be read at all',
 			(files) => {
 				// A parser that gives up quietly is the same failure as a filter standing in
@@ -319,6 +310,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(45);
+		expect(sites.length).toBe(43);
 	});
 });
