@@ -48,7 +48,9 @@ Switch to the roadmap's dated axis.
   `max-width: 140px` a label spans roughly 35 days of grid, and labels are opaque and
   painted in row order rather than date order, so a later-drawn label can cover an
   earlier one. Date two milestones a few weeks apart and confirm whether the earlier
-  one's name is still readable, or silently covered.
+  one's name is still readable, or silently covered. What you see decides between the
+  three candidate fixes in [[Nearby milestone labels cover each other]], which is why
+  that note is open rather than already committed to one of them.
 - **Past the window edge** — a milestone dated outside the roughly 60-month drawn window
   should show a direction mark (open-start or open-end, the same vocabulary a clipped
   bar uses) and **no diamond** — a diamond at the clamped edge would claim a date the
