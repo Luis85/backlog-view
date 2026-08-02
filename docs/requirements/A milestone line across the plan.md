@@ -69,6 +69,15 @@ nothing about the line is ever written anywhere.
 - **1c — the milestone is outside the Base's filter.** It draws no line. A line across
   every result is a thing derived from the results, and a context row is never a source of
   one — it stays context beside the shelf, as the epic's rule requires.
+- **1d — the milestone's date is today.** Both lines draw, and they do **not** merge: 1b
+  coalesces like with like, and today is not a commitment — a label reading "Today · Ship
+  1.0" would say the reader's own clock is something somebody promised. The today line
+  keeps its position and its place on top, because it is the one mark on this grid that is
+  the reader's own and no plan may hide *now*; the milestone's line is what gives way,
+  drawn beside it inside the same day cell, which is room the grid has — a day is wider
+  than either mark. Suppressing one instead is what the finding rules out in both
+  directions: painted under, the milestone's line is invisible at exactly the date it
+  exists to call out, and painted over, today is.
 - **2a — the pane is too narrow for the label.** The label truncates and the full name
   stays in the tooltip. Horizontal space is the scarce resource in an Obsidian pane — the
   first-hand lesson the ecosystem's timeline beta reports — so the line survives the
@@ -95,6 +104,8 @@ nothing about the line is ever written anywhere.
 - A milestone whose date lies outside the window draws neither a line nor a diamond: its
   row carries the edge mark for the side it lies past and the exact date in its tooltip,
   and no marker is ever placed at a date the milestone does not have.
+- A milestone dated today draws its own line beside the today line, both visible and
+  neither label merged into the other — the today line keeps its position and stays on top.
 - A line hides exactly when its row hides, under the same visibility controls.
 - Nothing about the line is written to any note, and no information is available only by
   hovering it: the milestone's name and exact date are in its row's accessible name.
@@ -109,7 +120,9 @@ stated pair alone — so a point beyond the edge currently arrives at the render
 one-day milestone at day 0 or at the last day, which is the shape 1a refuses. The geometry
 has to answer "wholly outside" rather than clamping to it: `endDay < 0` or
 `startDay > lastDay`, which for a point is exactly "its date is not in the window".
-the grid, and the `pbl-today` line this extends, are `src/view/render/timeline.ts`, with
-the styling in `styles.css` beside it. Driven in `test/domain/timeline.test.ts` and
+The grid, and the `pbl-today` line this extends, are `src/view/render/timeline.ts`, with
+the styling in `styles.css` beside it — where the collision of 1d is a matter of two 2px
+marks in a 4px day cell, so the room to draw both is already there and the rule is which
+one keeps the pixel. Driven in `test/domain/timeline.test.ts` and
 `test/view/roadmapFrame.test.ts`. It waits on [[Milestones as their own type]], which is
 what supplies a milestone to draw.

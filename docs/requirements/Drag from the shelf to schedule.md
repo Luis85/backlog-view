@@ -75,6 +75,11 @@ the keys rather than blanking them.
   chosen by the type rather than by the configuration, because the type states *point* as
   strongly as a missing key does ([[Milestones as their own type]]). Writing the pair here
   would hand a deadline a duration by gesture that the row's own entry refuses to give it.
+  Where 2c's one configured key is the **start**, the two rules meet on nothing: the target
+  has no key to receive the write and the start is one this type may not touch, so a marker
+  offers no grip at all there — absent, not offered and then refused, since a gesture whose
+  only possible batch is empty must not begin. Its card stays on the shelf until a target
+  property is configured.
 - **4a — the note carries transition stamps.** Untouched. Plan and record are different
   keys, deliberately: unscheduling a note does not unhappen its history, and no
   scheduling write may ever reach the stamped keys.
@@ -93,7 +98,8 @@ the keys rather than blanking them.
 - A marker is target-only on both gestures: dropped on the grid it takes the target
   anchored at the cell's last day and gains no start, and dropped back on the shelf it
   loses the target key alone, whatever else the note carries
-  ([[Milestones as their own type]]).
+  ([[Milestones as their own type]]). With no target property configured it offers no grip
+  at all — the drop that could only write nothing is never begun.
 - Grid to shelf removes the configured date keys — never blanks them — and undo
   restores them. Where the item renders next follows the placement rules — the shelf
   only when its whole subtree is dateless, an inferred bar otherwise — and the drop

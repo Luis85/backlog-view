@@ -81,7 +81,10 @@ rather than deferred behind it.
   ([[Milestones as their own type]]), which this path commits rather than re-derives. The
   general rule already says the keyboard's batch is identical to the drag's; it is stated
   here because "identical" is only a guarantee where both were narrowed, and a keyboard
-  path that widened one back would be the write no pointer could make.
+  path that widened one back would be the write no pointer could make. With only a start
+  property configured the marker has no key it may write, so it takes no lift and its
+  schedule and unschedule entries are absent — 4b's rule reaching a type rather than an
+  axis, and the pointer's own answer in the same configuration.
 - **3a — the commit is refused.** Loud, nothing written, selection stays where the user
   left it — the failure is announced where the keyboard user is, not on a pointer they
   are not holding.

@@ -155,6 +155,14 @@ date.
     and inherit the narrowing with them, which is the point of stating it once here: a rule
     written per control is a rule that is one control out of date the moment a fourth path
     is added.
+
+  And narrowing to one key makes that key load-bearing: on the start-only vault of 2a there
+  is **no legal batch left** — the target has no key to receive a write and the start is a
+  key this type may not touch — so every one of these affordances is **absent** there, not
+  offered and then refused. No grip on the shelf card, no lift, no menu entry (2d), the
+  same answer 4a gives the add button and the register gives an unconfigured axis. A
+  gesture that can only end in nothing must not start, and a milestone in that vault is a
+  row on the shelf until a target property exists, which is exactly what 2a already says.
 - **3a — the milestone folder is cleared.** It falls through to the home folder, like
   every other type whose folder is unset — one rule, no special case.
 - **4a — the row has no child type to offer.** Every create affordance is **absent**, not
