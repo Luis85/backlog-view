@@ -69,5 +69,4 @@ column carries its own policy (`src/domain/board.ts`); the header's affordance a
 `buildColumnMenu` in `src/view/interactions/menu.ts`, opened by the header and by
 `src/view/interactions/keyboard.ts` on the selected column stop.
 
-Driven by `test/domain/viewOptions.test.ts`, `test/domain/board.test.ts` and
-`test/view/columnAgreements.test.ts`.
+Driven by `test/domain/viewOptions.test.ts` and `test/domain/board.test.ts`.

@@ -75,6 +75,4 @@ write path imports `overBy` at all — the cheapest possible guarantee that a li
 refuses nothing.
 
 Driven by `test/domain/settings.test.ts`, `test/domain/viewOptions.test.ts`,
-`test/domain/board.test.ts`, `test/view/board.test.ts` and — for the guarantee —
-`test/view/columnAgreements.test.ts`, which drives every board write path against a
-column already over its limit.
+`test/domain/board.test.ts` and `test/view/board.test.ts`.
