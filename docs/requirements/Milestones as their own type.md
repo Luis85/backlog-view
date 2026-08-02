@@ -53,8 +53,10 @@ date.
 
 **Main flow**
 
-1. `Milestone` is a name in the fixed vocabulary beside `Issue` and `Bug` — a declared
-   type that is not a rung on the ladder, so nothing ever retypes it by position. It takes
+1. `Milestone` is a name in the fixed vocabulary — a declared **marker**, a third category
+   beside the ladder and the extra types, since it is neither a rung nor the pinned
+   container an extra type is ([[Types beside the ladder]]). Being declared is what stops
+   anything retyping it by position. It takes
    the shipped opinion every declared name gets: a folder, an **icon and a badge colour**.
    The badge renderer has no fallback for a declared type on purpose
    ([ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md)), so the seventh name
@@ -103,6 +105,12 @@ date.
   before a start; and a user entering only a start would leave believing the milestone is
   scheduled while it stays on the shelf, since the type ignores that date. A prompt must
   not be able to produce a state the projection contradicts.
+- **2e — Unschedule is reached on a milestone.** It answers for the **target alone** as
+  well: offered only while the target key is present, and removing only that key. Both
+  halves of the general rule are wrong here for the same reason 2d is — offered on a
+  start-only milestone it would take away a key that was never the milestone's date, and
+  taken on the 2c note it would delete a start the feature promised to ignore. Ignoring a
+  value and deleting it are different acts, and only the first was specified.
 - **3a — the milestone folder is cleared.** It falls through to the home folder, like
   every other type whose folder is unset — one rule, no special case.
 - **4a — the row has no child type to offer.** Every create affordance is **absent**, not
@@ -138,14 +146,17 @@ date.
   when cleared.
 - It is offered only at the top level and offers no child type. Nothing refuses one placed
   elsewhere by hand, and none is ever retyped by position.
-- It occupies **no rung**: it never appears as a focus root for a level, its untyped
-  children imply no level from it, and moving a subtree that contains one never retypes
-  that milestone's descendants from a rank it does not have. Focusing `Milestone` by name
-  still lists them, which is a different question and the one worth keeping.
+- It is **not an extra type** and is absent from `EXTRA_TYPES`, so every rule that list
+  carries stays exactly as [[Types beside the ladder]] states it. It occupies no rung: it
+  never appears as a focus root for a level, and moving a subtree that contains one never
+  retypes that milestone or its descendants from a rank it does not have. Focusing
+  `Milestone` by name still lists them, which is a different question and the one to keep.
 - The row's Schedule entry asks a milestone for its target alone and does not apply the
   span rule to it, so no entry can leave a milestone in a state its own projection
   contradicts — neither an unsavable-but-drawable stale start, nor a start-only write that
-  reads as scheduled while the item stays shelved.
+  reads as scheduled while the item stays shelved. Unschedule answers for the target alone
+  too: gated on that key's presence, removing that key only, so no placement action ever
+  deletes a date the feature merely ignores.
 - A milestone row shows **no** create affordance — no add button, no `New <child>` menu
   entry — rather than one built from an empty list of choices.
 - It renders with an icon and a badge colour of its own, like every other declared type,
@@ -167,25 +178,32 @@ date.
 Nothing is built yet. The vocabulary is `EXTRA_TYPES` and `ALL_TYPES` in
 `src/domain/settings.ts`, where `DEFAULT_TYPE_SUBFOLDERS` gains the folder and
 `typeFolderKey` generates the per-view option declared in `src/domain/viewOptions.ts`.
-The hard part is that **`isExtraType` does two jobs**, and a milestone wants one of them.
-"Declared, therefore never retyped by position" is right for it; "pinned at
-`EXTRA_TYPE_RANK`, a container whose children are Tasks" is exactly wrong. Adding the name
-to `EXTRA_TYPES` without splitting the predicate silently buys the second, in four places:
+**A milestone is not an extra type, and must not be put in `EXTRA_TYPES`.** That list has
+a precise meaning this register already states and ships ([[Types beside the ladder]]): a
+declared type pinned at `EXTRA_TYPE_RANK`, whose children are Tasks wherever it hangs, and
+which hangs from an Epic, a Feature or a PBI. A milestone is the opposite on all three
+counts. Adding the name there would not extend that contract, it would falsify it — and
+`isExtraType` would start meaning two things at four call sites.
 
-- `computeLevel` (`src/domain/model.ts`) gives it `EXTRA_TYPE_RANK`, so `childLevelIndex`
-  reports Task for its children — a leaf implying a child level.
-- `collectFocusRoots` (same file) treats `EXTRA_TYPE_RANK === focusIdx` as "focus the
-  rung", so a **PBI-focused** view lists milestones as roots. Focusing the type by *name*
-  is the other path and is correct as it stands: "show me the milestones" should work.
-- `computeTypeChanges` (`src/domain/writePlan.ts`) descends the moved subtree from that
-  rank, so a milestone nested by hand and moved inside a subtree rewrites its descendants
-  as Tasks — while the same file's `!isExtraType(dragged.typeName)` exemption is the job
-  worth keeping, since a dropped milestone must stay a milestone.
+So the vocabulary gains a **third category** beside the ladder and the extra types: a
+declared **marker**, which occupies no rung, holds nothing, and hangs from nothing.
+`ALL_TYPES` is the union of all three, which is what makes the name focusable, admitted by
+`hierarchyOnly` and offered a folder without any of those rules learning a special case.
+Kept this way, exactly one existing predicate has to change, and it changes by *widening*
+rather than splitting: the autoType cascade in `src/domain/writePlan.ts` exempts
+`isExtraType(dragged.typeName)` from retyping, and that exemption belongs to every
+**declared** type — the register's own "declared pins, undeclared inherits" — so a dropped
+milestone stays a milestone. Everything else falls out for free: with no `levelIndex` and
+no extra rank, `computeLevel` treats it as the ladder already treats an unrecognised type,
+and `collectFocusRoots` never lists it as a root for a *level* while still finding it when
+the focus target is the name itself.
 
-So the split is the work, and `childTypeChoices` in `src/domain/itemTypes.ts` — refusing
-every extra type at top level today — is only the most visible part of it. Rollup
-exclusion belongs to `assignAll` in `src/domain/model.ts`, beside the context-row skip it
-resembles.
+What genuinely is new is two things. `childTypeChoices` in `src/domain/itemTypes.ts` has
+to offer the name at the top level and nothing beneath it — the inverse of the rule it
+applies to extra types today. And rollup exclusion belongs to `assignAll` in
+`src/domain/model.ts`, beside the context-row skip it resembles: it is the **second**
+exception to "a rollup counts every descendant the Base returned", and
+[[Rollups and hiding finished work]] names it as such.
 The diamond itself already exists and needs a second way to be true: `barGeometry` in
 `src/domain/timeline.ts` and `barClasses` in `src/view/render/timeline.ts` derive it from
 equal stated ends today. Reaching them at all is `deriveBars` in `src/domain/roadmap.ts`,

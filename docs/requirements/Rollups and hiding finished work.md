@@ -53,8 +53,11 @@ left rather than everything that ever was.
 
 ## Acceptance criteria
 
-- Rollups describe what the Base returned: a row loaded only for context is traversed
-  *through* but never counted.
+- Rollups describe what the Base returned, **as work**: a row loaded only for context is
+  traversed *through* but never counted. A marker is the second exception and holds for a
+  different reason — it is not a row from outside the results but a row that is not work at
+  all, so counting it would let a date passing advance a bar over work that has not moved
+  ([[Milestones as their own type]]).
 - Hiding is a render decision only — ranking still uses full sibling lists.
 - A parent whose children are all hidden renders as a leaf, not as an empty expander.
 - Structure commands target the nearest *visible* neighbour while hiding is on, so none is
