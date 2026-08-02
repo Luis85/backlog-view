@@ -62,8 +62,14 @@ the view options can rename.
 - **1a — no Product Backlog view is active.** The command does not offer itself. A README
   generated from defaults would describe a configuration nobody has, and getting the keys
   wrong is worse than saying nothing: an agent that trusts it writes `type` into a base
-  that reads `kind`.
-- **1b — the backlog was just scaffolded by the create-backlog command.** Nothing is
+  that reads `kind`. "Active" is the **leaf**, never the file: one base open in two split
+  panes is two views with two configurations answering to one path, and only the leaf
+  tells them apart.
+- **1b — the active view has not had its first result set yet.** Also withheld. An empty
+  observed-state list then means "not loaded", not "no states", and generating from it
+  would replace a good README with one missing the whole vocabulary — the failure is
+  silent, which is what makes it worth a rule rather than a notice.
+- **1c — the backlog was just scaffolded by the create-backlog command.** Nothing is
   written yet.
   Calling the same generator from the scaffold is a second change, deliberately: the
   scaffold has no view in hand, and the file it would produce documents a configuration
@@ -141,9 +147,14 @@ the view options can rename.
   workflow, the observed values that stand in for it when nothing is declared, and the
   stray values a declared workflow does not list but the board still gives a column. Two
   bases with identical settings and different states in their notes must not produce the
-  same states section, in either configuration. Where a value was observed rather than
-  declared, the document says so: an outside editor writing a state nobody has used yet is
-  then adding to a vocabulary rather than breaking one.
+  same states section, in either configuration. Each value says which of the **three** it
+  is, because two of the labels would otherwise be claims about the vault that are not
+  true: a declared state is configuration, an observed one is a value some note carries,
+  and the done value the menus append when nothing declares one has been used by nobody —
+  calling it observed would report a state the backlog does not have.
+- The example block is valid YAML for any value it interpolates. It is the part a reader
+  copies, so a state called `Needs: review` or `#blocked` — a mapping and a comment, bare —
+  is quoted.
 - Re-running with the file already matching writes nothing.
 - The bytes land from `storage/`, like every other file this plugin puts in the vault, and
   no frontmatter write happens on any note.
@@ -173,9 +184,9 @@ pure text from the settings and the offered states, applying nothing, beside
 marker check and the no-op, beside `src/storage/baseFile.ts`, the other vault write that
 is not a work item) · `src/commands/readme.ts` (`write-backlog-readme`: the configuration
 gate, the notices, the `checkCallback` that hides the command with no view) ·
-`src/view/registry.ts` (the live views, and which one the workspace is showing) ·
-`src/storage/collapseStore.ts` (`owningBasePath`, the leaf walk both the store and the
-registry ask) · `src/view/backlogView.ts` (announces itself while loaded) ·
+`src/view/registry.ts` (the live views, and which one the active **leaf** is drawing —
+`getActiveViewOfType` cannot return a Bases view, which is drawn inside a leaf rather than
+being one) · `src/view/backlogView.ts` (announces itself while loaded) ·
 `src/main.ts` (registration).
 The vocabulary the document is generated from is `src/domain/settings.ts` and
 `src/domain/itemTypes.ts`; the tolerant reading rules it describes are

@@ -1,8 +1,16 @@
 import { App, Notice } from 'obsidian';
 import { backlogReadmeContent } from '../domain/backlogReadme';
 import { configProblems } from '../domain/settings';
+import { BacklogModel } from '../domain/model';
+import { BacklogSettings } from '../domain/settings';
 import { ReadmeOutcome, writeBacklogReadme } from '../storage/readmeFile';
-import { activeBacklogView, LiveBacklogView } from '../view/registry';
+import { activeBacklogView } from '../view/registry';
+
+/** A view that has its first result set — the only kind a README may be generated from. */
+interface LoadedBacklogView {
+	settings: BacklogSettings;
+	model: BacklogModel;
+}
 
 /**
  * The command's id, beside the flow it runs — persisted in the user's hotkeys, so it
@@ -31,13 +39,13 @@ function outcomeNotice(outcome: ReadmeOutcome, path: string): string {
  * generated from a contradictory configuration would state a collided key as though it
  * were the one answer for both roles, which is worse than no document at all.
  */
-async function writeReadmeForView(app: App, view: LiveBacklogView): Promise<void> {
+async function writeReadmeForView(app: App, view: LoadedBacklogView): Promise<void> {
 	const problems = configProblems(view.settings);
 	if (problems.length > 0) {
 		new Notice(`Fix the view configuration first: ${problems.join('; ')}.`);
 		return;
 	}
-	const content = backlogReadmeContent(view.settings, view.model?.observedStates ?? []);
+	const content = backlogReadmeContent(view.settings, view.model.observedStates);
 	try {
 		const { outcome, path } = await writeBacklogReadme(app, view.settings.homeFolder, content);
 		new Notice(outcomeNotice(outcome, path));
@@ -55,7 +63,11 @@ async function writeReadmeForView(app: App, view: LiveBacklogView): Promise<void
  */
 export function writeBacklogReadmeCommand(app: App, checking: boolean): boolean {
 	const view = activeBacklogView(app);
-	if (view === null) return false;
-	if (!checking) void writeReadmeForView(app, view);
+	// A view still waiting for its first result set has no observed states, which is
+	// not the same as having none: generating from it would replace a good README with
+	// one whose whole state vocabulary is missing. "Not loaded" is not an answer, so
+	// the command withholds itself for the moment it takes to become one.
+	if (view === null || view.model === null) return false;
+	if (!checking) void writeReadmeForView(app, { settings: view.settings, model: view.model });
 	return true;
 }

@@ -1,7 +1,6 @@
-import { App } from 'obsidian';
+import { App, FileView } from 'obsidian';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
-import { owningBasePath } from '../storage/collapseStore';
 
 /**
  * The live Product Backlog views, so a command run from the palette can act on the
@@ -22,7 +21,7 @@ export interface LiveBacklogView {
 
 const live = new Set<LiveBacklogView>();
 
-/** Announce a view for as long as it is loaded. Returns nothing; see `forgetBacklogView`. */
+/** Announce a view for as long as it is loaded; `forgetBacklogView` ends that. */
 export function rememberBacklogView(view: LiveBacklogView): void {
 	live.add(view);
 }
@@ -32,20 +31,24 @@ export function forgetBacklogView(view: LiveBacklogView): void {
 }
 
 /**
- * The view the workspace is showing, or null when the active file is not a base one of
- * them is drawing.
+ * The view the workspace is showing, or null when the active leaf is not drawing one.
  *
- * Matching goes through the leaf that owns the element, not through a "most recent"
- * flag: a stale flag would point a write at a base the user closed, and the workspace
- * already knows the answer. Later registrations win, so with several views of one base
- * open the newest tab is the one acted on — an arbitrary tie-break, but a stable one.
+ * Matched by the **active leaf's element**, not by its file: one `.base` open in two
+ * split panes is two leaves, two views and two configurations, all answering to one
+ * path — and a command that picked between them by path would write the README of
+ * whichever view happened to be constructed last. Containment is the only thing that
+ * distinguishes them, and it is also what the leaf already knows.
+ *
+ * Later registrations still win *within* one leaf, which is where the ambiguity is
+ * harmless: a leaf draws one view at a time, so a second contained view is one being
+ * swapped in.
  */
 export function activeBacklogView(app: App): LiveBacklogView | null {
-	const active = app.workspace.getActiveFile();
-	if (!active) return null;
+	const leafView = app.workspace.getActiveViewOfType(FileView);
+	if (!leafView) return null;
 	let found: LiveBacklogView | null = null;
 	for (const view of live) {
-		if (owningBasePath(app, view.viewEl) === active.path) found = view;
+		if (leafView.containerEl.contains(view.viewEl)) found = view;
 	}
 	return found;
 }

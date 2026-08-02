@@ -2,8 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { writeBacklogReadmeCommand } from '../../src/commands/readme';
 import { README_MARKER } from '../../src/domain/backlogReadme';
-import { activeBacklogView } from '../../src/view/registry';
-import { Notice } from '../helpers/obsidian-mock';
+import { defaultSettings } from '../../src/domain/settings';
+import { activeBacklogView, forgetBacklogView, rememberBacklogView } from '../../src/view/registry';
+import { FileView, Notice } from '../helpers/obsidian-mock';
 import { flush, makeView, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 
@@ -23,21 +24,41 @@ function openBacklog(configValues: Record<string, unknown> = {}): FakeVault {
 	const vault = new FakeVault();
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });
 	makeView(vault, { homeFolder: 'work', ...configValues }, { base: BASE });
-	vault.activeFile = vault.files.get(BASE) ?? null;
+	vault.activeView = vault.leaves[vault.leaves.length - 1].view;
 	return vault;
 }
 
+/** The element of the leaf a `makeView` call mounted into. */
+function leafElOf(vault: FakeVault, index: number): HTMLElement {
+	return (vault.leaves[index].view as FileView).containerEl;
+}
+
 describe('the write backlog readme command', () => {
-	it('offers itself only while a backlog view is the active file', () => {
+	it('offers itself only while a backlog view is the active leaf', () => {
 		const vault = openBacklog();
 		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(true);
 
 		// The user moved to an ordinary note: there is no configuration to describe.
-		vault.activeFile = vault.files.get('Epic A.md') ?? null;
+		const note = new FileView(vault.addFile('Notes.md'), document.body.createDiv());
+		vault.activeView = note;
 		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(false);
 
-		vault.activeFile = null;
+		vault.activeView = null;
 		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(false);
+	});
+
+	it('withholds itself while the view is still waiting for its first result set', () => {
+		const vault = openBacklog();
+		// A view drawn in the same leaf that has not been handed data yet: an empty
+		// observed-state list here is "not loaded", not "no states", and generating from
+		// it would strip a good readme of its whole vocabulary.
+		const loading = { viewEl: leafElOf(vault, 0).createDiv(), settings: defaultSettings(), model: null };
+		rememberBacklogView(loading);
+
+		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(false);
+
+		forgetBacklogView(loading);
+		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(true);
 	});
 
 	it('writes the readme into the view s home folder, from the view s own settings', async () => {
@@ -140,14 +161,27 @@ describe('the live view registry', () => {
 		expect(activeBacklogView(vault.app as never)).toBeNull();
 	});
 
-	it('picks the view whose own base is active, not merely any open one', () => {
+	it('picks the view in the active leaf, not merely any open one', () => {
 		const vault = openBacklog();
 		const other = makeView(vault, { homeFolder: 'other' }, { base: 'other/Other.base' });
 
-		vault.activeFile = vault.files.get('other/Other.base') ?? null;
+		vault.activeView = vault.leaves[1].view;
 		expect(activeBacklogView(vault.app as never)).toBe(other.view);
 
-		vault.activeFile = vault.files.get(BASE) ?? null;
+		vault.activeView = vault.leaves[0].view;
 		expect(activeBacklogView(vault.app as never)).not.toBe(other.view);
+	});
+
+	it('tells two leaves showing the same base apart', () => {
+		// One `.base` in two split panes is two views with two configurations and one
+		// path, so the file cannot choose between them — only the leaf can.
+		const vault = openBacklog();
+		const second = makeView(vault, { homeFolder: 'elsewhere' }, { base: BASE });
+
+		vault.activeView = vault.leaves[0].view;
+		expect(activeBacklogView(vault.app as never)).not.toBe(second.view);
+
+		vault.activeView = vault.leaves[1].view;
+		expect(activeBacklogView(vault.app as never)).toBe(second.view);
 	});
 });

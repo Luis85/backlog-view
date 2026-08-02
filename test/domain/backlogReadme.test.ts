@@ -90,6 +90,21 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('| `Blocked` | No | Observed in these notes |');
 	});
 
+	it('does not claim a done value nothing carries was observed', () => {
+		// With no workflow declared, the menus append a done value so finishing work is
+		// reachable. Calling that observed would be a statement about the vault, and false.
+		const content = backlogReadmeContent(settingsWith({ stateKey: 'status', states: [], doneValues: ['Done'] }), ['Doing']);
+		expect(content).toContain('| `Doing` | No | Observed in these notes |');
+		expect(content).toContain('| `Done` | Yes | Offered so work can be marked done |');
+	});
+
+	it('quotes a state in the example when writing it bare would change what it means', () => {
+		const yamlHostile = backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Needs: review'] }), []);
+		expect(yamlHostile).toContain('status: "Needs: review"');
+		// A plain value stays plain — the example is meant to read as the notes do.
+		expect(backlogReadmeContent(settingsWith({ stateKey: 'status', states: ['Todo'] }), [])).toContain('status: Todo');
+	});
+
 	it('follows the folder precedence this view actually applies', () => {
 		const flat = backlogReadmeContent(settingsWith({ homeFolder: 'work' }), []);
 		expect(flat).not.toContain('folder note');
@@ -123,23 +138,29 @@ describe('backlogReadmeContent', () => {
 describe('readmeStates', () => {
 	it('reports the declared workflow as declared', () => {
 		expect(readmeStates(settingsWith({ states: ['Todo', 'Done'] }), ['Todo'])).toEqual([
-			{ value: 'Todo', observed: false },
-			{ value: 'Done', observed: false },
+			{ value: 'Todo', source: 'declared' },
+			{ value: 'Done', source: 'declared' },
 		]);
 	});
 
 	it('appends a value the workflow does not declare, once', () => {
 		expect(readmeStates(settingsWith({ states: ['Todo'] }), ['Blocked', 'blocked', 'Todo'])).toEqual([
-			{ value: 'Todo', observed: false },
-			{ value: 'Blocked', observed: true },
+			{ value: 'Todo', source: 'declared' },
+			{ value: 'Blocked', source: 'observed' },
 		]);
 	});
 
-	it('falls back to the observed values, with a done state to reach', () => {
-		const states = readmeStates(settingsWith({ states: [], doneValues: ['Done'] }), ['Doing']);
-		expect(states).toEqual([
-			{ value: 'Doing', observed: true },
-			{ value: 'Done', observed: true },
+	it('keeps the appended done target apart from what the notes carry', () => {
+		expect(readmeStates(settingsWith({ states: [], doneValues: ['Done'] }), ['Doing'])).toEqual([
+			{ value: 'Doing', source: 'observed' },
+			{ value: 'Done', source: 'offered' },
+		]);
+	});
+
+	it('reports a done value the notes DO carry as observed', () => {
+		expect(readmeStates(settingsWith({ states: [], doneValues: ['Done'] }), ['Doing', 'Done'])).toEqual([
+			{ value: 'Doing', source: 'observed' },
+			{ value: 'Done', source: 'observed' },
 		]);
 	});
 });

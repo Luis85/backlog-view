@@ -259,9 +259,12 @@ free of runtime code so imports stay cycle-free.
 - A view announces itself to `registry.ts` while it is loaded (constructor in,
   `onunload` out) because a palette command has no view: a Bases view is drawn *inside*
   a leaf's file view rather than being one, so `getActiveViewOfType` cannot find it.
-  Which live view is active is answered by the workspace — the active file matched
-  against `owningBasePath`, the same leaf walk the collapse store uses — never by a
-  "most recent" flag, which goes stale pointing at a base the user has closed.
+  Which live view is active is answered by the workspace, and by the **leaf** rather
+  than its file: `getActiveViewOfType(FileView)` gives the active leaf, and the view it
+  contains is the one to act on. One base open in two split panes is two views with two
+  configurations and one path, so a file-path match picks whichever was constructed
+  last — and a "most recent" flag is worse still, going stale pointing at a base the
+  user has closed.
   Registration is announcement only: it may not read `this.app`, for the reason below.
 - A Bases view is handed its `app` **after** construction, so nothing in the
   `ProductBacklogView` constructor may read `this.app`. This has bitten twice — the

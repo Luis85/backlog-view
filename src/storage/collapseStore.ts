@@ -91,19 +91,6 @@ function mapKey(id: ViewIdentity): string {
  * open rows and prune each other's paths.
  */
 export function collapseStoreIdentity(app: App, el: HTMLElement, viewName: string): ViewIdentity | null {
-	const base = owningBasePath(app, el);
-	return base === null ? null : { base, view: viewName };
-}
-
-/**
- * The `.base` file whose leaf draws `el`, or null when no leaf does — the answer to
- * "which base is this view", which the Bases API does not hand a view directly.
- *
- * Exported because two questions need it: which entry a view's UI state belongs to,
- * and (in `view/registry.ts`) which live view the workspace is actually showing. One
- * walk, so the two cannot disagree about what counts as a base.
- */
-export function owningBasePath(app: App, el: HTMLElement): string | null {
 	// An array rather than a nullable local: the callback runs synchronously, but
 	// narrowing after a closure assignment does not survive the type checker.
 	const owner: string[] = [];
@@ -118,7 +105,7 @@ export function owningBasePath(app: App, el: HTMLElement): string | null {
 		// keeps its collapse state for the session and no longer.
 		if (view.file.extension === 'base') owner.push(view.file.path);
 	});
-	return owner.length > 0 ? owner[0] : null;
+	return owner.length > 0 ? { base: owner[0], view: viewName } : null;
 }
 
 /**
