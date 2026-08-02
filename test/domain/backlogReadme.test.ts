@@ -271,6 +271,18 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('``up`link``');
 	});
 
+	it('keeps the pipe escaped when the value already ends a backslash run', () => {
+		// The row is split by a scan where a backslash consumes the next character, so
+		// escaping a pipe that already had one in front of it leaves an even run and the
+		// pipe delimits again — the cell the escaping exists to protect, split anyway.
+		const content = readme(settingsWith({ stateKey: 'status', states: ['Waiting \\| external'] }), []);
+		expect(content).toContain('| `Waiting \\\\\\| external` |');
+		// Said again the way a parser reads it: walk the row letting each backslash eat the
+		// character after it, and the pipes still standing are the three cells' delimiters.
+		const row = content.split('\n').find((line) => line.includes('Waiting')) ?? '';
+		expect(row.replace(/\\[\s\S]/g, '').split('|')).toHaveLength(5);
+	});
+
 	it('documents the empty parent value, and what it means in folder mode', () => {
 		// The plugin writes an empty value to move an item to the top level, and folder
 		// mode reads an ABSENT key as "infer from the folder note" — so an outside editor

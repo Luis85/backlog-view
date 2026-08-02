@@ -148,8 +148,16 @@ function code(value: string): string {
  * The same, inside a table cell — where a pipe ends the cell whatever it sits in,
  * code span included, and has to be escaped before the row is parsed. A state named
  * `Waiting | external` otherwise silently becomes two columns.
+ *
+ * The backslashes ALREADY in the value come with it: the row is split by a scan that
+ * lets a backslash consume the character after it, so a value spelling `\|` itself
+ * would put an even run before the pipe and hand the parser a delimiter again. The run
+ * is doubled so it consumes itself and the escape still reaches the pipe. That costs a
+ * backslash on screen — a code span shows what it holds, and the cell keeps the pair —
+ * which is the trade this makes: a value drawn with one backslash too many, rather than
+ * a table that stops being a table halfway down.
  */
-const cell = (value: string): string => code(value).replace(/\|/g, '\\|');
+const cell = (value: string): string => code(value).replace(/(\\*)\|/g, '$1$1\\|');
 
 const list = (values: string[]): string =>
 	values.length > 0 ? values.map((v) => (v.startsWith('*') ? v : cell(v))).join(', ') : '*(nothing)*';
