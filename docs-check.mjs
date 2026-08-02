@@ -57,13 +57,18 @@ const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "tes
 const LIVING = [path.join(DOCS, "requirements"), path.join(DOCS, "adrs")];
 /** Anywhere beneath one of them: `walk` finds nested notes, so the rule has to reach them. */
 const isLiving = (file) => LIVING.some((dir) => file.startsWith(dir + path.sep));
+/** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
+const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 /**
- * The only files legitimately outside the work-item hierarchy: ADRs, the index pages, and
- * `superpowers/` — where the `brainstorming` and `writing-plans` skills save design specs
- * and implementation plans (CLAUDE.md). Those are plain markdown, never a backlog note or
- * an ADR, so they carry none of the frontmatter this file requires of everything else.
+ * Where the `brainstorming` and `writing-plans` skills save design specs and
+ * implementation plans (CLAUDE.md) — plain markdown, never a backlog note or an ADR, so
+ * it carries none of the frontmatter this file requires of everything else. Anchored to
+ * the `docs/` root exactly like `LIVING`, rather than a bare `superpowers[/\\].*` regex: an
+ * unanchored pattern would also exempt a coincidental `docs/requirements/superpowers/`, and
+ * `walk` descends nested directories so that would go unnoticed rather than unmatched.
  */
-const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|superpowers[/\\].*|README)\.md$/;
+const SUPERPOWERS = path.join(DOCS, "superpowers");
+const isSuperpowers = (file) => file.startsWith(SUPERPOWERS + path.sep);
 
 const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
@@ -215,28 +220,45 @@ const allText = [...texts.values()].join("\n");
 
 // ---------------------------------------------------------------- the backlog tree
 const notes = new Map();
+// The register addresses work items by **basename** — that is what a `[[wikilink]]` and a
+// `parent:` resolve against — so two notes sharing one is an ambiguity the whole tree is
+// built on. `superpowers/` documents are exempt from carrying a `type`, never from this:
+// they are ordinary prose a wikilink can still name, so a generated spec landing on a name
+// already claimed is exactly the ambiguity this map exists to catch. Index pages and ADRs
+// are the one class that stays outside it — addressed by *path* (`adrs/README.md`,
+// `0013-….md`), which is why their names are never in question.
+const usedNames = new Map();
+const claimName = (file, name) => {
+	if (usedNames.has(name)) {
+		fail(file, `basename is already used by ${usedNames.get(name)} — a wikilink to either is ambiguous`);
+		return false;
+	}
+	usedNames.set(name, file);
+	return true;
+};
 for (const file of files) {
 	const fm = frontmatter(texts.get(file));
 	const type = fm?.field("type");
-	if (!type) {
-		// ADRs and the index files are deliberately not work items. Anything ELSE without a
-		// type is a note that has silently fallen out of the register — no parent checked,
-		// no order, no use-case shape — which is the failure mode a skip hides best.
-		if (!NOT_WORK_ITEMS.test(file)) fail(file, "backlog note has no `type` in its frontmatter");
-		continue;
-	}
-	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
-	// The register addresses work items by **basename** — that is what a `[[wikilink]]` and
-	// a `parent:` resolve against — so two notes sharing one is an ambiguity the whole tree
-	// is built on. It is also a silent skip in this very loop: `set` would replace the
-	// first, and the replaced note would be checked for no parent, no order and no use-case
-	// shape while the counts below still looked plausible. Index pages and ADRs are addressed
-	// by *path* (`adrs/README.md`, `0013-….md`), which is why their names are not in question.
 	const name = path.basename(file, ".md");
-	if (notes.has(name)) {
-		fail(file, `basename is already used by ${notes.get(name).file} — a wikilink to either is ambiguous`);
+	if (!type) {
+		// ADRs and the index files are deliberately not work items, and never claim a name.
+		if (NOT_WORK_ITEMS.test(file)) continue;
+		// A superpowers doc claims its name like any other note, but needs no backlog shape.
+		if (isSuperpowers(file)) {
+			claimName(file, name);
+			continue;
+		}
+		// Anything else without a type is a note that has silently fallen out of the
+		// register — no parent checked, no order, no use-case shape — which is the
+		// failure mode a skip hides best.
+		fail(file, "backlog note has no `type` in its frontmatter");
 		continue;
 	}
+	// A collision here is also a silent skip in this very loop: `set` would replace the
+	// first, and the replaced note would be checked for no parent, no order and no use-case
+	// shape while the counts below still looked plausible.
+	if (!claimName(file, name)) continue;
+	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
 	// `Number(field ?? 0)` manufactured a rank for a note that has none: a missing `order`
 	// became 0, which is a legal-looking value that no sibling had claimed, so the note
 	// passed the uniqueness check by being unranked. The register's conventions say every

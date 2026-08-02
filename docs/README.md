@@ -28,8 +28,13 @@ is the honest report.
 `superpowers/` is a third kind of exemption, for a different reason: not a deliberate
 design choice about the plugin's own schema, but a landing spot for the `brainstorming`
 and `writing-plans` skills' own working documents (CLAUDE.md) — plain markdown with no
-backlog frontmatter at all. `docs-check.mjs` exempts it by the same mechanism as the ADRs
-and the index pages, so it never has to pretend to be a work item to live under `docs/`.
+backlog frontmatter at all. `docs-check.mjs` exempts anything under it from needing a
+`type`, `order` or `status`, so it never has to pretend to be a work item to live under
+`docs/`. The exemption is anchored to `docs/superpowers/` itself, not a bare folder-name
+match, so a coincidental `superpowers/` nested somewhere else in the register is still
+held to the ordinary rules. It is **not** exempt from the basename rule two paragraphs up:
+a generated spec or plan is still ordinary prose a `[[wikilink]]` can name, so it still
+claims its name against every other note in `docs/`.
 
 ## The trees
 
