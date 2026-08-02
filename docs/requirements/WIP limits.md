@@ -66,7 +66,15 @@ rule.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The limits will be generated options, one per
-configured state, the way the per-type folder keys already are in
-`src/domain/viewOptions.ts`, with the resolution and the over-limit predicate in
-`src/domain/settings.ts` where the rest of the vocabulary's rules sit.
+One generated option per configured state — `wipLimit.<state>`, lowercased, the
+mechanism the per-type folder keys already use — declared in
+`src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`, which is also
+where a done state is refused a limit. The column carries its own limit
+(`src/domain/board.ts`), the header draws it (`src/view/render/board.ts`), and no
+write path imports `overBy` at all — the cheapest possible guarantee that a limit
+refuses nothing.
+
+Driven by `test/domain/settings.test.ts`, `test/domain/viewOptions.test.ts`,
+`test/domain/board.test.ts`, `test/view/board.test.ts` and — for the guarantee —
+`test/view/columnAgreements.test.ts`, which drives every board write path against a
+column already over its limit.

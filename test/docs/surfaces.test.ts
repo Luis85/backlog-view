@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { BasesViewConfig } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
@@ -86,10 +87,15 @@ function loadPlugin() {
 const registeredCommands = () => loadPlugin().commands;
 const registeredViews = () => loadPlugin().basesViews;
 
+/** Stand-in for BasesViewConfig backed by a plain object. */
+function fakeConfig(values: Record<string, unknown> = {}) {
+	return { get: (key: string) => values[key], getAsPropertyId: () => null } as never;
+}
+
 /** Every option, flattened out of its groups — the shape Bases is handed. */
-function optionKeys(): string[] {
+function optionKeys(config?: BasesViewConfig): string[] {
 	const keys: string[] = [];
-	for (const entry of getViewOptions()) {
+	for (const entry of getViewOptions(config)) {
 		const group = entry as { items?: { key?: string }[]; key?: string };
 		if (Array.isArray(group.items)) keys.push(...group.items.map((i) => i.key ?? ''));
 		else if (group.key) keys.push(group.key);
@@ -115,6 +121,18 @@ describe('every user-facing surface is specified', () => {
 		for (const type of ['epic', 'feature', 'pbi', 'task', 'issue', 'bug']) {
 			expect(keys).toContain(`typeFolder.${type}`);
 		}
+	});
+
+	it('includes the keys generated per configured state, and names their families', () => {
+		// These keys cannot be enumerated the way the per-type ones can — they are built
+		// from the user's own workflow — so what a requirement names is the FAMILY, and
+		// what this asserts is that the schema really generates one per state.
+		const keys = optionKeys(fakeConfig({ stateValues: 'New, In review, Done', doneValues: 'Done' }));
+		expect(keys).toContain('wipLimit.in review');
+		expect(keys).toContain('columnPolicy.in review');
+		expect(keys).not.toContain('wipLimit.done');
+		expect(named('wipLimit')).toBe(true);
+		expect(named('columnPolicy')).toBe(true);
 	});
 
 	it('names every registered command id in a requirement', () => {

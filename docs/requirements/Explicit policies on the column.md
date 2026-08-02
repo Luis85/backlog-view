@@ -62,7 +62,12 @@ difference between a board that shows states and one that shows the working agre
 
 ## Where it lives
 
-**Nothing yet — this note is design.** One generated option per configured state in
-`src/domain/viewOptions.ts`, the mechanism the per-type folder keys already use — which
-is also why the surfaces test discovers generated keys by calling the schema rather than
-reading the source for them.
+One generated option per configured state — `columnPolicy.<state>`, lowercased,
+declared in `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The
+column carries its own policy (`src/domain/board.ts`); the header's affordance and its
+`aria-describedby` are in `src/view/render/board.ts`, and the column menu is
+`buildColumnMenu` in `src/view/interactions/menu.ts`, opened by the header and by
+`src/view/interactions/keyboard.ts` on the selected column stop.
+
+Driven by `test/domain/viewOptions.test.ts`, `test/domain/board.test.ts` and
+`test/view/columnAgreements.test.ts`.

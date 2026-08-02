@@ -163,10 +163,6 @@ export function typeFolderKey(typeName: string): string {
  * declares the option and the resolver that reads it back, for the reason
  * {@link typeFolderKey} gives: a key spelled twice is a key that can differ, and this
  * one is user data in a `.base` file.
- *
- * @expected-unused Only this file's own `resolveSettings` calls it so far; the schema
- * half of that sharing (`viewOptions.ts`) is the next task in this increment. Once it
- * imports this, fallow reports this tag stale — that is the signal to delete it.
  */
 export function wipLimitKey(state: string): string {
 	return `wipLimit.${state.toLowerCase()}`;
@@ -174,8 +170,6 @@ export function wipLimitKey(state: string): string {
 
 /**
  * The persisted option key for one state's column policy.
- *
- * @expected-unused Same reason as {@link wipLimitKey}: awaiting `viewOptions.ts`.
  */
 export function columnPolicyKey(state: string): string {
 	return `columnPolicy.${state.toLowerCase()}`;
