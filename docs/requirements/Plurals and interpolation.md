@@ -104,6 +104,6 @@ only be minted where the catalog is.
 
 What it replaces is spread across the view: nine inline plural ternaries in
 `src/view/render/toolbar.ts`, `src/view/render/emptyStates.ts`,
-`src/view/render/columns.ts`, `src/view/backlogView.ts`, `src/view/interactions/undo.ts`
+`src/view/render/columns.ts`, `src/view/interactions/undo.ts`
 and `src/view/interactions/structure.ts`, and the literal `' and '` joiner in
 `src/domain/settings.ts`.

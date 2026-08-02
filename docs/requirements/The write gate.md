@@ -59,7 +59,13 @@ property of whichever code path happened to run.
 
 ## Where it lives
 
-`src/view/backlogView.ts` (`runExclusively`, `applySafely`) ·
+`src/view/writeGate.ts` (`WriteGate` — `runExclusively`, `applySafely`, `undoLast`, the
+undo slot and the deferred mid-batch refresh). It moved out of `src/view/backlogView.ts`
+when the view hit its 400-line cap, the same extraction `filterState.ts` and
+`collapseState.ts` already are: five of that class's fields served this one concern and
+only `busy` was read from outside it. The view now owns a gate, delegates the three host
+methods to it, and publishes its progress — `syncBusyUi`, because the gate reaches none
+of the view's elements ·
 `src/storage/frontmatter.ts` (`applyWrites` — the only module that writes) ·
 `src/domain/writePlan.ts` (planning) · `src/domain/settings.ts` (`configProblems`) ·
 `eslint.config.mjs` (`no-restricted-syntax` banning `processFrontMatter` and

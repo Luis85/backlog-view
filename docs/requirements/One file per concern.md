@@ -61,4 +61,4 @@ change one behaviour.
 `.fallowrc.json` (dead code, duplication, complexity) ·
 `CLAUDE.md` and the per-layer `src/*/CLAUDE.md` files (the table of what each file owns).
 Done by: [[Lift empty states out of rows]], [[Split the view options schema]],
-[[Split the view test suite]].
+[[Split the view test suite]], [[Split the view dispatch hub]].

@@ -15,14 +15,22 @@ free of runtime code so imports stay cycle-free.
   anything captured at wire time (drag handlers) must read expansion state live, because
   a targeted refresh leaves surrounding rows in place. Data updates still rebuild
   everything — skipping that needs to account for arbitrary chip property values.
+- The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
+  slot, `recovery`, the deferred update and the busy state — five fields serving one
+  concern, of which only `busy` was ever read from outside it — and the view owns one,
+  delegates `applySafely`, `canUndo` and `undoLast` to it, and publishes its progress
+  through `syncBusyUi`. The gate touches none of the view's ELEMENTS (Notices are its
+  own; the toolbar and the tree are the view's, reached through the two hooks it is
+  constructed with) and reads view state through `BacklogViewHost` like every other
+  module.
 - A batch write is one refresh, not one per file. Every file `applyWrites` touches
   comes back as its own `onDataUpdated`, so mid-batch the view would rebuild the model
   and every row hundreds of times, each pass rendering a half-applied tree. While
-  `applying`, `onDataUpdated` only records `pendingDataUpdate`; `applySafely` flushes it
-  through `refreshFromData` in its `finally`, so a failed batch refreshes too — the
-  writes before the failure are on disk and the tree has to show them. Nothing about
-  interaction pauses: each write awaits, so scrolling, filtering and selection keep
-  working against the (briefly stale) model.
+  `applying`, `onDataUpdated` only records the update (`gate.deferUpdate()`); the gate
+  flushes it through `refreshFromData` in `runExclusively`'s `finally`, so a failed batch
+  refreshes too — the writes before the failure are on disk and the tree has to show
+  them. Nothing about interaction pauses: each write awaits, so scrolling, filtering and
+  selection keep working against the (briefly stale) model.
 - `applyWrites` reports progress per file and the view publishes it with `syncBusy`,
   which touches text and flags only — never structure. Re-rendering the toolbar per
   tick would reintroduce exactly the jank the deferral removes. The indicator is

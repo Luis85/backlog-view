@@ -168,8 +168,13 @@ export interface BacklogViewHost {
 	openItemToSide(item: BacklogItem): void;
 	/** Open the row context menu at the item's row — the keyboard path (Menu key / Shift+F10). */
 	showContextMenuFor(item: BacklogItem): void;
-	/** Open the column's own menu, anchored to the column that index names. */
-	showColumnMenuFor(index: number): void;
+	/**
+	 * Open the column's own menu, anchored to the column that index names. False when
+	 * there was nothing to open — a column with nothing agreed offers no menu — so the
+	 * keyboard path can leave the key to whoever else wants it rather than swallowing
+	 * it on a stop where nothing happens. The pointer path already worked that way.
+	 */
+	showColumnMenuFor(index: number): boolean;
 
 	/**
 	 * Bind this view's suggested key for every optional property nobody has named yet

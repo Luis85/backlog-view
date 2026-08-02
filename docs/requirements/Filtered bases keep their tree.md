@@ -69,7 +69,7 @@ structure that makes the answer mean anything.
 `src/domain/model.ts` (loading ancestors, the `outsideFilter` flag) ·
 `src/domain/vocabulary.ts` (the states, tags and horizons a menu may offer — all three
 skip context rows, which is why they sit in one file stating that rule once) ·
-`src/view/backlogView.ts` (`applySafely`'s refusal) · and every interaction module, which
+`src/view/writeGate.ts` (`applySafely`'s refusal) · and every interaction module, which
 is the point.
 Tests: **`test/view/contextRowWrites.test.ts`** and **`test/view/contextCardWrites.test.ts`**
 are the stress suites, rows and cards;

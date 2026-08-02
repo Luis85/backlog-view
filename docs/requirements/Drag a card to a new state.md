@@ -10,6 +10,7 @@ files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
+  - src/view/writeGate.ts
   - src/view/interactions/cardDrag.ts
 ---
 

@@ -131,7 +131,8 @@ changing what any of them does.
 `src/view/render/emptyStates.ts` · `src/view/interactions/menu.ts` ·
 `src/view/interactions/create.ts` · `src/view/interactions/tags.ts` ·
 `src/view/interactions/structure.ts` · `src/view/interactions/undo.ts` ·
-`src/view/backlogView.ts` · `src/ui/prompts.ts` · `src/commands/scaffold.ts` ·
+`src/view/backlogView.ts` · `src/view/writeGate.ts` · `src/ui/prompts.ts` ·
+`src/commands/scaffold.ts` ·
 `src/main.ts`.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.

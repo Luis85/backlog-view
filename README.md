@@ -500,9 +500,7 @@ The board needs a **state property**. Without one it shows guidance and a button
 it up. The **Workflow states (in order)** list is optional: with it, those are the columns,
 in that order. Without it, the board draws the states your notes actually carry — plus a
 done column even if nothing is in it yet, when none of the states you carry already
-counts as done, so marking an item done is always one click away. And even with a list
-configured, a value one of your **results** carries that the list omits still gets a
-column, so no card of yours is ever homeless.
+counts as done, so marking an item done is always one click away.
 
 Only your results mint columns. A card the Base's filter excluded, shown as context, never
 adds a column for its own state — that state is not your board's vocabulary. If its value

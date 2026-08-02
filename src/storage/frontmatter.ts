@@ -187,7 +187,10 @@ function applyStamps(
 	// state — a stale row can propose the state the note already holds, and stamping
 	// that would date a redundant selection rather than the moment work began, and
 	// spend the undo slot doing it — and the property must still be empty, so the
-	// earliest start survives rework.
+	// earliest start survives rework. Empty is asked through `ownValue`, never `fm[key]`:
+	// a stamp key named `constructor` or `valueOf` resolves to an inherited FUNCTION on a
+	// note that lacks it, which is truthy, so the blank test would read it as already
+	// stamped and decline the stamp forever.
 	if (
 		write.startedDate !== undefined &&
 		settings.startedDateKey &&

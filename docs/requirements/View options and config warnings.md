@@ -79,9 +79,12 @@ colliding option keys — and the view should format them. That keeps the domain
 pure by the same argument the root `CLAUDE.md` makes about `DropTarget`: the type belongs
 with the code that produces it, and prose is not what this function produces.
 
-There are two readers to update, not one: `toolbar.ts:77` renders the joined problems as
-an `aria-label` on the warning chip, and the write gate quotes `problems[0]` into a
-Notice from three call sites (`backlogView.ts:534`, `create.ts:34`).
+There are two readers to update, not one: `renderConfigWarning` in `toolbar.ts` renders
+the joined problems as an `aria-label` on the warning chip, and `problems[0]` is quoted
+into a Notice from three call sites — `writeGate.ts` (the gate), `structure.ts` (the setup
+action, which runs the gate itself before touching the `.base`) and `create.ts`. Named
+rather than cited by line: the three were last written as two line numbers and one
+omission, and both numbers had moved by the time anyone looked.
 
 ## Acceptance criteria
 

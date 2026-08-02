@@ -137,8 +137,11 @@ export function drag(from: HTMLElement, to: HTMLElement, zone: 'before' | 'after
 	to.dispatchEvent(new MouseEvent('drop', { bubbles: true, clientY }));
 }
 
-export function key(tree: HTMLElement, keyName: string, modifiers: Partial<KeyboardEventInit> = {}): void {
-	tree.dispatchEvent(new KeyboardEvent('keydown', { key: keyName, bubbles: true, ...modifiers }));
+/** Dispatch a keydown, returning the event so a test can ask whether it was consumed. */
+export function key(tree: HTMLElement, keyName: string, modifiers: Partial<KeyboardEventInit> = {}): KeyboardEvent {
+	const evt = new KeyboardEvent('keydown', { key: keyName, bubbles: true, cancelable: true, ...modifiers });
+	tree.dispatchEvent(evt);
+	return evt;
 }
 
 /** Two epics; the second has two features. */

@@ -1,15 +1,15 @@
-import { BasesView, Keymap, Menu, Notice, QueryController, setIcon } from 'obsidian';
+import { BasesView, Keymap, Menu, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
 import { FilterState } from './filterState';
 import {
 	BacklogViewHost,
 	BoardSnapshot,
-	BusyState,
 	ChipProp,
 	PRODUCT_BACKLOG_VIEW_TYPE,
 	Projection,
 	RoadmapSnapshot,
 } from './host';
+import { WriteGate } from './writeGate';
 import { announceBoardMove, announceHorizonMove, CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
@@ -20,8 +20,6 @@ import { DropTarget } from '../domain/dropTargets';
 import { horizonSource, RoadmapAxis } from '../domain/roadmap';
 import { computeDropWrites, computeHorizonWrites, computeStateWrites, ItemWrite } from '../domain/writePlan';
 import { todayStamp } from '../domain/noteFields';
-import { applyWrites, RestoreWrite } from '../storage/frontmatter';
-import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
@@ -29,7 +27,7 @@ import { chipProps, rowContext, RowContext, syncColumnFit } from './render/colum
 import { renderLoadingState } from './render/emptyStates';
 import { renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
-import { adoptableProperties, BacklogSettings, configProblems, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
+import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 
@@ -67,18 +65,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private readonly filter = new FilterState();
 	groupingIgnored = false;
 	private readonly collapse: CollapseState;
-	private applying = false;
-	/**
-	 * Inverses of the most recent effective batch, in write order — the single-level,
-	 * session-only undo. Replaced only by a batch that actually changed something.
-	 */
-	private lastUndo: RestoreWrite[] | null = null;
-	/** Keeps undo and redo coherent when a replay fails partway — see UndoRecovery. */
-	private readonly recovery = new UndoRecovery();
-	/** A data update that arrived mid-batch and is waiting for it to finish. */
-	private pendingDataUpdate = false;
-	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
-	private busy: BusyState | null = null;
+	/** The write path: validation, serialization, progress and the undo slot. */
+	private readonly gate: WriteGate;
 	private watchingRenames = false;
 	/**
 	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
@@ -109,6 +97,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 		this.selection = new SelectionController(this.treeEl, this.rowEls, () => this.board?.colEls ?? []);
 		this.collapse = new CollapseState(this);
+		this.gate = new WriteGate(this, {
+			syncBusy: () => this.syncBusyUi(),
+			flushDataUpdate: () => this.refreshFromData(),
+		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
 			treeEl: this.treeEl,
@@ -180,15 +172,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	onDataUpdated(): void {
-		// Every file a batch touches comes back here as its own data update, and
-		// rebuilding the model and every row for each one is the one thing that
-		// genuinely stalls this view — a backfill over a large backlog would do it
-		// hundreds of times, each render showing a half-applied tree. The refresh
-		// waits for the batch and then runs once, against the final state.
-		if (this.applying) {
-			this.pendingDataUpdate = true;
-			return;
-		}
+		// A batch in flight defers this and flushes it once at the end — see the gate.
+		if (this.gate.deferUpdate()) return;
 		this.refreshFromData();
 	}
 
@@ -351,23 +336,25 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.showMenuBelow(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
 	}
 
-	/** Open the column's own menu, anchored to the column that index names. */
-	showColumnMenuFor(index: number): void {
-		this.showMenuBelow(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
+	showColumnMenuFor(index: number): boolean {
+		return this.showMenuBelow(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
 	}
 
 	/**
 	 * Anchor a menu under its own element's rect — the keyboard path for a row or a
 	 * column stop, neither of which has a pointer to sit under. Falls back to the
-	 * viewport corner when there is no element to anchor to, and does nothing at all
-	 * when there is no menu. The fallback is a row's, not deliberately a column's too:
-	 * `colEls` and `board.columns` are built by the same `.map()` over the same array
+	 * viewport corner when there is no element to anchor to, and reports false when
+	 * there was no menu to open, so a caller that swallowed the key can give it back.
+	 * The fallback is a row's, not deliberately a column's too: `colEls` and
+	 * `board.columns` are built by the same `.map()` over the same array
 	 * (`renderBoard`), so an index that resolves a column always resolves an element,
 	 * and this branch stays unreachable from `showColumnMenuFor`.
 	 */
-	private showMenuBelow(menu: Menu | null, el: HTMLElement | null): void {
+	private showMenuBelow(menu: Menu | null, el: HTMLElement | null): boolean {
+		if (!menu) return false;
 		const rect = el?.getBoundingClientRect();
-		menu?.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
+		menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
+		return true;
 	}
 
 	private rowElFor(item: BacklogItem): HTMLElement | null {
@@ -399,7 +386,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (!this.model) return;
 		renderToolbar(this, this.toolbarEl);
 		// The toolbar was just rebuilt; a batch may still be running behind it.
-		syncBusy(this.toolbarEl, this.busy, this.canUndo());
+		this.syncBusyUi();
 		this.renderTreeContent();
 	}
 
@@ -522,126 +509,24 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return applied;
 	}
 
-	async applySafely(writes: ItemWrite[]): Promise<boolean> {
-		if (writes.length === 0) return false;
-		// Notes the Base excluded are context, and nothing may write to them: the
-		// controls that could are withheld and the auto-type cascade stops at them.
-		// If one still arrives, the batch is refused whole — dropping just that write
-		// would apply the rest and leave the hierarchy half-updated.
-		if (writes.some((w) => this.model?.byPath.get(w.file.path)?.outsideFilter === true)) {
-			console.error('Product Backlog: refused a batch writing to a note outside the filter', writes);
-			new Notice('That change would edit a note outside this base’s filter, so nothing was written.');
-			return false;
-		}
-		return this.runExclusively(writes.length, (onProgress, onInverse) =>
-			applyWrites(this.app, this.settings, writes, onProgress, onInverse),
-		);
+	applySafely(writes: ItemWrite[]): Promise<boolean> {
+		return this.gate.applySafely(writes);
 	}
 
 	canUndo(): boolean {
-		return this.lastUndo !== null && this.lastUndo.length > 0;
+		return this.gate.canUndo();
 	}
 
-	async undoLast(): Promise<boolean> {
-		const restores = this.lastUndo;
-		if (!restores || restores.length === 0) {
-			new Notice('Nothing to undo.');
-			return false;
-		}
-		// No context-row check here, deliberately: authorization came at capture time.
-		// This batch can only name files its forward batch wrote while they were
-		// results — and the write being undone may itself have moved one out of the
-		// filter, which is exactly the change the user is taking back. The current
-		// model's verdict on those files answers a different question.
-		const batch = [...restores].reverse();
-		const tracker: ReplayTracker = { finished: 0 };
-		const ok = await this.runExclusively(batch.length, replayRun(this.app, batch, tracker), restores);
-		// What the slot becomes is the recovery's question, not the gate's: a
-		// completed replay rejoins any redo stranded by the failure it recovered
-		// from, and one that failed partway holds its place with the unfinished
-		// remainder, so the next undo finishes taking the change back.
-		this.lastUndo = this.recovery.settle(ok, restores, batch, tracker, this.lastUndo);
-		// The gate's closing sync ran before this bookkeeping settled the slot — a
-		// consumed retry re-arms the carried redo AFTER setBusy(null) disabled the
-		// button — so publish the settled answer.
-		syncBusy(this.toolbarEl, this.busy, this.canUndo());
-		return ok;
+	undoLast(): Promise<boolean> {
+		return this.gate.undoLast();
 	}
 
-	/**
-	 * The write gate every batch passes: config validation, one batch at a time,
-	 * progress publication, and the single-level undo slot. Inverses install on the
-	 * first EFFECTIVE write — a batch that changes nothing (a state re-set to
-	 * itself) emits none and leaves the previous undo in place, while a batch that
-	 * fails partway has already installed the applied prefix, which is exactly the
-	 * part that still needs to be undoable.
-	 */
-	private async runExclusively(
-		total: number,
-		run: (
-			onProgress: (done: number, total: number) => void,
-			onInverse: (inverse: RestoreWrite) => void,
-		) => Promise<void>,
-		replaying?: RestoreWrite[],
-	): Promise<boolean> {
-		const problems = configProblems(this.settings);
-		if (problems.length > 0) {
-			// Writing with e.g. parent and order on the same key would corrupt notes.
-			new Notice(`Fix the view options first: ${problems[0]}`);
-			return false;
-		}
-		if (this.applying) {
-			new Notice('Still applying the previous change — try again in a moment.');
-			return false;
-		}
-		this.applying = true;
-		this.setBusy({ done: 0, total });
-		const inverses: RestoreWrite[] = [];
-		let installed = false;
-		let completed = false;
-		const onInverse = (inverse: RestoreWrite) => {
-			if (!installed) {
-				installed = true;
-				this.lastUndo = inverses;
-			}
-			inverses.push(inverse);
-		};
-		try {
-			await run((done, tot) => this.setBusy({ done, total: tot }), onInverse);
-			completed = true;
-			return true;
-		} catch (e) {
-			console.error('Product Backlog: failed to update items', e);
-			new Notice('Failed to update backlog items. See the developer console for details.');
-			return false;
-		} finally {
-			// A replay that completed but restored nothing is SPENT, not retryable:
-			// its conflicts stay conflicted and its missing notes stay missing, so
-			// re-offering the same dead batch would make the undo button lie forever.
-			// A forward batch that changed nothing keeps the slot (the whole point of
-			// effective-only inverses), and so does a replay that FAILED — a
-			// transient write error deserves its retry.
-			if (replaying && completed && !installed && this.lastUndo === replaying) {
-				this.lastUndo = null;
-			}
-			this.applying = false;
-			this.setBusy(null);
-			// Whatever landed while the batch ran gets one rebuild, now, against the
-			// finished state. A failed batch takes this path too: the writes before the
-			// failure are applied, and the tree has to show what is actually on disk.
-			if (this.pendingDataUpdate) {
-				this.pendingDataUpdate = false;
-				this.refreshFromData();
-			}
-		}
-	}
-
-	/** Publish batch progress to the toolbar without re-rendering anything. */
-	private setBusy(state: BusyState | null): void {
-		this.busy = state;
-		syncBusy(this.toolbarEl, state, this.canUndo());
+	/** Publish the gate's progress to the toolbar and the tree, re-rendering nothing. */
+	private syncBusyUi(): void {
+		const busy = this.gate.busy;
+		syncBusy(this.toolbarEl, busy, this.canUndo());
 		// The tree's content is mid-change; say so once, rather than per row.
-		if (state) this.treeEl.setAttribute('aria-busy', 'true');
+		if (busy) this.treeEl.setAttribute('aria-busy', 'true');
 		else this.treeEl.removeAttribute('aria-busy');
 	}
 }

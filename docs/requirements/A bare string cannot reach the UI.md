@@ -425,6 +425,7 @@ that it copies.
 What it constrains is every rendering module — `src/view/render/toolbar.ts`,
 `src/view/render/rows.ts`, `src/view/render/columns.ts`,
 `src/view/render/emptyStates.ts`, `src/view/interactions/menu.ts`,
-`src/view/backlogView.ts`, `src/ui/prompts.ts`, `src/commands/scaffold.ts` and
+`src/view/backlogView.ts`, `src/view/writeGate.ts`, `src/ui/prompts.ts`,
+`src/commands/scaffold.ts` and
 `src/main.ts` — plus `src/domain/viewOptions.ts`, whose option objects are text
 destinations with no setter to ban.

@@ -5,13 +5,13 @@ import {
 	absentReading,
 	CivilDate,
 	FieldReading,
+	ownValue,
 	ParentRef,
 	readDate,
 	readNumber,
 	readPlacement,
 	readString,
 	readTags,
-	ownValue,
 	resolveParent,
 } from './noteFields';
 import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
