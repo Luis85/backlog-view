@@ -276,11 +276,20 @@ In `resolveSettings`, after the existing `const doneValues = list('doneValues');
 
 ```ts
 	const states = dedupe(list('stateValues'));
-	const doneSet = new Set(doneValues.map((v) => v.toLowerCase()));
+	// The EFFECTIVE done list, not the raw one: `doneValues` falls back to
+	// DEFAULT_DONE_VALUES when the `.base` never set it, and every other reader of
+	// "is this done" (model.ts, board.ts, backlogReadme.ts) sees the resolved field.
+	// Filtering on the raw list would grant a limit to a state literally named `Done`
+	// in the commonest configuration there is.
+	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
+	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
 	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
 ```
+
+The returned `doneValues:` field must use `effectiveDoneValues` too, so the one list is
+computed once and cannot drift from the set built out of it.
 
 and in the returned object, replacing the existing `states: dedupe(list('stateValues')),`:
 
