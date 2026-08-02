@@ -2,7 +2,7 @@ import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, readDate, sameValue } from '../../domain/noteFields';
-import { axisKeyFor, horizonMenuValues } from '../../domain/settings';
+import { horizonMenuValues, optionalKeyFor } from '../../domain/settings';
 import { computeHorizonWrites, computeScheduleWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 
@@ -20,7 +20,7 @@ import { SchedulePromptModal } from '../../ui/prompts';
 
 /** True when the note carries either configured date key — what Unschedule can take away. */
 export function carriesDates(item: BacklogItem): boolean {
-	return item.axisKeys.start || item.axisKeys.target;
+	return item.ownKeys.start || item.ownKeys.target;
 }
 
 /**
@@ -86,7 +86,7 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
 	// Offered only while the note carries the key, so no entry here can write nothing —
 	// and it removes the key rather than blanking it: untriaged is a state a note
 	// returns to, whereas an empty value would render as a bucket named nothing.
-	if (!item.axisKeys.horizon) return;
+	if (!item.ownKeys.horizon) return;
 	menu.addSeparator();
 	menu.addItem((si) =>
 		si
@@ -115,7 +115,7 @@ function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: stri
 	] as const;
 	const fields = [];
 	for (const end of ends) {
-		const key = axisKeyFor(host.settings, end.field);
+		const key = optionalKeyFor(host.settings, end.field);
 		if (key === '') continue;
 		fields.push({ field: end.field, name: key, value: end.reading.value ? formatCivil(end.reading.value) : '' });
 	}

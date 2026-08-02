@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-	axisKeyFor,
+	adoptableProperties,
 	configProblems,
 	defaultSettings,
 	horizonMenuValues,
+	OPTIONAL_FIELDS,
+	OPTIONAL_PROPERTIES,
+	optionalKeyFor,
+	optionalProperty,
 	resolveSettings,
 	stateMenuValues,
 } from '../../src/domain/settings';
@@ -238,13 +242,90 @@ describe('horizonMenuValues', () => {
 	});
 });
 
-describe('axisKeyFor', () => {
+describe('optionalKeyFor', () => {
 	it('maps each field to the property it is stored under', () => {
-		const settings = { ...defaultSettings(), horizonKey: 'horizon', startKey: 'start', targetKey: 'due' };
-		expect(axisKeyFor(settings, 'horizon')).toBe('horizon');
-		expect(axisKeyFor(settings, 'start')).toBe('start');
-		expect(axisKeyFor(settings, 'target')).toBe('due');
+		const settings = {
+			...defaultSettings(),
+			stateKey: 'status',
+			startedDateKey: 'started',
+			finishedDateKey: 'finished',
+			horizonKey: 'horizon',
+			startKey: 'start',
+			targetKey: 'due',
+		};
+		// Every field of the table, so a switch that fell through would be caught here
+		// rather than by whichever feature happened to read the wrong key.
+		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(settings, field))).toEqual([
+			'status',
+			'started',
+			'finished',
+			'horizon',
+			'start',
+			'due',
+		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
-		expect(axisKeyFor(defaultSettings(), 'horizon')).toBe('');
+		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual(['', '', '', '', '', '']);
+	});
+});
+
+describe('the optional-property table', () => {
+	it('reads its fields in declaration order, which is the order everything states them in', () => {
+		// The pickers, the wording of a collision report and the backfill's stubs all
+		// walk this list, so its order is user-visible rather than incidental.
+		expect(OPTIONAL_PROPERTIES.map((property) => property.field)).toEqual([
+			'state',
+			'startedDate',
+			'finishedDate',
+			'horizon',
+			'start',
+			'target',
+		]);
+		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
+	});
+});
+
+describe('adoptableProperties', () => {
+	it('offers the shipped key for every optional property nobody has named', () => {
+		const config = fakeConfig({});
+
+		expect(adoptableProperties(config, resolveSettings(config)).map((p) => p.suggested)).toEqual([
+			'status',
+			'started',
+			'finished',
+			'horizon',
+			'start',
+			'due',
+		]);
+	});
+
+	it('leaves a property the user has already set alone', () => {
+		const config = fakeConfig({ stateProperty: 'note.workflow' });
+
+		const adoptable = adoptableProperties(config, resolveSettings(config));
+
+		expect(adoptable.map((p) => p.option)).not.toContain('stateProperty');
+		expect(adoptable.map((p) => p.option)).toContain('horizonProperty');
+	});
+
+	it('does not revive a property the user CLEARED', () => {
+		// Cleared and never-set read the same to `getAsPropertyId`, which is why this
+		// asks the config: turning the state property off is a decision, and an action
+		// that quietly turned it back on would be overruling the user rather than
+		// helping them.
+		const config = fakeConfig({ horizonProperty: '' });
+
+		expect(adoptableProperties(config, resolveSettings(config)).map((p) => p.option)).not.toContain(
+			'horizonProperty',
+		);
+	});
+
+	it('skips a suggestion whose key another property already owns', () => {
+		// Adopting it would report as a collision and block every write in the view —
+		// a worse state than the unconfigured feature it was meant to enable.
+		const config = fakeConfig({ parentProperty: 'note.status' });
+
+		const settings = resolveSettings(config);
+		expect(adoptableProperties(config, settings).map((p) => p.suggested)).not.toContain('status');
+		expect(configProblems(settings)).toEqual([]);
 	});
 });

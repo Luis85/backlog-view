@@ -1,7 +1,8 @@
 import { setIcon } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { LEVELS } from '../../domain/settings';
+import { runInit } from '../interactions/structure';
+import { adoptableProperties, LEVELS } from '../../domain/settings';
 
 /**
  * What the tree shows when it has no rows to show. Each of these runs at most once
@@ -58,7 +59,7 @@ function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): s
  * does not exist. The one board case with no columns, and it names the option to
  * set and where, never a blank pane.
  */
-export function renderBoardNoWorkflowState(treeEl: HTMLElement): void {
+export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
 	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), 'square-kanban');
 	empty.createDiv({ cls: 'pbl-empty-title', text: 'No workflow to show' });
@@ -69,6 +70,7 @@ export function renderBoardNoWorkflowState(treeEl: HTMLElement): void {
 			'Set "State property" in the view options — and optionally "Workflow states (in order)" — ' +
 			'and the board will draw one column per state.',
 	});
+	renderSetupCta(host, empty);
 }
 
 /**
@@ -92,6 +94,25 @@ export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElem
 			'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. ' +
 			`${horizonHalf}, or set "Start date property" or "Target date property" for a timeline.`,
 	});
+	renderSetupCta(host, empty);
+}
+
+/**
+ * The way out of an unconfigured frame: the same action the toolbar's ✨ runs, which
+ * binds the properties this view writes and creates them on the items — not a second
+ * idea of what setting the view up means, so what the board and the roadmap offer
+ * here cannot drift from what that button does.
+ *
+ * Rendered only while there is something left to bind. An option the user CLEARED is
+ * a decision this must not overrule, and a button whose press would do nothing is
+ * worse than no button: the guidance beside it still names the options to set.
+ */
+function renderSetupCta(host: BacklogViewHost, empty: HTMLElement): void {
+	if (adoptableProperties(host.config, host.settings).length === 0) return;
+	const btn = empty.createEl('button', { cls: 'mod-cta' });
+	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'sparkles');
+	btn.createSpan({ text: 'Add the default properties' });
+	btn.addEventListener('click', () => void runInit(host));
 }
 
 export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {

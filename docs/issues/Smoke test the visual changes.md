@@ -13,6 +13,7 @@ files:
   - src/view/render/rows.ts
   - src/view/render/roadmap.ts
   - src/view/render/timeline.ts
+  - src/view/render/emptyStates.ts
 ---
 
 # Smoke-test the visual changes in a real vault
@@ -107,6 +108,34 @@ highlight is unchanged from 0.3.0.
 **The bucket's New button** — a `+` in the bucket header, appearing on hover like the
 row's. Check it does not crowd the count badge and does not appear in the `Tab` order.
 
+## The one-press setup (added 2026-08-02, unverified)
+
+This one is not about pixels, and it is the reason it is on this list: **nothing here
+can check that a `.base` option actually takes.** `runInit` now writes view options —
+`config.set('stateProperty', 'note.status')` and five more — and the harness's config
+double records the call and hands the value straight back. Whether Bases stores a
+property id set that way, persists it to the `.base`, and shows it selected in its own
+picker is an observation only a real vault can make. If it does not, the backfill still
+writes nothing wrong: the keys it creates are the ones the settings resolve to, so a
+rejected `set` means the properties simply stay unconfigured.
+
+In a scratch vault with a few plain notes and no properties configured:
+
+**The toolbar's ✨** — press it once. The view options should come back with State,
+Started date, Finished date, Horizon, Start date and Target date all naming the
+suggested property, each **selected in the picker rather than greyed out**, and every
+note should have gained `status`, `started`, `finished`, `horizon`, `start` and `due`
+as empty properties. Nothing should have moved: no item done, no card placed.
+
+**The empty frames** — before pressing anything, switch to the board and to the
+roadmap. Each should offer **Add the default properties** below its guidance, and
+pressing it should leave the board drawing its columns and the roadmap drawing Now,
+Next, Later with everything on the shelf.
+
+**A second press** — binds nothing and writes nothing ("All items already have the
+properties this view writes"). Then clear one property in the view options and press
+again: it must stay cleared.
+
 ## Runs
 
 | Date | Against | Outcome |
@@ -114,6 +143,7 @@ row's. Check it does not crowd the count badge and does not appear in the `Tab` 
 | 2026-08-01 | the PR #14 changes | Everything as intended; `styles.css` needed no adjustment. |
 | 2026-08-01 | **0.3.0** — extra-type badges, done rows without the strike-through | Confirmed by the maintainer: looks and feels fine. No change needed. |
 | — | the roadmap, both axes and the horizon writes | **Not run.** Reopened for it. |
+| — | the one-press setup: the options it writes, and the button in both empty frames | **Not run.** |
 
 That second run is the one that mattered most, because the badge colours and the removed
 strike-through shipped in 0.3.0 on the strength of jsdom structure tests, which cannot see

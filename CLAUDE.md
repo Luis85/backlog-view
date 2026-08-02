@@ -59,7 +59,7 @@ mirrors the same directories.
 | --- | --- | --- |
 | `src/main.ts` | Registers the view via `registerBasesView`, plus the command | — |
 | **`domain/`** | **The backlog itself. Reads the vault, never writes it; never touches the DOM.** | |
-| `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation | node tests |
+| `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation, the optional-property table every layer reads a key through | node tests |
 | `domain/viewOptions.ts` | The declarative Bases view-options schema (its `key`s are persisted user data) | node tests |
 | `domain/itemTypes.ts` | The type vocabulary: the level ladder, and the extra types that sit beside it | node tests |
 | `domain/noteFields.ts` | Reading a work item's fields off a note: wikilink/bare/alias/list parents, tolerant numbers | node tests |
@@ -85,13 +85,13 @@ mirrors the same directories.
 | `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages — and the card body every projection shares | jsdom tests |
 | `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory — and, on the horizon axis, the drop targets and the per-bucket New | jsdom tests |
 | `view/render/timeline.ts` | The dated grid: month header, bars and milestones with exact-date tooltips, the today line | jsdom tests |
-| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the roadmap's no-axis guidance | jsdom tests |
+| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the board's and roadmap's unconfigured guidance and the one-press setup beside it | jsdom tests |
 | `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/cardDrag.ts` | The card drag both projections share: Pragmatic wiring, drop targets that take their own plan, announcements (ADR 0018) | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
-| `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
+| `view/interactions/structure.ts` | Move/indent/outdent, and the setup action (bind the missing properties, then backfill) | jsdom + node |
 | `view/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
 | `view/interactions/plan.ts` | The roadmap's placement writes from a row: set/clear horizon, schedule, unschedule | jsdom tests |
 | `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
@@ -225,6 +225,16 @@ planned by `domain/writePlan.ts`, which touches nothing, and applied by
 `storage/frontmatter.ts`, which is the only module that may — and which captures each
 write's inverse as it lands, so the last effective batch can always be taken back
 (`applyRestores`, compare-and-swap per key).
+
+One action also writes the **`.base` itself**: `runInit` (the toolbar's ✨, and the
+board's and roadmap's unconfigured empty states) binds this view's suggested key for
+every optional property nobody has named, and then backfills those keys onto the notes.
+The two halves are one action because neither works alone — Obsidian's picker offers
+the properties a vault HAS, so a property no note carries cannot be picked, and a
+property nothing names cannot be written to a note. It runs the `configProblems` gate
+itself before touching either: an action that changed the configuration and then had
+every write refused would leave the view worse than it found it. Everything about
+*which* properties those are lives in `domain/settings.ts` — see `src/domain/CLAUDE.md`.
 
 ### One move, three inputs — per projection
 

@@ -43,7 +43,10 @@ in it, and both are different from a workflow with no states.
 - **1a — no state property is configured.** There is no workflow to draw, so the board
   names the option to set and where. This is the one case with no columns, and it is
   guidance rather than a board precisely because a board would be a lie about a workflow
-  that does not exist.
+  that does not exist. Beside the naming, one press does it — the same action the
+  toolbar's ✨ runs ([[Backfill missing properties]]), which binds the state property
+  and creates it on the items — and it is withheld when the property is one the user
+  cleared, since a button whose press would do nothing is worse than none.
 - **2a — a configured state holds no cards.** Its column renders anyway. Boards that
   derive columns from observed values lose exactly this, and an empty stage vanishing is
   the most repeated complaint against them: a workflow stage exists whether or not
@@ -58,7 +61,8 @@ in it, and both are different from a workflow with no states.
 ## Acceptance criteria
 
 - With no state property configured, the board names the option to set and where,
-  instead of rendering nothing.
+  instead of rendering nothing — and offers the one press that sets it up, unless the
+  property is one the user cleared.
 - With no results but a configured workflow, the columns still render — every stage a
   creation target — and the tree's empty-state honesty (the ignored-notes count, the
   create path) renders as an advisory beside them, not as their replacement: an empty
@@ -72,7 +76,8 @@ in it, and both are different from a workflow with no states.
 ## Where it lives
 
 `renderBoardNoWorkflowState` joined the tree's answers in
-`src/view/render/emptyStates.ts`, and the advisory beside the columns
+`src/view/render/emptyStates.ts` — with `renderSetupCta` beside it, shared with the
+roadmap's no-axis guidance and running the same `runInit` the toolbar does — and the advisory beside the columns
 (`renderBoardAdvisory` in `src/view/render/board.ts`) *reuses* those answers rather
 than growing a second vocabulary: the no-items, no-match and all-done states render
 into the aside unchanged. Driven in `test/view/board.test.ts`. Still open: every empty

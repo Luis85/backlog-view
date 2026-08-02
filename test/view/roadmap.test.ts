@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
-import { key, makeView, projectionButton, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, makeView, noOptionalProperties, projectionButton, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { bucketNames, bucketsOf, shelfTitles } from '../helpers/roadmap';
 
 useViewHarness();
@@ -110,6 +110,35 @@ describe('the axis is declared, never guessed', () => {
 		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
 		expect(hint).toContain('Horizon property');
 		expect(hint).toContain('Start date property');
+	});
+
+	it('offers one press that sets the roadmap up, and draws the buckets right after', async () => {
+		const vault = roadmapVault();
+		const { containerEl, view } = roadmapView(vault, {});
+		expect(bucketsOf(containerEl)).toHaveLength(0);
+
+		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// The frame the guidance described, reached from the guidance itself: the
+		// horizon property is bound, the shipped vocabulary draws, and the key lands on
+		// the items empty — nothing was placed on anyone's behalf.
+		expect(bucketNames(containerEl)).toEqual(['Now', 'Next', 'Later']);
+		expect(view.settings.horizonKey).toBe('horizon');
+		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
+		expect(vault.fm('Untriaged.md')['horizon']).toBe('');
+		// And what the note already said is untouched: the button fills gaps.
+		expect(vault.fm('Placed.md')['horizon']).toBe('Now');
+	});
+
+	it('withholds the setup button when the properties are decisions already made', () => {
+		// Every optional property cleared: there is nothing left to bind, and a button
+		// whose press would do nothing is worse than none — the guidance still names
+		// the options to set.
+		const { containerEl } = roadmapView(roadmapVault(), noOptionalProperties());
+
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No axis to show');
+		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();
 	});
 
 	it('names the missing half when the horizon values were cleared', () => {

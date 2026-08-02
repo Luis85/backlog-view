@@ -78,6 +78,23 @@ describe('the board projection', () => {
 		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
 	});
 
+	it('offers one press that sets the workflow up, and draws the columns right after', async () => {
+		const vault = boardVault();
+		const { containerEl, view } = boardView(vault, {});
+		expect(columnsOf(containerEl)).toHaveLength(0);
+
+		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// The same action the toolbar's backfill runs — one idea of what setting this
+		// view up means, so the empty frame cannot offer something the button does not.
+		expect(view.settings.stateKey).toBe('status');
+		expect(columnsOf(containerEl).length).toBeGreaterThan(0);
+		// The state key lands empty: every card is where it was, in no state at all.
+		expect(vault.fm('Feature B2.md')['status']).toBe('');
+		expect(vault.fm('Epic A.md')['status']).toBe('New');
+	});
+
 	it('falls back to the observed states when no list is configured', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });

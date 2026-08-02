@@ -206,18 +206,117 @@ export function defaultSettings(): BacklogSettings {
 }
 
 /**
- * The roadmap's three write targets, named by FIELD rather than by key. Every layer
- * that has to ask "which property does this placement live in" asks here, so the
- * mapping from a field to a configured key is stated once: the planner, the writer
- * and the backfill would otherwise each spell out the same three-way switch.
+ * Every write target this view has BEYOND the three the hierarchy always needs,
+ * named by FIELD rather than by key. Each one gates a feature — no state property,
+ * no board; no horizon property, no bucket axis — and each is unset until something
+ * names it, which is the difference between these and `parent`/`order`/`type`.
+ *
+ * Every layer that has to ask "which property does this live in" asks here, so the
+ * mapping from a field to a configured key is stated once: the planner, the writer,
+ * the model's presence test and the backfill would otherwise each spell out the same
+ * switch.
+ */
+export type OptionalField = 'state' | 'startedDate' | 'finishedDate' | 'horizon' | 'start' | 'target';
+
+/**
+ * One such property: the option that names it, the key it adopts when nothing does,
+ * and what it is called out loud. One table, four readers — the view options draw
+ * their picker from it, `configProblems` reports collisions by its labels,
+ * `adoptableProperties` binds its suggestions, and the backfill creates its keys —
+ * because a key or an option id spelled twice is one that can differ, and both of
+ * these are persisted user data.
+ */
+export interface OptionalProperty {
+	field: OptionalField;
+	/** The persisted view-option key that names this property. */
+	option: string;
+	/** The frontmatter key this view suggests, and adopts when the option is untouched. */
+	suggested: string;
+	/** What the property is called wherever a collision or an adoption is reported. */
+	label: string;
+}
+
+/**
+ * The table, keyed by field so the COMPILER checks it is complete: a field added to
+ * the union above and forgotten here fails to build, rather than reaching a lookup
+ * that finds nothing. Declaration order is the order everything reads them in — the
+ * pickers, the collision report's wording, the backfill's stubs — because these are
+ * plain string keys, whose insertion order `Object.keys` preserves by definition.
+ */
+const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
+	state: { option: 'stateProperty', suggested: 'status', label: 'state' },
+	startedDate: { option: 'startedDateProperty', suggested: 'started', label: 'started date' },
+	finishedDate: { option: 'finishedDateProperty', suggested: 'finished', label: 'finished date' },
+	// The roadmap's three, whose suggestions follow the ecosystem's own vocabulary
+	// (the Tasks plugin's `start` and `due`) without assuming it.
+	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon' },
+	start: { option: 'startProperty', suggested: 'start', label: 'start' },
+	target: { option: 'targetProperty', suggested: 'due', label: 'target' },
+};
+
+/** The declaration for one field, for the callers that hold a field rather than a row. */
+export function optionalProperty(field: OptionalField): OptionalProperty {
+	return { field, ...PROPERTY_TABLE[field] };
+}
+
+export const OPTIONAL_FIELDS: OptionalField[] = Object.keys(PROPERTY_TABLE) as OptionalField[];
+export const OPTIONAL_PROPERTIES: OptionalProperty[] = OPTIONAL_FIELDS.map(optionalProperty);
+
+/**
+ * The roadmap's three write targets — the subset of the above that the placement
+ * plans and `AxisWrite` deal in. A narrower type, not a second vocabulary: it reads
+ * its keys through `optionalKeyFor` like everything else.
  */
 export type AxisField = 'horizon' | 'start' | 'target';
 export const AXIS_FIELDS: AxisField[] = ['horizon', 'start', 'target'];
 
-/** The frontmatter key one axis field is stored under; '' when it is unconfigured. */
-export function axisKeyFor(settings: BacklogSettings, field: AxisField): string {
-	if (field === 'horizon') return settings.horizonKey;
-	return field === 'start' ? settings.startKey : settings.targetKey;
+/** The frontmatter key one optional field is stored under; '' when it is unconfigured. */
+export function optionalKeyFor(settings: BacklogSettings, field: OptionalField): string {
+	switch (field) {
+		case 'state':
+			return settings.stateKey;
+		case 'startedDate':
+			return settings.startedDateKey;
+		case 'finishedDate':
+			return settings.finishedDateKey;
+		case 'horizon':
+			return settings.horizonKey;
+		case 'start':
+			return settings.startKey;
+		default:
+			return settings.targetKey;
+	}
+}
+
+/** The property id a frontmatter key is named by in the view options. */
+export function notePropertyId(key: string): string {
+	return `note.${key}`;
+}
+
+/**
+ * The optional properties this view can set up for itself: the suggested key for
+ * every option **nobody has ever touched**. Cleared is not untouched — turning the
+ * state property off is a decision, and an action that quietly turned it back on
+ * would be overruling the user rather than helping them — so this asks the same
+ * "never set" question `clearable` asks, of the config rather than of the resolved
+ * settings, which cannot tell the two apart.
+ *
+ * A suggestion whose key is already spoken for is skipped rather than adopted: it
+ * would report as a collision in `configProblems` and block every write in the view,
+ * which is a worse state than the unconfigured feature it was meant to enable.
+ */
+export function adoptableProperties(config: BasesViewConfig, settings: BacklogSettings): OptionalProperty[] {
+	const taken = new Set(ownedProperties(settings).map((owned) => owned.key));
+	taken.delete('');
+	const adoptable: OptionalProperty[] = [];
+	for (const property of OPTIONAL_PROPERTIES) {
+		if (config.get(property.option) !== undefined || taken.has(property.suggested)) continue;
+		// Two suggestions cannot collide today, and this is what keeps that a property
+		// of the code rather than of the table's current contents.
+		taken.add(property.suggested);
+		adoptable.push(property);
+	}
+	return adoptable;
 }
 
 /**
@@ -268,42 +367,51 @@ export function horizonMenuValues(settings: BacklogSettings, observedHorizons: s
 }
 
 /**
+ * Every frontmatter key this view owns, labelled, in the order a collision names
+ * them. One statement, because two readers depend on it and they must agree: the
+ * collision report below, and the adoption above, which may not suggest a key that
+ * is already spoken for.
+ *
+ * The hierarchy's three come first because they are the ones always configured. The
+ * optional properties follow in their declared order — a stamp must never overwrite
+ * a key the plugin already owns (a date written over someone's parent link is not a
+ * thing to recover from by noticing later), and the roadmap's axis keys carry one
+ * rule more: start and target sharing a key cannot store a span, and a horizon
+ * sharing either is two semantics on one field.
+ *
+ * `tagsKey` is last and is the one that yields: it cannot collide with the four core
+ * properties by the time anything reads it, because `resolveSettings` turns such a
+ * tags key off rather than reporting it — that would block every write in a view
+ * that was working before the option existed. It does NOT yield to the newer
+ * options, which have no working views to protect, so pointing one of those at the
+ * tags key is a fresh mistake and gets the collision report every other pair gets.
+ */
+function ownedProperties(settings: BacklogSettings): { label: string; key: string }[] {
+	return [
+		{ label: 'parent', key: settings.parentKey },
+		{ label: 'order', key: settings.orderKey },
+		{ label: 'type', key: settings.typeKey },
+		...OPTIONAL_PROPERTIES.map((property) => ({
+			label: property.label,
+			key: optionalKeyFor(settings, property.field),
+		})),
+		{ label: 'tags', key: settings.tagsKey },
+	];
+}
+
+/**
  * Configuration mistakes that would corrupt writes (e.g. parent and order stored
  * under the same frontmatter key). The view surfaces these instead of guessing.
  */
 export function configProblems(settings: BacklogSettings): string[] {
 	const problems: string[] = [];
 	const keys = new Map<string, string[]>();
-	const add = (label: string, key: string) => {
-		if (!key) return;
+	for (const { label, key } of ownedProperties(settings)) {
+		if (!key) continue;
 		const users = keys.get(key) ?? [];
 		users.push(label);
 		keys.set(key, users);
-	};
-	add('parent', settings.parentKey);
-	add('order', settings.orderKey);
-	add('type', settings.typeKey);
-	add('state', settings.stateKey);
-	// A stamp must never overwrite a key the plugin already owns, so the two join the
-	// gate rather than yielding quietly: a date written over someone's parent link is
-	// not a thing to recover from by noticing later.
-	add('started date', settings.startedDateKey);
-	add('finished date', settings.finishedDateKey);
-	// The roadmap's axis keys are write targets like the four above, and the rules
-	// they must never collide into are wider by one: start and target sharing one
-	// key cannot store a span, and a horizon sharing either is two semantics on one
-	// field — one rule over the whole set of configured write targets.
-	add('horizon', settings.horizonKey);
-	add('start', settings.startKey);
-	add('target', settings.targetKey);
-	// `tagsKey` cannot collide with the four core properties by the time anything
-	// reads it — `resolveSettings` turns such a tags key off, because reporting it
-	// would block every write in a view that was working before the option existed.
-	// It does NOT yield to the newer options — the axis keys, or the stamps — which
-	// have no working views to protect, so pointing one of those at the tags key is
-	// a fresh mistake, and the honest answer is the collision report every other
-	// pair gets.
-	add('tags', settings.tagsKey);
+	}
 	for (const [key, users] of keys) {
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);

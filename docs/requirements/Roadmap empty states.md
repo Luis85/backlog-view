@@ -46,7 +46,16 @@ names the option or the action it points at.
 - **1a — no axis is configured.** Guidance names both ways to get one — the horizon
   property and its values, or the date properties — and where each is set. This is the
   one case with no frame, and it is guidance rather than a roadmap precisely because a
-  roadmap would be a lie about an axis that does not exist.
+  roadmap would be a lie about an axis that does not exist. Beside the naming, one
+  press does it: the same action the toolbar's ✨ runs
+  ([[Backfill missing properties]]), which binds the horizon property and creates it on
+  the items, so the next render is the Now-Next-Later frame with everything on the
+  shelf. The same action, not a second idea of what setting the view up means — a fresh
+  vault otherwise needs a property hand-written into a note before the picker will
+  offer it, which is a loop guidance alone cannot break.
+- **1b — every axis property is one the user cleared.** No button: there is nothing
+  left to bind, and a button whose press would do nothing is worse than none. The
+  guidance still names the options to set.
 - **2a — every result is on the shelf.** The frame renders empty beside a full shelf.
   That is the honest report of a backlog not yet planned — the state every fresh backlog
   starts in — and the shelf's count is the fact; nothing suggests dates or horizons the
@@ -70,7 +79,8 @@ names the option or the action it points at.
 ## Acceptance criteria
 
 - With no axis configured, the roadmap names the options to set and where, instead of
-  rendering nothing.
+  rendering nothing — and offers the one press that sets them up, unless every one of
+  them is a property the user cleared.
 - With an axis and no placements, the frame still renders — every region a drop
   target, every bucket a creation target — beside the shelf and the ignored-notes
   advisory, never replaced by them; a note created while the timeline shows lands on
@@ -83,7 +93,8 @@ names the option or the action it points at.
 ## Where it lives
 
 Built with the first increment, except the targets. The no-axis guidance —
-missing-half wording included — is `renderRoadmapNoAxisState` in
+missing-half wording included, and the setup press (`renderSetupCta`, which runs
+`runInit` in `src/view/interactions/structure.ts`) — is `renderRoadmapNoAxisState` in
 `src/view/render/emptyStates.ts`, beside the tree's and the board's answers; the
 frame-beside-advisory rule is `renderRoadmapAdvisory` in `src/view/render/roadmap.ts`.
 Driven in `test/view/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`. "Every

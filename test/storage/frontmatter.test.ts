@@ -50,6 +50,45 @@ describe('applyWrites', () => {
 		expect(vault.fm('Item.md')).toEqual({ status: 'Done' });
 	});
 
+	it('creates a stub for each configured optional key, and never for one no property names', async () => {
+		const vault = new FakeVault();
+		const configured = { ...settings, stateKey: 'status', horizonKey: 'horizon' };
+		const item = vault.addFile('Item.md', { frontmatter: { order: 5 } });
+		const inverses: RestoreWrite[] = [];
+
+		// `startedDate` is unconfigured here: dropped, not misfiled — the state key's own
+		// rule, applied to the one write that creates keys rather than setting them.
+		await applyWrites(
+			vault.app,
+			configured,
+			[{ file: item, stubs: ['state', 'startedDate', 'horizon'] }],
+			undefined,
+			(inv) => inverses.push(inv),
+		);
+		expect(vault.fm('Item.md')).toEqual({ order: 5, status: '', horizon: '' });
+
+		// Captured like every other write, so one undo takes the whole backfill back.
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Item.md')).toEqual({ order: 5 });
+	});
+
+	it('leaves a key the note already carries exactly as it is, whatever it holds', async () => {
+		const vault = new FakeVault();
+		const configured = { ...settings, stateKey: 'status', horizonKey: 'horizon' };
+		const item = vault.addFile('Item.md', { frontmatter: { status: 'Active', horizon: '' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, configured, [{ file: item, stubs: ['state', 'horizon'] }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+
+		// Presence is the question, and it is asked of the live note: a value is never
+		// blanked, an empty key is not rewritten, and a write that changed nothing emits
+		// no inverse — so a backfill over a settled backlog cannot cost the undo slot.
+		expect(vault.fm('Item.md')).toEqual({ status: 'Active', horizon: '' });
+		expect(inverses).toEqual([]);
+	});
+
 	it('removeStateKey deletes the key, and the captured inverse puts the value back', async () => {
 		const vault = new FakeVault();
 		const stated = { ...settings, stateKey: 'status' };

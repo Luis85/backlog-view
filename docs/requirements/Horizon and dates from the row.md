@@ -170,7 +170,7 @@ belong to the **item**, not to the mode, and this is where the tree got them.
 The vocabulary is `horizonMenuValues` in `src/domain/settings.ts` beside
 `stateMenuValues`, over `model.observedHorizons` — result-only, in bucket-minting order —
 collected in `src/domain/model.ts`, which also records which axis keys a note *carries*
-(`axisKeys`: presence, not value, so a removal action can never write nothing). Whether an
+(`ownKeys`: presence, not value, so a removal action can never write nothing). Whether an
 axis is configured at all is `hasHorizonAxis` / `hasDateAxis` in `src/domain/roadmap.ts`,
 the same predicates `configuredAxes` is built from, so the menu and the projection cannot
 disagree. The plans are `computeHorizonWrites` and `computeScheduleWrites` in

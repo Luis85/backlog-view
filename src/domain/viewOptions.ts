@@ -7,7 +7,9 @@ import {
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
+	OptionalField,
 	defaultTypeFolder,
+	optionalProperty,
 	resolveSettings,
 	typeFolderKey,
 } from './settings';
@@ -23,6 +25,23 @@ import {
  */
 
 const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
+
+/**
+ * The picker for one of the optional properties. Its persisted key and the key it
+ * suggests both come from `OPTIONAL_PROPERTIES`, so the placeholder a user reads
+ * here is the very key the backfill adopts and writes — the two cannot drift into
+ * suggesting one property and setting up another.
+ */
+function optionalPropertyOption(field: OptionalField, displayName: string): BasesOptions {
+	const property = optionalProperty(field);
+	return {
+		type: 'property',
+		key: property.option,
+		displayName,
+		placeholder: property.suggested,
+		filter: notePropsOnly,
+	};
+}
 
 /**
  * Options shown in the Bases toolbar "view options" menu. The focus level is
@@ -102,13 +121,7 @@ function progressGroup(): BasesAllOptions {
 		type: 'group',
 		displayName: 'Progress',
 		items: [
-			{
-				type: 'property',
-				key: 'stateProperty',
-				displayName: 'State property',
-				placeholder: 'status',
-				filter: notePropsOnly,
-			},
+			optionalPropertyOption('state', 'State property'),
 			{
 				type: 'text',
 				key: 'stateValues',
@@ -132,21 +145,10 @@ function progressGroup(): BasesAllOptions {
 			},
 			// Two properties rather than one, because they answer different questions and
 			// a note may honestly have one and not the other. Both are unset by default:
-			// a stamp writes to a property the user named, never to one this plugin chose.
-			{
-				type: 'property',
-				key: 'startedDateProperty',
-				displayName: 'Started date property',
-				placeholder: 'started',
-				filter: notePropsOnly,
-			},
-			{
-				type: 'property',
-				key: 'finishedDateProperty',
-				displayName: 'Finished date property',
-				placeholder: 'finished',
-				filter: notePropsOnly,
-			},
+			// a stamp writes to a property the user named — or accepted, by pressing
+			// Assign missing properties — never to one this plugin chose for them.
+			optionalPropertyOption('startedDate', 'Started date property'),
+			optionalPropertyOption('finishedDate', 'Finished date property'),
 			{
 				type: 'toggle',
 				key: 'showCompleted',
@@ -169,13 +171,7 @@ function roadmapGroup(): BasesAllOptions {
 		type: 'group',
 		displayName: 'Roadmap',
 		items: [
-			{
-				type: 'property',
-				key: 'horizonProperty',
-				displayName: 'Horizon property',
-				placeholder: 'horizon',
-				filter: notePropsOnly,
-			},
+			optionalPropertyOption('horizon', 'Horizon property'),
 			{
 				type: 'text',
 				key: 'horizonValues',
@@ -183,20 +179,8 @@ function roadmapGroup(): BasesAllOptions {
 				default: DEFAULT_HORIZON_VALUES.join(', '),
 				placeholder: DEFAULT_HORIZON_VALUES.join(', '),
 			},
-			{
-				type: 'property',
-				key: 'startProperty',
-				displayName: 'Start date property',
-				placeholder: 'start',
-				filter: notePropsOnly,
-			},
-			{
-				type: 'property',
-				key: 'targetProperty',
-				displayName: 'Target date property',
-				placeholder: 'due',
-				filter: notePropsOnly,
-			},
+			optionalPropertyOption('start', 'Start date property'),
+			optionalPropertyOption('target', 'Target date property'),
 		],
 	};
 }

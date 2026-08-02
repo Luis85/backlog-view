@@ -267,7 +267,7 @@ free of runtime code so imports stay cycle-free.
   the collected order and the minted order are not always the same, and the frame on
   screen is the one that can be checked. Membership never narrows with what is hidden.
   Removal actions (Clear horizon, Unschedule, an emptied field in the entry) appear
-  only while the note CARRIES the key (`item.axisKeys`, presence not value), so no
+  only while the note CARRIES the key (`item.ownKeys`, presence not value), so no
   offered action can write nothing, and they delete the key rather than blanking it.
 - On top of that, the HORIZON axis is directly manipulable and the dated axis is not,
   and the difference is structural rather than a flag: `renderRoadmap` passes the drag

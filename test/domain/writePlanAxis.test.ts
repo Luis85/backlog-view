@@ -132,23 +132,40 @@ describe('computeScheduleWrites', () => {
 	});
 });
 
-describe('computeInitWrites and the placement keys', () => {
-	it('creates the configured axis keys EMPTY, so nothing gains a placement', () => {
+describe('computeInitWrites and the optional keys', () => {
+	it('stubs the configured axis keys, so nothing gains a placement', () => {
 		const { model, get } = build({ 'A.md': { type: 'Epic', order: 10 } });
 
 		const writes = computeInitWrites(model, AXES);
 
 		expect(writes).toHaveLength(1);
-		expect(writes[0].axis).toEqual({ horizon: '', start: '', target: '' });
+		expect(writes[0].stubs).toEqual(['horizon', 'start', 'target']);
 		// The whole point of an empty value: the item is still untriaged and still
 		// unscheduled, so the roadmap does not move when the button is pressed.
+		expect(writes[0].axis).toBeUndefined();
 		expect(get('A').horizon.value).toBeNull();
+	});
+
+	it('stubs the state and the stamps too — every property a feature needs', () => {
+		const settings = { ...AXES, stateKey: 'status', startedDateKey: 'started', finishedDateKey: 'finished' };
+		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);
+
+		// The gap this fills is the same one on every optional property: a key no note
+		// carries is one Obsidian's own editor cannot show and its picker cannot offer.
+		expect(computeInitWrites(model, settings)[0].stubs).toEqual([
+			'state',
+			'startedDate',
+			'finishedDate',
+			'horizon',
+			'start',
+			'target',
+		]);
 	});
 
 	it('fills only the keys the note lacks', () => {
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10, horizon: 'Now', start: '2026-08-03' } });
 
-		expect(computeInitWrites(model, AXES)[0].axis).toEqual({ target: '' });
+		expect(computeInitWrites(model, AXES)[0].stubs).toEqual(['target']);
 	});
 
 	it('plans nothing for a note that carries every configured key', () => {
@@ -166,14 +183,14 @@ describe('computeInitWrites and the placement keys', () => {
 		const settings = { ...AXES, horizonValues: [] };
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);
 
-		expect(computeInitWrites(model, settings)[0].axis).toEqual({ start: '', target: '' });
+		expect(computeInitWrites(model, settings)[0].stubs).toEqual(['start', 'target']);
 	});
 
 	it('never writes a key no property names', () => {
 		const settings = { ...defaultSettings(), horizonKey: 'horizon' };
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);
 
-		expect(computeInitWrites(model, settings)[0].axis).toEqual({ horizon: '' });
+		expect(computeInitWrites(model, settings)[0].stubs).toEqual(['horizon']);
 	});
 
 	it('leaves a context row alone', () => {

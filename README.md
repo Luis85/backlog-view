@@ -36,9 +36,16 @@ Azure DevOps Boards.
     subtree to match where it landed.
   - Items without a `type` show a level implied from their parent's type (a child of a
     Feature reads as a PBI, wherever that Feature sits).
-  - The toolbar's ✨ **Assign missing properties** button backfills `type` and `order` for
-    notes that don't have them yet, without overwriting existing values — and never
-    guesses a type for items whose parent is outside the view.
+  - The toolbar's ✨ **Assign missing properties** button sets the whole view up in one
+    press: it picks this view's suggested property for every optional feature you have
+    not configured yet — the workflow state, the date stamps, and the roadmap's horizon
+    and dates — and then backfills `type`, `order` and an **empty** value for each of
+    those properties on the notes that don't carry them. Nothing already set is
+    overwritten, no option you have set (or deliberately cleared) is changed, no type is
+    guessed for items whose parent is outside the view, and nothing moves: an empty
+    property is the "no state, not planned yet" the item was already in — it just becomes
+    visible and editable in Obsidian's own property editor, and pickable in the view
+    options.
 - **Any of those writes can be taken back** — <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> or the ↩
   toolbar button, however many notes the change touched (see [Undo](#undo)).
 
@@ -60,7 +67,9 @@ Manually, the equivalent is:
    `file.inFolder("docs")`.
 3. In the view switcher of the Base, add a new view and pick **Product Backlog**.
 4. Drop existing notes into the folder, or use **+ New Epic** in the view to create items.
-5. If your notes don't have `type`/`order` yet, click the ✨ toolbar button once. Notes
+5. Click the ✨ toolbar button once: it fills in the `type`/`order` your notes don't
+   have yet, and sets up the properties the board and the roadmap need — the board's and
+   the roadmap's own empty states offer the same button when you get there first. Notes
    with neither a supported `type` nor a `parent` aren't treated as backlog items — to
    organize a folder of plain notes by dragging, turn **Ignore notes outside the
    hierarchy** off in the view options first.
