@@ -61,8 +61,16 @@ describe('context menu', () => {
 		const submenu = Menu.lastShown?.item('Set type')?.submenu;
 		if (!submenu) throw new Error('submenu missing');
 
-		// Every type a user may assign by hand: the ladder, then the extra types.
-		expect(submenu.items.map((i) => i.titleText)).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		// Every type a user may assign by hand: the ladder, the extra types, then the markers.
+		expect(submenu.items.map((i) => i.titleText)).toEqual([
+			'Epic',
+			'Feature',
+			'PBI',
+			'Task',
+			'Issue',
+			'Bug',
+			'Milestone',
+		]);
 		expect(submenu.item('Epic')?.checked).toBe(true);
 		submenu.item('Task')?.click();
 		await flush();
@@ -172,6 +180,21 @@ describe('context menu', () => {
 		expect(Menu.lastShown).toBeNull();
 	});
 
+});
+
+describe('placement actions on a milestone', () => {
+	it('withholds Schedule from a milestone on a start-only vault, and keeps it for work', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10 } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20 } });
+		const { containerEl } = makeView(vault, { startProperty: 'note.start' });
+
+		rowByTitle(containerEl, 'Ship 1.0').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).not.toContain('Schedule');
+
+		rowByTitle(containerEl, 'A story').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Schedule');
+	});
 });
 
 describe('focused structure operations', () => {

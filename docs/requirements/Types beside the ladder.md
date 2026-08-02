@@ -195,7 +195,7 @@ test — not only where it was first noticed.
 The shipped shape after the branch settled, which is not the shape this note was written
 against — kept visible rather than edited away, because the reversals are the evidence:
 
-- The **vocabulary is fixed** — six types, no options. A configurable ladder made every
+- The **vocabulary is fixed** — a closed list, no options. A configurable ladder made every
   level rule conditional on a list someone could type; `src/domain/CLAUDE.md` lists what
   removing it deleted.
 - **Folders are one picker per type**, defaulting under the home folder and built from the

@@ -131,12 +131,7 @@ including the crossed and reversed cases), and `test/view/roadmapFrame.test.ts` 
 `test/view/rendering.test.ts` (the inferred class and label reaching the DOM), with
 `test/helpers/vault.ts` carrying the fixture support the new cases share.
 
-**Not yet built: extension 1b's marker exclusion.** The `Milestone` type does not exist
-yet, so nothing excludes a hand-nested marker's date from an ancestor's inferred span.
-It lands in the same walk and is inherited the same way, with
-[[Milestones as their own type]] — that note's spec already says so.
-
-**Not yet built either: extension 2d's "both ends open".** Crossed evidence is meant to
+**Not yet built: extension 2d's "both ends open".** Crossed evidence is meant to
 draw with both ends OPEN — the gradient fade of `pbl-bar-open-start` / `pbl-bar-open-end`.
 What shipped instead is a closed dashed bar: `inferredStart` and `inferredEnd` are both
 true, but no `pbl-bar-open-*` class joins them, so the ends are hard dashed edges rather

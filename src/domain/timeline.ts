@@ -140,7 +140,8 @@ export function timelineWindow(spans: DateSpan[], today: CivilDate): TimelineWin
  * state borrows the other, so a single date renders at the date it has. An
  * equal pair, stated or inferred, is the milestone case, a point in time
  * rather than a span. Reversed spans never reach here: they shelve as
- * unreadable.
+ * unreadable. `outside` is the further answer a POINT needs, that a clipped
+ * span does not: whether anything of it is in view at all.
  */
 export interface BarGeometry {
 	/** First day of the bar, clamped into the window. */
@@ -152,6 +153,14 @@ export interface BarGeometry {
 	/** True when that end runs past the window's edge and was clamped to it. */
 	clippedStart: boolean;
 	clippedEnd: boolean;
+	/**
+	 * True when NOTHING of the span is inside the window — it lies wholly past one edge,
+	 * and `startDay`/`spanDays` describe the clamp rather than the span. A clipped bar can
+	 * honestly say "this continues beyond what is drawn", because part of it is still in
+	 * view; a point beyond the edge cannot, and drawing it at the edge would claim a date
+	 * the item does not have. Which side it lies past is `clippedStart`.
+	 */
+	outside: boolean;
 }
 
 export function barGeometry(window: TimelineWindow, span: DateSpan): BarGeometry {
@@ -170,5 +179,6 @@ export function barGeometry(window: TimelineWindow, span: DateSpan): BarGeometry
 		milestone: span.start !== null && span.target !== null && daysBetween(span.start, span.target) === 0,
 		clippedStart: startDay < 0,
 		clippedEnd: endDay > lastDay,
+		outside: endDay < 0 || startDay > lastDay,
 	};
 }

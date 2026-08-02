@@ -92,6 +92,15 @@ in the root `CLAUDE.md` because it spans every layer.
   level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
   OFFERED, and a drag may still put a Bug anywhere, exactly as the ladder has always
   guided rather than refused.
+- A **marker** (`MARKER_TYPES`, `Milestone`) is the third category, and the inverse of an
+  extra type on all three counts: no rung, no children, no parent — `isMarkerType` is a
+  second predicate rather than a widened `isExtraType`, because the two answer opposite
+  questions. Three consequences follow, each stated once where it holds for every quantity
+  the walk gathers rather than at a call site: it is never counted and never dated evidence
+  (the `self` line in `assignAll`, beside the context-row skip it resembles), and the
+  autoType cascade's `stopsAt` predicate — `outsideFilter || isMarkerType`, the same shape
+  for the same reason — stops at a marker exactly as it stops at a row the Base excluded, so
+  the cascade descends from a rank only where one exists.
 - Each type's folder is **its own option** (`typeFolder.<lowercased type>`), one per type
   in the fixed vocabulary, so a folder is picked rather than spelled into a mapping.
   `typeFolderKey` is shared by the schema and the resolver, because a persisted key
@@ -248,6 +257,12 @@ in the root `CLAUDE.md` because it spans every layer.
   visible results is specified and unbuilt. What has no place stands in
   `RoadmapModel.context`, rendered beside the shelf apart from its count. The invariant the tests state from the rule: placed plus shelved equals the
   visible result rows, on either axis.
+- A marker gets the same early exit in `deriveBars`, right after the context check and
+  for a different reason: it is not a context row, it is reduced (`placeMarker`) to its
+  target point before the ordinary span rules — start, target, the reversal check — ever
+  run against a type that does not describe a span. A stale start later than the target
+  would otherwise read as a reversed pair and shelve, a rendering fix would never reach:
+  the reduction has to happen here, in derivation, not in the timeline that draws it.
 - Bucket order inside a bucket is the Base's own sort (`entryIndex`), the board's
   derived-order rule; the shelf and the timeline keep tree order — rows arrive from
   `roadmapRows` already in it, which is what "sibling order" on the shelf rests on.

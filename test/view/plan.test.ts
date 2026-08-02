@@ -446,3 +446,62 @@ describe('what the menu withholds', () => {
 		expect(titlesOfMenu(menuFor(containerEl, 'Placed'))).not.toContain('Set horizon');
 	});
 });
+
+describe('placement actions answer for the milestone type', () => {
+	it('asks a milestone for its target alone, and never applies the span rule to it', () => {
+		const vault = new FakeVault();
+		// A start later than the target would trip the span rule for a work item; a
+		// milestone must never see it, because the field it might compare against is
+		// never offered in the first place.
+		vault.addFile('Ship 1.0.md', {
+			frontmatter: { type: 'Milestone', order: 10, start: '2026-12-31', due: '2026-01-01' },
+		});
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Ship 1.0').item('Schedule')?.click();
+
+		const inputs = scheduleInputs();
+		expect(inputs).toHaveLength(1);
+		expect(inputs[0].value).toBe('2026-01-01');
+	});
+
+	it('takes the target alone away on Unschedule, leaving a start it only promised to ignore', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', {
+			frontmatter: { type: 'Milestone', order: 10, start: '2026-01-01', due: '2026-12-01' },
+		});
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Ship 1.0').item('Unschedule')?.click();
+		await flush();
+
+		// Ignoring a value and deleting it are different acts, and only the first was
+		// specified. This is the rule reached by the other hand.
+		expect('due' in vault.fm('Ship 1.0.md')).toBe(false);
+		expect(vault.fm('Ship 1.0.md')['start']).toBe('2026-01-01');
+	});
+
+	it('offers a milestone no schedule entry at all on a start-only vault', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10 } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20 } });
+		// Narrowing the fields to the target alone narrows what may offer them: an entry
+		// opened onto no fields is the failure the context-row rule and the empty add
+		// button both answer by removing the control. A gesture that can only end in
+		// nothing must not start.
+		const { containerEl } = makeView(vault, { startProperty: 'note.start' });
+
+		expect(titlesOfMenu(menuFor(containerEl, 'Ship 1.0'))).not.toContain('Schedule');
+		// A work item in the same vault keeps it — the rule is per type, not per vault.
+		expect(titlesOfMenu(menuFor(containerEl, 'A story'))).toContain('Schedule');
+	});
+
+	it('answers Unschedule’s offer on the target key alone for a milestone', () => {
+		const vault = new FakeVault();
+		// A start-only milestone carries nothing this action may take away.
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, start: '2026-01-01' } });
+		const { containerEl } = makeView(vault, AXES);
+
+		expect(titlesOfMenu(menuFor(containerEl, 'Ship 1.0'))).not.toContain('Unschedule');
+	});
+});

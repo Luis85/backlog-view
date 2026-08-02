@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
-import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isExtraType } from './itemTypes';
+import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isExtraType, isMarkerType } from './itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -538,7 +538,14 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 			// Traverse *through* a context row to the results below it, but never count
 			// it: rollups describe what the Base returned, and an excluded note's own
 			// state must not skew a progress bar or keep a finished subtree on screen.
-			const self = child.outsideFilter ? 0 : 1;
+			//
+			// A MARKER is the second exception, and it is stated here rather than at a
+			// call site precisely so it holds for every quantity this walk gathers — the
+			// counts, and the date evidence below. A marker is not work: it is neither a
+			// unit of progress nor evidence of when work happens, so a release date filed
+			// under an epic must not become that epic's inferred end. Its own subtree is
+			// traversed exactly as a context row's is.
+			const self = child.outsideFilter || isMarkerType(child.typeName) ? 0 : 1;
 			count += self + sub.count;
 			done += (child.done ? self : 0) + sub.done;
 			// Dates gather under the same exclusion, for the same reason: an excluded

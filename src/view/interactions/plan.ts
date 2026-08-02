@@ -1,8 +1,9 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
+import { isMarkerType } from '../../domain/itemTypes';
 import { sameValue } from '../../domain/noteFields';
-import { horizonMenuValues, optionalKeyFor } from '../../domain/settings';
+import { BacklogSettings, horizonMenuValues, optionalKeyFor } from '../../domain/settings';
 import { formatCivil } from '../../domain/timeline';
 import { computeHorizonWrites, computeScheduleWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
@@ -19,9 +20,46 @@ import { SchedulePromptModal } from '../../ui/prompts';
  * a context row unwritable by construction rather than by remembering.
  */
 
-/** True when the note carries either configured date key — what Unschedule can take away. */
+/** The two ends a placement can act on, in the order the entry asks for them. */
+const BOTH_ENDS = ['start', 'target'] as const;
+
+/**
+ * Which ends a placement acts on for THIS item. A milestone answers for its target alone
+ * — the type is the stronger statement, and a start it merely ignores is not a date any
+ * hand may write or delete.
+ *
+ * Stated per **type** rather than per control on purpose: the row's Schedule and
+ * Unschedule are simply the paths that exist first, and the roadmap's gestures — a shelf
+ * card dropped on the grid, a bar dropped back on the shelf, a bar slide, each keyboard
+ * equivalent — are specified in siblings still unbuilt. A rule written per control is one
+ * control out of date the moment a fourth path is added; a rule written per type is one
+ * every new path inherits by asking.
+ *
+ * Module-private for now: nothing outside this file needs it yet — its outside callers
+ * are the roadmap gestures above (specified, not yet built). Export it when the first
+ * of those lands, the way `placeMarker` (`domain/roadmap.ts`) waits for its own.
+ */
+function placementEnds(item: BacklogItem): ('start' | 'target')[] {
+	return isMarkerType(item.typeName) ? ['target'] : [...BOTH_ENDS];
+}
+
+/**
+ * Whether a placement entry has any field to ask for at all — the narrowed ends, against
+ * the configured keys. Withheld rather than opened empty: a control that opens onto
+ * nothing is the failure the context-row rule and the empty add button both answer by
+ * removing the control, not by opening it and apologising.
+ *
+ * For a work item this is exactly `hasDateAxis`. For a milestone on a start-only vault
+ * there is no legal batch left — the target has no key to receive a write and the start is
+ * a key this type may not touch — so the entry is absent.
+ */
+export function canSchedule(settings: BacklogSettings, item: BacklogItem): boolean {
+	return placementEnds(item).some((end) => optionalKeyFor(settings, end) !== '');
+}
+
+/** True when the note carries a date key this item's placement may take away. */
 export function carriesDates(item: BacklogItem): boolean {
-	return item.ownKeys.start || item.ownKeys.target;
+	return placementEnds(item).some((end) => item.ownKeys[end]);
 }
 
 /**
@@ -104,15 +142,12 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
  * of carrying the unreadable value back to disk.
  */
 function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: string; name: string; value: string }[] {
-	const ends = [
-		{ field: 'start', reading: item.plannedStart },
-		{ field: 'target', reading: item.plannedTarget },
-	] as const;
 	const fields = [];
-	for (const end of ends) {
-		const key = optionalKeyFor(host.settings, end.field);
+	for (const field of placementEnds(item)) {
+		const key = optionalKeyFor(host.settings, field);
 		if (key === '') continue;
-		fields.push({ field: end.field, name: key, value: end.reading.value ? formatCivil(end.reading.value) : '' });
+		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
+		fields.push({ field, name: key, value: reading.value ? formatCivil(reading.value) : '' });
 	}
 	return fields;
 }
@@ -129,6 +164,10 @@ function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: stri
  * That is also what makes the comparison a string comparison: zero-padded ISO dates
  * order lexically exactly as the calendar orders them, and these two can be nothing
  * else.
+ *
+ * The span rule narrows by itself: `placementEnds` decides which fields exist, so a
+ * milestone's values carry no `start` and the comparison below cannot fire. There is no
+ * second place to keep in step, which is what "per type, not per control" buys.
  */
 function validateSchedule(values: Record<string, string>): string | null {
 	const start = values.start ?? '';
@@ -174,7 +213,9 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 	}).open();
 }
 
-/** Take the item off the plan: both configured date keys removed in one undoable batch. */
+/** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
 export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
-	return host.applySafely(computeScheduleWrites(item, { start: null, target: null }));
+	const plan: SchedulePlan = {};
+	for (const field of placementEnds(item)) plan[field] = null;
+	return host.applySafely(computeScheduleWrites(item, plan));
 }

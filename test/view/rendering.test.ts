@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { ALL_TYPES, EXTRA_TYPES } from '../../src/domain/settings';
+import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/settings';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
@@ -44,7 +44,7 @@ describe('rendering', () => {
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task' }, parentLink: 'PBI' });
-		for (const type of EXTRA_TYPES) {
+		for (const type of [...EXTRA_TYPES, ...MARKER_TYPES]) {
 			vault.addFile(`${type}.md`, { frontmatter: { type }, parentLink: 'Epic' });
 		}
 		const { containerEl } = makeView(vault);
@@ -69,6 +69,7 @@ describe('rendering', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('An issue.md', { frontmatter: { type: 'Issue' }, parentLink: 'Epic' });
 		vault.addFile('A bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
 		// A type outside the vocabulary keeps its name and gets no icon at all — the
 		// bare-text treatment for something this view knows nothing about.
 		vault.addFile('A spike.md', { frontmatter: { type: 'Spike' }, parentLink: 'Epic' });
@@ -85,7 +86,28 @@ describe('rendering', () => {
 		// each other and from every level (0-3).
 		expect(badge('An issue')?.classList.contains('pbl-lvl-issue')).toBe(true);
 		expect(badge('A bug')?.classList.contains('pbl-lvl-bug')).toBe(true);
+		expect(badge('Ship 1.0')?.classList.contains('pbl-lvl-milestone')).toBe(true);
 		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
+	});
+
+	it('withholds every create affordance on a row that can hold nothing', () => {
+		// Absent, not empty. `addLabel` builds its text from `childTypes[0]`, so an empty
+		// list renders "New undefined" and opens a modal with no type to pick — the same
+		// answer the context-row rule gives: remove the control rather than let it fail at
+		// the end.
+		const vault = new FakeVault();
+		vault.addFile('An epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
+		const { containerEl } = makeView(vault);
+
+		const row = rowByTitle(containerEl, 'Ship 1.0');
+		expect(row.querySelector('.pbl-add')).toBeNull();
+		expect(rowByTitle(containerEl, 'An epic').querySelector('.pbl-add')).not.toBeNull();
+
+		row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles.filter((t) => t.startsWith('New '))).toEqual([]);
+		expect(titles.some((t) => t.includes('undefined'))).toBe(false);
 	});
 
 	it('mutes a done row without striking its title through', () => {
@@ -127,6 +149,20 @@ describe('rendering', () => {
 		expect(override, 'a three-class rule is needed to beat the two-class gradient on specificity').toBeGreaterThan(
 			-1,
 		);
+	});
+
+	it('lets pointer events through the milestone line, not through its label', () => {
+		// A timeline row sets no `position`, so it paints in the non-positioned layers
+		// while .pbl-milestone-line — absolute, with a z-index — paints above them.
+		// Hit-testing follows paint order, so the line is the event target wherever it
+		// crosses a row: a 2px dead strip per milestone through every row, swallowing
+		// the row's activation and context menu. jsdom does no hit-testing, so the
+		// decidable fact is that the declaration is there. The label must NOT have it —
+		// it is the only thing carrying the milestone's name on hover.
+		expect(ruleAt('.pbl-milestone-line', 'pointer-events: none;'), 'the line must not eat row clicks').toBeGreaterThan(
+			-1,
+		);
+		expect(ruleAt('.pbl-milestone-label', 'pointer-events: none;'), 'the label must stay hoverable').toBe(-1);
 	});
 
 	it('leaves an inferred bar unclosed at an end it has no date for', () => {
@@ -223,7 +259,9 @@ describe('rendering', () => {
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 
 		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', 'Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		// Read off the vocabulary, so an eighth name is a failing test rather than an entry
+		// a saved view can hold and no user can pick.
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', ...ALL_TYPES]);
 		expect(Menu.lastShown?.item('All types')?.checked).toBe(true);
 		Menu.lastShown?.item('Feature')?.click();
 		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === 'Feature')).toBe(true);

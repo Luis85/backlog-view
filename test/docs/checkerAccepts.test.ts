@@ -233,6 +233,14 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a parentless milestone, a root by nature rather than by position', async () => {
+		// A marker is a root by NATURE, where an Epic is a root by position on the ladder.
+		const files = baseRegister();
+		files['docs/milestones/Ship 1.0.md'] = note('Milestone', 60, null, '# Ship 1.0\n\nThe date.\n');
+
+		await expectAccepted(files);
+	});
+
 	it('accepts the record kinds and the pairs the corpus does not use', async () => {
 		// Issue and Bug attach to an Epic, a Feature or a PBI alike, and hold Tasks.
 		const files = baseRegister();

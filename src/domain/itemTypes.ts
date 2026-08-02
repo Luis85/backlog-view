@@ -1,4 +1,4 @@
-import { ALL_TYPES, BacklogSettings, byTypeName, EXTRA_TYPES, LEVELS } from './settings';
+import { ALL_TYPES, BacklogSettings, byTypeName, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';
 
 /**
  * The type vocabulary: the level ladder, and the types that sit beside it.
@@ -16,14 +16,25 @@ import { ALL_TYPES, BacklogSettings, byTypeName, EXTRA_TYPES, LEVELS } from './s
  *
  * A leaf module by design: it knows the settings and nothing about the tree, so
  * `model.ts` can import it while it builds one.
+ *
+ * A **marker** is the third category and the inverse of all three: no rung, no children,
+ * no parent. It has no `levelIndex` either, so `computeLevel` treats it exactly as it
+ * treats an unrecognised name — the difference is that it is *declared*, which is what
+ * earns it a folder, a badge, admission to `hierarchyOnly` and acceptance as a focus.
  */
 
 /** Where an item sits on the ladder — all these functions need of a parent. */
 export interface LadderPosition {
-	/** Index into `LEVELS`; -1 for an extra type or a type off the ladder. */
+	/** Index into `LEVELS`; -1 for an extra type, a marker, or a type off the ladder. */
 	levelIndex: number;
 	/** The rung the item occupies, chained down the parent levels. */
 	effectiveLevelIndex: number;
+	/**
+	 * The name on the note. A marker has no rung and therefore no position that could
+	 * distinguish it, so the only thing that tells one from the ordinary item sitting at
+	 * the same effective level is what it calls itself.
+	 */
+	typeName: string | null;
 }
 
 /**
@@ -61,6 +72,18 @@ export function isExtraType(typeName: string | null): boolean {
 }
 
 /**
+ * True when `typeName` is a declared MARKER (case-insensitive): a name that occupies no
+ * rung, holds nothing and hangs from nothing. Deliberately a second predicate rather than
+ * a widened `isExtraType` — the two answer opposite questions about rank, children and
+ * parents, and the four sites that ask `isExtraType` mean the pinned-rank container.
+ */
+export function isMarkerType(typeName: string | null): boolean {
+	if (typeName === null) return false;
+	const name = typeName.toLowerCase();
+	return MARKER_TYPES.some((t) => t.toLowerCase() === name);
+}
+
+/**
  * The types that may be created under `parent`, the ladder's own child first.
  *
  * Extra types are offered under a real rung above the deepest one — under an Epic, a
@@ -73,10 +96,15 @@ export function isExtraType(typeName: string | null): boolean {
  * follow the same rule. This decides what the + button and the menu put in front of you.
  */
 export function childTypeChoices(parent: LadderPosition | null): string[] {
+	// A marker holds nothing — no rung below it and no extra type beside it. The empty
+	// list is the answer, and every affordance built from it has to be ABSENT rather than
+	// empty (the add button, `New <child>`); see `renderRowTrailing`.
+	if (parent !== null && isMarkerType(parent.typeName)) return [];
 	const ladderChild = LEVELS[childLevelIndex(parent)];
-	// Top level is the ladder's top: a Bug hangs from something, and creating one with
-	// no parent would make an item whose own rule says it should have had one.
-	if (!parent) return [ladderChild];
+	// Top level is the ladder's top plus the markers, and exactly those two: a milestone
+	// hangs from nothing, while a Bug hangs from something and creating one with no parent
+	// would make an item whose own rule says it should have had one.
+	if (!parent) return [ladderChild, ...MARKER_TYPES];
 	const onLadder = parent.levelIndex >= 0 && parent.levelIndex < LEVELS.length - 1;
 	return onLadder ? [ladderChild, ...EXTRA_TYPES] : [ladderChild];
 }

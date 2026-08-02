@@ -193,6 +193,7 @@ describe('toolbar controls', () => {
 			'New Task',
 			'New Issue',
 			'New Bug',
+			'New Milestone',
 		]);
 
 		picker?.item('New PBI')?.click();

@@ -659,6 +659,8 @@
  */
 .pbl-lvl-issue { --pbl-badge-rgb: var(--color-pink-rgb); }
 .pbl-lvl-bug { --pbl-badge-rgb: var(--color-red-rgb); }
+/* A marker is not work, so it takes a colour no rung and no container uses. */
+.pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
 
 .pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
 	color: rgb(var(--pbl-badge-rgb));
@@ -1807,6 +1809,17 @@
 	transform: translateY(-50%) rotate(45deg);
 }
 
+/* Wholly past an edge: a direction, not a date. Half the bar height and no fill of its
+   own, so it can never be mistaken for a span that happens to be short. */
+.pbl-bar-outside {
+	width: 10px;
+	height: 8px;
+	border-radius: 0;
+	background: none;
+	border-top: 2px solid var(--pbl-bar-color);
+	opacity: 0.7;
+}
+
 .pbl-today {
 	position: absolute;
 	top: 0;
@@ -1816,6 +1829,48 @@
 	z-index: 1;
 	background-color: var(--color-red);
 	opacity: 0.55;
+}
+
+/* A milestone's line runs the grid's full height at its date, behind the bars. Same
+   shape as .pbl-today and deliberately a lower layer: today stays on top because it is
+   the reader's own mark, and the two sit side by side inside one day cell. Cyan to match
+   the milestone badge (--color-cyan-rgb) — purple is already .pbl-lvl-1 (Feature). */
+.pbl-milestone-line {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-milestone-left);
+	width: 2px;
+	z-index: 0;
+	background-color: var(--color-cyan);
+	opacity: 0.55;
+	/* A timeline row sets no `position`, so it paints in the non-positioned layers
+	   while this line — absolute, with a z-index — paints above them. Hit-testing
+	   follows paint order, so without this the line is the event target wherever it
+	   crosses a row: a 2px dead strip through every row, per milestone, swallowing
+	   the row's activation and context menu. The line is aria-hidden decoration and
+	   its tooltip lives on the header label, so it wants no events at all. */
+	pointer-events: none;
+}
+
+/* In the header band, so the name reads where the months do. Backed, because it sits
+   over the month labels; truncating, because horizontal space is what a pane runs out
+   of first and the full name is one hover away — which needs the label to actually
+   receive the hover: the month cells underneath are presentational (the header is
+   aria-hidden, no click handler anywhere in it) and the bars live in a different row
+   entirely, so nothing below this label ever needed the pointer to pass through it. */
+.pbl-milestone-label {
+	position: absolute;
+	top: 0;
+	left: var(--pbl-milestone-left);
+	max-width: 140px;
+	padding: var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--color-cyan);
+	background-color: var(--background-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* ----- the shelf: what the axis cannot place, visible and counted */

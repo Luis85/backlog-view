@@ -99,7 +99,25 @@ describe('the backlog tree', () => {
 			(files) => {
 				files['docs/requirements/A slice.md'] = note('Feature', 10, null, '# A slice\n\n**Outcome** — it works.\n');
 			},
-			'Feature with no parent — only an Epic is a root',
+			'Feature with no parent — only Epic or Milestone can be a root',
+		],
+		[
+			// A marker holds nothing, so a child under one is exactly as wrong as a Task under
+			// an Epic — and the register is the plugin's own schema, so a wrong parent here is
+			// a bug in the example.
+			'Task under Milestone is not a legal pair',
+			(files) => {
+				files['docs/milestones/Ship 1.0.md'] = note('Milestone', 60, null, '# Ship 1.0\n\nThe date.\n');
+				files['docs/tasks/Prep the launch.md'] = note('Task', 10, 'Ship 1.0', '# Prep the launch\n\nWork.\n');
+			},
+			'Task under Milestone is not a legal pair',
+		],
+		[
+			'a PBI with no parent — only an Epic or a Milestone can be a root',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({ parent: null });
+			},
+			'PBI with no parent — only Epic or Milestone can be a root',
 		],
 		[
 			'a parent link naming a note that does not exist',

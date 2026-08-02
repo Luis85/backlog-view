@@ -112,6 +112,10 @@ built yet, and what it asks for applies to the board as much as to the tree.
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
 Epic, a Feature or a PBI alike.
 
+`Milestone` is neither a rung nor a container: it hangs from nothing, holds nothing, and
+counts for nothing. It states a date rather than work, so it never enters a rollup — a
+number reporting progress must only ever count work — and it files into `milestones/`.
+
 ## The hierarchy is the point
 
 This register is the plugin's own schema, so a wrong parent here is a bug in the example.
@@ -124,6 +128,7 @@ Every pair holds:
 | `PBI` | `Feature` | `Task`, `Issue`, `Bug` |
 | `Task` | `PBI`, `Issue`, `Bug` | *(nothing)* |
 | `Issue` / `Bug` | `Epic`, `Feature` or `PBI` | `Task` |
+| `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
 
 The plugin does not *enforce* this — the rules decide what is offered, never what is
 refused — which is exactly why the register has to hold to it by hand.
@@ -198,7 +203,7 @@ can run is worse than none, because it invites trust it has not earned:
 **One check lives elsewhere, on purpose.** That every **view-option key** and **command id**
 is named by a *requirement* is verified in `test/docs/surfaces.test.ts`, because it needs to
 **import** the modules and read what they actually produce: `getViewOptions()` for the
-keys — the six generated per type included — and `onload()` for the commands it registers,
+keys — the ones generated per type included — and `onload()` for the commands it registers,
 so a second one is discovered rather than remembered. Teaching this script to learn them instead meant regex-scanning
 TypeScript, and ten review rounds found ten ways that can be fooled. A script over markdown
 checks markdown; a test that can load the module asks the module. A record naming a surface
@@ -380,8 +385,8 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
 
   | Field | On | Holds |
   | --- | --- | --- |
-  | `type` | every backlog note | One of the six names. ADRs carry none |
-  | `parent` | everything but an Epic | A wikilink, `"[[Note name]]"`, quoted so YAML keeps it |
+  | `type` | every backlog note | One of the vocabulary's fixed names. ADRs carry none |
+  | `parent` | everything but a root — an `Epic` by position, a `Milestone` by nature | A wikilink, `"[[Note name]]"`, quoted so YAML keeps it |
   | `order` | every backlog note | The rank among siblings. Unique within a group — the register must not demonstrate the one ranking limitation the plugin has |
   | `status` | every backlog note | `Open`, `Active` or `Done` |
   | `priority` | Tasks, Issues, Bugs | `P1`–`P3`. Absent means nobody has judged it |
