@@ -1,4 +1,5 @@
 import { firstPlacedIndex } from './board';
+import { isMarkerType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { CivilDate, FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -290,11 +291,23 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
  * and gets no inferred span either: every `outsideFilter` row routes straight to
  * `roadmap.context` before a span is ever computed for it, so it stands beside the
  * shelf exactly as it did before spans rolled up — that scoping is not built.
+ *
+ * A marker never reaches any of that: it is reduced to its target point first, so
+ * the ordinary span rules are never asked about a type they do not describe.
  */
 function deriveBars(rows: BacklogItem[], roadmap: RoadmapModel): void {
 	for (const item of rows) {
 		if (item.outsideFilter) {
 			roadmap.context.push(item);
+			continue;
+		}
+		// A MARKER is reduced to its point before any span rule is asked about it. It has
+		// to happen here rather than in drawing: a stale start later than the target would
+		// shelve it as a reversed span and no rendering seam is ever reached. The start is
+		// ignored, never rewritten — ignoring a value and deleting it are different acts,
+		// and only the first was specified.
+		if (isMarkerType(item.typeName)) {
+			placeMarker(item, roadmap);
 			continue;
 		}
 		const start = item.plannedStart;
@@ -313,6 +326,32 @@ function deriveBars(rows: BacklogItem[], roadmap: RoadmapModel): void {
 			else roadmap.bars.push(bar);
 		}
 	}
+}
+
+/**
+ * A marker states one date, in the same key a bar's end is read from and read the same
+ * tolerant civil way. Absent is unplaced and unreadable shelves with its reason, exactly
+ * as a span end does — and nothing is ever inferred for it, because an inference standing
+ * in for a deadline is a commitment nobody made.
+ */
+function placeMarker(item: BacklogItem, roadmap: RoadmapModel): void {
+	const target = item.plannedTarget;
+	if (target.invalid) {
+		roadmap.shelf.push({ item, reason: 'Unreadable target date' });
+		return;
+	}
+	if (target.value === null) {
+		roadmap.shelf.push({ item, reason: null });
+		return;
+	}
+	// Equal ends are what `barGeometry` already reports as a milestone, so the diamond the
+	// timeline draws for a stated pair is the same diamond, reached by the type.
+	roadmap.bars.push({
+		item,
+		span: { start: target.value, target: target.value },
+		inferredStart: false,
+		inferredEnd: false,
+	});
 }
 
 /** True when `a` does not fall after `b`. A missing end bounds nothing. */

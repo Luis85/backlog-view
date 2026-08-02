@@ -248,6 +248,12 @@ in the root `CLAUDE.md` because it spans every layer.
   visible results is specified and unbuilt. What has no place stands in
   `RoadmapModel.context`, rendered beside the shelf apart from its count. The invariant the tests state from the rule: placed plus shelved equals the
   visible result rows, on either axis.
+- A marker gets the same early exit in `deriveBars`, right after the context check and
+  for a different reason: it is not a context row, it is reduced (`placeMarker`) to its
+  target point before the ordinary span rules — start, target, the reversal check — ever
+  run against a type that does not describe a span. A stale start later than the target
+  would otherwise read as a reversed pair and shelve, a rendering fix would never reach:
+  the reduction has to happen here, in derivation, not in the timeline that draws it.
 - Bucket order inside a bucket is the Base's own sort (`entryIndex`), the board's
   derived-order rule; the shelf and the timeline keep tree order — rows arrive from
   `roadmapRows` already in it, which is what "sibling order" on the shelf rests on.
