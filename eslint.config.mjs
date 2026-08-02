@@ -105,7 +105,7 @@ export default defineConfig([
 			'esbuild.config.mjs',
 			'test-build.mjs',
 			'version-bump.mjs',
-			'vitest.config.ts',
+			'vitest.config.mts',
 		],
 	},
 	...pluginRules,

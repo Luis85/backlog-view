@@ -56,7 +56,7 @@ harness rather than being copied.
 ## Acceptance criteria
 
 - Uncovered branches in `dragDrop.ts` materially reduced.
-- Branch threshold in `vitest.config.ts` raised to match, per the project rule that
+- Branch threshold in `vitest.config.mts` raised to match, per the project rule that
   thresholds only ever go up.
 
 ## Note on the tooling
@@ -68,7 +68,7 @@ highest risk. Treat that column as a hint; the coverage JSON above is the real s
 ## Outcome
 
 Done: **21 uncovered branches to 0**, and overall branch coverage 92.3% to 94.1%. The
-`vitest.config.ts` branch threshold went 89 to 92.
+`vitest.config.mts` branch threshold went 89 to 92.
 
 Four of the twenty-one could not be reached by any test, and no test pretends otherwise.
 `getDraggedItem()` already returned null when `host.model` was null, but each call site

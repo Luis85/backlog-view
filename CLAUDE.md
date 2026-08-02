@@ -20,7 +20,7 @@ npm run check   # build + lint + coverage-thresholded tests + fallow + docs regi
 All five must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
 produced a defect this repository could not see. Coverage thresholds
-(vitest.config.ts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
+(vitest.config.mts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
 duplication, complexity/CRAP (fed by the vitest coverage file) and dependency hygiene —
 framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
 `usedClassMembers`, not suppressed inline. `docs-check.mjs` gates `docs/` the same way:
@@ -112,7 +112,7 @@ depend on the effectful one.
 ## Testing
 
 - `test/helpers/obsidian-mock.ts` — runtime stand-in for the `obsidian` module (aliased in
-  `vitest.config.ts`). Extend it when new obsidian API surface is used; keep it minimal.
+  `vitest.config.mts`). Extend it when new obsidian API surface is used; keep it minimal.
 - `test/helpers/dom.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
   `addClass`, `setCssProps`, …) for jsdom files. Call `installObsidianDom()` at module top.
 - `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
@@ -224,6 +224,12 @@ write's inverse as it lands, so the last effective batch can always be taken bac
   `normalizePath` on user paths, no global `app`.
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
+- Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
+  also says why `npm audit` is deliberately NOT a sixth step. Two upgrades are refused on
+  purpose, with the reason in `.github/dependabot.yml`: **TypeScript stays on 5.x**
+  (`typescript-eslint` 8 declares `typescript <6.1.0`, so npm refuses 7 outright with
+  ERESOLVE, and lint is what would be lost), and **`@types/node` tracks the `engines`
+  floor**, not npm's newest. Do not "fix" either by widening the range.
 - Work is tracked in `docs/`, which is a backlog **in this plugin's own schema** and the
   layout the view ships as its default — `requirements/` (Epic → Feature → PBI),
   `tasks/`, `issues/`, `bugs/`. Every note states the evidence it rests on. Closed notes
