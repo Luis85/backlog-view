@@ -498,9 +498,11 @@ anyone else's view.
 
 The board needs a **state property**. Without one it shows guidance and a button that sets
 it up. The **Workflow states (in order)** list is optional: with it, those are the columns,
-in that order. Without it, the board draws the states your notes actually carry — and even
-with a list configured, a value one of your **results** carries that the list omits still
-gets a column, so no card of yours is ever homeless.
+in that order. Without it, the board draws the states your notes actually carry — plus a
+**Done** column even if nothing is in it yet, when none of the states you carry already
+counts as done, so marking an item done is always one click away. And even with a list
+configured, a value one of your **results** carries that the list omits still gets a
+column, so no card of yours is ever homeless.
 
 Only your results mint columns. A card the Base's filter excluded, shown as context, never
 adds a column for its own state — that state is not your board's vocabulary. If its value
@@ -514,9 +516,10 @@ matches no column, it sits in the no-state column.
 | Create in a column | Toolbar **New**, then drag — creation from a column is not built yet |
 
 - **Columns** are the no-state column first, then **Workflow states (in order)** if you
-  set it — or, left unconfigured, the states your notes actually carry — and finally one
-  more column per observed result value neither names, so a stray status still gets a
-  column of its own rather than losing its card.
+  set it — or, left unconfigured, the states your notes actually carry plus a **Done**
+  column even if nothing is in it yet, when none of those already counts as done — and
+  finally one more column per observed result value neither names, so a stray status
+  still gets a column of its own rather than losing its card.
 - **WIP limits** are set per state in the view options — for every state **except the done
   ones**, since a finished column is a record rather than a queue and capping it would mean
   nothing. A limit **reads the column's full population, not the filtered count**, so
@@ -583,11 +586,13 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
   row menu instead.
 
   Items your Base's filter excluded are **not** on the shelf and not in its count. On a
-  **focused** roadmap, a focus-level item the filter excluded appears in a separate
-  **Context** strip beside the shelf instead, because the shelf is a statement about your
-  results — an excluded note is shown so its children have somewhere to hang, not because
-  it is work you have left unplanned. Unfocused, the roadmap draws results only and no
-  context strip appears at all.
+  **focused** roadmap, a focus-level item the filter excluded is shown as context so its
+  children have somewhere to hang, not because it is work you have left unplanned. **On
+  the timeline** every excluded item goes straight to a **Context** strip beside the
+  shelf. **On the horizons axis**, one whose horizon value matches an existing bucket
+  sits in that bucket instead — only one with no value, or a value no bucket names,
+  reaches the Context strip. Unfocused, the roadmap draws results only and no context
+  strip appears at all.
 - **The timeline** draws a bar from each item's dates. **One date property is enough** —
   a target-only roadmap of milestones and deadlines, or a start-only plan, are both
   supported. **A parent with no dates of its own spans its dated descendants**, endpoint to
@@ -628,18 +633,21 @@ Open the view options in the Bases toolbar to configure:
 | Item type property | `type` | Hierarchy level of the item |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
+| Infer hierarchy from folder notes | off | Folder mode: a folder's own note is the parent of the notes beside it, so a child needs no explicit `parent` link |
 | Assign item type when moving | off | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
+| Workflow states (in order) | *(off)* | The board's columns, in that order. Left unset, the board draws the states your notes actually carry, plus a done column even if nothing is in it yet, so marking an item done is always one click away |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |
 | States that count as started | *(off)* | Which state values start the clock — entering one stamps the started date |
 | WIP limit for *&lt;state&gt;* | *(off)* | **One per configured state that is not a done state** — a finished column is a record, not a queue, so it is never offered a limit. The most items that stage should hold. Reads the full column, not the filtered count, and refuses nothing |
 | Policy for *&lt;state&gt;* | *(off)* | **One per configured state**, done ones included. The working agreement for that column, readable from its header and menu |
 | Home folder | `docs` | The folder the backlog lives under; every type folder below defaults to a subfolder of it |
 | Horizon property | *(off)* | Note property holding the roadmap's horizon; with **Horizons (in order)** it makes the bucket axis |
-| Horizons (in order) | *(off)* | The buckets the horizon axis draws, in order — e.g. `Now, Next, Later` |
-| Start property / Target property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
+| Horizons (in order) | `Now, Next, Later` | The buckets the horizon axis draws, in order. Naming a **Horizon property** is enough to turn the axis on — the values ship populated, so you only need to edit this list to rename or add buckets |
+| Start date property / Target date property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
 | Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
-| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Show completed items | on | Off hides fully-done subtrees from the tree (only while a state property is set); nothing about ranking or rollups changes |
+| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |
