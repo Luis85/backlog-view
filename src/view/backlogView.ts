@@ -92,7 +92,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.toolbarEl = this.viewEl.createDiv({ cls: 'pbl-toolbar' });
 		this.treeEl = this.viewEl.createDiv({
 			cls: 'pbl-tree',
-			attr: { role: 'tree', tabindex: '0', 'aria-label': 'Product backlog' },
+			attr: { role: 'tree', tabindex: '0' },
 		});
 		// Nothing to render until Bases delivers the first result set — say what is
 		// happening instead of showing an empty pane.

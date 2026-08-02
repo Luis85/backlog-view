@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src test",
+    "lint": "eslint .",
     "analyze": "fallow",
     "docs": "node docs-check.mjs",
     "check": "npm run build && npm run lint && npm run test:coverage && npm run analyze && npm run docs",

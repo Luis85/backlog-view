@@ -13,6 +13,14 @@ import obsidianmd from 'eslint-plugin-obsidianmd';
  * rules below are what keep this a fact rather than an aspiration — a layering
  * documented only in prose is one commit away from being wrong.
  */
+/**
+ * Anchored on `**\/` rather than on the repository root: every `files`/`ignores` pattern is
+ * matched against the LINTER's base path, and an editor's ESLint server need not put that
+ * where the CLI does. A test excluded by `test/**` alone is only excluded when it is —
+ * otherwise the type-aware rules meet a file the tsconfig does not cover.
+ */
+const TESTS = '**/test/**';
+
 const forbidden = (layer, groups, reason) => ({
 	files: [`src/${layer}/**/*.ts`],
 	rules: {
@@ -30,7 +38,7 @@ const forbidden = (layer, groups, reason) => ({
  * vault casts to `TFile`. So the plugin rules stop at `src/`, and `test/` gets the
  * TypeScript baseline plus this repo's own budgets, below.
  */
-const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: [...(c.ignores ?? []), 'test/**'] }));
+const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: [...(c.ignores ?? []), TESTS] }));
 
 /**
  * Every mutation of the vault goes through storage/, so the write-safety invariants
@@ -99,9 +107,20 @@ const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selec
 
 export default defineConfig([
 	{
+		// Everything that is not this plugin's source. The build scripts are Node, not
+		// plugin code, so the Obsidian ruleset does not apply to them; `.obsidian/` is a
+		// test-build vault (vendored plugin bundles), `.claude/` is agent tooling. They
+		// were only invisible while `lint` named `src test` — an editor lints the whole
+		// tree, and a type-aware rule on a file outside tsconfig crashes the run.
 		ignores: [
 			'main.js',
 			'node_modules/**',
+			'coverage/**',
+			'dist/**',
+			'.obsidian/**',
+			'.claude/**',
+			'docs-check.mjs',
+			'eslint.config.mjs',
 			'esbuild.config.mjs',
 			'test-build.mjs',
 			'version-bump.mjs',
@@ -148,10 +167,21 @@ export default defineConfig([
 		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH]),
 	},
 	{
-		files: ['src/**/*.ts'],
+		// Everything but `test/`, rather than `src/**` by name: a `files` pattern is
+		// matched against the LINTER's base path, so a run whose working directory is not
+		// this one — which is what an editor's ESLint server may be — matches this block
+		// on none of its files, leaving the Obsidian ruleset's type-aware rules to run
+		// with no type information at all. That is the "unsafe assignment of an error
+		// typed value" on a file `tsc` compiles cleanly. Nothing else in the repository
+		// is a `.ts` file, so the set is the same one either way.
+		files: ['**/*.ts'],
+		ignores: [TESTS],
 		languageOptions: {
 			parser: tsparser,
-			parserOptions: { project: './tsconfig.json' },
+			// Likewise `project: './tsconfig.json'` resolves against the working directory.
+			// The project service is what the TypeScript language server itself uses, and
+			// the root is pinned to this file rather than to whoever invoked eslint.
+			parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
 		},
 		rules: {
 			// Un-awaited promises around frontmatter writes silently reorder the vault;
@@ -166,7 +196,7 @@ export default defineConfig([
 		},
 	},
 	{
-		files: ['test/**/*.ts'],
+		files: [`${TESTS}/*.ts`],
 		extends: [tseslint.configs.recommended],
 		languageOptions: { parser: tsparser },
 		rules: {

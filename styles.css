@@ -311,7 +311,11 @@
 	overflow-y: auto;
 	/* Rows clip at the pane edge rather than making the whole tree scroll sideways */
 	overflow-x: hidden;
-	padding: var(--size-4-2) var(--size-4-2) var(--size-4-4);
+	/* No padding on an edge something is pinned to: a sticky child pins at the
+	   scroller's CONTENT edge, so padding there is a gutter the scrolled content
+	   stays visible in — rows above the column header, bars left of the timeline's
+	   lead. Whatever wants the gap owns it, inside the box that pins. */
+	padding: 0 var(--size-4-2) var(--size-4-4);
 }
 
 .pbl-row {
@@ -742,7 +746,8 @@
 	position: sticky;
 	top: 0;
 	z-index: 1;
-	padding: 0 var(--size-4-1) var(--size-2-2);
+	/* The tree's top gap, carried here so it scrolls under nothing */
+	padding: var(--size-4-2) var(--size-4-1) var(--size-2-2);
 	margin-bottom: var(--size-2-1);
 	border-bottom: 1px solid var(--background-modifier-border);
 	background-color: var(--background-primary);
@@ -1216,6 +1221,8 @@
    shrink or drop — a workflow stage exists whether or not the pane is narrow. */
 .pbl-board-mode .pbl-tree {
 	overflow-x: auto;
+	/* Nothing is pinned to the board's top edge, so the gap can live on the scroller */
+	padding-top: var(--size-4-2);
 }
 
 .pbl-board-cols {
@@ -1537,6 +1544,9 @@
 .pbl-roadmap-mode .pbl-tree {
 	overflow-x: auto;
 	container-type: inline-size;
+	/* The lead column and the pinned strips stick to left: 0, so an inline gutter
+	   here is where the bars behind them show through. */
+	padding-inline: 0;
 }
 
 .pbl-roadmap {
@@ -1544,6 +1554,8 @@
 	flex-direction: column;
 	gap: var(--size-4-3);
 	min-width: max-content;
+	/* Scrolls away under the pinned header, unlike a gap on the scroller itself */
+	padding-block-start: var(--size-4-2);
 }
 
 /* Pinned to the scrollport: a pan across months must never scroll the unplaced
