@@ -44,7 +44,9 @@ the view options can rename.
 
 1. The user runs **Write backlog readme** from an open Product Backlog view.
 2. The view's settings are resolved — the same `resolveSettings` the tree is built from,
-   so the document describes *this* base rather than the defaults.
+   so the document describes *this* base rather than the defaults — together with the
+   state vocabulary the view is actually offering, which is not a setting whenever the
+   states are left undeclared (`stateMenuValues`, over the model's observed states).
 3. The document is generated: what the folder holds, the six type names with the ladder
    and the two types beside it, the parent/child table, the frontmatter contract in this
    view's actual keys, the ranking rule, the workflow states and which of them count as
@@ -77,11 +79,13 @@ the view options can rename.
 - **3b — the home folder or a type folder was renamed.** The paths come from the resolved
   settings, so the README names where notes actually go. It states the whole precedence and
   not the configured path alone, because the configured path is not the answer in every
-  configuration: folder mode's "beside the parent's folder note" wins first, then the type's
-  own folder, then the home folder, and where the items already live is the last resort
-  ([[Where new items are filed]]). A README that named the type folder as *the* destination
-  would send an outside editor to the wrong folder in exactly the mode where the folder tree
-  is the hierarchy.
+  configuration: folder mode's "beside the parent's folder note" wins first — **unless the
+  parent is a context row**, where that rule is skipped so the child does not land outside
+  the filter it was created from — then the type's own folder, then the home folder, and
+  where the items already live is the last resort ([[Where new items are filed]]). A README
+  that named the type folder as *the* destination would send an outside editor to the wrong
+  folder in exactly the mode where the folder tree is the hierarchy; one that named the
+  parent's folder unconditionally would send it to a folder this plugin deliberately avoids.
 - **3c — the reader wants to know what the plugin will refuse.** Almost nothing: the type
   rules decide what is *offered*, never what is accepted, so a hand-written note with a
   `Task` under an `Epic` renders at the level its position implies and is not rewritten.
@@ -101,10 +105,16 @@ the view options can rename.
 - **4c — the home folder sits inside the base's filter**, so the new file is a note the
   base returns. It carries no `type` and no `parent`, so the scope rule leaves it out of
   the tree ([[What counts as a work item]]) — the same way this register's own
-  `docs/README.md` sits in the folder it describes. The two settings are alternatives, not
-  both at once: with "Ignore notes outside the hierarchy" on — the default — it is pruned
-  and the toolbar advisory counts it; with it off nothing is pruned, `ignoredCount` is zero
-  and there is no advisory, so it simply renders as an untyped root.
+  `docs/README.md` sits in the folder it describes. Three configurations, not one: with
+  "Ignore notes outside the hierarchy" on — the default — it is pruned and the toolbar
+  advisory counts it; with it off nothing is pruned, `ignoredCount` is zero and there is no
+  advisory, so it simply renders as an untyped root; and in **folder mode** it is a work
+  item whatever its frontmatter omits, because inference reads a note's *position* rather
+  than its fields — a folder note anywhere above it becomes its parent, so it hangs in the
+  tree under that note and is counted like any other item. Declaring no `type` and no
+  `parent` is what keeps it out of the first two, and nothing in the schema can opt it out
+  of the third: that is a limitation to state in this note rather than a promise to make
+  and break.
 - **5a — the write fails.** A notice says so and points at the console, like every other
   vault write this plugin makes.
 
@@ -125,8 +135,14 @@ the view options can rename.
   types rank with the second-deepest rung.
 - The ranking rule is stated with the spacing the planner actually uses (`ORDER_SPACING`),
   and says what duplicate orders do rather than promising they cannot happen.
-- Generation is pure and node-testable: same settings in, byte-identical markdown out.
-  Re-running with the file already matching writes nothing.
+- Generation is pure and node-testable: same inputs in, byte-identical markdown out. Its
+  inputs are the resolved settings **and** the state vocabulary the view offers, since with
+  the states left undeclared that vocabulary comes from the results rather than from any
+  setting — two bases with identical settings and different states must not produce the
+  same states section. Where the values were observed rather than declared, the document
+  says so: an outside editor writing a state nobody has used yet is then adding to a
+  vocabulary rather than breaking one.
+- Re-running with the file already matching writes nothing.
 - The bytes land from `storage/`, like every other file this plugin puts in the vault, and
   no frontmatter write happens on any note.
 - The generated file carries no `type` and no `parent`, so it cannot enrol itself into the
