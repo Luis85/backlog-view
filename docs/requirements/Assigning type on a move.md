@@ -38,9 +38,12 @@ thing to do on a drag.
 - **3a — the item is an `Issue` or a `Bug`.** Left alone: its rank is a property of the
   type ([[Types beside the ladder]]).
 - **3b — the item's type is not on the ladder at all** (`Spike`, `Chore`). It **is**
-  rewritten to the level its new position implies. Only declared extra types are exempt
-  here — which is not what happens to the same type one level down. See *The asymmetry*
-  below.
+  rewritten to the level its new position implies. Only *declared* types that occupy no
+  rung are exempt here — the extra types, and the markers
+  ([[Milestones as their own type]]) — which is not what happens to the same undeclared
+  type one level down. See *The asymmetry* below. The exemption turns on **declared and
+  rungless**, not on membership of `EXTRA_TYPES`: `Epic` and `Task` are declared *as*
+  rungs and follow position, which is the whole point of the cascade.
 - **4a — a child is an extra type.** Also left alone — but the walk descends from **its**
   pinned rank rather than the position it inherited. Taking the positional rung here
   rewrote a nested Bug's Tasks into PBIs: the item correctly untouched, its children
@@ -52,6 +55,14 @@ thing to do on a drag.
 - **4c — a child came from outside the Base's filter.** The cascade **stops** and skips
   that whole branch. It may not be written to, and re-typing only the levels beneath it
   would leave a worse ladder than leaving the branch alone.
+- **4d — a child is a marker** ([[Milestones as their own type]]). Left alone, and the walk
+  **stops** there, exactly as 4c stops: neither the marker nor anything hand-nested beneath
+  it is retyped. An extra type supplies a pinned rank to descend from and a marker supplies
+  none, so there is no rung its branch could be renumbered from. "It has no children" is
+  not the reason — the ladder guides and never refuses, so a marker can be hand-nested into
+  exactly as anything else can, and a rule resting on what creation *offers* would break on
+  the vault that did it anyway. Continuing past it is the 4a failure reached by a name with
+  no rank at all: the item correctly untouched, its children silently corrupted.
 
 **Guarantees**
 
@@ -87,8 +98,10 @@ behaviour is stated once and pointed at rather than restated in a fifth place.
 
 - Off by default; with it off, no move writes a `type`.
 - A reorder within a sibling group never re-types.
-- Declared extra types are never re-typed, at any depth, and their subtrees rank from the
-  pinned rung.
+- Declared types that occupy no rung are never re-typed, at any depth. An extra type's
+  subtree ranks from its **pinned** rung; a marker has no rung at all, so the cascade stops
+  at it and leaves anything hand-nested beneath it alone rather than renumbering that
+  branch from a rank the marker does not have ([[Milestones as their own type]]).
 - An unrecognised custom **descendant** type is never re-typed, and its children continue
   the ladder from the rung it occupies. The **dragged item's** own unrecognised type is
   rewritten — see *The asymmetry*.

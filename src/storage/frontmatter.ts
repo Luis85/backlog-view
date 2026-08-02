@@ -387,6 +387,8 @@ export interface NewItemSpec {
 	typeName: string;
 	parent: TFile | null;
 	order: number;
+	/** The bucket it was created in, when it was created from one. */
+	horizon?: string;
 }
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
@@ -410,6 +412,13 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// intentionally top-level note — pin it with an explicitly empty parent.
 	else if (settings.folderHierarchy) setOwn(fm, settings.parentKey, '');
 	setOwn(fm, settings.orderKey, spec.order);
+	// A note created from a bucket claims that bucket in the SAME write, through the
+	// same axis list the edit path uses — so it is never momentarily a note sitting in
+	// a bucket its own frontmatter does not name, and never a write to an unconfigured
+	// key. `axisEntries` yields nothing here when the horizon axis is off.
+	for (const { key, value } of axisEntries(settings, spec.horizon ? { horizon: spec.horizon } : undefined)) {
+		if (value !== null) setOwn(fm, key, value);
+	}
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

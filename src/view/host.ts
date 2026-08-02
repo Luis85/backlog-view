@@ -149,6 +149,15 @@ export interface BacklogViewHost {
 	 * plans nothing and resolves false, leaving the undo slot untouched.
 	 */
 	performBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
+	/**
+	 * Plan and apply the horizon write a roadmap move means — the target bucket's
+	 * value, or key removal for the shelf. The board's rule on the roadmap's
+	 * property: one path for all three inputs (a drop, an Alt+arrow, the card menu),
+	 * so no input can reach a bucket another cannot, and every move that lands
+	 * announces itself once. A move onto the card's own bucket plans nothing and
+	 * resolves false, leaving the undo slot untouched.
+	 */
+	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean>;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;

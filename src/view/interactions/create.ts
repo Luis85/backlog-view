@@ -22,12 +22,29 @@ export function newItemType(settings: BacklogSettings, model: BacklogModel): str
 }
 
 /**
+ * Where a projection asks a new note to land, beyond the hierarchy: the roadmap's
+ * buckets create in place, so the bucket's own value rides the creation write.
+ * Absent everywhere else — a placement nobody chose is not one to write.
+ */
+export interface CreatePlacement {
+	horizon?: string;
+}
+
+/**
  * Ask for a title (and folder, when nothing is configured) and create the note.
  *
  * `choices` is what this parent may hold — one type under a Task, several under a rung
  * that also takes the extra types. The modal only asks when there is something to ask.
+ * `placement` is what the surface the user created FROM adds to that note, and it
+ * changes nothing else: every rule below — the config gate, the type folders, folder
+ * mode, the inference — governs a bucket's new note exactly as it governs the toolbar's.
  */
-export function promptCreateItem(host: BacklogViewHost, choices: string[], parentItem: BacklogItem | null): void {
+export function promptCreateItem(
+	host: BacklogViewHost,
+	choices: string[],
+	parentItem: BacklogItem | null,
+	placement: CreatePlacement = {},
+): void {
 	// Creation writes frontmatter too — the same config guard as applySafely.
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
@@ -81,6 +98,7 @@ export function promptCreateItem(host: BacklogViewHost, choices: string[], paren
 				title,
 				folder: askFolder ? folder ?? '' : folderFor(typeName),
 				persistFolder: askFolder,
+				horizon: placement.horizon,
 			});
 		},
 	}).open();
@@ -98,6 +116,7 @@ interface CreateRequest {
 	title: string;
 	folder: string;
 	persistFolder: boolean;
+	horizon?: string;
 }
 
 async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): Promise<void> {
@@ -120,6 +139,7 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			parent: parentItem?.file ?? null,
 			// Parentless items rank among the real top level, not the focus rows.
 			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.realRoots ?? []),
+			horizon: request.horizon,
 		});
 		new Notice(`Created "${file.basename}".`);
 	} catch (e) {

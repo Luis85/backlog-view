@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { flush, key, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
-import { boardDrag } from '../helpers/dnd';
+import { cardDrag } from '../helpers/dnd';
 import { BOARD_WORKFLOW, cardByTitle, columnByName, makeBoard } from '../helpers/board';
 import { todayStamp } from '../../src/domain/noteFields';
 
@@ -40,7 +40,7 @@ describe('stamps ride every input that changes a state', () => {
 		const vault = stampVault();
 		const { containerEl } = makeBoard(vault, STAMPING);
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
 		await flush();
 
 		expect(vault.fm('Epic A.md')['started']).toBe(todayStamp());
@@ -90,7 +90,7 @@ describe('stamps and the undo slot', () => {
 		const { containerEl } = makeBoard(vault, STAMPING);
 		const tree = treeOf(containerEl);
 
-		boardDrag(cardByTitle(containerEl, 'Epic B'), columnByName(containerEl, 'Done'));
+		cardDrag(cardByTitle(containerEl, 'Epic B'), columnByName(containerEl, 'Done'));
 		await flush();
 		expect(vault.fm('Epic B.md')['finished']).toBe(todayStamp());
 
@@ -108,7 +108,7 @@ describe('stamps and the undo slot', () => {
 		});
 		const { containerEl } = makeBoard(vault, STAMPING);
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
 		await flush();
 
 		expect('finished' in vault.fm('Epic A.md')).toBe(false);
@@ -121,7 +121,7 @@ describe('stamps and the undo slot', () => {
 		const vault = stampVault();
 		const { containerEl } = makeBoard(vault);
 
-		boardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
+		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
 		await flush();
 
 		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', order: 10, status: 'Active' });

@@ -2,13 +2,14 @@
 type: PBI
 parent: "[[The horizon board]]"
 order: 10
-status: Open
+status: Active
 priority: P1
 created: 2026-08-01
 files:
   - src/domain/roadmap.ts
   - src/domain/noteFields.ts
   - src/view/render/roadmap.ts
+  - src/view/interactions/create.ts
 ---
 
 # Buckets from a horizon property
@@ -80,7 +81,38 @@ The read half shipped with [[A third projection]]: bucket derivation — declare
 case-insensitive matching, minted strays, results-only counts — is
 `src/domain/roadmap.ts`, the value is read by `readPlacement` in
 `src/domain/noteFields.ts`, and the columns render in `src/view/render/roadmap.ts`,
-driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`. What
-remains of this note is the write half — creating from a bucket with its value in the
-creation write — beside the moves [[Moving between horizons]] specifies, which is why
-it stays open.
+driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`.
+
+The write half is the bucket's own New button, added to the header in
+`src/view/render/roadmap.ts`. It runs the one gated creation flow —
+`promptCreateItem` in `src/view/interactions/create.ts`, which now takes what the
+surface a note was created FROM adds to it — and the placement rides the single
+`createBacklogItem` call in `src/storage/frontmatter.ts` beside the type, the rank and
+the parent link. One write, so there is no moment at which the note exists in a bucket
+its frontmatter does not claim; everything that governed creation before still governs
+it, type folders and the config-problems gate included. Driven in
+`test/view/roadmapMoves.test.ts` and `test/storage/frontmatter.test.ts`.
+
+**The button is the one thing here a keyboard cannot press**, which is why this note
+stays Active. It carries `tabindex="-1"` because the pane is one tab stop, and unlike
+the tree's add button it has no menu entry standing behind it: a bucket is not a
+keyboard stop, so there is nothing to select and act on. What is lost is the gesture,
+not the capability — the toolbar's New button is an ordinary tab stop and Alt+arrow
+walks the new card into any bucket, reaching the same note in the same bucket two
+keystrokes later. Closing it properly means bucket stops, which
+[[Keyboard and menu on the roadmap]] already specifies as arrows moving across the
+roadmap's regions. Touch is fixed rather than deferred: the stylesheet reveals the
+button under `hover: none`, or a device with no hover and no tab stop could not reach
+it at all.
+
+Two clauses are worth stating rather than leaving to be inferred. Step 4's date chip
+needs no roadmap-specific code: a card renders the Base's own visible properties
+through the body it shares with the board ([[What a card shows]]), so a view that shows
+a date property shows it on the card, in a bucket, without the axis being dates. And
+the half of the board's new-card rule this note does NOT claim is the outcome check —
+saying so when the note just created is not on the next render. The hazard is real here
+too: a base can filter on the horizon property itself, excluding the very bucket the
+note was created into. It is [[New cards in place]]'s criterion rather than this note's,
+it is unbuilt there, and one attempt at building it for moves was taken back out —
+[[The outcome report was built from one sentence]] is why, and is what to read before
+attempting it again.

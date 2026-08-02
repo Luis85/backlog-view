@@ -4,7 +4,7 @@ import { renderBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptySta
 import { renderRoadmap } from './roadmap';
 import { renderTree } from './rows';
 import { BoardSnapshot, Projection, RoadmapSnapshot } from '../host';
-import { BoardDragController } from '../interactions/boardDrag';
+import { CardDragController } from '../interactions/cardDrag';
 import { CivilDate } from '../../domain/noteFields';
 import { activeAxis } from '../../domain/roadmap';
 
@@ -39,7 +39,7 @@ export interface ScrollAnchor {
  * on today. Tracked through the anchor, never read off the position: zero is a
  * place a user can pan to.
  */
-export function anchorScrollLeft(
+function anchorScrollLeft(
 	anchor: ScrollAnchor,
 	drawn: string,
 	todayLeft: number | null,
@@ -51,14 +51,37 @@ export function anchorScrollLeft(
 	return saved;
 }
 
+/**
+ * Put the scroller back where the content about to be shown left it, and return
+ * the anchor the next pass is measured against. Both offsets belong to the content
+ * that made them, and what was DRAWN is finer than which projection ran — the
+ * roadmap's two axes are different content on one scroller — so the name is derived
+ * here, beside the fork that chose it. Vertical keeps the horizontal rule without
+ * the centering: the same content keeps the reader's place, a switch starts at the
+ * top, because a tree's depth means nothing to a row of buckets.
+ */
+export function restoreScroll(
+	el: HTMLElement,
+	anchor: ScrollAnchor,
+	roadmap: RoadmapSnapshot | null,
+	projection: Projection,
+	saved: { top: number; left: number },
+): ScrollAnchor {
+	const todayLeft = roadmap?.todayLeft ?? null;
+	const drawn = todayLeft != null ? 'dates' : roadmap ? 'horizons' : projection;
+	el.scrollTop = drawn === anchor.content ? saved.top : 0;
+	el.scrollLeft = anchorScrollLeft(anchor, drawn, todayLeft, saved.left, el.clientWidth);
+	return { content: drawn, todayLeft };
+}
+
 export function renderProjectionContent(
 	projection: Projection,
 	ctx: RowContext,
 	treeEl: HTMLElement,
-	boardDnd: BoardDragController,
+	dnd: CardDragController,
 ): ProjectionContent {
-	if (projection === 'board') return renderBoardContent(ctx, treeEl, boardDnd);
-	if (projection === 'roadmap') return renderRoadmapContent(ctx, treeEl);
+	if (projection === 'board') return renderBoardContent(ctx, treeEl, dnd);
+	if (projection === 'roadmap') return renderRoadmapContent(ctx, treeEl, dnd);
 	renderTree(ctx, treeEl);
 	return { board: null, roadmap: null, role: 'tree', label: 'Product backlog' };
 }
@@ -68,13 +91,13 @@ export function renderProjectionContent(
  * workflow to project, so board mode is guidance instead of columns — the one
  * case with no board, and never a blank pane.
  */
-function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, boardDnd: BoardDragController): ProjectionContent {
+function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
 	const label = 'Product backlog board';
 	if (!ctx.host.settings.stateKey) {
 		renderBoardNoWorkflowState(treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
 	}
-	return { board: renderBoard(ctx, treeEl, boardDnd), roadmap: null, role: 'listbox', label };
+	return { board: renderBoard(ctx, treeEl, dnd), roadmap: null, role: 'listbox', label };
 }
 
 /**
@@ -83,7 +106,7 @@ function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, boardDnd: Boar
  * axis the frame always renders, empty or not: an empty roadmap is an empty
  * frame, never no frame.
  */
-function renderRoadmapContent(ctx: RowContext, treeEl: HTMLElement): ProjectionContent {
+function renderRoadmapContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
 	const host = ctx.host;
 	const label = 'Product backlog roadmap';
 	const axis = activeAxis(host.settings, host.axisPick);
@@ -91,7 +114,7 @@ function renderRoadmapContent(ctx: RowContext, treeEl: HTMLElement): ProjectionC
 		renderRoadmapNoAxisState(host, treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
 	}
-	const roadmap = renderRoadmap(ctx, treeEl, axis, todayCivil());
+	const roadmap = renderRoadmap(ctx, treeEl, axis, todayCivil(), dnd);
 	return { board: null, roadmap, role: roadmap.cards.length > 0 ? 'listbox' : 'region', label };
 }
 

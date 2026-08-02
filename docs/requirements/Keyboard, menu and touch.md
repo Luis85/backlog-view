@@ -8,7 +8,7 @@ created: 2026-08-01
 files:
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
-  - src/view/interactions/boardDrag.ts
+  - src/view/interactions/cardDrag.ts
   - src/view/render/board.ts
   - src/view/backlogView.ts
   - src/view/selection.ts
@@ -108,7 +108,7 @@ All three inputs land on **one** method — `performBoardMove` in
 `src/view/backlogView.ts` — so a key, a menu pick and a drop cannot plan different
 writes, and a fourth input cannot arrive with its own idea of what a move is. It is
 also where the move is announced, through `announceBoardMove` in
-`src/view/interactions/boardDrag.ts`: the announcement lives with the drag because
+`src/view/interactions/cardDrag.ts`: the announcement lives with the drag because
 that module owns the live region, but nothing about it is the drag's. The message
 names the columns, resolved by `columnLabelFor` in `src/domain/board.ts` — so what is
 read out is what is on screen, the no-state column's label included.
@@ -124,7 +124,7 @@ section, whose every entry is defined by a row's visible neighbours. The card's
 Driven in `test/view/boardMenu.test.ts` (fixtures and the live-region reader in
 `test/helpers/board.ts`), with the navigation half in `test/view/boardMoves.test.ts`
 and both new entry points aimed at a context card in
-`test/view/contextRowWrites.test.ts` — a keyboard can select what a drag was never
+`test/view/contextCardWrites.test.ts` — a keyboard can select what a drag was never
 wired to pick up, so the rule needed testing where the drag could not reach.
 
 Still open, each waiting on a use case of its own: the column stop's **creation** —

@@ -86,6 +86,10 @@ can be checked by reading one directory.
   write lands. It is read-then-`process` rather than `process` alone because the two
   outcomes that write nothing promise exactly that, and a callback returning the file
   unchanged has still been through a save.
+- `createBacklogItem` writes everything a new note gets in ONE call — type, parent,
+  order, and the horizon when it was created from a bucket. A create-then-update pair
+  could fail in between and leave a note in a bucket its frontmatter does not claim,
+  which is the same argument the hierarchy properties were already there for.
 
 ## Collapse state, and the view mode beside it
 

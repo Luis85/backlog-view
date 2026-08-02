@@ -18,12 +18,13 @@ left rather than everything that ever was.
 | **Actor** | Backlog owner |
 | **Trigger** | Any refresh (rollups), or the eye button in the toolbar (hiding) |
 | **Preconditions** | A state property is configured, so "done" means something |
-| **Guarantee** | A rollup reports what **the Base returned** — nothing else can change the number, in either direction. |
+| **Guarantee** | A rollup reports the **work** the Base returned — nothing else can change the number, in either direction. The Base's results are the outer bound and a row that is not work is the one thing inside it that does not count. |
 
 **Main flow**
 
-1. On each pass the view walks the tree and counts, for every parent, its descendants and
-   how many of them are done.
+1. On each pass the view walks the tree and counts, for every parent, the descendants that
+   are work and how many of them are done. Two kinds of row are walked *through* without
+   being counted: one the Base did not return (1a), and one that is not work (1b).
 2. Each parent renders that count and its progress.
 3. The user presses the eye button to hide completed work.
 4. Every subtree that is **entirely** finished stops rendering.
@@ -35,6 +36,13 @@ left rather than everything that ever was.
   **through**, so the results below it are still counted — and never counted **itself**.
   An excluded note's own state can neither skew a progress bar nor keep a finished subtree
   on screen.
+- **1b — the walk reaches a marker** (a declared type that is not work — today, a
+  milestone). Traversed **through** in exactly the same way and counted no more than 1a is,
+  for the opposite reason: the row *is* one of the Base's results, and still is not a unit
+  of progress. A date passing must not advance a bar over work that has not moved, nor a
+  finished marker make an unfinished subtree read as done ([[Milestones as their own type]]).
+  The two exclusions look alike here and must not be collapsed into one predicate — one
+  asks whether the row is this base's data, the other whether it is work at all.
 - **3a — the quick filter is active.** Hiding is suspended, so a search can find finished
   work.
 - **4a — a parent's children all hide but the parent is not done.** It renders as a
@@ -53,8 +61,11 @@ left rather than everything that ever was.
 
 ## Acceptance criteria
 
-- Rollups describe what the Base returned: a row loaded only for context is traversed
-  *through* but never counted.
+- Rollups describe what the Base returned, **as work**: a row loaded only for context is
+  traversed *through* but never counted. A marker is the second exception and holds for a
+  different reason — it is not a row from outside the results but a row that is not work at
+  all, so counting it would let a date passing advance a bar over work that has not moved
+  ([[Milestones as their own type]]).
 - Hiding is a render decision only — ranking still uses full sibling lists.
 - A parent whose children are all hidden renders as a leaf, not as an empty expander.
 - Structure commands target the nearest *visible* neighbour while hiding is on, so none is

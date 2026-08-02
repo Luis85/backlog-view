@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Scheduling work]]"
 order: 30
-status: Open
+status: Active
 priority: P2
 created: 2026-08-01
 files:
@@ -76,6 +76,15 @@ rather than deferred behind it.
   axis at its first bucket — and arrows move from there. The drop writes the same
   schedule-or-horizon batch the shelf drag writes, so triage needs no pointer and
   starts where the reader is oriented.
+- **2c — the item is a marker.** The lift holds a point, so it moves the target alone and
+  offers no end grip to resize — the batch a milestone's own gestures write
+  ([[Milestones as their own type]]), which this path commits rather than re-derives. The
+  general rule already says the keyboard's batch is identical to the drag's; it is stated
+  here because "identical" is only a guarantee where both were narrowed, and a keyboard
+  path that widened one back would be the write no pointer could make. With only a start
+  property configured the marker has no key it may write, so it takes no lift and its
+  schedule and unschedule entries are absent — 4b's rule reaching a type rather than an
+  axis, and the pointer's own answer in the same configuration.
 - **3a — the commit is refused.** Loud, nothing written, selection stays where the user
   left it — the failure is announced where the keyboard user is, not on a pointer they
   are not holding.
@@ -97,7 +106,8 @@ rather than deferred behind it.
 
 - Lift, move, drop, cancel work as specified on both axes — Space, arrows, Space,
   Escape — the grip reaching every hold the pointer may take: the whole bar where
-  every rendered end is the note's own (stated or open), each writable end, so a
+  every rendered end is the note's own (stated or open), each writable end — a marker's
+  diamond having none, so its lift moves its target alone — so a
   resize is a keyboard move too, and
   up and down crossing lanes when lanes are on, so one drop can carry the combined
   lane-plus-axis batch; the committed batch is identical to the drag's, and Escape
@@ -119,8 +129,31 @@ rather than deferred behind it.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The lift state machine joins
-`src/view/interactions/keyboard.ts` beside the tree's navigation; the actions join the
-one context menu in `src/view/interactions/menu.ts`, which already decides what an
-excluded item is offered; the date entry is a prompt beside the new-item prompts in
-`src/ui/prompts.ts`.
+**Partly built.** [[Moving between horizons]] shipped the horizon axis's two non-pointer
+paths, because a write with no keyboard route is a write this register does not ship:
+`handleRoadmapMoveKey` in `src/view/interactions/keyboard.ts` steps the selected card
+one placement on Alt+Left/Right, over a ladder that leads with the shelf — where 2b
+already says a lift entering from the shelf should arrive — and `Set horizon` in
+`src/view/interactions/menu.ts` offers the rendered buckets plus the shelf, withheld
+whole on a context row (2a) and absent wherever no buckets render (4b's rule, read off
+the render rather than off the settings). Both plan the identical batch the drag plans,
+through `performHorizonMove`. Driven in `test/view/roadmapMoves.test.ts`.
+
+It also inherits one concrete gap from [[Buckets from a horizon property]]: a bucket's
+New button is pointer-only, because a bucket is not a keyboard stop for anything to be
+done to. **Bucket stops are this note's step 1** — arrows moving the selection across
+the roadmap's regions — and creating into the selected bucket is what they are first
+needed for. The capability is not lost meanwhile (the toolbar's New plus Alt+arrow
+reaches the same place), only the one-gesture path.
+
+What remains is everything this note is actually about. The **lift** — Space, arrows,
+Space, Escape, with Tab shifting the grip along a bar — is a state machine that has no
+code yet and joins `src/view/interactions/keyboard.ts` beside the tree's navigation;
+Alt+arrow is a single-dimension shortcut, not a lift, and cannot carry the combined
+lane-plus-axis move. The **date entry** is a prompt beside the new-item prompts in
+`src/ui/prompts.ts`, and schedule, unschedule and clear horizon are menu actions in
+`src/view/interactions/menu.ts` — the removal pair gated on the note carrying the key
+(4a), which the current Set horizon expresses only as its shelf entry. Move to lane
+waits on [[Lanes on the roadmap]]. Until the lift lands, the roadmap's dated axis has
+no non-pointer moves *and no pointer ones either*, which is the honest state: nothing
+there is reachable only by pointer, because nothing there writes at all.
