@@ -11,6 +11,8 @@ files:
   - src/domain/itemTypes.ts
   - src/domain/model.ts
   - src/domain/viewOptions.ts
+  - src/view/render/rows.ts
+  - styles.css
 ---
 
 # Milestones as their own type
@@ -49,7 +51,11 @@ date.
 **Main flow**
 
 1. `Milestone` is a name in the fixed vocabulary beside `Issue` and `Bug` — a declared
-   type that is not a rung on the ladder, so nothing ever retypes it by position.
+   type that is not a rung on the ladder, so nothing ever retypes it by position. It takes
+   the shipped opinion every declared name gets: a folder, an **icon and a badge colour**.
+   The badge renderer has no fallback for a declared type on purpose (ADR 0013), so the
+   seventh name is not optional styling — a milestone left out of that table renders as an
+   unknown type, and the test asserting the table covers the vocabulary fails.
 2. Its date is the roadmap's configured target property — the same key a bar's end is read
    from, read the same tolerant civil way — and its note body is its description.
 3. It files into its own folder, picked per view like every other type's
@@ -81,6 +87,13 @@ date.
   stray property turn a deadline into a duration.
 - **3a — the milestone folder is cleared.** It falls through to the home folder, like
   every other type whose folder is unset — one rule, no special case.
+- **4a — the row has no child type to offer.** Every create affordance is **absent**, not
+  empty: no add button on the row, and no `New <child>` in its context menu. A button
+  whose label is built from the first of no choices reads `New undefined` and opens a
+  modal with nothing in it, which is the shape this row would take if "offers no child
+  types" were left to the type list alone — so the affordance has to answer for the empty
+  case itself, the same way the context-row rule makes the UI withhold a control rather
+  than let it fail at the end.
 - **5a — the bucket axis is the active one.** The milestone is an ordinary result there:
   it places by the horizon property if it carries one, and shelves if it does not. Its
   date is never read as a horizon — the epic's own rule, and the reason the axis is
@@ -107,6 +120,11 @@ date.
   when cleared.
 - It is offered only at the top level and offers no child type. Nothing refuses one placed
   elsewhere by hand, and none is ever retyped by position.
+- A milestone row shows **no** create affordance — no add button, no `New <child>` menu
+  entry — rather than one built from an empty list of choices.
+- It renders with an icon and a badge colour of its own, like every other declared type,
+  and the test that asserts the badge tables cover the whole vocabulary covers seven names
+  rather than six.
 - It contributes to no ancestor's rollup, progress figure or done-subtree state, wherever
   it sits in the tree — while its own row narrows under "Show completed items" and the
   quick filter exactly as any other row does, and its line goes with it
@@ -130,7 +148,16 @@ top level, and this type inverts both, so `childTypeChoices` stops being one rul
 belongs to `assignAll` in `src/domain/model.ts`, beside the context-row skip it resembles.
 The diamond itself already exists and needs a second way to be true: `barGeometry` in
 `src/domain/timeline.ts` and `barClasses` in `src/view/render/timeline.ts` derive it from
-equal stated ends today. Creation and filing are `src/view/interactions/create.ts`.
-Driven in `test/domain/itemTypes.test.ts`, `test/domain/settings.test.ts`,
-`test/domain/model.test.ts`, `test/view/creation.test.ts` and
-`test/view/roadmapFrame.test.ts`.
+equal stated ends today. Creation and filing are `src/view/interactions/create.ts`, and the
+menu entry that has to disappear with the button is `src/view/interactions/menu.ts`.
+
+Two seams in `src/view/render/rows.ts` are easy to miss and both fail loudly rather than
+quietly, which is the argument for naming them here. `EXTRA_TYPE_STYLE` carries the icon
+and badge colour for every declared non-rung type and deliberately has **no** fallback, so
+a seventh name absent from it takes the unknown-type look and breaks the test that asserts
+the table covers the vocabulary; the colour itself is `styles.css`, beside the other badge
+classes. And `renderRowTrailing` renders the add button unconditionally, labelling it from
+the first of the type choices — with none, that label is built from nothing. Driven in
+`test/domain/itemTypes.test.ts`, `test/domain/settings.test.ts`,
+`test/domain/model.test.ts`, `test/view/rendering.test.ts`, `test/view/creation.test.ts`,
+`test/view/menu.test.ts` and `test/view/roadmapFrame.test.ts`.
