@@ -2,7 +2,8 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
-import { computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { todayStamp } from '../../domain/noteFields';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
@@ -231,7 +232,10 @@ function isCurrentState(item: BacklogItem, choice: StateChoice): boolean {
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
 	if (host.boardMode || choice.state === null) return host.performBoardMove(item, choice.state);
-	return host.applySafely([{ file: item.file, state: choice.state }]);
+	// The tree's own Set state plans through the same function the board's moves do, so
+	// the date stamps ride it too: a history with holes in it, where which hole depends
+	// on whether the user was looking at the tree or the board, is worse than none.
+	return host.applySafely(computeStateWrites(item, choice.state, host.settings, todayStamp()));
 }
 
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {

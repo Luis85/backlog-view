@@ -84,6 +84,7 @@ export async function applyWrites(
 			// The stateKey may be unset (progress tracking off) — never write to an empty key.
 			if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 			else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+			applyStamps(fm, settings, write);
 			const applied =
 				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
 			// The stored delta is the one that UNDOES what was applied.
@@ -102,7 +103,38 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
+	// Listed whenever the write CARRIES a stamp, including the started date it may
+	// decline to write: a key whose value did not change emits no inverse anyway, and
+	// listing it is what makes the dates ride the state's own undo.
+	if (write.startedDate !== undefined && settings.startedDateKey) keys.push(settings.startedDateKey);
+	if (write.finishedDate !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
 	return keys;
+}
+
+/**
+ * The date stamps of one write. Never a write of their own — they mutate the same
+ * frontmatter the state write just did, inside the same `processFrontMatter` call, so
+ * the batch that changed the state is the batch an undo takes back.
+ *
+ * A stamp key is only ever written when the user named that property, exactly as the
+ * state key is: every part of stamping is opt-in.
+ */
+function applyStamps(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.startedDate !== undefined && settings.startedDateKey && isBlank(fm[settings.startedDateKey])) {
+		// Write-once, decided against the LIVE value rather than the planner's snapshot:
+		// the earliest start survives rework, and the row that planned this can be a
+		// refresh behind the note.
+		fm[settings.startedDateKey] = write.startedDate;
+	}
+	if (write.finishedDate !== undefined && settings.finishedDateKey) {
+		if (write.finishedDate === null) delete fm[settings.finishedDateKey];
+		else fm[settings.finishedDateKey] = write.finishedDate;
+	}
+}
+
+/** Whether a frontmatter value counts as "no date yet" — absent, null, or empty text. */
+function isBlank(value: unknown): boolean {
+	return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
 }
 
 /**

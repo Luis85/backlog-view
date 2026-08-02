@@ -67,6 +67,18 @@ export interface BacklogViewHost {
 	 */
 	isRowHidden(item: BacklogItem): boolean;
 	/**
+	 * The same rule with the quick filter suspended: the population a filtered count
+	 * is "of". Everything else that hides rows still applies — a stage's full count
+	 * is the work in it, not the work in it plus what another setting is hiding.
+	 */
+	isRowHiddenUnfiltered(item: BacklogItem): boolean;
+	/**
+	 * True when the quick filter matched this item ITSELF, rather than keeping it on
+	 * screen for a relative that matched. The distinction is what lets a card say
+	 * which of the things below it the search actually found.
+	 */
+	isFilterMatch(item: BacklogItem): boolean;
+	/**
 	 * True while the quick filter is narrowing the tree. Collapse state, dragging
 	 * and their affordances pause on exactly this condition — not on the raw input
 	 * text, which may be whitespace that filters nothing.

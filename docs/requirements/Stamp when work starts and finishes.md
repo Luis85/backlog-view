@@ -2,12 +2,18 @@
 type: PBI
 parent: "[[Moving cards]]"
 order: 40
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
+closed: 2026-08-02
 files:
   - src/domain/settings.ts
+  - src/domain/viewOptions.ts
+  - src/domain/noteFields.ts
+  - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
+  - test/domain/stamps.test.ts
+  - test/view/stamps.test.ts
 ---
 
 # Stamp when work starts and finishes
@@ -78,7 +84,32 @@ it on the transition, into properties the user names.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The property names and the started-state set join
-the configuration in `src/domain/settings.ts`, beside the key-collision checks that will
-have to accept two more keys; the writes themselves go where every write goes, in
-`src/storage/frontmatter.ts`, riding the state batch rather than following it.
+**Built.** Three options in the Progress group of `src/domain/viewOptions.ts` —
+`startedStates`, `startedDateProperty` and `finishedDateProperty` — resolve into
+`startedStates`, `startedDateKey` and `finishedDateKey` in `src/domain/settings.ts`,
+which also gained `isStartedValue` and `isDoneValue` (a state VALUE is what the stamps
+ask about, and no item holds the one being written yet). Both stamp keys join
+`configProblems`, and the resolved `tagsKey` joins it with them: it cannot collide with
+the four it already yields to, so the only collision it can now report is a stamp aimed
+at the tags property — the case the yielding rule never covered.
+
+The decision is `computeStateWrites` in `src/domain/writePlan.ts`, which replaced
+`computeStateDropWrites`: every input that changes a state now plans through it — a
+drop, Alt+arrow, the board's Set state and the TREE's Set state — because a stamp that
+rode only some of them would record a history whose holes depended on which projection
+the user happened to be looking at. It stays pure by taking the date as an argument;
+the single clock read is `todayStamp` in `src/domain/noteFields.ts`, beside
+`normalizeTag` because both are the write-side format of a property value, and built
+from LOCAL date parts — `toISOString` would stamp an evening transition as tomorrow for
+everyone west of Greenwich.
+
+The writes land in `src/storage/frontmatter.ts` as fields of the state's own write, in
+the same `processFrontMatter` call, so one undo takes the state and its dates back
+together. Write-once for the start is enforced THERE rather than in the plan, against
+the live value: the row that planned the write can be a refresh behind the note, which
+is the same reason tags travel as a delta.
+
+Driven by `test/domain/stamps.test.ts` (the transition rules, one test per state pair),
+the stamp block in `test/storage/frontmatter.test.ts` (write-once, removal, the shared
+inverse) and `test/view/stamps.test.ts`, which drives all four real inputs — including
+the tree's Set state, the one path that does not go through the board.

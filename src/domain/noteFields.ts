@@ -128,3 +128,25 @@ export function readNumber(value: unknown): number | null {
 	}
 	return null;
 }
+
+/**
+ * Today as `YYYY-MM-DD` — the shape Obsidian's date properties parse, and the one
+ * this register already stamps `created:` and `closed:` with by hand.
+ *
+ * Built from the LOCAL date parts rather than `toISOString()`, which converts to UTC
+ * first: for anyone west of Greenwich an evening transition would be stamped
+ * tomorrow, and a stamp exists to say when work happened to the person it happened to.
+ *
+ * The one clock read in the domain, kept here beside `normalizeTag` for the same
+ * reason — this is the value format for a property, and the format is what has to be
+ * right. Planning stays pure by taking the result as an argument.
+ */
+export function todayStamp(): string {
+	return dateStamp(new Date());
+}
+
+/** The stamp for a given date, so the formatting is testable without the clock. */
+export function dateStamp(now: Date): string {
+	const pad = (n: number): string => String(n).padStart(2, '0');
+	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}

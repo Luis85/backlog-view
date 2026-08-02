@@ -1,5 +1,6 @@
 import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
+import { FilterState } from './filterState';
 import { BacklogViewHost, BoardSnapshot, BusyState, ChipProp, PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 import { announceBoardMove, BoardDragController } from './interactions/boardDrag';
 import { DragDropController } from './interactions/dragDrop';
@@ -8,7 +9,8 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
-import { computeDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
+import { computeDropWrites, computeStateWrites, ItemWrite } from '../domain/writePlan';
+import { todayStamp } from '../domain/noteFields';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
@@ -43,11 +45,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
-	filterText = '';
+	private readonly filter = new FilterState();
 	groupingIgnored = false;
 	private readonly collapse: CollapseState;
-	/** Paths visible under the active filter; null when no filter is set. */
-	private filterVisible: Set<string> | null = null;
 	private applying = false;
 	/**
 	 * Inverses of the most recent effective batch, in write order — the single-level,
@@ -171,7 +171,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// overwritten by the very pass that is meant to honor it.
 		this.collapse.restore(this.viewEl);
 		this.collapse.collapseNewParents(this.model.items);
-		this.recomputeFilter();
+		this.filter.recompute(this.model);
 		this.render();
 	}
 
@@ -191,9 +191,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	// ------------------------------------------------------------- quick filter
 
+	get filterText(): string {
+		return this.filter.text;
+	}
+
 	setFilter(text: string): void {
-		this.filterText = text;
-		this.recomputeFilter();
+		this.filter.text = text;
+		this.filter.recompute(this.model);
 		this.renderTreeContent();
 	}
 
@@ -202,59 +206,61 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
+		return this.hidden(item, true);
+	}
+
+	isRowHiddenUnfiltered(item: BacklogItem): boolean {
+		return this.hidden(item, false);
+	}
+
+	isFilterMatch(item: BacklogItem): boolean {
+		return this.filter.matched(item.file.path);
+	}
+
+	/**
+	 * Row visibility, with the filter itself optionally lifted. One predicate answers
+	 * for the narrowed board and for the population its counts are measured against,
+	 * so the two cannot disagree about what "in this column" means.
+	 *
+	 * Lifting the filter is NOT the same as having no filter: while one is running it
+	 * suspends the completed-items toggle, and the population a count is "of" has to
+	 * keep that suspension. Measuring against the cleared board instead would count a
+	 * matched-but-otherwise-hidden card as "1 of 0" — each number defensible on its
+	 * own and the pair nonsense. What "of" means is what this filter is choosing among.
+	 */
+	private hidden(item: BacklogItem, applyFilter: boolean): boolean {
 		// While filtering, the filter alone decides — a match must be findable even
 		// when completed items are hidden, so hiding is suspended.
-		if (this.filterVisible !== null) {
-			if (!this.filterVisible.has(item.file.path)) return true;
+		if (this.filter.active) {
+			if (applyFilter && !this.filter.keeps(item.file.path)) return true;
 		} else if (this.hidingCompleted() && item.subtreeDone) {
 			return true;
 		}
 		// A context row is here only to place a result. Once nothing below it is
 		// visible it is an empty scaffold, so it goes with them — whatever hid them.
 		// One visible child is enough: a context child is itself subject to this rule.
-		if (item.outsideFilter) return !item.children.some((child) => !this.isRowHidden(child));
+		if (item.outsideFilter) return !item.children.some((child) => !this.hidden(child, applyFilter));
 		return false;
 	}
 
-	/** True when the completed-items toggle is actively hiding fully-done subtrees. */
+	/**
+	 * True when the completed-items toggle is actively hiding fully-done subtrees.
+	 * The filter's own suspension of it is structural — `hidden` only consults this
+	 * on the branch where no filter is in play.
+	 */
 	private hidingCompleted(): boolean {
-		return !this.settings.showCompleted && this.settings.stateKey !== '' && this.filterVisible === null;
+		return !this.settings.showCompleted && this.settings.stateKey !== '';
 	}
 
 	isFiltering(): boolean {
-		return this.filterVisible !== null;
-	}
-
-	/** Matches stay visible together with all their ancestors and descendants. */
-	private recomputeFilter(): void {
-		const model = this.model;
-		const needle = this.filterText.trim().toLowerCase();
-		if (!model || needle === '') {
-			this.filterVisible = null;
-			return;
-		}
-		const visible = new Set<string>();
-		const markSubtree = (item: BacklogItem) => {
-			visible.add(item.file.path);
-			for (const child of item.children) markSubtree(child);
-		};
-		const visit = (item: BacklogItem): boolean => {
-			const selfMatch = item.title.toLowerCase().includes(needle);
-			if (selfMatch) markSubtree(item);
-			let anyMatch = selfMatch;
-			for (const child of item.children) anyMatch = visit(child) || anyMatch;
-			if (anyMatch) visible.add(item.file.path);
-			return anyMatch;
-		};
-		for (const root of model.roots) visit(root);
-		this.filterVisible = visible;
+		return this.filter.active;
 	}
 
 	// ----------------------------------------------------------- collapse state
 
 	isCollapsed(path: string): boolean {
 		// While filtering, everything on a path to a match renders expanded.
-		return this.filterVisible === null && this.collapse.isCollapsed(path);
+		return !this.filter.active && this.collapse.isCollapsed(path);
 	}
 
 	setCollapsed(path: string, collapsed: boolean): boolean {
@@ -421,7 +427,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	// -------------------------------------------------------------------- writes
 
 	async performBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
-		const writes = computeStateDropWrites(item, state);
+		const writes = computeStateWrites(item, state, this.settings, todayStamp());
 		// A move onto the card's own column: no write at all, and the undo slot keeps
 		// the batch it had — a batch that writes nothing must not cost the user the
 		// undo of the change before it. Nothing is announced either: "moved from

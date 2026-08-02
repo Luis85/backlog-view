@@ -123,6 +123,30 @@ function progressGroup(): BasesAllOptions {
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
 			{
+				type: 'text',
+				key: 'startedStates',
+				displayName: 'States that count as started',
+				default: '',
+				placeholder: 'Active, In review',
+			},
+			// Two properties rather than one, because they answer different questions and
+			// a note may honestly have one and not the other. Both are unset by default:
+			// a stamp writes to a property the user named, never to one this plugin chose.
+			{
+				type: 'property',
+				key: 'startedDateProperty',
+				displayName: 'Started date property',
+				placeholder: 'started',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'property',
+				key: 'finishedDateProperty',
+				displayName: 'Finished date property',
+				placeholder: 'finished',
+				filter: notePropsOnly,
+			},
+			{
 				type: 'toggle',
 				key: 'showCompleted',
 				displayName: 'Show completed items',

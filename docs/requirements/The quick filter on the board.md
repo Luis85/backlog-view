@@ -2,11 +2,16 @@
 type: PBI
 parent: "[[Moving cards]]"
 order: 30
-status: Open
+status: Done
 priority: P3
 created: 2026-08-01
+closed: 2026-08-02
 files:
+  - src/view/filterState.ts
   - src/view/backlogView.ts
+  - src/domain/board.ts
+  - src/view/render/board.ts
+  - test/view/boardFilter.test.ts
 ---
 
 # The quick filter on the board
@@ -76,9 +81,30 @@ are its contents.
 
 ## Where it lives
 
-**Partly built.** The narrowing shipped with the board: the filter's session state and
-match-path contract stay in `src/view/backlogView.ts`, the board reads them through
-the same row-visibility rule the tree uses, columns keep rendering, and dragging stays
-enabled while filtering — driven in `test/view/boardMoves.test.ts`. Still design: the
-match-against-full header counts, and a kept card naming its matching descendants on
-its face.
+**Built.** The filter's session state and match-path contract moved out of
+`src/view/backlogView.ts` into `src/view/filterState.ts` when the view hit its
+400-line cap — the same shape `collapseState.ts` already has, and the extraction the
+cap exists to force. It keeps TWO sets: `visible` (a match plus its ancestors and its
+whole subtree) decides what renders, and `matches` (the matches themselves) answers
+which of the things under a card the search actually found. One set cannot do both —
+everything in a match's subtree is visible and almost none of it matched.
+
+Counts: `BoardColumn.fullCount` in `src/domain/board.ts` is filled from a second
+predicate the view passes in, and `isRowHiddenUnfiltered` in `backlogView.ts` supplies
+it by lifting the filter alone. Lifting the filter is NOT the same as having no
+filter — a running filter suspends the completed-items toggle, and the population has
+to keep that suspension, or a matched-but-otherwise-hidden card reads as "1 of 0":
+each number defensible on its own, the pair nonsense. Both predicates are the one
+`hidden` method with a flag, so the narrowed board and the population it is measured
+against cannot disagree about what is in a column.
+
+Reachability: `hiddenMatches` in `src/domain/board.ts` walks a card's subtree for
+matches that have no card of their own, stopping at anything already rendered so one
+match is never named by two cards; `src/view/render/board.ts` renders them as
+`tabindex="-1"` buttons, the same rule the tree's per-row controls follow, and stops
+the click from also opening the card it hangs under. It matters most under focus,
+where the only cards are the focus level's and a match three levels down would
+otherwise be found, counted in the rollup, and impossible to get to.
+
+Driven by `test/view/boardFilter.test.ts`, split out of `test/view/boardMoves.test.ts`
+once the filter became a subject of its own.

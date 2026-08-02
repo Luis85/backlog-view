@@ -189,3 +189,96 @@ describe('createBacklogItem', () => {
 		expect(file.path).toBe('Untitled.md');
 	});
 });
+
+/** Both stamp properties named, so the writer has somewhere to put them. */
+const stamping = { ...settings, stateKey: 'status', startedDateKey: 'started', finishedDateKey: 'finished' };
+
+describe('applying date stamps', () => {
+	it('stamps the start beside the state, in one write', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')).toEqual({ status: 'Active', started: '2026-08-02' });
+		// One processFrontMatter call, not two: a stamp is never a second write.
+		expect(vault.writeLog).toHaveLength(1);
+	});
+
+	it('keeps the earliest start, deciding against the live value', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', started: '2026-01-15' } });
+
+		// Rework: back into a started state, with a start already on the note. The
+		// planner offers the date every time and the writer is what declines it, so the
+		// measure keeps reporting the age of the work rather than the last restart.
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toBe('2026-01-15');
+	});
+
+	it('treats an empty start property as no start at all', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New', started: '  ' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toBe('2026-08-02');
+	});
+
+	it('removes the finish when the stamp is null', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Done', finished: '2026-07-01' } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', finishedDate: null }]);
+
+		expect('finished' in vault.fm('A.md')).toBe(false);
+	});
+
+	it('writes no stamp to a property the user has not named', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		// Every part of stamping is opt-in — an unnamed property is not one with a
+		// default name, so the date has nowhere to go and goes nowhere.
+		await applyWrites(vault.app, { ...settings, stateKey: 'status' }, [
+			{ file, state: 'Active', startedDate: '2026-08-02', finishedDate: '2026-08-02' },
+		]);
+
+		expect(vault.fm('A.md')).toEqual({ status: 'Active' });
+	});
+
+	it('takes the state and its dates back as one undo', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'Active', started: '2026-01-15' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(
+			vault.app,
+			stamping,
+			[{ file, state: 'Done', finishedDate: '2026-08-02' }],
+			undefined,
+			(inv) => inverses.push(inv),
+		);
+		expect(vault.fm('A.md')).toEqual({ status: 'Done', started: '2026-01-15', finished: '2026-08-02' });
+
+		// One inverse covers both keys, because both rode one write.
+		expect(inverses).toHaveLength(1);
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('A.md')).toEqual({ status: 'Active', started: '2026-01-15' });
+	});
+
+	it('emits no inverse for a start it declined to write', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { started: '2026-01-15' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, stamping, [{ file, startedDate: '2026-08-02' }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+
+		// Nothing changed, so nothing is undoable — a declined stamp must not cost the
+		// user the undo of the change before it.
+		expect(inverses).toEqual([]);
+	});
+});

@@ -35,6 +35,14 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
+- Date stamps (`startedDate`, `finishedDate`) are FIELDS of the state write that caused
+  them, applied inside the same `processFrontMatter` call — never a second write. That
+  is what makes one undo take back the state and its dates together, and it is why they
+  join `touchedKeys`: a key listed there but unchanged emits no inverse anyway. The
+  start is **write-once and the writer is what enforces it**, tested against the live
+  value rather than the planner's snapshot — the same reason tags travel as a delta,
+  since the row that planned the write can be a refresh behind the note. The finish is
+  set-or-clear (`null` deletes), because leaving done un-finishes an item.
 
 ## Collapse state, and the view mode beside it
 

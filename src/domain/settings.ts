@@ -48,6 +48,20 @@ export interface BacklogSettings {
 	propColumnWidth: number;
 	/** State values (case-insensitive) that count as done. */
 	doneValues: string[];
+	/**
+	 * Frontmatter key stamped with the date work started, or '' when start stamping
+	 * is off. History is the one thing a board cannot reconstruct later, so this
+	 * captures it as the transition happens — and captures nothing until it is named.
+	 */
+	startedDateKey: string;
+	/** Frontmatter key stamped with the date work finished, or '' when off. */
+	finishedDateKey: string;
+	/**
+	 * State values (case-insensitive) that count as work started. Empty means NOTHING
+	 * does: every part of stamping is opt-in, and a workflow's first column is a
+	 * backlog as often as it is a start — guessing would date work nobody began.
+	 */
+	startedStates: string[];
 	/** Workflow states offered by the state menus, in order; [] falls back to observed values. */
 	states: string[];
 	/** Render items whose whole subtree is done; when off they hide (the quick filter overrides). */
@@ -161,6 +175,9 @@ export function defaultSettings(): BacklogSettings {
 		tagsKey: 'tags',
 		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
 		doneValues: [...DEFAULT_DONE_VALUES],
+		startedDateKey: '',
+		finishedDateKey: '',
+		startedStates: [],
 		states: [],
 		showCompleted: true,
 	};
@@ -180,6 +197,24 @@ export function stateMenuValues(settings: BacklogSettings, observedStates: strin
 }
 
 /**
+ * Whether a state value counts as done, by the same case-insensitive match the model
+ * and the board's columns already use. Takes a VALUE rather than an item because the
+ * stamps ask it of a state being written, which no item holds yet.
+ */
+export function isDoneValue(settings: BacklogSettings, state: string | null): boolean {
+	return state !== null && settings.doneValues.some((v) => v.toLowerCase() === state.toLowerCase());
+}
+
+/**
+ * Whether a state value counts as work started. Nothing does until the states are
+ * named: a first column is a backlog as often as it is a start, and a date is worse
+ * than no date when it says work began that nobody began.
+ */
+export function isStartedValue(settings: BacklogSettings, state: string | null): boolean {
+	return state !== null && settings.startedStates.some((v) => v.toLowerCase() === state.toLowerCase());
+}
+
+/**
  * Configuration mistakes that would corrupt writes (e.g. parent and order stored
  * under the same frontmatter key). The view surfaces these instead of guessing.
  */
@@ -196,11 +231,20 @@ export function configProblems(settings: BacklogSettings): string[] {
 	add('order', settings.orderKey);
 	add('type', settings.typeKey);
 	add('state', settings.stateKey);
-	// `tagsKey` is deliberately absent: unlike the four above it cannot collide by
-	// the time anything reads it, because `resolveSettings` turns a colliding tags
-	// key off. Reporting it here would instead block every write in a view that was
-	// working before this option existed — a base whose state property happens to be
-	// `tags` would upgrade into a read-only view.
+	// A stamp must never overwrite a key the plugin already owns, so the two join the
+	// gate rather than yielding quietly: a date written over someone's parent link is
+	// not a thing to recover from by noticing later.
+	add('started date', settings.startedDateKey);
+	add('finished date', settings.finishedDateKey);
+	// `tagsKey` is here only as the RESOLVED key, which is what makes it safe: it
+	// cannot collide with the four above by the time anything reads it, because
+	// `resolveSettings` turns a colliding tags key off, and an off key is skipped by
+	// `add`. So the only collision this can report is a stamp aimed at the tags
+	// property — the one the yielding rule does not already cover. Adding the
+	// CONFIGURED key instead would block every write in a view that was working
+	// before these options existed, turning a base whose state property happens to
+	// be `tags` into a read-only view.
+	add('tags', settings.tagsKey);
 	for (const [key, users] of keys) {
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
@@ -340,6 +384,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: doneValues.length > 0 ? doneValues : fallback.doneValues,
+		startedDateKey: propKey('startedDateProperty', fallback.startedDateKey),
+		finishedDateKey: propKey('finishedDateProperty', fallback.finishedDateKey),
+		startedStates: dedupe(list('startedStates')),
 		states: dedupe(list('stateValues')),
 		showCompleted: bool('showCompleted', fallback.showCompleted),
 	};
