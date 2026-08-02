@@ -276,3 +276,8 @@ a write, and a design that needs that correlation cannot be made to work here.
   `tasks/`, `issues/`, `bugs/`. Every note states the evidence it rests on. Closed notes
   are kept: several are checklists to re-run rather than history, since appearance and
   base identity cannot be tested here. See `docs/README.md`.
+- The `brainstorming` and `writing-plans` skills save specs and plans under
+  `docs/superpowers/...` by default, which is fine here: `docs-check.mjs` exempts
+  `superpowers/` the same way it exempts `adrs/` and the index pages, so a generic spec or
+  plan needs none of the `type`/`order`/`status` frontmatter a backlog note would. See
+  `docs/README.md`'s folder table and rule 1.

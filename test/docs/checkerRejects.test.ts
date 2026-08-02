@@ -115,6 +115,25 @@ describe('the backlog tree', () => {
 			},
 			'basename is already used by',
 		],
+		[
+			'a backlog note nested under a folder that merely contains the word superpowers',
+			(files) => {
+				// The exemption is anchored to the docs/ root, not a bare `superpowers[/\\].*`
+				// regex — a coincidental `docs/requirements/superpowers/` must still be a
+				// work item, since `walk` descends into it exactly like any other directory.
+				files['docs/requirements/superpowers/Adrift.md'] = '---\norder: 90\nstatus: Open\n---\n\n# Adrift\n';
+			},
+			'backlog note has no `type` in its frontmatter',
+		],
+		[
+			'a superpowers doc sharing a basename with a backlog note',
+			(files) => {
+				// Exempt from carrying a `type`, never from claiming a name: it is still
+				// ordinary prose a `[[wikilink]]` can point at.
+				files['docs/superpowers/plans/A slice.md'] = '# A slice\n\nA plan, not the feature.\n';
+			},
+			'basename is already used by',
+		],
 	]);
 });
 

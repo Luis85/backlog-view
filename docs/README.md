@@ -14,6 +14,7 @@ demonstrating itself:
 | `issues/` | Open questions, verifications and recorded decisions | `Issue` |
 | `bugs/` | Defects, with what was learned from them | `Bug` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
+| `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
 
 The backlog says what the product does and why someone wants it. The
 [ADRs](adrs/README.md) say what was chosen to make that possible, what it cost, and what
@@ -23,6 +24,17 @@ view reads. A note belongs to the backlog if it has a supported type *or* a pare
 register's own scope rule ([[What counts as a work item]]) leaves them out of the tree.
 That is the plugin's behaviour applied to itself, and the toolbar's advisory counting them
 is the honest report.
+
+`superpowers/` is a third kind of exemption, for a different reason: not a deliberate
+design choice about the plugin's own schema, but a landing spot for the `brainstorming`
+and `writing-plans` skills' own working documents (CLAUDE.md) — plain markdown with no
+backlog frontmatter at all. `docs-check.mjs` exempts anything under it from needing a
+`type`, `order` or `status`, so it never has to pretend to be a work item to live under
+`docs/`. The exemption is anchored to `docs/superpowers/` itself, not a bare folder-name
+match, so a coincidental `superpowers/` nested somewhere else in the register is still
+held to the ordinary rules. It is **not** exempt from the basename rule two paragraphs up:
+a generated spec or plan is still ordinary prose a `[[wikilink]]` can name, so it still
+claims its name against every other note in `docs/`.
 
 ## The trees
 
@@ -122,13 +134,13 @@ npm run docs   # and as part of npm run check, and in CI
 `docs-check.mjs` enforces everything this file claims — an advertised invariant nobody
 can run is worse than none, because it invites trust it has not earned:
 
-1. Every note outside `adrs/` carries a `type`, an `order` and a supported `status` —
-   the three fields the conventions table below calls required — every parent link
-   resolves, and every parent/child pair is legal. A note that lost its frontmatter is
-   reported rather than skipped: a skipped file is checked for nothing and says so to
-   nobody. Two notes may not share a **basename**, in any folders, because the register
-   addresses work items by name and a collision makes every `[[wikilink]]` and `parent:`
-   to either one ambiguous.
+1. Every note outside `adrs/` and `superpowers/` carries a `type`, an `order` and a
+   supported `status` — the three fields the conventions table below calls required —
+   every parent link resolves, and every parent/child pair is legal. A note that lost
+   its frontmatter is reported rather than skipped: a skipped file is checked for
+   nothing and says so to nobody. Two notes may not share a **basename**, in any
+   folders, because the register addresses work items by name and a collision makes
+   every `[[wikilink]]` and `parent:` to either one ambiguous.
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
 3. Every wikilink resolves to a note, and **every relative markdown link resolves to a

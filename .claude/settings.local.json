@@ -10,6 +10,13 @@
             "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PROJECT_DIR\\.claude\\hooks\\ponytail-activate.js\" }",
             "timeout": 5,
             "statusMessage": "Loading ponytail mode..."
+          },
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start\"",
+            "commandWindows": "$env:CLAUDE_PLUGIN_ROOT = \"$env:CLAUDE_PROJECT_DIR/.claude\"; & \"$env:CLAUDE_PROJECT_DIR\\.claude\\hooks\\run-hook.cmd\" session-start",
+            "timeout": 5,
+            "statusMessage": "Loading superpowers..."
           }
         ]
       }
