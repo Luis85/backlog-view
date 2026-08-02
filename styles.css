@@ -575,6 +575,23 @@
 	height: var(--icon-s);
 }
 
+/* A touch user can produce neither the hover above nor a tab stop (these buttons are
+   `tabindex="-1"`, because the tree and the roadmap are each one stop), so without
+   this the control is not merely hidden — it is unreachable.
+
+   It sits HERE, immediately after the rule it overrides, rather than in the shared
+   `hover: none` block further down: a media query adds no specificity, so an override
+   written above the `opacity: 0` it is undoing simply loses the cascade and reveals
+   nothing. That shipped once. Each hover-revealed control therefore carries its own
+   reveal beside itself, where a later rule for the same selector cannot get in
+   between — and `test/view/rendering.test.ts` checks the ordering rather than
+   trusting this paragraph. */
+@media (hover: none) {
+	.pbl-add {
+		opacity: 1;
+	}
+}
+
 /* ------------------------------------------------------------------- badges */
 
 .pbl-badge {
@@ -944,13 +961,9 @@
 		display: none;
 	}
 
-	/* Both hover-revealed create buttons: the tree row's and the roadmap bucket's.
-	   A touch user cannot produce the hover, and neither button is in the tab order,
-	   so without this the control is not merely hidden — it is unreachable. */
-	.pbl-add,
-	.pbl-bucket-add {
-		opacity: 1;
-	}
+	/* The two hover-revealed create buttons are NOT here: an override of `opacity: 0`
+	   has to come after the rule it overrides, and both of those rules are below this
+	   block. Each carries its own `hover: none` reveal beside itself instead. */
 
 	/* Revealed by row hover on a pointer device, which a touch user cannot produce —
 	   without this the inline tag editing has no reachable control at all. */
@@ -1146,6 +1159,17 @@
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	margin-bottom: var(--size-4-3);
+}
+
+/* Why a prompt refused what was typed. Always in the DOM and empty until there is
+   something to say, so the dialog does not resize under the pointer on submit. */
+.pbl-modal-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-modal-error:not(:empty) {
+	margin-bottom: var(--size-4-2);
 }
 
 /* -------------------------------------------------------------------- board */
@@ -1543,6 +1567,14 @@
 .pbl-bucket-add .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);
+}
+
+/* Reachable without hover, beside the rule it overrides — see `.pbl-add` above for
+   why the position is the whole point. */
+@media (hover: none) {
+	.pbl-bucket-add {
+		opacity: 1;
+	}
 }
 
 /* ----- the dated axis: the month grid, bars, and the today line */
