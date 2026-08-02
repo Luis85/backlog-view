@@ -218,6 +218,13 @@ function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	if (handleBoardNavigationKey(host, snapshot, pos, evt)) return;
 	const card = pos && pos.card >= 0 ? snapshot.board.columns[pos.col].cards[pos.card] : null;
 	if (card) handleBoardCardKey(host, card, evt);
+	// A column stop is a place to stand too, and the policy is the one thing there is
+	// to say about it. The card branch runs first: the two menus share a key, and the
+	// card is the more specific selection.
+	else if (pos && isMenuKey(evt)) {
+		evt.preventDefault();
+		host.showColumnMenuFor(pos.col);
+	}
 }
 
 /** Arrow/Home/End selection movement; true when the key was one of those. */
@@ -240,12 +247,17 @@ function handleBoardNavigationKey(
 	return true;
 }
 
+/** The two keys that mean "open the context menu where I am standing". */
+function isMenuKey(evt: KeyboardEvent): boolean {
+	return evt.key === 'ContextMenu' || (evt.key === 'F10' && evt.shiftKey);
+}
+
 /** The keys that act on the selected card rather than moving between them. */
 function handleBoardCardKey(host: BacklogViewHost, card: BacklogItem, evt: KeyboardEvent): void {
 	if (evt.key === 'Enter') {
 		evt.preventDefault();
 		host.openItem(card, evt);
-	} else if (evt.key === 'ContextMenu' || (evt.key === 'F10' && evt.shiftKey)) {
+	} else if (isMenuKey(evt)) {
 		// The menu is the path that works everywhere a drag cannot, so it has to be
 		// reachable from the keyboard on the board exactly as it is in the tree.
 		evt.preventDefault();

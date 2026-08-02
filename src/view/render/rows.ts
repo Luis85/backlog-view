@@ -5,7 +5,7 @@ import { showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
-import { byTypeName } from '../../domain/settings';
+import { byName } from '../../domain/settings';
 import {
 	HORIZON_COL_WIDTH,
 	INDENT_PER_DEPTH,
@@ -233,7 +233,7 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	// and takes the bare-text treatment, which is the honest look for a type this view
 	// knows nothing about — it is carried through the ladder, not styled as though it were
 	// understood.
-	const style = byTypeName(NON_RUNG_STYLE, item.typeName);
+	const style = byName(NON_RUNG_STYLE, item.typeName);
 	if (item.levelIndex >= 0) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
 		badge.addClass(`pbl-lvl-${item.levelIndex}`);

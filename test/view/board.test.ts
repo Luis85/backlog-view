@@ -173,6 +173,58 @@ describe('the board projection', () => {
 		const advisory = containerEl.querySelector('.pbl-board-advisory');
 		expect(advisory?.querySelector('.pbl-empty-title')?.textContent).toBe('No backlog items');
 	});
+
+	/** The board's own workflow, with a limit of two on Active. */
+	const LIMITED = { ...WORKFLOW, 'wipLimit.active': '2' };
+
+	/** N epics, all Active, so the Active column can be filled past its limit. */
+	function activeVault(n: number): FakeVault {
+		const vault = new FakeVault();
+		for (let i = 1; i <= n; i++) {
+			vault.addFile(`E${i}.md`, { frontmatter: { type: 'Epic', order: i * 10, status: 'Active' } });
+		}
+		return vault;
+	}
+
+	it('shows the count against the limit, and nothing when no limit is set', () => {
+		const { containerEl } = boardView(boardVault(), LIMITED);
+		expect(columnByName(containerEl, 'Active').querySelector('.pbl-board-col-limit')?.textContent).toBe('/ 2');
+		expect(columnByName(containerEl, 'New').querySelector('.pbl-board-col-limit')).toBeNull();
+	});
+
+	it('signals an over-limit column in more than colour alone', () => {
+		const { containerEl } = boardView(activeVault(3), LIMITED);
+		const header = columnByName(containerEl, 'Active').querySelector('.pbl-board-col-header');
+		// The class is the colour; the icon is what survives a colour-blind reader and
+		// a monochrome screenshot. Asserting only the class would pass on a signal
+		// nobody can see.
+		expect(header?.classList.contains('pbl-board-col-over')).toBe(true);
+		expect(header?.querySelector('.pbl-board-col-over-icon')).not.toBeNull();
+	});
+
+	it('is not over at the limit', () => {
+		const { containerEl } = boardView(activeVault(2), LIMITED);
+		const header = columnByName(containerEl, 'Active').querySelector('.pbl-board-col-header');
+		expect(header?.classList.contains('pbl-board-col-over')).toBe(false);
+		expect(header?.querySelector('.pbl-board-col-over-icon')).toBeNull();
+	});
+
+	it('speaks the limit and the overage as part of the column', () => {
+		const { containerEl } = boardView(activeVault(3), LIMITED);
+		expect(columnByName(containerEl, 'Active').getAttribute('aria-label')).toBe(
+			'Active, 3 cards, limit 2, over by 1',
+		);
+	});
+
+	it('keeps the signal reading the full population under a filter', async () => {
+		// Extension 4a. The pair count narrows; the limit clause does not.
+		const { containerEl, view } = boardView(activeVault(3), LIMITED);
+		view.setFilter('E1');
+		await flush();
+		const col = columnByName(containerEl, 'Active');
+		expect(col.getAttribute('aria-label')).toBe('Active, 1 of 3 cards match, limit 2, over by 1');
+		expect(col.querySelector('.pbl-board-col-header')?.classList.contains('pbl-board-col-over')).toBe(true);
+	});
 });
 
 describe('the projection toggle', () => {

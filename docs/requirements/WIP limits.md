@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Columns from the workflow]]"
 order: 30
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
+closed: 2026-08-02
 files:
   - src/domain/settings.ts
   - src/domain/viewOptions.ts
@@ -66,7 +67,19 @@ rule.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The limits will be generated options, one per
-configured state, the way the per-type folder keys already are in
-`src/domain/viewOptions.ts`, with the resolution and the over-limit predicate in
-`src/domain/settings.ts` where the rest of the vocabulary's rules sit.
+One generated option per configured state — `wipLimit.<state>`, lowercased, the
+mechanism the per-type folder keys already use — declared in
+`src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`, which is also
+where a done state is refused a limit. The column carries its own limit
+(`src/domain/board.ts`), the header draws it (`src/view/render/board.ts`), and no
+write path imports `overBy` at all — the cheapest possible guarantee that a limit
+refuses nothing.
+
+Driven by `test/domain/settings.test.ts`, `test/domain/viewOptions.test.ts`,
+`test/domain/board.test.ts` and `test/view/board.test.ts`.
+
+`test/view/columnAgreements.test.ts` is where this use case's own checks live,
+including the guarantee that a limit refuses nothing: it puts the drop, the Alt+arrow
+and the menu each into a column already over its limit and confirms the write lands,
+then — following a drop with a refresh — confirms the column still says it is over
+afterward rather than having stopped signalling.

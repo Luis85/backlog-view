@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Moving cards]]"
 order: 10
-status: Active
+status: Done
 priority: P1
 created: 2026-08-01
+closed: 2026-08-02
 files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
@@ -105,5 +106,7 @@ the caller's callback and everything else is one controller
 `performBoardMove` still plans the same batch, and the drop-over class it highlights
 with is now the one every card target wears.
 
-Still Active, not Done, on one honest technicality: the over-limit acceptance
-criterion cannot be *exercised* until [[WIP limits]] exists to put a column over one.
+That technicality is gone: [[WIP limits]] ships the limits, and
+`test/view/columnAgreements.test.ts` drives the drop, the Alt+arrow and the menu each
+into a column already over one, then checks the column still says it is over — the
+move happening and the board reporting it are one criterion, not two.

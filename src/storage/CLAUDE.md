@@ -59,7 +59,7 @@ can be checked by reading one directory.
 - Every live read of a USER-CONFIGURED key goes through `ownValue`, never `fm[key]`:
   `toString`, `constructor` and `valueOf` are legal property names, and on a note
   lacking them the lookup returns the inherited function — truthy, so a blank test
-  reports a date already recorded and the stamp is declined forever. `byTypeName` in
+  reports a date already recorded and the stamp is declined forever. `byName` in
   `domain/settings.ts` says this hazard has shipped three times on other tables; this
   is the same answer for frontmatter, and `rawValueOf` was already doing it alone.
 - A live value read here must go through the **same tolerant reader the model used**

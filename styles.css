@@ -1493,6 +1493,46 @@
 	color: var(--text-faint);
 }
 
+/* The limit reads with the count, not against it: "3 / 2" is one quantity in two
+   parts, so it takes the count's own muted treatment until the column is over. */
+.pbl-board-col-limit {
+	flex: 0 0 auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Over the limit is a signal, never a refusal — so it colours the numbers rather
+   than the column, and the icon beside them is what a monochrome screenshot keeps. */
+.pbl-board-col-over .pbl-board-col-count,
+.pbl-board-col-over .pbl-board-col-limit {
+	color: var(--text-error);
+}
+
+.pbl-board-col-over-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-error);
+}
+
+.pbl-board-col-over-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* The policy affordance sits with the column's other markers, muted until pointed at:
+   an agreement is reference material, not a status. */
+.pbl-board-col-policy {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.pbl-board-col-policy .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
 /* The row lays its columns out fixed-width so values align across rows; a card
    stacks the same cells instead. The card is the exception, so the card opts out. */
 .pbl-card .pbl-props {

@@ -57,17 +57,25 @@ moves as gated state writes, and the hierarchy showing through on the board. Eve
 note states the precedent or the codebase seam it rests on, from a survey of the
 Kanban Guide, the major trackers and the Obsidian ecosystem run on 2026-08-01. The
 first increment built the projection: the toggle, the columns, the cards, desktop
-drag as a gated state write, and the focus level picking the cards; the drag use case
-stays `Active` on the one criterion only [[WIP limits]] can exercise. The second
-built the ways to move a card **without** a drag — Alt+arrow, and a card menu whose
-Set state is the board's own columns — with every move, drag included, announcing
-itself in the same words from one live region. The third took the two things that
-could not wait: **date stamps**, because history is the one thing a board cannot
-reconstruct later and every unstamped transition is gone for good, and the rest of the
-board's **quick filter**, so a narrowed column says how much work it still holds and a
-match nothing on screen can reach names itself on the card that hides it. What remains
-under the epic — lanes, creation from a column, limits, policies, column collapse, and
-the touch verdict a device has to answer — is still design.
+drag as a gated state write, and the focus level picking the cards. The drag use case
+closed once [[WIP limits]] gave its one outstanding criterion a column to exercise
+against. The second built the ways to move a card **without** a drag — Alt+arrow, and
+a card menu whose Set state is the board's own columns — with every move, drag
+included, announcing itself in the same words from one live region. The third took the
+two things that could not wait: **date stamps**, because history is the one thing a
+board cannot reconstruct later and every unstamped transition is gone for good, and the
+rest of the board's **quick filter**, so a narrowed column says how much work it still
+holds and a match nothing on screen can reach names itself on the card that hides it.
+The fourth gave the columns their agreements: a **WIP limit** and an **explicit
+policy** per configured state, both generated view options keyed by the state's own
+name, the way the per-type folder keys are. The limit reads the full population rather
+than the matches, so a filter cannot make an overcommitted stage look calm; it signals
+in colour, in shape and in words, and it refuses nothing — a check drives every board
+write path against a column already over one. The policy is described rather than
+named, reachable by pointer and from a column menu this increment introduces and
+creation from a column will later share. What remains under the epic — lanes, creation
+from a column, column collapse, and the touch verdict a device has to answer — is
+still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly

@@ -1,5 +1,5 @@
 import { BacklogItem, BacklogModel } from './model';
-import { BacklogSettings, stateMenuValues } from './settings';
+import { BacklogSettings, byName, stateMenuValues } from './settings';
 
 /**
  * Deriving the board from the model and the settings: which columns exist, which
@@ -42,6 +42,14 @@ export interface BoardColumn {
 	 * emptier than the work actually in it.
 	 */
 	fullCount: number;
+	/**
+	 * The agreed work-in-progress limit for this stage, or null for none. Never set on
+	 * the no-state column or a done one — {@link BacklogSettings.wipLimits} is where
+	 * that is decided, so nothing here has to remember it.
+	 */
+	limit: number | null;
+	/** The working agreement written on this stage in the view options, or ''. */
+	policy: string;
 }
 
 export interface BoardModel {
@@ -110,6 +118,19 @@ export function boardColumns(
 }
 
 /**
+ * How many cards this column holds beyond what was agreed — 0 at the limit, under it,
+ * or with no limit at all. Reads {@link BoardColumn.fullCount}, never `count`: a filter
+ * that made an over-limit column look under its limit would turn a search into a lie
+ * about the work.
+ *
+ * Nothing that PLANS a write imports this. A limit never refuses a move, and a planner
+ * that cannot see a limit cannot consult one.
+ */
+export function overBy(col: BoardColumn): number {
+	return col.limit === null ? 0 : Math.max(0, col.fullCount - col.limit);
+}
+
+/**
  * The columns themselves, before any card is placed: no-state first, then the
  * configured workflow in order, then a column per observed value the workflow does
  * not name. `byValue` is the case-insensitive index the placement uses.
@@ -130,6 +151,10 @@ function workflowColumns(
 		cards: [],
 		count: 0,
 		fullCount: 0,
+		// `byName`, never a bare index: a state value is user data, and a workflow may
+		// legitimately contain a state called `constructor`.
+		limit: byName(settings.wipLimits, state) ?? null,
+		policy: byName(settings.columnPolicies, state) ?? '',
 	});
 	const noState = column(null, false);
 	const columns = [noState, ...workflow.map((s) => column(s, false))];

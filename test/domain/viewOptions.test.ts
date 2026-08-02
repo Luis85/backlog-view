@@ -103,4 +103,27 @@ describe('getViewOptions', () => {
 		expect(parent.filter('file.name')).toBe(false);
 		expect(parent.filter('formula.x')).toBe(false);
 	});
+
+	it('generates a limit and a policy box per configured state', () => {
+		const flat = getViewOptions(fakeConfig({ stateValues: 'New, In review, Done', doneValues: 'Done' })).flatMap(
+			(o) => ('items' in o ? o.items : [o]),
+		);
+		const keys = flat.map((o) => o.key);
+		expect(keys).toContain('wipLimit.new');
+		expect(keys).toContain('wipLimit.in review');
+		expect(keys).toContain('columnPolicy.new');
+		expect(keys).toContain('columnPolicy.done');
+		// A done column has no limit to set, so it is not offered one.
+		expect(keys).not.toContain('wipLimit.done');
+	});
+
+	it('offers neither until a workflow is stated', () => {
+		// With no `stateValues` the board falls back to observed values, which are not a
+		// workflow anyone agreed. Limits and policies are agreements; there is nothing
+		// to attach them to, so the Progress group is unchanged.
+		const keys = getViewOptions(fakeConfig())
+			.flatMap((o) => ('items' in o ? o.items : [o]))
+			.map((o) => o.key);
+		expect(keys.filter((k) => k.startsWith('wipLimit.') || k.startsWith('columnPolicy.'))).toEqual([]);
+	});
 });

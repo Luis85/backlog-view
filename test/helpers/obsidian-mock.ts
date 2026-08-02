@@ -166,6 +166,7 @@ export class MenuItem {
 	titleText = '';
 	iconName = '';
 	checked = false;
+	disabled = false;
 	submenu: Menu | null = null;
 	clickHandler: (() => unknown) | null = null;
 
@@ -179,6 +180,10 @@ export class MenuItem {
 	}
 	setChecked(checked: boolean): this {
 		this.checked = checked;
+		return this;
+	}
+	setDisabled(disabled: boolean): this {
+		this.disabled = disabled;
 		return this;
 	}
 	onClick(cb: () => unknown): this {

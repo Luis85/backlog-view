@@ -13,6 +13,29 @@ import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 
+/**
+ * The column's menu. A policy is text, not an action, so its one entry is disabled:
+ * the menu exists to make the policy reachable without a pointer, and an entry that
+ * looked clickable would promise a command that does not exist.
+ *
+ * Null when there is no policy — a column with nothing agreed offers no menu at all,
+ * rather than an empty one.
+ */
+export function buildColumnMenu(policy: string): Menu | null {
+	if (!policy) return null;
+	const menu = new Menu();
+	menu.addItem((mi) => mi.setTitle(policy).setIcon('info').setDisabled(true));
+	return menu;
+}
+
+/** The pointer path onto that menu. */
+export function showColumnMenu(evt: MouseEvent, policy: string): void {
+	const menu = buildColumnMenu(policy);
+	if (!menu) return;
+	evt.preventDefault();
+	showMenuForClick(menu, evt);
+}
+
 /** Context menu for a backlog row (mouse path). */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childTypes: string[]): void {
 	evt.preventDefault();

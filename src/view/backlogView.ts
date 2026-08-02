@@ -1,4 +1,4 @@
-import { BasesView, Keymap, Notice, QueryController, setIcon } from 'obsidian';
+import { BasesView, Keymap, Menu, Notice, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
 import { FilterState } from './filterState';
 import {
@@ -13,7 +13,7 @@ import {
 import { announceBoardMove, announceHorizonMove, CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
-import { buildItemMenu } from './interactions/menu';
+import { buildColumnMenu, buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
@@ -348,11 +348,26 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
-		const childTypes = childTypeChoices(item);
-		const menu = buildItemMenu(this, item, childTypes);
-		if (!menu) return;
-		const rect = this.rowElFor(item)?.getBoundingClientRect();
-		menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
+		this.showMenuBelow(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
+	}
+
+	/** Open the column's own menu, anchored to the column that index names. */
+	showColumnMenuFor(index: number): void {
+		this.showMenuBelow(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
+	}
+
+	/**
+	 * Anchor a menu under its own element's rect — the keyboard path for a row or a
+	 * column stop, neither of which has a pointer to sit under. Falls back to the
+	 * viewport corner when there is no element to anchor to, and does nothing at all
+	 * when there is no menu. The fallback is a row's, not deliberately a column's too:
+	 * `colEls` and `board.columns` are built by the same `.map()` over the same array
+	 * (`renderBoard`), so an index that resolves a column always resolves an element,
+	 * and this branch stays unreachable from `showColumnMenuFor`.
+	 */
+	private showMenuBelow(menu: Menu | null, el: HTMLElement | null): void {
+		const rect = el?.getBoundingClientRect();
+		menu?.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
 	}
 
 	private rowElFor(item: BacklogItem): HTMLElement | null {

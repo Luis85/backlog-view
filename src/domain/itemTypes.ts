@@ -1,4 +1,4 @@
-import { ALL_TYPES, BacklogSettings, byTypeName, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';
+import { ALL_TYPES, BacklogSettings, byName, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';
 
 /**
  * The type vocabulary: the level ladder, and the types that sit beside it.
@@ -121,7 +121,7 @@ export function childTypeChoices(parent: LadderPosition | null): string[] {
  * without one falls back to.
  */
 export function folderForType(typeName: string, settings: BacklogSettings): string | null {
-	return byTypeName(settings.typeFolders, typeName) || null;
+	return byName(settings.typeFolders, typeName) || null;
 }
 
 /**

@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Columns from the workflow]]"
 order: 50
-status: Open
+status: Done
 priority: P3
 created: 2026-08-01
+closed: 2026-08-02
 files:
   - src/domain/viewOptions.ts
 ---
@@ -33,8 +34,9 @@ difference between a board that shows states and one that shows the working agre
 
 1. The user writes a short policy for a configured state in the view options.
 2. That state's column header gains an affordance.
-3. Pointing at the affordance shows the text; the column's context menu — the one it
-   already offers for creation — carries it too, so it is reachable without a pointer.
+3. Pointing at the affordance shows the text; the column's context menu — introduced
+   by this use case, and the shell [[New cards in place]] later hangs creation off —
+   carries it too, so it is reachable without a pointer.
 4. Assistive technology hears the policy as the column's description.
 
 **Extensions**
@@ -54,15 +56,23 @@ difference between a board that shows states and one that shows the working agre
   one option per state the way the per-type folder options already are.
 - A column whose state has a policy shows an affordance on its header, and the text
   is reachable without new tab stops: by pointer on the affordance, and from the
-  column's context menu — the same menu the selected column already offers for
-  creation — with assistive technology hearing it as the column's description.
+  column's context menu — introduced by this use case, and the shell
+  [[New cards in place]] later hangs creation off — with assistive technology
+  hearing it as the column's description.
 - Policies render. Nothing enforces them — a card moves into a column whether or not
   its policy is met, exactly as the ladder guides and never refuses.
 - With no policies configured, headers are unchanged: no empty affordances.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** One generated option per configured state in
-`src/domain/viewOptions.ts`, the mechanism the per-type folder keys already use — which
-is also why the surfaces test discovers generated keys by calling the schema rather than
-reading the source for them.
+One generated option per configured state — `columnPolicy.<state>`, lowercased,
+declared in `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The
+column carries its own policy (`src/domain/board.ts`); the header's affordance and its
+`aria-describedby` are in `src/view/render/board.ts`, and the column menu is
+`buildColumnMenu` in `src/view/interactions/menu.ts`, opened by the header and by
+`src/view/interactions/keyboard.ts` on the selected column stop.
+
+Driven by `test/domain/viewOptions.test.ts` and `test/domain/board.test.ts`.
+
+The affordance, its description, the column menu and the keyboard path onto it are
+driven by `test/view/columnAgreements.test.ts`.

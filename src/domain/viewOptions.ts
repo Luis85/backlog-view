@@ -1,17 +1,21 @@
 import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import {
 	ALL_TYPES,
+	BacklogSettings,
+	columnPolicyKey,
 	DEFAULT_DONE_VALUES,
 	DEFAULT_HOME_FOLDER,
 	DEFAULT_HORIZON_VALUES,
 	DEFAULT_PROP_COLUMN_WIDTH,
+	defaultSettings,
+	defaultTypeFolder,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
 	OptionalField,
-	defaultTypeFolder,
 	optionalProperty,
 	resolveSettings,
 	typeFolderKey,
+	wipLimitKey,
 } from './settings';
 
 /**
@@ -53,8 +57,17 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	// folder — so the callback still reads the config. Declaring the shipped `docs/…`
 	// here regardless would make every picker in a `Roadmap` base advertise a folder the
 	// creation flow does not use, and restoring that shown default would move the type.
-	const homeFolder = config ? resolveSettings(config).homeFolder : DEFAULT_HOME_FOLDER;
-	return [hierarchyGroup(), progressGroup(), roadmapGroup(), newItemsGroup(homeFolder), displayGroup()];
+	//
+	// The workflow states are the same idea taken further: they are user data outright,
+	// so the limit and policy boxes exist only once a workflow does.
+	const settings = config ? resolveSettings(config) : defaultSettings();
+	return [
+		hierarchyGroup(),
+		progressGroup(settings),
+		roadmapGroup(),
+		newItemsGroup(settings.homeFolder),
+		displayGroup(),
+	];
 }
 
 function hierarchyGroup(): BasesAllOptions {
@@ -116,7 +129,8 @@ function hierarchyGroup(): BasesAllOptions {
 	};
 }
 
-function progressGroup(): BasesAllOptions {
+function progressGroup(settings: BacklogSettings): BasesAllOptions {
+	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
 	return {
 		type: 'group',
 		displayName: 'Progress',
@@ -155,6 +169,29 @@ function progressGroup(): BasesAllOptions {
 				displayName: 'Show completed items',
 				default: true,
 			},
+			// One box per configured state, the mechanism the per-type folder keys use.
+			// A limit is `text` rather than `slider` because a slider always holds a
+			// number and cannot say "unset" — and an unset limit is not a limit of zero.
+			...settings.states.flatMap((state): BasesOptions[] => [
+				...(done.has(state.toLowerCase())
+					? []
+					: [
+							{
+								type: 'text',
+								key: wipLimitKey(state),
+								displayName: `WIP limit for ${state}`,
+								default: '',
+								placeholder: 'No limit',
+							} as BasesOptions,
+						]),
+				{
+					type: 'text',
+					key: columnPolicyKey(state),
+					displayName: `Policy for ${state}`,
+					default: '',
+					placeholder: 'What has to be true to leave this column',
+				},
+			]),
 		],
 	};
 }
