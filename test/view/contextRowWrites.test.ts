@@ -194,7 +194,14 @@ describe('write safety with context rows, across every entry point', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		const config = new FakeViewConfig({ stateProperty: 'note.status' });
+		// Both roadmap axes configured, so the placement writes are entry points this
+		// sweep drives too — Set horizon, Clear horizon, Schedule, Unschedule.
+		const config = new FakeViewConfig({
+			stateProperty: 'note.status',
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
 		// The tag column is a write surface too — drive it like every other one.
 		config.order = ['note.tags'];
 		anyView.config = config;
@@ -212,11 +219,27 @@ describe('write safety with context rows, across every entry point', () => {
 		for (const item of Menu.lastShown?.items ?? []) {
 			item.clickHandler?.();
 			await flush();
+			// A command that opens a prompt has not written anything yet, so the prompt
+			// is part of the entry point: confirm the one that would.
+			await confirmSchedulePrompt();
 			for (const sub of item.submenu?.items ?? []) {
 				sub.clickHandler?.();
 				await flush();
 			}
 		}
+	}
+
+	/** Fill and submit the schedule prompt, if that is what the last command opened. */
+	async function confirmSchedulePrompt(): Promise<void> {
+		const modal = Modal.lastOpened;
+		if (!modal?.titleEl.textContent?.startsWith('Schedule ')) return;
+		Modal.lastOpened = null;
+		for (const input of modal.contentEl.querySelectorAll('input')) {
+			input.value = '2026-08-03';
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
 	}
 
 	it('puts context rows in all three structural positions', () => {

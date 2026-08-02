@@ -1,7 +1,7 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { hasTag, normalizeTag, readTags } from '../domain/noteFields';
-import { BacklogSettings } from '../domain/settings';
-import { ItemWrite, TagDelta } from '../domain/writePlan';
+import { AXIS_FIELDS, axisKeyFor, BacklogSettings } from '../domain/settings';
+import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
 /**
  * The ONLY module that writes frontmatter. Everything upstream decides what a
@@ -70,23 +70,7 @@ export async function applyWrites(
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
 			const keys = touchedKeys(settings, write);
 			const before = keys.map((key) => rawValueOf(fm, key));
-			if (write.removeParentKey) {
-				delete fm[settings.parentKey];
-			} else if (write.parent !== undefined) {
-				if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
-				// In folder mode a deleted key would just re-infer the folder parent;
-				// an explicitly empty value pins the item to the top level instead.
-				else if (settings.folderHierarchy) fm[settings.parentKey] = '';
-				else delete fm[settings.parentKey];
-			}
-			if (write.order !== undefined) fm[settings.orderKey] = write.order;
-			if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
-			writeOptional(fm, settings.stateKey, write.state, write.removeStateKey);
-			writeOptional(fm, settings.horizonKey, write.horizon, write.removeHorizonKey);
-			const applied =
-				write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
-			// The stored delta is the one that UNDOES what was applied.
-			const tags = applied ? { key: settings.tagsKey, delta: { add: applied.remove, remove: applied.add } } : null;
+			const tags = applyInto(app, fm, settings, write);
 			inverse = captureInverse(write.file, keys, before, fm, tags);
 		});
 		if (inverse) onInverse?.(inverse);
@@ -95,21 +79,47 @@ export async function applyWrites(
 }
 
 /**
- * A property whose write may equally be a REMOVAL, on a key that may not be
- * configured at all. The state and the horizon are that shape twice — progress
- * tracking off, no bucket axis — and one helper is what keeps "absence is a value,
- * and never write to an empty key" a single decision rather than a pair of them
- * that can drift.
+ * Apply one planned write to the live frontmatter, returning the tag restore its
+ * delta earned (null when it changed no tags). Separate from the loop above so the
+ * question "what does a write DO" is answerable in one place, and so the capture
+ * that surrounds it stays readable beside it.
  */
-function writeOptional(
+function applyInto(
+	app: App,
 	fm: Record<string, unknown>,
-	key: string,
-	value: string | undefined,
-	remove: boolean | undefined,
-): void {
-	if (!key) return;
-	if (remove) delete fm[key];
-	else if (value !== undefined) fm[key] = value;
+	settings: BacklogSettings,
+	write: ItemWrite,
+): RestoreWrite['tags'] | null {
+	applyHierarchy(app, fm, settings, write);
+	// The stateKey may be unset (progress tracking off) — never write to an empty key.
+	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
+	else if (write.state !== undefined && settings.stateKey) fm[settings.stateKey] = write.state;
+	// The roadmap's placement keys, by the same two rules: never an unconfigured key,
+	// and a null REMOVES rather than blanks — unscheduled is a state a note returns
+	// to, not a pair of empty strings.
+	for (const { key, value } of axisEntries(settings, write.axis)) {
+		if (value === null) delete fm[key];
+		else fm[key] = value;
+	}
+	const applied =
+		write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
+	// The stored delta is the one that UNDOES what was applied.
+	return applied ? { key: settings.tagsKey, delta: { add: applied.remove, remove: applied.add } } : null;
+}
+
+/** The three hierarchy properties: the parent link (or its removal), the rank, the type. */
+function applyHierarchy(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.removeParentKey) {
+		delete fm[settings.parentKey];
+	} else if (write.parent !== undefined) {
+		if (write.parent !== null) fm[settings.parentKey] = wikilinkTo(app, write.parent, write.file.path);
+		// In folder mode a deleted key would just re-infer the folder parent;
+		// an explicitly empty value pins the item to the top level instead.
+		else if (settings.folderHierarchy) fm[settings.parentKey] = '';
+		else delete fm[settings.parentKey];
+	}
+	if (write.order !== undefined) fm[settings.orderKey] = write.order;
+	if (write.typeName !== undefined) fm[settings.typeKey] = write.typeName;
 }
 
 /** The frontmatter keys this write will touch, in the order they are written. */
@@ -119,8 +129,24 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	if ((write.removeHorizonKey || write.horizon !== undefined) && settings.horizonKey) keys.push(settings.horizonKey);
+	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
 	return keys;
+}
+
+/**
+ * The configured keys one axis write touches, each with the value it will write.
+ * Applying and capturing read the SAME list: a key written but not captured would
+ * be a change no undo could reach, which is exactly how a hole gets in.
+ */
+function axisEntries(settings: BacklogSettings, axis?: AxisWrite): { key: string; value: string | null }[] {
+	if (!axis) return [];
+	const entries: { key: string; value: string | null }[] = [];
+	for (const field of AXIS_FIELDS) {
+		const key = axisKeyFor(settings, field);
+		const value = axis[field];
+		if (key !== '' && value !== undefined) entries.push({ key, value });
+	}
+	return entries;
 }
 
 /**
@@ -255,10 +281,7 @@ export interface NewItemSpec {
 	typeName: string;
 	parent: TFile | null;
 	order: number;
-	/**
-	 * The horizon the note is created into, when it is created from a bucket.
-	 * Undefined everywhere else — a placement nobody chose is not one to write.
-	 */
+	/** The bucket it was created in, when it was created from one. */
 	horizon?: string;
 }
 
@@ -283,9 +306,13 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// intentionally top-level note — pin it with an explicitly empty parent.
 	else if (settings.folderHierarchy) fm[settings.parentKey] = '';
 	fm[settings.orderKey] = spec.order;
-	// Created from a bucket: the placement rides the same single write, so the note
-	// never exists in a bucket its own frontmatter does not claim.
-	if (spec.horizon !== undefined && settings.horizonKey) fm[settings.horizonKey] = spec.horizon;
+	// A note created from a bucket claims that bucket in the SAME write, through the
+	// same axis list the edit path uses — so it is never momentarily a note sitting in
+	// a bucket its own frontmatter does not name, and never a write to an unconfigured
+	// key. `axisEntries` yields nothing here when the horizon axis is off.
+	for (const { key, value } of axisEntries(settings, spec.horizon ? { horizon: spec.horizon } : undefined)) {
+		if (value !== null) fm[key] = value;
+	}
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { configProblems, defaultSettings, resolveSettings, stateMenuValues } from '../../src/domain/settings';
+import {
+	axisKeyFor,
+	configProblems,
+	defaultSettings,
+	horizonMenuValues,
+	resolveSettings,
+	stateMenuValues,
+} from '../../src/domain/settings';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -201,5 +208,43 @@ describe('stateMenuValues', () => {
 		const settings = defaultSettings();
 		expect(stateMenuValues(settings, ['Active'])).toEqual(['Active', 'Done']);
 		expect(stateMenuValues(settings, [])).toEqual(['Done']);
+	});
+});
+
+describe('horizonMenuValues', () => {
+	const withHorizons = (values: string[]) => ({ ...defaultSettings(), horizonKey: 'horizon', horizonValues: values });
+
+	it('offers the declared vocabulary first, in declared order', () => {
+		expect(horizonMenuValues(withHorizons(['Now', 'Next', 'Later']), [])).toEqual(['Now', 'Next', 'Later']);
+	});
+
+	it('adds every observed value the declaration does not name', () => {
+		// The union, not the state menu's either/or: an undeclared horizon is a bucket
+		// the roadmap already draws, so a menu without it could not reach a target the
+		// drag can. Order follows the buckets: declared first, then as first seen.
+		expect(horizonMenuValues(withHorizons(['Now', 'Next']), ['Someday', 'Now'])).toEqual([
+			'Now',
+			'Next',
+			'Someday',
+		]);
+	});
+
+	it('matches the declaration case-insensitively, keeping the declared casing', () => {
+		expect(horizonMenuValues(withHorizons(['Now']), ['now'])).toEqual(['Now']);
+	});
+
+	it('offers the observed values alone when nothing is declared', () => {
+		expect(horizonMenuValues(withHorizons([]), ['Q3', 'Q4'])).toEqual(['Q3', 'Q4']);
+	});
+});
+
+describe('axisKeyFor', () => {
+	it('maps each field to the property it is stored under', () => {
+		const settings = { ...defaultSettings(), horizonKey: 'horizon', startKey: 'start', targetKey: 'due' };
+		expect(axisKeyFor(settings, 'horizon')).toBe('horizon');
+		expect(axisKeyFor(settings, 'start')).toBe('start');
+		expect(axisKeyFor(settings, 'target')).toBe('due');
+		// Unconfigured is '', which every caller reads as "no key to write".
+		expect(axisKeyFor(defaultSettings(), 'horizon')).toBe('');
 	});
 });

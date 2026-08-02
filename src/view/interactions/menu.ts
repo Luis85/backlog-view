@@ -3,17 +3,13 @@ import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
-import { RoadmapModel, SHELF_LABEL } from '../../domain/roadmap';
-import {
-	computeHorizonDropWrites,
-	computeStateDropWrites,
-	computeTypeChanges,
-	ItemWrite,
-} from '../../domain/writePlan';
+import { hasDateAxis, hasHorizonAxis } from '../../domain/roadmap';
+import { computeStateDropWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
+import { addHorizonItems, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 
 /** Context menu for a backlog row (mouse path). */
@@ -46,10 +42,10 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
 		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
-		// The roadmap's Set horizon is the drag's equal on the axis being drawn, so it
-		// is offered exactly where buckets are: the non-pointer path to the same write.
-		const buckets = renderedBuckets(host);
-		if (buckets) addSetHorizonMenu(host, menu, item, buckets);
+		// Per axis, and absent rather than inert when one is not configured — the state
+		// chip's own rule, applied to the two placement properties.
+		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
+		if (hasDateAxis(host.settings)) addScheduleItems(host, menu, item);
 		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	}
 	menu.addSeparator();
@@ -199,10 +195,9 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
 }
 
 /**
- * One offer in a Set menu: the value it writes (null removes the key) and the name
- * it wears. Shared by Set state and Set horizon, because they are the same offer
- * over different properties — one shape means the checkmark, the removal entry and
- * the "names what is on screen" rule are each decided once.
+ * One offer in Set state: the value it writes (null removes the key) and the name it
+ * wears. The two differ on the board, where the entry is named for the COLUMN rather
+ * than for its own value, so "No state" reads as a place instead of as a silence.
  */
 interface ValueChoice {
 	value: string | null;
@@ -234,21 +229,6 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): ValueChoice[] {
 }
 
 /**
- * What Set horizon offers: the roadmap's own BUCKETS, read off the render for the
- * reason the board's Set state reads its columns — every target a drop can reach,
- * the menu offers, by construction rather than by two lists agreeing — plus the
- * shelf, whose write removes the key. Declared and minted buckets alike, since
- * observed vocabulary is writable vocabulary; a context row contributes to neither,
- * because it never minted a bucket in the first place.
- */
-function horizonChoices(roadmap: RoadmapModel): ValueChoice[] {
-	return [
-		{ value: null, label: SHELF_LABEL },
-		...roadmap.buckets.map((bucket) => ({ value: bucket.value, label: bucket.value })),
-	];
-}
-
-/**
  * The write a Set state entry means. On the board the menu is the drag's equal, so
  * it takes the drag's own path — the same planned write, the same gate, the same
  * announcement — and that path is also the only one that can express the no-state
@@ -260,47 +240,22 @@ function chooseState(host: BacklogViewHost, item: BacklogItem, choice: ValueChoi
 }
 
 /**
- * Render one Set menu's offers, checking the one the item already holds.
+ * Render Set state's offers, checking the one the item already holds.
  *
  * "Already holds" is asked of the PLAN — an entry is checked exactly when picking
  * it would write nothing — rather than by a comparison written beside the plan and
- * expected to agree with it. Those two drifted the moment a second property joined:
- * a horizon the reader refuses reads as no value, so comparing values checked
- * `Unplaced` on a note whose key still held something, offering as current an
- * action that removes a key and spends the undo slot. One question, asked once, and
- * a checkmark can no longer disagree with what picking it does.
+ * expected to agree with it. Those two drift the moment either side learns a case
+ * the other has not: an entry checked as current whose pick still writes spends the
+ * undo slot on a change nobody asked for. One question, asked once. `addHorizonItems`
+ * in `plan.ts` follows the same rule against its own planner.
  */
-function addValueItems(
-	menu: Menu,
-	choices: ValueChoice[],
-	plan: (choice: ValueChoice) => ItemWrite[],
-	pick: (choice: ValueChoice) => void,
-): void {
-	for (const choice of choices) {
+function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
-			si.setTitle(choice.label).onClick(() => pick(choice));
-			if (plan(choice).length === 0) si.setChecked(true);
+			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
+			if (computeStateDropWrites(item, choice.value).length === 0) si.setChecked(true);
 		});
 	}
-}
-
-function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	addValueItems(
-		menu,
-		stateChoices(host, item),
-		(choice) => computeStateDropWrites(item, choice.value),
-		(choice) => void chooseState(host, item, choice),
-	);
-}
-
-/** Set horizon's offers, taking the drag's own path exactly as Set state does. */
-function addHorizonItems(host: BacklogViewHost, menu: Menu, item: BacklogItem, roadmap: RoadmapModel): void {
-	addValueItems(
-		menu,
-		horizonChoices(roadmap),
-		(choice) => computeHorizonDropWrites(item, choice.value),
-		(choice) => void host.performHorizonMove(item, choice.value),
-	);
 }
 
 /**
@@ -320,22 +275,33 @@ function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 }
 
 /**
- * The buckets this menu can offer, or null when there are none on screen to name.
- * Gated on the RENDERED roadmap rather than on the horizon property alone: the
- * offers are the rendered buckets, so on the timeline — or in any projection that
- * is not the roadmap — there is no vocabulary to speak in, and an entry naming
- * buckets nothing shows would be the menu describing a different screen.
+ * The roadmap's placement properties, from the row: the horizons as a submenu (its
+ * foot clears the key), the dates as an entry that opens the schedule prompt. The
+ * writes themselves live in `interactions/plan.ts` — this file decides what a row is
+ * offered, not what a placement means.
  */
-function renderedBuckets(host: BacklogViewHost): RoadmapModel | null {
-	const roadmap = host.projection === 'roadmap' ? host.roadmap?.roadmap : null;
-	return roadmap && roadmap.axis === 'horizons' ? roadmap : null;
+function addSetHorizonMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set horizon').setIcon('signpost');
+		addHorizonItems(host, submenuOf(mi), item);
+	});
 }
 
-function addSetHorizonMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem, roadmap: RoadmapModel): void {
-	menu.addItem((mi) => {
-		mi.setTitle('Set horizon').setIcon('map');
-		addHorizonItems(host, submenuOf(mi), item, roadmap);
-	});
+function addScheduleItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) =>
+		mi
+			.setTitle('Schedule')
+			.setIcon('calendar-range')
+			.onClick(() => promptSchedule(host, item)),
+	);
+	// Like Clear horizon: offered only while there is something to remove.
+	if (!carriesDates(item)) return;
+	menu.addItem((mi) =>
+		mi
+			.setTitle('Unschedule')
+			.setIcon('calendar-off')
+			.onClick(() => void unschedule(host, item)),
+	);
 }
 
 /** Tag editing on the keyboard path — the same list the row's + button offers. */

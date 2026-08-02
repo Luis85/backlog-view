@@ -226,16 +226,36 @@ free of runtime code so imports stay cycle-free.
 
 ## The roadmap projection
 
-- The HORIZON axis writes; the dated axis does not, and the difference is structural
-  rather than a flag: `renderRoadmap` passes the drag controller on only where a drop
-  has a write behind it, so nothing on the timeline is draggable and the shelf there is
-  not a target. A projection must not offer a gesture it cannot keep — scheduling is its
-  own feature, arriving with its own plans.
-- What IS interactive on the horizon axis: a bucket and the shelf are drop targets, a
-  result card is a drag source (a context card never is), Alt+Left/Right steps one
-  placement, and the card menu's Set horizon offers the RENDERED buckets plus the shelf
-  — the board's rule, so the menu's targets and the drag's are one set by construction.
-  Everywhere: opening (click/Enter), the shared tag pills, the toolbar.
+- The placement actions belong to the ITEM, not to the mode: `interactions/plan.ts`
+  serves Set horizon, Schedule and Unschedule from the row menu in all three
+  projections, because the projections share one model, one gate and one undo history
+  and a property settable only inside roadmap mode would be a projection disagreeing
+  about what the backlog can do.
+- Those actions gate per axis on `hasHorizonAxis` / `hasDateAxis` — the same
+  predicates `configuredAxes` is built from, so what the menu offers and what the
+  roadmap draws cannot drift apart. A horizon property with an empty values list is
+  UNCONFIGURED for both. Set horizon offers `horizonMenuValues` (declared ∪ observed
+  on results) plus the item's own unlisted value — the union, not the state menu's
+  either/or, because an undeclared horizon is a bucket the roadmap already draws. In
+  roadmap mode the DRAWN buckets lead and the rest follow, the same reason the board's
+  Set state reads its rendered columns: hiding can remove a value's first carrier, so
+  the collected order and the minted order are not always the same, and the frame on
+  screen is the one that can be checked. Membership never narrows with what is hidden.
+  Removal actions (Clear horizon, Unschedule, an emptied field in the entry) appear
+  only while the note CARRIES the key (`item.axisKeys`, presence not value), so no
+  offered action can write nothing, and they delete the key rather than blanking it.
+- On top of that, the HORIZON axis is directly manipulable and the dated axis is not,
+  and the difference is structural rather than a flag: `renderRoadmap` passes the drag
+  controller on only where a drop has a write behind it, so nothing on the timeline is
+  draggable and the shelf there is not a target. A projection must not offer a gesture
+  it cannot keep — moving a *bar* is scheduling's own feature, arriving with its plans.
+- So on the horizon axis: a bucket and the shelf are drop targets, a result card is a
+  drag source (a context card never is), and Alt+Left/Right steps one placement. All
+  three land on `performHorizonMove`, and so does Set horizon while that axis is drawn
+  (`chooseHorizon`) — which is the only path that announces, so a pick and a drop onto
+  one bucket say the same sentence once. Off the roadmap there is no frame to announce
+  into and the same planned write goes straight through the gate; `chooseState` splits
+  on the board for the same reason.
 - The Alt+arrow ladder leads with the SHELF, then the buckets as they render. The shelf
   is the roadmap's no-state column — where un-placing lives, and where an untriaged card
   enters the axis from, which is also where the specified lift arrives from the shelf

@@ -35,11 +35,10 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
-- A property that may be REMOVED as well as written, on a key that may not be configured
-  at all, goes through `writeOptional` — state and horizon are that shape twice, and one
-  helper is what keeps "absence is a value, and never write to an empty key" a single
-  decision. A third such property adds a call, not a rule. `touchedKeys` has to learn the
-  key too, or the write lands with no inverse and undo silently skips it.
+- The roadmap's placement keys (`ItemWrite.axis`) follow the state key's two rules:
+  never written to an unconfigured key, and a null REMOVES rather than blanks. Applying
+  and capturing read the same `axisEntries` list — a key written but not captured would
+  be a change no undo could reach, which is exactly how a hole gets in.
 - `createBacklogItem` writes everything a new note gets in ONE call — type, parent,
   order, and the horizon when it was created from a bucket. A create-then-update pair
   could fail in between and leave a note in a bucket its frontmatter does not claim,

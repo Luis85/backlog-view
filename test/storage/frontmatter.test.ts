@@ -86,11 +86,11 @@ describe('applyWrites', () => {
 		const item = vault.addFile('Item.md', { frontmatter: { order: 5 } });
 		const inverses: RestoreWrite[] = [];
 
-		await applyWrites(vault.app, planned, [{ file: item, horizon: 'Next' }]);
+		await applyWrites(vault.app, planned, [{ file: item, axis: { horizon: 'Next' } }]);
 		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
 
 		// The shelf's drop: absence, never an empty string — and undo puts it back.
-		await applyWrites(vault.app, planned, [{ file: item, removeHorizonKey: true }], undefined, (inv) =>
+		await applyWrites(vault.app, planned, [{ file: item, axis: { horizon: null } }], undefined, (inv) =>
 			inverses.push(inv),
 		);
 		expect(vault.fm('Item.md')).toEqual({ order: 5 });
@@ -99,7 +99,7 @@ describe('applyWrites', () => {
 
 		// Without a configured horizon property the write is dropped, not misfiled —
 		// the state key's rule, because it is the same rule.
-		await applyWrites(vault.app, settings, [{ file: item, horizon: 'Now' }]);
+		await applyWrites(vault.app, settings, [{ file: item, axis: { horizon: 'Now' } }]);
 		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
 	});
 
@@ -108,7 +108,7 @@ describe('applyWrites', () => {
 		const both = { ...settings, stateKey: 'status', horizonKey: 'horizon' };
 		const item = vault.addFile('Item.md', { frontmatter: { status: 'New', horizon: 'Now' } });
 
-		await applyWrites(vault.app, both, [{ file: item, state: 'Active', removeHorizonKey: true }]);
+		await applyWrites(vault.app, both, [{ file: item, state: 'Active', axis: { horizon: null } }]);
 		expect(vault.fm('Item.md')).toEqual({ status: 'Active' });
 	});
 

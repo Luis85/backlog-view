@@ -17,7 +17,7 @@ import { BacklogItem, BacklogModel, buildModel, matchingPaths } from '../domain/
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis } from '../domain/roadmap';
-import { computeDropWrites, computeHorizonDropWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
+import { computeDropWrites, computeHorizonWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 import { SelectionController } from './selection';
@@ -439,7 +439,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	async performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {
 		const from = item.horizon;
 		const buckets = this.roadmap?.roadmap;
-		return this.applyCardMove(item, computeHorizonDropWrites(item, horizon), () =>
+		return this.applyCardMove(item, computeHorizonWrites(item, horizon), () =>
 			announceHorizonMove(buckets, item.title, from, horizon),
 		);
 	}

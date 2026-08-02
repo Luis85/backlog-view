@@ -101,13 +101,17 @@ export function indent(host: BacklogViewHost, item: BacklogItem): void {
 	void host.performDrop(item, { parent: newParent, siblings, insertIndex: siblings.length });
 }
 
-/** Backfill missing type/order properties across the tree without overwriting anything. */
+/**
+ * Backfill the properties this view writes — type, order, and the roadmap's
+ * placement keys where an axis is configured — across the tree, without overwriting
+ * anything that already has a value.
+ */
 export async function runInit(host: BacklogViewHost): Promise<void> {
 	const model = host.model;
 	if (!model) return;
 	const writes = computeInitWrites(model, host.settings);
 	if (writes.length === 0) {
-		new Notice('All items already have type and order properties.');
+		new Notice('All items already have the properties this view writes.');
 		return;
 	}
 	// applySafely reports its own notices when blocked or failing — only claim

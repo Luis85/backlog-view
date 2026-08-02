@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel, BacklogModel } from '../../src/domain/model';
 import { activeAxis, bucketLabelFor, buildRoadmap, configuredAxes, RoadmapAxis, SHELF_LABEL } from '../../src/domain/roadmap';
-import { computeHorizonDropWrites } from '../../src/domain/writePlan';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -274,43 +273,73 @@ describe('the label a placement is named by', () => {
 	});
 });
 
-describe('computeHorizonDropWrites', () => {
-	function item(horizon: unknown) {
+describe('the writable horizon vocabulary', () => {
+	function vocabularyOf(settings: BacklogSettings, exclude: string[] = []): BacklogModel {
 		const vault = new FakeVault();
-		vault.addFile('A.md', {
-			frontmatter: { type: 'Epic', order: 10, ...(horizon !== undefined ? { horizon } : {}) },
-		});
-		return buildModel(vault.app, vault.entries(), axisSettings()).results[0];
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Someday' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, horizon: 'now' }, parentLink: 'Epic' });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI', order: 30, horizon: 'Q3' }, parentLink: 'Epic' });
+		const entries = vault.entries().filter((e) => !exclude.includes(e.file.path));
+		return buildModel(vault.app, entries, settings);
 	}
 
-	it('writes the target bucket’s value, untransformed', () => {
-		const card = item('Now');
-		expect(computeHorizonDropWrites(card, 'Later')).toEqual([{ file: card.file, horizon: 'Later' }]);
+	it('collects the values the results carry, in the order their buckets are minted', () => {
+		// First-seen order, not alphabetical: the menu names the buckets in the order
+		// the axis draws them. Deduped case-insensitively, first casing kept.
+		expect(vocabularyOf(axisSettings()).observedHorizons).toEqual(['Someday', 'Now', 'Q3']);
 	});
 
-	it('plans nothing for a drop on the card’s own bucket, case-insensitively', () => {
-		expect(computeHorizonDropWrites(item('later'), 'Later')).toEqual([]);
+	it('reads them off the SORTED tree, so the menu cannot contradict the axis', () => {
+		const settings = axisSettings();
+		const vault = new FakeVault();
+		// Arrival order and sibling rank disagree — a base sorted by name over notes
+		// ranked by hand. The roadmap walks the ranks, so the vocabulary must too.
+		vault.addFile('Second.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Eventually' } });
+		vault.addFile('First.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Soon' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(model.observedHorizons).toEqual(['Soon', 'Eventually']);
+		// The order the buckets are actually minted in, from the same walk.
+		const minted = roadmapOf(model, settings, 'horizons').buckets.filter((b) => !b.declared);
+		expect(minted.map((b) => b.value)).toEqual(['Soon', 'Eventually']);
 	});
 
-	it('removes the key for a drop on the shelf', () => {
-		const writes = computeHorizonDropWrites(item('Now'), null);
-		expect(writes).toHaveLength(1);
-		expect(writes[0].removeHorizonKey).toBe(true);
-		expect(writes[0].horizon).toBeUndefined();
+	it('takes nothing from a context row', () => {
+		// The Epic is an excluded ancestor: its horizon is not this base's vocabulary,
+		// exactly as its state is not, so it can never become assignable to a result.
+		expect(vocabularyOf(axisSettings(), ['Epic.md']).observedHorizons).toEqual(['Now', 'Q3']);
 	});
 
-	it('plans nothing for an unplaced card dropped on the shelf', () => {
-		expect(computeHorizonDropWrites(item(undefined), null)).toEqual([]);
-		// An empty value is absence to the reader, so there is nothing to un-place:
-		// rewriting the note would change it without changing what the roadmap says.
-		expect(computeHorizonDropWrites(item(''), null)).toEqual([]);
+	it('reads nothing when no horizon property is configured', () => {
+		expect(vocabularyOf(axisSettings({ horizonKey: '' })).observedHorizons).toEqual([]);
+	});
+});
+
+describe('which placement keys a note carries', () => {
+	function keysOf(frontmatter: Record<string, unknown>, settings = axisSettings()) {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, ...frontmatter } });
+		return buildModel(vault.app, vault.entries(), settings).items[0].axisKeys;
+	}
+
+	it('reports presence, not value — an empty horizon is a key the note has', () => {
+		// The two questions differ: the reading says untriaged, the key says there is
+		// something to clear. Collapsing them would offer an action that writes nothing.
+		expect(keysOf({ horizon: '' })).toEqual({ horizon: true, start: false, target: false });
+		expect(keysOf({ horizon: 'Now', start: '2026-08-03', due: '2026-08-14' })).toEqual({
+			horizon: true,
+			start: true,
+			target: true,
+		});
+		expect(keysOf({})).toEqual({ horizon: false, start: false, target: false });
 	});
 
-	it('un-places a value the reader refuses — shelved is not the same as unset', () => {
-		const card = item({ when: 'soon' });
-		expect(card.horizon).toEqual({ value: null, invalid: true });
-		expect(computeHorizonDropWrites(card, null)).toEqual([{ file: card.file, removeHorizonKey: true }]);
-		// And it takes a value like anything else: the reading was refused, not the note.
-		expect(computeHorizonDropWrites(card, 'Now')).toEqual([{ file: card.file, horizon: 'Now' }]);
+	it('reports an unconfigured field as absent — there is no key to carry', () => {
+		expect(keysOf({ horizon: 'Now' }, axisSettings({ horizonKey: '' }))).toEqual({
+			horizon: false,
+			start: false,
+			target: false,
+		});
 	});
 });

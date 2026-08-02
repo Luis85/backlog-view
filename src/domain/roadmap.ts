@@ -27,11 +27,24 @@ export type RoadmapAxis = 'horizons' | 'dates';
  */
 export function configuredAxes(settings: BacklogSettings): RoadmapAxis[] {
 	const axes: RoadmapAxis[] = [];
-	// A horizon property without values is a board without stages — unconfigured.
-	if (settings.horizonKey !== '' && settings.horizonValues.length > 0) axes.push('horizons');
-	// One date property is enough: a milestone-only roadmap is perfectly coherent.
-	if (settings.startKey !== '' || settings.targetKey !== '') axes.push('dates');
+	if (hasHorizonAxis(settings)) axes.push('horizons');
+	if (hasDateAxis(settings)) axes.push('dates');
 	return axes;
+}
+
+/**
+ * A horizon property without values is a board without stages — unconfigured. This
+ * is the ONE definition of a configured bucket axis: the row menu's set and clear
+ * actions gate on it too, so "the axis is configured" cannot mean one thing to the
+ * projection that draws it and another to the menu that writes it.
+ */
+export function hasHorizonAxis(settings: BacklogSettings): boolean {
+	return settings.horizonKey !== '' && settings.horizonValues.length > 0;
+}
+
+/** One date property is enough: a milestone-only roadmap is perfectly coherent. */
+export function hasDateAxis(settings: BacklogSettings): boolean {
+	return settings.startKey !== '' || settings.targetKey !== '';
 }
 
 /**

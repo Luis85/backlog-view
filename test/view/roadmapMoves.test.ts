@@ -269,15 +269,18 @@ describe('moving between horizons without a drag', () => {
 		expect(vault.writeLog).toEqual([]);
 	});
 
-	it('the card menu offers every bucket on screen plus the shelf, checked on the current one', async () => {
+	it('the card menu leads with the buckets on screen, checked on the current one', async () => {
 		const vault = horizonVault();
 		vault.addFile('Stray.md', { frontmatter: { type: 'Epic', order: 40, horizon: 'Someday' } });
 		const { view } = makeRoadmap(vault);
 
 		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
-		// Declared and minted alike: every bucket a drop can reach, and no other.
+		// Declared and minted alike, in the order the frame draws them — every bucket a
+		// drop can reach, so the menu's targets cannot be a different set from the
+		// drag's. `Clear horizon` is the way out, offered because this note carries the
+		// key; it is the shelf's drop under the name the row menu gives it everywhere.
 		const submenu = Menu.lastShown?.item('Set horizon')?.submenu;
-		expect(submenu?.items.map((i) => i.titleText)).toEqual(['Unplaced', 'Now', 'Next', 'Later', 'Someday']);
+		expect(submenu?.items.map((i) => i.titleText)).toEqual(['Now', 'Next', 'Later', 'Someday', 'Clear horizon']);
 		expect(submenu?.item('Now')?.checked).toBe(true);
 
 		submenu?.item('Later')?.clickHandler?.();
@@ -293,36 +296,51 @@ describe('moving between horizons without a drag', () => {
 		view.showContextMenuFor(view.model?.byPath.get('Garbled.md') as never);
 		const submenu = Menu.lastShown?.item('Set horizon')?.submenu;
 
-		// The card is on the shelf, but its key still holds something, so picking
-		// Unplaced REMOVES that value — a write, and a spent undo slot. A checkmark
-		// there would offer a mutation as the state the note is already in.
+		// The card is on the shelf, but its key still holds something, so clearing
+		// REMOVES that value — a write, and a spent undo slot. A checkmark anywhere
+		// here would offer a mutation as the state the note is already in.
 		expect(submenu?.items.filter((i) => i.checked)).toEqual([]);
-		submenu?.item('Unplaced')?.clickHandler?.();
+		submenu?.item('Clear horizon')?.clickHandler?.();
 		await flush();
 		expect('horizon' in vault.fm('Garbled.md')).toBe(false);
 	});
 
-	it('the menu’s shelf entry removes the key, the drop’s own write', async () => {
+	it('clears the key from the menu, the shelf drop’s own write', async () => {
 		const vault = horizonVault();
 		const { view } = makeRoadmap(vault);
 
 		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
-		Menu.lastShown?.item('Set horizon')?.submenu?.item('Unplaced')?.clickHandler?.();
+		Menu.lastShown?.item('Set horizon')?.submenu?.item('Clear horizon')?.clickHandler?.();
 		await flush();
 
 		expect('horizon' in vault.fm('Now item.md')).toBe(false);
+		// Nothing to clear is not offered at all, so no entry in this menu can write
+		// nothing: an untriaged note has no way out to be given.
+		view.showContextMenuFor(view.model?.byPath.get('Untriaged.md') as never);
+		expect(Menu.lastShown?.item('Set horizon')?.submenu?.item('Clear horizon')).toBeUndefined();
 	});
 
-	it('offers no Set horizon where no buckets render', () => {
-		const timeline = datedRoadmap();
-		timeline.view.showContextMenuFor(timeline.view.model?.byPath.get('Dated.md') as never);
-		expect(Menu.lastShown?.item('Set horizon')).toBeUndefined();
+	it('offers the placement wherever the axis is configured, not only where it is drawn', async () => {
+		// The property belongs to the ITEM, not to the mode: the projections share one
+		// model, one gate and one undo history, so a placement settable only inside the
+		// roadmap would be a projection disagreeing about what the backlog can do. The
+		// drag is what is roadmap-only, because only there is there a bucket to drop on.
+		const vault = horizonVault();
+		const { view } = makeRoadmap(vault, { startProperty: 'note.start' });
 
-		// And in the tree, where the roadmap is not what is on screen at all.
-		const { view } = makeRoadmap(horizonVault());
+		// On the roadmap, drawing the OTHER axis: no bucket is on screen to drop on,
+		// and the placement is offered anyway.
+		view.setAxisPick('dates');
+		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		expect(Menu.lastShown?.item('Set horizon')).toBeDefined();
+
+		// And in the tree, where no roadmap is on screen at all — where it writes
+		// through the plain gate, there being no frame to announce into.
 		view.setProjection('tree');
 		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
-		expect(Menu.lastShown?.item('Set horizon')).toBeUndefined();
+		Menu.lastShown?.item('Set horizon')?.submenu?.item('Later')?.clickHandler?.();
+		await flush();
+		expect(vault.fm('Now item.md')['horizon']).toBe('Later');
 	});
 });
 

@@ -119,7 +119,9 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 5, horizon: 'Now' }, parentLink: 'Feature B' });
 		// Context, between results: its parent and the Task below it are both results.
-		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, horizon: 'Later' }, parentLink: 'Feature B' });
+		// Its horizon is on NO declared list and on no result, so anything that reaches
+		// the buckets or the menu can only have come from the context row itself.
+		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, horizon: 'Ancient' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
@@ -190,12 +192,13 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 	it('never lets a context value mint a bucket the menu would then offer', () => {
 		const { view, containerEl } = roadmapStressView();
 
-		// Mid's "Later" is a declared horizon, so the bucket exists on its own; what
-		// must not happen is a context row ADDING one. Its value is not this base's
-		// vocabulary, and the menu offers exactly what renders.
+		// A context row's value is not this base's vocabulary: it mints no bucket, so
+		// nothing on screen offers to file a result under it, and the menu — which
+		// leads with the drawn buckets and then names what the RESULTS carry — cannot
+		// offer it either. Both halves, because either one alone would let it back in.
 		expect(bucketNames(containerEl)).toEqual(['Now', 'Next', 'Later']);
 		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
 		const offered = Menu.lastShown?.item('Set horizon')?.submenu?.items.map((i) => i.titleText);
-		expect(offered).toEqual(['Unplaced', 'Now', 'Next', 'Later']);
+		expect(offered).toEqual(['Now', 'Next', 'Later', 'Clear horizon']);
 	});
 });

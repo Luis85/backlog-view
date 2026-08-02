@@ -12,9 +12,9 @@ import {
 	readString,
 	readTags,
 	resolveParent,
-	tagKey,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
+import { ALL_TYPES, AXIS_FIELDS, AxisField, axisKeyFor, BacklogSettings, LEVELS } from './settings';
+import { collectObservedHorizons, collectObservedStates, collectObservedTags } from './vocabulary';
 
 /**
  * The model is built in three phases, and each has its own type. A field exists only
@@ -23,7 +23,7 @@ import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
  * placeholder values and a paragraph of prose asking readers to remember.
  *
  * `RawItem` → `LinkedItem` → `BacklogItem`, each extending the one before. Consumers
- * outside this module only ever meet `BacklogItem`, which still carries all 27 fields,
+ * outside this module only ever meet `BacklogItem`, which still carries all 28 fields,
  * so nothing downstream changes.
  */
 
@@ -79,6 +79,14 @@ interface RawItem {
 	plannedStart: FieldReading<CivilDate>;
 	/** The planned target date the note states, if a target property is configured. */
 	plannedTarget: FieldReading<CivilDate>;
+	/**
+	 * Which configured axis keys the note CARRIES — presence, not value, and the two
+	 * are different questions here: an empty horizon reads as absent (untriaged) while
+	 * the key is still on the note. Removal actions offer themselves on presence, so
+	 * none of them can write nothing, and the backfill fills exactly its complement.
+	 * False for a field whose property is unconfigured — there is no key to carry.
+	 */
+	axisKeys: Record<AxisField, boolean>;
 }
 
 /**
@@ -144,6 +152,8 @@ export interface BacklogModel {
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
 	observedStates: string[];
+	/** Distinct horizon values in the result set, in first-seen order — the buckets it mints. */
+	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
@@ -185,6 +195,12 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const observedTags = collectObservedTags(linked.all);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
+	// The one vocabulary that is ORDERED rather than sorted, so it is taken from the
+	// finished tree instead of the load order: the roadmap mints a bucket per new
+	// value as it walks its rows, which are these items filtered — so reading them in
+	// the same sequence is what keeps the menu from naming the buckets in an order
+	// the axis then contradicts.
+	const observedHorizons = collectObservedHorizons(items);
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
 	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
@@ -193,7 +209,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
-	const rest = { realRoots: roots, byPath, observedStates, observedTags, ignoredCount };
+	const rest = { realRoots: roots, byPath, observedStates, observedTags, observedHorizons, ignoredCount };
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
 	if (focusIdx >= 0 || focusExtra) {
 		const focusRoots = collectFocusRoots(roots, focusIdx, focusExtra, settings);
@@ -284,6 +300,7 @@ function addItem(
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
+		axisKeys: readAxisKeys(fm, settings),
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
@@ -300,6 +317,22 @@ function readGated<T>(
 	read: (value: unknown) => FieldReading<T>,
 ): FieldReading<T> {
 	return key ? read(fm?.[key]) : absentReading();
+}
+
+/**
+ * Which configured axis keys the note has, asked of the frontmatter directly: a
+ * reader answers what a value MEANS, and an empty horizon means untriaged whether
+ * or not the key is there. Own properties only — every note inherits `constructor`
+ * and `toString`, and a base whose horizon property is named one of those would
+ * report a gap as filled on every note in the vault.
+ */
+function readAxisKeys(fm: Record<string, unknown> | undefined, settings: BacklogSettings): Record<AxisField, boolean> {
+	const present = {} as Record<AxisField, boolean>;
+	for (const field of AXIS_FIELDS) {
+		const key = axisKeyFor(settings, field);
+		present[field] = key !== '' && fm !== undefined && Object.prototype.hasOwnProperty.call(fm, key);
+	}
+	return present;
 }
 
 /**
@@ -532,42 +565,6 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 interface Rollup {
 	count: number;
 	done: number;
-}
-
-/**
- * First occurrence of every state value, sorted for the state menus: open states
- * alphabetically, done states after them. Deduped case-insensitively, keeping
- * the casing seen first.
- */
-function collectObservedStates(all: RawItem[], settings: BacklogSettings): string[] {
-	const seen = new Map<string, string>();
-	for (const item of all) {
-		// Ancestors from outside the filter are not part of this base's vocabulary:
-		// offering their states would make values assignable that the results never use.
-		if (item.outsideFilter) continue;
-		if (item.stateValue !== null && !seen.has(item.stateValue.toLowerCase())) {
-			seen.set(item.stateValue.toLowerCase(), item.stateValue);
-		}
-	}
-	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
-	const values = [...seen.values()].sort((a, b) => a.localeCompare(b));
-	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
-}
-
-/**
- * Every tag the results carry, alphabetical and deduped case-insensitively. Like
- * the state vocabulary this skips notes the Base excluded: an excluded parent's
- * tags are not this base's vocabulary and must not become assignable to results.
- */
-function collectObservedTags(all: RawItem[]): string[] {
-	const seen = new Map<string, string>();
-	for (const item of all) {
-		if (item.outsideFilter) continue;
-		for (const tag of item.tags) {
-			if (!seen.has(tagKey(tag))) seen.set(tagKey(tag), tag);
-		}
-	}
-	return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
 /** Focused rendering re-roots the tree visually; effective levels stay untouched. */

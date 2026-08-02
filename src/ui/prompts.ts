@@ -177,6 +177,89 @@ export class FolderPromptModal extends Modal {
 	}
 }
 
+/** One dated field of the schedule prompt: what to call it, and what the note states now. */
+export interface DateFieldSpec {
+	/** Identifies the field in the submitted values; the caller's own vocabulary. */
+	field: string;
+	name: string;
+	/** Prefill — the date the note itself states, or '' when it states none. */
+	value: string;
+}
+
+export interface SchedulePromptOptions {
+	heading: string;
+	description: string;
+	/** Only the ends the configured axis has: a field with no property is never asked for. */
+	fields: DateFieldSpec[];
+	/**
+	 * Refuse the entry with a reason, keeping the prompt open and the values in place.
+	 * Null accepts. What a date IS belongs to the layer that reads them, so this
+	 * dialog asks rather than decides — which is also what keeps `ui/` free of the
+	 * domain it would otherwise have to import.
+	 */
+	validate: (values: Record<string, string>) => string | null;
+	onSubmit: (values: Record<string, string>) => void;
+}
+
+/**
+ * Prompt asking for an item's planned dates, prefilled with what the note states.
+ * An emptied field means the date goes: absence is a real answer here, so clearing
+ * one is how a single end is taken back without unscheduling the whole item.
+ */
+export class SchedulePromptModal extends Modal {
+	private readonly options: SchedulePromptOptions;
+
+	constructor(app: App, options: SchedulePromptOptions) {
+		super(app);
+		this.options = options;
+	}
+
+	onOpen(): void {
+		this.titleEl.setText(this.options.heading);
+		const values: Record<string, string> = {};
+		for (const spec of this.options.fields) values[spec.field] = spec.value;
+
+		this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.description });
+		// Rendered up front and filled on refusal: a message that appears only when the
+		// dialog grows one is a dialog that resizes under the pointer as you submit.
+		const errorEl = this.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
+
+		const submit = () => {
+			const trimmed: Record<string, string> = {};
+			for (const [field, value] of Object.entries(values)) trimmed[field] = value.trim();
+			const problem = this.options.validate(trimmed);
+			if (problem !== null) {
+				errorEl.setText(problem);
+				return;
+			}
+			this.close();
+			this.options.onSubmit(trimmed);
+		};
+
+		this.options.fields.forEach((spec, i) => {
+			new Setting(this.contentEl).setName(spec.name).addText((text) => {
+				text.setPlaceholder('2026-08-03');
+				text.setValue(spec.value);
+				text.onChange((v) => {
+					values[spec.field] = v;
+					// The refusal was about what was typed, so it stops being true the
+					// moment the typing changes.
+					errorEl.setText('');
+				});
+				submitOnEnter(text.inputEl, submit, i === 0);
+			});
+		});
+
+		new Setting(this.contentEl).addButton((btn) => {
+			btn.setButtonText('Save').setCta().onClick(submit);
+		});
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
 /** Prompt asking for the title (and, when needed, target folder) of a new backlog item. */
 export class TitlePromptModal extends Modal {
 	private readonly options: NewItemPromptOptions;

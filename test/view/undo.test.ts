@@ -141,7 +141,7 @@ describe('undoing the last change', () => {
 
 		// One batch over three files: the backfill assigns the missing orders.
 		containerEl
-			.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]')
+			.querySelector<HTMLElement>('[aria-label="Assign missing properties"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 		expect(orders()).toEqual([10, 20, 30]);
@@ -182,7 +182,7 @@ describe('undoing the last change', () => {
 		const orders = () => ['A.md', 'B.md', 'C.md'].map((p) => vault.fm(p)['order']);
 
 		containerEl
-			.querySelector<HTMLElement>('[aria-label="Assign missing type and order properties"]')
+			.querySelector<HTMLElement>('[aria-label="Assign missing properties"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 		expect(orders()).toEqual([10, 20, 30]);
