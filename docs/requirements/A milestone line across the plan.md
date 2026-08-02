@@ -46,8 +46,9 @@ nothing about the line is ever written anywhere.
    header already sits.
 3. The milestone's own row still renders, with its diamond at the same date — the line is
    a second view of a row that exists, never a replacement for one.
-4. Hovering or focusing the diamond names the milestone and its exact date, the way a
-   bar's tooltip already does.
+4. The milestone's **row** carries the name and the exact date in its accessible name, the
+   way a bar already carries its span — so selecting the row states everything the line
+   and the diamond show.
 
 **Extensions**
 
@@ -69,9 +70,12 @@ nothing about the line is ever written anywhere.
   [[Milestones as their own type]] keeps a milestone out of every *aggregate*, which is a
   rule about what its status does to other rows and never a claim that its own row
   outlives a filter.
-- **4a — the reader cannot use a pointer.** The diamond is the tab stop and the line is
-  decoration of it, so no fact about a milestone exists only under a hover. The
-  keyboard obligation the epic carries is met by the row, not by the line.
+- **4a — the reader cannot use a pointer.** Neither the line nor the diamond becomes
+  focusable. The timeline's selectable unit is the **row** — one stop, moved by arrow keys
+  and pointed at by the scroller's `aria-activedescendant` — and giving the marker its own
+  stop would break that single-stop model to carry information the row can carry itself.
+  So the row's accessible name is where the milestone's name and date live, and the line
+  is decoration marked as such: no fact about a milestone exists only under a hover.
 
 ## Acceptance criteria
 
@@ -81,7 +85,9 @@ nothing about the line is ever written anywhere.
 - A milestone outside the Base's filter draws no line and is never counted by one.
 - A line hides exactly when its row hides, under the same visibility controls.
 - Nothing about the line is written to any note, and no information is available only by
-  hovering it.
+  hovering it: the milestone's name and exact date are in its row's accessible name.
+- Neither the line nor the diamond is independently focusable — the timeline keeps its one
+  selection stop per row, and the marker adds no second one.
 
 ## Where it lives
 

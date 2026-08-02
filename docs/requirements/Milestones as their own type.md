@@ -125,6 +125,10 @@ date.
   when cleared.
 - It is offered only at the top level and offers no child type. Nothing refuses one placed
   elsewhere by hand, and none is ever retyped by position.
+- It occupies **no rung**: it never appears as a focus root for a level, its untyped
+  children imply no level from it, and moving a subtree that contains one never retypes
+  that milestone's descendants from a rank it does not have. Focusing `Milestone` by name
+  still lists them, which is a different question and the one worth keeping.
 - A milestone row shows **no** create affordance — no add button, no `New <child>` menu
   entry — rather than one built from an empty list of choices.
 - It renders with an icon and a badge colour of its own, like every other declared type,
@@ -146,11 +150,25 @@ date.
 Nothing is built yet. The vocabulary is `EXTRA_TYPES` and `ALL_TYPES` in
 `src/domain/settings.ts`, where `DEFAULT_TYPE_SUBFOLDERS` gains the folder and
 `typeFolderKey` generates the per-view option declared in `src/domain/viewOptions.ts`.
-The hard part is `src/domain/itemTypes.ts`: every extra type today is pinned at
-`EXTRA_TYPE_RANK` — a container that holds Tasks wherever it hangs — and refused at the
-top level, and this type inverts both, so `childTypeChoices` stops being one rule about
-"extra types" and becomes two about what a declared non-rung type *does*. Rollup exclusion
-belongs to `assignAll` in `src/domain/model.ts`, beside the context-row skip it resembles.
+The hard part is that **`isExtraType` does two jobs**, and a milestone wants one of them.
+"Declared, therefore never retyped by position" is right for it; "pinned at
+`EXTRA_TYPE_RANK`, a container whose children are Tasks" is exactly wrong. Adding the name
+to `EXTRA_TYPES` without splitting the predicate silently buys the second, in four places:
+
+- `computeLevel` (`src/domain/model.ts`) gives it `EXTRA_TYPE_RANK`, so `childLevelIndex`
+  reports Task for its children — a leaf implying a child level.
+- `collectFocusRoots` (same file) treats `EXTRA_TYPE_RANK === focusIdx` as "focus the
+  rung", so a **PBI-focused** view lists milestones as roots. Focusing the type by *name*
+  is the other path and is correct as it stands: "show me the milestones" should work.
+- `computeTypeChanges` (`src/domain/writePlan.ts`) descends the moved subtree from that
+  rank, so a milestone nested by hand and moved inside a subtree rewrites its descendants
+  as Tasks — while the same file's `!isExtraType(dragged.typeName)` exemption is the job
+  worth keeping, since a dropped milestone must stay a milestone.
+
+So the split is the work, and `childTypeChoices` in `src/domain/itemTypes.ts` — refusing
+every extra type at top level today — is only the most visible part of it. Rollup
+exclusion belongs to `assignAll` in `src/domain/model.ts`, beside the context-row skip it
+resembles.
 The diamond itself already exists and needs a second way to be true: `barGeometry` in
 `src/domain/timeline.ts` and `barClasses` in `src/view/render/timeline.ts` derive it from
 equal stated ends today. Creation and filing are `src/view/interactions/create.ts`, and the

@@ -22,7 +22,7 @@ as work items instead of quietly losing their type.
 | **Actor** | Anyone creating or moving an item, in any locale |
 | **Trigger** | Rendering a badge, offering a type, or writing `type:` to a note |
 | **Preconditions** | The catalog exists |
-| **Guarantee** | Every `type:` value written in any locale is one of the six shipped spellings, or a name the user typed. A vault is readable by every other locale. |
+| **Guarantee** | Every `type:` value written in any locale is one of the shipped spellings, or a name the user typed. A vault is readable by every other locale. |
 
 **Main flow**
 
@@ -71,12 +71,18 @@ user-named type, and already returns the type name for anything off the ladder.
 
 That last case is the one to get right. A user's own type — the `Bugfix` example in the
 domain guide — has **no** translation and must render exactly as the user spelled it.
-Only the six names this plugin ships get a label.
+Only the names this plugin ships get a label — the whole fixed vocabulary, whatever its
+length. The count is deliberately not written down here: it is `ALL_TYPES`, and a
+requirement that pins a number goes stale the moment one is added
+([[Milestones as their own type]] is the case that proved it).
 
 ## Acceptance criteria
 
 - No write path can emit a localized type name. Every `type:` value written in any locale
-  is one of the six shipped spellings, or a name the user typed.
+  is one of the shipped spellings, or a name the user typed.
+- Every name in the shipped vocabulary has a label in every catalog, and the test asserting
+  that reads the vocabulary rather than a count — so a name added to it fails the catalogs
+  until they cover it, instead of rendering as a type nobody translated.
 - Badges, the `New <type>` button and its picker, the `New <type>` menu items, the modal's
   type dropdown and the focus-level control all show the label.
 - The type *chosen* in the modal is stored by its canonical name, not by the label the
