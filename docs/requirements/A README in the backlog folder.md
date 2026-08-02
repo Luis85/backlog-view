@@ -168,10 +168,17 @@ the view options can rename.
   started is an inert key like a horizon property with no values (**3a**).
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
-- **4b — the file exists and differs.** It is replaced only when it carries the generated
-  marker its first line puts there; otherwise the command refuses and says why, because
-  the file may be somebody's own writing. The whole document is generated, so a hand edit
-  inside it does not survive regeneration — and the marker line says that out loud.
+- **4b — the file exists and differs.** It is replaced only when its first line **parses**
+  as the generated marker; otherwise the command refuses and says why, because the file
+  may be somebody's own writing. Parsing rather than matching the opening is the whole
+  test: a file that merely begins like the marker — a comment of the reader's own, or a
+  marker left half-written by a truncated write or a bad merge — is one to leave alone,
+  and the half-written one is the file least able to afford being overwritten. Read
+  through what a round trip elsewhere adds and this document does not — a Windows
+  checkout's carriage return, an editor's UTF-8 byte-order mark — since either would
+  otherwise have the plugin call its own file somebody else's and refuse regeneration
+  until a human found an invisible character. The whole document is generated, so a hand
+  edit inside it does not survive regeneration — and the marker line says that out loud.
 - **4c — the home folder sits inside the base's filter**, so the new file is a note the
   base returns. It carries no `type` and no `parent`, so the scope rule leaves it out of
   the tree ([[What counts as a work item]]) — the same way this register's own

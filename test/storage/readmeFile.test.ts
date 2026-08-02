@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { readmeMarker } from '../../src/domain/backlogReadme';
+import { readmeMarker, README_MARKER_PREFIX } from '../../src/domain/backlogReadme';
 import { readmePath, writeBacklogReadme } from '../../src/storage/readmeFile';
 import { FakeVault } from '../helpers/vault';
 
@@ -92,6 +92,30 @@ describe('writeBacklogReadme', () => {
 
 		expect(result.outcome).toBe('updated');
 		expect(result.previous).toBeUndefined();
+	});
+
+	it('recognizes its own file after an editor has saved it with a byte-order mark', async () => {
+		// Same class as the CRLF case and the same workflow: a Windows editor writing UTF-8
+		// with a BOM would otherwise make the plugin call its own document somebody else's,
+		// and refuse every regeneration until a human found the invisible character.
+		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', `\uFEFF${GENERATED}`);
+
+		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+
+		expect(result.outcome).toBe('updated');
+	});
+
+	it('refuses a file that only opens like a marker', async () => {
+		// The prefix is not the marker: a comment somebody wrote themselves, or a marker
+		// left half-written by a truncated write or a bad merge, is a file to leave alone —
+		// and the second is the one most worth not overwriting.
+		const theirs = `${README_MARKER_PREFIX} of my own, thanks -->\n\n# Notes\n`;
+		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);
+
+		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+
+		expect(result.outcome).toBe('foreign');
+		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
 	});
 
 	it('refuses a file of the same name that it did not write', async () => {

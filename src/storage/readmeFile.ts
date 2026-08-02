@@ -1,6 +1,6 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import { ensureFolder } from './frontmatter';
-import { README_FILE_NAME, README_MARKER_PREFIX, readmeSource } from '../domain/backlogReadme';
+import { README_FILE_NAME, readmeSource } from '../domain/backlogReadme';
 
 /**
  * Writing the backlog README — the second vault write that is not a work item, and
@@ -38,14 +38,17 @@ function normalizedFolder(folder: string): string {
 }
 
 /**
- * The first line, without the carriage return git may have added on the way in. A
- * vault kept in a repository is checked out with CRLF on Windows, and a marker that
- * failed to match its own file there would break regeneration in exactly the workflow
- * this document is written for.
+ * The first line, without what a round trip through another editor adds either side of
+ * it: the carriage return a Windows checkout arrives with, and the byte-order mark an
+ * editor may write when it saves the file as UTF-8. Both leave the document identical
+ * to read and neither is the plugin's doing, so a marker that failed to match through
+ * them would refuse regeneration for good — in exactly the git-backed, edited-elsewhere
+ * workflow this document exists for, and with a notice blaming a file the user never
+ * wrote.
  */
 function firstLine(text: string): string {
 	const end = text.indexOf('\n');
-	return (end === -1 ? text : text.slice(0, end)).replace(/\r$/, '');
+	return (end === -1 ? text : text.slice(0, end)).replace(/^\uFEFF/, '').replace(/\r$/, '');
 }
 
 /** Where the README for `folder` lives — normalized, and at the vault root for ''. */
@@ -68,18 +71,21 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 	if (existing instanceof TFile) {
 		const current = await app.vault.read(existing);
 		if (current === content) return { outcome: 'unchanged', path };
-		if (!current.startsWith(README_MARKER_PREFIX)) return { outcome: 'foreign', path };
+		// One question, asked once: a file is ours when its first line PARSES as a marker,
+		// never when it merely opens like one. Testing the prefix alone would hand the
+		// whole file to `modify` on the strength of an opening somebody could write in a
+		// comment of their own — and a half-written marker, from a truncated write or a
+		// bad merge, is exactly the file most worth not overwriting.
+		const previous = readmeSource(firstLine(current));
+		if (previous === null) return { outcome: 'foreign', path };
 		// Generated, but by whom. Two views may share a home folder and configure
 		// different property keys, and a folder holds one contract at a time — so the
 		// write goes through and the caller is told whose document it just replaced.
 		// Refusing instead would brick the ordinary cases: a renamed base or view, or a
 		// file git rewrote, all of which change the line without changing the owner.
-		const previous = readmeSource(firstLine(current));
 		const mine = readmeSource(firstLine(content));
 		await app.vault.modify(existing, content);
-		return previous !== null && previous !== mine
-			? { outcome: 'replaced', path, previous }
-			: { outcome: 'updated', path };
+		return previous !== mine ? { outcome: 'replaced', path, previous } : { outcome: 'updated', path };
 	}
 	await ensureFolder(app, normalizedFolder(folder));
 	await app.vault.create(path, content);
