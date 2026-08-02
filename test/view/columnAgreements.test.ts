@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
-import { key, treeOf, useViewHarness } from '../helpers/view';
+import { FakeVault } from '../helpers/vault';
+import { cardDrag } from '../helpers/dnd';
+import { flush, key, treeOf, useViewHarness } from '../helpers/view';
 import { boardVault, cardByTitle, columnByName, columnNames, makeBoard } from '../helpers/board';
 
 useViewHarness();
@@ -79,5 +81,53 @@ describe('the keyboard reaches the column menu', () => {
 		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		key(treeOf(containerEl), 'ContextMenu');
 		expect(Menu.lastShown?.item('Set state')).toBeDefined();
+	});
+});
+
+describe('a WIP limit never refuses a write', () => {
+	/** Active is limited to one and already holds two — every move below overfills it. */
+	const OVERFULL = { stateProperty: 'note.status', stateValues: 'New, Active, Done', 'wipLimit.active': '1' };
+
+	function overfullVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
+		vault.addFile('C.md', { frontmatter: { type: 'Epic', order: 30, status: 'Active' } });
+		return vault;
+	}
+
+	it('applies a drop into a column that is already over', async () => {
+		const vault = overfullVault();
+		const { containerEl } = makeBoard(vault, OVERFULL);
+		cardDrag(cardByTitle(containerEl, 'A'), columnByName(containerEl, 'Active'));
+		await flush();
+		expect(vault.fm('A.md')['status']).toBe('Active');
+	});
+
+	it('applies an Alt+arrow move into a column that is already over', async () => {
+		const vault = overfullVault();
+		const { containerEl } = makeBoard(vault, OVERFULL);
+		// "A" is in New, which is column 1; one to the right is Active.
+		cardByTitle(containerEl, 'A').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		key(treeOf(containerEl), 'ArrowRight', { altKey: true });
+		await flush();
+		expect(vault.fm('A.md')['status']).toBe('Active');
+	});
+
+	it('applies a menu Set state into a column that is already over', async () => {
+		const vault = overfullVault();
+		const { containerEl } = makeBoard(vault, OVERFULL);
+		cardByTitle(containerEl, 'A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Set state')?.submenu?.item('Active')?.click();
+		await flush();
+		expect(vault.fm('A.md')['status']).toBe('Active');
+	});
+
+	it('says the column is over afterwards, rather than having stopped the move', () => {
+		// The guarantee is not "nothing happens" but "the move happens and the board
+		// says so". Asserting only the writes above would pass on a board that had
+		// quietly stopped signalling.
+		const { containerEl } = makeBoard(overfullVault(), OVERFULL);
+		expect(headerOf(containerEl, 'Active').classList.contains('pbl-board-col-over')).toBe(true);
 	});
 });

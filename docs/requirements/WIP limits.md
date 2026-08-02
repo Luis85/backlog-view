@@ -77,4 +77,7 @@ refuses nothing.
 Driven by `test/domain/settings.test.ts`, `test/domain/viewOptions.test.ts`,
 `test/domain/board.test.ts` and `test/view/board.test.ts`.
 
-`test/view/columnAgreements.test.ts` is where this use case's own checks live.
+`test/view/columnAgreements.test.ts` is where this use case's own checks live,
+including the guarantee that a limit refuses nothing: it puts the drop, the Alt+arrow
+and the menu each into a column already over its limit, then checks the column still
+says it is over.
