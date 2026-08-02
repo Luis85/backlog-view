@@ -58,6 +58,44 @@ describe('date evidence rolls up the tree', () => {
 		expect(model.roots[0].descendantTarget).toEqual({ year: 2026, month: 4, day: 1 });
 	});
 
+	it('refuses a reversed pair as evidence — both ends parse, and the plan is still broken', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// Both dates read fine; their ORDER is the typo, and deriveBars shelves this
+		// child for it. Folding the pair in would hand the epic crossed evidence that
+		// inferSpan reads as two single-ended children, drawing one broken note as a
+		// confident span while the child itself sits on the shelf naming the error.
+		vault.addFile('A.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-06-01', due: '2026-03-01' },
+			parentLink: 'Epic',
+		});
+
+		const model = buildModel(vault.app, vault.entries(), dated);
+
+		expect(model.roots[0].descendantStart).toBeNull();
+		expect(model.roots[0].descendantTarget).toBeNull();
+	});
+
+	it('refuses the reversed pair alone — the valid subtree beneath it still reaches up', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-06-01', due: '2026-03-01' },
+			parentLink: 'Epic',
+		});
+		// A separate note with its own coherent plan: one broken ancestor must not
+		// silence it.
+		vault.addFile('B.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-07-01', due: '2026-08-01' },
+			parentLink: 'A',
+		});
+
+		const model = buildModel(vault.app, vault.entries(), dated);
+
+		expect(model.roots[0].descendantStart).toEqual({ year: 2026, month: 7, day: 1 });
+		expect(model.roots[0].descendantTarget).toEqual({ year: 2026, month: 8, day: 1 });
+	});
+
 	it('reads nothing when no date property is configured', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });

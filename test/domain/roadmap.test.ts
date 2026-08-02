@@ -456,6 +456,23 @@ describe('a dateless parent spans its children', () => {
 		]);
 	});
 
+	it('a reversed CHILD cannot draw its parent either — the typo is surfaced, not inherited', () => {
+		// The child shelves for its reversed pair. Its parent has no dates of its own
+		// and no other dated descendant, so it must shelve too — not display a
+		// plausible span the crossed-evidence branch swapped out of one broken note.
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10 }],
+			['A', { type: 'Feature', order: 10, start: '2026-06-01', due: '2026-03-01' }, 'Epic'],
+		]);
+
+		const roadmap = roadmapOf(model, axisSettings(), 'dates');
+		expect(roadmap.bars).toEqual([]);
+		expect(roadmap.shelf.map((s) => [s.item.title, s.reason])).toEqual([
+			['Epic', null],
+			['A', 'Target date precedes the start date'],
+		]);
+	});
+
 	it('a subtree with no dates at all still shelves', () => {
 		const model = tree([
 			['Epic', { type: 'Epic', order: 10 }],

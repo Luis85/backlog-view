@@ -14,7 +14,7 @@ import {
 	resolveParent,
 } from './noteFields';
 import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
-import { earliest, latest } from './timeline';
+import { earliest, latest, reversedSpan } from './timeline';
 import { collectObservedHorizons, collectObservedStates, collectObservedTags } from './vocabulary';
 
 /**
@@ -544,9 +544,15 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 			// Dates gather under the same exclusion, for the same reason: an excluded
 			// note's dates are not this base's plan, so they stretch nothing — while
 			// the results beneath it still reach their ancestors. `FieldReading.value`
-			// is null for an absent key AND for a value the reader refuses, so a typo
-			// is not evidence without a branch saying so.
-			if (self === 1) {
+			// is null for an absent key AND for a value the reader refuses, so an
+			// unparseable date is not evidence without a branch saying so.
+			//
+			// A REVERSED pair needs that branch: both ends parse, so both would fold
+			// in, and a lone broken child would hand its ancestor crossed evidence
+			// that `inferSpan` reads as two single-ended children bracketing the work
+			// — one typo drawn as a confident span while the child itself sits on the
+			// shelf naming the error. The pair is refused; the subtree below it is not.
+			if (self === 1 && !reversedSpan(child.plannedStart.value, child.plannedTarget.value)) {
 				start = earliest(start, child.plannedStart.value);
 				target = latest(target, child.plannedTarget.value);
 			}

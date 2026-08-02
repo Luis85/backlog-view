@@ -2,7 +2,7 @@ import { firstPlacedIndex } from './board';
 import { BacklogItem, BacklogModel } from './model';
 import { CivilDate, FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
-import { DateSpan, daysBetween } from './timeline';
+import { DateSpan, daysBetween, reversedSpan } from './timeline';
 
 /**
  * Deriving the roadmap from the model and the settings: which axis is configured,
@@ -301,10 +301,11 @@ function deriveBars(rows: BacklogItem[], roadmap: RoadmapModel): void {
 		const target = item.plannedTarget;
 		if (start.invalid) roadmap.shelf.push({ item, reason: 'Unreadable start date' });
 		else if (target.invalid) roadmap.shelf.push({ item, reason: 'Unreadable target date' });
-		else if (start.value !== null && target.value !== null && daysBetween(start.value, target.value) < 0) {
+		else if (reversedSpan(start.value, target.value)) {
 			// A reversed pair of the item's own is a typo to fix, never a span to
 			// infer around: unreadable shelves, and no inference stands in for a
-			// value that needs correcting.
+			// value that needs correcting. The rollup walk refuses the same pair as
+			// evidence, so a broken child cannot draw its ancestor's bar either.
 			roadmap.shelf.push({ item, reason: 'Target date precedes the start date' });
 		} else {
 			const bar = inferSpan(item, start.value, target.value);

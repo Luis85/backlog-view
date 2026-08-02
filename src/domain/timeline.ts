@@ -66,6 +66,17 @@ export function latest(a: CivilDate | null, b: CivilDate | null): CivilDate | nu
 	return daysBetween(a, b) > 0 ? b : a;
 }
 
+/**
+ * True when both ends are stated and the target precedes the start. Such a pair
+ * is a typo to fix, never a span: `deriveBars` shelves the item that states one,
+ * and the rollup walk refuses it as evidence, because an inference standing in
+ * for a value that needs correcting is exactly what hides the correction. One
+ * statement of the rule, since it is asked in two layers.
+ */
+export function reversedSpan(start: CivilDate | null, target: CivilDate | null): boolean {
+	return start !== null && target !== null && daysBetween(start, target) < 0;
+}
+
 /** `2026-08-01` — the register's own date format, and the tooltip's. */
 export function formatCivil(date: CivilDate): string {
 	const pad = (n: number, width: number) => String(n).padStart(width, '0');
