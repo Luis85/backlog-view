@@ -588,7 +588,9 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
 - **The timeline** draws a bar from each item's dates. **One date property is enough** —
   a target-only roadmap of milestones and deadlines, or a start-only plan, are both
   supported. **A parent with no dates of its own spans its dated descendants**, endpoint to
-  endpoint, drawn as the inference it is and written to no note.
+  endpoint, drawn as the inference it is and written to no note — for an ordinary work
+  item. A milestone is its target date alone: with none of its own, it goes to the shelf,
+  **Unplaced**, whatever dates its children carry.
 - **Dates are set from the row**, not from the bar: right-click → **Schedule** or
   **Unschedule**, on any projection — the tree, the board and the roadmap all reach the
   same row menu, deliberately: a write reachable only from roadmap mode would be a
