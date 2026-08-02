@@ -75,8 +75,13 @@ the view options can rename.
   section. The README describes the view in front of the reader, not the one the options
   could make.
 - **3b — the home folder or a type folder was renamed.** The paths come from the resolved
-  settings, so the README names where notes actually go — including the fall-through for a
-  type with no folder of its own, which is the home folder ([[Where new items are filed]]).
+  settings, so the README names where notes actually go. It states the whole precedence and
+  not the configured path alone, because the configured path is not the answer in every
+  configuration: folder mode's "beside the parent's folder note" wins first, then the type's
+  own folder, then the home folder, and where the items already live is the last resort
+  ([[Where new items are filed]]). A README that named the type folder as *the* destination
+  would send an outside editor to the wrong folder in exactly the mode where the folder tree
+  is the hierarchy.
 - **3c — the reader wants to know what the plugin will refuse.** Almost nothing: the type
   rules decide what is *offered*, never what is accepted, so a hand-written note with a
   `Task` under an `Epic` renders at the level its position implies and is not rewritten.
@@ -96,8 +101,10 @@ the view options can rename.
 - **4c — the home folder sits inside the base's filter**, so the new file is a note the
   base returns. It carries no `type` and no `parent`, so the scope rule leaves it out of
   the tree ([[What counts as a work item]]) — the same way this register's own
-  `docs/README.md` sits in the folder it describes. With "Ignore notes outside the
-  hierarchy" turned off it renders as an untyped root, and the toolbar advisory counts it.
+  `docs/README.md` sits in the folder it describes. The two settings are alternatives, not
+  both at once: with "Ignore notes outside the hierarchy" on — the default — it is pruned
+  and the toolbar advisory counts it; with it off nothing is pruned, `ignoredCount` is zero
+  and there is no advisory, so it simply renders as an untyped root.
 - **5a — the write fails.** A notice says so and points at the console, like every other
   vault write this plugin makes.
 
@@ -105,10 +112,12 @@ the view options can rename.
 
 - One command, run from a Product Backlog view, produces `README_PRODUCT_BACKLOG.md` in
   the resolved home folder, creating the folder if needed and normalizing the path.
-- Every property key, folder, state and horizon value the document names is read from the
-  resolved settings: renaming the parent property in the view options changes the README.
-  A literal `parent` anywhere in the generated text is the defect this criterion exists to
-  catch.
+- Every property key, folder, state and horizon value the document **emits as a key** — in
+  a frontmatter example, a field table, a label naming what to write — is read from the
+  resolved settings: renaming the parent property to `kind` changes every one of them. The
+  criterion is about emitted keys and not about the word: the prose has to keep saying
+  *parent* and *child* whatever the key is called, and a check that banned the word would
+  refuse a correct document or strip it of the table it exists for.
 - Every type in `ALL_TYPES` has an entry, enforced by a test that reads the vocabulary — a
   seventh type cannot ship without its explanation.
 - The parent/child table agrees with `childTypeChoices`, not with the ladder read
