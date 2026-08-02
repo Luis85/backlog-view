@@ -55,8 +55,11 @@ this view costs a click rather than an afternoon of hand-editing.
 - **4a — the note carries the key with an empty value.** Skipped: presence is the
   question here, and an empty horizon is a key the note has. The *reading* of it says
   untriaged either way, which is why the two are asked separately.
-- **4b — no axis is configured.** No placement key is written at all — never a key no
-  property names, the state write's own rule.
+- **4b — the axis is not configured.** No placement key is written for it — never a key
+  no property names, the state write's own rule. A horizon property whose values list is
+  cleared counts as unconfigured here too ([[Horizons or dates]]), by the same predicate
+  the roadmap and the row menu use: creating a key for an axis nothing draws and no
+  action can set would be the only write left acknowledging it.
 - **5a — a write fails partway.** The prefix that landed stays applied and stays undoable,
   and the view still refreshes — the notes already written are on disk and the tree has to
   show them.
@@ -70,7 +73,8 @@ this view costs a click rather than an afternoon of hand-editing.
 - The values written are the ones that were already on screen, so neither the tree nor
   the roadmap moves when the button is pressed: a created placement key is empty, and an
   empty placement is the shelf the item was already on.
-- Only configured placement keys are created, and only on notes that do not carry them.
+- Only configured placement keys are created — a horizon property with no declared
+  values is not one — and only on notes that do not carry them.
 
 ## Where it lives
 

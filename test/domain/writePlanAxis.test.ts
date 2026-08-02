@@ -159,6 +159,16 @@ describe('computeInitWrites and the placement keys', () => {
 		expect(computeInitWrites(model, AXES)).toEqual([]);
 	});
 
+	it('creates no horizon key while the bucket axis is unconfigured', () => {
+		// Property named, values cleared: the axis the roadmap declines to draw and the
+		// row menu declines to set. Creating its key would be the one write left on an
+		// axis nothing else acknowledges.
+		const settings = { ...AXES, horizonValues: [] };
+		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);
+
+		expect(computeInitWrites(model, settings)[0].axis).toEqual({ start: '', target: '' });
+	});
+
 	it('never writes a key no property names', () => {
 		const settings = { ...defaultSettings(), horizonKey: 'horizon' };
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);

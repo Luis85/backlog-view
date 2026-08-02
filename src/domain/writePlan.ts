@@ -3,6 +3,7 @@ import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
 import { CivilDate, readDate } from './noteFields';
+import { hasHorizonAxis } from './roadmap';
 import { AXIS_FIELDS, axisKeyFor, BacklogSettings, LEVELS } from './settings';
 
 /**
@@ -317,6 +318,12 @@ function missingAxisWrite(item: BacklogItem, settings: BacklogSettings): AxisWri
 	const axis: AxisWrite = {};
 	let missing = false;
 	for (const field of AXIS_FIELDS) {
+		// A named horizon property with no values is an UNCONFIGURED bucket axis — the
+		// axis the roadmap declines to draw and the menu declines to set. Creating its
+		// key here would be the one write left on an axis nothing else acknowledges,
+		// which is the incoherence `hasHorizonAxis` exists to prevent. The date fields
+		// need no such test: a key of '' is exactly what unconfigured means for them.
+		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
 		if (axisKeyFor(settings, field) === '' || item.axisKeys[field]) continue;
 		axis[field] = '';
 		missing = true;
