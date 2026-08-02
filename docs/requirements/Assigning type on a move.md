@@ -38,13 +38,18 @@ thing to do on a drag.
 - **3a — the item is an `Issue` or a `Bug`.** Left alone: its rank is a property of the
   type ([[Types beside the ladder]]).
 - **3b — the item's type is not on the ladder at all** (`Spike`, `Chore`). It **is**
-  rewritten to the level its new position implies. Only declared extra types are exempt
-  here — which is not what happens to the same type one level down. See *The asymmetry*
-  below.
+  rewritten to the level its new position implies. Only *declared* types that occupy no
+  rung are exempt here — the extra types, and the markers
+  ([[Milestones as their own type]]) — which is not what happens to the same undeclared
+  type one level down. See *The asymmetry* below. The exemption turns on **declared and
+  rungless**, not on membership of `EXTRA_TYPES`: `Epic` and `Task` are declared *as*
+  rungs and follow position, which is the whole point of the cascade.
 - **4a — a child is an extra type.** Also left alone — but the walk descends from **its**
   pinned rank rather than the position it inherited. Taking the positional rung here
   rewrote a nested Bug's Tasks into PBIs: the item correctly untouched, its children
-  silently corrupted ([[Nested extra type lost its pinned rank]]).
+  silently corrupted ([[Nested extra type lost its pinned rank]]). A **marker** nested in
+  the subtree is left alone by the same rule and raises no descent question at all, having
+  no rung to descend from and no children to descend to.
 - **4b — a child's type is not on the ladder at all** (`Spike`, `Chore`). Left alone, and
   it still occupies its rung, so its own children carry on from there rather than
   restarting. This matches what the level maths does when it renders, so plan and model
@@ -87,8 +92,9 @@ behaviour is stated once and pointed at rather than restated in a fifth place.
 
 - Off by default; with it off, no move writes a `type`.
 - A reorder within a sibling group never re-types.
-- Declared extra types are never re-typed, at any depth, and their subtrees rank from the
-  pinned rung.
+- Declared types that occupy no rung are never re-typed, at any depth. An extra type's
+  subtree ranks from its pinned rung; a marker has no rung to rank from and holds nothing,
+  so the descent question does not arise for it ([[Milestones as their own type]]).
 - An unrecognised custom **descendant** type is never re-typed, and its children continue
   the ladder from the rung it occupies. The **dragged item's** own unrecognised type is
   rewritten — see *The asymmetry*.
