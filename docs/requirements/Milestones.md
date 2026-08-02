@@ -66,6 +66,7 @@ by hand.
 | `addScheduleItems` (`src/view/interactions/menu.ts`) | Offers Schedule whenever *either* date key is configured, so narrowing the fields to the target alone opens a modal with nothing in it |
 | The date rollup ([[Spans roll up the tree]], `src/domain/model.ts`) | Gathers evidence from every result descendant, so a hand-nested milestone's target becomes a dateless ancestor's inferred end — a deadline reported as work |
 | `deriveBars` (`src/domain/roadmap.ts`) | Shelves it as a reversed span when a stale start sits after the target — before any rendering seam runs |
+| `barGeometry` (`src/domain/timeline.ts`) | Clamps both ends into the window and still reports `milestone`, so a date beyond the clamped 60-month edge arrives as a one-day diamond at day 0 or the last day — a marker at a date nobody set. The same clamp misdraws any span lying wholly outside; the marker is the case this feature has to settle, because a diamond claims a date where a clipped end only claims a direction |
 | `scheduleFields`, `validateSchedule` (`src/view/interactions/plan.ts`) | Offers both ends and applies the span rule, so the entry can refuse a milestone the timeline draws, and can accept a start that leaves it shelved |
 | `carriesDates`, `unschedule` (same file) | Gates on either key and removes both, so Unschedule appears on a milestone with no milestone date, and deletes a start the feature only promised to ignore |
 | `renderRowTrailing` (`src/view/render/rows.ts`) | Renders an add button labelled from the first of no choices |

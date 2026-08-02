@@ -82,8 +82,10 @@ date.
 3. It files into its own folder, picked per view like every other type's
    (`typeFolder.milestone`), shipping as `milestones` under the home folder.
 4. It is offered at the **top level only**, and offers no child types of its own.
-5. On the dated axis it renders as a diamond at its date, with no open end, because
-   nothing is missing.
+5. On the dated axis it renders as a diamond **at its date**, with no open end, because
+   nothing is missing — and only where that date is inside the drawn window, since a
+   diamond anywhere else would be a date the milestone does not have
+   ([[A milestone line across the plan]] settles the off-window row).
 6. Everywhere else it is an ordinary row that **aggregates** into nothing: no ancestor's
    rollup, progress figure, done-subtree state or inferred span is ever computed from it.
    Both rollups this model runs are covered, and for the same reason — a marker is not
@@ -193,9 +195,11 @@ date.
   quick filter exactly as any other row does, and its line goes with it
   ([[A milestone line across the plan]]). The two are different rules and the note must
   not be read as one: never counted is about aggregation, not about visibility.
-- On the dated axis it draws as a diamond at its date with no open end; an unreadable date
-  shelves it with the reason visible; on the bucket axis it places by its horizon or
-  shelves, and its date is never read as one.
+- On the dated axis it draws as a diamond at its date with no open end, and a diamond is
+  drawn nowhere else: a date outside the drawn window leaves the row marked as lying past
+  that edge rather than clamped onto it; an unreadable date shelves it with the reason
+  visible; on the bucket axis it places by its horizon or shelves, and its date is never
+  read as one.
 - It survives `hierarchyOnly` with no parent, because a supported type is what admits a
   note to the hierarchy — and it is focusable by name, like every other declared type:
   named in the toolbar's focus picker, not merely honoured once a saved view already

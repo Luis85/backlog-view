@@ -52,9 +52,18 @@ nothing about the line is ever written anywhere.
 
 **Extensions**
 
-- **1a — the milestone's date falls outside the window.** No line. A bar that runs past the
-  edge clips to it, because part of it is still in view; a point outside the window has no
-  cell to clip to ([[Zoom and the today marker]] owns what the window is).
+- **1a — the milestone's date falls outside the window.** No line, and **no diamond
+  either**. A bar that runs past the edge clips to it, because part of it is still in view
+  and the clipped end says "this continues beyond what is drawn" — which is true of a span
+  and can never be true of a point ([[Zoom and the today marker]] owns what the window is).
+  Clamping the point to the edge instead would draw a diamond at a date the milestone does
+  not have, and a diamond *is* the claim that this is the date; the row keeps the edge mark
+  that states a **direction** — the same open-end vocabulary a clipped bar uses, on the
+  side the milestone lies past — and its exact date stays in the tooltip and the row's
+  accessible name, where 4a already puts it. Shelving it instead is not available and the
+  reason is worth stating: the shelf partition is decided in derivation, and the window is
+  computed *from* what derivation placed, so a rule that shelved by window would need the
+  window before it exists.
 - **1b — two milestones share a date.** One line, labelled with both. Two lines a pixel
   apart read as one and quietly misreport the count.
 - **1c — the milestone is outside the Base's filter.** It draws no line. A line across
@@ -83,6 +92,9 @@ nothing about the line is ever written anywhere.
   every line drawn has a row rendering the same milestone.
 - Two milestones on one date draw one line naming both.
 - A milestone outside the Base's filter draws no line and is never counted by one.
+- A milestone whose date lies outside the window draws neither a line nor a diamond: its
+  row carries the edge mark for the side it lies past and the exact date in its tooltip,
+  and no marker is ever placed at a date the milestone does not have.
 - A line hides exactly when its row hides, under the same visibility controls.
 - Nothing about the line is written to any note, and no information is available only by
   hovering it: the milestone's name and exact date are in its row's accessible name.
@@ -91,7 +103,12 @@ nothing about the line is ever written anywhere.
 
 ## Where it lives
 
-Not built. The month window and the day-to-pixel geometry are `src/domain/timeline.ts`;
+Not built. The month window and the day-to-pixel geometry are `src/domain/timeline.ts`,
+where `barGeometry` clamps both ends into the window and reports `milestone` from the
+stated pair alone — so a point beyond the edge currently arrives at the renderer as a
+one-day milestone at day 0 or at the last day, which is the shape 1a refuses. The geometry
+has to answer "wholly outside" rather than clamping to it: `endDay < 0` or
+`startDay > lastDay`, which for a point is exactly "its date is not in the window".
 the grid, and the `pbl-today` line this extends, are `src/view/render/timeline.ts`, with
 the styling in `styles.css` beside it. Driven in `test/domain/timeline.test.ts` and
 `test/view/roadmapFrame.test.ts`. It waits on [[Milestones as their own type]], which is
