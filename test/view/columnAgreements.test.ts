@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { cardDrag } from '../helpers/dnd';
-import { flush, key, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { boardVault, cardByTitle, columnByName, columnNames, makeBoard } from '../helpers/board';
 
 useViewHarness();
@@ -123,11 +123,20 @@ describe('a WIP limit never refuses a write', () => {
 		expect(vault.fm('A.md')['status']).toBe('Active');
 	});
 
-	it('says the column is over afterwards, rather than having stopped the move', () => {
+	it('says the column is over afterwards, rather than having stopped the move', async () => {
 		// The guarantee is not "nothing happens" but "the move happens and the board
-		// says so". Asserting only the writes above would pass on a board that had
-		// quietly stopped signalling.
-		const { containerEl } = makeBoard(overfullVault(), OVERFULL);
+		// says so", so this has to survive a write rather than assert on a fresh render.
+		// Asserting the signal on an untouched board would restate the header test in
+		// `test/view/board.test.ts` and prove nothing about a move at all.
+		//
+		// Nothing re-renders on its own in this harness (see `test/CLAUDE.md`), so the
+		// refresh is what makes "afterwards" mean anything.
+		const vault = overfullVault();
+		const { containerEl, view } = makeBoard(vault, OVERFULL);
+		cardDrag(cardByTitle(containerEl, 'A'), columnByName(containerEl, 'Active'));
+		await flush();
+		expect(vault.fm('A.md')['status']).toBe('Active');
+		refresh(view, vault);
 		expect(headerOf(containerEl, 'Active').classList.contains('pbl-board-col-over')).toBe(true);
 	});
 });
