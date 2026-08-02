@@ -18,7 +18,7 @@ files:
 ## The limitation
 
 This codebase writes its rules down in comments, at length and on purpose. That is
-worth doing and it is not verification: **in PR #47, seven of fourteen review findings were
+worth doing and it is not verification: **in PR #47, nine of sixteen review findings were
 places where a comment nearby asserted the opposite of what the code did.**
 Not vague comments — precise ones, naming the exact invariant that was being broken.
 
@@ -31,6 +31,8 @@ Not vague comments — precise ones, naming the exact invariant that was being b
 | *the write plan's own note that "from Unplaced to Unplaced" would be nonsense for a real change* | announced exactly that |
 | *"bounded by construction … each move's own response is the pass that finally reaches it"* | assumed every data pass belongs to a queued write; an edit in another pane produces one too |
 | *"without this the control is not merely hidden — it is unreachable"*, written directly above the reveal | the reveal was declared before the `opacity: 0` it undoes, and a media query adds no specificity, so it lost the cascade and revealed nothing |
+| *"the shelf is the answer … because a result the axis did not place is on the shelf, which is the only other place it can be"* — a **source**-side argument | the same function also named a move's TARGET, where the argument is false: a pick whose bucket is not drawn goes to that value, and was announced as going to the shelf |
+| *"a key the reader already reads as absence (missing, or empty) does not [have anything to un-place]"*, in `domain/CLAUDE.md` | true of the planner this branch wrote and false of the one it merged, which clears on the key's PRESENCE — so an empty key became a real write announced "from Unplaced to Unplaced" |
 
 The pattern is not carelessness in any single case. It is that **a comment is written
 once, beside code that was correct when it was written, and then nothing re-reads
@@ -38,8 +40,16 @@ them together.** Every one of these was true of the code at the moment the comme
 typed, and stopped being true one edit later — usually the edit that added the second
 caller, the second property, the second projection.
 
-The last row is the sharpest, because the comment and the code were written in the
-*same* edit and were never true together. It was the fix for an earlier finding: the
+The last two rows name the two ways it happens that are not simply "the code moved on".
+In the second-to-last, the comment stayed true and **a second caller arrived** for whom
+it never was: an argument written for one question, inherited by another. In the last,
+nothing was edited at all — a `main` merge replaced the implementation the doc described
+with a better one, and the doc went on stating the old rule while a module downstream
+still obeyed it. Merging is an edit to every comment about what was merged, and none of
+them appear in the diff.
+
+The cascade row is the sharpest of all, because the comment and the code were written in
+the *same* edit and were never true together. It was the fix for an earlier finding: the
 comment moved with the rule it stated, into a position where the rule no longer held,
 and went on asserting reachability for a control nothing could reach. A comment travels
 with the line it explains; the cascade it depended on does not travel with it.
@@ -70,7 +80,7 @@ available is narrower and did work, from round two onward:
    for all six later fixes; two of them turned out to assert less than they read as
    until that check forced the fixture to be sharpened.
 3. **Read the comment above the line you are editing before you edit it**, and treat a
-   contradiction as the finding rather than as prose to update. Five of the seven were
+   contradiction as the finding rather than as prose to update. Five of the nine were
    introduced *while implementing the fix for the previous one*, which is exactly the
    moment nobody re-reads the surrounding paragraph.
 4. **A comment asserting something is impossible is the one to distrust most.** The
@@ -91,10 +101,30 @@ Steps 2 and 5 are the ones worth insisting on. Step 2 is the same argument
 watched fail is a check nobody has tested — applied to the ordinary tests a feature
 ships with.
 
+## The other direction: a check deleted is a rule unstated
+
+The last finding did not come from a comment decaying. It came from **deleting a test on
+the grounds that another one covered it**, during the `main` merge.
+
+Two implementations of the horizon plan met: this branch's cleared the key on the
+*reading*, main's on the key's **presence**. Main's is better and was kept. Its own test
+file covered it thoroughly, so this branch's `computeHorizonDropWrites(item(''), null)
+=== []` looked redundant and went. It was not redundant — it was the only test that
+pinned the *difference*, and with it gone the behaviour change ("an empty key is now
+something to clear") went in unremarked, until a reviewer found the announcement calling
+that write "from Unplaced to Unplaced".
+
+The habit, which generalises past merges to any consolidation: **when two implementations
+collapse into one, the tests that survive should include the ones that disagreed.** Their
+coverage overlaps; their *assertions* do not. A test asserting the behaviour you are
+about to drop is not duplicate coverage, it is the record of a decision — either it
+should now fail (so change it, and say why in the commit) or the two really did agree
+and it costs nothing to keep.
+
 ## Impact
 
-Seven defects, all caught in review, none shipped. The cost was six review rounds on
-one pull request — of the eight it took — and the honest reading is that review did the
+Nine defects, all caught in review, none shipped. The cost was seven review rounds on
+one pull request — of the nine it took — and the honest reading is that review did the
 job a check could not, except in the one case where a check turned out to be possible
 after all. This note exists so that the next person writing a confident comment knows it
 buys nothing on its own.
@@ -102,7 +132,7 @@ buys nothing on its own.
 ## Acceptance criteria
 
 None as a gate — there is nothing to gate, which is the point of filing this as a
-limitation rather than as work. The five habits above are the whole content, and they
-are recorded here rather than in `CLAUDE.md` because a rule about how to verify rules
-belongs beside the evidence that it was needed. `CLAUDE.md` carries habit 1 alone, where
-someone writing a test will meet it.
+limitation rather than as work. The five habits above, plus the consolidation rule, are
+the whole content, and they are recorded here rather than in `CLAUDE.md` because a rule
+about how to verify rules belongs beside the evidence that it was needed. `CLAUDE.md`
+carries habit 1 alone, where someone writing a test will meet it.
