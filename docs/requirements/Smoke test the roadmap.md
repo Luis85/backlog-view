@@ -13,10 +13,11 @@ The roadmap projection: both axes, the shelf, stated and inferred bars, and the 
 milestone marks — the newest projection and the one carrying the most unverified
 appearance, checked once against a real vault.
 
-**Outcome** — Every case below has been looked at, with the result written into its own
-`Issue`'s Acceptance criteria, so a stale check is visible rather than assumed. Two cases
-carry an explicit warning that they have never been run at all — see
-[[Roadmap inferred bar appearance]] and [[Roadmap milestone appearance]].
+**Outcome** — **Run by the maintainer on 2026-08-02** in an `npm run test-build` vault
+ahead of the `0.4.0` release, the first time any of the roadmap had been looked at:
+nothing on the list needed adjusting. That is a run of the whole list and not a per-case
+record — each `Issue` below still asks for its own points written down as pass or fail,
+and each stays open until they are, so a stale check is visible rather than assumed.
 
 ## Use cases
 
