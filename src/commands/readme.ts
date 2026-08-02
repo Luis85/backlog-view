@@ -3,7 +3,7 @@ import { backlogReadmeContent } from '../domain/backlogReadme';
 import { configProblems } from '../domain/settings';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
-import { joinSource } from '../domain/readmeMarker';
+import { displaySource, joinSource } from '../domain/readmeMarker';
 import { collapseStoreIdentity } from '../storage/collapseStore';
 import { ReadmeWriteResult, writeBacklogReadme } from '../storage/readmeFile';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
@@ -34,7 +34,7 @@ function outcomeNotice({ outcome, path, previous }: ReadmeWriteResult): string {
 		case 'foreign':
 			return `"${path}" was not written by this plugin, so it was left alone. Move it aside to generate one.`;
 		case 'replaced':
-			return `Updated "${path}", which documented "${previous ?? ''}". A folder has one readme, so two views sharing it take turns.`;
+			return `Updated "${path}", which documented "${displaySource(previous ?? '')}". A folder has one readme, so two views sharing it take turns.`;
 	}
 }
 

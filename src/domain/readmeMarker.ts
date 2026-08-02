@@ -124,9 +124,21 @@ const SEPARATOR_ESCAPE = '%E2%80%BA';
  *
  * `%` first, then the separator, which is the same trick `encodeSource` plays and for
  * the same reason: escaping the escape character is what makes the mapping injective.
- * The pathological name is the only one that reads escaped in a notice.
+ * Nothing but `displaySource` undoes it — the comparison needs the escaped form, and a
+ * notice needs the name as the user spelled it.
  */
 export function joinSource(base: string, view: string): string {
 	const part = (text: string): string => text.replace(/%/g, '%25').replace(/›/g, SEPARATOR_ESCAPE);
 	return `${part(base)}${SOURCE_SEPARATOR}${part(view)}`;
 }
+
+/**
+ * A source as the user spells it, for showing in a notice. The escaping above exists to
+ * keep two identities apart, and telling somebody their base is called `work/100%25.base`
+ * is the escaping leaking out of the question it answers.
+ *
+ * One left-to-right pass, so an escaped `%` never decodes twice, and the separator itself
+ * is left alone: it is a literal, not an escape.
+ */
+export const displaySource = (source: string): string =>
+	source.replace(/%(25|E2%80%BA)/g, (_, code: string) => (code === '25' ? '%' : '›'));

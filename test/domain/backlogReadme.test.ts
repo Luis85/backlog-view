@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { README_MARKER_PREFIX, joinSource, readmeMarker, readmeSource } from '../../src/domain/readmeMarker';
+import { README_MARKER_PREFIX, displaySource, joinSource, readmeMarker, readmeSource } from '../../src/domain/readmeMarker';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
@@ -71,6 +71,15 @@ describe('backlogReadmeContent', () => {
 		expect(joinSource('a.base', 'b.base › c')).not.toBe(joinSource('a.base › b.base', 'c'));
 		// An ordinary pair still reads as itself, in the file and in the notice.
 		expect(joinSource('work/Product Backlog.base', 'Backlog')).toBe('work/Product Backlog.base › Backlog');
+	});
+
+	it('shows a source in a notice the way the user spelled it', () => {
+		// The join escaping keeps two identities apart; it is not something to read back to
+		// somebody about their own base. `work/100%.base` is not `work/100%25.base`.
+		expect(displaySource(joinSource('work/100%.base', 'Backlog'))).toBe('work/100%.base › Backlog');
+		expect(displaySource(joinSource('a.base', 'b › c'))).toBe('a.base › b › c');
+		// And it never decodes twice: an escape the user typed comes back as they typed it.
+		expect(displaySource(joinSource('a%25b.base', 'B'))).toBe('a%25b.base › B');
 	});
 
 	it('encodes a line break, which would cost the marker its whole job', () => {
