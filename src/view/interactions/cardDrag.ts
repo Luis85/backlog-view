@@ -4,8 +4,7 @@ import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
-import { FieldReading } from '../../domain/noteFields';
-import { bucketLabelFor, placementLabel, RoadmapModel } from '../../domain/roadmap';
+import { HorizonSource, placementLabel, RoadmapModel, targetLabel } from '../../domain/roadmap';
 
 /**
  * The class every card drop target wears while a card hovers it. One name for the
@@ -43,18 +42,20 @@ export function announceBoardMove(
 }
 
 /**
- * `from` is the whole READING, not a value: a key the axis refuses to read shelves
- * the card exactly as an absent one does, so a value-only account of a cleanup
- * would say "from Unplaced to Unplaced" about a change that really happened.
+ * The two ends are named by two different functions on purpose — `placementLabel`
+ * asks what the note SAID and `targetLabel` where the user SENT it. See their
+ * shared preamble in `domain/roadmap.ts`: one answer for both questions reported a
+ * cleanup as "from Unplaced to Unplaced", and a move to an undrawn bucket as a move
+ * to the shelf.
  */
 export function announceHorizonMove(
 	roadmap: RoadmapModel | null | undefined,
 	title: string,
-	from: FieldReading<string>,
+	from: HorizonSource,
 	to: string | null,
 ): void {
 	if (!roadmap) return;
-	announceMove(title, placementLabel(roadmap, from), bucketLabelFor(roadmap, to));
+	announceMove(title, placementLabel(roadmap, from), targetLabel(roadmap, to));
 }
 
 /**

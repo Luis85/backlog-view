@@ -219,22 +219,27 @@ in the root `CLAUDE.md` because it spans every layer.
 - Bucket order inside a bucket is the Base's own sort (`entryIndex`), the board's
   derived-order rule; the shelf and the timeline keep tree order — rows arrive from
   `roadmapRows` already in it, which is what "sibling order" on the shelf rests on.
-- A horizon move is planned by `computeHorizonDropWrites` in `writePlan.ts`, shaped
-  exactly like `computeStateDropWrites`: the target value byte for byte, nothing for a
-  move onto the placement the card already holds, `removeHorizonKey` for the shelf.
-  The one asymmetry with the state plan is `invalid`: a key holding something the reader
-  refuses still HAS something to un-place, while a key the reader already reads as
-  absence (missing, or empty) does not — un-placing that would change the note without
-  changing anything the roadmap says about it.
+- A horizon move — from a drag, a key or either menu — is planned by
+  `computeHorizonWrites`, the same function the row's Set horizon uses: the target value
+  byte for byte, nothing for a re-pick of the placement the card already holds, and null
+  (remove the key) for the shelf. It clears on the KEY's presence rather than on the
+  reading, which is what makes the empty stub the backfill leaves a real thing to take
+  away rather than something already absent.
 - "Same placement" and "same state" are one question, answered by `sameValue` in
   `noteFields.ts`: case-insensitive, with absence a value rather than a missing one. The
   plan, the menu's checkmark and the keyboard ladder all ask it, because a plan that said
   "unchanged" on a different rule than the checkmark would disagree about what the user
   is looking at.
-- `bucketLabelFor` is the roadmap's `columnLabelFor`: anything naming a placement out
-  loud reads it from there, so a message can only say what renders. Its fallback is the
-  shelf — for absence, and for a value naming no bucket, since a result the axis did not
-  place is on the shelf and there is nowhere else it could be. Naming a card's CURRENT
-  placement takes `placementLabel` and the whole READING instead: absence and refusal
-  both shelve the card, so a value-only account of un-placing an unreadable value says
-  "from Unplaced to Unplaced" about a change that really happened.
+- **Naming a move's two ends is two questions, not one.** They shared an answer and it
+  was wrong in both directions, so they are `targetLabel` and `placementLabel` now:
+  - the TARGET is where the user SENT it — the drawn bucket's casing when one exists,
+    else the picked value itself, never the shelf. Hiding can remove a value's only
+    carrier while `horizonChoices` goes on offering it (deliberately: what is reachable
+    must not depend on what is on screen), so a pick can name a bucket the frame is not
+    drawing, and the write still puts the note there.
+  - the SOURCE is what the note SAID, taken from `HorizonSource` — the reading plus
+    whether the key was there at all, captured together so a caller cannot take half.
+    Three things shelve a card and only ONE is nothing to clear: no key (`Unplaced`), an
+    empty key (`an empty horizon`), a key the axis refuses (`an unreadable horizon`).
+    Naming them alike reports a real, undo-consuming cleanup as "from Unplaced to
+    Unplaced" — a move that did not happen.

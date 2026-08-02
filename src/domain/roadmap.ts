@@ -108,32 +108,71 @@ export interface RoadmapModel {
 
 /** What the shelf is called wherever a placement is named out loud. */
 export const SHELF_LABEL = 'Unplaced';
-/** And what a key holding something this axis refuses to read is called. */
+/** A key holding something this axis refuses to read. */
 const UNREADABLE_LABEL = 'an unreadable horizon';
+/** A key that is there and says nothing — the stub the backfill leaves. */
+const EMPTY_LABEL = 'an empty horizon';
 
-/**
- * What to call the place a horizon value sits in — found by the same
- * case-insensitive match that placed the cards, with the shelf as the answer for
- * absence and for a value naming no bucket: a result the axis did not place is on
- * the shelf, which is the only other place it can be. Anything naming a placement
- * out loud (a move announcement, a menu entry) reads it from here rather than from
- * the raw string, exactly as the board's `columnLabelFor` does — or it would name
- * a bucket the user cannot see.
- */
-export function bucketLabelFor(roadmap: RoadmapModel, value: string | null): string {
-	if (value === null) return SHELF_LABEL;
-	return roadmap.buckets.find((bucket) => sameValue(bucket.value, value))?.value ?? SHELF_LABEL;
+/** The drawn bucket a value belongs to, matched as the cards were placed. */
+function bucketFor(roadmap: RoadmapModel, value: string): string | null {
+	return roadmap.buckets.find((bucket) => sameValue(bucket.value, value))?.value ?? null;
 }
 
 /**
- * What a card's CURRENT placement is called, taken from the whole reading rather
- * than from its value. Absence and refusal both shelve the card, so `value` alone
- * cannot tell them apart — and the difference is the whole account of a cleanup:
- * removing a value the axis could not read is a real, undoable change, and naming
- * both ends "Unplaced" would report it as a move that did not happen.
+ * Naming a move's two ends. They are DIFFERENT questions and had one answer, which
+ * is what made both of them wrong in their own way:
+ *
+ * - the source asks *what did this note say*, and the shelf is one of three ways to
+ *   say nothing — no key, an empty key, a key the axis refuses — of which only the
+ *   first is a no-op to clear;
+ * - the target asks *where did the user send it*, and that is the value they picked,
+ *   whether or not a bucket for it happens to be on screen.
+ *
+ * Sharing one function let the target inherit the source's shelf fallback, so a pick
+ * whose bucket was not drawn — hiding can remove a value's only carrier while the
+ * menu still offers it, which `horizonChoices` does on purpose — announced a move to
+ * "Unplaced" for a note that went to Someday.
  */
-export function placementLabel(roadmap: RoadmapModel, reading: FieldReading<string>): string {
-	return reading.invalid ? UNREADABLE_LABEL : bucketLabelFor(roadmap, reading.value);
+
+/**
+ * Where a pick sends a card. A drawn bucket names it in the casing on screen; with
+ * none drawn the value itself is the honest answer, never the shelf — the user named
+ * a place, and the write puts the note there whether or not the frame shows it yet.
+ */
+export function targetLabel(roadmap: RoadmapModel, value: string | null): string {
+	if (value === null) return SHELF_LABEL;
+	return bucketFor(roadmap, value) ?? value;
+}
+
+/**
+ * What a card's placement WAS, taken from what the note said rather than from where
+ * the card sat. All three of these shelve a card and only the first is nothing to
+ * take away, so naming them alike would report a real, undo-consuming cleanup as a
+ * move that did not happen — "from Unplaced to Unplaced".
+ *
+ * The key's presence is the fact `reading` cannot carry: an empty value reads as
+ * absence, while `computeHorizonWrites` clears on presence. That divergence is the
+ * whole reason this takes a `HorizonSource` and not a `FieldReading`.
+ */
+export function placementLabel(roadmap: RoadmapModel, source: HorizonSource): string {
+	const { reading, keyPresent } = source;
+	if (reading.invalid) return UNREADABLE_LABEL;
+	if (reading.value !== null) return bucketFor(roadmap, reading.value) ?? SHELF_LABEL;
+	return keyPresent ? EMPTY_LABEL : SHELF_LABEL;
+}
+
+/** What a note's horizon key said, and whether it was there at all. */
+export interface HorizonSource {
+	reading: FieldReading<string>;
+	keyPresent: boolean;
+}
+
+/**
+ * Both pre-write facts about a card's placement, taken together — so a caller
+ * capturing "where it came from" before an await cannot capture half of it.
+ */
+export function horizonSource(item: BacklogItem): HorizonSource {
+	return { reading: item.horizon, keyPresent: item.axisKeys.horizon };
 }
 
 /**

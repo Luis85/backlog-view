@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel, BacklogModel } from '../../src/domain/model';
-import { activeAxis, bucketLabelFor, buildRoadmap, configuredAxes, RoadmapAxis, SHELF_LABEL } from '../../src/domain/roadmap';
+import {
+	activeAxis,
+	buildRoadmap,
+	configuredAxes,
+	placementLabel,
+	RoadmapAxis,
+	SHELF_LABEL,
+	targetLabel,
+} from '../../src/domain/roadmap';
+import { readPlacement } from '../../src/domain/noteFields';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -254,22 +263,43 @@ describe('the label a placement is named by', () => {
 		return roadmapOf(buildModel(vault.app, vault.entries(), settings), settings, 'horizons');
 	}
 
+	/** What a note said about its own horizon, as the announcer captures it. */
+	function said(value: string | null, keyPresent = value !== null) {
+		return { reading: readPlacement(value === null ? undefined : value), keyPresent };
+	}
+
 	it('names the bucket a value renders under, in the bucket’s own casing', () => {
 		const roadmap = roadmapWith('now', 'Someday');
 
 		// Matched the way the cards were placed, and named the way the screen shows —
 		// the declared casing for a declared bucket, the minted one for a stray.
-		expect(bucketLabelFor(roadmap, 'NOW')).toBe('Now');
-		expect(bucketLabelFor(roadmap, 'someday')).toBe('Someday');
+		expect(targetLabel(roadmap, 'NOW')).toBe('Now');
+		expect(placementLabel(roadmap, said('someday'))).toBe('Someday');
 	});
 
-	it('names the shelf for absence, and for a value no bucket shows', () => {
+	it('names a target by the value picked, never by the shelf', () => {
 		const roadmap = roadmapWith(null);
 
-		expect(bucketLabelFor(roadmap, null)).toBe(SHELF_LABEL);
-		// A result the axis did not place is on the shelf — the only other place there
-		// is — so a message about it says the shelf rather than a bucket nobody sees.
-		expect(bucketLabelFor(roadmap, 'Gone')).toBe(SHELF_LABEL);
+		expect(targetLabel(roadmap, null)).toBe(SHELF_LABEL);
+		// Hiding can take away a value's only carrier while the menu goes on offering
+		// it, so a pick can name a bucket the frame is not currently drawing. The write
+		// still puts the note there, and saying "Unplaced" would report a different
+		// move than the one that happened.
+		expect(targetLabel(roadmap, 'Someday')).toBe('Someday');
+	});
+
+	it('tells the three ways a card can be unplaced apart', () => {
+		const roadmap = roadmapWith(null);
+
+		// Only the first is nothing to take away. The other two are real, undoable
+		// cleanups — `computeHorizonWrites` clears on the KEY, not on the reading — so
+		// naming them all "Unplaced" would report a change as a move that did not
+		// happen, in exactly the words the move to the shelf already uses.
+		expect(placementLabel(roadmap, said(null))).toBe(SHELF_LABEL);
+		expect(placementLabel(roadmap, said('', true))).toBe('an empty horizon');
+		expect(placementLabel(roadmap, { reading: { value: null, invalid: true }, keyPresent: true })).toBe(
+			'an unreadable horizon',
+		);
 	});
 });
 

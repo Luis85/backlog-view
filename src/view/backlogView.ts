@@ -16,7 +16,7 @@ import { buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel, matchingPaths } from '../domain/model';
 import { childTypeChoices } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
-import { RoadmapAxis } from '../domain/roadmap';
+import { horizonSource, RoadmapAxis } from '../domain/roadmap';
 import { computeDropWrites, computeHorizonWrites, computeStateDropWrites, ItemWrite } from '../domain/writePlan';
 import { applyWrites, RestoreWrite } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
@@ -437,7 +437,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	async performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {
-		const from = item.horizon;
+		// Both facts about where it came from, taken together: the reading alone cannot
+		// say whether the key was there, and an empty key is a real thing to clear.
+		const from = horizonSource(item);
 		const buckets = this.roadmap?.roadmap;
 		return this.applyCardMove(item, computeHorizonWrites(item, horizon), () =>
 			announceHorizonMove(buckets, item.title, from, horizon),
