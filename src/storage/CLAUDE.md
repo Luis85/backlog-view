@@ -35,6 +35,10 @@ can be checked by reading one directory.
   anyway.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
+- The roadmap's placement keys (`ItemWrite.axis`) follow the state key's two rules:
+  never written to an unconfigured key, and a null REMOVES rather than blanks. Applying
+  and capturing read the same `axisEntries` list — a key written but not captured would
+  be a change no undo could reach, which is exactly how a hole gets in.
 
 ## Collapse state, and the view mode beside it
 

@@ -2,7 +2,9 @@ import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
-import { BacklogSettings, LEVELS } from './settings';
+import { CivilDate, readDate } from './noteFields';
+import { hasHorizonAxis } from './roadmap';
+import { AXIS_FIELDS, axisKeyFor, BacklogSettings, LEVELS } from './settings';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -42,11 +44,29 @@ export interface ItemWrite {
 	 * second would put the first tag back.
 	 */
 	tags?: TagDelta;
+	/** The roadmap's placement properties; fields left out are not touched. */
+	axis?: AxisWrite;
 }
 
 export interface TagDelta {
 	add?: string[];
 	remove?: string[];
+}
+
+/**
+ * A write to the roadmap's placement keys: the value to store, or **null to remove
+ * the key**. Absence is a value on both axes — an item with no horizon is untriaged
+ * and one with no dates is unscheduled — so removal is a first-class write here
+ * rather than an empty string, exactly as `removeParentKey` is for the hierarchy. A
+ * blank value would render as a bucket named nothing.
+ *
+ * The empty string is used once and deliberately, by the backfill: creating the key
+ * without placing anything is the one thing that operation can honestly do.
+ */
+export interface AxisWrite {
+	horizon?: string | null;
+	start?: string | null;
+	target?: string | null;
 }
 
 /**
@@ -186,6 +206,67 @@ export function computeStateDropWrites(item: BacklogItem, state: string | null):
 	return [{ file: item.file, state }];
 }
 
+/**
+ * The write a horizon pick means: the chosen value into the note's own horizon
+ * property, or its removal. Re-picking the value the item already holds plans
+ * nothing — matched case-insensitively, the same matching that placed it in its
+ * bucket — so a no-op cannot cost the caller's one undo.
+ */
+export function computeHorizonWrites(item: BacklogItem, value: string | null): ItemWrite[] {
+	if (value === null) {
+		// Nothing to take away: an item with no horizon key is already untriaged, and
+		// a removal write there would consume an undo slot for a change nobody made.
+		return item.axisKeys.horizon ? [{ file: item.file, axis: { horizon: null } }] : [];
+	}
+	const current = item.horizon.value;
+	if (current !== null && current.toLowerCase() === value.toLowerCase()) return [];
+	return [{ file: item.file, axis: { horizon: value } }];
+}
+
+/** What a schedule entry asks for: a date per end, null to unschedule that end. */
+export interface SchedulePlan {
+	start?: string | null;
+	target?: string | null;
+}
+
+/**
+ * The batch a schedule (or unschedule) means: one write naming only the ends that
+ * actually change. Both ends ride the SAME `ItemWrite`, so a span is one undo rather
+ * than two halves of one that can be taken back separately.
+ */
+export function computeScheduleWrites(item: BacklogItem, plan: SchedulePlan): ItemWrite[] {
+	const axis: AxisWrite = {};
+	let planned = false;
+	for (const field of ['start', 'target'] as const) {
+		const requested = plan[field];
+		if (requested === undefined) continue;
+		const value = planDate(item, field, requested);
+		if (value === undefined) continue;
+		axis[field] = value;
+		planned = true;
+	}
+	return planned ? [{ file: item.file, axis }] : [];
+}
+
+/** One end of a schedule, or undefined when writing it would change nothing. */
+function planDate(item: BacklogItem, field: 'start' | 'target', value: string | null): string | null | undefined {
+	if (value === null) return item.axisKeys[field] ? null : undefined;
+	const parsed = readDate(value);
+	// The entry refuses an unreadable date before it gets here; this is the backstop
+	// that keeps the rule true of the planner too — no date is ever guessed at.
+	if (parsed.value === null) return undefined;
+	const carried = field === 'start' ? item.plannedStart : item.plannedTarget;
+	// Compared as civil DATES, not as text: re-confirming a date the note already
+	// states must not rewrite `2026-8-1` into `2026-08-01`. The spelling on disk is
+	// the user's, and tidying it is a write nobody asked for.
+	if (!carried.invalid && carried.value !== null && sameCivil(carried.value, parsed.value)) return undefined;
+	return value;
+}
+
+function sameCivil(a: CivilDate, b: CivilDate): boolean {
+	return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
 /** The order value for the insertion slot, or null when the group needs renumbering. */
 function computeInsertOrder(siblings: BacklogItem[], insertIndex: number): number | null {
 	const prev = insertIndex > 0 ? siblings[insertIndex - 1] : null;
@@ -225,8 +306,61 @@ function renumberWrites(
 }
 
 /**
- * Fill in missing order and type properties across the whole hierarchy without
- * touching values that already exist. Walks the real tree, so a focused view
+ * Empty values for the configured axis keys this note does not carry, or null when
+ * it carries them all. Creating the key is the whole of what a backfill can honestly
+ * do here: the property becomes visible and editable in Obsidian's own property
+ * editor, while the item keeps the placement it had — none — so pressing the button
+ * moves nothing on the roadmap, the same promise it already makes about the tree.
+ * Writing a horizon or a date instead would invent a plan, which on a roadmap is
+ * indistinguishable from a decision.
+ */
+function missingAxisWrite(item: BacklogItem, settings: BacklogSettings): AxisWrite | null {
+	const axis: AxisWrite = {};
+	let missing = false;
+	for (const field of AXIS_FIELDS) {
+		// A named horizon property with no values is an UNCONFIGURED bucket axis — the
+		// axis the roadmap declines to draw and the menu declines to set. Creating its
+		// key here would be the one write left on an axis nothing else acknowledges,
+		// which is the incoherence `hasHorizonAxis` exists to prevent. The date fields
+		// need no such test: a key of '' is exactly what unconfigured means for them.
+		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
+		if (axisKeyFor(settings, field) === '' || item.axisKeys[field]) continue;
+		axis[field] = '';
+		missing = true;
+	}
+	return missing ? axis : null;
+}
+
+/**
+ * The gaps in one item's properties, or null when it has none. `nextOrder` is asked
+ * only when the rank is the gap, so an item that needs no order does not consume a
+ * slot in its sibling group.
+ */
+function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: () => number): ItemWrite | null {
+	const write: ItemWrite = { file: item.file };
+	let needed = false;
+	if (item.order === null) {
+		write.order = nextOrder();
+		needed = true;
+	}
+	// An unresolved parent link means the item's real level is unknowable — don't
+	// write a type derived from its provisional top-level position.
+	const levelUnknown = item.parent === null && item.hasParentValue;
+	if (item.typeName === null && !levelUnknown) {
+		write.typeName = LEVELS[childLevelIndex(item.parent)];
+		needed = true;
+	}
+	const axis = missingAxisWrite(item, settings);
+	if (axis) {
+		write.axis = axis;
+		needed = true;
+	}
+	return needed ? write : null;
+}
+
+/**
+ * Fill in missing order, type and placement properties across the whole hierarchy
+ * without touching values that already exist. Walks the real tree, so a focused view
  * still backfills hidden ancestors and branches outside the focus level.
  */
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
@@ -248,21 +382,8 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 				visit(item.children);
 				continue;
 			}
-			const write: ItemWrite = { file: item.file };
-			let needed = false;
-			if (item.order === null) {
-				maxOrder = Math.floor(maxOrder) + ORDER_SPACING;
-				write.order = maxOrder;
-				needed = true;
-			}
-			// An unresolved parent link means the item's real level is unknowable —
-			// don't write a type derived from its provisional top-level position.
-			const levelUnknown = item.parent === null && item.hasParentValue;
-			if (item.typeName === null && !levelUnknown) {
-				write.typeName = LEVELS[childLevelIndex(item.parent)];
-				needed = true;
-			}
-			if (needed) writes.push(write);
+			const write = initWriteFor(item, settings, () => (maxOrder = Math.floor(maxOrder) + ORDER_SPACING));
+			if (write) writes.push(write);
 			visit(item.children);
 		}
 	};

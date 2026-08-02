@@ -11,7 +11,7 @@ in the root `CLAUDE.md` because it spans every layer.
   only once the phase that owns it has run, so a signature states which fields are real
   and the compiler enforces it — this used to be ten placeholder values in `addItem` and
   a request that readers remember. Only `BacklogItem` leaves this module, and it still
-  carries all 24 fields, so nothing downstream knows the difference. **Adding a field
+  carries all 28 fields, so nothing downstream knows the difference. **Adding a field
   means choosing its phase**, which is the question that was easy to skip before.
   Promotion is an in-place assertion in `linkAll` and `assignAll`, each followed
   immediately by the loop that fills every field it claims: the graph is cyclic, so a
@@ -190,6 +190,19 @@ in the root `CLAUDE.md` because it spans every layer.
   and no property is ever picked by name-matching — nor is a date ever read as a horizon.
   `activeAxis` honors a retained pick only while its axis is configured; the pick itself
   is the caller's to keep, never rewritten by falling back.
+- The roadmap's placement properties are written like the state property and planned
+  like every other change: `computeHorizonWrites` / `computeScheduleWrites` produce an
+  `AxisWrite`, where **null means remove the key** (absence is the value that means
+  untriaged or unscheduled) and only the backfill ever writes `''` — creating the key
+  without placing anything, which is the one thing it can do without inventing a plan.
+  `axisKeyFor` is the single field → key mapping, so the planner, the writer and the
+  backfill cannot spell the three-way switch differently. A re-pick of the value an
+  item already holds plans nothing (case-insensitive for horizons, civil-date equality
+  for dates — re-confirming `2026-8-1` must not rewrite it as `2026-08-01`).
+- `item.axisKeys` is PRESENCE, `item.horizon` / `plannedStart` / `plannedTarget` are
+  VALUE, and they answer different questions: an empty horizon reads as untriaged while
+  the key is still there to clear. Removal actions gate on presence so none of them can
+  write nothing; the backfill fills exactly its complement.
 - The roadmap field readers are tri-state (`FieldReading` in `noteFields.ts`): absence
   and refusal are different facts — absent is untriaged (shelved silently), invalid
   shelves with the reason on the card. Collapsing them would turn "can't read this" into
