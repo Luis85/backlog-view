@@ -242,9 +242,11 @@ in the root `CLAUDE.md` because it spans every layer.
 - Context rows on the roadmap: never counted, never shelved (the shelf is a statement
   about results), never a source of vocabulary — a context value places into a bucket
   that already exists but never mints one — and never placed on the timeline by its own
-  dates (its span, once spans roll up, is what its visible results give it). What has no
-  place stands in `RoadmapModel.context`, rendered beside the shelf apart from its
-  count. The invariant the tests state from the rule: placed plus shelved equals the
+  dates. Spans now roll up, and that changed nothing here: `deriveBars` routes an
+  `outsideFilter` row straight to `RoadmapModel.context` before any span is computed for
+  it, so a context parent draws no inferred bar — the criterion scoping one to its
+  visible results is specified and unbuilt. What has no place stands in
+  `RoadmapModel.context`, rendered beside the shelf apart from its count. The invariant the tests state from the rule: placed plus shelved equals the
   visible result rows, on either axis.
 - Bucket order inside a bucket is the Base's own sort (`entryIndex`), the board's
   derived-order rule; the shelf and the timeline keep tree order — rows arrive from
