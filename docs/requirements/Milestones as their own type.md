@@ -2,14 +2,16 @@
 type: PBI
 parent: "[[Milestones]]"
 order: 10
-status: Open
+status: Done
 priority: P2
 created: 2026-08-02
+closed: 2026-08-02
 source: user request
 files:
   - src/domain/settings.ts
   - src/domain/itemTypes.ts
   - src/domain/model.ts
+  - test/domain/milestones.test.ts
   - src/domain/viewOptions.ts
   - src/domain/roadmap.ts
   - src/domain/writePlan.ts
@@ -241,91 +243,93 @@ date.
 
 ## Where it lives
 
-Nothing is built yet. The vocabulary is `EXTRA_TYPES` and `ALL_TYPES` in
-`src/domain/settings.ts`, where `DEFAULT_TYPE_SUBFOLDERS` gains the folder and
-`typeFolderKey` generates the per-view option declared in `src/domain/viewOptions.ts`.
-**A milestone is not an extra type, and must not be put in `EXTRA_TYPES`.** That list has
-a precise meaning this register already states and ships ([[Types beside the ladder]]): a
-declared type pinned at `EXTRA_TYPE_RANK`, whose children are Tasks wherever it hangs, and
-which hangs from an Epic, a Feature or a PBI. A milestone is the opposite on all three
-counts. Adding the name there would not extend that contract, it would falsify it — and
-`isExtraType` would start meaning two things at four call sites.
+`MARKER_TYPES = ['Milestone']` in `src/domain/settings.ts`, beside `LEVELS` and
+`EXTRA_TYPES` rather than inside either — a declared type is not an extra type by adding
+its name to the wrong list, and `MARKER_TYPES` is the third category this note asked for
+rather than a widened `EXTRA_TYPES`. `ALL_TYPES` is `[...LEVELS, ...EXTRA_TYPES,
+...MARKER_TYPES]`, the union that admits the name to `hierarchyOnly`, accepts it as a
+`focusTarget` and offers it a folder without any of those rules learning a special case.
+`DEFAULT_TYPE_SUBFOLDERS` gains `milestone: 'milestones'`, and `typeFolderKey` picks it up
+for free because it already generates one option per name in `ALL_TYPES`
+(`src/domain/viewOptions.ts` needed no change at all — it was already generic over the
+vocabulary).
 
-So the vocabulary gains a **third category** beside the ladder and the extra types: a
-declared **marker**, which occupies no rung, holds nothing, and hangs from nothing.
-`ALL_TYPES` is the union of all three, which is what admits the name to `hierarchyOnly`,
-accepts it as a `focusTarget` and offers it a folder without any of those rules learning a
-special case.
+`src/domain/itemTypes.ts` gained the predicate the note said it would need:
+`isMarkerType(typeName)`, matched case-insensitively like `isExtraType`, and deliberately a
+**second** predicate rather than a widened one — the two answer opposite questions about
+rank, children and parents, and the four sites that already asked `isExtraType` mean the
+pinned-rank container specifically. `LadderPosition` gained a `typeName` field, because a
+marker has no rung and therefore no position that could tell it apart from an ordinary item
+at the same effective level — the name on the note is the only thing that can. And
+`childTypeChoices` narrows in both directions at once: called with a marker parent it
+returns `[]` (no rung below it, no extra type beside it), and called with no parent it
+returns the ladder's top plus every name in `MARKER_TYPES` — a milestone hangs from
+nothing, and offering it only under a real parent would leave no way to create the case
+this whole feature is about.
 
-Two things the union does *not* carry on its own, and both are places that enumerate the
-categories by hand rather than reading the union. The first is the autoType cascade,
-`computeTypeChanges` in `src/domain/writePlan.ts`, which names `isExtraType` **twice** and
-needs the marker at both:
+The autoType cascade needed one boundary, not two. `computeTypeChanges` in
+`src/domain/writePlan.ts` declares a single `stopsAt(item)` predicate —
+`item.outsideFilter || isMarkerType(item.typeName)` — applied in exactly two places: as an
+early return on the **dragged** item (a marker dropped anywhere keeps its type, and so does
+its whole subtree, because nothing beneath a rankless item can be ranked from it), and as
+the walk guard inside the descent (`if (stopsAt(child)) continue`), so a marker hand-nested
+inside a moved subtree stops the branch under it exactly as an `outsideFilter` row already
+does. There is no separate `isDeclaredNonRung` — the brief predicted one, and the shipped
+shape is one early-return predicate covering both the dragged-item exemption and the
+branch stop, because the two needed the same answer for the same reason. It pointedly does
+not reach the ladder: `Epic`, `Feature`, `PBI` and `Task` are declared *as* rungs and must
+keep being retyped by position, which is the whole of [[Assigning type on a move]].
 
-- The dragged item is exempted from retyping while `isExtraType(dragged.typeName)`. That
-  exemption widens to the declared **non-rung** types — the extra types and the markers —
-  and pointedly not to the ladder itself: `Epic`, `Feature`, `PBI` and `Task` must keep
-  being retyped by position, which is the whole of [[Assigning type on a move]]. "Declared
-  pins" is a rule about names that occupy no rung; a rung's name is declared *as* that
-  rung.
-- `rankOf` gives every node in the moved subtree the rung it carries on from, and today a
-  name it does not recognise takes the positional one. A marker has no rung to descend
-  from, so the walk **stops** at it: the milestone is not retyped (it has no `levelIndex`,
-  as the ladder already treats an unrecognised type in `computeLevel`) and neither is
-  anything hand-nested beneath it, rather than that subtree being renumbered from a rank
-  the marker does not have. This is the failure the existing comment there describes for
-  extra types — the item left alone, its children silently corrupted — reached by the new
-  name, and it needs the same explicit boundary. `outsideFilter` is the precedent for the
-  shape: where the cascade cannot say what a rung is, it stops rather than guesses.
+Focus needed one change: `renderFocusPicker` in `src/view/render/toolbar.ts` now builds its
+menu by iterating `ALL_TYPES` directly, one `for` loop over the whole vocabulary rather than
+`LEVELS` then `EXTRA_TYPES` by hand — so a saved view can hold any declared name and a user
+can always pick it, with no third list to keep in step. `collectFocusRoots` needed nothing:
+it already never lists a rungless name as a root for a *level*, and still finds one when the
+focus target is the name itself.
 
-The second is focus. `collectFocusRoots` needs nothing — it never lists a rungless name as
-a root for a *level*, and still finds it when the focus target is the name itself — but
-being *acceptable* as a focus is not being *offerable*: `renderFocusPicker` in
-`src/view/render/toolbar.ts` builds its menu from `LEVELS` and then `EXTRA_TYPES`, so a
-name in neither list is one a user cannot pick, however well the model would honour it.
-The picker enumerates the third category too, and the test asserting its exact contents
-(`test/view/rendering.test.ts`) names eight entries rather than seven.
+Rollup exclusion is one line in `assignAll` (`src/domain/model.ts`), beside the context-row
+skip it resembles: `const self = child.outsideFilter || isMarkerType(child.typeName) ? 0 :
+1;` — stated once and read by every quantity the walk gathers from that point on, so it
+holds for the progress count, the done-subtree state and the date evidence alike without a
+second exclusion at any of their call sites. [[Rollups and hiding finished work]] and
+[[Spans roll up the tree]] both name it as the second exception to "a rollup counts every
+descendant the Base returned," the first being the context row.
 
-What genuinely is new is two things. `childTypeChoices` in `src/domain/itemTypes.ts` has
-to offer the name at the top level and nothing beneath it — the inverse of the rule it
-applies to extra types today. And rollup exclusion belongs to `assignAll` in
-`src/domain/model.ts`, beside the context-row skip it resembles: it is the **second**
-exception to "a rollup counts every descendant the Base returned", and
-[[Rollups and hiding finished work]] names it as such. That exception is stated once and
-holds for *every* quantity that walk gathers, which is the reason to put it there rather
-than at a call site: the date evidence [[Spans roll up the tree]] adds to the same walk is
-gathered from every result descendant with only the context-row exclusion, so a marker not
-named there would extend a dateless ancestor's inferred bar with a date belonging to no
-work — the same walk, the same skip, one more quantity.
-The diamond itself already exists and needs a second way to be true: `barGeometry` in
-`src/domain/timeline.ts` and `barClasses` in `src/view/render/timeline.ts` derive it from
-equal stated ends today. Reaching them at all is `deriveBars` in `src/domain/roadmap.ts`,
-which is where a milestone must be reduced to its target point — it shelves a reversed
-span before any rendering runs, so a milestone carrying a stale start later than its
-target never gets as far as the geometry that would ignore it. Creation and filing are
-`src/view/interactions/create.ts`. The write side of the date is
-`src/view/interactions/plan.ts`, where `scheduleFields` offers every configured end and
-`validateSchedule` applies the span rule to whatever it finds — both of which a milestone
-has to narrow rather than inherit.
+The point reduction lives in `src/domain/roadmap.ts`: `placeMarker(item, roadmap)` reads
+the same target property a bar's end is read from, the same tolerant civil way, shelves an
+absent or unreadable target exactly as a span end does, and otherwise pushes a bar whose
+`span` is `{ start: target, target }` — the equal pair `barGeometry` already draws as a
+diamond, reached by the type rather than by a coincidence of two dates agreeing. `deriveBars`
+calls it **before** the ordinary span rules (unreadable / reversed / inferred) ever run
+against a milestone, which is what lets a stale start later than the target still draw as
+the point it is instead of shelving as a reversed span — the rendering seam that reduction
+was written to avoid needing.
 
-`src/view/interactions/menu.ts` withholds **two** entries, and the second is the one the
-narrowing above creates. `New <child>` disappears with the row's add button, as 4a says.
-And `addScheduleItems` is reached whenever `hasDateAxis` holds — which is either date key,
-not the target — so on a start-only vault it would offer a milestone a Schedule entry whose
-field list, narrowed to the target alone, is empty. The entry is gated on the target key
-for a milestone: a control that opens onto nothing is the failure 4a and the context-row
-rule both answer by removing the control, not by opening it and apologising.
+`src/view/interactions/plan.ts` narrows per **type**, not per control, exactly as specified:
+`placementEnds(item)` returns `['target']` for a marker and both ends otherwise, and
+`scheduleFields`, `validateSchedule`, `carriesDates` and `unschedule` all read it rather than
+each re-deciding which ends exist. `canSchedule(settings, item)` answers whether any of
+`placementEnds`' fields has a configured key at all — the entry is **withheld**, not opened
+empty, on a milestone in a start-only vault, because there is no legal batch left for it to
+write. `src/view/interactions/menu.ts` gates `addScheduleItems` on `canSchedule` rather than
+`hasDateAxis` for exactly that reason: the two agree for ordinary work and diverge for a
+milestone whose only writable end is the target.
 
-Two seams in `src/view/render/rows.ts` are easy to miss and both fail loudly rather than
-quietly, which is the argument for naming them here. `EXTRA_TYPE_STYLE` carries the icon
-and badge colour for every declared non-rung type and deliberately has **no** fallback, so
-a seventh name absent from it takes the unknown-type look and breaks the test that asserts
-the table covers the vocabulary; the colour itself is `styles.css`, beside the other badge
-classes. And `renderRowTrailing` renders the add button unconditionally, labelling it from
-the first of the type choices — with none, that label is built from nothing. Driven in
+`src/view/render/rows.ts` carries the badge table as `NON_RUNG_STYLE` (the brief predicted
+`EXTRA_TYPE_STYLE`; it ships as the more accurate name, since a marker is not an extra
+type) — `{ icon: 'diamond', badge: 'pbl-lvl-milestone' }` beside `issue` and `bug`,
+deliberately with no fallback, so the badge is the one seam a missing name breaks loudly.
+The colour is `.pbl-lvl-milestone { --color-cyan-rgb }` in `styles.css`, beside the other
+badge classes — **cyan**, not purple: purple is already `.pbl-lvl-1` (Feature).
+`renderRowTrailing` withholds the row's add button with `if (childTypes.length === 0)
+return;` rather than building a label from the first of no choices, and `New <child>`
+disappears from the context menu with it, by having nothing to loop over.
+
+Driven in `test/domain/milestones.test.ts` — the marker's own rollup and roadmap-placement
+cases, split out of `model.test.ts` and `roadmap.test.ts` by subject — beside
 `test/domain/itemTypes.test.ts`, `test/domain/settings.test.ts`,
-`test/domain/model.test.ts`, `test/domain/roadmap.test.ts`,
-`test/domain/writePlan.test.ts` — beside the cascade cases that already prove a rung's name
-*is* retyped by position, which is what the widened exemption must not undo —
-`test/view/rendering.test.ts`, `test/view/creation.test.ts`, `test/view/menu.test.ts`,
-`test/view/plan.test.ts` and `test/view/roadmapFrame.test.ts`.
+`test/domain/writePlan.test.ts` (the cascade cases proving a rung's name *is* still retyped
+by position, which the `stopsAt` boundary must not undo), `test/view/rendering.test.ts`,
+`test/view/menu.test.ts`, `test/view/plan.test.ts` and `test/view/toolbar.test.ts`. The
+diamond's own geometry and the line drawn from it belong to
+[[A milestone line across the plan]].

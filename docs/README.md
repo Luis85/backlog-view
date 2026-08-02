@@ -112,6 +112,10 @@ built yet, and what it asks for applies to the board as much as to the tree.
 types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
 Epic, a Feature or a PBI alike.
 
+`Milestone` is neither a rung nor a container: it hangs from nothing, holds nothing, and
+counts for nothing. It states a date rather than work, so it never enters a rollup — a
+number reporting progress must only ever count work — and it files into `milestones/`.
+
 ## The hierarchy is the point
 
 This register is the plugin's own schema, so a wrong parent here is a bug in the example.
@@ -124,6 +128,7 @@ Every pair holds:
 | `PBI` | `Feature` | `Task`, `Issue`, `Bug` |
 | `Task` | `PBI`, `Issue`, `Bug` | *(nothing)* |
 | `Issue` / `Bug` | `Epic`, `Feature` or `PBI` | `Task` |
+| `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
 
 The plugin does not *enforce* this — the rules decide what is offered, never what is
 refused — which is exactly why the register has to hold to it by hand.
@@ -159,16 +164,20 @@ can run is worse than none, because it invites trust it has not earned:
    whole `**As** … **I want** … **so that** …` opening, not just its first word; and the four
    table fields as **rows of the table**, parsed inside the block it occupies — ordering
    says where a marker sits, never that it is a row of anything. And **every** extension
-   bullet is labelled `**Na — `, in step order, **naming a step the main flow actually
-   has**. Validating only the bullets that already look like labels would let a mistyped
-   one vanish and leave the rest looking well ordered; validating only shape and order
-   would let `**99a — ` depart from nowhere.
+   bullet is labelled `**Na — `, **naming a step the main flow actually has**. Validating
+   only the bullets that already look like labels would let a mistyped one vanish; not
+   asking which step it departs from would let `**99a — ` depart from nowhere. The
+   bullets' **order on the page is deliberately not checked** — it is the one property
+   here a reader fixes by reading, and the two rules above are what stop a label from
+   meaning nothing.
 6. Every ADR — meaning **every note under `adrs/` except the index**, found by where it
    lives rather than by whether its name looks right, so a malformed filename is *reported*
    instead of quietly opting out of the checks below. Frontmatter complete, number matching
-   its filename, unique, no gaps in the
-   sequence, a known status and area, relative links resolving, and every record listed in
-   the ADR index. `supersedes` and `superseded-by` must name a record that **exists**, and
+   its filename, unique, a known status and area, relative links resolving, and every
+   record listed in the ADR index. **Gaps in the numbering are not an error** — a reserved
+   or abandoned number harms nothing, and the failure it was standing in for (a record
+   something still points at going missing) is caught properly by the supersede checks
+   below. `supersedes` and `superseded-by` must name a record that **exists**, and
    both ends must agree — checked **from both directions**, since a chain half-declared
    from either side rots the same way: the predecessor goes on reading as current. An ADR
    naming a successor must also carry the `Superseded` status, which is that same failure
@@ -189,16 +198,23 @@ can run is worse than none, because it invites trust it has not earned:
    `## Where it lives` — passing every rule above, because "is it there" and "is it in
    order" are each satisfied twice over. The two halves then disagreed about what the
    feature guarantees, which is what a document that says a thing twice eventually does.
-7. Every module in `src/` and every file under `test/` — helpers included — is named by at
-   least one note, **as a whole path**. This is the check that finds *missing* notes rather
-   than wrong ones, and matching by substring let a mistyped `src/main.tsx` stand in for the
-   `src/main.ts` it misspells while the reference check parsed the prefix and found the real
-   file: one typo, passing twice.
+7. Every module in `src/` is named by at least one note, **as a whole path**. This is the
+   check that finds *missing* notes rather than wrong ones, and matching by substring let a
+   mistyped `src/main.tsx` stand in for the `src/main.ts` it misspells while the reference
+   check parsed the prefix and found the real file: one typo, passing twice.
+
+   **`test/` is deliberately not covered.** It was, and it paid for itself in friction
+   rather than defects: what the rule actually asserts is that a path token appears
+   somewhere under `docs/` — satisfiable by mentioning the file and describing nothing — so
+   every new test file cost a register edit that guaranteed no reader anything. A module
+   is different: the architecture table names one per concern, so a module nothing
+   describes is a real gap. The suite's shape is documented where it belongs, in
+   [`test/CLAUDE.md`](../test/CLAUDE.md) and in the task notes that split it.
 
 **One check lives elsewhere, on purpose.** That every **view-option key** and **command id**
 is named by a *requirement* is verified in `test/docs/surfaces.test.ts`, because it needs to
 **import** the modules and read what they actually produce: `getViewOptions()` for the
-keys — the six generated per type included — and `onload()` for the commands it registers,
+keys — the ones generated per type included — and `onload()` for the commands it registers,
 so a second one is discovered rather than remembered. Teaching this script to learn them instead meant regex-scanning
 TypeScript, and ten review rounds found ten ways that can be fooled. A script over markdown
 checks markdown; a test that can load the module asks the module. A record naming a surface
@@ -380,8 +396,8 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
 
   | Field | On | Holds |
   | --- | --- | --- |
-  | `type` | every backlog note | One of the six names. ADRs carry none |
-  | `parent` | everything but an Epic | A wikilink, `"[[Note name]]"`, quoted so YAML keeps it |
+  | `type` | every backlog note | One of the vocabulary's fixed names. ADRs carry none |
+  | `parent` | everything but a root — an `Epic` by position, a `Milestone` by nature | A wikilink, `"[[Note name]]"`, quoted so YAML keeps it |
   | `order` | every backlog note | The rank among siblings. Unique within a group — the register must not demonstrate the one ranking limitation the plugin has |
   | `status` | every backlog note | `Open`, `Active` or `Done` |
   | `priority` | Tasks, Issues, Bugs | `P1`–`P3`. Absent means nobody has judged it |

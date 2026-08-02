@@ -2,12 +2,12 @@
  * Synthetic drag events for pragmatic-drag-and-drop under jsdom. The element
  * adapter listens for the browser's native drag events; jsdom has no DragEvent or
  * DataTransfer, so these build MouseEvents carrying the minimum DataTransfer
- * surface the adapter touches — the same substitution the tree's drag tests make,
- * proven against the adapter by `test/view/pragmaticSpike.test.ts`.
+ * surface the adapter touches — the same substitution the tree's drag tests make.
+ * `cardDrag` below is the only caller; nothing outside this file needs the pieces.
  */
 import { vi } from 'vitest';
 
-export interface FakeDataTransfer {
+interface FakeDataTransfer {
 	setData: (type: string, value: string) => void;
 	getData: (type: string) => string;
 	clearData: () => void;
@@ -19,7 +19,7 @@ export interface FakeDataTransfer {
 	dropEffect: string;
 }
 
-export function fakeDataTransfer(): FakeDataTransfer {
+function fakeDataTransfer(): FakeDataTransfer {
 	const store = new Map<string, string>();
 	return {
 		setData: (type: string, value: string) => void store.set(type, value),
@@ -36,7 +36,7 @@ export function fakeDataTransfer(): FakeDataTransfer {
 	};
 }
 
-export function dragEvent(type: string, dataTransfer: FakeDataTransfer, init: MouseEventInit = {}): MouseEvent {
+function dragEvent(type: string, dataTransfer: FakeDataTransfer, init: MouseEventInit = {}): MouseEvent {
 	const evt = new MouseEvent(type, { bubbles: true, cancelable: true, ...init });
 	Object.defineProperty(evt, 'dataTransfer', { value: dataTransfer });
 	return evt;

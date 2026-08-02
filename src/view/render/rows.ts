@@ -19,15 +19,17 @@ import {
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
 /**
- * Icon and badge colour per extra type, keyed lowercase. The vocabulary is fixed, so this
- * covers ALL of it — there is no fallback for a declared type, because there is no declared
- * type this file has not been told about. A test renders one of each and asserts every
- * badge got an icon and a colour the stylesheet defines, which is what makes that safe to
- * rely on rather than something to remember.
+ * Icon and badge colour per declared NON-RUNG type — the extra types and the markers,
+ * keyed lowercase. The vocabulary is fixed, so this covers ALL of it: there is no
+ * fallback for a declared type, because there is no declared type this file has not been
+ * told about. A test renders one of each and asserts every badge got an icon and a colour
+ * the stylesheet defines, which is what makes that safe to rely on rather than something
+ * to remember — and is the reason a seventh name could not ship here unnoticed.
  */
-const EXTRA_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
+const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
+	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
 };
 
 /** Render the tree content (or the empty state) into the tree element. */
@@ -225,12 +227,13 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	const badgeText = displayType(item);
 	if (!badgeText) return;
 	const badge = row.createSpan({ cls: 'pbl-badge' });
-	// A declared extra type is a first-class type, so it gets a badge like a level's: its
-	// own icon and colour, decided here in one place rather than by two chains that have
-	// to agree. Anything outside the six keeps its name and takes the bare-text treatment,
-	// which is the honest look for a type this view knows nothing about — it is carried
-	// through the ladder, not styled as though it were understood.
-	const style = byTypeName(EXTRA_TYPE_STYLE, item.typeName);
+	// A declared extra type or marker is a first-class type, so it gets a badge like a
+	// level's: its own icon and colour, decided here in one place rather than by two
+	// chains that have to agree. Anything outside the declared vocabulary keeps its name
+	// and takes the bare-text treatment, which is the honest look for a type this view
+	// knows nothing about — it is carried through the ladder, not styled as though it were
+	// understood.
+	const style = byTypeName(NON_RUNG_STYLE, item.typeName);
 	if (item.levelIndex >= 0) {
 		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
 		badge.addClass(`pbl-lvl-${item.levelIndex}`);
@@ -260,6 +263,11 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 /** The fixed trailing columns, then the row's own add button. */
 function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem, childTypes: string[]): void {
 	renderRowColumns(ctx, row, item);
+
+	// A row that can hold nothing gets no button, rather than one labelled from the first
+	// of no choices — `New undefined`, opening a modal with no type to pick. The context
+	// menu's `New <child>` disappears with it, by having nothing to loop over.
+	if (childTypes.length === 0) return;
 
 	// A native button so assistive tech can activate it, with no Tab stop — the same
 	// bargain the state chip makes: the tree keeps its single-tab-stop model, and the

@@ -233,6 +233,14 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a parentless milestone, a root by nature rather than by position', async () => {
+		// A marker is a root by NATURE, where an Epic is a root by position on the ladder.
+		const files = baseRegister();
+		files['docs/milestones/Ship 1.0.md'] = note('Milestone', 60, null, '# Ship 1.0\n\nThe date.\n');
+
+		await expectAccepted(files);
+	});
+
 	it('accepts the record kinds and the pairs the corpus does not use', async () => {
 		// Issue and Bug attach to an Epic, a Feature or a PBI alike, and hold Tasks.
 		const files = baseRegister();
@@ -277,6 +285,45 @@ describe('the gate accepts valid documents', () => {
 		files['docs/adrs/0002-the-second-decision.md'] = adr(2, 'the-second-decision', { supersedes: '1' });
 		files['docs/adrs/README.md'] =
 			'# ADRs\n\n- [0001](0001-the-first-decision.md)\n- [0002](0002-the-second-decision.md)\n';
+
+		await expectAccepted(files);
+	});
+
+	// The three below are legal because a rule was REMOVED, which is the one way a legal
+	// form arrives without anybody writing it. Each pins a deliberate cut so re-adding the
+	// rule goes red here rather than quietly costing a contributor an edit — the same
+	// service this file does for forms the register merely happens not to use.
+
+	it('accepts a gap in the ADR numbering', async () => {
+		// A reserved or abandoned number harms nothing. The failure the gap rule read as —
+		// a record something still points at going missing — is caught properly by the
+		// supersede checks, which resolve their targets against the numbers that exist.
+		const files = baseRegister();
+		files['docs/adrs/0003-the-third-decision.md'] = adr(3, 'the-third-decision');
+		files['docs/adrs/README.md'] += '- [0003](0003-the-third-decision.md)\n';
+
+		await expectAccepted(files);
+	});
+
+	it('accepts extensions written out of step order', async () => {
+		// Every bullet is still labelled and still departs from a step the main flow has —
+		// those two are what stop a label meaning nothing. Where they sit on the page is
+		// the one property here a reader fixes by reading.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			extensions: '- **2b — the second** — because.\n- **2a — the first** — because.',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a test file no note names', async () => {
+		// `src/` still has to be named: the architecture table claims one note per concern,
+		// so a module nothing describes is a real gap. A test file is not — the rule only
+		// ever asserted that a path token appears somewhere under `docs/`, which is
+		// satisfiable by mentioning the file and describing nothing.
+		const files = baseRegister();
+		files['test/unnamed.test.ts'] = 'export const spec = 1;\n';
 
 		await expectAccepted(files);
 	});

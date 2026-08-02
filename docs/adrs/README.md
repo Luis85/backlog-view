@@ -79,7 +79,7 @@ record itself changes. Open a record for its current status, area and any
 - [0010 — Load excluded ancestors as context rows](0010-load-excluded-ancestors-as-context-rows.md)
 - [0011 — Keep collapse state out of the `.base` file](0011-keep-collapse-state-out-of-the-base-file.md)
 - [0012 — Make the type vocabulary configurable](0012-make-the-type-vocabulary-configurable.md)
-- [0013 — Fix the type vocabulary at six names](0013-fix-the-type-vocabulary-at-six-names.md)
+- [0013 — Fix the type vocabulary at seven names](0013-fix-the-type-vocabulary-at-six-names.md)
 - [0014 — Rank extra types by type, not by position](0014-rank-extra-types-by-type-not-by-position.md)
 - [0015 — Undo by captured inverses, not snapshots](0015-undo-by-captured-inverses.md)
 - [0016 — Break compatibility freely before 1.0](0016-break-compatibility-freely-before-1-0.md)

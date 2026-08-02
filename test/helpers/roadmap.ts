@@ -75,3 +75,20 @@ export function barOf(row: HTMLElement): HTMLElement {
 	if (!bar) throw new Error('bar not rendered');
 	return bar;
 }
+
+/** The timeline row for a given title, or null when it is not on the grid at all. */
+export function rowFor(containerEl: HTMLElement, title: string): HTMLElement | null {
+	return timelineRows(containerEl).find((r) => r.querySelector('.pbl-card-title')?.textContent === title) ?? null;
+}
+
+/** The bar inside the timeline row for a given title. */
+export function barFor(containerEl: HTMLElement, title: string): HTMLElement {
+	const row = rowFor(containerEl, title);
+	if (!row) throw new Error(`row not found: ${title}`);
+	return barOf(row);
+}
+
+/** Every milestone line's label text, in the order the header draws them. */
+export function labelTexts(containerEl: HTMLElement): string[] {
+	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label')).map((l) => l.textContent ?? '');
+}

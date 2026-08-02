@@ -4,6 +4,7 @@ import { BasesViewConfig } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
+import { ALL_TYPES, typeFolderKey } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -115,11 +116,14 @@ describe('every user-facing surface is specified', () => {
 	});
 
 	it('includes the keys generated per type, which no scan of the source could see', () => {
-		// `key: typeFolderKey(type)` produces one persisted key per type name. Calling the
-		// schema is what makes them ordinary values here rather than something to derive.
+		// `key: typeFolderKey(type)` produces one persisted key per type name. Reading the
+		// VOCABULARY rather than a copy of it is what makes a seventh name covered by
+		// arriving rather than by being remembered — the discipline `NON_RUNG_STYLE`
+		// already has, and the reason a `Milestone` could otherwise ship uncovered.
 		const keys = optionKeys();
-		for (const type of ['epic', 'feature', 'pbi', 'task', 'issue', 'bug']) {
-			expect(keys).toContain(`typeFolder.${type}`);
+		expect(ALL_TYPES.length).toBeGreaterThan(0);
+		for (const type of ALL_TYPES) {
+			expect(keys).toContain(typeFolderKey(type));
 		}
 	});
 

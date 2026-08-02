@@ -1,8 +1,8 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
-import { CivilDate, readDate } from './noteFields';
+import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex } from './itemTypes';
+import { CivilDate, readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import {
 	BacklogSettings,
@@ -176,6 +176,29 @@ export function computeTypeChanges(
 	if (!parentChanged || !settings.autoType) return { cascade };
 
 	/**
+	 * Where the cascade STOPS. A marker occupies no rung, so nothing beneath one can be
+	 * ranked from it, and the marker itself has no position to be retyped by — the same
+	 * shape, and the same reason, as a row the Base excluded: where this walk cannot say
+	 * what a rung is, it stops rather than guesses. Stopping at the dragged item covers
+	 * both halves at once — the marker keeps its type, and so does anything hand-nested
+	 * beneath it — which is why `rankOf` below never meets one and stays a question about
+	 * extra types alone.
+	 *
+	 * It must NOT reach the ladder: `Epic`, `Feature`, `PBI` and `Task` are declared *as
+	 * rungs*, and exempting them would undo `Assigning type on a move` wholesale.
+	 */
+	const stopsAt = (item: BacklogItem): boolean => item.outsideFilter || isMarkerType(item.typeName);
+	if (stopsAt(dragged)) return { cascade };
+	// The same rule's third position: a marker as the DESTINATION hands out no rung
+	// either. `childLevelIndex` cannot tell "no rung" from "top level" — a marker's
+	// `effectiveLevelIndex` falls through the unrecognised-type branch and reads 0,
+	// same as no parent at all — so a walk that did not stop here would retype the
+	// dragged item and its whole subtree by a rank the marker does not have. This is
+	// the dragged item and every node of the walk applied to the one input `stopsAt`
+	// was never asked about: `parent` itself.
+	if (parent !== null && isMarkerType(parent.typeName)) return { cascade };
+
+	/**
 	 * The rung an item occupies after the move. A declared extra type carries its own,
 	 * pinned — that is what makes a Bug's children Tasks under an Epic as under a PBI —
 	 * and everything else takes the rung its position gives it.
@@ -209,9 +232,10 @@ export function computeTypeChanges(
 		for (const child of node.children) {
 			// The cascade stops at a note the Base excluded — a filter can leave one
 			// *between* two results (Epic and PBI returned, the Feature between them
-			// not). We may not retype it, and retyping only the levels below it would
-			// leave a worse ladder than leaving that branch as it stands.
-			if (child.outsideFilter) continue;
+			// not) — and at a marker, which has no rung for the branch below to descend
+			// from. We may not retype either, and retyping only the levels below one
+			// would leave a worse ladder than leaving that branch as it stands.
+			if (stopsAt(child)) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
 				const targetLevel = LEVELS[childLevel];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
@@ -247,9 +271,7 @@ export function computeStateWrites(
 	settings: BacklogSettings,
 	today: string,
 ): ItemWrite[] {
-	const current = item.stateValue;
-	const same = state === null ? current === null : current !== null && current.toLowerCase() === state.toLowerCase();
-	if (same) return [];
+	if (sameValue(item.stateValue, state)) return [];
 	const write: ItemWrite = state === null ? { file: item.file, removeStateKey: true } : { file: item.file, state };
 	return [{ ...write, ...stampWrites(state, settings, today) }];
 }
@@ -288,8 +310,7 @@ export function computeHorizonWrites(item: BacklogItem, value: string | null): I
 		// a removal write there would consume an undo slot for a change nobody made.
 		return item.ownKeys.horizon ? [{ file: item.file, axis: { horizon: null } }] : [];
 	}
-	const current = item.horizon.value;
-	if (current !== null && current.toLowerCase() === value.toLowerCase()) return [];
+	if (sameValue(item.horizon.value, value)) return [];
 	return [{ file: item.file, axis: { horizon: value } }];
 }
 

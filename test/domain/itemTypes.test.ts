@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, isExtraType } from '../../src/domain/itemTypes';
-import { ALL_TYPES, defaultSettings, defaultTypeFolder, LEVELS, resolveSettings } from '../../src/domain/settings';
+import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, isExtraType, isMarkerType } from '../../src/domain/itemTypes';
+import {
+	ALL_TYPES,
+	defaultSettings,
+	defaultTypeFolder,
+	EXTRA_TYPES,
+	LEVELS,
+	MARKER_TYPES,
+	resolveSettings,
+} from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -27,6 +35,9 @@ function fixture() {
 	// A Bug hanging straight off the Epic: three rungs from where a Task-holder "should" be.
 	vault.addFile('Bug.md', { frontmatter: { type: 'Bug', order: 20 }, parentLink: 'Epic' });
 	vault.addFile('Bugfix.md', { frontmatter: { type: 'Bugfix', order: 30 }, parentLink: 'Epic' });
+	vault.addFile('Issue.md', { frontmatter: { type: 'Issue', order: 25 }, parentLink: 'Epic' });
+	// A marker hangs from nothing — a root by nature, not by ladder position.
+	vault.addFile('Milestone.md', { frontmatter: { type: 'Milestone', order: 40 } });
 	const model = buildModel(vault.app, vault.entries(), settings);
 	const get = (title: string) => {
 		const item = model.items.find((i) => i.title === title);
@@ -101,18 +112,35 @@ describe('childTypeChoices', () => {
 	it('offers only the top level at the top level', () => {
 		// A Bug hangs from something; creating a parentless one would make an item whose
 		// own rule says it should have had a parent.
-		expect(childTypeChoices(null)).toEqual(['Epic']);
+		// CHANGED: the top level is the ladder's top *plus* the markers.
+		expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone']);
+	});
+
+	it('offers nothing under a marker — a point in time contains no work', () => {
+		const { get } = fixture();
+		// Absent, not empty: `renderRowTrailing` builds its label from the first of these,
+		// and `New undefined` on a modal with no types is what an empty list renders as.
+		expect(childTypeChoices(get('Milestone'))).toEqual([]);
+	});
+
+	it('still refuses to put a marker under anything', () => {
+		const { get } = fixture();
+		for (const parent of [...LEVELS, ...EXTRA_TYPES]) {
+			expect(childTypeChoices(get(parent))).not.toContain('Milestone');
+		}
 	});
 
 	it('offers the ladder then the extras for assignment by hand', () => {
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		// The marker joins as a third category, after the extras — ALL_TYPES is the
+		// whole vocabulary, not just the ladder and the pinned container.
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Milestone']);
 	});
 
 	it('is a fixed vocabulary, matched case-insensitively', () => {
 		// Not configurable on purpose: every level rule would otherwise have to hold for
 		// any list a user can type, and the reward was a rename.
 		expect(LEVELS).toEqual(['Epic', 'Feature', 'PBI', 'Task']);
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Milestone']);
 		expect(isExtraType('bug')).toBe(true);
 		expect(isExtraType('Bugfix')).toBe(false);
 		expect(isExtraType(null)).toBe(false);
@@ -199,5 +227,20 @@ describe('folders by type', () => {
 		expect(resolveSettings(fakeConfig({ homeFolder: '/Roadmap/' })).homeFolder).toBe('Roadmap');
 		// Cleared means "nothing configured", which sends creation back to inference.
 		expect(resolveSettings(fakeConfig({ homeFolder: '' })).homeFolder).toBe('');
+	});
+});
+
+describe('isMarkerType', () => {
+	it('recognises every declared marker, case-insensitively, and nothing else', () => {
+		for (const marker of MARKER_TYPES) {
+			expect(isMarkerType(marker)).toBe(true);
+			expect(isMarkerType(marker.toLowerCase())).toBe(true);
+		}
+		// The trap this whole design exists to avoid: a marker is not an extra type, and
+		// asking one predicate the other's question must stay a wrong answer.
+		for (const other of [...LEVELS, ...EXTRA_TYPES]) expect(isMarkerType(other)).toBe(false);
+		expect(isMarkerType('Spike')).toBe(false);
+		expect(isMarkerType(null)).toBe(false);
+		expect(MARKER_TYPES.some((m) => isExtraType(m))).toBe(false);
 	});
 });

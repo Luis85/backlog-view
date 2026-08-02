@@ -96,6 +96,7 @@ describe('quick filter', () => {
 
 		setFilterText(containerEl, 'zzz');
 		expect(containerEl.querySelector('.pbl-empty-filter')?.textContent).toContain('No items match "zzz"');
+		expect(containerEl.querySelector('.pbl-empty-filter-icon')).not.toBeNull();
 		expect(titlesOf(containerEl)).toEqual([]);
 
 		filterInput(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
