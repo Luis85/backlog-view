@@ -77,6 +77,4 @@ refuses nothing.
 Driven by `test/domain/settings.test.ts`, `test/domain/viewOptions.test.ts`,
 `test/domain/board.test.ts` and `test/view/board.test.ts`.
 
-The guarantee that a limit refuses nothing is driven by
-`test/view/columnAgreements.test.ts`, which puts the drop, the Alt+arrow and the menu
-each into a column already over its limit.
+`test/view/columnAgreements.test.ts` is where this use case's own checks live.

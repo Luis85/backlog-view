@@ -360,7 +360,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * Anchor a menu under its own element's rect — the keyboard path for a row or a
 	 * column stop, neither of which has a pointer to sit under. Falls back to the
 	 * viewport corner when there is no element to anchor to, and does nothing at all
-	 * when there is no menu.
+	 * when there is no menu. The fallback is a row's, not deliberately a column's too:
+	 * `colEls` and `board.columns` are built by the same `.map()` over the same array
+	 * (`renderBoard`), so an index that resolves a column always resolves an element,
+	 * and this branch stays unreachable from `showColumnMenuFor`.
 	 */
 	private showMenuBelow(menu: Menu | null, el: HTMLElement | null): void {
 		const rect = el?.getBoundingClientRect();

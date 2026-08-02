@@ -71,5 +71,5 @@ column carries its own policy (`src/domain/board.ts`); the header's affordance a
 
 Driven by `test/domain/viewOptions.test.ts` and `test/domain/board.test.ts`.
 
-The affordance, the menu and the keyboard path are driven by
+The affordance, its description and the column menu are driven by
 `test/view/columnAgreements.test.ts`.
