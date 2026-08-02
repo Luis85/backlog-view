@@ -46,10 +46,9 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		// Per axis, and absent rather than inert when one is not configured — the state
 		// chip's own rule.
 		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
-		// Per axis, and absent rather than inert when one is not configured — the state
-		// chip's own rule. `canSchedule` rather than `hasDateAxis`: the two agree for work
-		// and diverge for a milestone on a start-only vault, where the narrowed entry
-		// would open asking for nothing at all.
+		// `canSchedule` rather than `hasDateAxis`: the two agree for work and diverge for
+		// a milestone on a start-only vault, where the narrowed entry would open asking
+		// for nothing at all.
 		if (canSchedule(host.settings, item)) addScheduleItems(host, menu, item);
 		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	}

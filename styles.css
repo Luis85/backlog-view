@@ -1848,7 +1848,10 @@
 
 /* In the header band, so the name reads where the months do. Backed, because it sits
    over the month labels; truncating, because horizontal space is what a pane runs out
-   of first and the full name is one hover away. */
+   of first and the full name is one hover away — which needs the label to actually
+   receive the hover: the month cells underneath are presentational (the header is
+   aria-hidden, no click handler anywhere in it) and the bars live in a different row
+   entirely, so nothing below this label ever needed the pointer to pass through it. */
 .pbl-milestone-label {
 	position: absolute;
 	top: 0;
@@ -1861,7 +1864,6 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	pointer-events: none;
 }
 
 /* ----- the shelf: what the axis cannot place, visible and counted */

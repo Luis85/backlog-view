@@ -141,11 +141,16 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
-	// The row is the timeline's one selection stop, so it is where everything the marks
-	// show has to be readable: the name and the exact dates together. Nothing about a
-	// milestone may exist only under a hover, and a row past the window edge has no mark
-	// stating its date at all.
-	row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
+	// The row is the timeline's one selection stop, so a MARKER'S row is where the
+	// line and the diamond's facts have to be readable (criterion 4a: neither is
+	// focusable, so nothing about a milestone may exist only under a hover). An
+	// ordinary row is left to its content-derived name — badge, title, and the bar's
+	// own `aria-label` above, which the accessible-name computation already folds
+	// in — the same reason `createCard`'s outside marker uses `aria-description`
+	// rather than `aria-label`: an explicit label REPLACES that name instead of
+	// adding to it, and would cost every dated row its type word for a fact the bar
+	// already states.
+	if (isMarkerType(bar.item.typeName)) row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
 	wireCardActivation(ctx, row, bar.item);
 }
 
@@ -168,7 +173,11 @@ function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
 	// only the direction it lies past, in the same open-end vocabulary a clipped bar uses.
 	// The exact date is in the bar's tooltip and in the row's accessible name.
 	if (geometry.outside) {
-		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}`;
+		// Provenance must not be silently upgraded: an inferred span that lands wholly
+		// past the edge is still inferred, not a date the note stated, so the class
+		// that says so travels with it into this branch too.
+		const inferred = bar.inferredStart || bar.inferredEnd ? ' pbl-bar-inferred' : '';
+		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}${inferred}`;
 	}
 	let cls = 'pbl-bar';
 	if (geometry.milestone) cls += ' pbl-bar-milestone';

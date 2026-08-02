@@ -81,6 +81,22 @@ describe('the dated frame', () => {
 		expect(containerEl.querySelectorAll('.pbl-timeline-month').length).toBeGreaterThan(0);
 	});
 
+	it('leaves an ordinary row’s accessible name to its content — badge and title, not overridden', () => {
+		// The row-level `aria-label` override is a milestone's own affordance (criterion
+		// 4a of "A milestone line across the plan": neither its line nor its diamond is
+		// focusable, so its ROW is where the facts have to live). An ordinary dated row
+		// has no such gap — the bar beside it already carries the dates in its own
+		// `aria-label`, which the accessible-name computation folds into the row's
+		// content-derived name — so overriding it here would cost every dated row its
+		// type word for a fact the bar already states, the same reasoning `createCard`
+		// already applies (`aria-description`, never `aria-label`, for the outside marker).
+		const vault = new FakeVault();
+		vault.addFile('Span.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-09-15' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(rowFor(containerEl, 'Span')?.hasAttribute('aria-label')).toBe(false);
+	});
+
 	it('shelves the unreadable and the reversed with the reason on the card', () => {
 		const vault = new FakeVault();
 		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 10, start: 'soon' } });
@@ -167,6 +183,27 @@ describe('the dated frame', () => {
 		expect(epic.getAttribute('aria-label')).toBe('Target 2026-09-30, start not set — inferred from children');
 	});
 
+	it('keeps the inferred class on a bar that lands wholly outside the window', () => {
+		// Provenance must not be silently upgraded: an inferred span that clamps at the
+		// edge is still inferred, not a date the note stated, even though `barClasses`
+		// takes the `outside` branch rather than the ordinary one. Reachable without any
+		// milestone — an epic whose only dated descendant carries a typo'd far-future date
+		// gets an inferred span that lands wholly past the edge, and without the class it
+		// would draw as a *stated* direction mark instead.
+		const vault = new FakeVault();
+		vault.addFile('Near.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-05' } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Far child.md', {
+			frontmatter: { type: 'Feature', order: 10, due: '2200-01-01' },
+			parentLink: 'Epic',
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const bar = barFor(containerEl, 'Epic');
+		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
+		expect(bar.classList.contains('pbl-bar-inferred')).toBe(true);
+	});
+
 	it('an inferred equal pair renders as the milestone diamond too, not just a stated one', () => {
 		const vault = new FakeVault();
 		// The epic states nothing; its only child states an equal start and due.
@@ -221,6 +258,22 @@ describe('milestone lines', () => {
 		// Every line has a row: no milestone is visible only as a line.
 		expect(rowFor(containerEl, 'Ship 1.0')).not.toBeNull();
 		expect(labelTexts(containerEl)).toEqual(['Ship 1.0']);
+	});
+
+	it('carries the full name in the label’s tooltip — the truncated label can be hovered', () => {
+		// The label is CSS-truncated (`max-width: 140px`) and the full name is promised
+		// "one hover away", which only means something if the label can actually receive
+		// a hover — `pointer-events: none` would make it a dead spot no pointer ever
+		// reaches. jsdom does not run layout or hit-testing, so this checks the one thing
+		// it can: the tooltip data the hover is meant to surface is really there.
+		const vault = new FakeVault();
+		vault.addFile('Ship a very long milestone title that will not fit.md', {
+			frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const label = containerEl.querySelector<HTMLElement>('.pbl-milestone-label');
+		expect(label?.dataset.tooltip).toBe('Ship a very long milestone title that will not fit');
 	});
 
 	it('draws one line naming both when two milestones share a date', () => {

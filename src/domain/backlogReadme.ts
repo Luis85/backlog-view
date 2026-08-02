@@ -103,7 +103,7 @@ function typeSection(settings: BacklogSettings): string[] {
 			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
-			`${MARKER_TYPES.join(' and ')} ${MARKER_TYPES.length === 1 ? 'is' : 'are'} neither: a ` +
+			`${MARKER_TYPES.join(' and ')} is neither: a ` +
 			`marker hangs from nothing and holds nothing, and states a date rather than work.`,
 		'',
 		'| Type | Parent may be | Children may be |',

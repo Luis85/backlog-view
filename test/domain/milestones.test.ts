@@ -126,6 +126,25 @@ describe('a milestone draws as the point it is', () => {
 		expect(roadmap.shelf.find((s) => s.item.title === 'Ship 1.0')?.reason).toBeNull();
 	});
 
+	it('draws as a point when its start is unreadable and its target is not', () => {
+		// The discriminating case for the reduction: `placeMarker` never reads
+		// `plannedStart` at all, so an unreadable one is silently ignored exactly like a
+		// stale one is. Without the reduction, `deriveBars` would run the ordinary span
+		// rule that checks `start.invalid` FIRST (ahead of the target) and shelve this as
+		// 'Unreadable start date' — unlike the 'unreadable target' case below, which
+		// shelves under either implementation and so proves nothing about which one runs.
+		const roadmap = buildRoadmapFrom(
+			[note('Ship 1.0', { type: 'Milestone', start: 'whenever', due: '2026-12-01' })],
+			{ startKey: 'start', targetKey: 'due' },
+		);
+		expect(roadmap.shelf).toEqual([]);
+		expect(roadmap.bars).toHaveLength(1);
+		expect(roadmap.bars[0].span).toEqual({
+			start: { year: 2026, month: 12, day: 1 },
+			target: { year: 2026, month: 12, day: 1 },
+		});
+	});
+
 	it('shelves an unreadable target with the reason on its card', () => {
 		// A guessed date on a deadline is indistinguishable from a commitment nobody made.
 		const roadmap = buildRoadmapFrom([note('Ship 1.0', { type: 'Milestone', due: 'soon' })], { targetKey: 'due' });

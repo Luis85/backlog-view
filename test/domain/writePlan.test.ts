@@ -393,10 +393,33 @@ describe('computeTypeChanges', () => {
 		const vault = new FakeVault();
 		vault.addFile('An epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
-		vault.addFile('Prep.md', { frontmatter: { type: 'PBI' }, parentLink: 'Ship 1.0' });
+		// Typed Task, not PBI: the marker's own POSITIONAL rung (top level -> PBI, see
+		// `childSlot`) implies PBI too, so a PBI fixture would leave this assertion
+		// green even if `stopsAt` were never applied to the dragged item at all —
+		// the exemption needs to be visible in a write, not just in an absence.
+		vault.addFile('Prep.md', { frontmatter: { type: 'Task' }, parentLink: 'Ship 1.0' });
 		const model = buildModel(vault.app, vault.entries(), autoTyped);
 		const dragged = model.byPath.get('Ship 1.0.md') as BacklogItem;
 		const parent = model.byPath.get('An epic.md') as BacklogItem;
+
+		const { typeField, cascade } = computeTypeChanges(dragged, parent, autoTyped, true);
+		expect(typeField).toBeUndefined();
+		expect(cascade).toEqual([]);
+	});
+
+	it('hands out no rung to a PBI dropped onto a top-level marker as its new parent', () => {
+		// The same rule's third position — dragged item, destination parent, every
+		// node of the walk — and the one that hid: `childLevelIndex` reads a
+		// top-level marker's `effectiveLevelIndex` as 0, same as no parent at all, so
+		// without a check on `parent` itself this retypes the dragged PBI to the
+		// top-level ladder rung (Feature) and cascades its whole subtree from there.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI' } });
+		vault.addFile('A task.md', { frontmatter: { type: 'Task' }, parentLink: 'A story' });
+		const model = buildModel(vault.app, vault.entries(), autoTyped);
+		const dragged = model.byPath.get('A story.md') as BacklogItem;
+		const parent = model.byPath.get('Ship 1.0.md') as BacklogItem;
 
 		const { typeField, cascade } = computeTypeChanges(dragged, parent, autoTyped, true);
 		expect(typeField).toBeUndefined();

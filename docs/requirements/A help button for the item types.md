@@ -52,7 +52,7 @@ the surface every other section then lands in.
   answers `Task` for a Task parent and the row's **+** offers another Task. The entry says
   so; "holds nothing" would be the ladder read literally and would contradict the button
   beside it.
-- **3b — a seventh type is added later.** The section is generated from `ALL_TYPES`, so a
+- **3b — another type is added later.** The section is generated from `ALL_TYPES`, so a
   type without an explanation fails a test rather than shipping as a gap.
 - **4a — `Assign item type when moving` is on.** The rule is stated with its default (off)
   and its effect when enabled, so the section describes the view in front of the reader
@@ -69,7 +69,7 @@ the surface every other section then lands in.
 - A real `<button>` in the toolbar, sentence-case label, reachable by Tab like every other
   toolbar control, opening the manual with keyboard and mouse alike.
 - Every type in `ALL_TYPES` has an entry, enforced by a test that reads the vocabulary —
-  a seventh type cannot ship without its explanation.
+  a type added without an explanation cannot ship.
 - Each entry's "what can go under this" agrees with `childTypeChoices`, not with the
   ladder read literally: the clamp at the deepest rung means a Task offers a Task, and an
   entry saying otherwise would contradict the **+** button on the row beside it.

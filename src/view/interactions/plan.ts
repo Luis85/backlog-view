@@ -34,11 +34,11 @@ const BOTH_ENDS = ['start', 'target'] as const;
  * control out of date the moment a fourth path is added; a rule written per type is one
  * every new path inherits by asking.
  *
- * @expected-unused Nothing outside this file imports it yet — its outside callers are
- * the roadmap gestures above (specified, not yet built). Once one of them lands, this
- * tag goes stale and comes out with it.
+ * Module-private for now: nothing outside this file needs it yet — its outside callers
+ * are the roadmap gestures above (specified, not yet built). Export it when the first
+ * of those lands, the way `placeMarker` (`domain/roadmap.ts`) waits for its own.
  */
-export function placementEnds(item: BacklogItem): ('start' | 'target')[] {
+function placementEnds(item: BacklogItem): ('start' | 'target')[] {
 	return isMarkerType(item.typeName) ? ['target'] : [...BOTH_ENDS];
 }
 

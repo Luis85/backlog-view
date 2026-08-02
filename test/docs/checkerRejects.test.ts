@@ -99,7 +99,7 @@ describe('the backlog tree', () => {
 			(files) => {
 				files['docs/requirements/A slice.md'] = note('Feature', 10, null, '# A slice\n\n**Outcome** — it works.\n');
 			},
-			'Feature with no parent — only Epic or Milestone is a root',
+			'Feature with no parent — only Epic or Milestone can be a root',
 		],
 		[
 			// A marker holds nothing, so a child under one is exactly as wrong as a Task under
@@ -113,11 +113,11 @@ describe('the backlog tree', () => {
 			'Task under Milestone is not a legal pair',
 		],
 		[
-			'a PBI with no parent — only an Epic or a Milestone is a root',
+			'a PBI with no parent — only an Epic or a Milestone can be a root',
 			(files) => {
 				files['docs/requirements/Doing the thing.md'] = useCase({ parent: null });
 			},
-			'PBI with no parent — only Epic or Milestone is a root',
+			'PBI with no parent — only Epic or Milestone can be a root',
 		],
 		[
 			'a parent link naming a note that does not exist',

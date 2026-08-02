@@ -290,7 +290,7 @@ for (const [name, note] of notes) {
 	if (!LEGAL_CHILDREN[note.type]) fail(note.file, `unknown type "${note.type}"`);
 	if (note.parent === null) {
 		if (!ROOT_TYPES.has(note.type)) {
-			fail(note.file, `${note.type} with no parent — only ${[...ROOT_TYPES].join(" or ")} is a root`);
+			fail(note.file, `${note.type} with no parent — only ${[...ROOT_TYPES].join(" or ")} can be a root`);
 		}
 	} else if (!notes.has(note.parent)) {
 		fail(note.file, `parent [[${note.parent}]] does not exist`);

@@ -189,6 +189,14 @@ export function computeTypeChanges(
 	 */
 	const stopsAt = (item: BacklogItem): boolean => item.outsideFilter || isMarkerType(item.typeName);
 	if (stopsAt(dragged)) return { cascade };
+	// The same rule's third position: a marker as the DESTINATION hands out no rung
+	// either. `childLevelIndex` cannot tell "no rung" from "top level" — a marker's
+	// `effectiveLevelIndex` falls through the unrecognised-type branch and reads 0,
+	// same as no parent at all — so a walk that did not stop here would retype the
+	// dragged item and its whole subtree by a rank the marker does not have. This is
+	// the dragged item and every node of the walk applied to the one input `stopsAt`
+	// was never asked about: `parent` itself.
+	if (parent !== null && isMarkerType(parent.typeName)) return { cascade };
 
 	/**
 	 * The rung an item occupies after the move. A declared extra type carries its own,

@@ -23,6 +23,12 @@ unrun through every roadmap increment since. `docs/Product Backlog.base` now giv
 inferred bar to look at, next to ordinary stated bars on the same grid, which is the
 first chance to run this check at all.
 
+The `due`/`start` dates on `[[Drag from the shelf to schedule]]` and
+`[[Move and resize a bar]]` — both still `status: Open` — are FIXTURES planted so this
+check has something to look at, not commitments about when those PBIs will be built. The
+register's own rule is that every note states the evidence it rests on, and two invented
+dates on unbuilt work would otherwise read as promises nobody made.
+
 ## How to check
 
 Switch to the roadmap's dated axis.
