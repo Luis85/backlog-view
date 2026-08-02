@@ -96,7 +96,7 @@ function applyInto(
 	// tolerant reader the model builds `stateValue` with, or a state stored as a
 	// one-item list reads as no state here and as `Done` there: two answers to one
 	// question, and the boundary rule believes the wrong one.
-	const leaving = settings.stateKey ? readString(fm[settings.stateKey]) : null;
+	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	applyHierarchy(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
@@ -171,7 +171,7 @@ function applyStamps(
 		write.startedDate !== undefined &&
 		settings.startedDateKey &&
 		movesState(leaving, write.state) &&
-		isBlank(fm[settings.startedDateKey])
+		isBlank(ownValue(fm, settings.startedDateKey))
 	) {
 		fm[settings.startedDateKey] = write.startedDate;
 	}
@@ -195,6 +195,21 @@ function applyStamps(
 function movesState(leaving: string | null, state: string | undefined): boolean {
 	if (state === undefined) return false;
 	return leaving === null || leaving.toLowerCase() !== state.toLowerCase();
+}
+
+/**
+ * A note's OWN value for a user-configured key, or undefined when it has none.
+ *
+ * Frontmatter keys are user data, so `fm[key]` is not safe: `toString`, `constructor`
+ * and `valueOf` are all legal property names, and on a note that lacks them the lookup
+ * returns the inherited FUNCTION — truthy, so a blank test reports "a date is already
+ * recorded" for a note that has none, and the stamp is declined forever. The rule is
+ * old here (`byTypeName` in `domain/settings.ts` says it has shipped three times), and
+ * the answer is the same one: a function to reach for, not a rule to remember. Every
+ * live read of a configured key in this module goes through it.
+ */
+function ownValue(fm: Record<string, unknown>, key: string): unknown {
+	return Object.prototype.hasOwnProperty.call(fm, key) ? fm[key] : undefined;
 }
 
 /**
@@ -332,7 +347,7 @@ function sameRaw(a: RawValue, b: RawValue): boolean {
  * already absent drop out — or null when nothing did and the note was left alone.
  */
 function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta): TagDelta | null {
-	const current = readTags(fm[key]);
+	const current = readTags(ownValue(fm, key));
 	const removals = delta.remove ?? [];
 	const removed = current.filter((tag) => hasTag(removals, tag));
 	const next = current.filter((tag) => !hasTag(removals, tag));

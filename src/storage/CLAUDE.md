@@ -50,6 +50,12 @@ can be checked by reading one directory.
   replaces it): crossing in stamps, crossing out deletes, and done-to-done leaves it
   alone. Deciding that from the model's idea of the old state left a note that was
   already done, moved to a not-done state, still carrying its finish.
+- Every live read of a USER-CONFIGURED key goes through `ownValue`, never `fm[key]`:
+  `toString`, `constructor` and `valueOf` are legal property names, and on a note
+  lacking them the lookup returns the inherited function — truthy, so a blank test
+  reports a date already recorded and the stamp is declined forever. `byTypeName` in
+  `domain/settings.ts` says this hazard has shipped three times on other tables; this
+  is the same answer for frontmatter, and `rawValueOf` was already doing it alone.
 - A live value read here must go through the **same tolerant reader the model used**
   (`readString` for the state, as `buildModel` does). Frontmatter takes shapes a strict
   read misses — a one-item list, a number, a boolean — and a stricter read here answers

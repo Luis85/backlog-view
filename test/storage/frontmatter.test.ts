@@ -278,6 +278,24 @@ describe('applying date stamps', () => {
 		expect(vault.fm('A.md')['started']).toEqual(['2026-01-15']);
 	});
 
+	it('treats a date property inherited from Object as absent', async () => {
+		// `toString` is a legal frontmatter name. On a note that lacks it, `fm.toString`
+		// is the inherited FUNCTION — truthy, so a blank test reads it as a date already
+		// recorded and declines the stamp forever. This hazard has shipped three times in
+		// this codebase on other tables; it is why every configured-key read goes through
+		// `ownValue`.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New' } });
+
+		await applyWrites(vault.app, { ...stamping, startedDateKey: 'toString' }, [
+			{ file, state: 'Active', startedDate: '2026-08-02' },
+		]);
+
+		const fm = vault.fm('A.md');
+		expect(Object.prototype.hasOwnProperty.call(fm, 'toString')).toBe(true);
+		expect(fm['toString']).toBe('2026-08-02');
+	});
+
 	it('stamps the finish on crossing INTO done', async () => {
 		const vault = new FakeVault();
 		const file = vault.addFile('A.md', { frontmatter: { status: 'Active' } });
