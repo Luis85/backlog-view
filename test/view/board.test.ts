@@ -95,6 +95,16 @@ describe('the board projection', () => {
 		expect(vault.fm('Epic A.md')['status']).toBe('New');
 	});
 
+	it('withholds the setup button when the state property is one the user cleared', () => {
+		// The roadmap's properties are still untouched, so something IS adoptable — but
+		// binding them would leave the board saying exactly what it says now. The button
+		// answers for this frame, never for what the action can do elsewhere.
+		const { containerEl } = boardView(boardVault(), { stateProperty: '' });
+
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No workflow to show');
+		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();
+	});
+
 	it('falls back to the observed states when no list is configured', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });

@@ -86,7 +86,7 @@ mirrors the same directories.
 | `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory — and, on the horizon axis, the drop targets and the per-bucket New | jsdom tests |
 | `view/render/timeline.ts` | The dated grid: month header, bars and milestones with exact-date tooltips, the today line | jsdom tests |
 | `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the board's and roadmap's unconfigured guidance and the one-press setup beside it | jsdom tests |
-| `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, state chip, rollup | jsdom tests |
+| `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, the state and horizon chips, rollup | jsdom tests |
 | `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
 | `view/interactions/cardDrag.ts` | The card drag both projections share: Pragmatic wiring, drop targets that take their own plan, announcements (ADR 0018) | jsdom tests |
 | `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
@@ -96,7 +96,7 @@ mirrors the same directories.
 | `view/interactions/plan.ts` | The roadmap's placement writes from a row: set/clear horizon, schedule, unschedule | jsdom tests |
 | `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
 | `view/interactions/undo.ts` | The undo replay: the slot, the partial-failure remainder, and `UndoRecovery` | jsdom tests |
-| `src/ui/prompts.ts` | New-item, folder and schedule prompts (+ folder suggest) | jsdom tests |
+| `src/ui/prompts.ts` | New-item, folder and schedule prompts (native date fields + folder suggest) | jsdom tests |
 | `src/ui/valueSuggest.ts` | Shared `AbstractInputSuggest` base the folder and tag suggesters extend | jsdom tests |
 | `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
 

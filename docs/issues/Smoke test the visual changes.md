@@ -136,6 +136,20 @@ Next, Later with everything on the shelf.
 properties this view writes"). Then clear one property in the view options and press
 again: it must stay cleared.
 
+## The horizon chip and the date entry (added 2026-08-02, unverified)
+
+**The horizon chip** — with a horizon property and its values configured, every row
+should carry a chip in its own column beside the state chip: the placement, or a dashed
+*Unplaced*. Check the two chips read as siblings rather than as two different kinds of
+control, that the column lines up down the tree, and that narrowing the pane drops the
+horizon column one step BEFORE the state chip goes.
+
+**The schedule entry** — open Schedule on a row. Both fields should be native date
+inputs with the platform's picker, formatted in the OS locale, each with an × beside it
+that empties it. Check the picker opens, that Enter still saves, and that the fields do
+not overflow the modal at Obsidian's default width — a `type="date"` input carries the
+picker icon that a text input does not.
+
 ## Runs
 
 | Date | Against | Outcome |
@@ -144,6 +158,7 @@ again: it must stay cleared.
 | 2026-08-01 | **0.3.0** — extra-type badges, done rows without the strike-through | Confirmed by the maintainer: looks and feels fine. No change needed. |
 | — | the roadmap, both axes and the horizon writes | **Not run.** Reopened for it. |
 | — | the one-press setup: the options it writes, and the button in both empty frames | **Not run.** |
+| — | the horizon chip's column, and the native date fields in the schedule entry | **Not run.** |
 
 That second run is the one that mattered most, because the badge colours and the removed
 strike-through shipped in 0.3.0 on the strength of jsdom structure tests, which cannot see

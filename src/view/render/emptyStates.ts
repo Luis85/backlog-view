@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
-import { adoptableProperties, LEVELS } from '../../domain/settings';
+import { adoptableProperties, LEVELS, OptionalField } from '../../domain/settings';
 
 /**
  * What the tree shows when it has no rows to show. Each of these runs at most once
@@ -70,7 +70,7 @@ export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLEl
 			'Set "State property" in the view options — and optionally "Workflow states (in order)" — ' +
 			'and the board will draw one column per state.',
 	});
-	renderSetupCta(host, empty);
+	renderSetupCta(host, empty, ['state']);
 }
 
 /**
@@ -94,7 +94,7 @@ export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElem
 			'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. ' +
 			`${horizonHalf}, or set "Start date property" or "Target date property" for a timeline.`,
 	});
-	renderSetupCta(host, empty);
+	renderSetupCta(host, empty, ['horizon', 'start', 'target']);
 }
 
 /**
@@ -103,12 +103,18 @@ export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElem
  * idea of what setting the view up means, so what the board and the roadmap offer
  * here cannot drift from what that button does.
  *
- * Rendered only while there is something left to bind. An option the user CLEARED is
- * a decision this must not overrule, and a button whose press would do nothing is
- * worse than no button: the guidance beside it still names the options to set.
+ * The press does the whole action, but it is offered only when one of the properties
+ * THIS frame is missing can still be bound — `fixes` is that list. Asking whether
+ * anything at all is adoptable is not the same question: a user who cleared the state
+ * property and never touched the roadmap's would be shown a button on the board that
+ * binds three horizon keys and leaves the board saying exactly what it said before.
+ * An option someone CLEARED is a decision this must not overrule, so a frame whose own
+ * properties are all cleared shows no button — the guidance beside it still names the
+ * options to set, which is the honest answer when nothing here can be done for them.
  */
-function renderSetupCta(host: BacklogViewHost, empty: HTMLElement): void {
-	if (adoptableProperties(host.config, host.settings).length === 0) return;
+function renderSetupCta(host: BacklogViewHost, empty: HTMLElement, fixes: OptionalField[]): void {
+	const adoptable = adoptableProperties(host.config, host.settings);
+	if (!adoptable.some((property) => fixes.includes(property.field))) return;
 	const btn = empty.createEl('button', { cls: 'mod-cta' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'sparkles');
 	btn.createSpan({ text: 'Add the default properties' });

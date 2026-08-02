@@ -14,6 +14,7 @@ files:
   - src/storage/frontmatter.ts
   - src/view/interactions/menu.ts
   - src/view/interactions/plan.ts
+  - src/view/render/columns.ts
   - src/ui/prompts.ts
 ---
 
@@ -41,16 +42,18 @@ belong to the **item**, not to the mode, and this is where the tree got them.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | **Set horizon**, **Clear horizon**, **Schedule** or **Unschedule** in a row's context menu |
+| **Trigger** | The row's own **horizon chip**, or **Set horizon**, **Clear horizon**, **Schedule** or **Unschedule** in its context menu |
 | **Preconditions** | A configured axis: a horizon property with at least one declared value, or a date property |
 | **Guarantee** | Nothing horizon- or date-related is offered unless that axis is configured, and nothing is ever written to an unconfigured key. Each action is one batch through the same gate every write goes through, undoable as one — and never touches a transition stamp. |
 
 **Main flow**
 
-1. The user opens the context menu on a row.
+1. The user presses the row's horizon chip, or opens its context menu.
 2. **Set horizon** offers this base's horizon vocabulary — the declared values **plus**
    every value the results already carry, which is exactly the bucket list the roadmap
-   draws — with the item's own checked, beside **Set state**.
+   draws — with the item's own checked, beside **Set state**. The chip opens that same
+   list: one builder, so the two surfaces cannot offer different sets or disagree about
+   which entry is current.
 3. Picking one writes that value to the note's horizon property: one batch, through the
    gate, one undo.
 4. **Schedule** opens a date entry prefilled with the dates the note itself states;
@@ -68,6 +71,14 @@ belong to the **item**, not to the mode, and this is where the tree got them.
   clear horizon only while the bucket axis is configured, schedule and unschedule only
   while a date property is: the state chip's render-only-when-configured rule, applied per
   axis, so no offered action can write to a key nobody named.
+- **1c — the row shows its placement as a chip**, in a column of its own beside the state
+  chip, on exactly the condition the roadmap draws its bucket axis on. It is the state
+  chip's shape over the placement, and deliberately so: a horizon is the same kind of
+  thing — a declared value from a declared vocabulary — and a second look would read as a
+  second kind of thing. Unplaced is named with the roadmap's own word for it rather than
+  with the property's name, since the chip states a placement and "not placed yet" is one;
+  what pressing it does is in the accessible name. A value the reader refuses says
+  *Unplaced* too, with the reason in the tooltip — the shelf's answer, on a row.
 - **2a — the horizon property is named but its values list is cleared.** That is an
   *unconfigured* bucket axis, not a vocabulary problem — the one definition
   [[Horizons or dates]] already gives, and the roadmap renders guidance rather than
@@ -89,11 +100,12 @@ belong to the **item**, not to the mode, and this is where the tree got them.
   key** rather than blanking it: untriaged is a state a note returns to, whereas an empty
   value would place the item in a bucket named nothing ([[Moving between horizons]]).
   Undo restores the value.
-- **2e — the horizon property is one of the Base's visible columns.** It renders there as
-  an ordinary property cell, read-only like every other one. The menu is the single
-  editing surface: the tags column is editable because the view renders its pills itself
-  ([[Property columns]]), and a horizon is a Bases value drawn by Bases — one editing
-  path is worth more here than a second one that has to agree with it.
+- **2e — the horizon property is one of the Base's visible columns.** The chip stands in
+  its place — the state property's own rule ([[Workflow state]]): a value with an
+  interactive surface of its own is not also drawn as a read-only cell, or the row would
+  show it twice and only one of them would be editable. With the bucket axis
+  unconfigured there is no chip, and the property goes back to being an ordinary column
+  ([[Property columns]]).
 - **2f — the roadmap is the projection.** The **drawn buckets lead**, read off the frame
   as rendered, with anything the vocabulary reaches and no bucket covers after them: the
   board's own rule for Set state, which offers its rendered columns rather than a list
@@ -111,14 +123,20 @@ belong to the **item**, not to the mode, and this is where the tree got them.
   write.
 - **4a — only one date property is configured.** The entry offers the one end there is,
   and nothing is written to the unconfigured key.
-- **4b — the entry's dates cannot be read as a span** — unreadable, or a target before its
-  start. Refused at the entry with the reason, the prompt staying open on what was typed,
-  nothing written. A note may already say such a thing and the timeline shelves it with
-  the reason visible ([[Bars from two dates]]); a prompt that produced one would be the
-  view creating the plan it refuses to guess at.
+- **4b — the entry's dates cannot be read as a span.** The fields are native date inputs,
+  so the platform's own picker applies and the only things they can hand back are a
+  calendar date and nothing at all — which leaves exactly one refusal for the entry to
+  make: a target before its start, reported with the reason, the prompt staying open on
+  what was entered, nothing written. A note may already say such a thing and the timeline
+  shelves it with the reason visible ([[Bars from two dates]]); a prompt that produced one
+  would be the view creating the plan it refuses to guess at. The planner keeps its own
+  refusal for a value arriving from anywhere else.
 - **4c — a field is emptied.** That end's key is removed and the other is left alone, so a
   span can be reduced to a milestone without unscheduling the item. Same rule as the
-  horizon's: absence is a value, never an empty string.
+  horizon's: absence is a value, never an empty string. Each field carries its own clear
+  button for it: a date input empties segment by segment from the keyboard, and a gesture
+  that fiddly is one nobody finds — the capability would be technically present and
+  practically gone.
 - **4d — the note states a date the reader refuses.** Its field arrives blank rather than
   holding the unreadable value, so confirming replaces it instead of writing it back.
 - **4e — a field arrived blank and is confirmed unchanged.** Nothing is written, even
@@ -137,15 +155,18 @@ belong to the **item**, not to the mode, and this is where the tree got them.
 
 ## Acceptance criteria
 
-- With the bucket axis configured, a row's context menu offers **Set horizon** with the
-  declared values **union** the values observed among results, the item's own always
-  checked; picking one writes exactly that key, one batch, one undo. In roadmap mode the
+- With the bucket axis configured, the row shows its horizon as a chip and its context
+  menu offers **Set horizon**, both with the declared values **union** the values observed
+  among results, the item's own always checked; picking one writes exactly that key, one
+  batch, one undo. The chip replaces the property's read-only cell, and neither appears at
+  all while the axis is unconfigured. In roadmap mode the
   entries lead with the buckets as drawn, so the list and the axis beside it never
   disagree about their order; what is offered is the same set either way.
-- With a date property configured, **Schedule** opens an entry prefilled from the note's
-  own dates and writes exactly the configured date keys — the one configured, if only one
-  is — in one batch, one undo. An unreadable date or a target before its start is refused
-  at the entry, and nothing is written.
+- With a date property configured, **Schedule** opens an entry of native date fields,
+  prefilled from the note's own dates, and writes exactly the configured date keys — the
+  one configured, if only one is — in one batch, one undo. A target before its start is
+  refused at the entry and nothing is written; an unreadable date cannot be entered at
+  all. Each field can be cleared in one press.
 - **Clear horizon** and **Unschedule** appear only while the note carries the key they
   would remove, remove the key rather than blanking it, and undo restores the value; an
   emptied field in the entry removes that end alone.
@@ -177,10 +198,15 @@ disagree. The plans are `computeHorizonWrites` and `computeScheduleWrites` in
 `src/domain/writePlan.ts`; the writes, the key removals and their captured inverses are
 the `AxisWrite` block in `src/storage/frontmatter.ts`. The actions live in
 `src/view/interactions/plan.ts`, hung on the one context menu by
-`src/view/interactions/menu.ts`, and the date entry is `SchedulePromptModal` in
-`src/ui/prompts.ts` — which asks the caller to validate rather than reading dates itself,
+`src/view/interactions/menu.ts` — whose `showHorizonMenu` is also what the row's chip
+opens, so the two surfaces share `addHorizonItems` rather than agreeing. The chip itself
+is `renderHorizonChip` in `src/view/render/columns.ts`, beside the state chip whose shape
+it takes, in a column the fit ladder budgets for and drops before the state one. The date
+entry is `SchedulePromptModal` in `src/ui/prompts.ts` — native `type="date"` fields, each
+with a clear button — which asks the caller to validate rather than reading dates itself,
 since `ui/` may not reach the domain.
 Tests: `test/domain/writePlanAxis.test.ts`, `test/domain/roadmap.test.ts`,
-`test/domain/settings.test.ts`, `test/view/plan.test.ts`, and
+`test/domain/settings.test.ts`, `test/view/plan.test.ts`, `test/view/columns.test.ts`,
+and
 `test/view/contextRowWrites.test.ts`, whose every-entry-point sweep now drives these
 actions too.

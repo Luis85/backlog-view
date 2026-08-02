@@ -1,9 +1,10 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, ChipProp } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
-import { showStateMenu, showTagMenu } from '../interactions/menu';
+import { showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { BacklogItem } from '../../domain/model';
+import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings } from '../../domain/settings';
 
 /**
@@ -34,6 +35,8 @@ export function rowContext(
  * are defaults for a stylesheet loaded without a render, not a second opinion.
  */
 export const STATE_COL_WIDTH = 116;
+/** The horizon chip's column, sized like the state chip's — it holds the same shape. */
+export const HORIZON_COL_WIDTH = 116;
 export const META_COL_WIDTH = 84;
 /**
  * Everything on a row that is not one of the columns, at its widest: the constant
@@ -75,14 +78,18 @@ function columnFit(
 	chipCount: number,
 	depth: number,
 	width: number,
-): { hideProps: boolean; hideMeta: boolean; hideState: boolean } {
+): { hideProps: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
 	const state = settings.stateKey ? STATE_COL_WIDTH : 0;
+	const horizon = hasHorizonAxis(settings) ? HORIZON_COL_WIDTH : 0;
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
 	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	return {
-		hideProps: width < lead + state + meta + props,
-		hideMeta: width < lead + state + meta,
+		hideProps: width < lead + state + horizon + meta + props,
+		hideMeta: width < lead + state + horizon + meta,
+		// The placement goes before the workflow state: a row's state is the one thing
+		// that summarizes it on its own, and the roadmap is where a horizon is read.
+		hideHorizon: width < lead + state + horizon,
 		// Nothing below this: what is left is the row's own lead, and the title
 		// truncates from there.
 		hideState: width < lead + state,
@@ -110,9 +117,11 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	const changed =
 		fit.hideProps !== viewEl.hasClass('pbl-hide-props') ||
 		fit.hideMeta !== viewEl.hasClass('pbl-hide-meta') ||
+		fit.hideHorizon !== viewEl.hasClass('pbl-hide-horizon') ||
 		fit.hideState !== viewEl.hasClass('pbl-hide-state');
 	viewEl.toggleClass('pbl-hide-props', fit.hideProps);
 	viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
+	viewEl.toggleClass('pbl-hide-horizon', fit.hideHorizon);
 	viewEl.toggleClass('pbl-hide-state', fit.hideState);
 	return changed;
 }
@@ -151,8 +160,9 @@ export function chipProps(host: BacklogViewHost): ChipProp[] {
 		`note.${host.settings.orderKey}`,
 		`note.${host.settings.typeKey}`,
 	]);
-	// The interactive state chip already shows this property.
+	// The interactive chips already show these two properties.
 	if (host.settings.stateKey) skip.add(`note.${host.settings.stateKey}`);
+	if (hasHorizonAxis(host.settings)) skip.add(`note.${host.settings.horizonKey}`);
 	const tagsId = host.settings.tagsKey ? `note.${host.settings.tagsKey}` : '';
 	return props
 		.filter((prop) => !skip.has(prop))
@@ -184,6 +194,12 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label', text: chip.label });
 		setTooltip(cell, chip.label);
 	}
+	if (hasHorizonAxis(settings)) {
+		header.createDiv({
+			cls: 'pbl-horizon-col pbl-col-label',
+			text: chipLabel(ctx.host, `note.${settings.horizonKey}`),
+		});
+	}
 	if (settings.stateKey) {
 		header.createDiv({ cls: 'pbl-state-col pbl-col-label', text: chipLabel(ctx.host, `note.${settings.stateKey}`) });
 	}
@@ -206,6 +222,9 @@ export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: Backlo
 	// Pushes the columns to the row's end; also the click target between them.
 	row.createDiv({ cls: 'pbl-row-spacer' });
 	if (ctx.chips.length > 0) renderPropCells(ctx, row, item);
+	if (hasHorizonAxis(ctx.host.settings)) {
+		renderHorizonChip(ctx.host, row.createDiv({ cls: 'pbl-horizon-col' }), item);
+	}
 	if (ctx.host.settings.stateKey) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
 	renderRollup(ctx.host, row, item);
 }
@@ -365,4 +384,62 @@ function fillStateChip(chip: HTMLElement, item: BacklogItem, value: string | nul
 	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
 	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
+}
+
+/**
+ * Clickable horizon chip — the state chip's shape over the roadmap's placement, so
+ * the property a card is dragged between buckets by is settable from the tree too,
+ * where most of a backlog is actually read. It opens the same menu the row's own
+ * Set horizon does (`addHorizonItems`), which is what keeps every horizon this base
+ * can reach reachable from here as well, and checked against the same plan.
+ *
+ * Rendered on exactly the condition the roadmap draws its bucket axis on
+ * (`hasHorizonAxis`) — a property with no declared values is a board without stages,
+ * and a chip whose menu could set nothing would be a third opinion about what
+ * "configured" means.
+ */
+function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
+	// A value the reader refuses is not a placement: the roadmap shelves such a card
+	// with the reason on its face, and the chip says the same thing — unplaced, and
+	// why — rather than showing a horizon the axis would not honor.
+	const value = item.horizon.value;
+	const unplaced = value === null;
+	const reason = item.horizon.invalid ? 'Unreadable horizon value' : null;
+	const cls = 'pbl-horizon-chip' + (unplaced ? ' pbl-horizon-unset' : '');
+
+	// A note the Base excluded is context: show where it sits, never offer to move
+	// it. With nothing to show it renders nothing at all, rather than a button-shaped
+	// invitation to a write this row cannot take.
+	if (item.outsideFilter) {
+		if (unplaced) return;
+		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
+		fillHorizonChip(chip, value);
+		setTooltip(chip, "Not in this base's filter — horizon can't be changed here");
+		return;
+	}
+
+	// A native button with no Tab stop, the state chip's bargain: reachable by
+	// assistive tech, invisible to Tab, with the context menu as the keyboard path.
+	const chip = col.createEl('button', {
+		cls,
+		attr: {
+			type: 'button',
+			tabindex: '-1',
+			'aria-label': unplaced ? 'Set horizon' : `Change horizon (currently ${value})`,
+		},
+	});
+	fillHorizonChip(chip, value);
+	setTooltip(chip, reason ?? 'Change horizon');
+	chip.addEventListener('click', (evt) => showHorizonMenu(host, evt, item));
+}
+
+/**
+ * The chip's face. Unplaced is named with the roadmap's own word for it — the shelf
+ * is where such a row sits there — rather than with the property's name: the chip
+ * states a placement, and "not placed yet" is one. What pressing it does is in the
+ * accessible name, which is where the state chip puts it too.
+ */
+function fillHorizonChip(chip: HTMLElement, value: string | null): void {
+	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? SHELF_LABEL });
 }

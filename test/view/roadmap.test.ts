@@ -131,11 +131,15 @@ describe('the axis is declared, never guessed', () => {
 		expect(vault.fm('Placed.md')['horizon']).toBe('Now');
 	});
 
-	it('withholds the setup button when the properties are decisions already made', () => {
-		// Every optional property cleared: there is nothing left to bind, and a button
-		// whose press would do nothing is worse than none — the guidance still names
-		// the options to set.
-		const { containerEl } = roadmapView(roadmapVault(), noOptionalProperties());
+	it('withholds the setup button when no property it would bind could draw an axis', () => {
+		// Every axis property cleared, the state property untouched: pressing would bind
+		// a workflow and leave the roadmap saying exactly what it says now. A button is
+		// offered for what THIS frame is missing, never for what the action can do
+		// elsewhere — the guidance still names the options to set.
+		const { containerEl } = roadmapView(
+			roadmapVault(),
+			noOptionalProperties({ stateProperty: undefined, startedDateProperty: undefined }),
+		);
 
 		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No axis to show');
 		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();

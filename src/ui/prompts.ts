@@ -182,7 +182,12 @@ export interface DateFieldSpec {
 	/** Identifies the field in the submitted values; the caller's own vocabulary. */
 	field: string;
 	name: string;
-	/** Prefill — the date the note itself states, or '' when it states none. */
+	/**
+	 * Prefill — the date the note itself states as `YYYY-MM-DD`, or '' when it states
+	 * none. The field is a native date input, which accepts that spelling and nothing
+	 * else: anything a reader could not turn into a calendar date arrives here as ''
+	 * and is simply not prefilled.
+	 */
 	value: string;
 }
 
@@ -204,7 +209,14 @@ export interface SchedulePromptOptions {
 /**
  * Prompt asking for an item's planned dates, prefilled with what the note states.
  * An emptied field means the date goes: absence is a real answer here, so clearing
- * one is how a single end is taken back without unscheduling the whole item.
+ * one is how a single end is taken back without unscheduling the whole item — which
+ * is why each field carries its own clear button. A native date input can be emptied
+ * from the keyboard, segment by segment, and a gesture that fiddly is one nobody
+ * finds; the button keeps "leave a field empty" a thing a user can actually do.
+ *
+ * The fields are `type="date"`, so the platform's own date picker and its locale
+ * formatting apply, and the only values this dialog can hand back are a calendar
+ * date or nothing at all.
  */
 export class SchedulePromptModal extends Modal {
 	private readonly options: SchedulePromptOptions;
@@ -237,16 +249,32 @@ export class SchedulePromptModal extends Modal {
 		};
 
 		this.options.fields.forEach((spec, i) => {
-			new Setting(this.contentEl).setName(spec.name).addText((text) => {
-				text.setPlaceholder('2026-08-03');
+			const setting = new Setting(this.contentEl).setName(spec.name);
+			setting.addText((text) => {
+				// A date input round-trips `YYYY-MM-DD` and refuses everything else, so the
+				// value read back is either a calendar date or ''. The picker, the segment
+				// order and the display format are the platform's.
+				const input = text.inputEl;
+				input.type = 'date';
 				text.setValue(spec.value);
 				text.onChange((v) => {
 					values[spec.field] = v;
-					// The refusal was about what was typed, so it stops being true the
-					// moment the typing changes.
+					// The refusal was about what was entered, so it stops being true the
+					// moment the entry changes.
 					errorEl.setText('');
 				});
-				submitOnEnter(text.inputEl, submit, i === 0);
+				submitOnEnter(input, submit, i === 0);
+				// Wired here, where the field it empties is in hand: carried out to a
+				// later statement it would need a null check that can never fire.
+				setting.addExtraButton((btn) => {
+					btn.setIcon('x')
+						.setTooltip(`Clear ${spec.name}`)
+						.onClick(() => {
+							input.value = '';
+							values[spec.field] = '';
+							errorEl.setText('');
+						});
+				});
 			});
 		});
 

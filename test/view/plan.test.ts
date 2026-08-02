@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, MenuItem, Modal } from '../helpers/obsidian-mock';
-import { flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { expandAll, flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -53,16 +53,31 @@ function click(items: MenuItem[], title: string): void {
 	item.click();
 }
 
-/** Fill the open schedule prompt (start, then target) and press Save. */
-function submitSchedule(values: string[]): void {
+/** The date fields of the open schedule prompt, in the order it asks for them. */
+function scheduleInputs(): HTMLInputElement[] {
 	const modal = Modal.lastOpened;
 	if (!modal) throw new Error('schedule prompt not opened');
-	const inputs = Array.from(modal.contentEl.querySelectorAll('input'));
+	return Array.from(modal.contentEl.querySelectorAll('input'));
+}
+
+/** A button of the open prompt, by its label — the clear buttons sit beside the fields. */
+function promptButton(label: string): HTMLElement {
+	const modal = Modal.lastOpened;
+	const found = Array.from(modal?.contentEl.querySelectorAll('button') ?? []).find(
+		(btn) => btn.textContent === label || btn.getAttribute('aria-label') === label,
+	);
+	if (!found) throw new Error(`no prompt button ${label}`);
+	return found;
+}
+
+/** Fill the open schedule prompt (start, then target) and press Save. */
+function submitSchedule(values: string[]): void {
+	const inputs = scheduleInputs();
 	values.forEach((value, i) => {
 		inputs[i].value = value;
 		inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
 	});
-	modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	promptButton('Save').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
 describe('setting a horizon from the row', () => {
@@ -178,6 +193,88 @@ describe('setting a horizon from the row', () => {
 	});
 });
 
+describe('the horizon chip on a row', () => {
+	const chipOf = (containerEl: HTMLElement, title: string) =>
+		rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-horizon-chip');
+
+	it('shows the placement and writes the one picked from its menu', async () => {
+		const vault = planVault();
+		const { containerEl } = makeView(vault, AXES);
+
+		expect(chipOf(containerEl, 'Placed')?.querySelector('.pbl-state-text')?.textContent).toBe('Now');
+		// Unplaced is named with the roadmap's own word for it, and dashed like the
+		// unset state chip beside it.
+		const untriaged = chipOf(containerEl, 'Untriaged');
+		expect(untriaged?.querySelector('.pbl-state-text')?.textContent).toBe('Unplaced');
+		expect(untriaged?.classList.contains('pbl-horizon-unset')).toBe(true);
+		// A button assistive tech can activate, kept out of the tree's single tab stop.
+		expect(untriaged?.tagName).toBe('BUTTON');
+		expect(untriaged?.getAttribute('tabindex')).toBe('-1');
+
+		untriaged?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const menu = Menu.lastShown;
+		// The row menu's own Set horizon list, not a second one: same values, same
+		// checkmarks asked of the same plan, and the same Clear entry rule.
+		expect(menu?.items.map((i) => i.titleText)).toEqual(['Now', 'Next', 'Later']);
+		menu?.item('Next')?.click();
+		await flush();
+
+		expect(vault.fm('Untriaged.md')['horizon']).toBe('Next');
+		// The chip is a control, not part of the row: pressing it opens no note.
+		expect(vault.opened).toEqual([]);
+	});
+
+	it('says unplaced, with the reason, for a value the axis refuses', () => {
+		const vault = planVault();
+		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 40, horizon: { nested: true } } });
+		const { containerEl } = makeView(vault, AXES);
+
+		// The roadmap shelves such a card with the reason on its face; the chip says the
+		// same thing rather than showing a horizon the axis would not honor.
+		const chip = chipOf(containerEl, 'Garbled');
+		expect(chip?.querySelector('.pbl-state-text')?.textContent).toBe('Unplaced');
+		expect(chip?.dataset.tooltip).toBe('Unreadable horizon value');
+		// And Clear is still offered: the key is there, holding something.
+		chip?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOfMenu(Menu.lastShown ?? new Menu())).toContain('Clear horizon');
+	});
+
+	it('offers Clear exactly where the note carries the key', () => {
+		const vault = planVault();
+		const { containerEl } = makeView(vault, AXES);
+
+		chipOf(containerEl, 'Untriaged')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOfMenu(Menu.lastShown ?? new Menu())).not.toContain('Clear horizon');
+
+		chipOf(containerEl, 'Placed')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOfMenu(Menu.lastShown ?? new Menu())).toContain('Clear horizon');
+	});
+
+	it('shows a context row where it sits without offering to move it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		// The Epic is context: an ancestor the filter did not return.
+		const { view, containerEl } = makeView(vault, AXES);
+		(view as unknown as Record<string, unknown>).data = {
+			data: vault.entries().filter((e) => e.file.path === 'Feature.md'),
+		};
+		view.onDataUpdated();
+		expandAll(containerEl);
+
+		const context = rowByTitle(containerEl, 'Epic').querySelector('.pbl-horizon-chip');
+		expect(context?.querySelector('.pbl-state-text')?.textContent).toBe('Now');
+		// Static, like its state chip: it renders, it never writes.
+		expect(context?.tagName).toBe('DIV');
+		expect(context?.classList.contains('pbl-state-static')).toBe(true);
+	});
+
+	it('is absent while the bucket axis is unconfigured', () => {
+		const { containerEl } = makeView(planVault(), { horizonProperty: 'note.horizon', horizonValues: '' });
+		expect(containerEl.querySelector('.pbl-horizon-chip')).toBeNull();
+	});
+});
+
 describe('scheduling from the row', () => {
 	it('prefills the entry with the dates the note states', () => {
 		const { containerEl } = makeView(planVault(), AXES);
@@ -247,20 +344,38 @@ describe('scheduling from the row', () => {
 		expect('start' in vault.fm('Garbled.md')).toBe(false);
 	});
 
-	it('refuses a date it cannot read, keeping the prompt open and the note untouched', async () => {
+	it('asks with native date fields, which cannot hand back anything but a date', async () => {
 		const vault = planVault();
 		const { containerEl } = makeView(vault, AXES);
 
-		menuFor(containerEl, 'Untriaged').item('Schedule')?.click();
-		submitSchedule(['next tuesday', '']);
+		menuFor(containerEl, 'Planned').item('Schedule')?.click();
+
+		// `type="date"` is what brings the platform's own picker, and it is also what
+		// makes "not a date" unreachable rather than merely refused: the field round-
+		// trips YYYY-MM-DD and sanitizes everything else to nothing, so no unreadable
+		// value can reach the plan. The domain keeps its own backstop either way.
+		expect(scheduleInputs().map((i) => i.type)).toEqual(['date', 'date']);
+		submitSchedule(['next tuesday', '2026-08-14']);
 		await flush();
 
-		const modal = Modal.lastOpened;
-		expect(modal?.contentEl.querySelector('.pbl-modal-error')?.textContent).toContain('not a date');
-		// Still open, still holding what was typed: nothing is guessed at, and nothing
-		// is written on the way out either.
-		expect(modal?.contentEl.querySelector('input')?.value).toBe('next tuesday');
-		expect(vault.writeLog).toEqual([]);
+		expect('start' in vault.fm('Planned.md')).toBe(false);
+		expect(vault.fm('Planned.md')['due']).toBe('2026-08-14');
+	});
+
+	it('clears one end from its own button, without touching the other', async () => {
+		const vault = planVault();
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Planned').item('Schedule')?.click();
+		// A date input empties segment by segment from the keyboard, which is a gesture
+		// nobody finds — so "leave a field empty to remove that date" gets a button.
+		promptButton('Clear start').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(scheduleInputs()[0].value).toBe('');
+		promptButton('Save').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect('start' in vault.fm('Planned.md')).toBe(false);
+		expect(vault.fm('Planned.md')['due']).toBe('2026-08-14');
 	});
 
 	it('refuses a target before its start', async () => {
