@@ -7,7 +7,6 @@ import { TimelineBar } from '../../domain/roadmap';
 import {
 	BarGeometry,
 	barGeometry,
-	DateSpan,
 	DAY_PX,
 	daysBetween,
 	formatCivil,
@@ -76,12 +75,12 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	const geometry = barGeometry(window, bar.span);
-	const el = track.createDiv({ cls: barClasses(bar.span, geometry) });
+	const el = track.createDiv({ cls: barClasses(bar, geometry) });
 	el.setCssProps({
 		'--pbl-bar-left': `${geometry.startDay * DAY_PX}px`,
 		'--pbl-bar-width': `${Math.max(geometry.spanDays * DAY_PX, DAY_PX)}px`,
 	});
-	const dates = spanText(bar.span);
+	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
 	wireCardActivation(ctx, row, bar.item);
@@ -91,23 +90,34 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
  * A dateless end is styled open — the plan's gap stays visible instead of being
  * filled in — and an end past the window's edge is styled the same way: both say
  * "this continues beyond what is drawn", and the tooltip carries the exact dates.
+ *
+ * An inferred bar is a different claim: it HAS dates, but the view drew them from
+ * below rather than reading them off the note, so it is outlined rather than
+ * filled and never reads as a plan somebody stated.
+ *
+ * ponytail: one class covers "inferred" and "inferred, some children undated" —
+ * an inferred end is uncertain by construction. Split them when someone can
+ * describe the two pixels apart.
  */
-function barClasses(span: DateSpan, geometry: BarGeometry): string {
+function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
 	let cls = 'pbl-bar';
 	if (geometry.milestone) cls += ' pbl-bar-milestone';
-	if (span.start === null || geometry.clippedStart) cls += ' pbl-bar-open-start';
-	if (span.target === null || geometry.clippedEnd) cls += ' pbl-bar-open-end';
+	if (bar.span.start === null || geometry.clippedStart) cls += ' pbl-bar-open-start';
+	if (bar.span.target === null || geometry.clippedEnd) cls += ' pbl-bar-open-end';
+	if (bar.inferredStart || bar.inferredEnd) cls += ' pbl-bar-inferred';
 	return cls;
 }
 
-function spanText(span: DateSpan): string {
+function spanText(bar: TimelineBar): string {
+	const span = bar.span;
+	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
 	if (span.start !== null && span.target !== null) {
-		if (formatCivil(span.start) === formatCivil(span.target)) return `Milestone ${formatCivil(span.start)}`;
-		return `${formatCivil(span.start)} → ${formatCivil(span.target)}`;
+		if (formatCivil(span.start) === formatCivil(span.target)) return `Milestone ${formatCivil(span.start)}${inferred}`;
+		return `${formatCivil(span.start)} → ${formatCivil(span.target)}${inferred}`;
 	}
-	if (span.start !== null) return `Starts ${formatCivil(span.start)}, target not set`;
+	if (span.start !== null) return `Starts ${formatCivil(span.start)}, target not set${inferred}`;
 	// deriveBars admits no fully dateless span, so the remaining end exists.
-	return `Target ${formatCivil(span.target as CivilDate)}, start not set`;
+	return `Target ${formatCivil(span.target as CivilDate)}, start not set${inferred}`;
 }
 
 function todayOffset(window: TimelineWindow, today: CivilDate): number {

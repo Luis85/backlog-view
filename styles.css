@@ -1754,6 +1754,14 @@
 	border-radius: 0;
 }
 
+/* An inference is a summary the view drew, not a plan somebody made. Outlined
+   rather than filled, so the two never read alike at a glance — and the border
+   inherits --pbl-bar-color, so a done subtree's inferred bar stays green. */
+.pbl-bar-inferred {
+	background: none;
+	border: 1px dashed var(--pbl-bar-color);
+}
+
 /* A point in time is not a span: equal stated ends render as the Gantt diamond. */
 .pbl-bar-milestone {
 	width: 12px;

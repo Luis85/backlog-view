@@ -101,6 +101,49 @@ describe('the dated frame', () => {
 		expect(shelfTitles(containerEl)).toEqual(['Bare']);
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
 	});
+
+	it('draws an inferred bar as an outline and says so in its label', () => {
+		const vault = new FakeVault();
+		// The epic states nothing; its two children bracket it.
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-08-01', due: '2026-08-20' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('B.md', {
+			frontmatter: { type: 'Feature', order: 20, start: '2026-09-01', due: '2026-09-30' },
+			parentLink: 'Epic',
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const rows = timelineRows(containerEl);
+		// The epic is on the grid now, not the shelf, and it leads its children.
+		expect(rows).toHaveLength(3);
+		expect(shelfTitles(containerEl)).toEqual([]);
+
+		const epic = barOf(rows[0]);
+		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
+		expect(epic.getAttribute('aria-label')).toBe('2026-08-01 → 2026-09-30 — inferred from children');
+
+		// A stated bar is never marked: the two must not read alike.
+		const stated = barOf(rows[1]);
+		expect(stated.hasClass('pbl-bar-inferred')).toBe(false);
+		expect(stated.getAttribute('aria-label')).toBe('2026-08-01 → 2026-08-20');
+	});
+
+	it('marks a half-inferred bar too — one stated end does not make it a statement', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01' } });
+		vault.addFile('A.md', {
+			frontmatter: { type: 'Feature', order: 10, due: '2026-09-30' },
+			parentLink: 'Epic',
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const epic = barOf(timelineRows(containerEl)[0]);
+		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
+		expect(epic.getAttribute('aria-label')).toBe('2026-08-01 → 2026-09-30 — inferred from children');
+	});
 });
 
 describe('the unplaced shelf', () => {
