@@ -151,6 +151,20 @@ describe('rendering', () => {
 		);
 	});
 
+	it('lets pointer events through the milestone line, not through its label', () => {
+		// A timeline row sets no `position`, so it paints in the non-positioned layers
+		// while .pbl-milestone-line — absolute, with a z-index — paints above them.
+		// Hit-testing follows paint order, so the line is the event target wherever it
+		// crosses a row: a 2px dead strip per milestone through every row, swallowing
+		// the row's activation and context menu. jsdom does no hit-testing, so the
+		// decidable fact is that the declaration is there. The label must NOT have it —
+		// it is the only thing carrying the milestone's name on hover.
+		expect(ruleAt('.pbl-milestone-line', 'pointer-events: none;'), 'the line must not eat row clicks').toBeGreaterThan(
+			-1,
+		);
+		expect(ruleAt('.pbl-milestone-label', 'pointer-events: none;'), 'the label must stay hoverable').toBe(-1);
+	});
+
 	it('leaves an inferred bar unclosed at an end it has no date for', () => {
 		// The open-end cue is a background gradient, and `background: none` is what
 		// makes an inferred bar an outline — same specificity, so the outline wins and

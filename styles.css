@@ -1844,6 +1844,13 @@
 	z-index: 0;
 	background-color: var(--color-cyan);
 	opacity: 0.55;
+	/* A timeline row sets no `position`, so it paints in the non-positioned layers
+	   while this line — absolute, with a z-index — paints above them. Hit-testing
+	   follows paint order, so without this the line is the event target wherever it
+	   crosses a row: a 2px dead strip through every row, per milestone, swallowing
+	   the row's activation and context menu. The line is aria-hidden decoration and
+	   its tooltip lives on the header label, so it wants no events at all. */
+	pointer-events: none;
 }
 
 /* In the header band, so the name reads where the months do. Backed, because it sits
