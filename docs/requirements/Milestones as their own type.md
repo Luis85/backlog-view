@@ -13,6 +13,7 @@ files:
   - src/domain/viewOptions.ts
   - src/domain/roadmap.ts
   - src/domain/writePlan.ts
+  - src/view/interactions/plan.ts
   - src/view/render/rows.ts
   - styles.css
 ---
@@ -95,6 +96,13 @@ date.
   not in drawing: a milestone is reduced to its target point *before* the ordinary span
   checks run, or a stale start later than the target shelves it as a reversed span and no
   rendering seam is ever reached.
+- **2d — the row's Schedule entry is opened on a milestone.** It asks for the **target
+  alone**, and the span rule does not apply to it. Offering both ends would contradict the
+  type twice over: a milestone carrying a stale start after its target draws correctly by
+  2c but could not be reopened and saved unchanged, because the entry refuses a target
+  before a start; and a user entering only a start would leave believing the milestone is
+  scheduled while it stays on the shelf, since the type ignores that date. A prompt must
+  not be able to produce a state the projection contradicts.
 - **3a — the milestone folder is cleared.** It falls through to the home folder, like
   every other type whose folder is unset — one rule, no special case.
 - **4a — the row has no child type to offer.** Every create affordance is **absent**, not
@@ -134,6 +142,10 @@ date.
   children imply no level from it, and moving a subtree that contains one never retypes
   that milestone's descendants from a rank it does not have. Focusing `Milestone` by name
   still lists them, which is a different question and the one worth keeping.
+- The row's Schedule entry asks a milestone for its target alone and does not apply the
+  span rule to it, so no entry can leave a milestone in a state its own projection
+  contradicts — neither an unsavable-but-drawable stale start, nor a start-only write that
+  reads as scheduled while the item stays shelved.
 - A milestone row shows **no** create affordance — no add button, no `New <child>` menu
   entry — rather than one built from an empty list of choices.
 - It renders with an icon and a badge colour of its own, like every other declared type,
@@ -180,7 +192,10 @@ equal stated ends today. Reaching them at all is `deriveBars` in `src/domain/roa
 which is where a milestone must be reduced to its target point — it shelves a reversed
 span before any rendering runs, so a milestone carrying a stale start later than its
 target never gets as far as the geometry that would ignore it. Creation and filing are `src/view/interactions/create.ts`, and the
-menu entry that has to disappear with the button is `src/view/interactions/menu.ts`.
+menu entry that has to disappear with the button is `src/view/interactions/menu.ts`. The
+write side of the date is `src/view/interactions/plan.ts`, where `scheduleFields` offers
+every configured end and `validateSchedule` applies the span rule to whatever it finds —
+both of which a milestone has to narrow rather than inherit.
 
 Two seams in `src/view/render/rows.ts` are easy to miss and both fail loudly rather than
 quietly, which is the argument for naming them here. `EXTRA_TYPE_STYLE` carries the icon
@@ -190,5 +205,6 @@ the table covers the vocabulary; the colour itself is `styles.css`, beside the o
 classes. And `renderRowTrailing` renders the add button unconditionally, labelling it from
 the first of the type choices — with none, that label is built from nothing. Driven in
 `test/domain/itemTypes.test.ts`, `test/domain/settings.test.ts`,
-`test/domain/model.test.ts`, `test/view/rendering.test.ts`, `test/view/creation.test.ts`,
-`test/view/menu.test.ts` and `test/view/roadmapFrame.test.ts`.
+`test/domain/model.test.ts`, `test/domain/roadmap.test.ts`, `test/view/rendering.test.ts`,
+`test/view/creation.test.ts`, `test/view/menu.test.ts`, `test/view/plan.test.ts` and
+`test/view/roadmapFrame.test.ts`.

@@ -45,6 +45,7 @@ first; adding the name first buys the second answer everywhere, silently.
 | `computeLevel`, `collectFocusRoots` (`src/domain/model.ts`) | Gives it the PBI rung — so its untyped children imply Task, and a **PBI-focused** view lists it as a root |
 | `computeTypeChanges` (`src/domain/writePlan.ts`) | Descends a moved subtree from that rank, retyping a nested milestone's descendants |
 | `deriveBars` (`src/domain/roadmap.ts`) | Shelves it as a reversed span when a stale start sits after the target — before any rendering seam runs |
+| `scheduleFields`, `validateSchedule` (`src/view/interactions/plan.ts`) | Offers both ends and applies the span rule, so the entry can refuse a milestone the timeline draws, and can accept a start that leaves it shelved |
 | `renderRowTrailing` (`src/view/render/rows.ts`) | Renders an add button labelled from the first of no choices |
 | `test/docs/surfaces.test.ts` | Asserts the generated `typeFolder.<type>` keys for a hand-written list of six names, so a seventh is simply uncovered |
 
