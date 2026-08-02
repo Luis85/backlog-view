@@ -485,7 +485,7 @@ Items without an `order` sort after ranked siblings, alphabetically.
 The same backlog read as a kanban board: one column per workflow state, and one card per
 item the view is showing. Switch with the toolbar's **Show as kanban board** button.
 
-**Focus decides what a card is.** With no focus set, every item gets a card. Focus a
+**Focus decides what a card is.** With no focus set, every result gets a card. Focus a
 level — *Feature*, say — and the cards are the features, with their PBIs and tasks
 represented beneath them rather than scattered across the columns as cards of their own.
 That is the same re-rooting the tree does, and it is usually what you want from a board:
@@ -513,27 +513,35 @@ matches no column, it sits in the no-state column.
 | Read a column's agreement | Hover the column header, or open the column menu |
 | Create in a column | Toolbar **New**, then drag — creation from a column is not built yet |
 
-- **Columns** come from **Workflow states (in order)**, in that order, plus one column for
-  items carrying no state at all.
+- **Columns** are the no-state column first, then **Workflow states (in order)** if you
+  set it — or, left unconfigured, the states your notes actually carry — and finally one
+  more column per observed result value neither names, so a stray status still gets a
+  column of its own rather than losing its card.
 - **WIP limits** are set per state in the view options — for every state **except the done
   ones**, since a finished column is a record rather than a queue and capping it would mean
   nothing. A limit **reads the column's full population, not the filtered count**, so
   narrowing the view cannot make an overcommitted stage look calm. It signals in colour, in
   shape and in words — and it **refuses nothing**. Going over a limit is information, not a
   locked door.
-- **Policies** are a sentence per column — the working agreement for that stage. Set one in
-  the view options and it is readable from the column header and the column menu.
-- **Date stamps.** With a `started` and a `finished` property configured, the view stamps
-  them as a card moves. Both ride the state write, so neither fires without a state property
-  — and the two behave differently once work is reworked:
+- **Policies** are a sentence per **configured** workflow column, done ones included — the
+  working agreement for that stage. Set one in the view options and it is readable from the
+  column header and the column menu. A column minted from an observed value the workflow
+  list doesn't name has no policy option and no menu entry for one.
+- **Date stamps.** A `finished` property, once configured, stamps a finish as a card moves
+  — riding the state write, so it never fires without a state property. The `started` stamp
+  needs one thing more: naming at least one state in **States that count as started** —
+  without that, the property is only ever created empty for you to fill by hand, never
+  stamped. Once both are configured, the two behave differently once work is reworked:
   - **`started`** is written only while the property is empty, so the **earliest** start
     survives. Entering a started state again does not move it.
   - **`finished`** follows the done boundary. Completing an item stamps it; **reopening
     clears it**, because an item back in progress must not claim a finish it no longer has;
     completing again stamps the new date. Moving between two done states — `Done` becoming
     `Dropped` — is a re-labelling and writes nothing.
-- **Cards outside the base's filter** render as context so their items have somewhere to sit.
-  They carry no control that would write to them.
+- **Cards outside the base's filter** appear only on a **focused** board: a focus-level item
+  the filter excluded still gets an inert card, so its results have somewhere to sit.
+  Unfocused, the board is results only — an excluded item never gets a card without a focus
+  level pointing at it. Either way, a context card carries no control that would write to it.
 
 Every move — drag, keyboard or menu — is the same gated write, announced in the same words,
 and taken back by the same <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>.
@@ -563,24 +571,30 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
 | Set dates | Right-click → **Schedule** / **Unschedule** |
 
 - **Buckets** are the values in **Horizons (in order)** — a Now / Next / Later axis, or
-  whatever you name. Every move is one gated write, undoable as one batch.
-- **The shelf** holds the **results** the axis could not place, with a count, and is also
-  the drop target that *un-places*: dropping there removes the key rather than blanking it.
-  It stays reachable while empty, because a target that only exists when occupied is one
-  nothing can reach.
+  whatever you name — plus one more for any result whose horizon value the list omits, the
+  same carve-out the board's columns make. Every move is one gated write, undoable as one
+  batch.
+- **The shelf** — labelled **Unplaced** on screen — holds the **results** the axis could not
+  place, with a count, and is also the drop target that *un-places*: dropping there removes
+  the key rather than blanking it. It stays reachable while empty, because a target that
+  only exists when occupied is one nothing can reach.
 
-  Items your Base's filter excluded are **not** on the shelf and not in its count. They
-  appear in a separate **Context** strip beside it, because the shelf is a statement about
-  your results — an excluded note is shown so its children have somewhere to hang, not
-  because it is work you have left unplanned.
+  Items your Base's filter excluded are **not** on the shelf and not in its count. On a
+  **focused** roadmap, a focus-level item the filter excluded appears in a separate
+  **Context** strip beside the shelf instead, because the shelf is a statement about your
+  results — an excluded note is shown so its children have somewhere to hang, not because
+  it is work you have left unplanned. Unfocused, the roadmap draws results only and no
+  context strip appears at all.
 - **The timeline** draws a bar from each item's dates. **One date property is enough** —
   a target-only roadmap of milestones and deadlines, or a start-only plan, are both
   supported. **A parent with no dates of its own spans its dated descendants**, endpoint to
   endpoint, drawn as the inference it is and written to no note.
 - **Dates are set from the row**, not from the bar: right-click → **Schedule** or
-  **Unschedule**, on either projection. What this release does *not* have is a gesture on
-  the bar itself — dragging one to move it, dragging its edge to resize, or dragging an
-  item off the shelf onto a date. Those are specified and not yet built.
+  **Unschedule**, on any projection — the tree, the board and the roadmap all reach the
+  same row menu, deliberately: a write reachable only from roadmap mode would be a
+  projection disagreeing about what the backlog can do. What this release does *not* have
+  is a gesture on the bar itself — dragging one to move it, dragging its edge to resize, or
+  dragging an item off the shelf onto a date. Those are specified and not yet built.
 
   **Schedule appears only when the item has an end it can use.** A milestone is its target
   date alone, so on a roadmap configured with a start property and no target, milestones
