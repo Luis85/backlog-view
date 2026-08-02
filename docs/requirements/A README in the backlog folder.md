@@ -38,15 +38,17 @@ the view options can rename.
 | **Actor** | Backlog owner, from a Product Backlog view |
 | **Trigger** | The **Write backlog readme** command, offered while such a view is active |
 | **Preconditions** | A `product-backlog` view is open and its configuration has no problems |
-| **Guarantee** | No work item is touched. The command writes exactly one file — the generated README — and never `parent`, `order`, `type` or any other frontmatter on any note. |
+| **Guarantee** | No frontmatter is written, anywhere. The command writes exactly one file — the generated README, body and all — and no other note in the vault, so nothing it does can change a work item's `parent`, `order`, `type` or state. That holds even when the README has itself been enrolled as a work item (4c): regenerating replaces the body it generated and still writes none of its fields. |
 
 **Main flow**
 
 1. The user runs **Write backlog readme** from an open Product Backlog view.
 2. The view's settings are resolved — the same `resolveSettings` the tree is built from,
    so the document describes *this* base rather than the defaults — together with the
-   state vocabulary the view is actually offering, which is not a setting whenever the
-   states are left undeclared (`stateMenuValues`, over the model's observed states).
+   state vocabulary this view actually offers, which the settings alone do not hold: the
+   declared workflow when there is one and the observed values when there is not
+   (`stateMenuValues`), **plus** the values observed outside a declared workflow, which
+   `boardColumns` mints columns for and the state menus therefore offer.
 3. The document is generated: what the folder holds, the six type names with the ladder
    and the two types beside it, the parent/child table, the frontmatter contract in this
    view's actual keys, the ranking rule, the workflow states and which of them count as
@@ -136,12 +138,13 @@ the view options can rename.
 - The ranking rule is stated with the spacing the planner actually uses (`ORDER_SPACING`),
   and says what duplicate orders do rather than promising they cannot happen.
 - Generation is pure and node-testable: same inputs in, byte-identical markdown out. Its
-  inputs are the resolved settings **and** the state vocabulary the view offers, since with
-  the states left undeclared that vocabulary comes from the results rather than from any
-  setting — two bases with identical settings and different states must not produce the
-  same states section. Where the values were observed rather than declared, the document
-  says so: an outside editor writing a state nobody has used yet is then adding to a
-  vocabulary rather than breaking one.
+  inputs are the resolved settings **and** the states the view offers — the declared
+  workflow, the observed values that stand in for it when nothing is declared, and the
+  stray values a declared workflow does not list but the board still gives a column. Two
+  bases with identical settings and different states in their notes must not produce the
+  same states section, in either configuration. Where a value was observed rather than
+  declared, the document says so: an outside editor writing a state nobody has used yet is
+  then adding to a vocabulary rather than breaking one.
 - Re-running with the file already matching writes nothing.
 - The bytes land from `storage/`, like every other file this plugin puts in the vault, and
   no frontmatter write happens on any note.
