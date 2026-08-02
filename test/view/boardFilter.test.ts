@@ -24,6 +24,16 @@ function matchesOn(containerEl: HTMLElement, title: string): string[] {
 	);
 }
 
+/** An epic whose matching work sits two levels down, below the focus line. */
+function deepVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+	vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+	vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
+	vault.addFile('PBI Logout.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Feature A1' });
+	return vault;
+}
+
 describe('the quick filter on the board', () => {
 	it('narrows the cards, keeps every column, and clears back exactly', () => {
 		const { containerEl, view } = board(boardVault());
@@ -108,16 +118,6 @@ describe('what a filtered column header counts', () => {
 });
 
 describe('a card kept only by a match below it', () => {
-	/** An epic whose matching work sits two levels down, below the focus line. */
-	function deepVault(): FakeVault {
-		const vault = new FakeVault();
-		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
-		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
-		vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
-		vault.addFile('PBI Logout.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Feature A1' });
-		return vault;
-	}
-
 	it('names the matches on its face, each opening its own note', () => {
 		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
 
@@ -168,16 +168,6 @@ describe('a card kept only by a match below it', () => {
 });
 
 describe('reaching a hidden match without a pointer', () => {
-	/** An epic whose matching work sits two levels down, below the focus line. */
-	function deepVault(): FakeVault {
-		const vault = new FakeVault();
-		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
-		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
-		vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
-		vault.addFile('PBI Logout.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Feature A1' });
-		return vault;
-	}
-
 	function cardMenu(containerEl: HTMLElement, title: string): Menu {
 		cardByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const menu = Menu.lastShown;
@@ -229,5 +219,30 @@ describe('reaching a hidden match without a pointer', () => {
 		link?.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
 
 		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
+	});
+});
+
+describe('the no-state column while filtering', () => {
+	it('keeps its header and its pair when the filter matches none of its cards', () => {
+		// Feature B2 has no state. Filtering to "Epic A" matches none of the stateless
+		// cards, but the stage still holds one: collapsing it to a drop strip would say
+		// the work is gone, which is a stronger lie than the "0" the pair prevents.
+		const { containerEl, view } = board(boardVault());
+		view.setFilter('Epic A');
+
+		const noState = columnByName(containerEl, 'No state');
+		expect(noState.hasClass('pbl-board-strip')).toBe(false);
+		expect(countOf(noState)).toBe('0 of 1');
+	});
+
+	it('still shrinks to a strip when there are no stateless cards at all', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view } = board(vault);
+
+		expect(columnsOf(containerEl)[0].hasClass('pbl-board-strip')).toBe(true);
+		// And a filter that matches nothing does not conjure a column back.
+		view.setFilter('Epic A');
+		expect(columnsOf(containerEl)[0].hasClass('pbl-board-strip')).toBe(true);
 	});
 });

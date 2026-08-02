@@ -100,8 +100,11 @@ function renderColumn(
 ): HTMLElement {
 	// The no-state column earns its room only while it holds cards; empty, it
 	// shrinks to a leading drop strip so clearing a state by drag stays possible
-	// without a permanently empty column.
-	const strip = col.state === null && col.cards.length === 0;
+	// without a permanently empty column. "Empty" is about the POPULATION, not the
+	// matches: a filter that hid every stateless card would otherwise collapse the
+	// column to a strip, which says the work is gone rather than merely unmatched —
+	// a stronger lie than the "0" the pair counts exist to prevent.
+	const strip = col.state === null && col.cards.length === 0 && col.fullCount === 0;
 	const filtering = ctx.host.isFiltering();
 	const colEl = colsEl.createDiv({
 		cls:
