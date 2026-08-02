@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { boardColumns, NO_STATE_COLLISION_LABEL, NO_STATE_LABEL } from '../../src/domain/board';
 import { buildModel } from '../../src/domain/model';
-import { computeStateDropWrites } from '../../src/domain/writePlan';
+import { computeStateWrites } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -14,6 +14,9 @@ const settings = {
 };
 
 const everything = () => true;
+
+/** The date the caller hands the planner — fixed, because planning stays pure. */
+const TODAY = '2026-08-02';
 
 function labels(board: { columns: { label: string }[] }): string[] {
 	return board.columns.map((c) => c.label);
@@ -241,7 +244,7 @@ describe('boardColumns', () => {
 	});
 });
 
-describe('computeStateDropWrites', () => {
+describe('computeStateWrites', () => {
 	function item(state: string | null) {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, ...(state !== null ? { status: state } : {}) } });
@@ -251,23 +254,23 @@ describe('computeStateDropWrites', () => {
 
 	it('writes the canonical configured value, untransformed', () => {
 		const card = item('New');
-		const writes = computeStateDropWrites(card, 'Done');
+		const writes = computeStateWrites(card, 'Done', settings, TODAY);
 		expect(writes).toEqual([{ file: card.file, state: 'Done' }]);
 	});
 
 	it('plans nothing for a drop on the card’s own column, case-insensitively', () => {
-		expect(computeStateDropWrites(item('done'), 'Done')).toEqual([]);
+		expect(computeStateWrites(item('done'), 'Done', settings, TODAY)).toEqual([]);
 	});
 
 	it('removes the key for a drop on the no-state column', () => {
-		const writes = computeStateDropWrites(item('New'), null);
+		const writes = computeStateWrites(item('New'), null, settings, TODAY);
 		expect(writes).toHaveLength(1);
 		expect(writes[0].removeStateKey).toBe(true);
 		expect(writes[0].state).toBeUndefined();
 	});
 
 	it('plans nothing for a stateless card dropped on the no-state column', () => {
-		expect(computeStateDropWrites(item(null), null)).toEqual([]);
+		expect(computeStateWrites(item(null), null, settings, TODAY)).toEqual([]);
 	});
 });
 

@@ -35,6 +35,13 @@ export interface BoardColumn {
 	cards: BacklogItem[];
 	/** Result cards only. A context card is placement, not population. */
 	count: number;
+	/**
+	 * What `count` would be with the quick filter cleared — equal to it when no filter
+	 * is active. A filtered header says "3 of 12" because a column is a stage of the
+	 * workflow, not a search result: narrowing the cards must never make a stage look
+	 * emptier than the work actually in it.
+	 */
+	fullCount: number;
 }
 
 export interface BoardModel {
@@ -72,20 +79,59 @@ export function boardColumns(
 	model: BacklogModel,
 	settings: BacklogSettings,
 	visible: (item: BacklogItem) => boolean,
+	population: (item: BacklogItem) => boolean = visible,
 ): BoardModel {
+	const { columns, byValue, noState } = workflowColumns(model, settings);
+	// State-to-column matching is case-insensitive, exactly as doneValues matching
+	// already is. A card whose state names no column gathers under no-state rather
+	// than minting one — only an OBSERVED result value mints a column, above.
+	const columnFor = (card: BacklogItem): BoardColumn =>
+		(card.stateValue !== null ? byValue.get(card.stateValue.toLowerCase()) : undefined) ?? noState;
+
+	const candidates = model.focused ? model.roots : model.results;
+	const cards = candidates.filter(visible);
+	const sortIndex = new Map<BacklogItem, number>();
+	for (const card of cards) {
+		columnFor(card).cards.push(card);
+		sortIndex.set(card, card.outsideFilter ? firstPlacedIndex(card, visible) : card.entryIndex);
+	}
+	// The population each filtered count is "of": the same candidates through the same
+	// placement, with only the filter lifted. Results only, exactly as `count` is.
+	for (const card of candidates) {
+		if (!card.outsideFilter && population(card)) columnFor(card).fullCount += 1;
+	}
+	let cardCount = 0;
+	for (const col of columns) {
+		col.cards.sort((a, b) => (sortIndex.get(a) ?? 0) - (sortIndex.get(b) ?? 0) || a.entryIndex - b.entryIndex);
+		col.count = col.cards.reduce((n, card) => n + (card.outsideFilter ? 0 : 1), 0);
+		cardCount += col.count;
+	}
+	return { columns, cardCount };
+}
+
+/**
+ * The columns themselves, before any card is placed: no-state first, then the
+ * configured workflow in order, then a column per observed value the workflow does
+ * not name. `byValue` is the case-insensitive index the placement uses.
+ */
+function workflowColumns(
+	model: BacklogModel,
+	settings: BacklogSettings,
+): { columns: BoardColumn[]; byValue: Map<string, BoardColumn>; noState: BoardColumn } {
 	// The same fallback the state menus use, so with no configured list the board
 	// still draws the observed workflow rather than nothing.
 	const workflow = stateMenuValues(settings, model.observedStates);
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
-	const column = (state: string, outsideWorkflow: boolean): BoardColumn => ({
+	const column = (state: string | null, outsideWorkflow: boolean): BoardColumn => ({
 		state,
-		label: state,
-		done: done.has(state.toLowerCase()),
+		label: state ?? NO_STATE_LABEL,
+		done: state !== null && done.has(state.toLowerCase()),
 		outsideWorkflow,
 		cards: [],
 		count: 0,
+		fullCount: 0,
 	});
-	const noState: BoardColumn = { state: null, label: NO_STATE_LABEL, done: false, outsideWorkflow: false, cards: [], count: 0 };
+	const noState = column(null, false);
 	const columns = [noState, ...workflow.map((s) => column(s, false))];
 	const byValue = new Map<string, BoardColumn>();
 	for (const col of columns) {
@@ -101,24 +147,39 @@ export function boardColumns(
 		columns.push(col);
 	}
 	if (byValue.has(NO_STATE_LABEL.toLowerCase())) noState.label = NO_STATE_COLLISION_LABEL;
+	return { columns, byValue, noState };
+}
 
-	const cards = (model.focused ? model.roots : model.results).filter(visible);
-	const sortIndex = new Map<BacklogItem, number>();
-	for (const card of cards) {
-		// State-to-column matching is case-insensitive, exactly as doneValues matching
-		// already is. A context card whose state names no column gathers under
-		// no-state rather than minting one.
-		const col = card.stateValue !== null ? byValue.get(card.stateValue.toLowerCase()) : undefined;
-		(col ?? noState).cards.push(card);
-		sortIndex.set(card, card.outsideFilter ? firstPlacedIndex(card, visible) : card.entryIndex);
-	}
-	let cardCount = 0;
-	for (const col of columns) {
-		col.cards.sort((a, b) => (sortIndex.get(a) ?? 0) - (sortIndex.get(b) ?? 0) || a.entryIndex - b.entryIndex);
-		col.count = col.cards.reduce((n, card) => n + (card.outsideFilter ? 0 : 1), 0);
-		cardCount += col.count;
-	}
-	return { columns, cardCount };
+/** Every path with a card of its own — the "already on screen" test `hiddenMatches` takes. */
+export function cardPaths(board: BoardModel): Set<string> {
+	return new Set(board.columns.flatMap((col) => col.cards.map((card) => card.file.path)));
+}
+
+/**
+ * The matches hiding under a card: items in its subtree that the quick filter matched
+ * and that no card of their own puts on screen. A focused board shows one card per
+ * focus-level item, so a match three levels down has nothing to click — found,
+ * counted in the rollup, and unreachable. Naming them on the card is what makes the
+ * search's own result something the user can get to.
+ *
+ * The walk stops at anything already rendered: that card names what hides under it,
+ * and a match announced by two cards is a match the user cannot count.
+ */
+export function hiddenMatches(
+	item: BacklogItem,
+	matched: (item: BacklogItem) => boolean,
+	rendered: Set<string>,
+): BacklogItem[] {
+	const found: BacklogItem[] = [];
+	const walk = (parent: BacklogItem): void => {
+		for (const child of parent.children) {
+			if (rendered.has(child.file.path)) continue;
+			if (matched(child)) found.push(child);
+			walk(child);
+		}
+	};
+	walk(item);
+	return found;
 }
 
 /**

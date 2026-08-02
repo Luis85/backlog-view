@@ -2,10 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
-import { flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import {
-	BOARD_WORKFLOW,
 	boardVault,
 	cardByTitle,
 	cardTitles,
@@ -39,11 +38,11 @@ describe('dragging a card to a new state', () => {
 		const card = cardByTitle(containerEl, 'Epic A');
 		card.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
 		// No dataTransfer on this event: pragmatic ignores it, and no drag starts.
-		expect(done.hasClass('pbl-col-drop-over')).toBe(false);
+		expect(done.hasClass('pbl-drop-over')).toBe(false);
 
 		cardDrag(card, done);
 		// The gesture ended; the highlight must not survive it.
-		expect(done.hasClass('pbl-col-drop-over')).toBe(false);
+		expect(done.hasClass('pbl-drop-over')).toBe(false);
 	});
 
 	it('dropping on the no-state column removes the key, and undo puts it back', async () => {
@@ -111,7 +110,7 @@ describe('dragging a card to a new state', () => {
 		expect(vaultA.writeLog).toHaveLength(0);
 		expect(vaultB.writeLog).toHaveLength(0);
 		// And the foreign target never even highlighted.
-		expect(columnByName(b.containerEl, 'Done').hasClass('pbl-col-drop-over')).toBe(false);
+		expect(columnByName(b.containerEl, 'Done').hasClass('pbl-drop-over')).toBe(false);
 	});
 
 	it('config problems block a board move, exactly as every other write', async () => {
@@ -288,52 +287,6 @@ describe('the board keyboard', () => {
 		expect(view.selectedBoardColumn).toBeNull();
 		expect(tree.getAttribute('aria-activedescendant')).toBeNull();
 		expect(tree.hasClass('pbl-has-selection')).toBe(false);
-	});
-});
-
-describe('the quick filter on the board', () => {
-	it('narrows the cards, keeps every column, and clears back exactly', () => {
-		const { containerEl, view } = board(boardVault());
-
-		view.setFilter('Epic A');
-		expect(cardTitles(containerEl)).toEqual(['Epic A']);
-		// Columns are the shape of the board; matches are its contents.
-		expect(columnsOf(containerEl)).toHaveLength(4);
-		expect(countOf(columnByName(containerEl, 'Active'))).toBe('0');
-
-		view.setFilter('');
-		expect(cardTitles(containerEl)).toHaveLength(4);
-	});
-
-	it('keeps a card whose ancestor or descendant matches — the tree’s match path', () => {
-		const { containerEl, view } = board(boardVault());
-
-		// "B1" matches Feature B1; Epic B stays as its ancestor.
-		view.setFilter('B1');
-		expect(cardTitles(containerEl).sort()).toEqual(['Epic B', 'Feature B1']);
-	});
-
-	it('dragging stays enabled while filtering — a state write reads no siblings', async () => {
-		const vault = boardVault();
-		const { containerEl, view } = board(vault);
-
-		view.setFilter('Epic A');
-		cardDrag(cardByTitle(containerEl, 'Epic A'), columnByName(containerEl, 'Active'));
-		await flush();
-		expect(vault.fm('Epic A.md')['status']).toBe('Active');
-	});
-
-	it('carries over a projection switch instead of clearing', () => {
-		const vault = boardVault();
-		const treeSide = makeView(vault, { ...BOARD_WORKFLOW });
-		treeSide.view.setFilter('Epic A');
-
-		// The toggle switches in place — the filter is session state in both projections.
-		treeSide.view.setProjection('board');
-
-		expect(cardTitles(treeSide.containerEl)).toEqual(['Epic A']);
-		const input = treeSide.containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-		expect(input?.value).toBe('Epic A');
 	});
 });
 

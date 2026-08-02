@@ -160,31 +160,6 @@ export interface BacklogModel {
 	ignoredCount: number;
 }
 
-/**
- * Every path on a match path for `needle`: an item whose title contains it, that
- * item's whole subtree, and every ancestor leading down to it — the quick filter's
- * rule, which is a question about the tree rather than about the pane. The caller
- * hands in the forest it RENDERS, so a focused view filters what it shows rather
- * than what it holds, and lower-cases the needle once rather than per item.
- */
-export function matchingPaths(roots: BacklogItem[], needle: string): Set<string> {
-	const visible = new Set<string>();
-	const markSubtree = (item: BacklogItem) => {
-		visible.add(item.file.path);
-		for (const child of item.children) markSubtree(child);
-	};
-	const visit = (item: BacklogItem): boolean => {
-		const selfMatch = item.title.toLowerCase().includes(needle);
-		if (selfMatch) markSubtree(item);
-		let anyMatch = selfMatch;
-		for (const child of item.children) anyMatch = visit(child) || anyMatch;
-		if (anyMatch) visible.add(item.file.path);
-		return anyMatch;
-	};
-	for (const root of roots) visit(root);
-	return visible;
-}
-
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
 	const linked = linkAll(createItems(app, entries, settings), settings);
 	breakCycles(linked);

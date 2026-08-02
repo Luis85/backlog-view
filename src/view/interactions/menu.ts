@@ -2,10 +2,11 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
-import { sameValue } from '../../domain/noteFields';
+import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasDateAxis, hasHorizonAxis } from '../../domain/roadmap';
-import { computeStateDropWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
+import { cardPaths, hiddenMatches } from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
@@ -55,6 +56,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	// there is no rank to move within and no sibling to indent under.
 	if (host.projection === 'tree') addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
+	addMatchSection(host, menu, item);
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi
@@ -195,12 +197,40 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
 }
 
 /**
- * One offer in Set state: the value it writes (null removes the key) and the name it
+ * The matches hiding under this card, as menu entries.
+ *
+ * The board is one tab stop by design, so the match links on a card face carry
+ * `tabindex="-1"` — and the menu is their keyboard path, exactly as it is for the
+ * tree's add button and state chip. Without it those links would be pointer-only, and
+ * a match that only a mouse can reach is the very failure the card face exists to
+ * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
+ * not the card itself matched, for the same reason the face names them: a match below
+ * a matching card is a second result, and it has no card of its own to be reached by.
+ */
+function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	const board = host.projection === 'board' ? host.board?.board : null;
+	if (!board || !host.isFiltering()) return;
+	const carded = cardPaths(board);
+	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	if (matches.length === 0) return;
+	menu.addSeparator();
+	for (const match of matches) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(`Open match "${match.title}"`)
+				.setIcon('search')
+				.onClick((evt) => host.openItem(match, evt)),
+		);
+	}
+}
+
+/**
+ * One offer in Set state: the state it writes (null removes the key) and the name it
  * wears. The two differ on the board, where the entry is named for the COLUMN rather
  * than for its own value, so "No state" reads as a place instead of as a silence.
  */
-interface ValueChoice {
-	value: string | null;
+interface StateChoice {
+	state: string | null;
 	label: string;
 }
 
@@ -218,14 +248,14 @@ interface ValueChoice {
  * keep in step. The labels come from the columns too, so the entry a user picks is
  * named exactly as the column they can see.
  */
-function stateChoices(host: BacklogViewHost, item: BacklogItem): ValueChoice[] {
+function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	const board = host.projection === 'board' ? host.board?.board : null;
-	if (board) return board.columns.map((col) => ({ value: col.state, label: col.label }));
+	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
 	const current = item.stateValue;
 	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
-	return all.map((state) => ({ value: state, label: state }));
+	return all.map((state) => ({ state, label: state }));
 }
 
 /**
@@ -234,9 +264,12 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): ValueChoice[] {
  * announcement — and that path is also the only one that can express the no-state
  * entry, which the tree's list never offers.
  */
-function chooseState(host: BacklogViewHost, item: BacklogItem, choice: ValueChoice): Promise<boolean> {
-	if (host.projection === 'board' || choice.value === null) return host.performBoardMove(item, choice.value);
-	return host.applySafely([{ file: item.file, state: choice.value }]);
+function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
+	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
+	// The tree's own Set state plans through the same function the board's moves do, so
+	// the date stamps ride it too: a history with holes in it, where which hole depends
+	// on whether the user was looking at the tree or the board, is worse than none.
+	return host.applySafely(computeStateWrites(item, choice.state, host.settings, todayStamp()));
 }
 
 /**
@@ -253,7 +286,7 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			if (computeStateDropWrites(item, choice.value).length === 0) si.setChecked(true);
+			if (computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0) si.setChecked(true);
 		});
 	}
 }

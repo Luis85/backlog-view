@@ -83,8 +83,9 @@ exists to make impossible. The drag engine is decided:
 
 ## Where it lives
 
-The plan is `computeStateDropWrites` in `src/domain/writePlan.ts`, beside the drop
-plans it already builds; the remove-state write (`removeStateKey`) joined
+The plan is `computeStateWrites` in `src/domain/writePlan.ts`, beside the drop plans
+it already builds — renamed from `computeStateDropWrites` once the date stamps made it
+the one planner every state-changing input uses ([[Stamp when work starts and finishes]]); the remove-state write (`removeStateKey`) joined
 `removeParentKey` in `src/storage/frontmatter.ts`, the only module that may write; the
 batch goes through the same `applySafely` in `src/view/backlogView.ts` — reached via
 `performBoardMove`, which is now the one method all three inputs land on

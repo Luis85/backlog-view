@@ -49,9 +49,13 @@ drag as a gated state write, and the focus level picking the cards; the drag use
 stays `Active` on the one criterion only [[WIP limits]] can exercise. The second
 built the ways to move a card **without** a drag — Alt+arrow, and a card menu whose
 Set state is the board's own columns — with every move, drag included, announcing
-itself in the same words from one live region. What remains under the epic — lanes,
-creation from a column, limits, policies, stamps, column collapse, and the touch
-verdict a device has to answer — is still design.
+itself in the same words from one live region. The third took the two things that
+could not wait: **date stamps**, because history is the one thing a board cannot
+reconstruct later and every unstamped transition is gone for good, and the rest of the
+board's **quick filter**, so a narrowed column says how much work it still holds and a
+match nothing on screen can reach names itself on the card that hides it. What remains
+under the epic — lanes, creation from a column, limits, policies, column collapse, and
+the touch verdict a device has to answer — is still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly

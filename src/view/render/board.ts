@@ -2,11 +2,11 @@ import { setIcon, setTooltip } from 'obsidian';
 import { renderPropCells, renderRollup, RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderBadge, renderTitleText } from './rows';
-import { BoardSnapshot } from '../host';
+import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showItemMenu } from '../interactions/menu';
-import { boardColumns, BoardColumn, BoardModel } from '../../domain/board';
+import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 
@@ -17,14 +17,25 @@ import { BacklogItem } from '../../domain/model';
  * costs no information about an item.
  */
 export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
-	const host = ctx.host;
+	// Annotated rather than inferred from `ctx.host` so `npm run check` can see which
+	// host members this file uses — fallow resolves interface members through an
+	// explicit type and not through a property access. See the root CLAUDE.md.
+	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
-	const board = boardColumns(model, host.settings, (item) => !host.isRowHidden(item));
+	const board = boardColumns(
+		model,
+		host.settings,
+		(item) => !host.isRowHidden(item),
+		(item) => !host.isRowHiddenUnfiltered(item),
+	);
 
 	renderBoardInstructions(boardEl);
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
-	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd));
+	// Which items have a card of their own, so a card naming the matches below it can
+	// skip the ones already on screen. Built once per pass rather than searched per card.
+	const carded = cardPaths(board);
+	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd, carded));
 	dnd.wireScroller(boardEl);
 	renderBoardAdvisory(ctx, boardEl, board);
 	return { board, colEls };
@@ -85,11 +96,16 @@ function renderColumn(
 	colsEl: HTMLElement,
 	col: BoardColumn,
 	dnd: CardDragController,
+	carded: Set<string>,
 ): HTMLElement {
 	// The no-state column earns its room only while it holds cards; empty, it
 	// shrinks to a leading drop strip so clearing a state by drag stays possible
-	// without a permanently empty column.
-	const strip = col.state === null && col.cards.length === 0;
+	// without a permanently empty column. "Empty" is about the POPULATION, not the
+	// matches: a filter that hid every stateless card would otherwise collapse the
+	// column to a strip, which says the work is gone rather than merely unmatched —
+	// a stronger lie than the "0" the pair counts exist to prevent.
+	const strip = col.state === null && col.cards.length === 0 && col.fullCount === 0;
+	const filtering = ctx.host.isFiltering();
 	const colEl = colsEl.createDiv({
 		cls:
 			'pbl-board-col' +
@@ -97,11 +113,11 @@ function renderColumn(
 			(col.outsideWorkflow ? ' pbl-col-outside' : '') +
 			(col.state === null ? ' pbl-col-nostate' : '') +
 			(strip ? ' pbl-board-strip' : ''),
-		attr: { role: 'group', 'aria-label': columnLabel(col) },
+		attr: { role: 'group', 'aria-label': columnLabel(col, filtering) },
 	});
-	renderColumnHeader(colEl, col, strip);
+	renderColumnHeader(colEl, col, strip, filtering);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
-	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd);
+	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd, carded);
 	// What a drop on this column MEANS is the board's; the controller only resolves
 	// the card that was dragged and hands it here.
 	dnd.wireDropTarget(colEl, (item) => void ctx.host.performBoardMove(item, col.state));
@@ -109,28 +125,37 @@ function renderColumn(
 	return colEl;
 }
 
-function columnLabel(col: BoardColumn): string {
+function columnLabel(col: BoardColumn, filtering: boolean): string {
 	// Always col.label, never the constant: the synthetic column yields its name
 	// when a real state claims it, and an accessible name that kept the old text
 	// would disagree with the screen — unreachable by the very speech input that
 	// targets columns by their visible name.
 	const label = col.state === null ? `${col.label} — dropping here clears the state` : col.label;
+	// Filtered, the count is a pair and has to be spoken as one: "2 cards" in a column
+	// of eleven would tell a screen-reader user the stage had emptied.
+	if (filtering) return `${label}, ${col.count} of ${col.fullCount} cards match`;
 	return `${label}, ${col.count} card${col.count === 1 ? '' : 's'}`;
 }
 
-function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean): void {
+function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean, filtering: boolean): void {
 	// The header doubles as the column's keyboard stop: an option-like element the
 	// selection can make the listbox's active descendant, because the column itself
 	// is a group and a group is not a valid active item — a screen reader told to
 	// rest on one may announce nothing. See `.pbl-board-col-stop` in selection.ts.
 	const header = colEl.createDiv({
 		cls: 'pbl-board-col-header pbl-board-col-stop',
-		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col) },
+		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col, filtering) },
 	});
 	if (col.done) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
 	if (col.state === null) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });
-	if (!strip) header.createSpan({ cls: 'pbl-board-col-count', text: String(col.count) });
+	if (!strip) {
+		// A column is a stage of the workflow, not a search result: while the filter
+		// narrows the cards the header says how many of the stage's work it matched, so
+		// nobody reads a filtered board as a column that emptied.
+		const count = filtering ? `${col.count} of ${col.fullCount}` : String(col.count);
+		header.createSpan({ cls: 'pbl-board-col-count' + (filtering ? ' pbl-board-col-count-filtered' : ''), text: count });
+	}
 	if (col.outsideWorkflow) {
 		const mark = header.createSpan({ cls: 'pbl-board-col-stray' });
 		setIcon(mark, 'circle-help');
@@ -146,9 +171,19 @@ function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean
 	else if (col.state === null) setTooltip(colEl, 'Items without the state property — dropping a card here removes it');
 }
 
-function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, dnd: CardDragController): void {
+function renderCard(
+	ctx: RowContext,
+	cardsEl: HTMLElement,
+	item: BacklogItem,
+	dnd: CardDragController,
+	carded: Set<string>,
+): void {
 	const card = createCard(ctx, cardsEl, item);
 	renderCardBody(ctx, card, item);
+	// The board's own addition to the shared body: which items already have a card is
+	// a question only the board can answer, so the roadmap does not get this and the
+	// shared body stays the thing both projections agree on.
+	renderCardMatches(ctx, card, item, carded);
 	wireCardActivation(ctx, card, item);
 	dnd.wireCard(card, item);
 }
@@ -221,4 +256,49 @@ export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: Bac
 	// projection (see `buildItemMenu`): a board card has no visible neighbours to
 	// rank against, and its Set state is the board's columns.
 	card.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypeChoices(item)));
+}
+
+/**
+ * The matches the search found beneath this card, named on its face so they can be
+ * opened. Whether the card ITSELF matched makes no difference: a match below it is a
+ * second, distinct result, and one card cannot stand for two. Suppressing these
+ * because the card matched too is how the deeper one becomes unreachable — the exact
+ * failure this exists to prevent. Nothing is rendered when nothing hides below,
+ * which is the ordinary case and needs no special test.
+ *
+ * Buttons with `tabindex="-1"`, exactly as the tree's per-row controls are — the board
+ * is one tab stop, so Tab keeps skipping past the whole projection. That makes the
+ * card MENU their keyboard path rather than an extra: `addMatchSection` offers the
+ * same matches, from the same walk. Pointer-only links would fail this feature at its
+ * own purpose, which is that a found match can be reached.
+ */
+function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem, carded: Set<string>): void {
+	const host: BacklogViewHost = ctx.host;
+	if (!host.isFiltering()) return;
+	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	if (matches.length === 0) return;
+	const list = card.createDiv({ cls: 'pbl-card-matches' });
+	setIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
+	for (const match of matches) {
+		const link = list.createEl('button', {
+			cls: 'pbl-card-match',
+			text: match.title,
+			attr: { type: 'button', tabindex: '-1' },
+		});
+		setTooltip(link, `Open "${match.title}"`);
+		link.addEventListener('click', (evt) => {
+			// Without this the card's own handler runs too and opens the PARENT — the
+			// one note the user demonstrably did not click.
+			evt.stopPropagation();
+			host.openItem(match, evt);
+		});
+		// A middle click never fires `click`, so without its own handler it would reach
+		// the card's `auxclick` and open the parent in a new tab — the same wrong note,
+		// by the one route stopping the primary click does not cover.
+		link.addEventListener('auxclick', (evt) => {
+			if (evt.button !== 1) return;
+			evt.stopPropagation();
+			host.openItemInNewTab(match);
+		});
+	}
 }

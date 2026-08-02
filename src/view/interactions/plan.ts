@@ -74,7 +74,7 @@ function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string |
  * Those two drift the moment either side learns a case the other has not, and the
  * failure is silent in the worst direction: an entry that reads as current whose pick
  * still writes, spending the one undo slot on a change nobody asked for. Set state
- * follows the same rule against `computeStateDropWrites`.
+ * follows the same rule against `computeStateWrites`.
  */
 export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	for (const value of horizonChoices(host, item)) {
