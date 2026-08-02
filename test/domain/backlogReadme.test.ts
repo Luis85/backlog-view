@@ -108,6 +108,17 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('drawn as a milestone');
 	});
 
+	it('does not advertise a horizon property whose values have been cleared', () => {
+		// Same gate the menu and the planner use: a horizon key with no values is an axis
+		// nothing renders and nothing writes, so a row for it would name an inert key.
+		const inert = backlogReadmeContent(settingsWith({ horizonKey: 'horizon', horizonValues: [] }), []);
+		expect(inert).not.toContain('`horizon`');
+		expect(inert).not.toContain('## Planning');
+
+		const live = backlogReadmeContent(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }), []);
+		expect(live).toContain('| `horizon` | Optional |');
+	});
+
 	it('says an undeclared horizon gets its own bucket rather than being shelved', () => {
 		const content = backlogReadmeContent(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }), []);
 		expect(content).toContain('it gets a horizon of its own, after the declared ones');

@@ -1,5 +1,6 @@
 import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, stateMenuValues } from './settings';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
+import { hasHorizonAxis } from './roadmap';
 import { ORDER_SPACING } from './writePlan';
 
 /**
@@ -158,7 +159,9 @@ function fieldRows(settings: BacklogSettings): string[] {
 	];
 	if (settings.stateKey) rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below |`);
 	if (settings.tagsKey) rows.push(`| ${cell(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
-	if (settings.horizonKey) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
+	// The same gate the menu and the planner use: a horizon property with no values is an
+	// axis nothing renders and nothing writes, and a row for it would advertise an inert key.
+	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
 	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
 	return rows;
@@ -264,7 +267,7 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 
 function planningSection(settings: BacklogSettings): string[] {
 	const lines: string[] = [];
-	if (settings.horizonKey && settings.horizonValues.length > 0) {
+	if (hasHorizonAxis(settings)) {
 		lines.push(
 			`${code(settings.horizonKey)} places an item in a planning horizon: ` +
 				`${settings.horizonValues.map(code).join(', ')}. A value outside that list is not ` +

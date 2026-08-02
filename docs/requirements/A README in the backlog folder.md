@@ -84,9 +84,12 @@ the view options can rename.
 - **3a — a property is unset.** The section is omitted rather than rendered around a blank
   key: no state property means no states section, and no horizon or dates means no roadmap
   section. The README describes the view in front of the reader, not the one the options
-  could make. "Unset" is the axis's own definition of it, not a guess: **either** date key
-  alone is a configured axis (`configuredAxes`), so a milestone-only roadmap gets its
-  section and is described as the milestone-only thing it is.
+  could make. "Unset" is the axis's own definition of it, not a guess, and the property
+  table asks the same question as the section: **either** date key alone is a configured
+  axis, so a milestone-only roadmap gets its section and is described as the milestone-only
+  thing it is, while a horizon property whose values have been cleared is no axis at all
+  (`hasHorizonAxis`) and is named nowhere — the view draws no buckets for it and offers no
+  action that writes it, so a row for it would advertise an inert key.
 - **3b — the home folder or a type folder was renamed.** The paths come from the resolved
   settings, so the README names where notes actually go. It states the whole precedence and
   not the configured path alone, because the configured path is not the answer in every
