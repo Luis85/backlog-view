@@ -259,6 +259,21 @@ describe('the writable horizon vocabulary', () => {
 		expect(vocabularyOf(axisSettings()).observedHorizons).toEqual(['Someday', 'Now', 'Q3']);
 	});
 
+	it('reads them off the SORTED tree, so the menu cannot contradict the axis', () => {
+		const settings = axisSettings();
+		const vault = new FakeVault();
+		// Arrival order and sibling rank disagree — a base sorted by name over notes
+		// ranked by hand. The roadmap walks the ranks, so the vocabulary must too.
+		vault.addFile('Second.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Eventually' } });
+		vault.addFile('First.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Soon' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(model.observedHorizons).toEqual(['Soon', 'Eventually']);
+		// The order the buckets are actually minted in, from the same walk.
+		const minted = roadmapOf(model, settings, 'horizons').buckets.filter((b) => !b.declared);
+		expect(minted.map((b) => b.value)).toEqual(['Soon', 'Eventually']);
+	});
+
 	it('takes nothing from a context row', () => {
 		// The Epic is an excluded ancestor: its horizon is not this base's vocabulary,
 		// exactly as its state is not, so it can never become assignable to a result.

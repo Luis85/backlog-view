@@ -168,9 +168,14 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// them here keeps them off the tree walk below.
 	const observedStates = collectObservedStates(linked.all, settings);
 	const observedTags = collectObservedTags(linked.all);
-	const observedHorizons = collectObservedHorizons(linked.all);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
+	// The one vocabulary that is ORDERED rather than sorted, so it is taken from the
+	// finished tree instead of the load order: the roadmap mints a bucket per new
+	// value as it walks its rows, which are these items filtered — so reading them in
+	// the same sequence is what keeps the menu from naming the buckets in an order
+	// the axis then contradicts.
+	const observedHorizons = collectObservedHorizons(items);
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
 	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
@@ -574,11 +579,19 @@ function collectObservedTags(all: RawItem[]): string[] {
 }
 
 /**
- * The horizon values the results carry, deduped case-insensitively in the casing
- * seen first — and in FIRST-SEEN order rather than sorted, because that is the order
- * the roadmap mints their buckets in, so the menu names the same things in the same
- * sequence the axis shows them. Context rows contribute nothing: an excluded note's
- * horizon is not this base's vocabulary, exactly as its state is not.
+ * The horizon values the results carry, deduped case-insensitively in the casing seen
+ * first — and in the order the results stand in the FINISHED tree rather than sorted,
+ * because that is the walk the roadmap mints its buckets from. Take it from the
+ * unsorted load order instead and a base whose own sort disagrees with the sibling
+ * ranks yields a menu listing the buckets in an order the axis contradicts.
+ *
+ * Rows the roadmap does not draw — hidden, or outside a focus level — narrow that
+ * walk to a subsequence, never a different sequence, and the menu deliberately keeps
+ * offering their values: a vocabulary that shrank when a filter narrowed would make
+ * the reachable targets depend on what is on screen.
+ *
+ * Context rows contribute nothing: an excluded note's horizon is not this base's
+ * vocabulary, exactly as its state is not.
  */
 function collectObservedHorizons(all: RawItem[]): string[] {
 	const seen = new Map<string, string>();
