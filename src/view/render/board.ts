@@ -6,7 +6,7 @@ import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showItemMenu } from '../interactions/menu';
-import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches } from '../../domain/board';
+import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches, overBy } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 
@@ -133,8 +133,14 @@ function columnLabel(col: BoardColumn, filtering: boolean): string {
 	const label = col.state === null ? `${col.label} — dropping here clears the state` : col.label;
 	// Filtered, the count is a pair and has to be spoken as one: "2 cards" in a column
 	// of eleven would tell a screen-reader user the stage had emptied.
-	if (filtering) return `${label}, ${col.count} of ${col.fullCount} cards match`;
-	return `${label}, ${col.count} card${col.count === 1 ? '' : 's'}`;
+	const counts = filtering
+		? `${col.count} of ${col.fullCount} cards match`
+		: `${col.count} card${col.count === 1 ? '' : 's'}`;
+	if (col.limit === null) return `${label}, ${counts}`;
+	// The overage is spoken because the icon beside it is not: an over-limit column
+	// has to say so to someone who cannot see either the colour or the shape.
+	const over = overBy(col);
+	return `${label}, ${counts}, limit ${col.limit}${over > 0 ? `, over by ${over}` : ''}`;
 }
 
 function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean, filtering: boolean): void {
@@ -155,6 +161,15 @@ function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean
 		// nobody reads a filtered board as a column that emptied.
 		const count = filtering ? `${col.count} of ${col.fullCount}` : String(col.count);
 		header.createSpan({ cls: 'pbl-board-col-count' + (filtering ? ' pbl-board-col-count-filtered' : ''), text: count });
+		if (col.limit !== null) {
+			header.createSpan({ cls: 'pbl-board-col-limit', text: `/ ${col.limit}` });
+			// More than colour alone: the class carries the colour, the icon carries the
+			// shape, and `columnLabel` carries the words.
+			if (overBy(col) > 0) {
+				header.addClass('pbl-board-col-over');
+				setIcon(header.createSpan({ cls: 'pbl-board-col-over-icon' }), 'triangle-alert');
+			}
+		}
 	}
 	if (col.outsideWorkflow) {
 		const mark = header.createSpan({ cls: 'pbl-board-col-stray' });
