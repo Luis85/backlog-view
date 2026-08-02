@@ -52,10 +52,21 @@ free of runtime code so imports stay cycle-free.
 
 ## What is rendered, and what is merely hidden
 
-- The quick filter is ephemeral view state: while active, `isCollapsed` reports false
+- The quick filter is ephemeral view state, owned by `filterState.ts` (the shape
+  `collapseState.ts` already has): while active, `isCollapsed` reports false
   (everything on a match path renders expanded), rows are not draggable (visual
   neighbors are not real siblings), and `setFilter` re-renders the tree only so the
-  toolbar input keeps focus.
+  toolbar input keeps focus. It keeps TWO sets — `visible` (a match plus its ancestors
+  and its whole subtree) decides what renders, `matches` (the matches themselves)
+  answers which of the things under a card the search actually found. One set cannot
+  do both: everything in a match's subtree is visible and almost none of it matched.
+- `isRowHidden` and `isRowHiddenUnfiltered` are one `hidden` method with a flag, so the
+  narrowed board and the population its counts are measured against cannot disagree
+  about what is in a column. **Lifting the filter is not the same as having no filter**:
+  a running filter suspends the completed-items toggle, and the population has to keep
+  that suspension, or a matched-but-otherwise-hidden card reads as "1 of 0" — each
+  number defensible on its own, the pair nonsense. What "of" means is what this filter
+  is choosing among.
 - "Show completed items" hides only fully-done subtrees (`subtreeDone`) and only at
   render level (`isRowHidden`): the model, rollups and ALL order math keep using full
   sibling lists — hidden siblings still get renumber writes. The quick filter
@@ -204,6 +215,20 @@ free of runtime code so imports stay cycle-free.
   and menu paths too: a keyboard can SELECT what a drag was never wired to pick up, so
   the refusal has to hold where the drag could not reach. Column counts are result
   cards only; a context card is placement, not population.
+- A filtered column header says "3 of 12" (`BoardColumn.fullCount`), and a card kept
+  hiding a match below it names those matches on its face — whether or not the card
+  itself matched, since a match under a matching card is a second result and one card
+  cannot stand for two — — `hiddenMatches` walks its
+  subtree, stopping at anything already rendered so one match is never announced by two
+  cards. It matters most under focus, where the only cards are the focus level's: a
+  match three levels down would otherwise be found, counted in the rollup, and
+  impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
+  control, so the card MENU carries the same matches — that is their keyboard path, the
+  same answer the tree gives for the add button and the state chip, and without it the
+  links would be pointer-only and the feature would fail at its own purpose. Each link
+  stops both its click AND its `auxclick` from reaching the card beneath: a middle click
+  never fires `click`, so stopping the primary one alone still opened the parent in a
+  new tab.
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by
   `uniqueElementId` because that attribute resolves across the whole document and two

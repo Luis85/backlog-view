@@ -125,6 +125,23 @@ in the root `CLAUDE.md` because it spans every layer.
   backfill and rollups never see them; `model.ignoredCount` carries the number for the
   toolbar advisory and the empty state. Turning the option off restores "every note is
   an item" — the fixture opt-out (`unscoped`) in the tests.
+- Every input that changes a state plans through `computeStateWrites` — a drop,
+  Alt+arrow, the board's Set state and the tree's. Not a tidiness rule: the date stamps
+  ride that plan, so a path that planned its own `{file, state}` would record a history
+  whose holes depended on which projection the user happened to be looking at. It stays
+  pure by taking the date as an argument; the clock is read once, in `todayStamp`
+  (`noteFields.ts`), from LOCAL date parts — `toISOString` stamps an evening transition
+  as tomorrow for everyone west of Greenwich.
+- The stamps ask about a state VALUE, not an item (`isStartedValue`, `isDoneValue`):
+  the state being written is one no item holds yet. The plan answers only what it can
+  know for certain — the state the user PICKED. Whether that crosses the done boundary
+  depends on the state being left, which only the note knows, so the plan carries
+  `finish: {date, toDone}` and `storage/` decides. `startedStates` empty means NOTHING
+  counts as started — a first column is a backlog as often as it is a start, and a
+  guessed default would date work nobody began. Both stamp keys join `configProblems`,
+  and the RESOLVED `tagsKey` joins it with them: it has already yielded to the four it
+  could collide with, so the only collision it can now report is a stamp aimed at the
+  tags property — the case the yielding rule never covered.
 - `model.results` is the Base's own rows and `model.items` is everything rendered.
   Anything answering "what is in this base" takes `results`; only rendering, navigation
   and collapse state take `items`.

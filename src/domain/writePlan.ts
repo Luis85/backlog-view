@@ -4,7 +4,7 @@ import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, nextLevelIndex } from './itemTypes';
 import { CivilDate, readDate } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
-import { AXIS_FIELDS, axisKeyFor, BacklogSettings, LEVELS } from './settings';
+import { AXIS_FIELDS, axisKeyFor, BacklogSettings, isDoneValue, isStartedValue, LEVELS } from './settings';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -44,6 +44,25 @@ export interface ItemWrite {
 	 * second would put the first tag back.
 	 */
 	tags?: TagDelta;
+	/**
+	 * Date to stamp as the start, written ONLY if the property is empty. Write-once
+	 * is the rule, not a caller's option: the earliest start has to survive rework,
+	 * or the measure reports the last restart rather than the age of the work. The
+	 * emptiness test belongs to the writer for the same reason the tag delta does —
+	 * it is the live value that decides, and the row that planned this can be a
+	 * refresh behind the note.
+	 */
+	startedDate?: string;
+	/**
+	 * The finish stamp for a write that MAY cross the done boundary: the date to
+	 * stamp, and whether the state being written counts as done. Which way it crosses
+	 * — or whether it crosses at all — is decided at the WRITE boundary against the
+	 * live state, for the same reason the start's write-once test is: the row that
+	 * planned this can be a refresh behind the note. Deciding here from the model's
+	 * idea of the old state leaves a note that is already done, moved to a not-done
+	 * state, still carrying the finish it no longer has.
+	 */
+	finish?: { date: string; toDone: boolean };
 	/** The roadmap's placement properties; fields left out are not touched. */
 	axis?: AxisWrite;
 }
@@ -191,19 +210,51 @@ export function computeTypeChanges(
 }
 
 /**
- * The write a board drop plans: the target column's canonical value, byte for byte —
- * nothing transforms it on the way to disk. Dropping on the card's own column
- * (case-insensitively, the same matching that placed it there) plans nothing, so the
- * batch that follows cannot cost the caller's undo slot; dropping on the no-state
- * column removes the key rather than writing an empty string.
+ * Everything ONE state change writes: the target column's canonical value, byte for
+ * byte — nothing transforms it on the way to disk — plus the date stamps that ride
+ * it. Setting the state the item already holds (case-insensitively, the same matching
+ * that placed it in its column) plans nothing, so the batch that follows cannot cost
+ * the caller's undo slot; the no-state target removes the key rather than writing an
+ * empty string.
+ *
+ * Every input that changes a state comes through here — a drop, Alt+arrow, both Set
+ * state menus — because a stamp that rode only some of them would record a history
+ * with holes in it, and which hole would depend on how the user happened to move the
+ * card. `today` is passed in rather than read here so the planning stays pure.
  */
-export function computeStateDropWrites(item: BacklogItem, state: string | null): ItemWrite[] {
+export function computeStateWrites(
+	item: BacklogItem,
+	state: string | null,
+	settings: BacklogSettings,
+	today: string,
+): ItemWrite[] {
 	const current = item.stateValue;
-	if (state === null) {
-		return current === null ? [] : [{ file: item.file, removeStateKey: true }];
-	}
-	if (current !== null && current.toLowerCase() === state.toLowerCase()) return [];
-	return [{ file: item.file, state }];
+	const same = state === null ? current === null : current !== null && current.toLowerCase() === state.toLowerCase();
+	if (same) return [];
+	const write: ItemWrite = state === null ? { file: item.file, removeStateKey: true } : { file: item.file, state };
+	return [{ ...write, ...stampWrites(state, settings, today) }];
+}
+
+/**
+ * The dates a state change stamps, as fields of the same write — one file, one
+ * `processFrontMatter` call, so one undo takes the state and its dates back together.
+ * A stamp is never a second write.
+ */
+function stampWrites(
+	to: string | null,
+	settings: BacklogSettings,
+	today: string,
+): Pick<ItemWrite, 'startedDate' | 'finish'> {
+	const stamps: Pick<ItemWrite, 'startedDate' | 'finish'> = {};
+	// Entering a started state offers the date; the writer keeps the earliest one. The
+	// state being entered is what the user just picked, so it is never stale — unlike
+	// the one being left, which is why only this half is decided here.
+	if (settings.startedDateKey && isStartedValue(settings, to)) stamps.startedDate = today;
+	// Both halves of the finish rule need the state being LEFT, and only the note
+	// knows that for certain: whether this crosses in (stamp), crosses out (clear) or
+	// is a done-to-done re-label (leave alone) is settled at the write boundary.
+	if (settings.finishedDateKey) stamps.finish = { date: today, toDone: isDoneValue(settings, to) };
+	return stamps;
 }
 
 /**
