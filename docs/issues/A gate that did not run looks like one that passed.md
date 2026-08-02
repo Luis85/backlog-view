@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-02
-source: PR #47 — four workflow runs, and three attempts at counting them
+source: PR #47 — five pushes recorded as they were made, three of which produced no run
 files:
   - .github/workflows/ci.yml
 ---
@@ -58,19 +58,43 @@ So the commit-based table counted pushes that carried more than one commit as fa
 How much of the earlier gap it explains is **not established**, because the pushes were
 never enumerated — only the commits were.
 
-## What is actually known
+## The open question, answered by watching the right unit
 
-| | |
-| --- | --- |
-| Runs on PR #47 | four: #318 `6e605bb`, #324 `5740be1`, #327 `670b111`, #338 `7053f94` |
-| All four | green on Ubuntu **and** Windows |
-| Current head | `7053f94`, run #338 — so the merged tree IS verified on Windows |
-| Commits with no run of their own | eight, of which at least two are explained by sharing a push |
-| Pushes with no run | **unknown — nobody has enumerated them** |
+Once pushes were the unit, the answer came from *making* some. Five pushes went up in a
+row, each one recorded as it happened rather than reconstructed afterwards:
 
-The last row is the open question, and it is the only one worth chasing. If every push
-produced a run, there is no defect here at all and this note keeps only its title. If
-some did not, the gap is real and the four runs' distribution is the evidence.
+| Push | Commits | Run |
+| --- | --- | --- |
+| `277a6bd..7053f94` | three | #338, green both legs |
+| `7053f94..ad70dbe` | one | #341, green both legs |
+| `ad70dbe..803ee6d` | one | **none** |
+| `803ee6d..2052860` | one | **none** |
+| `2052860..e03b3ea` | one | **none** |
+
+**So the gap is real, and push-grouping does not explain it.** Three consecutive
+single-commit pushes to an open PR produced no `ci.yml` run at all, over roughly twenty
+minutes, while other checks on those same commits did fire — GitGuardian reported, and
+the review bot reviewed `2052860` by name, so the pushes plainly arrived.
+
+And the distribution ALTERNATES in stretches, which is the strongest single fact here.
+Taking the whole PR in push order, runs fired on three, then none on three, then two,
+then none on three:
+
+```
+6e605bb ✓  5740be1 ✓  670b111 ✓   243a4f2 ✗  521d3d7 ✗  277a6bd ✗
+7053f94 ✓  ad70dbe ✓               803ee6d ✗  2052860 ✗  e03b3ea ✗
+```
+
+Nothing that decided independently per event would produce that. It points at something
+with state — a concurrency limit, a queue, a spending cap — and away from anything about
+the pushes themselves, which were indistinguishable from the ones that ran. (The first
+three columns are reconstructed from commit times, so they assume one push per commit,
+which is how those rounds were made; the last five rows were recorded as they happened.)
+
+The cost is immediate rather than theoretical: the runs that fired covered the merge
+commit, and the four commits *after* it — three of them review fixes to `domain/`,
+`view/` and the stylesheet — are verified only by a local `npm run check`, which cannot
+see Windows.
 
 ## How to check, properly
 
@@ -89,23 +113,34 @@ own commit range is.
 
 ## Acceptance criteria
 
-- Pushes are enumerated against runs, and the question "did every push produce a run?"
-  is answered from data rather than inferred from the commit list. Whatever the answer,
-  it settles whether the rest of this note describes a defect.
-- If it does: the cause is identified rather than worked around, and the honest
-  follow-up is a **required** status check on `main`, so an unrun gate blocks a merge
-  instead of resembling a passed one — the same shape as the branch-protection item
+- ~~Pushes are enumerated against runs, and "did every push produce a run?" is answered
+  from data rather than inferred from the commit list.~~ Answered: **no.** Three
+  consecutive single-commit pushes produced none, recorded as they happened.
+- The cause is identified rather than worked around. The contiguity is the lead: it comes
+  and goes in stretches, so look for something with state — a concurrency, queue or
+  spending limit — before anything about the pushes, which were indistinguishable from
+  the ones that ran.
+- **A required status check on `main`**, so an unrun gate blocks a merge instead of
+  resembling a passed one. This was the conditional follow-up; the condition is now met,
+  so it is the recommendation. Same shape as the branch-protection item
   [[Two spec branches predate the use-case gate]] is still waiting on, and both the
-  maintainer's to enable.
-- ~~PR #47's head is verified on Windows by a run rather than by argument.~~ Done —
-  run #338 on `7053f94`, both legs green, on the merged tree.
+  maintainer's to enable. Note what it does *not* do: a required check that never runs
+  blocks forever rather than passing silently, which is the right failure — loud and
+  fixable, instead of quiet and wrong.
+- PR #47's **head** is verified on Windows by a run. Met at `7053f94` and `ad70dbe`, and
+  no longer true: four commits have landed since, none with a run.
 
 ## Outcome
 
-Open, downgraded to P2, and kept for the title rather than for the count. The count was
-asserted three times before it was measured with the right unit, which is a better
-argument for the habit than for the defect: **name the unit that triggers the thing you
-are counting, then enumerate both sides and join them.**
+Open at P2 — the defect is confirmed but the lever is outside this tree, and every
+consequence of it is visible rather than silent now that the note says which commits are
+unchecked.
+
+The method is the part worth keeping. The count was asserted three times before anyone
+measured it with the right unit, and the answer only arrived once the unit was named and
+the evidence was collected *forward* — recording each push as it was made — instead of
+reconstructed from a listing afterwards. **Name the unit that triggers the thing you are
+counting; enumerate both sides; and where you can, watch it happen rather than infer it.**
 
 Every other verification note in this folder assumes the gate runs. This is the one that
 says to confirm it did — for the commit in hand, rather than for the branch, and against
