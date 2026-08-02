@@ -346,6 +346,151 @@ describe('the writable horizon vocabulary', () => {
 	});
 });
 
+describe('a dateless parent spans its children', () => {
+	const march = { year: 2026, month: 3, day: 1 };
+	const june = { year: 2026, month: 6, day: 1 };
+
+	function bars(model: BacklogModel) {
+		return roadmapOf(model, axisSettings(), 'dates').bars;
+	}
+
+	function tree(files: [string, Record<string, unknown>, string?][]): BacklogModel {
+		const vault = new FakeVault();
+		for (const [name, fm, parent] of files) {
+			vault.addFile(`${name}.md`, { frontmatter: fm, ...(parent ? { parentLink: parent } : {}) });
+		}
+		return buildModel(vault.app, vault.entries(), axisSettings());
+	}
+
+	it('infers both ends from the subtree and marks both inferred', () => {
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10 }],
+			['A', { type: 'Feature', order: 10, start: '2026-03-01', due: '2026-04-01' }, 'Epic'],
+			['B', { type: 'Feature', order: 20, start: '2026-04-01', due: '2026-06-01' }, 'Epic'],
+		]);
+
+		const epic = bars(model).find((b) => b.item.title === 'Epic');
+		expect(epic?.span).toEqual({ start: march, target: june });
+		expect(epic?.inferredStart).toBe(true);
+		expect(epic?.inferredEnd).toBe(true);
+	});
+
+	it('a stated end always wins, and the disagreement renders rather than resolves', () => {
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10, start: '2026-04-01' }],
+			['A', { type: 'Feature', order: 10, start: '2026-03-01', due: '2026-06-01' }, 'Epic'],
+		]);
+
+		const epic = bars(model).find((b) => b.item.title === 'Epic');
+		// The stated start stands even though the child begins a month earlier.
+		expect(epic?.span.start).toEqual({ year: 2026, month: 4, day: 1 });
+		expect(epic?.inferredStart).toBe(false);
+		// The empty end fills from below and carries the inferred styling alone.
+		expect(epic?.span.target).toEqual(june);
+		expect(epic?.inferredEnd).toBe(true);
+	});
+
+	it('an inference may extend a statement and never contradict it', () => {
+		// Child's target precedes the parent's stated start: filling the parent's
+		// empty target from it would draw a reversed bar. The end stays open instead.
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10, start: '2026-06-01' }],
+			['A', { type: 'Feature', order: 10, due: '2026-03-01' }, 'Epic'],
+		]);
+
+		const epic = bars(model).find((b) => b.item.title === 'Epic');
+		expect(epic?.span).toEqual({ start: june, target: null });
+		expect(epic?.inferredEnd).toBe(false);
+	});
+
+	it('an end with no evidence of its own kind stays open', () => {
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10 }],
+			['A', { type: 'Feature', order: 10, due: '2026-06-01' }, 'Epic'],
+		]);
+
+		const epic = bars(model).find((b) => b.item.title === 'Epic');
+		expect(epic?.span).toEqual({ start: null, target: june });
+		expect(epic?.inferredStart).toBe(false);
+		expect(epic?.inferredEnd).toBe(true);
+	});
+
+	it('crossed evidence brackets the activity without bounding it — both ends open', () => {
+		// One child states only a start, a later one only an earlier target.
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10 }],
+			['A', { type: 'Feature', order: 10, start: '2026-06-01' }, 'Epic'],
+			['B', { type: 'Feature', order: 20, due: '2026-03-01' }, 'Epic'],
+		]);
+
+		const epic = bars(model).find((b) => b.item.title === 'Epic');
+		// The bar covers what is known, never reversed, and claims neither end.
+		expect(epic?.span).toEqual({ start: march, target: june });
+		expect(epic?.inferredStart).toBe(true);
+		expect(epic?.inferredEnd).toBe(true);
+	});
+
+	it('a parent whose own pair is reversed shelves — no inference stands in for a typo', () => {
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10, start: '2026-06-01', due: '2026-03-01' }],
+			['A', { type: 'Feature', order: 10, start: '2026-04-01', due: '2026-05-01' }, 'Epic'],
+		]);
+
+		const roadmap = roadmapOf(model, axisSettings(), 'dates');
+		expect(roadmap.shelf.map((s) => [s.item.title, s.reason])).toContainEqual([
+			'Epic',
+			'Target date precedes the start date',
+		]);
+	});
+
+	it('a subtree with no dates at all still shelves', () => {
+		const model = tree([
+			['Epic', { type: 'Epic', order: 10 }],
+			['A', { type: 'Feature', order: 10 }, 'Epic'],
+		]);
+
+		const roadmap = roadmapOf(model, axisSettings(), 'dates');
+		expect(roadmap.bars).toEqual([]);
+		expect(titles(roadmap.shelf.map((s) => s.item))).toEqual(['Epic', 'A']);
+	});
+
+	it('a stated bar is never marked inferred', () => {
+		const model = tree([['Solo', { type: 'PBI', order: 10, start: '2026-03-01', due: '2026-06-01' }]]);
+
+		const solo = bars(model)[0];
+		expect(solo.inferredStart).toBe(false);
+		expect(solo.inferredEnd).toBe(false);
+	});
+
+	it('is derived every pass and written nowhere — a changed child moves the parent', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-03-01', due: '2026-04-01' },
+			parentLink: 'Epic',
+		});
+
+		const first = buildModel(vault.app, vault.entries(), axisSettings());
+		expect(roadmapOf(first, axisSettings(), 'dates').bars[0].span.target).toEqual({
+			year: 2026,
+			month: 4,
+			day: 1,
+		});
+
+		// The child's plan slips. Nothing re-plans the epic — it is recomputed.
+		vault.setFrontmatter('A.md', { type: 'Feature', order: 10, start: '2026-03-01', due: '2026-09-01' });
+		const second = buildModel(vault.app, vault.entries(), axisSettings());
+		expect(roadmapOf(second, axisSettings(), 'dates').bars[0].span.target).toEqual({
+			year: 2026,
+			month: 9,
+			day: 1,
+		});
+
+		// The epic's own frontmatter was never touched: an inference is not a value.
+		expect(vault.writeLog).toEqual([]);
+	});
+});
+
 describe('which placement keys a note carries', () => {
 	/** The three placement fields of the record; the rest belong to the state and the stamps. */
 	function keysOf(frontmatter: Record<string, unknown>, settings = axisSettings()) {
