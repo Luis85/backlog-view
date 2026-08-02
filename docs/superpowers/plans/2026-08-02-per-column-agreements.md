@@ -174,7 +174,16 @@ In `src/domain/settings.ts`, after the `doneValues` field:
 
 - [ ] **Step 4: Generalise the name table and add the key builders**
 
-Replace `byTypeName` (currently at `src/domain/settings.ts:129`) with the pair below, keeping its whole doc comment on `byName` — the comment is the record of a defect that shipped three times and must not be lost:
+Replace `byTypeName` (currently at `src/domain/settings.ts:129`) with the pair below, keeping its whole doc comment on `byName` — the comment is the record of a defect that shipped three times and must not be lost.
+
+**The delegate is deliberate, and a reviewer should hold it to this reason rather than
+to "one-line wrappers are indirection".** `byTypeName` has four call sites —
+`src/domain/settings.ts:150`, `src/domain/itemTypes.ts:1` and `:96`, and
+`src/view/render/rows.ts:8` and `:233` — plus two mentions in `CLAUDE.md` files. Three
+of those files are ones the milestones increment is editing right now, and
+`render/rows.ts:233` is `EXTRA_TYPE_STYLE`, which that increment changes by definition.
+A rename would be tidier and would collide in the other branch's hottest files; the
+delegate collides with nothing. Rename it once milestones has landed.
 
 ```ts
 export function byName<T>(table: Record<string, T>, name: string | null): T | undefined {
