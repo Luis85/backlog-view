@@ -16,19 +16,25 @@ this view costs a click rather than an afternoon of hand-editing.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner adopting the view on existing notes |
-| **Trigger** | The ✨ **Assign missing type and order properties** button in the toolbar |
+| **Trigger** | The ✨ **Assign missing properties** button in the toolbar |
 | **Preconditions** | The view options are valid; the tree has loaded |
 | **Guarantee** | **Existing values are never overwritten.** The button fills gaps; it does not normalise, tidy or re-type anything already set. |
 
 **Main flow**
 
 1. The user presses ✨.
-2. The view walks the tree and collects every result note missing `type`, `order`, or both.
+2. The view walks the tree and collects every result note missing one of the properties
+   this view writes: `type`, `order`, and — where an axis is configured — the roadmap's
+   placement keys ([[Horizons or dates]]).
 3. For each, it plans the value already being *shown*: the implied level
    ([[Level ladder and implied types]]) for `type`, and a place at the end of its sibling
    group for `order`.
-4. The batch is written, progress ticking in the toolbar as each file lands.
-5. One refresh follows — not one per file — and the whole batch is a single undo.
+4. A missing placement key is created **empty**. The property becomes visible and
+   editable in Obsidian's own editor while the item keeps the placement it had — none —
+   so the roadmap does not move either. A horizon or a date nobody chose would be the
+   view inventing a plan, which on a roadmap reads as a decision.
+5. The batch is written, progress ticking in the toolbar as each file lands.
+6. One refresh follows — not one per file — and the whole batch is a single undo.
 
 **Extensions**
 
@@ -46,7 +52,12 @@ this view costs a click rather than an afternoon of hand-editing.
   forbids is *writing to* an excluded note, not *reading* one.
 - **3c — the item already has the property.** Skipped. This is the rule the whole feature
   turns on.
-- **4a — a write fails partway.** The prefix that landed stays applied and stays undoable,
+- **4a — the note carries the key with an empty value.** Skipped: presence is the
+  question here, and an empty horizon is a key the note has. The *reading* of it says
+  untriaged either way, which is why the two are asked separately.
+- **4b — no axis is configured.** No placement key is written at all — never a key no
+  property names, the state write's own rule.
+- **5a — a write fails partway.** The prefix that landed stays applied and stays undoable,
   and the view still refreshes — the notes already written are on disk and the tree has to
   show them.
 
@@ -56,13 +67,16 @@ this view costs a click rather than an afternoon of hand-editing.
 - No type is guessed for an **orphan** — an item whose parent link resolves to nothing.
 - A note the Base excluded is never written to, and a result below one is still backfilled.
 - The whole batch is one refresh and one undo, with progress shown while it runs.
-- The values written are the ones that were already on screen, so the tree does not move
-  when the button is pressed.
+- The values written are the ones that were already on screen, so neither the tree nor
+  the roadmap moves when the button is pressed: a created placement key is empty, and an
+  empty placement is the shelf the item was already on.
+- Only configured placement keys are created, and only on notes that do not carry them.
 
 ## Where it lives
 
-`src/domain/writePlan.ts` (`computeInitWrites`) ·
+`src/domain/writePlan.ts` (`computeInitWrites`, over `initWriteFor` and
+`missingAxisWrite`) · `src/domain/model.ts` (`axisKeys`, which key a note carries) ·
 `src/view/interactions/structure.ts` (the toolbar action) ·
 `src/storage/frontmatter.ts` (`applyWrites`).
-Tests: `test/domain/writePlan.test.ts`, `test/view/toolbar.test.ts`,
-`test/view/contextRowWrites.test.ts`.
+Tests: `test/domain/writePlan.test.ts`, `test/domain/writePlanAxis.test.ts`,
+`test/view/toolbar.test.ts`, `test/view/contextRowWrites.test.ts`.

@@ -91,9 +91,10 @@ mirrors the same directories.
 | `view/interactions/menu.ts` | Context menu | jsdom tests |
 | `view/interactions/structure.ts` | Move/indent/outdent/backfill operations | jsdom + node |
 | `view/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
+| `view/interactions/plan.ts` | The roadmap's placement writes from a row: set/clear horizon, schedule, unschedule | jsdom tests |
 | `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
 | `view/interactions/undo.ts` | The undo replay: the slot, the partial-failure remainder, and `UndoRecovery` | jsdom tests |
-| `src/ui/prompts.ts` | New-item and folder prompts (+ folder suggest) | jsdom tests |
+| `src/ui/prompts.ts` | New-item, folder and schedule prompts (+ folder suggest) | jsdom tests |
 | `src/ui/valueSuggest.ts` | Shared `AbstractInputSuggest` base the folder and tag suggesters extend | jsdom tests |
 | `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
 

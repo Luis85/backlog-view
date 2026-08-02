@@ -220,10 +220,21 @@ free of runtime code so imports stay cycle-free.
 
 ## The roadmap projection
 
-- Read-only by design in this increment: no drag wiring, no lift, no menu writes —
-  scheduling and horizon moves are their own feature and arrive with their write
-  plans. What IS interactive: opening (click/Enter), the shared tag pills on result
-  cards (the card body is the board's), the toolbar. Everything else renders.
+- The FRAME is read-only: no drag wiring and no lift — scheduling and horizon moves as
+  *gestures* are their own feature and arrive with their drop plans. What IS
+  interactive: opening (click/Enter), the shared tag pills on result cards (the card
+  body is the board's), the toolbar, and the row menu's placement actions
+  (`interactions/plan.ts`), which belong to the item rather than to the mode and so
+  work in all three projections. Everything else renders.
+- Those placement actions gate per axis on `hasHorizonAxis` / `hasDateAxis` — the same
+  predicates `configuredAxes` is built from, so what the menu offers and what the
+  roadmap draws cannot drift apart. A horizon property with an empty values list is
+  UNCONFIGURED for both. Set horizon offers `horizonMenuValues` (declared ∪ observed
+  on results) plus the item's own unlisted value — the union, not the state menu's
+  either/or, because an undeclared horizon is a bucket the roadmap already draws.
+  Removal actions (Clear horizon, Unschedule, an emptied field in the entry) appear
+  only while the note CARRIES the key (`item.axisKeys`, presence not value), so no
+  offered action can write nothing, and they delete the key rather than blanking it.
 - A roadmap card is the board's card: `createCard` / `renderCardBody` /
   `wireCardActivation` are exported from `render/board.ts` and shared, so an item
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,

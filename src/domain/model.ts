@@ -14,7 +14,7 @@ import {
 	resolveParent,
 	tagKey,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
+import { ALL_TYPES, AXIS_FIELDS, AxisField, axisKeyFor, BacklogSettings, LEVELS } from './settings';
 
 /**
  * The model is built in three phases, and each has its own type. A field exists only
@@ -23,7 +23,7 @@ import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
  * placeholder values and a paragraph of prose asking readers to remember.
  *
  * `RawItem` → `LinkedItem` → `BacklogItem`, each extending the one before. Consumers
- * outside this module only ever meet `BacklogItem`, which still carries all 27 fields,
+ * outside this module only ever meet `BacklogItem`, which still carries all 28 fields,
  * so nothing downstream changes.
  */
 
@@ -79,6 +79,14 @@ interface RawItem {
 	plannedStart: FieldReading<CivilDate>;
 	/** The planned target date the note states, if a target property is configured. */
 	plannedTarget: FieldReading<CivilDate>;
+	/**
+	 * Which configured axis keys the note CARRIES — presence, not value, and the two
+	 * are different questions here: an empty horizon reads as absent (untriaged) while
+	 * the key is still on the note. Removal actions offer themselves on presence, so
+	 * none of them can write nothing, and the backfill fills exactly its complement.
+	 * False for a field whose property is unconfigured — there is no key to carry.
+	 */
+	axisKeys: Record<AxisField, boolean>;
 }
 
 /**
@@ -144,6 +152,8 @@ export interface BacklogModel {
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
 	observedStates: string[];
+	/** Distinct horizon values in the result set, in first-seen order — the buckets it mints. */
+	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
@@ -158,6 +168,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// them here keeps them off the tree walk below.
 	const observedStates = collectObservedStates(linked.all, settings);
 	const observedTags = collectObservedTags(linked.all);
+	const observedHorizons = collectObservedHorizons(linked.all);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
 
@@ -168,7 +179,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
-	const rest = { realRoots: roots, byPath, observedStates, observedTags, ignoredCount };
+	const rest = { realRoots: roots, byPath, observedStates, observedTags, observedHorizons, ignoredCount };
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
 	if (focusIdx >= 0 || focusExtra) {
 		const focusRoots = collectFocusRoots(roots, focusIdx, focusExtra, settings);
@@ -259,6 +270,7 @@ function addItem(
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
+		axisKeys: readAxisKeys(fm, settings),
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
@@ -275,6 +287,22 @@ function readGated<T>(
 	read: (value: unknown) => FieldReading<T>,
 ): FieldReading<T> {
 	return key ? read(fm?.[key]) : absentReading();
+}
+
+/**
+ * Which configured axis keys the note has, asked of the frontmatter directly: a
+ * reader answers what a value MEANS, and an empty horizon means untriaged whether
+ * or not the key is there. Own properties only — every note inherits `constructor`
+ * and `toString`, and a base whose horizon property is named one of those would
+ * report a gap as filled on every note in the vault.
+ */
+function readAxisKeys(fm: Record<string, unknown> | undefined, settings: BacklogSettings): Record<AxisField, boolean> {
+	const present = {} as Record<AxisField, boolean>;
+	for (const field of AXIS_FIELDS) {
+		const key = axisKeyFor(settings, field);
+		present[field] = key !== '' && fm !== undefined && Object.prototype.hasOwnProperty.call(fm, key);
+	}
+	return present;
 }
 
 /**
@@ -543,6 +571,23 @@ function collectObservedTags(all: RawItem[]): string[] {
 		}
 	}
 	return [...seen.values()].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * The horizon values the results carry, deduped case-insensitively in the casing
+ * seen first — and in FIRST-SEEN order rather than sorted, because that is the order
+ * the roadmap mints their buckets in, so the menu names the same things in the same
+ * sequence the axis shows them. Context rows contribute nothing: an excluded note's
+ * horizon is not this base's vocabulary, exactly as its state is not.
+ */
+function collectObservedHorizons(all: RawItem[]): string[] {
+	const seen = new Map<string, string>();
+	for (const item of all) {
+		if (item.outsideFilter) continue;
+		const value = item.horizon.value;
+		if (value !== null && !seen.has(value.toLowerCase())) seen.set(value.toLowerCase(), value);
+	}
+	return [...seen.values()];
 }
 
 /** Focused rendering re-roots the tree visually; effective levels stay untouched. */
