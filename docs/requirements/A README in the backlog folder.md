@@ -208,6 +208,11 @@ the view options can rename.
   grouping "does not name a parent" with "hangs from the folder note above" would have an
   outside editor expect a pinned root to be nested. Inference is stated as what it is: the
   answer for a note that **omits** the key.
+- **3p — a placement key is written by a drag, and a stamp key by the backfill.** Both
+  lists name every writer or they mislead: a card dropped into a bucket goes through
+  `performHorizonMove` like the menu does, and the backfill stubs the stamp keys exactly
+  as it stubs the planning ones. "Nothing writes them as a side effect of a move" is
+  scoped to a move in the **hierarchy** for the same reason.
 - **3p — a planning key is written by creating a note, not by editing one.** The
   roadmap's buckets carry a **New** button, and the bucket's value rides the creation
   write (`createBacklogItem`), so a note can hold a horizon nobody ever placed. The list

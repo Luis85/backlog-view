@@ -341,6 +341,24 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('a note that holds a work item is kept with it');
 	});
 
+	it('names the roadmap drag among the things that write a horizon', () => {
+		// performHorizonMove applies computeHorizonWrites, so a card dropped into a bucket
+		// writes the key — and "nothing writes them as a side effect of a move" was read as
+		// covering the roadmap's primary interaction.
+		const content = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }));
+		expect(content).toContain('a card moved into a bucket or onto the shelf');
+		expect(content).toContain('a move in the **hierarchy**');
+	});
+
+	it('names the backfill among the things that write a stamp key', () => {
+		// missingKeyStubs covers the stamp fields too: the keys appear empty, with no state
+		// transition anywhere, and the rule said a state change is what writes them.
+		const content = readme(
+			settingsWith({ stateKey: 'status', states: ['Todo', 'Done'], startedStates: ['Todo'], startedDateKey: 'started' }),
+		);
+		expect(content).toContain('the one way one appears without a state change');
+	});
+
 	it('names the backfill among the things that write a planning key', () => {
 		// computeInitWrites adds the axis keys EMPTY to items that lack them, so a claim
 		// that only the user and the placement actions write them leaves a reader unable to

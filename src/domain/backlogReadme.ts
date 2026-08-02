@@ -290,6 +290,31 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 	];
 }
 
+/**
+ * Who writes the planning keys, named only where each can fire — the menu offers per
+ * axis, so a horizon-only view has no Schedule and a dated one no Set horizon. Two are
+ * not edits to an existing placement at all: **New** inside a bucket writes the horizon
+ * into the note it creates, and the backfill leaves the keys empty without placing
+ * anything, which is the only way one appears that a reader cannot trace to a placement.
+ */
+function planningWriters(settings: BacklogSettings): string {
+	const actions = [
+		...(hasHorizonAxis(settings) ? ['Set horizon and Clear horizon'] : []),
+		...(hasDateAxis(settings) ? ['Schedule and Unschedule'] : []),
+	];
+	const horizons = hasHorizonAxis(settings);
+	const writers = [
+		`the view's own placement ${actions.length > 1 ? 'actions' : 'action'} — ${actions.join(', ')}, ` +
+			'each writing or removing exactly the keys named here' +
+			(horizons ? ', and the drag that does the same thing: a card moved into a bucket or onto the shelf' : ''),
+		...(horizons
+			? ['**New** inside a horizon on the roadmap, which writes that horizon into the note it creates, in the same write that creates it']
+			: []),
+		'**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing',
+	];
+	return `${writers.slice(0, -1).join('; ')}; and ${writers[writers.length - 1]}`;
+}
+
 function planningSection(settings: BacklogSettings): string[] {
 	const lines: string[] = [];
 	if (hasHorizonAxis(settings)) {
@@ -319,33 +344,10 @@ function planningSection(settings: BacklogSettings): string[] {
 		);
 	}
 	if (lines.length > 0) {
-		// Named from the axes, because the menu offers them from the axes: a horizon-only
-		// view has no Schedule, a dated one no Set horizon, and either list read whole is a
-		// reader looking for an action their view does not have.
-		const actions = [
-			...(hasHorizonAxis(settings) ? ['Set horizon and Clear horizon'] : []),
-			...(hasDateAxis(settings) ? ['Schedule and Unschedule'] : []),
-		];
-		// The writers, each named only where it can fire. Creating in place is the one that
-		// is not an edit to an existing note at all: the roadmap's buckets carry a New
-		// button, and the bucket's value goes into the frontmatter the note is created with.
-		const writers = [
-			`the view's own placement ${actions.length > 1 ? 'actions' : 'action'} — ${actions.join(', ')}, ` +
-				'each writing or removing exactly the keys named here',
-			...(hasHorizonAxis(settings)
-				? [
-						`**New** inside a horizon on the roadmap, which writes that horizon into the note ` +
-							'it creates, in the same write that creates it',
-					]
-				: []),
-			'**Assign missing properties**, which adds the keys *empty* to items that lack them and ' +
-				'places nothing',
-		];
-		const joined =
-			writers.length > 1 ? `${writers.slice(0, -1).join('; ')}; and ${writers[writers.length - 1]}` : writers[0];
 		lines.push(
-			`These are a **plan**, and the only things that write them are you, ${joined}. Nothing writes ` +
-				'them as a side effect of a move, a state change or a rename.',
+			`These are a **plan**, and the only things that write them are you, ${planningWriters(settings)}. ` +
+				'Nothing writes them as a side effect of a move in the **hierarchy**, a state change ' +
+				'or a rename.',
 		);
 	}
 	return lines.length > 0 ? ['## Planning', '', ...lines.flatMap((l) => [l, ''])].slice(0, -1) : [];
@@ -465,7 +467,8 @@ function stampRule(settings: BacklogSettings): string[] {
 			'something else — and in the same edit as the state, so one undo takes back both. ' +
 			'Editing the state property directly, here or in any other editor, stamps nothing: ' +
 			'the dates record what the view was asked to do, so a history it never saw is a ' +
-			'history it cannot write. ' +
+			'history it cannot write. **Assign missing properties** adds these keys *empty* to ' +
+			'items that lack them, which is the one way one appears without a state change. ' +
 			(stampsStart(settings)
 				? 'The start is written only into an empty property, so a date you record yourself is kept. '
 				: '') +
