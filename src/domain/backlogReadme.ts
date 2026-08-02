@@ -173,8 +173,10 @@ function typeSection(settings: BacklogSettings): string[] {
 			'shown as itself.' +
 			(settings.autoType
 				? ' With one exception, and it belongs to this view: assigning types on a move ' +
-					'rewrites the item you **drag**, a name of your own included. The same name deeper ' +
-					'in the subtree you dragged is left alone.'
+					`rewrites what you drag into a **new parent**, a name of your own included. ` +
+					`Reordering among siblings rewrites nothing, ${EXTRA_TYPES.map(code).join(' and ')} ` +
+					'keep their type wherever they land, and the same custom name deeper in the ' +
+					'subtree you dragged is left alone.'
 				: ' Nothing rewrites it into one of these.'),
 	];
 }
@@ -508,7 +510,8 @@ function openingScope(settings: BacklogSettings): string {
 	// a state is not evidence of anything — and the test runs per root subtree, so an
 	// untyped note holding a typed one is kept as that subtree's root.
 	return (
-		'A note here is a work item when it names one of the types below, or names a parent' +
+		'A note here is a work item when it names one of the types below, or carries the ' +
+		'parent property — naming one, or left empty to say it is a root' +
 		(settings.folderHierarchy
 			? ' — or sits under a folder note, which this view reads as its parent'
 			: ', and the folder does not make it one') +

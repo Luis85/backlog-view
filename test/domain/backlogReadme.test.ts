@@ -313,9 +313,16 @@ describe('backlogReadmeContent', () => {
 		// Wrong in both directions before: an order or a state is no evidence at all, and
 		// the test runs per root subtree, so an untyped note holding a typed one is kept.
 		const content = readme(settingsWith({ hierarchyOnly: true }));
-		expect(content).toContain('names one of the types below, or names a parent');
+		expect(content).toContain('carries the parent property — naming one, or left empty to say it is a root');
 		expect(content).toContain('a note carrying only an order or a state is still an ordinary note');
 		expect(content).toContain('a note that holds a work item is kept with it');
+	});
+
+	it('names the empty parent key as enrolment evidence too', () => {
+		// `parent:` with nothing after it is the top-level marker, and pruneOutsideHierarchy
+		// counts it: a predicate that only admitted a named parent would tell a reader their
+		// explicit root stays an ordinary note.
+		expect(readme(settingsWith({ hierarchyOnly: true }))).toContain('or left empty to say it is a root');
 	});
 
 	it('says the stamps follow what the view was asked to do, not the property', () => {
@@ -458,7 +465,10 @@ describe('backlogReadmeContent', () => {
 		// promise is wrong in exactly the configuration that opts into rewriting.
 		expect(readme(settingsWith({ autoType: false }))).toContain('Nothing rewrites it into one of these');
 		const auto = readme(settingsWith({ autoType: true }));
-		expect(auto).toContain('rewrites the item you **drag**');
+		// Not every move: only one into a NEW parent, and never an extra type.
+		expect(auto).toContain('rewrites what you drag into a **new parent**');
+		expect(auto).toContain('Reordering among siblings rewrites nothing');
+		expect(auto).toContain('`Issue` and `Bug` keep their type wherever they land');
 		expect(auto).toContain('deeper in the subtree you dragged is left alone');
 	});
 

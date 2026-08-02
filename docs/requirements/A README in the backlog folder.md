@@ -121,9 +121,12 @@ the view options can rename.
   stated with its tie-break, and the tie-break is a **view** setting: siblings sharing a
   number fall back to the order the base returned them in, not to anything in the notes.
 - **3e — the reader writes a type of their own.** It is kept and shown verbatim — with
-  the one exception this view can make: assigning types on a move rewrites the item
-  *dragged*, a custom name included, while the same name deeper in the moved subtree
-  survives (`computeTypeChanges` exempts only declared extra types). An unqualified
+  the one exception this view can make, stated as narrowly as the code holds it: assigning
+  types on a move rewrites the item *dragged into a new parent*, a custom name included,
+  while a reorder among siblings rewrites nothing, an `Issue` or a `Bug` keeps its type
+  wherever it lands, and the same custom name deeper in the moved subtree survives
+  (`computeTypeChanges` returns early unless the parent changed, and exempts declared
+  extra types). An unqualified
   promise is wrong in precisely the configuration that opted into rewriting. A custom type
   does **not** enrol a note that has no parent either: the scope rule seeds only on the types
   this plugin ships (`ALL_TYPES`), so a custom-typed root written to the letter of a
@@ -182,8 +185,9 @@ the view options can rename.
   property section says only the part that is about its own keys. And the predicate is the
   one the model applies, which is narrower than "carries these properties" in one direction
   and wider in the other: only a listed type or a parent is evidence — an order or a state
-  is none — and the question is asked of a whole root subtree, so an untyped note holding a
-  typed one is kept along with it (`pruneOutsideHierarchy`).
+  is none, and the parent property counts when it is present but **empty**, which is the
+  top-level marker — and the question is asked of a whole root subtree, so an untyped note
+  holding a typed one is kept along with it (`pruneOutsideHierarchy`).
 - **3m — the stamps only fire on a state change made in the view.** `computeStateWrites`
   is reached from the view's own state interactions, so editing the state property in
   another editor stamps nothing. A row promising that entering a state writes a date would
@@ -228,7 +232,9 @@ the view options can rename.
   about. The marker therefore names its source (the base path and the view name, the
   identity the collapse store already resolves, joined so the join can be undone — both
   halves are free text, and a view named with the separator would otherwise share an
-  identity with a different base), and that identity is *reported, never enforced*: a base or a view can be renamed, and git hands a Windows checkout the same
+  identity with a different base — and an embedded base, which no leaf can name, escapes
+  its lone view name the same way, since everything the notice decodes has to be something
+  that encoding produced), and that identity is *reported, never enforced*: a base or a view can be renamed, and git hands a Windows checkout the same
   file with different line endings, so a refusal keyed on it would leave a view unable to
   refresh its own document after an ordinary rename. A false refusal is found by someone
   who was doing something else; being told what you replaced is found by reading the

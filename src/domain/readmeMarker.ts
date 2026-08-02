@@ -128,9 +128,17 @@ const SEPARATOR_ESCAPE = '%E2%80%BA';
  * notice needs the name as the user spelled it.
  */
 export function joinSource(base: string, view: string): string {
-	const part = (text: string): string => text.replace(/%/g, '%25').replace(/›/g, SEPARATOR_ESCAPE);
-	return `${part(base)}${SOURCE_SEPARATOR}${part(view)}`;
+	return `${sourceComponent(base)}${SOURCE_SEPARATOR}${sourceComponent(view)}`;
 }
+
+/**
+ * One half of a source, escaped. Exported because a source is not always two halves — an
+ * embedded base has no leaf to name it, so the view name stands alone — and a component
+ * that skipped this would be decoded anyway on the way to a notice: a view called
+ * `Sprint %25` would be reported as `Sprint %`. Everything `displaySource` decodes has
+ * to be something this encoded.
+ */
+export const sourceComponent = (text: string): string => text.replace(/%/g, '%25').replace(/›/g, SEPARATOR_ESCAPE);
 
 /**
  * A source as the user spells it, for showing in a notice. The escaping above exists to

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { writeBacklogReadmeCommand } from '../../src/commands/readme';
-import { README_MARKER_PREFIX } from '../../src/domain/readmeMarker';
+import { displaySource, README_MARKER_PREFIX, readmeSource } from '../../src/domain/readmeMarker';
 import { defaultSettings } from '../../src/domain/settings';
 import { activeBacklogView, forgetBacklogView, rememberBacklogView } from '../../src/view/registry';
 import { FileView, Notice } from '../helpers/obsidian-mock';
@@ -145,6 +145,23 @@ describe('the write backlog readme command', () => {
 
 		expect(vault.contents.get(README)).not.toBe(first);
 		expect(Notice.messages.some((m) => m.includes(`which documented "${BASE} › Backlog"`))).toBe(true);
+	});
+
+	it('escapes the identity of an embedded view, which no leaf can name', async () => {
+		// The fallback used to store the name raw while the notice decoded it, so a view
+		// called `Sprint %25` was read back to the user as `Sprint %`.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// No leaf: an embedded base, which collapseStoreIdentity answers null for.
+		makeView(vault, { homeFolder: 'work' }, { viewName: 'Sprint %25' });
+		vault.activeView = new FileView(vault.addFile('Note.md'), document.body);
+
+		writeBacklogReadmeCommand(vault.app as never, false);
+		await flush();
+
+		// What matters is the round trip: whatever the line spells, the name comes back.
+		const line = (vault.contents.get(README) ?? '').split('\n')[0];
+		expect(displaySource(readmeSource(line) ?? '')).toBe('Sprint %25');
 	});
 
 	it('refuses while the configuration contradicts itself', async () => {

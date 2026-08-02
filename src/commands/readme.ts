@@ -3,7 +3,7 @@ import { backlogReadmeContent } from '../domain/backlogReadme';
 import { configProblems } from '../domain/settings';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
-import { displaySource, joinSource } from '../domain/readmeMarker';
+import { displaySource, joinSource, sourceComponent } from '../domain/readmeMarker';
 import { collapseStoreIdentity } from '../storage/collapseStore';
 import { ReadmeWriteResult, writeBacklogReadme } from '../storage/readmeFile';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
@@ -51,7 +51,7 @@ function outcomeNotice({ outcome, path, previous }: ReadmeWriteResult): string {
  */
 function viewSource(app: App, view: LiveBacklogView): string {
 	const identity = collapseStoreIdentity(app, view.viewEl, view.config.name);
-	return identity ? joinSource(identity.base, identity.view) : view.config.name;
+	return identity ? joinSource(identity.base, identity.view) : sourceComponent(view.config.name);
 }
 
 /**
