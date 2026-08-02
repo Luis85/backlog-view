@@ -213,11 +213,11 @@ function fieldRows(settings: BacklogSettings): string[] {
 	// "only the properties above are written" rule below false.
 	if (stampsStart(settings))
 		rows.push(
-			`| ${cell(settings.startedDateKey)} | Stamped for you | The date work started, ${code('YYYY-MM-DD')}. Written when an item first enters a started state, and only while the key is empty — a date you write by hand stands |`,
+			`| ${cell(settings.startedDateKey)} | Stamped by the view | The date work started, ${code('YYYY-MM-DD')}. Written when the state is changed **in the view** to a started one, and only while the key is empty — a date you write by hand stands |`,
 		);
 	if (stampsFinish(settings))
 		rows.push(
-			`| ${cell(settings.finishedDateKey)} | Stamped for you | The date work finished, ${code('YYYY-MM-DD')}. Written when an item reaches a done state and removed again when it leaves one |`,
+			`| ${cell(settings.finishedDateKey)} | Stamped by the view | The date work finished, ${code('YYYY-MM-DD')}. Written when the state is changed **in the view** to a done one, and removed when a change there leaves one |`,
 		);
 	// The same gate the menu and the planner use: a horizon property with no values is an
 	// axis nothing renders and nothing writes, and a row for it would advertise an inert key.
@@ -253,18 +253,13 @@ function propertySection(settings: BacklogSettings): string[] {
 				'as the top level, which is what this plugin writes when it moves something there. ' +
 				'Omitting the key entirely means the same thing here.',
 		'',
+		// What enrols a note is stated once, at the top, and not restated here: two
+		// paragraphs answering one question is how they came to disagree about folder mode.
+		// What belongs here is the part that is about these keys.
 		settings.hierarchyOnly
-			? 'A note in this folder joins the backlog when it declares one of the types **listed ' +
-				'above**, or has a parent. A type of your own is kept and shown, but it does not by ' +
-				'itself enrol a note that has no parent — give such a note a parent, or it stays out ' +
-				'of the tree. ' +
-				(settings.folderHierarchy
-					? 'Declaring neither is not enough to stay out of it here: this view reads the ' +
-						'folder note above a note as its parent, so a note under one is a work item ' +
-						'whatever its frontmatter omits. Somewhere with no folder note above it is ' +
-						'what keeps an ordinary note ordinary.'
-					: 'Declare neither and it stays an ordinary note, which is how a document like ' +
-						'this one sits here without becoming a work item.')
+			? 'A **type of your own** is kept and shown, but it does not enrol a note that has no ' +
+				'parent: only the types listed above are evidence on their own. Give such a note a ' +
+				'parent, or it stays out of the tree.'
 			: 'This view treats **every** note it returns as an item, so a note with none of these ' +
 				'properties still appears, at the top level and untyped.',
 	];
@@ -484,8 +479,11 @@ function stampRule(settings: BacklogSettings): string[] {
 	if (named.length === 0) return [];
 	return [
 		`- **${named.map(code).join(' and ')} ${named.length === 1 ? 'is' : 'are'} written for you, by a ` +
-			'state change.** The one thing here written as a side effect of something else — and in ' +
-			'the same edit as the state, so one undo takes back both. ' +
+			'state change made in the view.** The one thing here written as a side effect of ' +
+			'something else — and in the same edit as the state, so one undo takes back both. ' +
+			'Editing the state property directly, here or in any other editor, stamps nothing: ' +
+			'the dates record what the view was asked to do, so a history it never saw is a ' +
+			'history it cannot write. ' +
 			(stampsStart(settings)
 				? 'The start is written only into an empty property, so a date you record yourself is kept. '
 				: '') +
@@ -506,13 +504,18 @@ function stampRule(settings: BacklogSettings): string[] {
 function openingScope(settings: BacklogSettings): string {
 	if (!settings.hierarchyOnly)
 		return 'Every note this view returns is a work item, whether or not it carries the ' + 'properties below — that is how this view is configured. ';
-	return settings.folderHierarchy
-		? 'A note here becomes a work item by carrying the properties below **or** by where it ' +
-				'sits: this view reads a folder note as the parent of everything under it, so ' +
-				'position enrols a note as surely as a property does. One with neither stays an ' +
-				'ordinary note. '
-		: 'A note here becomes a work item by carrying the properties below — the folder ' +
-				'does not make it one, and notes that carry none of them stay ordinary notes. ';
+	// Two facts, both easy to get backwards: only a TYPE or a PARENT enrols — an order or
+	// a state is not evidence of anything — and the test runs per root subtree, so an
+	// untyped note holding a typed one is kept as that subtree's root.
+	return (
+		'A note here is a work item when it names one of the types below, or names a parent' +
+		(settings.folderHierarchy
+			? ' — or sits under a folder note, which this view reads as its parent'
+			: ', and the folder does not make it one') +
+		'. The other properties do not enrol it: a note carrying only an order or a state is ' +
+		'still an ordinary note. Nor is the question asked one note at a time — a note that ' +
+		'holds a work item is kept with it, so an untyped page grouping typed ones stays. '
+	);
 }
 
 /** Where the hierarchy is kept — the same question, and the same folder-mode answer. */

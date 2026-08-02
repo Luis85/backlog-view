@@ -289,7 +289,7 @@ describe('backlogReadmeContent', () => {
 		// not make it one" is false in exactly the mode where position IS hierarchy.
 		const folderMode = readme(settingsWith({ hierarchyOnly: true, folderHierarchy: true }), []);
 		expect(folderMode).not.toContain('the folder does not make it one');
-		expect(folderMode).toContain('position enrols a note as surely as a property does');
+		expect(folderMode).toContain('or sits under a folder note, which this view reads as its parent');
 		expect(folderMode).toContain('in the folders beside it');
 
 		const flat = readme(settingsWith({ hierarchyOnly: true, folderHierarchy: false }), []);
@@ -302,11 +302,31 @@ describe('backlogReadmeContent', () => {
 		// said twice, and a reader acting on a wrong opening files a meeting note as backlog.
 		const scoped = readme(settingsWith({ hierarchyOnly: true }), []);
 		expect(scoped).not.toContain('Every note here is one work item');
-		expect(scoped).toContain('notes that carry none of them stay ordinary notes');
+		expect(scoped).toContain('a note carrying only an order or a state is still an ordinary note');
 
 		const unscoped = readme(settingsWith({ hierarchyOnly: false }), []);
 		expect(unscoped).toContain('Every note this view returns is a work item');
 		expect(unscoped).not.toContain('stay ordinary notes');
+	});
+
+	it('states the enrolment predicate the model actually applies', () => {
+		// Wrong in both directions before: an order or a state is no evidence at all, and
+		// the test runs per root subtree, so an untyped note holding a typed one is kept.
+		const content = readme(settingsWith({ hierarchyOnly: true }));
+		expect(content).toContain('names one of the types below, or names a parent');
+		expect(content).toContain('a note carrying only an order or a state is still an ordinary note');
+		expect(content).toContain('a note that holds a work item is kept with it');
+	});
+
+	it('says the stamps follow what the view was asked to do, not the property', () => {
+		// computeStateWrites runs from the view's own state interactions: editing the
+		// frontmatter elsewhere stamps nothing, and a reader promised history would wait
+		// for dates that never arrive.
+		const content = readme(
+			settingsWith({ stateKey: 'status', states: ['Todo', 'Doing', 'Done'], startedStates: ['Doing'], startedDateKey: 'started', finishedDateKey: 'finished' }),
+		);
+		expect(content).toContain('changed **in the view**');
+		expect(content).toContain('Editing the state property directly, here or in any other editor, stamps nothing');
 	});
 
 	it('does not require an order or a type on every item', () => {
@@ -333,8 +353,8 @@ describe('backlogReadmeContent', () => {
 			}),
 			[],
 		);
-		expect(stamping).toContain('| `started` | Stamped for you |');
-		expect(stamping).toContain('| `finished` | Stamped for you |');
+		expect(stamping).toContain('| `started` | Stamped by the view |');
+		expect(stamping).toContain('| `finished` | Stamped by the view |');
 		expect(stamping).toContain('written for you, by a state change');
 		expect(stamping).toContain('only into an empty property');
 		expect(stamping).toContain('leaving one removes it again');
@@ -406,8 +426,8 @@ describe('backlogReadmeContent', () => {
 		// pruneOutsideHierarchy seeds only on ALL_TYPES, so "declare a type" would send
 		// an outside editor to write a custom-typed root the view then drops.
 		const content = readme(settingsWith({ hierarchyOnly: true }), []);
-		expect(content).toContain('declares one of the types **listed above**');
-		expect(content).toContain('does not by itself enrol a note that has no parent');
+		expect(content).toContain('only the types listed above are evidence on their own');
+		expect(content).toContain('does not enrol a note that has no parent');
 	});
 
 	it('names the tie-break the model actually applies', () => {
@@ -443,11 +463,12 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('does not promise a propertyless note stays out of a folder-inferred tree', () => {
+		// One paragraph answers this, at the top — two would be two chances to disagree.
 		const folderMode = readme(settingsWith({ hierarchyOnly: true, folderHierarchy: true }));
-		expect(folderMode).toContain('Declaring neither is not enough to stay out of it here');
-		expect(folderMode).not.toContain('Declare neither and it stays an ordinary note');
+		expect(folderMode).toContain('or sits under a folder note, which this view reads as its parent');
+		expect(folderMode).not.toContain('the folder does not make it one');
 		expect(readme(settingsWith({ hierarchyOnly: true, folderHierarchy: false }))).toContain(
-			'Declare neither and it stays an ordinary note',
+			'the folder does not make it one',
 		);
 	});
 
@@ -461,7 +482,9 @@ describe('backlogReadmeContent', () => {
 	});
 
 	it('tells the reader how a note stays out of the backlog, per the scope setting', () => {
-		expect(readme(settingsWith({ hierarchyOnly: true }), [])).toContain('Declare neither');
+		expect(readme(settingsWith({ hierarchyOnly: true }), [])).toContain(
+			'a note carrying only an order or a state is still an ordinary note',
+		);
 		expect(readme(settingsWith({ hierarchyOnly: false }), [])).toContain('treats **every** note it returns as an item');
 	});
 

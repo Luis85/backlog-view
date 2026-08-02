@@ -177,11 +177,18 @@ the view options can rename.
   the stamp reads the configured list rather than the table, so a started value the
   workflow does not offer is named as well — without it, writing a state would put a date
   on a note for a reason the document never gave.
-- **3l — the scope paragraph and the opening disagree about folder mode.** They cannot:
-  both ask `folderHierarchy`. With it on, a note under a folder note is a work item
-  whatever its frontmatter omits, so the paragraph that tells a reader how to keep a note
-  ordinary says *where* to put it rather than what to leave out — the document contradicting
-  itself is how an outside editor comes to misfile the one note it was reading about.
+- **3l — what enrols a note is stated once.** Two paragraphs answering that question is
+  how they came to disagree about folder mode, so the predicate lives at the top and the
+  property section says only the part that is about its own keys. And the predicate is the
+  one the model applies, which is narrower than "carries these properties" in one direction
+  and wider in the other: only a listed type or a parent is evidence — an order or a state
+  is none — and the question is asked of a whole root subtree, so an untyped note holding a
+  typed one is kept along with it (`pruneOutsideHierarchy`).
+- **3m — the stamps only fire on a state change made in the view.** `computeStateWrites`
+  is reached from the view's own state interactions, so editing the state property in
+  another editor stamps nothing. A row promising that entering a state writes a date would
+  have exactly this document's reader — the one working outside Obsidian — waiting for a
+  history that never arrives.
 - **4a — the file already exists and matches, byte for byte.** Nothing is written. A team
   in git gets no commit for running the command twice.
 - **4b — the file exists and differs.** It is replaced only when its first line **parses
