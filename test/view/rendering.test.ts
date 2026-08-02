@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { ALL_TYPES, EXTRA_TYPES } from '../../src/domain/settings';
+import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/settings';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
@@ -44,7 +44,7 @@ describe('rendering', () => {
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task' }, parentLink: 'PBI' });
-		for (const type of EXTRA_TYPES) {
+		for (const type of [...EXTRA_TYPES, ...MARKER_TYPES]) {
 			vault.addFile(`${type}.md`, { frontmatter: { type }, parentLink: 'Epic' });
 		}
 		const { containerEl } = makeView(vault);
@@ -69,6 +69,7 @@ describe('rendering', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('An issue.md', { frontmatter: { type: 'Issue' }, parentLink: 'Epic' });
 		vault.addFile('A bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
 		// A type outside the vocabulary keeps its name and gets no icon at all — the
 		// bare-text treatment for something this view knows nothing about.
 		vault.addFile('A spike.md', { frontmatter: { type: 'Spike' }, parentLink: 'Epic' });
@@ -85,6 +86,7 @@ describe('rendering', () => {
 		// each other and from every level (0-3).
 		expect(badge('An issue')?.classList.contains('pbl-lvl-issue')).toBe(true);
 		expect(badge('A bug')?.classList.contains('pbl-lvl-bug')).toBe(true);
+		expect(badge('Ship 1.0')?.classList.contains('pbl-lvl-milestone')).toBe(true);
 		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
 	});
 
@@ -221,7 +223,9 @@ describe('rendering', () => {
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 
 		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', 'Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		// Read off the vocabulary, so an eighth name is a failing test rather than an entry
+		// a saved view can hold and no user can pick.
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', ...ALL_TYPES]);
 		expect(Menu.lastShown?.item('All types')?.checked).toBe(true);
 		Menu.lastShown?.item('Feature')?.click();
 		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === 'Feature')).toBe(true);

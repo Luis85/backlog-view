@@ -61,8 +61,16 @@ describe('context menu', () => {
 		const submenu = Menu.lastShown?.item('Set type')?.submenu;
 		if (!submenu) throw new Error('submenu missing');
 
-		// Every type a user may assign by hand: the ladder, then the extra types.
-		expect(submenu.items.map((i) => i.titleText)).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug']);
+		// Every type a user may assign by hand: the ladder, the extra types, then the markers.
+		expect(submenu.items.map((i) => i.titleText)).toEqual([
+			'Epic',
+			'Feature',
+			'PBI',
+			'Task',
+			'Issue',
+			'Bug',
+			'Milestone',
+		]);
 		expect(submenu.item('Epic')?.checked).toBe(true);
 		submenu.item('Task')?.click();
 		await flush();

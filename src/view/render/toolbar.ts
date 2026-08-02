@@ -6,7 +6,7 @@ import { runInit } from '../interactions/structure';
 import { BacklogModel } from '../../domain/model';
 import { displayType, focusTarget } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
-import { ALL_TYPES, EXTRA_TYPES, LEVELS } from '../../domain/settings';
+import { ALL_TYPES } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
@@ -279,10 +279,11 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 					.onClick(() => setLevel(level)),
 			);
 		choice('', 'All types');
-		for (const level of LEVELS) choice(level, level);
-		// Extra types are focusable too: they rank with a level, so a view of just the
-		// bugs is the same kind of view as one of just the PBIs.
-		for (const extra of EXTRA_TYPES) choice(extra, extra);
+		// Every declared type, read off the vocabulary rather than category by category:
+		// being ACCEPTABLE as a focus (`focusTarget` already reads `ALL_TYPES`) is not the
+		// same as being OFFERABLE, and a name in neither hand-written list was one a saved
+		// view could hold and no user could pick.
+		for (const type of ALL_TYPES) choice(type, type);
 		showMenuForClick(menu, evt);
 	});
 

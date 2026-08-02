@@ -1,4 +1,4 @@
-import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, stateMenuValues } from './settings';
+import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, MARKER_TYPES, stateMenuValues } from './settings';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
@@ -68,9 +68,10 @@ const SOURCE_LABEL: Record<StateSource, string> = {
 /** Where a type sits on the ladder, for the two questions the type table asks. */
 function position(typeName: string): LadderPosition {
 	const levelIndex = LEVELS.indexOf(typeName);
-	return levelIndex >= 0
-		? { levelIndex, effectiveLevelIndex: levelIndex }
-		: { levelIndex: -1, effectiveLevelIndex: EXTRA_TYPE_RANK };
+	if (levelIndex >= 0) return { levelIndex, effectiveLevelIndex: levelIndex, typeName };
+	// An extra type is pinned; a marker occupies no rung at all, and `childTypeChoices`
+	// answers it by name before any rank is consulted.
+	return { levelIndex: -1, effectiveLevelIndex: EXTRA_TYPE_RANK, typeName };
 }
 
 /**
@@ -101,7 +102,9 @@ function typeSection(settings: BacklogSettings): string[] {
 		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
 			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
-			'is why they are types rather than levels.',
+			'is why they are types rather than levels. ' +
+			`${MARKER_TYPES.join(' and ')} ${MARKER_TYPES.length === 1 ? 'is' : 'are'} neither: a ` +
+			`marker hangs from nothing and holds nothing, and states a date rather than work.`,
 		'',
 		'| Type | Parent may be | Children may be |',
 		'| --- | --- | --- |',

@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
 	adoptableProperties,
+	ALL_TYPES,
 	configProblems,
 	defaultSettings,
+	defaultTypeFolder,
+	EXTRA_TYPES,
 	horizonMenuValues,
+	LEVELS,
+	MARKER_TYPES,
 	OPTIONAL_FIELDS,
 	OPTIONAL_PROPERTIES,
 	optionalKeyFor,
@@ -346,5 +351,22 @@ describe('adoptableProperties', () => {
 		const settings = resolveSettings(config);
 		expect(adoptableProperties(config, settings).map((p) => p.suggested)).not.toContain('status');
 		expect(configProblems(settings)).toEqual([]);
+	});
+});
+
+describe('the marker category', () => {
+	it('declares Milestone outside both the ladder and the extra types', () => {
+		// The whole point of the third category: every rule that reads EXTRA_TYPES keeps
+		// meaning exactly what `Types beside the ladder` says it means.
+		expect(MARKER_TYPES).toEqual(['Milestone']);
+		expect(LEVELS).not.toContain('Milestone');
+		expect(EXTRA_TYPES).not.toContain('Milestone');
+		expect(ALL_TYPES).toEqual([...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES]);
+	});
+
+	it('ships the marker a folder of its own under the home folder', () => {
+		expect(defaultTypeFolder('Milestone')).toBe('docs/milestones');
+		expect(defaultTypeFolder('Milestone', 'work')).toBe('work/milestones');
+		expect(defaultSettings().typeFolders.milestone).toBe('docs/milestones');
 	});
 });

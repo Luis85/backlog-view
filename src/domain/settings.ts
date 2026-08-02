@@ -91,8 +91,17 @@ export interface BacklogSettings {
  */
 export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
 export const EXTRA_TYPES = ['Issue', 'Bug'];
+/**
+ * The third category: a declared **marker**. It occupies no rung, holds nothing, and
+ * hangs from nothing — the opposite of an extra type on all three counts, which is why
+ * the name is here rather than in `EXTRA_TYPES`. That list means *pinned at
+ * `EXTRA_TYPE_RANK`, children are Tasks, hangs from an Epic, a Feature or a PBI*
+ * (`itemTypes.ts` states it), so adding a marker to it would not extend the contract but
+ * falsify it, and `isExtraType` would start meaning two things at four call sites.
+ */
+export const MARKER_TYPES = ['Milestone'];
 /** Every declared type, ladder first — the whole vocabulary in one list. */
-export const ALL_TYPES = [...LEVELS, ...EXTRA_TYPES];
+export const ALL_TYPES = [...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES];
 /**
  * The default mapping, kept as the text the option shows so the shipped default and the
  * parsed one cannot drift: `defaultSettings` parses this very string.
@@ -110,6 +119,7 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	task: 'tasks',
 	issue: 'issues',
 	bug: 'bugs',
+	milestone: 'milestones',
 });
 
 /**
