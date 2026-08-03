@@ -266,12 +266,12 @@ the identity; `timelineDrag.ts` decides what a position means.
   `treeEl.scrollLeft` and centres `todayLeft` on the pane, which works today only
   because the pane *is* the horizontal scroller; introducing an inner one would leave
   that assignment inert and today off-screen on any window wider than the view. So
-  `RoadmapSnapshot` returns the scroller element, `restoreScroll` takes its horizontal
-  target separately from its vertical one — falling back to the pane where there is no
-  inner scroller, which is every other projection — and the opening centre, the
-  preserved offset across a zoom change, and jump-to-today all address that one
-  element. Horizontal and vertical stop being the same element here, and the
-  signature says so rather than each caller remembering.
+  `RoadmapSnapshot` returns the scroller element and `restoreScroll` takes it as the box
+  it operates on, falling back to the pane where there is no inner scroller — which is
+  every other projection. Opening, the preserved offset across a zoom change, and
+  jump-to-today all address that one element. Both axes stay one element's job, because
+  the timeline scrolls in both (see *Zoom and today*); what changes is *which* element,
+  not how many.
 - Three sources, and **two different gates**, because they are asked different
   questions. The bar body and the two end grips are gated by `barHolds`, which is about
   a rendered bar. A shelf card has no bar, so it is gated by `canSchedule` — the
@@ -357,31 +357,54 @@ A zoom picker and a jump-to-today button beside the focus picker, both rendered 
 the dated axis. `CollapseSnapshot` gains `zoom`, validated against the three scale ids
 exactly as `axis` is validated against `AXIS_VALUES` — a per-screen working position, in
 the store where collapse state already lives, never in the `.base`. The narrow-pane rule
-is a container query in `styles/timeline.css` collapsing the shelf to its labelled count
-— **and a real control to open it again**, which the query cannot supply. `renderShelf`
-builds its header as a plain `div` with no listener and no button semantics, so a query
-alone would hide every unplaced card with no way back until the pane was widened: the
-opposite of "may lose its card, never its existence". The header becomes a `button` with
-`aria-expanded`, keeping its icon, label and count, and toggling a class that overrides
-the query in the open direction. The container query supplies the *default* for the
-width; the user's press wins over it. That open flag is view state that survives a
-render, the way the selected board column already is — a rebuild must not re-collapse a
-strip the reader just opened — and it stays out of the collapse store, which keys on
-paths and has nothing to key this on.
+needs **a real control**, and therefore **one decider**. `renderShelf` builds its header
+as a plain `div` with no listener and no button semantics, so hiding the cards in CSS
+alone would strand every unplaced card until the pane was widened — the opposite of "may
+lose its card, never its existence". The header becomes a `button` with `aria-expanded`,
+keeping its icon, label and count.
 
-**Moving the scroller inward is a stylesheet change, not only a code one.** The pane is
-the horizontal scroller today because `styles/roadmap.css` puts `overflow-x: auto` on
-`.pbl-roadmap-mode .pbl-tree` while `.pbl-roadmap` is `min-width: max-content` and
-`.pbl-timeline` is `width: max-content`. Adding an inner scroller without touching those
-gives **two** horizontal scrollers nested — the containment guarantee broken by the change
-meant to keep it. So the dated axis stops the pane overflowing sideways and stops the
-frame demanding `max-content`, while the timeline itself takes `overflow-x`. The rules
-have to be axis-specific and the only class today is `pbl-roadmap-mode`, which both axes
-wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class already
-is and where the axis is already known. A `:has()` selector would need no new state and is
-the reason to mention it — but it is the clever answer to a question the boring one
-already closes, and it raises specificity in a stylesheet whose ordering is documented as
-load-bearing.
+But a container query plus a button is **two** deciders, and they desynchronise: at a
+wide pane the query shows the cards while the flag still says closed, so the control
+would announce "collapsed" over visible content. CSS cannot write an ARIA attribute, so
+the attribute has to be the one that cannot be wrong. The compaction therefore joins the
+**measured fit ladder the view already runs** — the same mechanism behind
+`pbl-hide-props` and its siblings, which measures and toggles a class — rather than
+being a query the DOM cannot see. One decision, taken in the place that already takes
+decisions of exactly this kind: the width sets the default, a press overrides it, and
+`aria-expanded` states whatever that resolved to. The open flag is view state that
+survives a render, the way the selected board column already is — a rebuild must not
+re-collapse a strip the reader just opened — and it stays out of the collapse store,
+which keys on paths and has nothing to key this on.
+
+**Moving the scroller inward is a stylesheet change, not only a code one — and it is a
+two-axis move, not a horizontal one.** The pane is the scroll box today because
+`styles/roadmap.css` puts `overflow-x: auto` on `.pbl-roadmap-mode .pbl-tree` while
+`.pbl-roadmap` is `min-width: max-content` and `.pbl-timeline` is `width: max-content`.
+Adding an inner horizontal scroller without touching those nests two of them — the
+containment guarantee broken by the change meant to keep it.
+
+It cannot be horizontal alone, either. `.pbl-timeline-header` is `sticky; top: 0` and
+`.pbl-timeline-lead` is `sticky; left: 0`, and both pin against the pane precisely
+because the pane is the one scroll box for both axes. Give `.pbl-timeline` an
+`overflow-x` and it becomes a scroll box on both axes, so the header would pin to the top
+of a full-height element and scroll away with the pane — the month labels leaving the
+screen while the grid they name stays.
+
+**So the timeline becomes the scroll box for both axes on the dated axis**: it takes a
+bounded height, its rows scroll vertically inside it, the header pins to its top and the
+lead column to its left, and the pane scrolls neither way. That is the structure a grid
+with a frozen header and a frozen first column has to have, and taking it deliberately
+also *simplifies* what the earlier finding forced: `restoreScroll` does not need a
+horizontal target apart from a vertical one, because on this axis **one element carries
+both** — the snapshot returns it, and opening, zoom preservation and jump-to-today all
+address it. Everywhere else the pane stays what it is.
+
+The rules are axis-specific and the only class today is `pbl-roadmap-mode`, which both
+axes wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class
+already is and where the axis is already known. A `:has()` selector would need no new
+state and is the reason to mention it — but it is the clever answer to a question the
+boring one already closes, and it raises specificity in a stylesheet whose ordering is
+documented as load-bearing.
 
 ## The context-row rule, asked of a third set of gestures
 
@@ -465,10 +488,13 @@ Named honestly rather than claimed, and filed as a smoke note under `Feature Tes
 - Whether a drag toward the pane edge actually pans the grid, and at a usable rate.
   Registering the scroller is checkable here; that it *engages toward an edge* is a
   pointer-position behaviour of the drag library, which jsdom does not run.
-- **That exactly one thing scrolls sideways.** jsdom computes no layout, so nested
-  scrollers are invisible to it: a test can assert which element carries the class and
-  never that the pane stopped overflowing. This is the one place in the increment where
-  the check genuinely stops short of the claim, so the claim is the smoke note's.
+- **That exactly one thing scrolls, and that the header and lead column stay pinned to
+  it.** jsdom computes no layout, so nested scrollers and sticky containing blocks are
+  both invisible to it: a test can assert which element carries the class and never that
+  the pane stopped overflowing or that the month labels held their place while the rows
+  moved under them. This is the one part of the increment where the checks genuinely
+  stop short of the claims, so the claims are the smoke note's — and the two-axis
+  restructure makes it the part most worth looking at first.
 - The narrow-pane shelf compaction, and whether anything clips under the header in an
   embedded base.
 - The today line and jump-to-today from a scrolled position.
