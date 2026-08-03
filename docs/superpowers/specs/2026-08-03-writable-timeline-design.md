@@ -204,19 +204,21 @@ writes a plain `formatCivil` string, so a note carrying `2026-08-01T09:00+02:00`
 its time — and this is live today on the shipped menu path, since `SchedulePromptModal`
 uses native `type="date"` fields.
 
-The fix belongs in `planDate`, where both the menu and the new gestures route through —
-one guard in the shared function, not one per caller — but it cannot live *only* there.
-`readDate` matches the `([Tt\s].*)?` suffix and then throws it away, and
-`FieldReading<CivilDate>` carries the year/month/day triple alone, so `plannedStart` and
-`plannedTarget` have nothing for `planDate` to re-emit. **`BacklogItem` gains
-`rawStart` / `rawTarget`** — the frontmatter values `buildModel` already reads through
-`ownValue` on the way to `readGated`, kept as read — and `planDate` re-emits the new
-civil date carrying the carried value's time and offset when it had one.
+**The shape is preserved by the writer, not by the plan.** The obvious fix — carry the
+old raw value on `BacklogItem` and have `planDate` re-emit the civil date with its
+suffix — is wrong here, and `storage/frontmatter.ts` says why in three places already:
+*the model's idea of a value can be a refresh behind* — an external edit, or a batch
+still settling. A suffix taken from the model and written back would overwrite a time or
+offset changed since the model was built, which is the one thing this fix exists to stop
+happening.
 
-The raw value is kept beside the parsed reading rather than folded into it: making
-`readDate` return a `{ date, suffix }` pair would change the type every roadmap and
-timeline reader destructures, to serve one writer. `CivilDate` stays what the placement
-rules are stated in — no time, no zone, the same cell on every device.
+So `AxisWrite` carries the requested **civil date alone**, and the merge happens inside
+`processFrontMatter`, against the live value, in the only module allowed to read and
+write it: the date is replaced, whatever time and offset the note currently holds ride
+along. `planDate` keeps its *comparison* against `plannedStart` / `plannedTarget` — a
+stale civil date can only cost a redundant write, never a wrong one — and
+`BacklogItem` gains nothing. `CivilDate` stays what the placement rules are stated in:
+no time, no zone, the same cell on every device.
 
 ### The plan — `src/domain/writePlan.ts`
 
@@ -521,7 +523,16 @@ clamps a selection already sitting in it, the way a vanished board column alread
 clamps `selectedBoardColumn`. Reachability is not lost, and that is the second reason
 the toggle sits in the toolbar: it is a real focusable control outside the composite
 that `aria-controls` the shelf, so the way back to those cards is a press rather than an
-arrow into the dark. The open flag is view state that
+arrow into the dark.
+
+**And the pane's role is resolved after that, not before.**
+`renderRoadmapContent` picks `listbox` or `region` from `roadmap.cards.length`, decided
+at render and never revisited by a measuring pass that deliberately does not re-render.
+On a narrow pane whose only cards are shelved, every option would then leave the
+navigable set and the pane would stay an empty `listbox` — a composite promising options
+it no longer has, which is the state that role exists to avoid. The role is therefore
+set from the **navigable** cards once compaction has resolved, which is a single
+attribute the measure already has cause to touch. The open flag is view state that
 survives a render, the way the selected board column already is — a rebuild must not
 re-collapse a strip the reader just opened — and it stays out of the collapse store,
 which keys on paths and has nothing to key this on.
@@ -618,10 +629,13 @@ not. `dayAt` is tested **as
 `barGeometry`'s inverse** — a date placed and read back is the same date — rather than
 against hand-computed pixels, since the round trip is the property that matters.
 
-The datetime shape preservation gets a test in `test/domain/writePlanAxis.test.ts` that
-is **watched failing first**: it is a live defect on the shipped menu path, and watching
-it fail is the evidence the test asserts what it reads as. `test/domain/model.test.ts`
-covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
+The datetime shape preservation is **watched failing first**: it is a live defect on the
+shipped menu path, and watching it fail is the evidence the test asserts what it reads
+as. It is tested where the merge happens, in `test/storage/frontmatter.test.ts` rather
+than against the planner — a note whose live value carries a time and offset keeps both
+when a gesture moves its date, **and keeps them when the value on disk changed after the
+model was built**, which is the case a model-carried suffix would silently overwrite and
+a planner-level test could not see.
 
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
 slide, both end grips, the clamp at equal, the bar-to-shelf removal, the drag that ends
