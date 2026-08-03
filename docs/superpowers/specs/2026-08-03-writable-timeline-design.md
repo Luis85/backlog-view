@@ -384,9 +384,19 @@ the identity; `timelineDrag.ts` decides what a position means.
   pane. The shelf is the one that bites: scheduling a card *is* a rebuild, so a reader
   working down a long shelf would be thrown back to its top on every single drop, which
   is worse than never having scrolled it. So the snapshot returns the frame's scroll
-  boxes and capture and restore walk them, rather than naming the timeline and being
-  extended once per band anyone remembers. A band that scrolls has its place kept; that
-  follows from the band rule instead of being maintained alongside it.
+  boxes and capture and restore cover all of them, rather than naming the timeline and
+  being extended once per band anyone remembers. A band that scrolls has its place kept;
+  that follows from the band rule instead of being maintained alongside it.
+
+  **Each one is keyed by which band it is**, never by its position in that collection.
+  The bands are conditional — the context strip renders only with context rows, the
+  advisory only when no cards do — so a filter or a refresh can change *which* bands
+  exist between two renders, and a positional pairing would then restore the context
+  strip's offset onto the advisory and open it scrolled past its own heading. Restoring
+  matches identity and drops what has no counterpart; a band that has just appeared
+  starts at the top, which is the only honest answer for a box the reader has never
+  scrolled. This is the collapse store's rule about identity, one layer up: an offset
+  belongs to the thing that made it, and position is not identity.
 
   **And the offsets are captured from the OLD scroller, before the DOM goes.**
   `renderTreeContent` reads `treeEl.scrollTop` / `scrollLeft` just before `treeEl.empty()`,
