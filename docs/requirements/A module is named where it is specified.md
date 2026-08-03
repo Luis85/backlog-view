@@ -33,10 +33,18 @@ what the code is for rather than mentioning a path in passing.
 
 **Extensions**
 
-- **1a — the module is architecture rather than behaviour.** An ADR names it instead.
-  `src/view/host.ts` is the case that exists: it is the interface the layer rule is built
-  on, no use case owns it, and ADR 0003 describes it exactly. The rule accepts either
-  section, so this is a legal form rather than an exemption.
+- **1a — the module is architecture rather than behaviour.** An ADR names it instead —
+  **in its `## Decision` section, not anywhere in the record.** `src/view/host.ts` is the
+  case that exists: it is the interface the layer rule is built on, no use case owns it,
+  and ADR 0003 names it under `## Decision`, where the choice is made. So the rule lands
+  clean on the one module that needs this form.
+
+  The section matters for the same reason `## Where it lives` does. An ADR's `## Context`
+  and `## Alternatives` sections exist to describe things that were **considered and
+  rejected** — a path mentioned there is evidence that a module was *discussed*, which is
+  precisely the mention-only satisfaction this note exists to stop. Accepting a path
+  anywhere in an ADR would keep the loophole open for exactly the notes least likely to be
+  read as specifications.
 - **2a — the path is mentioned somewhere else under `docs/` instead.** No longer enough,
   and closing that is the point. The old rule asked only that a path token appear anywhere
   under `docs/` — the register itself called this *"satisfiable by mentioning the file and
@@ -60,12 +68,20 @@ what the code is for rather than mentioning a path in passing.
 
 ## Acceptance criteria
 
-- `docs-check.mjs` accepts a module named in a `## Where it lives` section, or in an ADR,
-  and rejects one named only elsewhere under `docs/` — including one named only by a
-  `Task`, `Issue` or `Bug`.
-- Both directions are planted and re-run: the rejection in
+- `docs-check.mjs` accepts a module named in a use case's `## Where it lives` section, or
+  in an ADR's `## Decision` section, and rejects one named only elsewhere under `docs/` —
+  including one named only by a `Task`, `Issue` or `Bug`.
+- A path in an ADR's `## Context`, `## Consequences`, `## Alternatives` or
+  `## Revisit when` does **not** satisfy the rule, and a planted case proves it. Those
+  sections describe what was weighed and rejected; treating a mention there as a
+  specification reopens the hole from the one direction nobody would check.
+- Sections are matched the way this checker already matches them — as lines, with code
+  stripped first — so a heading quoted in a sentence or an example inside a fence is not
+  the document's own structure. That rule exists in `docs-check.mjs` already and is reused
+  rather than restated.
+- Both directions are planted and re-run: the rejections in
   `test/docs/checkerRejects.test.ts`, and — because a false failure is the one a
-  contributor works around rather than reports — the ADR-named and use-case-named forms in
+  contributor works around rather than reports — the ADR-`Decision` and use-case forms in
   `test/docs/checkerAccepts.test.ts`.
 - The rule passes on `src/` as it stands, with no note written to satisfy it.
 - `docs/README.md` states the rule's reason in its new terms, and no longer cites the

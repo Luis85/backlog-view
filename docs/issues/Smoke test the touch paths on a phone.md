@@ -36,16 +36,23 @@ would report as a bug so much as conclude the plugin does not work.
 
 ## How to check
 
+**The drag verdict is not asked here.** [[Smoke test the board in a live vault]] already
+owns it — its "what remains" section lists touch as the one open item carrying *"a real
+decision rather than a check: whether drag ships on touch or stays menu-only"*, and
+[[Keyboard, menu and touch]] names that note as the owner in as many words. Asking it
+again here would put one question in two checklists and leave the release sweep requesting
+the same device twice. If the phone is already in hand, answer it **there**.
+
+What this note owns is the part no existing verification covers: the paths that are
+supposed to work when drag does not.
+
 Run `npm run test-build`, open this repository as a vault on a phone, open
-`docs/Product Backlog.base`, and answer three questions.
+`docs/Product Backlog.base`, and answer two questions.
 
 1. **Does a long press open the context menu** — on a tree row, and on a board card? Every
-   non-drag path on touch hangs off that one event.
-2. **Does a drag fire at all?** [[Keyboard, menu and touch]] names the uncertainty exactly:
-   *"on Obsidian mobile native drag from touch has historically not fired — the chosen
-   engine claims otherwise, a verdict the smoke test owns."* That verdict belongs on
-   [[Pragmatic drag and drop for the board]]; record it there and reference it here.
-3. **Are the hover-revealed controls reachable?** `styles.css` carries a `(hover: none)`
+   non-drag path on touch hangs off that one event, and no note asks it. The board smoke
+   test asks whether *drag* works; this asks whether the documented fallback exists.
+2. **Are the hover-revealed controls reachable?** `styles.css` carries a `(hover: none)`
    block revealing `.pbl-add` and `.pbl-bucket-add`, and `test/view/rendering.test.ts` pins
    its cascade order because it shipped broken once. That the order is right is checked;
    that the buttons can be pressed on a device is not.
@@ -54,8 +61,10 @@ Alt+arrow is deliberately not on this list. It needs a keyboard and was never a 
 
 ## Acceptance criteria
 
-- All three questions answered, with the device and Obsidian version recorded.
-- Question 2's verdict written on [[Pragmatic drag and drop for the board]], which owns it.
+- Both questions answered, with the device and Obsidian version recorded.
+- The drag verdict is **not** recorded here. It stays with
+  [[Smoke test the board in a live vault]] and [[Pragmatic drag and drop for the board]],
+  which own it; this note references them rather than answering for them.
 - If question 1 fails, a `Bug` note is filed: the plugin's documented touch fallback does
   not exist, and `isDesktopOnly` becomes a real question rather than a settled one. It is
   **not** a question to answer in advance — flipping the manifest on a guess would remove a

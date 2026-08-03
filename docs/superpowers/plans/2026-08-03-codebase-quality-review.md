@@ -518,9 +518,13 @@ the first one asked for. What must not happen is editing "every actionable findi
 closed" into something hedged — that sentence was true on the day it was written, and its
 being true then is the whole reason the second round is legible as a second round.
 
-**Two of the three existing features stay closed; one reopens.** `Enforced invariants` and
-`Module structure` (orders 20 and 30) keep their `Done` status — nothing in this round
-belongs under either. **[[Test harness and coverage]] (order 10) reopens**, because
+**One of the three existing features stays closed; two reopen.** `Enforced invariants`
+(order 20) keeps its `Done` status — nothing in this round belongs under it.
+**[[Module structure]] (order 30) reopens** along with its PBI [[One file per concern]],
+because [[Give the type vocabulary its own leaf]] is a new instance of exactly that PBI's
+subject; leaving a `Done` chain above an `Open` task is the same unactionable status this
+paragraph rejects one sentence later, and an earlier draft did precisely that while
+stating the rule. **[[Test harness and coverage]] (order 10) reopens**, because
 [[Coverage where the projections share code]] is that feature's own subject and a `Done`
 feature carrying an `Open` child would be a status the backlog cannot act on. That is the
 narrower move rather than minting a fourth feature to say what the first one already says
