@@ -807,7 +807,10 @@ two real bodies of work and each deserves its own branch — 6 more than one.
 
 **Finding 14 (accessibility) is deliberately not numbered into this list.** It needs a
 specification before a sequence, and that specification is a product decision rather than a
-refactor — brainstorm it, do not draft it cold.
+refactor — brainstorm it, do not draft it cold. It is recorded as
+[[What a screen-reader user is promised]], which states the open questions and deliberately
+carries no acceptance criteria: a note with criteria nobody has agreed would be the drafted
+specification this paragraph refuses.
 
 **Findings 8 and 9 are the only ones deliberately absent from this sequence** — every
 other finding, 10 included, has a step. Nothing in them is over a
