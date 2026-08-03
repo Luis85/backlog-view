@@ -351,6 +351,51 @@ describe('the use-case shape', () => {
 	]);
 });
 
+/**
+ * The sweep in `RELEASING.md` finds its checklist by querying `docs/issues/`, so these
+ * three are the only shape rules an `Issue` has. The gate deliberately does not enforce the
+ * three section shapes `docs/README.md` documents — see the comment on `CADENCES` in
+ * `docs-check.mjs` — so there are no cases here for those, and their absence is the rule.
+ */
+describe('a verification and its cadence', () => {
+	const verification = (body: string, cadence?: string) => {
+		const text = note('Issue', 20, 'Thing', body);
+		return cadence === undefined ? text : text.replace('status: Open', `status: Open\ncadence: ${cadence}`);
+	};
+
+	runRejections([
+		[
+			'a note the sweep would find, leaving its cadence to be guessed',
+			(files) => {
+				files['docs/issues/Look at the thing.md'] = verification('# Look at the thing\n\n## How to check\n\nOpen it.\n');
+			},
+			'carries `## How to check` but no `cadence:`',
+		],
+		[
+			'a note declaring a cadence the query will never reach — the drift that started this',
+			(files) => {
+				// Exactly the three notes that were headed `## What to look at`: marked as a
+				// verification, and invisible to the sweep that is supposed to run it.
+				files['docs/issues/Look at the thing.md'] = verification(
+					'# Look at the thing\n\n## What to look at\n\nOpen it.\n',
+					'release',
+				);
+			},
+			"has no `## How to check` heading — the sweep's query will never find it",
+		],
+		[
+			'a cadence outside the two the release sweep reads',
+			(files) => {
+				files['docs/issues/Look at the thing.md'] = verification(
+					'# Look at the thing\n\n## How to check\n\nOpen it.\n',
+					'sometimes',
+				);
+			},
+			'cadence "sometimes" is not one of',
+		],
+	]);
+});
+
 describe('the corpus covers every rule', () => {
 	it('is built against every place the gate can report a problem', async () => {
 		// The two rejection files were written by enumerating the gate's report sites and
@@ -367,6 +412,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(43);
+		expect(sites.length).toBe(46);
 	});
 });

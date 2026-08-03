@@ -363,6 +363,35 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts an Issue that is not a verification and says nothing about cadence', async () => {
+		// Most of `docs/issues/` is this: decisions and limitations, no `## How to check`,
+		// no `cadence:`. The biconditional has to leave them alone, or the gate added for
+		// the release sweep would fail the majority of the folder it was written for.
+		const files = baseRegister();
+		files['docs/issues/A thing we decided.md'] = note(
+			'Issue',
+			20,
+			'Thing',
+			'# A thing we decided\n\n## The decision\n\nWe did it this way.\n',
+		);
+
+		await expectAccepted(files);
+	});
+	it('accepts `## How to check, properly` in a note about a gate, which no device can run', async () => {
+		// The real note this protects is an investigation into a CI gate that never ran.
+		// A prefix match would sweep it into a checklist of things to do in a live vault,
+		// and then demand a `cadence:` of a note that has no business carrying one — so
+		// this case fails in BOTH directions if the matcher stops being whole-line.
+		const files = baseRegister();
+		files['docs/issues/A gate that did not run.md'] = note(
+			'Issue',
+			20,
+			'Thing',
+			'# A gate that did not run\n\n## The failure mode\n\nIt passed.\n\n## How to check, properly\n\nRun it.\n',
+		);
+
+		await expectAccepted(files);
+	});
 });
 
 /**

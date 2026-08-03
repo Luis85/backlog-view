@@ -437,6 +437,50 @@ for (const [, note] of notes) {
 	}
 }
 
+// ------------------------------------------------------------------- verification notes
+/**
+ * **What makes a verification findable, and nothing else about an `Issue`.**
+ *
+ * `RELEASING.md` derives the pre-tag sweep by querying `docs/issues/` for notes carrying
+ * `## How to check` as a whole heading line and reading their `cadence:`. That query is the
+ * only thing in this repository leaning on an `Issue`'s shape, so it is the only thing
+ * checked here. The three shapes `docs/README.md` documents — a decision, a limitation, a
+ * verification — are deliberately NOT enforced: most notes in the folder do not match the
+ * one their opening heading implies, and `## Outcome` is legitimately absent from a check
+ * nobody has run yet, since the README says an outcome is written *after* the work. A gate
+ * that failed three-quarters of the corpus would be answered by editing the corpus.
+ *
+ * The rule is a biconditional because the drift went both ways at once. Three verifications
+ * headed their section `## What to look at` and the query dropped them silently — including
+ * the note that owns the mobile drag verdict another note delegates to — while nothing
+ * marked them as verifications at all.
+ *
+ * **Stated exactly**: a note that DECLARES itself a verification cannot be spelled out of
+ * the sweep, and a note the sweep would find cannot leave its cadence to be guessed. What
+ * this cannot see is a verification that declares itself nowhere — no cadence, heading
+ * spelled freely. Nothing distinguishes that from a note about a check, and inventing a
+ * heuristic for it would gate on a guess.
+ */
+const CADENCES = new Set(["release", "conditional"]);
+for (const [, note] of notes) {
+	if (note.type !== "Issue") continue;
+	const text = texts.get(note.file);
+	// Whole-line, via the same matcher every other section rule uses: `## How to check,
+	// properly` heads an investigation into a CI gate that never ran, and a prefix match
+	// sweeps it into a checklist of things a person is supposed to do in a live vault.
+	const swept = sectionHits(withoutCode(text), "## How to check").length > 0;
+	const cadence = frontmatter(text)?.field("cadence");
+	if (swept && cadence === null) {
+		fail(note.file, "carries `## How to check` but no `cadence:` — the release sweep cannot place it");
+	}
+	if (!swept && cadence !== null) {
+		fail(note.file, `declares \`cadence: ${cadence}\` but has no \`## How to check\` heading — the sweep's query will never find it`);
+	}
+	if (cadence !== null && !CADENCES.has(cadence)) {
+		fail(note.file, `cadence "${cadence}" is not one of ${[...CADENCES]}`);
+	}
+}
+
 // ----------------------------------------------------------------------------- ADRs
 /**
  * An ADR is any note under `docs/adrs/` that is not the index — discovered by **where it
