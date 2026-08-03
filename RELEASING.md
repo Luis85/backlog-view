@@ -30,13 +30,26 @@ tag: after it, the only thing a failure can produce is a second release.
    are marked `cadence: release`**. One way to ask:
 
    ```bash
-   grep -rlxZ "## How to check" docs/issues/ | xargs -0 grep -l "^cadence: release"
+   grep -rlxZ "## How to check" docs/issues/ |
+     xargs -0 awk 'FNR==1{fm=0;hit=0} /^---$/{fm++} fm==1 && !hit && /^cadence: release$/{print FILENAME; hit=1}'
    ```
 
-   The `-Z`/`-0` is not decoration: every note in this backlog is titled in prose, so every
-   path has spaces in it, and the same query written without them reports `docs/issues/Board`
-   and `card` as missing files while still exiting cleanly enough to look like it worked.
-   That is how this line was first written here, and running it is what caught it.
+   Two things in that line are load-bearing and both were wrong in an earlier version of it:
+
+   - **`-Z`/`-0`.** Every note here is titled in prose, so every path has spaces, and the
+     same query without them reports `docs/issues/Board` and `card` as missing files while
+     still looking like it worked.
+   - **`awk` on the frontmatter rather than `grep -l "^cadence: release"`.** A plain `grep`
+     matches the whole file, so a *conditional* note that merely mentions `cadence: release`
+     in prose or a fenced example is swept into the release checklist — quietly replacing
+     the cadence its own outcome specifies. The `fm==1` guard reads only the first `---`
+     block, which is the same place `docs-check.mjs` reads it from.
+
+   The first stage does *not* strip code fences, so it can match a `## How to check` written
+   inside an example — but such a note is only swept if its frontmatter also says
+   `cadence: release`, and that combination fails `npm run check`, because the gate strips
+   code before deciding whether a note is a verification. The over-match cannot reach the
+   checklist while the gate is green.
 
    Each of the three conditions is load-bearing, and each is a case that exists in the tree
    today rather than a hypothetical:
