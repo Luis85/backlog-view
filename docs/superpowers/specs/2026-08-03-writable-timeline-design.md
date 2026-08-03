@@ -233,6 +233,28 @@ value does not consume the single undo slot. The civil-date comparison that keep
 `2026-8-1` from being tidied into `2026-08-01` moves there too — it is a question about
 the spelling on disk, so the writer is where it could always see the answer.
 
+**Deciding in the writer means the writer's verdict has to come back**, and two things
+depend on it.
+
+*The pair is validated against both live values, not one.* A one-end write is planned
+against a span the render showed, so a target changed by another editor mid-drag can
+turn a legal start into a reversed pair — and the merge as described only looks at the
+key it is writing. "No gesture may write a reversed span" is a guarantee about what
+lands on disk, so it is checked where disk is: the effective pair is the requested end
+plus the live other one, and a reversal **refuses the batch, loudly**, rather than
+re-clamping to a date the user never pointed at. That is extension `3a`'s answer already
+— refused whole, indicators cleared, the bar left where the note still says — and it
+covers the modal, whose validation is likewise done against values captured before the
+write.
+
+*An unchanged write is not a move, and must not be announced as one.* With the check in
+the writer, the planner now hands the gate a non-empty batch for a re-confirmed date;
+`runExclusively` reports success for anything that completed, and `applyCardMove`
+announces on that. A screen-reader user would hear a move that did not happen. So the
+write path reports whether it changed anything — which is exactly what capturing no
+inverse already means — and the announcement asks that rather than asking whether the
+call returned.
+
 ### The plan — `src/domain/writePlan.ts`
 
 **Nothing new.** `computeScheduleWrites` is already the batch these gestures want: both
