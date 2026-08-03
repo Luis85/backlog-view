@@ -636,10 +636,19 @@ a floor plus four maxima can exceed a short or embedded pane and no allocation m
 that fit. "No band can starve another" was the wrong guarantee: it is not true, and
 `.pbl-view` clips, so the failure it papers over is a region nobody can reach. The
 guarantee is narrower and checkable — **no region is ever unreachable** — and it is kept
-in two steps. Bands yield in a stated order first: the shelf to its labelled count (the
-compaction that already exists), then the context strip to its own count, the advisory
-last because it is the one band that exists to be read. When yielding runs out, **the
-pane scrolls vertically** rather than clipping. That is a fallback and not a retreat
+in two steps. First the shelf compacts to its labelled count — the compaction that
+already exists, and the **only** compaction, because it is the only band with a control
+that reopens it. Every other band shrinks toward its minimum and keeps scrolling: a
+scrollable band at a small maximum yields nearly the height a compacted one does,
+without hiding anything. Then, when shrinking runs out, **the pane scrolls vertically**
+rather than clipping.
+
+An earlier draft compacted the context strip too, which would have hidden cards that are
+in the navigable set with no way to bring them back — the unreachable region this
+paragraph exists to forbid, introduced by the paragraph itself. Compaction is not a
+free way to save height: it is only available to a band that has an operable way back,
+and adding a second such control to save a few pixels before the pane scrolls anyway is
+mechanism nobody asked for. That is a fallback and not a retreat
 from the containment rule, which is about the horizontal axis: the pane still never
 scrolls sideways, and the header and lead column still pin inside the timeline. A pane
 too short for the frame is a worse view than a tall one, and it is not a broken one.
