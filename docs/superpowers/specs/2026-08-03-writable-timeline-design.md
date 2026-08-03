@@ -462,6 +462,15 @@ the identity; `timelineDrag.ts` decides what a position means.
   scrolled. This is the collapse store's rule about identity, one layer up: an offset
   belongs to the thing that made it, and position is not identity.
 
+  **The pane is one of those boxes, not an exception to them.** It stops scrolling on
+  the dated axis in the ordinary case, but the short-pane fallback gives it a vertical
+  offset again, and a reader who has scrolled the frame there would be thrown to the top
+  by any filter change, drop or refresh. Rather than conditioning the capture on whether
+  the fallback is currently active — a second question to keep in step with the layout —
+  the pane is simply keyed like every other box. Capturing and restoring a zero costs
+  nothing when it does not scroll, and the rule stays one sentence: every scroll box in
+  the frame, by identity.
+
   **And the offsets are captured from the OLD scroller, before the DOM goes.**
   `renderTreeContent` reads `treeEl.scrollTop` / `scrollLeft` just before `treeEl.empty()`,
   which is the pane — on the dated axis those are the offsets of a box that no longer
