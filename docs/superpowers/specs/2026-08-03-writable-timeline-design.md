@@ -131,9 +131,21 @@ keeps what is drawn as grabbable and what can actually be written from disagreei
 datetime keep its time of day and its shape on disk. `computeScheduleWrites` → `planDate`
 writes a plain `formatCivil` string, so a note carrying `2026-08-01T09:00+02:00` loses
 its time — and this is live today on the shipped menu path, since `SchedulePromptModal`
-uses native `type="date"` fields. The fix belongs in `planDate`, where both the menu and
-the new gestures route through: re-emit the new civil date carrying the original value's
-time and offset. One guard in the shared function, not one per caller.
+uses native `type="date"` fields.
+
+The fix belongs in `planDate`, where both the menu and the new gestures route through —
+one guard in the shared function, not one per caller — but it cannot live *only* there.
+`readDate` matches the `([Tt\s].*)?` suffix and then throws it away, and
+`FieldReading<CivilDate>` carries the year/month/day triple alone, so `plannedStart` and
+`plannedTarget` have nothing for `planDate` to re-emit. **`BacklogItem` gains
+`rawStart` / `rawTarget`** — the frontmatter values `buildModel` already reads through
+`ownValue` on the way to `readGated`, kept as read — and `planDate` re-emits the new
+civil date carrying the carried value's time and offset when it had one.
+
+The raw value is kept beside the parsed reading rather than folded into it: making
+`readDate` return a `{ date, suffix }` pair would change the type every roadmap and
+timeline reader destructures, to serve one writer. `CivilDate` stays what the placement
+rules are stated in — no time, no zone, the same cell on every device.
 
 ### The plan — `src/domain/writePlan.ts`
 
@@ -177,8 +189,13 @@ module past its budget as well as past its stated job.
   following at the bar's own day count, so a slide never changes duration. An end drag
   moves one date and clamps at equal rather than crossing — a reversed span is
   unreadable, so no gesture may write one.
-- A bar dropped on the shelf removes the configured date keys rather than blanking them,
-  and undo restores them with their values.
+- A bar dropped on the shelf removes keys rather than blanking them, and undo restores
+  them with their values. **Which** keys is `placementEnds` in `interactions/plan.ts`,
+  not "the configured ones": it already narrows a marker to its target alone, which is
+  the rule [[Drag from the shelf to schedule]] extension `2e` states — a stale start the
+  type ignores stays on the note, because a gesture may only take back what the
+  projection actually drew. `unschedule` loops it today, so the gesture inherits the
+  narrowing by routing through the same plan rather than restating it.
 - `renderRoadmap` passes `dnd: null` on the dated axis today as the deliberate
   withholding. Flipping that on is what this increment is.
 
@@ -230,7 +247,8 @@ against hand-computed pixels, since the round trip is the property that matters.
 
 The datetime shape preservation gets a test in `test/domain/writePlanAxis.test.ts` that
 is **watched failing first**: it is a live defect on the shipped menu path, and watching
-it fail is the evidence the test asserts what it reads as.
+it fail is the evidence the test asserts what it reads as. `test/domain/model.test.ts`
+covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
 
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
 slide, both end grips, the clamp at equal, the bar-to-shelf removal, and the drag that
