@@ -582,8 +582,18 @@ the identity; `timelineDrag.ts` decides what a position means.
   third surface: a comparison written beside a placement rule and expected to agree with
   it is exactly what drifted when the second axis arrived. It costs nothing extra —
   `descendantStart` and `descendantTarget` are already gathered from children alone,
-  never from the item's own dates. The same call names the announcement above, so the
-  preview and what the screen reader hears cannot disagree either.
+  never from the item's own dates.
+
+  **The preview predicts; the announcement reports.** They are not the same act and must
+  not read the same way. The indicator before the drop is necessarily a prediction — it
+  is drawn from the model in hand, and a descendant's dates changed by another editor
+  mid-drag can make the real outcome differ. That is true of every preview here and needs
+  no machinery. The announcement is a statement about what happened, so it names the
+  placement from the **rebuilt** model: the batch's own refresh has already run by the
+  time the write resolves, so what the item's row now is, is a fact rather than a
+  forecast. `applyCardMove`'s capture rule is untouched and still points the other way for
+  what it covers — a bucket label can vanish with the refresh, so the *vocabulary* is read
+  before the await. Labels before, outcome after; each read where it is knowable.
 - `renderRoadmap` passes `dnd: null` on the dated axis today as the deliberate
   withholding. Flipping that on is what this increment is.
 
@@ -815,7 +825,15 @@ surface.
    today, and after this increment the pointer paths do too. The sentence is already
    false and would be doubly so on merge.
 5. [[The unplaced shelf]] and [[Roadmap empty states]] — both close: the dated half of
-   the shelf drag lands, and every grid region becomes a drop target.
+   the shelf drag lands, and every grid region becomes a drop target. **`Roadmap empty
+   states` needs decision 4 applied to it first**: its extension `2c` and the matching
+   criterion promise that a note created dateless into a base whose filter excludes it
+   is "announced with an open path", which is the outcome report this increment does not
+   build — `createFromPrompt` emits the generic `Created` notice and nothing else. That
+   criterion narrows to what ships, exactly as `Move and resize a bar`'s `3b` does, and
+   the announcement stays owned by [[The outcome report was built from one sentence]].
+   Closing a note over an unnarrowed criterion would be the defect this spec keeps
+   naming: a guarantee written ahead of its check.
 6. [[Bars from two dates]] — close it. Its stated reason for staying open was inferred
    parent spans waiting on [[Spans roll up the tree]]; that PBI is Done and `deriveBars`
    in `src/domain/roadmap.ts` sets `inferredStart` / `inferredEnd` today, so the note is
