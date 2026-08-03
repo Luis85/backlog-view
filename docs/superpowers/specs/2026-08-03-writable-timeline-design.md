@@ -137,6 +137,17 @@ what [[Zoom and the today marker]] extension `2a` already means by "the minimum 
 width": the dates are the fact and the pixels are the zoom's, but a fact drawn at zero
 width has stopped being reported.
 
+**Every other fixed pixel count on the grid has the same problem.** `TODAY_NUDGE_PX = 2`
+steps a milestone line aside from today's where they share a date; at one pixel per day
+that is a two-day displacement, putting the line and its label in the wrong day while
+[[Milestones as their own type]] requires both marks inside the same day cell. A nudge
+is a *sub-day* offset, so it is expressed as a fraction of `dayPx` and can never leave
+the day it belongs to. At the sparse scales the two marks then coincide, which is what
+one pixel per day means and is the honest report of it — the tooltips still say which
+is which. The floor and the nudge are the two constants this increment converts; the
+rule under both is that a length in days is scaled and a length in pixels is not, and
+mixing them is what a zoom control turns into a bug.
+
 Today's fixed rendering becomes the `month` scale at `dayPx: 4`, so zoom adds a
 parameter to functions that already exist rather than a second drawing path.
 `timelineWindow` aligns its bounds to the scale's unit.
@@ -283,10 +294,25 @@ the identity; `timelineDrag.ts` decides what a position means.
   one an absolute read cannot promise. The body slide was always a delta; this makes
   the grips agree with it.
 
+  **An open end has no date to capture, so it borrows the stated one.** `barHolds`
+  exposes a grip on an absent end wherever its property is configured — that grip is
+  how the missing date gets written ([[Move and resize a bar]] extension `1a`) — and a
+  one-dated bar renders one cell wide *at the date it has*, so the open end is drawn
+  against the stated one and takes it as its baseline: a missing target counts days
+  from the start, a missing start counts back from the target. Each is clamped at equal
+  with the end it borrowed from, the same refusal to write a reversed span.
+
+  Its zero case is the one that differs, and it is a write rule rather than a
+  geometric one: an open-end hold released where it began **writes nothing**. Zero days
+  from the baseline would be a date equal to the stated end — a milestone diamond — and
+  a plan that stated no end still states none. Absent is a value here, and a gesture
+  that did not move must not be what turns it into one.
+
   Both are driven against a **panned grid at a nonzero viewport offset** — a fixture at
   the origin with no scroll cannot fail the conversion — and the grips additionally
   against a **one-day bar at quarter zoom**, the case where the drawn edge and the date
-  are furthest apart.
+  are furthest apart, and against **both open-end cases**, a missing start and a missing
+  target, each released without movement to prove it writes nothing.
 - **The timeline registers its scroller.** Auto-scroll is opt-in per element and
   `renderRoadmap` calls `wireScroller` only in the horizon branch, so without this a
   drag could reach no date that is not already on screen — and the grid is thousands of
