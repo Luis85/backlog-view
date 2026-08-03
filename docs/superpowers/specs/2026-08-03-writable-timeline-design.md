@@ -297,10 +297,20 @@ the identity; `timelineDrag.ts` decides what a position means.
   quarter zoom the end grip of a one-day bar sits days past its target: reading the
   pointer absolutely would mean *grabbing* the grip already previews a later date, and
   the smallest twitch writes it. So a hold captures the endpoint's own date and the
-  pointer's start, and each frame moves that date by `round((x - x₀) / dayPx)` days.
-  Zero movement is zero days at every zoom, which is the property that matters and the
-  one an absolute read cannot promise. The body slide was always a delta; this makes
-  the grips agree with it.
+  pointer's start, and each frame moves that date by
+  `round(((x - x₀) + (scrollLeft - scrollLeft₀)) / dayPx)` days. Zero movement is zero
+  days at every zoom, which is the property that matters and the one an absolute read
+  cannot promise. The body slide was always a delta; this makes the grips agree with it.
+
+  The scroll term is **not** the double-count the placing rule refuses, and the two
+  paragraphs have to be read together or someone will "fix" one into the other. A
+  placing read measures against the overlay's bounding rect, which already moves with
+  the pan, so adding `scrollLeft` would count it twice. A moving read measures against
+  a pointer position captured in viewport space, which does *not* move with the pan —
+  so while auto-scroll pans the grid under a held pointer, `x - x₀` stays zero while
+  later dates slide beneath it, and without the term the preview freezes exactly when
+  the scroller is doing its job. Rect-relative reads exclude the scroll; viewport-relative
+  deltas include it.
 
   **An open end has no date to capture, so it borrows the stated one.** `barHolds`
   exposes a grip on an absent end wherever its property is configured — that grip is
@@ -445,9 +455,16 @@ the identity; `timelineDrag.ts` decides what a position means.
 ### Zoom and today — `render/toolbar.ts`, `storage/collapseStore.ts`, `styles/timeline.css`
 
 A zoom picker and a jump-to-today button beside the focus picker, both rendered only on
-the dated axis. `CollapseSnapshot` gains `zoom`, validated against the three scale ids
-exactly as `axis` is validated against `AXIS_VALUES` — a per-screen working position, in
-the store where collapse state already lives, never in the `.base`. The narrow-pane rule
+the dated axis. The zoom is a per-screen working position, kept where collapse state
+already lives and never in the `.base` — which means **two** places, not one.
+`CollapseSnapshot` gains `zoom` and `collapseStore.ts` validates it against the three
+scale ids exactly as `axis` is validated against `AXIS_VALUES`; but `CollapseState` in
+`src/view/collapseState.ts` is what actually holds `mode` and `axis` as private fields,
+reads them on restore and constructs the snapshot it saves. A store-only change would
+give a picker that works all session and reverts the moment the view is reopened — the
+worst shape of this bug, because nothing fails until someone comes back the next day.
+So `zoom` joins those fields with its accessor, its restore and its flush, and the test
+is a **round trip**: pick, save, reload, and find the same scale. The narrow-pane rule
 needs **a real control**, and therefore **one decider** — and the control goes in the
 **toolbar**, not on the shelf header. Hiding the cards in CSS alone would strand every
 unplaced card until the pane was widened, the opposite of "may lose its card, never its
