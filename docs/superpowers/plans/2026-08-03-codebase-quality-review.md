@@ -149,28 +149,42 @@ count is the visible count and not the model count. Each fails if someone reache
 
 ---
 
-### 5. Every user-visible string is inline, in 40-odd places — **Ready**
+### 5. Every user-visible string is inline, in ~141 places — **Ready, and larger than it looks**
 
-**Evidence.** 19 `new Notice(...)` call sites across `writeGate.ts`, `structure.ts`,
-`create.ts`, `undo.ts`, `tags.ts`, `scaffold.ts` and `readme.ts`, plus button labels,
-`aria-label`s, tooltips, empty-state copy and the board's screen-reader instructions
-scattered through `render/`. There is no place to read the plugin's whole voice, and the
-marketplace's sentence-case rule is enforced by eye.
+**Evidence.** [[Multilang]] already counted it, from a derived grep rather than a
+recalled list: **about 141 user-facing text sites across 15 files**, every one an English
+literal spelled inline. `domain/viewOptions.ts` alone holds 30, `render/toolbar.ts` 23,
+`render/columns.ts` 20, `interactions/menu.ts` 16, `ui/prompts.ts` 13. There is no place
+to read the plugin's whole voice, and the marketplace's sentence-case rule is enforced by
+eye. (An earlier draft of this note said "40-odd" — that was a narrow grep of `Notice`
+and `text:`, and the register's number is the right one.)
 
-**Shape.** [[The string catalog]] specifies it precisely — one file per locale, keys
-typed so a typo is a compile error, two keys for one English string when they will
-diverge. Its precondition names a locale layer that does not exist yet.
+**Shape.** Specified across [[The string catalog]], [[A bare string cannot reach the UI]]
+and the feature note above them. Three of that specification's decisions are already
+argued, and this plan defers to all three rather than re-deciding them:
 
-**The lazy split, and the recommendation:** ship the **catalog alone**, English only, with
-no locale resolution, no fallback chain and no plural machinery. That is the whole
-maintainability win — every string in one reviewable place, keys typed — and it is a
-mechanical move plus one new module. The locale layer then has somewhere to land instead
-of being its own prerequisite. Building the full `Multilang` feature to get this is the
-over-built answer.
+- **The catalog is a new leaf below everything**, not a file in an existing directory.
+  [[Multilang]]'s *"Where the catalog lives"* works it out: `ui/` may import nothing
+  (`forbidden('ui', ['view', 'commands', 'domain', 'storage'])`) yet `ui/prompts.ts` has
+  13 sites, and `domain/` may not reach `ui/` yet `domain/viewOptions.ts` has 30. A
+  catalog in either is unreachable from at least one caller, so it needs its own
+  directory plus its own `forbidden` entry naming every other one.
+- **The enforcement is typed rendering wrappers plus bans on the raw sinks**, not a
+  selector over `Notice`. [[A bare string cannot reach the UI]] derives the sink
+  inventory from the code — `setTooltip` 23, `setTitle` 20, `new Notice` 14, `setText`
+  11, `text:` 30, `displayName:` 21, and the native DOM assignments a branded type cannot
+  reach — and records that listing that set from memory came up short three times. A
+  narrower rule would leave a literal assigned to a local, or returned from a helper,
+  passing.
+- **The whole layer lands before the sweep.** [[Multilang]]'s *"Order of work"* refuses
+  the tempting split — catalog first, locale resolution later — with the reason: *"A
+  half-built layer means a hundred strings get moved against an interface that then
+  changes."* English still ships as the only catalog ([[English ships alone]]); that is a
+  scope decision, not a staging one.
 
-**Cost.** One `src/domain/strings.ts` (or `src/ui/`, whichever the layer rules allow the
-`render/` and `commands/` callers to reach), a mechanical sweep, and one lint rule banning
-a bare string literal in a `Notice` — the enforcement is what stops the file re-scattering.
+**Cost.** Real: the layer, then a 141-site sweep, then the lint rule. This is the largest
+item in this plan and the one whose specification is most complete. It is here as the
+maintainability finding it is, not as something to squeeze into a polish pass.
 
 ---
 
@@ -233,13 +247,14 @@ Each step is independently shippable and ends `npm run check` green.
 4. **The render-cost regression guard** (finding 4) — turns four prose claims into checks.
 5. **The direction fixes, then `Styling rules are checks`** (finding 1) — the largest item,
    and the one with the most already decided.
-6. **The English string catalog, alone** (finding 5) — after the styling gate, because both
-   touch the same render modules and doing them together doubles the merge surface.
+6. **The `Multilang` layer, then the sweep, then the sink ban** (finding 5) — after the
+   styling gate, because both touch the same render modules and doing them together
+   doubles the merge surface. Its own epic, not a step in a polish pass.
 7. **Fold the verification sweep into `RELEASING.md`** (finding 7) — one line, any time.
 
 Steps 1–4 are a coherent first increment: nothing in them changes shipped behaviour, and
-together they close every finding that is *only* a missing check. Steps 5–6 are the two
-real bodies of work and each deserves its own branch.
+together they close every finding that is *only* a missing check. Steps 5 and 6 are the
+two real bodies of work and each deserves its own branch — 6 more than one.
 
 ---
 
@@ -267,4 +282,6 @@ real bodies of work and each deserves its own branch.
 - `src/view/interactions/cardDrag.ts`, `src/view/interactions/tags.ts`,
   `src/view/interactions/undo.ts` — the thin branches
 - `src/domain/vocabulary.ts` — the module the architecture table forgot
+- `src/domain/viewOptions.ts`, `src/ui/prompts.ts` — the two string sites that prove the
+  catalog cannot live in either existing directory
 - `manifest.json` — the platform promise
