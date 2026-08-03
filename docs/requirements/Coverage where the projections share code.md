@@ -50,9 +50,19 @@ note twice. They get their own note when that reading has been done.
     **silence**, so the test asserts that nothing was announced. A test written from a
     looser description could assert an announcement here and pin the opposite of what the
     code deliberately does.
-  - `cardDrag.ts:157-161` — the drop-time payload check, and the item resolution that
-    **can miss because a refresh mid-drag dropped the note**, which the code says in as
-    many words. The branch is the drop that resolves to nothing and writes nothing.
+  - `cardDrag.ts` — the drop whose **item resolves to nothing** because a refresh mid-drag
+    dropped the note, which the code says in as many words. That is the reachable branch
+    and the one to test: the drop lands, `byPath` misses, nothing is written.
+
+    **The `typeof path === 'string'` guard beside it is not a second target.** `canDrop`
+    admits only a source carrying this controller's private `token`, and the one place
+    minting that token pairs it with `item.file.path` — a string, always. So the guard can
+    never be false at runtime. It also cannot be deleted: Pragmatic hands `source.data`
+    back as `unknown`, so the narrowing is what the *type system* requires, not a runtime
+    case. A branch that is uncoverable by construction and undeletable by typing is
+    **declared, not covered** — the reasoning `.fallowrc.json` uses for framework-invoked
+    members. Promising a test for it would produce the contrived adapter state extension
+    1c refuses.
   Both need an absence constructed to reach them, which is why they are the ones left.
 
   **A coverage line number is not a branch description.** Both `tags.ts` entries in an
@@ -63,19 +73,22 @@ note twice. They get their own note when that reading has been done.
   percentage asserts whatever is cheapest to assert. Each increment names the branch it
   covers and what would break if that branch were wrong; a threshold moves because a
   behaviour got checked, never the other way round.
+- **1c — a branch turns out unreachable.** It is deleted, or declared the way
+  `.fallowrc.json` declares framework-invoked members. An unreachable branch covered by a
+  contrived test is worse than no test: it pins code nothing can execute.
 - **2a — a threshold would have to go down.** It does not go down. `vitest.config.mts`
   says so already, and the one time a figure moved down it was because vitest 4 remapped
   v8's byte ranges onto AST nodes — a measurement change with no test lost, recorded in
   that file rather than absorbed.
-- **1c — a branch turns out unreachable.** It is deleted, or declared the way
-  `.fallowrc.json` declares framework-invoked members. An unreachable branch covered by a
-  contrived test is worse than no test: it pins code nothing can execute.
 
 ## Acceptance criteria
 
-- `cardDrag.ts` branch coverage is no longer the lowest figure in `src/`, and each of its
-  named branches above has a test: the two silent-announcement guards assert that
-  **nothing** was announced, and the missed drop asserts that nothing was written.
+- `cardDrag.ts` branch coverage is no longer the lowest figure in `src/`, and each
+  **reachable** branch named above has a test: the two silent-announcement guards assert
+  that **nothing** was announced, and the missed drop asserts that nothing was written.
+- The unreachable `typeof path === 'string'` narrowing is declared rather than tested, with
+  the reason beside it — the token makes it always true, the `unknown` payload makes it
+  necessary. A test that reached it would have had to fake the adapter.
 - No criterion here mentions `tags.ts`, `undo.ts` or `backlogView.ts`, and neither does
   the flow. Scope promised is scope checked.
 - Every new test names the branch it covers, and is watched failing without the code it
