@@ -254,6 +254,35 @@ const files = (await walk(DOCS)).sort();
 const texts = new Map(await Promise.all(files.map(async (f) => [f, await readText(f)])));
 const stems = new Set(files.map((f) => path.basename(f, ".md")));
 
+/**
+ * **A name Windows cannot check out.**
+ *
+ * Notes here are titled in prose, and prose contains punctuation NTFS forbids —
+ * `< > : " | ? *`, a trailing space or dot, and the reserved device names. A note called
+ * `Finding 4 — "a few hundred rows" is a comment, not a check.md` was committed from Linux,
+ * where it is a perfectly ordinary filename, and the Windows CI job then failed at
+ * `git checkout` with `error: invalid path` — before any build step ran, so no test and no
+ * gate in this file had a chance to report it. The repository could not be cloned at all on
+ * half the platforms it supports.
+ *
+ * That is why this is checked on the NAME rather than left to CI. CI does catch it, but it
+ * catches it as an unclonable tree, which reads as a broken runner rather than as a file
+ * someone added — and the fix has to be found by whoever can read a checkout log.
+ *
+ * Scoped to `docs/`, and honestly: this is the only tree here whose filenames are written
+ * as sentences. A module under `src/` is named for an identifier, and the same mistake
+ * there would fail an import long before it reached CI. If that stops being true, this
+ * loop is the place to widen.
+ */
+const WINDOWS_RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i;
+for (const file of files) {
+	const name = path.basename(file);
+	const forbidden = [...new Set(name.match(/[<>:"|?*]/g) ?? [])];
+	if (forbidden.length > 0) fail(file, `filename uses ${forbidden.map((c) => `\`${c}\``).join(" ")}, which Windows forbids — git cannot check this out`);
+	if (WINDOWS_RESERVED.test(name)) fail(file, "filename is a reserved device name on Windows");
+	if (/[ .]$/.test(path.basename(file, ".md"))) fail(file, "filename ends in a space or a dot, which Windows cannot represent");
+}
+
 // ---------------------------------------------------------------- the backlog tree
 const notes = new Map();
 // The register addresses work items by **basename** — that is what a `[[wikilink]]` and a

@@ -10,7 +10,7 @@ closed: 2026-08-03
 source: Review of 0.4.0, finding 4 — docs/superpowers/plans/2026-08-03-codebase-quality-review.md
 ---
 
-# Finding 4 — "a few hundred rows" is a comment, not a check
+# Finding 4 — “a few hundred rows” is a comment, not a check
 
 ## The finding
 

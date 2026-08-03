@@ -396,6 +396,53 @@ describe('a verification and its cadence', () => {
 	]);
 });
 
+/**
+ * **Skipped on Windows, and the reason is the rule.** Each case plants a filename Windows
+ * cannot represent, so on Windows the *planting* fails rather than the gate — the harness
+ * would be blocked by exactly the constraint being checked. The rule is platform-neutral
+ * (it reads a string), so Linux and macOS runs cover it and the count test below pins the
+ * sites on every platform.
+ *
+ * This gate exists because CI already caught one of these the expensive way: a note titled
+ * with double quotes failed `git checkout` on the Windows job, before any build step, so
+ * the tree could not be cloned and nothing in `docs-check.mjs` ever ran.
+ */
+describe.skipIf(process.platform === 'win32')('a filename Windows cannot check out', () => {
+	runRejections([
+		[
+			'a note whose prose title contains a double quote',
+			(files) => {
+				files['docs/issues/A note about "a quoted phrase".md'] = note(
+					'Issue',
+					20,
+					'Thing',
+					'# A note about a quoted phrase\n\n## The decision\n\nWe did it.\n',
+				);
+			},
+			'which Windows forbids',
+		],
+		[
+			'a note named after a reserved device',
+			(files) => {
+				files['docs/issues/NUL.md'] = note('Issue', 20, 'Thing', '# NUL\n\n## The decision\n\nWe did it.\n');
+			},
+			'reserved device name on Windows',
+		],
+		[
+			'a note whose name ends in a dot',
+			(files) => {
+				files['docs/issues/A trailing thought..md'] = note(
+					'Issue',
+					20,
+					'Thing',
+					'# A trailing thought\n\n## The decision\n\nWe did it.\n',
+				);
+			},
+			'ends in a space or a dot',
+		],
+	]);
+});
+
 describe('the corpus covers every rule', () => {
 	it('is built against every place the gate can report a problem', async () => {
 		// The two rejection files were written by enumerating the gate's report sites and
@@ -412,6 +459,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(46);
+		expect(sites.length).toBe(49);
 	});
 });
