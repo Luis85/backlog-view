@@ -429,14 +429,14 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 			'reserved device name on Windows',
 		],
 		[
-			'a note whose name ends in a dot',
+			// The name Windows actually refuses, which is NOT a `.md` file — so a check
+			// running over the walk's results could never have seen it. The first version of
+			// this case planted `A trailing thought..md` instead, which is a perfectly legal
+			// Windows name ending in `d`, and passed against a rule that was reading a
+			// stripped stem. It asserted a false positive and read like a check.
+			'a directory entry whose name ends in a dot',
 			(files) => {
-				files['docs/issues/A trailing thought..md'] = note(
-					'Issue',
-					20,
-					'Thing',
-					'# A trailing thought\n\n## The decision\n\nWe did it.\n',
-				);
+				files['docs/issues/A trailing thought.md.'] = 'Not a note, and not a name Windows can hold.\n';
 			},
 			'ends in a space or a dot',
 		],
@@ -459,6 +459,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(49);
+		expect(sites.length).toBe(47);
 	});
 });

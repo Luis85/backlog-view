@@ -43,10 +43,31 @@ impossible.
 The file is renamed with typographic quotes — `“a few hundred rows”` — which carry the same
 meaning and are legal on every platform.
 
-The rename alone would leave the hole open, so `docs-check.mjs` now checks the **name** of
-every file it walks: the forbidden characters, the reserved device names, and a trailing
-space or dot. Three report sites, each planted in `test/docs/checkerRejects.test.ts` and
-each watched failing alone.
+The rename alone would leave the hole open, so `docs-check.mjs` now checks the name of every
+**directory entry** `walk` meets — forbidden characters, reserved device names, trailing
+space or dot — before anything filters by extension, and for folders as well as files. A
+directory called `NUL` is exactly as unclonable as a note.
+
+**The first version of that check was wrong in both directions at once**, and is worth
+recording because it looked right and had a passing test under it. It stripped `.md` to
+find a "stem" and tested that:
+
+- `A trailing thought..md` ends in `d`. Windows holds it happily and git checks it out
+  everywhere — but the stripped stem ends in a dot, so the gate **rejected a legal name**.
+- `A trailing thought.md.` is the name that actually breaks a checkout, and it is not a
+  `.md` file, so `walk` never returned it and the check **never saw the case it was for**.
+
+The planted rejection case used the first of those, so the suite asserted the false
+positive was correct behaviour and went green. Reading the *directory entry as it sits on
+disk* is what makes both cases come out right; the fix is now covered from both sides —
+an accept case for `A trailing thought..md` that fails if the stem-stripping returns, and
+a reject case for `A trailing thought.md.` that fails if the rule is removed.
+
+The three rules are a table of pattern-and-reason rather than three `if`s, which is what
+keeps the function under fallow's complexity threshold — the first shape crossed it, and
+the check that caught that was `npm run check`'s fourth step rather than review. So this is
+one report site with three planted cases in `test/docs/checkerRejects.test.ts`, and each
+was watched failing by removing its row from the table.
 
 Those three cases are **skipped on Windows**, and the reason is the rule restating itself:
 a case has to create the filename it plants, and Windows cannot create these. The rule
@@ -68,3 +89,12 @@ The generalisation worth keeping is about where a rule lives, not about Windows:
 constraint belongs to the environment rather than to the content, the check has to be
 written where the environment is not yet involved. `npm run check` was green on a commit
 that could not be checked out, and green meant only "green here".
+
+The second lesson is about the fix rather than the defect. **A rule that normalises its
+input before testing it is testing something else.** Stripping `.md` turned the question
+"can Windows hold this name" into "can Windows hold this name minus an extension", which is
+a different question with a different answer in both directions — and the planted case,
+written from the same misunderstanding, agreed with it. This register already knows that a
+comment stating a rule is not a check; the narrower point here is that a *test* written
+from the same wrong model is not one either. What caught it was someone reading the rule
+against the constraint rather than against the test.

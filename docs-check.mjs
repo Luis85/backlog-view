@@ -213,10 +213,41 @@ function frontmatter(text) {
 	return { field, has, raw: match[1] };
 }
 
+/**
+ * **A name Windows cannot check out**, asked of the entry as it sits on disk.
+ *
+ * Notes here are titled in prose, and prose contains punctuation NTFS forbids —
+ * `< > : " | ? *`, a trailing space or dot, and the reserved device names. A note called
+ * `Finding 4 — "a few hundred rows" is a comment, not a check.md` was committed from Linux,
+ * where it is an ordinary filename, and the Windows CI job failed at `git checkout` with
+ * `error: invalid path` — before any build step, so nothing in this file ever ran and the
+ * repository could not be cloned on half the platforms it supports.
+ *
+ * It runs inside `walk` rather than over the `.md` files walk returns, and the first
+ * version got that wrong in both directions at once. Stripping `.md` to find the "stem"
+ * made `A trailing thought..md` look like it ended in a dot — it ends in `d`, and Windows
+ * is perfectly happy with it — while the name that actually breaks a checkout,
+ * `A trailing thought.md.`, is not a `.md` file at all and so was never in the list being
+ * checked. The rule is about the bytes of the directory entry, so the directory entry is
+ * what it reads, extension included and before any filtering.
+ *
+ * Directories are checked too: a folder named `NUL` or ending in a space is exactly as
+ * unclonable as a file, and `walk` is the one place both are in hand.
+ */
+const WINDOWS_NAME_RULES = [
+	[/[<>:"|?*]/, 'uses one of `< > : " | ? *`, which Windows forbids — git cannot check this out'],
+	[/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i, "is a reserved device name on Windows"],
+	[/[ .]$/, "ends in a space or a dot, which Windows cannot represent"],
+];
+function checkWindowsName(full, name) {
+	for (const [pattern, why] of WINDOWS_NAME_RULES) if (pattern.test(name)) fail(full, `name ${why}`);
+}
+
 async function walk(dir) {
 	const found = [];
 	for (const entry of await readdir(dir, { withFileTypes: true })) {
 		const full = path.join(dir, entry.name);
+		checkWindowsName(full, entry.name);
 		if (entry.isDirectory()) found.push(...(await walk(full)));
 		else if (entry.name.endsWith(".md")) found.push(full);
 	}
@@ -253,35 +284,6 @@ const readText = async (file) => (await readFile(file, "utf8")).replaceAll("\r\n
 const files = (await walk(DOCS)).sort();
 const texts = new Map(await Promise.all(files.map(async (f) => [f, await readText(f)])));
 const stems = new Set(files.map((f) => path.basename(f, ".md")));
-
-/**
- * **A name Windows cannot check out.**
- *
- * Notes here are titled in prose, and prose contains punctuation NTFS forbids —
- * `< > : " | ? *`, a trailing space or dot, and the reserved device names. A note called
- * `Finding 4 — "a few hundred rows" is a comment, not a check.md` was committed from Linux,
- * where it is a perfectly ordinary filename, and the Windows CI job then failed at
- * `git checkout` with `error: invalid path` — before any build step ran, so no test and no
- * gate in this file had a chance to report it. The repository could not be cloned at all on
- * half the platforms it supports.
- *
- * That is why this is checked on the NAME rather than left to CI. CI does catch it, but it
- * catches it as an unclonable tree, which reads as a broken runner rather than as a file
- * someone added — and the fix has to be found by whoever can read a checkout log.
- *
- * Scoped to `docs/`, and honestly: this is the only tree here whose filenames are written
- * as sentences. A module under `src/` is named for an identifier, and the same mistake
- * there would fail an import long before it reached CI. If that stops being true, this
- * loop is the place to widen.
- */
-const WINDOWS_RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i;
-for (const file of files) {
-	const name = path.basename(file);
-	const forbidden = [...new Set(name.match(/[<>:"|?*]/g) ?? [])];
-	if (forbidden.length > 0) fail(file, `filename uses ${forbidden.map((c) => `\`${c}\``).join(" ")}, which Windows forbids — git cannot check this out`);
-	if (WINDOWS_RESERVED.test(name)) fail(file, "filename is a reserved device name on Windows");
-	if (/[ .]$/.test(path.basename(file, ".md"))) fail(file, "filename ends in a space or a dot, which Windows cannot represent");
-}
 
 // ---------------------------------------------------------------- the backlog tree
 const notes = new Map();

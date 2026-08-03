@@ -363,6 +363,22 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts a note whose title ends in a dot before the extension', async () => {
+		// `A trailing thought..md` ends in `d`. Windows holds it happily, and git checks it
+		// out on every platform — but a rule that strips `.md` to find a "stem" sees a
+		// trailing dot and rejects it. That rule shipped, with a rejection case asserting the
+		// false positive was correct, so the gate refused a legal name and the suite agreed.
+		// The check reads the directory entry as it sits on disk, extension included.
+		const files = baseRegister();
+		files['docs/issues/A trailing thought..md'] = note(
+			'Issue',
+			20,
+			'Thing',
+			'# A trailing thought\n\n## The decision\n\nWe did it.\n',
+		);
+
+		await expectAccepted(files);
+	});
 	it('accepts an Issue that is not a verification and says nothing about cadence', async () => {
 		// Most of `docs/issues/` is this: decisions and limitations, no `## How to check`,
 		// no `cadence:`. The biconditional has to leave them alone, or the gate added for
