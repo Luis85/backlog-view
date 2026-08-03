@@ -30,7 +30,7 @@ Everything the gate can see is green, and most of it is not merely passing:
 [[Codebase health]] closed on 2026-08-01 saying *"this epic is done; the next one should
 be opened by new evidence, not by grooming this one."* What follows is that evidence, and
 it opens a **second round under that same epic** — its closing paragraph kept as the dated
-record of what the first round bought, a new one added beside it (finding 10).
+record of what the first round bought, a new one added beside it (finding 11).
 
 **The through-line:** every finding below is the same defect this repository already named
 in [[A comment that states a rule is not a check]] — a property that is true today, stated
@@ -408,7 +408,63 @@ there is fan-in, not size — splitting a file to lower a coupling number moves 
 
 ---
 
-### 10. The findings above are not backlog notes yet
+### 10. Rule 7's stated reason is about to be deleted, and its real value is somewhere else
+
+**The objection, and it is half right.** `docs-check.mjs` rule 7 requires every module in
+`src/` to be named by at least one note under `docs/`. The register **already retired this
+exact rule for `test/`**, in its own words: *"what the rule actually asserts is that a path
+token appears somewhere under `docs/` — satisfiable by mentioning the file and describing
+nothing — so every new test file cost a register edit that guaranteed no reader
+anything."* That criticism is sound, and it applies to `src/` word for word.
+
+Worse, the reason given for keeping it on `src/` is anchored to something finding 3
+deletes: *"A module is different: **the architecture table names one per concern**, so a
+module nothing describes is a real gap."* Take the table away and the stated justification
+goes with it. On the documents alone, the rule should go.
+
+**But the documents are not what it is doing.** Measured against every module in `src/`:
+
+| Question | Answer |
+| --- | --- |
+| Modules named only in record notes (`tasks/`, `issues/`, `bugs/`) | **0** |
+| Modules named inside a `## Where it lives` section of a use case | **48 / 49** |
+| The exception | `src/view/host.ts`, named in ADR 0003 — an interface, not a behaviour |
+
+So in practice the rule is not "a path token appears somewhere". It is **every module is
+claimed by a use case that says what it is for**, with the one architectural module
+claimed by an ADR instead. That is a real property, and it is the strongest one this
+register has: every line of shipped code traces to a specified behaviour, and a module
+that traces to none is a capability built without anyone asking for it.
+
+**Where "self-documenting code" stops.** Code documents *how* it works, and this codebase
+does that unusually well. It cannot document *why the module exists* or *which
+user-visible behaviour it serves*. `domain/roadmap.ts` can make its bucket partition
+obvious; it cannot say that someone wanted a shelf that un-places and stays reachable
+while empty. That sentence lives in a use case or nowhere.
+
+**Recommendation: re-anchor, do not delete.** Change rule 7 from *"named somewhere under
+`docs/`"* to *"named in a `## Where it lives` section, or in an ADR"*. That:
+
+- **costs nothing to adopt** — it is already true 48/49, and the 49th is legitimately the
+  ADR case, so the rule lands on a clean file the way [[Styling rules are checks]] argues
+  for;
+- **closes the hole the `test/` retirement named** — mentioning a path in passing stops
+  satisfying it, which is precisely what made the old rule hollow;
+- **survives finding 3**, because it stops depending on a table that is being deleted.
+
+**The cost, stated plainly, because it is the real objection.** This keeps one obligation:
+splitting a module means adding a path to an existing use case's `Where it lives`. The
+400-line cap says *split*, and this rule says *and name the halves* — two rules pulling
+against each other, one line of friction each time. For `test/` that trade was refused
+because the line bought nothing. Here it buys the traceability above. **That is a judgment
+call about how much the trace is worth, and it is the maintainer's to make** — if the
+answer is that it is not worth the line, delete rule 7 outright and let the layer guides
+and the code carry it. What should not happen is keeping the rule with its current
+justification, which finding 3 is about to falsify.
+
+---
+
+### 11. The findings above are not backlog notes yet
 
 This plan lives in `docs/superpowers/`, which `docs-check.mjs` exempts from work-item
 frontmatter. That is right for a plan and wrong as a resting place: nothing here is
@@ -435,7 +491,7 @@ The three existing features (`Test harness and coverage`, `Enforced invariants`,
 | Feature | Covers |
 | --- | --- |
 | the gates that do not exist yet | findings 1, 4 |
-| guides and structure | findings 3, 9 |
+| guides and structure | findings 3, 9, 10 |
 | the verifications and their cadence | findings 2, 7 |
 
 with a PBI per finding in the enforced use-case shape: the
@@ -461,7 +517,7 @@ parts are the ones a first draft states too confidently.
 
 Each step is independently shippable and ends `npm run check` green.
 
-0. **Write the notes** (finding 10) — reopen [[Codebase health]] for a second round and
+0. **Write the notes** (finding 11) — reopen [[Codebase health]] for a second round and
    hang a feature-plus-PBIs off it per finding, so the rest of this list is ranked in the
    register rather than in a plan file. Everything below is then picked from the backlog,
    not from here.
