@@ -215,10 +215,23 @@ happening.
 So `AxisWrite` carries the requested **civil date alone**, and the merge happens inside
 `processFrontMatter`, against the live value, in the only module allowed to read and
 write it: the date is replaced, whatever time and offset the note currently holds ride
-along. `planDate` keeps its *comparison* against `plannedStart` / `plannedTarget` — a
-stale civil date can only cost a redundant write, never a wrong one — and
-`BacklogItem` gains nothing. `CivilDate` stays what the placement rules are stated in:
-no time, no zone, the same cell on every device.
+along. `BacklogItem` gains nothing, and `CivilDate` stays what the placement rules are
+stated in — no time, no zone, the same cell on every device.
+
+**The no-op check moves with it, for the same reason.** Keeping `planDate`'s comparison
+against `plannedStart` / `plannedTarget` would not merely cost a redundant write: a note
+whose date changed after the model was built makes the *stale* value the one the planner
+compares to, so a user acting on what the screen showed has their request discarded as
+unchanged while the note holds something else. The write is dropped before the writer
+can see that it was needed. `frontmatter.ts` already states this shape for the board —
+a stale row can propose the state a note already holds — and answers it the same way:
+propose in the planner, decide against the live value in the writer.
+
+That costs nothing in undo, because the machinery is already there: `captureInverse`
+returns null when a write changed nothing effectively, precisely so a re-set to the same
+value does not consume the single undo slot. The civil-date comparison that keeps
+`2026-8-1` from being tidied into `2026-08-01` moves there too — it is a question about
+the spelling on disk, so the writer is where it could always see the answer.
 
 ### The plan — `src/domain/writePlan.ts`
 
