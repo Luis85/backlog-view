@@ -58,12 +58,11 @@ a backlog that got slow between releases.
   the receiver form: `render/rows.ts:75` narrows to a row, `render/toolbar.ts` to the
   toolbar bar, `selection.ts:97` to a column, `backlogView.ts:235` to the toolbar. None
   names `treeEl`, so none needs an exemption and none can be broken by the rule.
-  **Measured with a corrected sweep**: `src/` holds **11** `querySelector`/
-  `querySelectorAll` calls, not the four an earlier draft reported. That draft grepped
-  `querySelector(` and silently missed every `querySelector<HTMLElement>(` — a generic type
-  argument between the name and the paren. Recorded because the wrong number was used twice
-  to argue this rule's shape, and because it is the same defect as everything else here: a
-  claim about a category, checked by a method that could only see part of it.
+  **Sweep for them with a pattern that matches the generic form.** An earlier draft grepped
+  `querySelector(` and silently missed every `querySelector<HTMLElement>(` — a type argument
+  sits between the name and the paren — so it reported well under half of them and that
+  undercount was used twice to argue this rule's shape. The same defect as everything else
+  here: a claim about a category, checked by a method that could only see part of it.
 - **1d — the rule can be defeated by an alias.** It can: `const el = this.els.treeEl;
   el.querySelectorAll(...)` passes any selector keyed on the receiver's name, and if it is
   added on a path the spy does not drive, nothing catches it at all. **This is a stated
@@ -99,12 +98,12 @@ a backlog that got slow between releases.
 ## Acceptance criteria
 
 - `npm run lint` fails on `querySelector`/`querySelectorAll` called on `treeEl` anywhere in
-  `src/view/**`, and passes on **every** call that survives the prerequisite fix — none of
-   which names `treeEl`, which is the property being relied on rather than a tally. (A
-   draft said "all eleven", counted *before* [[The drag cleanup scans the whole tree]]
-   removes one of them: a criterion its own precondition made unmeetable.) Verified
-  the way this repository verifies its lint rules: by planting the violation and watching
-  lint reject it.
+  `src/view/**`, and passes on **every** call that survives the prerequisite fix — the
+  property being relied on is that none of them names `treeEl`, not how many there are. A
+  draft wrote the tally instead, counted *before* [[The drag cleanup scans the whole tree]]
+  removes one of them, which made the criterion unmeetable unless the forbidden scan were
+  kept. Verified the way this repository verifies its lint rules: by planting the violation
+  and watching lint reject it.
 - Whatever region the rule is added to keeps the write boundary, the menu-anchor rule and
   the `overBy` rule, checked rather than assumed — flat config replaces a block's options
   rather than merging them.
