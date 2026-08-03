@@ -259,6 +259,17 @@ re-clamping to a date the user never pointed at. That is extension `3a`'s answer
 covers the modal, whose validation is likewise done against values captured before the
 write.
 
+**Only where there is a pair, though.** An item whose placement is one-ended has no span
+to reverse, and a marker is the case that bites: its start is deliberately ignored *and*
+preserved, so a stale start later than the requested target would make the writer refuse
+every marker drop and slide — a validation inventing a conflict out of a value the
+projection never drew. The check therefore asks the same question the plan asks, which
+is which ends this item has; it just asks it of the **live** type, since the writer's
+whole job here is to decide against what the note currently says. That predicate moves
+to `domain/itemTypes.ts`, where the type rules already live, and `placementEnds` in
+`interactions/plan.ts` becomes a caller of it rather than a second statement of it —
+which also stops `storage/` needing anything from `view/`.
+
 *An unchanged write is not a move, and must not be announced as one.* With the check in
 the writer, the planner now hands the gate a non-empty batch for a re-confirmed date;
 `runExclusively` reports success for anything that completed, and `applyCardMove`
