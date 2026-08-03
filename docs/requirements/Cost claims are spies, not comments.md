@@ -136,5 +136,5 @@ a backlog that got slow between releases.
 
 ## Where it lives
 
-`test/view/rendering.test.ts` · `test/helpers/view.ts` · `src/view/CLAUDE.md` ·
+`eslint.config.mjs` · `test/view/renderCost.test.ts` · `src/view/CLAUDE.md` ·
 `src/view/render/columns.ts` · `src/view/selection.ts`
