@@ -492,12 +492,24 @@ stays a `div`.
 But a container query plus a button is **two** deciders, and they desynchronise: at a
 wide pane the query shows the cards while the flag still says closed, so the control
 would announce "collapsed" over visible content. CSS cannot write an ARIA attribute, so
-the attribute has to be the one that cannot be wrong. The compaction therefore joins the
-**measured fit ladder the view already runs** — the same mechanism behind
-`pbl-hide-props` and its siblings, which measures and toggles a class — rather than
-being a query the DOM cannot see. One decision, taken in the place that already takes
-decisions of exactly this kind: the width sets the default, a press overrides it, and
-`aria-expanded` states whatever that resolved to. The open flag is view state that
+the attribute has to be the one that cannot be wrong. The compaction is therefore
+**measured in code and applied as a class**, the same shape as `pbl-hide-props` and its
+siblings, rather than a query the DOM cannot see. One decision: the width sets the
+default, a press overrides it, and `aria-expanded` states whatever that resolved to.
+
+**It needs its own measuring pass, because the tree's does not run here.** Both the
+post-render refit and `onResize` return early for every non-tree projection — with a
+stated reason, that board columns and the timeline scroll rather than dropping columns,
+so the *column* ladder is the tree's. That reason stays true and the comment narrows
+rather than goes: what changes is that the roadmap now has a measured question of its
+own. The shelf measure runs after render and on resize, gated to the dated axis.
+
+It also needs no second render pass, which the column ladder does need: a column coming
+or going can only be shown by rebuilding the rows, while the shelf's cards are already
+in the DOM and a class decides whether they show. So the shelf measure toggles a class
+and stops — no `refitting` re-entry guard, because there is no re-entry. The test moves
+a pane across the threshold *after* the first render, since a fixture that is only ever
+measured once cannot fail this. The open flag is view state that
 survives a render, the way the selected board column already is — a rebuild must not
 re-collapse a strip the reader just opened — and it stays out of the collapse store,
 which keys on paths and has nothing to key this on.
