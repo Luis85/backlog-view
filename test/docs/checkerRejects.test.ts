@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { note, runRejections, useCase } from '../helpers/register';
+import { adr, note, runRejections, useCase } from '../helpers/register';
 
 /**
  * **Does an invalid document fail?**
@@ -181,11 +181,52 @@ describe('cross-references', () => {
 			'names src/gone.ts, which does not exist',
 		],
 		[
-			'a module no note names',
+			'a module no use case and no ADR specifies',
 			(files) => {
 				files['src/orphan.ts'] = 'export const orphan = 1;\n';
 			},
-			'no note names src/orphan.ts',
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
+			'a module named by a use case outside its `## Where it lives`',
+			(files) => {
+				// The satisfaction the old rule accepted and this one does not: a path token
+				// somewhere under `docs/`. A criterion is a claim about behaviour, not a
+				// statement of where the behaviour lives.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/requirements/Doing the thing.md'] = useCase().replace(
+					'- It happens.',
+					'- It happens, in `src/orphan.ts`.',
+				);
+			},
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
+			'a module named only by an ADR `## Context`',
+			(files) => {
+				// The direction nobody would check. `## Context` and `## Alternatives` exist to
+				// describe what was **considered and rejected**, so a path there is evidence a
+				// module was discussed — which is the mention-only satisfaction this rule
+				// exists to stop. Accepting a path anywhere in an ADR would keep the loophole
+				// open for exactly the notes least likely to be read as specifications.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision').replace(
+					'## Context\n\nSomething.',
+					'## Context\n\nWe weighed `src/orphan.ts` and went the other way.',
+				);
+			},
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
+			'a module named only by a record note',
+			(files) => {
+				// A `Task`, `Issue` or `Bug` is a record of a moment rather than a
+				// specification — and those notes are explicitly allowed to name paths that
+				// have since moved, so a rule satisfied by one is satisfied by history.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/tasks/Some work.md'] = note('Task', 10, 'Doing the thing', '# Some work\n\nTouched `src/orphan.ts`.\n');
+			},
+			'no use case or ADR specifies src/orphan.ts',
 		],
 	]);
 });

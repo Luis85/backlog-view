@@ -206,17 +206,29 @@ can run is worse than none, because it invites trust it has not earned:
    `## Where it lives` — passing every rule above, because "is it there" and "is it in
    order" are each satisfied twice over. The two halves then disagreed about what the
    feature guarantees, which is what a document that says a thing twice eventually does.
-7. Every module in `src/` is named by at least one note, **as a whole path**. This is the
-   check that finds *missing* notes rather than wrong ones, and matching by substring let a
-   mistyped `src/main.tsx` stand in for the `src/main.ts` it misspells while the reference
-   check parsed the prefix and found the real file: one typo, passing twice.
+7. Every module in `src/` is **specified** by at least one note, **as a whole path** — in a
+   use case's `## Where it lives`, or in an ADR's `## Decision`. Nowhere else counts: not a
+   `Task`, `Issue` or `Bug`, not a use case's prose or criteria, not this page, and not an
+   ADR's `## Context`, `## Consequences`, `## Alternatives` or `## Revisit when`. The reason
+   is the whole rule — **a module nothing specifies is a capability nobody asked for** —
+   and a passing mention says nothing about what the file is for. Matching is by whole path
+   for a second reason: by substring, a mistyped `src/main.tsx` stood in for the
+   `src/main.ts` it misspells while the reference check parsed the prefix and found the real
+   file, so one typo passed twice.
 
-   **`test/` is deliberately not covered.** It was, and it paid for itself in friction
-   rather than defects: what the rule actually asserts is that a path token appears
-   somewhere under `docs/` — satisfiable by mentioning the file and describing nothing — so
-   every new test file cost a register edit that guaranteed no reader anything. A module
-   is different: the architecture table names one per concern, so a module nothing
-   describes is a real gap. The suite's shape is documented where it belongs, in
+   **The ADR arm is one section, not the record.** `## Context` and `## Alternatives` exist
+   to describe what was considered and **rejected**, so a path there is evidence a module
+   was *discussed* — which is exactly the mention-only satisfaction this rule removes.
+   `## Decision` is where the choice is made. `src/view/host.ts` is the case that needs
+   this form: it is the interface the layer rule is built on, no use case owns it, and
+   [ADR 0003](adrs/0003-four-layers-enforced-by-lint.md) names it under `## Decision`.
+
+   **`test/` is deliberately not covered.** It was, under the older, looser form of this
+   rule, and it paid for itself in friction rather than defects: a path token appearing
+   somewhere under `docs/` is satisfiable by mentioning the file and describing nothing, so
+   every new test file cost a register edit that guaranteed no reader anything. Tightening
+   what counts does not bring it back — the friction was the register edit, not its
+   weakness — and the suite's shape is documented where it belongs, in
    [`test/CLAUDE.md`](../test/CLAUDE.md) and in the task notes that split it.
 
 **One check lives elsewhere, on purpose.** That every **view-option key** and **command id**

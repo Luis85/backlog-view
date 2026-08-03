@@ -154,15 +154,44 @@ function between(text, start, end) {
 	return from === -1 || to <= from ? "" : text.slice(from, to);
 }
 
+/**
+ * Fenced blocks removed. Both fence characters: CommonMark fences with ``` or ~~~, and
+ * stripping only the first left every structural question in this file — headings,
+ * sections, index entries — readable inside a tilde fence, where nothing renders and
+ * nothing is real.
+ *
+ * Split out from `withoutCode` for the one question that needs a document's structure and
+ * its code spans at once: `sectionBody` locates a heading and then reads the PATHS under
+ * it, and this register writes every path in backticks, so stripping spans would leave the
+ * section empty of the only thing being looked for. Fences are what protect a heading from
+ * an example anyway — a `## Decision` inside a code span cannot open a line to begin with,
+ * so `sectionHits`' line anchor already refuses it.
+ */
+const withoutFences = (text) => text.replace(/```[\s\S]*?```/g, "").replace(/~~~[\s\S]*?~~~/g, "");
+
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
-	// Both fence characters. CommonMark fences with ``` or ~~~, and stripping only the
-	// first left every structural question in this file — headings, sections, index
-	// entries — readable inside a tilde fence, where nothing renders and nothing is real.
-	return text
-		.replace(/```[\s\S]*?```/g, "")
-		.replace(/~~~[\s\S]*?~~~/g, "")
-		.replace(/`[^`\n]*`/g, "");
+	return withoutFences(text).replace(/`[^`\n]*`/g, "");
+}
+
+/**
+ * What one section says: from its heading to the next `## `, or to the end of the note —
+ * `## Where it lives` is a use case's last section, so running to the end is the ordinary
+ * case here rather than the edge one. A `###` subheading is inside the section, not after
+ * it.
+ *
+ * The heading is found by `sectionHits`, so a section is the same thing here as everywhere
+ * else in this file: a line of its own, never a phrase in a sentence. A duplicated heading
+ * is already reported by `checkSections`; the first one is read, which is the half a
+ * reader meets first.
+ */
+function sectionBody(text, section) {
+	const prose = withoutFences(text);
+	const [hit] = sectionHits(prose, section);
+	if (!hit) return "";
+	const after = prose.slice(hit.index + hit[0].length);
+	const next = /^## /m.exec(after);
+	return next ? after.slice(0, next.index) : after;
 }
 
 /**
@@ -224,7 +253,6 @@ const readText = async (file) => (await readFile(file, "utf8")).replaceAll("\r\n
 const files = (await walk(DOCS)).sort();
 const texts = new Map(await Promise.all(files.map(async (f) => [f, await readText(f)])));
 const stems = new Set(files.map((f) => path.basename(f, ".md")));
-const allText = [...texts.values()].join("\n");
 
 // ---------------------------------------------------------------- the backlog tree
 const notes = new Map();
@@ -553,37 +581,56 @@ async function collectTs(dir, keep) {
 	return found;
 }
 
-// Every `.ts` under both trees, helpers included: `test/helpers/view.ts` is the harness
-// every view test is written against, so it is at least as worth naming as a suite.
 /**
- * `src/` only. This is the check that finds *missing* notes rather than wrong ones, and
- * it earns that for modules: the architecture table names one per concern, so a module
- * nothing describes is a gap someone has to answer for.
+ * `src/` only. This is the check that finds *missing* notes rather than wrong ones, and it
+ * earns that for modules: **a module nothing specifies is a capability nobody asked for.**
  *
- * `test/` used to be here too and paid for itself in friction rather than defects. What
- * it actually asserts is that a path token appears somewhere under `docs/` — satisfiable
- * by mentioning the file and describing nothing — so it taxed every new test file with a
- * register edit while guaranteeing no reader anything. The suite's shape is documented
- * where it belongs, in `test/CLAUDE.md` and in the task notes that split it.
+ * `test/` used to be here too and paid for itself in friction rather than defects, for the
+ * reason the section below now removes: what it asserted was that a path token appears
+ * somewhere under `docs/` — satisfiable by mentioning the file and describing nothing — so
+ * it taxed every new test file with a register edit while guaranteeing no reader anything.
+ * Naming a path is not describing it, and a suite's shape is documented where it belongs,
+ * in `test/CLAUDE.md` and in the task notes that split it. Tightening what counts does not
+ * bring `test/` back: the friction was the register edit, not its weakness.
  */
 const sources = await collectTs("src", (n) => n.endsWith(".ts"));
 /**
- * The paths the docs actually name, as whole tokens. `allText.includes(file)` credited a
- * *mistyped* path with naming the real one — `src/main.tsx` contains `src/main.ts` — so a
- * typo simultaneously passed the reference check (which parses the `.ts` prefix and finds
- * the file) and stood in for the module it misspells. Trailing sentence punctuation is
- * trimmed; `.tsx` is not, so it stays the different name it is.
+ * The paths a note **specifies**, as whole tokens, from the two places that specify one: a
+ * use case's `## Where it lives`, and an ADR's `## Decision`.
  *
- * Same rule as `test/docs/surfaces.test.ts` uses for option keys and command ids, arrived
- * at from the same failure: membership in a token set has no ends to get wrong.
+ * Nowhere else, and that is the rule. Scanning the whole register accepted a path token
+ * anywhere under `docs/`, which the register itself called *"satisfiable by mentioning the
+ * file and describing nothing"* when it retired the same rule for `test/`. A `Task`, an
+ * `Issue` and a `Bug` are records of a moment — they are explicitly allowed to name a file
+ * that has since moved — so a rule they can satisfy is a rule history can satisfy.
+ *
+ * The ADR arm is one SECTION rather than the record, for the same reason. `## Context` and
+ * `## Alternatives` exist to describe what was considered and **rejected**, so a path there
+ * is evidence a module was discussed; `## Decision` is where the choice is made.
+ * `src/view/host.ts` is the case that exists — the interface the layer rule is built on,
+ * owned by no use case, named in ADR 0003.
+ *
+ * Whole tokens, because a substring search once credited a *mistyped* path with naming the
+ * real one — `src/main.tsx` contains `src/main.ts` — so a typo simultaneously passed the
+ * reference check (which parses the `.ts` prefix and finds the file) and stood in for the
+ * module it misspells. Trailing sentence punctuation is trimmed; `.tsx` is not, so it stays
+ * the different name it is. Same rule as `test/docs/surfaces.test.ts` uses for option keys
+ * and command ids, arrived at from the same failure: membership in a token set has no ends
+ * to get wrong.
  */
-const namedPaths = new Set(
-	(allText.match(/[\w./-]+/g) ?? []).map((token) => token.replace(/[.-]+$/, "")).filter((t) => t.endsWith(".ts")),
+const specified = new Set(
+	[
+		...[...notes.values()].filter((n) => n.type === "PBI").map((n) => sectionBody(texts.get(n.file), "## Where it lives")),
+		...adrFiles.map((f) => sectionBody(texts.get(f), "## Decision")),
+	]
+		.flatMap((body) => body.match(/[\w./-]+/g) ?? [])
+		.map((token) => token.replace(/[.-]+$/, ""))
+		.filter((t) => t.endsWith(".ts")),
 );
 for (const file of sources) {
 	// Notes write `/`; `collectTs` returns the platform separator. The old substring check
 	// had the same split and nobody had run this on Windows to find out.
-	if (!namedPaths.has(file.split(path.sep).join("/"))) fail("docs", `no note names ${file}`);
+	if (!specified.has(file.split(path.sep).join("/"))) fail("docs", `no use case or ADR specifies ${file}`);
 }
 
 // --------------------------------------------------------------------------- report
