@@ -162,9 +162,10 @@ describe('the gate accepts valid documents', () => {
 		// `walk` recurses, so a note in `requirements/board/` is a requirement — and is
 		// held to every rule one at the top level is.
 		//
-		// The nested note is made **load-bearing**: it is the only note naming
+		// The nested note is made **load-bearing**: it is the only note specifying
 		// `src/board.ts`, so a `walk` that stopped recursing would leave that module
-		// unnamed and this case would fail with `no note names src/board.ts`. Added
+		// unspecified and this case would fail with `no use case or ADR specifies
+		// src/board.ts`. Added
 		// because the case did not previously observe the behaviour it claims — a note
 		// the gate never discovers is a note the gate never objects to, so ignoring it
 		// left the unchanged corpus green and the assertion passed either way. A fixture
@@ -317,13 +318,93 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a module named in an ADR `## Decision`', async () => {
+		// The arm for a module that is architecture rather than behaviour: no use case owns
+		// `src/view/host.ts`, and ADR 0003 names it where the choice is made. The register
+		// uses this form exactly once, which is precisely why nothing else would notice the
+		// gate refusing it.
+		const files = baseRegister();
+		files['src/host.ts'] = 'export const host = 1;\n';
+		files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision').replace(
+			'## Decision\n\nSomething.',
+			'## Decision\n\nThe layers reach each other through `src/host.ts`.',
+		);
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a module named anywhere in a `## Where it lives`, not only on its first line', async () => {
+		// The section is read to its end — the next `## ` heading, or the end of the note,
+		// since `## Where it lives` is a use case's last section. Real ones carry prose after
+		// the paths (this rule's own note explains there which module is deliberately absent),
+		// and a slice that stopped at the first line or the first blank would drop it.
+		const files = baseRegister();
+		files['src/late.ts'] = 'export const late = 1;\n';
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: [
+				'Lives in `src/thing.ts`, covered by `test/thing.test.ts`.',
+				'',
+				'**And a paragraph about what is not here**, because the section is prose too:',
+				'the late half of it also names `src/late.ts`.',
+			].join('\n'),
+		});
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a test file no note names', async () => {
-		// `src/` still has to be named: the architecture table claims one note per concern,
-		// so a module nothing describes is a real gap. A test file is not — the rule only
-		// ever asserted that a path token appears somewhere under `docs/`, which is
-		// satisfiable by mentioning the file and describing nothing.
+		// `src/` still has to be specified: a module nothing specifies is a capability
+		// nobody asked for. A test file is not — the rule it was held to only ever asserted
+		// that a path token appears somewhere under `docs/`, which is satisfiable by
+		// mentioning the file and describing nothing, so it bought a register edit per test
+		// file and nothing else. Tightening what counts for `src/` does not bring it back.
 		const files = baseRegister();
 		files['test/unnamed.test.ts'] = 'export const spec = 1;\n';
+
+		await expectAccepted(files);
+	});
+	it('accepts a note whose title ends in a dot before the extension', async () => {
+		// `A trailing thought..md` ends in `d`. Windows holds it happily, and git checks it
+		// out on every platform — but a rule that strips `.md` to find a "stem" sees a
+		// trailing dot and rejects it. That rule shipped, with a rejection case asserting the
+		// false positive was correct, so the gate refused a legal name and the suite agreed.
+		// The check reads the directory entry as it sits on disk, extension included.
+		const files = baseRegister();
+		files['docs/issues/A trailing thought..md'] = note(
+			'Issue',
+			20,
+			'Thing',
+			'# A trailing thought\n\n## The decision\n\nWe did it.\n',
+		);
+
+		await expectAccepted(files);
+	});
+	it('accepts an Issue that is not a verification and says nothing about cadence', async () => {
+		// Most of `docs/issues/` is this: decisions and limitations, no `## How to check`,
+		// no `cadence:`. The biconditional has to leave them alone, or the gate added for
+		// the release sweep would fail the majority of the folder it was written for.
+		const files = baseRegister();
+		files['docs/issues/A thing we decided.md'] = note(
+			'Issue',
+			20,
+			'Thing',
+			'# A thing we decided\n\n## The decision\n\nWe did it this way.\n',
+		);
+
+		await expectAccepted(files);
+	});
+	it('accepts `## How to check, properly` in a note about a gate, which no device can run', async () => {
+		// The real note this protects is an investigation into a CI gate that never ran.
+		// A prefix match would sweep it into a checklist of things to do in a live vault,
+		// and then demand a `cadence:` of a note that has no business carrying one — so
+		// this case fails in BOTH directions if the matcher stops being whole-line.
+		const files = baseRegister();
+		files['docs/issues/A gate that did not run.md'] = note(
+			'Issue',
+			20,
+			'Thing',
+			'# A gate that did not run\n\n## The failure mode\n\nIt passed.\n\n## How to check, properly\n\nRun it.\n',
+		);
 
 		await expectAccepted(files);
 	});

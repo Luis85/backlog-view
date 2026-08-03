@@ -21,7 +21,7 @@ view is usable rather than merely translated.
 | --- | --- |
 | **Actor** | Anyone using the view in a non-English or right-to-left Obsidian |
 | **Trigger** | Rendering any row, column, icon or keyboard move |
-| **Preconditions** | The direction work in `Theming and styling` has landed |
+| **Preconditions** | [[Nothing pins a physical side]] has landed, so the stylesheet's own direction work is done and what is left here is the icons, the keys and the look |
 | **Guarantee** | Nothing measures text to decide layout. A width computed from an English string is a layout that only holds in English. |
 
 **Main flow**
@@ -36,9 +36,9 @@ view is usable rather than merely translated.
 - **2a — a label is longer than its column.** It truncates or wraps by the rule
   `Property columns` already sets; it does not overflow and does not push the columns out
   of alignment.
-- **2b — a construct pins a side without naming one.** Three exist: the filter's
-  `margin-left`, the selection accent's `box-shadow` x-offset, and the tag-list mask's
-  gradient. Two have no logical twin, so replacing physical properties is not the whole job.
+- **2b — a construct pins a side without naming one.** Several do, and they have no
+  logical twin, so replacing physical properties is not the whole job. The mechanism is
+  [[Nothing pins a physical side]]'s; this note verifies the result.
 - **3a — the icon is vertical.** It is left alone. `arrow-up`, `arrow-down` and their
   `-to-line` pair are the move commands, and vertical is vertical in every direction.
 - **3b — the icon is the chevron.** Icon, static rotation and the hover-expand keyframes
@@ -49,33 +49,41 @@ view is usable rather than merely translated.
 
 ## What the evidence says
 
-**Direction is mostly free already, but not entirely.** `styles.css` is 1143 lines and
-uses CSS logical properties in 11 places (`inline-start` / `inline-end`). What is left is
-**three** direction-dependent constructs — and only one of them is a physical property:
+**Direction is mostly free already, but not entirely.** The stylesheet reaches for CSS
+logical properties as its idiom, so what is left is the places that idiom did not reach.
+**The inventory of those places lives in [[Nothing pins a physical side]]**, grouped by
+what makes each one direction-dependent — a physical property with a logical twin, a
+*value* that names a side, and physical positioning whose offset is computed in
+TypeScript. It is re-derived by a sweep rather than carried between rounds, for the reason
+the next section now records twice over. This note takes the groups as given and asks the
+question the mechanism cannot: does the result read correctly.
 
-| Line | Construct | In RTL |
-| --- | --- | --- |
-| 96 | `margin-left: var(--size-4-1)` on `.pbl-filter` | `margin-inline-start` and done |
-| 336 | `box-shadow: inset 2px 0 0 var(--interactive-accent)` on `.pbl-row.pbl-selected` | The selection accent stays on the physical left instead of mirroring to the inline start |
-| 748-749 | `mask-image: linear-gradient(to right, black calc(100% - 12px), transparent)` on `.pbl-tag-list` | The overflow edge moves to the start of the line but the mask does not, so tags fade where nothing overflows and clip hard where something does |
+What this note keeps is the categories the stylesheet cannot reach at all — the icons and
+the arrow keys, below.
 
-The audit behind that table is exhaustive rather than a spot check, which matters because
-the first two versions of this note were not. Every `box-shadow` was read for a non-zero
-x-offset (line 336 is the only one — 167 and 1043 are symmetric `inset 0 0 0` rings, 1064
-is the theme's own `--shadow-s`); every `border-radius` is single-value, so none is
-asymmetric; and there is no `background-position`, `transform-origin`, `clip-path`,
-`float`, `inset` shorthand, physical `left:`/`right:` positioning, or `translateX`
-anywhere in the file. `text-align: end` (line 551) is already logical.
+## The lesson, which this note has now had to learn five times
 
-## The lesson, which this note has now had to learn four times
-
-The CSS constructs went **one**, then two, then three. The directional icons went **one**,
-then five, then six. Every correction came from review, not from the note.
+The CSS constructs went **one**, then two, then three, and then the table saying three was
+overtaken by the file. The directional icons went **one**, then five, then six. Every
+correction came from review, not from the note.
 
 The first three misses had one cause: recalling what had been seen instead of running a
 search. That produced the method below, and steps 1-3 are still right. But the icon miss
 had a *different* cause, and it is the more useful one, because the method as written did
 not prevent it.
+
+**And the fifth had a third cause, which no step of that method addresses: the audit was
+right when it was written.** The three-row table this section used to carry was an
+exhaustive sweep of the file it was run against. Then the roadmap and the timeline landed
+— open-ended bar gradients, bars and marker lines positioned from a computed `left`,
+pinned strips sticking to `left: 0`, a lead column bordered on the physical right — and the
+sentence calling the table exhaustive went on standing. Nothing had gone wrong with the
+method; the file had moved underneath its result. That is the same defect
+[[One stylesheet per concern]] demonstrated by measuring a file at a length it had grown
+past, and it is the argument for a *rule* rather than a better audit: an enumeration
+describes a moment, and only a check describes the file. So the members moved to the note
+that fixes them and are re-derived when that work runs, and what stays here is the
+categories, which do not go stale.
 
 **The search itself was wrong.** The enumeration that produced "five directional icons"
 matched `setIcon(el, 'name')`, `.setIcon('name')` and `icon: 'name'`. This codebase does
@@ -83,7 +91,7 @@ not call `setIcon` directly for its toolbar: it goes through local helpers, so
 `iconButton(barEl, 'undo-2', …)` and `collapseButton(host, barEl, 'chevrons-up-down', …)`
 matched nothing. Six names were invisible to a search that was read carefully and reported
 confidently: `undo-2`, `sparkles`, `chevron-down`, `chevrons-up-down`, `chevrons-down-up`,
-and the `showing ? 'eye' : 'eye-off'` ternary at `toolbar.ts:154`.
+and the `showing ? 'eye' : 'eye-off'` ternary `toolbar.ts` passes to `iconButton`.
 
 So the method needs a step before its first:
 
@@ -99,13 +107,18 @@ So the method needs a step before its first:
    omitting it.
 4. Then ask which enumerated items are **coupled**, because a complete list of
    independently-correct fixes can still be wrong.
+5. **Treat the result as expiring.** An enumeration is true of the file it was run
+   against, so it is re-run when the work runs rather than read out of a note — and the
+   note keeps the categories, which survive the file changing, instead of the members,
+   which do not.
 
 Step 2 failed three times, step 4 twice (the chevron rotation, then its keyframes), and
 step 0 once — which was enough to make a table this note called exhaustive wrong by six
-entries.
+entries. Step 5 is the one added last, by the miss no earlier step could have caught.
 
-**And even step 0 does not save the icon audit.** `toolbar.ts:278` passes `icon` as a
-*parameter*: at that call site the name is not a literal at all, so no search over source
+**And even step 0 does not save the icon audit.** `iconButton` in `toolbar.ts` takes
+`icon` as a *parameter*, and the projection and axis pickers hand it one: at those call
+sites the name is not a literal at all, so no search over source
 text can classify it. That settles an argument this register has been having with itself
 for four rounds: the directional-icon question **cannot** be answered by grep, and the
 check in `Styling rules are checks` — an explicit classification of every icon name, failing
@@ -120,12 +133,12 @@ cannot fix, and there are **six**:
 
 | Icon | Site | Why it points |
 | --- | --- | --- |
-| `chevron-right` + its rotations | `rows.ts`, styles.css:419 and 1033-1039 | **Icon and transforms are one construct** — see below |
-| `corner-left-up` | `backlogView.ts:85` | The root-drop affordance |
-| `corner-left-down` | `rows.ts:205` | The outside-filter marker |
-| `indent-increase` | `menu.ts:125` | Indent, in the move menu |
-| `indent-decrease` | `menu.ts:148` | Outdent |
-| `undo-2` | `toolbar.ts:49` | A curved arrow that travels leftward |
+| `chevron-right` + its rotations | `rows.ts`, plus `.pbl-chevron.pbl-expanded` in `tree.css` and `@keyframes pbl-expand-nudge` in `dragDrop.css` | **Icon and transforms are one construct** — see below |
+| `corner-left-up` | the root-drop strip's icon span, `backlogView.ts` | The root-drop affordance |
+| `corner-left-down` | the outside-filter marker in `rows.ts` | The outside-filter marker |
+| `indent-increase` | the move menu's Indent item, `menu.ts` | Indent, in the move menu |
+| `indent-decrease` | the move menu's Outdent item, `menu.ts` | Outdent |
+| `undo-2` | the undo button in `toolbar.ts` | A curved arrow that travels leftward |
 
 Equally important is what must **not** be touched. `arrow-up`, `arrow-down`,
 `arrow-up-to-line` and `arrow-down-to-line` — the four move commands — are vertical, and
@@ -141,10 +154,11 @@ chevron points **up**: `←` rotated 90° clockwise is `↑`, not `↓`. An impl
 tick every row of this table and ship every expanded row pointing the wrong way.
 
 The construct has **three** parts, not two, and the third was missed on the round that
-found the second: `@keyframes pbl-expand-nudge` (styles.css:1033-1039) rotates the same
+found the second: `@keyframes pbl-expand-nudge` (`dragDrop.css`) rotates the same
 chevron through `45deg` to `90deg` while a collapsed row auto-expands under a drag hover.
-Fixing the static rule at 419 and leaving the keyframes rotates the icon upward for the
-600ms of the nudge — the identical bug, in the state a user is least able to screenshot.
+Fixing `.pbl-chevron.pbl-expanded` and leaving the keyframes rotates the icon upward for
+the 600ms of the nudge — the identical bug, in the state a user is least able to
+screenshot.
 
 So the collapsed icon, the expanded rotation and the hover-expand keyframes are **one
 construct in three parts**, and RTL needs all of them: a left-pointing collapsed icon plus
@@ -191,9 +205,11 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
 
 ## Acceptance criteria
 
-- All three constructs in the table are fixed: the physical property (96), the selection
-  accent shadow (336) and the tag-list mask (748-749). Two of them have no logical twin,
-  so "replace the physical properties" is not the whole job and never was.
+- The stylesheet's direction-dependent constructs are fixed by
+  [[Nothing pins a physical side]], and this note confirms the result rather than
+  restating the list. Several have no logical twin, so "replace the physical properties"
+  is not the whole job and never was — and the list itself is re-derived there, because
+  the version this note used to carry was overtaken by the file.
 - Keeping new ones out is `Styling rules are checks`, in `Theming and styling` — this PBI
   owns the sweep and the verification, not the lint. The two features have to land in
   that order or the check has nothing to go green against.
@@ -205,7 +221,8 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
   `chevrons-up-down`, `chevrons-down-up`, `chevron-down`. Icons are a TS change, not a CSS
   one, so no amount of stylesheet work satisfies this.
 - The chevron is verified in **all three** of its parts: collapsed icon, the static
-  expanded rotation (419), and the `pbl-expand-nudge` keyframes (1033-1039) that run while
+  expanded rotation (`.pbl-chevron.pbl-expanded`), and the `pbl-expand-nudge` keyframes
+  that run while
   a row auto-expands under a drag hover. A collapsed chevron pointing the right way with
   an expanded one pointing up is the failure this note twice invited, so "the icon is
   mirrored" does not satisfy it.

@@ -3,7 +3,8 @@
  * adapter listens for the browser's native drag events; jsdom has no DragEvent or
  * DataTransfer, so these build MouseEvents carrying the minimum DataTransfer
  * surface the adapter touches — the same substitution the tree's drag tests make.
- * `cardDrag` below is the only caller; nothing outside this file needs the pieces.
+ * `cardDrag` and `startCardDrag` below are the only callers; nothing outside this
+ * file needs the pieces.
  */
 import { vi } from 'vitest';
 
@@ -43,16 +44,27 @@ function dragEvent(type: string, dataTransfer: FakeDataTransfer, init: MouseEven
 }
 
 /**
+ * Pick a card up and hand back the rest of the gesture, so a test can change the
+ * world between the two halves — a Bases update mid-drag is a real thing, and the
+ * drop that follows it is the one that has to resolve the dragged path again.
+ */
+export function startCardDrag(card: HTMLElement): (region: HTMLElement) => void {
+	const dt = fakeDataTransfer();
+	card.dispatchEvent(dragEvent('dragstart', dt));
+	return (region: HTMLElement) => {
+		region.dispatchEvent(dragEvent('dragenter', dt, { clientX: 10, clientY: 10 }));
+		region.dispatchEvent(dragEvent('dragover', dt, { clientX: 10, clientY: 10 }));
+		region.dispatchEvent(dragEvent('drop', dt, { clientX: 10, clientY: 10 }));
+	};
+}
+
+/**
  * Drag a card onto a drop region, the whole gesture: start, enter, over, drop.
  * One helper for the board's columns and the roadmap's buckets and shelf — the
  * gesture is the same one, wired by the same controller.
  */
 export function cardDrag(card: HTMLElement, region: HTMLElement): void {
-	const dt = fakeDataTransfer();
-	card.dispatchEvent(dragEvent('dragstart', dt));
-	region.dispatchEvent(dragEvent('dragenter', dt, { clientX: 10, clientY: 10 }));
-	region.dispatchEvent(dragEvent('dragover', dt, { clientX: 10, clientY: 10 }));
-	region.dispatchEvent(dragEvent('drop', dt, { clientX: 10, clientY: 10 }));
+	startCardDrag(card)(region);
 }
 
 /**

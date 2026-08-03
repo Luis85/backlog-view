@@ -5,6 +5,7 @@ parent: "[[Smoke test the roadmap]]"
 status: Open
 priority: P2
 area: verification
+cadence: release
 created: 2026-08-02
 source: Feature Test epic; still owed from the previous roadmap increment
 ---

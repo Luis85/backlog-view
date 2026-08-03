@@ -1,0 +1,857 @@
+# Codebase quality, stability and maintainability — review and plan
+
+> **For agentic workers:** this is a **review with a proposed sequence**, not a task-by-task
+> implementation plan. Each item below names its evidence and its shape; the ones marked
+> **Ready** are specified elsewhere in this register and need writing, not designing. Turn an
+> item into backlog notes before building it — that is what this repository does.
+
+**Reviewed:** `main` at `ae55e2d`, version `0.4.0`, on 2026-08-03.
+**Method:** `npm run check` from a clean `npm ci`, per-file coverage, the fallow health
+report, `docs-check.mjs` totals, and a read of every layer's `CLAUDE.md` against the code
+it governs.
+
+---
+
+## The baseline, stated honestly
+
+Everything the gate can see is green, and most of it is not merely passing:
+
+| Signal | Reading |
+| --- | --- |
+| `npm run check` | all five steps pass, from a clean install |
+| Coverage | 97.77 stmts / 93.44 branches / 99.08 funcs / 99.12 lines, thresholds just below |
+| fallow | 0 findings above threshold, 916 symbols analysed, maintainability **88.5 (good)** |
+| `npm run docs` | 179 backlog notes, 88 use cases, 19 ADRs, 49 modules — consistent |
+| Layering | `main → commands → view → storage → domain` enforced by `no-restricted-imports`, not by prose |
+| Write boundary | `processFrontMatter`, `vault.create`, `load/saveLocalStorage` banned outside `storage/` by `no-restricted-syntax` |
+| Size | largest `src/` file 376 effective lines against a 400 cap (`domain/model.ts`); 49 modules |
+| Dependencies | 0 advisories, 3 runtime deps, all three admitted by ADR 0018 |
+
+[[Codebase health]] closed on 2026-08-01 saying *"this epic is done; the next one should
+be opened by new evidence, not by grooming this one."* What follows is that evidence, and
+it opens a **second round under that same epic** — its closing paragraph kept as the dated
+record of what the first round bought, a new one added beside it (finding 11).
+
+## Where this stands
+
+Statuses live in the register, not here — `Product Backlog.base` under [[Codebase health]]
+is current and this paragraph is not. What is worth recording is the **shape** of the round
+so far: the guide and rule-7 work landed together in the order their landmines required,
+the render-cost claims became checks and the defect one of them was hiding became a closed
+`Bug`, the card-drag branches got covered, and the stylesheet split landed with a
+400-line gate of its own in `styles-assemble.mjs`.
+
+What has **not** started is the part no check can do for us: the device verification, the
+`Multilang` layer, and the release cadence. Those are also the three where the specification
+is furthest ahead of the code, which is the good direction for them to be in.
+
+**Findings 12–17 below were written after that work**, and they are gaps in *this review*
+rather than in the codebase — things the first pass never looked at, or quoted and did not
+act on.
+
+**The through-line:** every finding below is the same defect this repository already named
+in [[A comment that states a rule is not a check]] — a property that is true today, stated
+in prose, with nothing that would notice it becoming false. The four biggest are the four
+places where enforcement stops: the stylesheet, the manifest's platform promise, the
+architecture table, and render cost.
+
+---
+
+## Findings, ranked by risk removed per unit of work
+
+### 1. The stylesheet has regression pins, not rules — **Ready**
+
+**What is already there.** `test/view/rendering.test.ts:15` reads `styles.css` and asserts
+against it through a `ruleAt` helper that answers cascade questions by source position.
+Six assertions, and each is a **pin on a defect that already shipped**: every declared type
+gets a badge colour and every extra type its own icon; a struck-through done title stays
+removed; both hover-revealed create buttons have a `(hover: none)` reveal written *after*
+the `opacity: 0` it overrides; the double-clipped bar override wins on specificity rather
+than order; the milestone line takes `pointer-events: none` and its label does not; an
+inferred bar stays open at an undated end. So the earlier draft of this note was wrong to
+say the gate never reads the stylesheet — it does, and what it checks it checks well.
+
+**The gap.** Those are pins on known failures, not properties of the file. `styles.css` is
+**1995 lines and 280 rule blocks**, larger than the two biggest `src/` modules combined,
+and `eslint.config.mjs` ignores everything that is not a `.ts` file — so of the budgets
+the rest of the codebase lives under (400 effective lines, complexity, layer direction,
+banned syntax) it is subject to none, and no rule holds for the file as a whole. Nothing
+would notice a literal colour, an `!important`, an unscoped selector, a
+direction-dependent value or a `:has()` on a container arriving tomorrow.
+
+The sharpest gap is one no existing pin covers: `src/view/render/columns.ts` computes
+`ROW_LEAD_WIDTH` from terms `src/view/CLAUDE.md` says are *"written as its terms … so it
+can be checked against `styles.css`"* — **by hand**. A padding changed in the stylesheet
+moves a threshold in TypeScript that nothing re-derives, and the symptom is a clipped row
+rather than a failed build. Seventeen `--pbl-*` custom properties cross that boundary the
+other way.
+
+**Shape — and the note that goes first.** [[One stylesheet per concern]] already owns most
+of this finding and is more thorough than the draft above: it makes the same "the only
+file in the repository that escapes the rule the repository is built on" argument, settles
+the cross-cutting `@media` question, names the four global `@keyframes`, and — the part
+the draft missed entirely — records that **the CSS build step already exists**.
+`esbuild.config.mjs` runs esbuild over `styles.css` in production and writes the minified
+`dist/styles.css` the release uploads, so what is missing is not a build but *sources for
+it to assemble*; esbuild resolves `@import` natively, making this a small change to an
+existing step. It also settles sequencing: it *"lands first among the styling PBIs"*,
+because the tokenization and bound audits edit the stylesheet heavily and doing that
+against nine stable files is the difference between a reviewable diff and a 2000-line one.
+
+**It also carries the sharpest evidence in this finding, by having gone stale itself.**
+The note measures `styles.css` at **1143 lines**. It is **1995** today — 74% growth, some
+850 lines, while the note describing it sat unchanged. Its own section table is wrong with
+it: `tags` is given as 733-838 and now starts at 768, `drag & drop` as 976-1095 and now
+starts at 1020. That is the finding demonstrating itself, and it is the argument the note
+makes in its closing section: **cite by file and selector, not by line**, because
+`.pbl-row.pbl-selected` is findable forever and `styles.css:336` is findable until the next
+insertion above it. Two sibling notes still carry line citations
+([[Layout survives translated text]], [[Styling rules are checks]]) and are re-cited as
+part of that work.
+
+So the order is: **[[One stylesheet per concern]] → the direction fixes under
+[[Theming and styling]] → [[Styling rules are checks]]**, which specifies the file-wide
+rules down to their extensions (`transparent` is not a literal colour; a literal in a
+`var()` fallback still counts; the direction rule must not key on property names) and
+whose own precondition is that those fixes have landed.
+
+**Scope the checker to what the six pins do not cover**, and leave them where they are: a
+pin on a specific past defect is a different instrument from a rule about the file, and
+folding one into the other loses the reason the pin exists.
+
+**What this finding still adds** beyond those notes is one seam none of them names: the
+`ROW_LEAD_WIDTH` terms in `src/view/render/columns.ts`, hand-checked against the
+stylesheet. A split makes that seam *cheaper* to check, not harder — the terms would then
+face one small partial rather than a 2000-line file.
+
+**Cost.** One script step in `npm run check`, in the shape `docs-check.mjs` already has,
+plus its own accept/reject corpus the way `test/docs/checkerRejects.test.ts` guards the
+docs gate. No new dependency: the rules are line-oriented, and the one that needs
+TypeScript (icon-name classification) reads source the way `test/docs/surfaces.test.ts`
+already does.
+
+**Why first.** Best risk-to-effort ratio in the list, and the finding whose specification
+is furthest along — three notes deep, with the build step already built.
+
+---
+
+### 2. The touch path is decided, built, and has never met a device
+
+**What is already decided.** Mobile support is not an open question, and this note does
+not reopen it. [[Keyboard, menu and touch]] settles it in prose — *"The menu is the
+answer on every platform either way"* — and in its acceptance criteria, where Set state
+in the context menu is *"the equivalent non-drag path on every platform, and the required
+one on touch."* `src/view/render/board.ts:288` wires it, saying so in the comment: *"The
+menu is the non-drag path, and on touch the only one."* `styles.css` carries a
+`(hover: none)` block revealing the two hover-hidden create buttons, and
+`test/view/rendering.test.ts` pins that reveal's cascade order because it once shipped
+broken. So `isDesktopOnly: false` is a supported claim, not a careless one, and **flipping
+it would remove a path this project deliberately built.**
+
+**The gap.** None of it has been run on a phone. Three questions have no answer:
+
+1. **Does `contextmenu` fire from a long press** in Obsidian mobile? Every non-drag path
+   on touch — the card menu, the row menu's move section — hangs off that one event. If
+   it does not fire, the "required one on touch" criterion is unmet everywhere at once.
+2. **Is mobile drag-plus-menu or menu-only?** [[Keyboard, menu and touch]] names the
+   uncertainty exactly — *"on Obsidian mobile native drag from touch has historically not
+   fired — the chosen engine claims otherwise, a verdict the smoke test owns"* — and
+   assigns it to [[Pragmatic drag and drop for the board]]. Still unrun.
+3. **Are the hover-revealed controls actually reachable?** The cascade order is pinned by
+   a test; that the reveal *works on a device* is not something jsdom can answer.
+
+Alt+arrow is not a mobile path and is not expected to be — it needs a keyboard.
+
+**Shape.** A verification, not code: run the menu paths on a phone against
+`npm run test-build` and record the three answers. Question 2's outcome belongs on
+[[Pragmatic drag and drop for the board]], which already owns it. If question 1 fails,
+*that* is a defect worth a bug note — the fallback the design rests on being absent —
+and it is exactly the kind of thing nothing here can discover.
+
+**Cost.** An afternoon with a phone. **Do not** build a pointer-events drag layer off the
+back of it — Pragmatic ships no touch adapter this project has admitted, and ADR 0018
+admits runtime dependencies by exception, not by convenience.
+
+**Why second.** It is the only finding whose subject can be wrong in a user's hands today,
+and the cheapest thing here is finding out.
+
+---
+
+### 3. Delete the module table rather than gate it
+
+**Evidence.** The root `CLAUDE.md` opens with a table claiming one row per module — the
+first thing any contributor or agent reads. It names 48 modules. `src/` holds **49**. The
+missing one is **`src/domain/vocabulary.ts`**, there since `798a0c1` folded the three
+vocabulary collectors onto one walk. `docs/README.md` has the same hole in miniature: its
+folder table lists six and `docs/milestones/` is not one of them, though the prose names it.
+
+**The measurement that decides the shape.** Counting what each guide actually contains:
+
+| File | Table rows | Reads as |
+| --- | --- | --- |
+| `CLAUDE.md` (root) | **57** | a module inventory plus a rules table |
+| `src/domain/CLAUDE.md` | 0 | prose rules, naming a file where a rule is about that file |
+| `src/storage/CLAUDE.md` | 0 | the same |
+| `src/view/CLAUDE.md` | 0 | the same |
+| `test/CLAUDE.md` | 0 | the same |
+
+**The layer guides are already the shape to aim for** and need no rework. That is not an
+accident: [[Invariants as checks, not conventions]] step 4 decided it — *"If it cannot be
+mechanised, it goes in the layer's own `CLAUDE.md`, beside the code"* — and its extension
+4a decided against one wall of text. The entire staleness surface is the root file.
+
+**The rule worth writing down:** *a table that enumerates code goes stale; a table that
+states a rule does not.* The module inventory is the first kind. `docs/README.md`'s
+conventions, hierarchy pairs and note-kind tables are the second — a code change cannot
+falsify them — and they stay.
+
+**Shape.** **Delete the module table**, and replace it with what the layer guides do:
+prose saying what each layer is for and which invariants live where, naming a module only
+where the sentence is about that module. Nothing is lost, because the fact the table
+carries already exists once and is already gated — `docs-check.mjs` rule 7 asserts every
+module in `src/` is named by a note under `docs/`, which is how this defect was findable
+at all. The table was a second copy of a checked fact, which is the shape
+[[Check that a feature lists its use cases]] already retired once for the same reason.
+
+**This supersedes the earlier draft of this finding**, which proposed a new `docs-check`
+rule gating the table against `src/`. Gating a duplicate is more machinery than deleting
+it. Fix `docs/README.md`'s folder table in the same change — that one is short enough to
+be worth keeping accurate.
+
+**Cost.** A documentation edit and one deletion. No new gate.
+
+---
+
+### 4. "A few hundred rows" is a comment, not a check
+
+**Evidence.** `src/view/CLAUDE.md` opens its Cost section with *"Rendering cost is the
+scaling limit (a few hundred rows is a normal backlog)"* and then states four structural
+claims that keep it true. **Two are already tested**, in
+`test/view/rendering.test.ts`'s *targeted subtree rendering* block: `:365` asserts that
+collapsing and re-expanding leaves untouched rows' element identities unchanged — which is
+exactly the "never `render()`" guarantee — and `:405` asserts that a collapsed subtree
+leaves the selection index, which is `refreshRowChildren` pruning `rowEls`.
+
+The two still asserted only in prose are the ones that need instrumentation rather than
+assertions on the DOM:
+
+- **No interaction scans the tree** — and this one **is already false as written**.
+  `src/view/interactions/dragDrop.ts:139` ends every drag with
+  `treeEl.querySelectorAll('.pbl-drag-source')`, a full-tree scan on every `dragend`. So
+  the claim in `view/CLAUDE.md` is not merely untested; a test written to it would fail
+  today, which is the strongest possible argument for writing it. (The two other scans in
+  `src/` are bounded and fine: `rows.ts:75` searches one row, `toolbar.ts:129,150` search
+  the toolbar.)
+
+  Two ways to make it true, and the smaller one is better: `clearDragState` already holds
+  `activeDropRow` as a single element reference and nulls it on render — the drag source
+  can be held the same way, since a mid-drag rebuild detaches the stale element and makes
+  it irrelevant by the same reasoning. **Replace the scan** rather than narrowing the
+  invariant to the paths that happen to honour it; a rule with an exception carved to fit
+  the one violator is not much of a rule.
+- **Config lookups are hoisted out of the per-row path.** `chipProps` resolves the columns
+  once per data update onto `host.chips`, and `RowContext` carries that snapshot; the
+  expensive calls behind it are `config.getOrder()` and `config.getDisplayName()`. Nothing
+  fails today if one moves back inside the row loop — the tree still renders, just once
+  per row instead of once per pass.
+
+(The `CLAUDE.md` sentence naming `getOrder` / `getDisplayName` as living "on `RowContext`"
+is itself slightly stale — they resolve through `chipProps` into `host.chips`. Worth
+correcting in the same change.)
+
+**Shape.** Not a benchmark — a benchmark in jsdom measures jsdom. **Both claims are about
+calls that should not happen, so both are spies, not assertions on state.**
+
+- Hoisting: spy `getOrder` / `getDisplayName` on the harness's fake config, render a
+  several-hundred-row fixture, assert the count is bounded by the column count rather than
+  growing with the rows.
+- No DOM scan: spy `querySelector` / `querySelectorAll` on the tree element and assert
+  neither is called. **Drive drag cleanup as well as selection and a subtree refresh** —
+  exercising only the latter two would pass today while `dragDrop.ts:139` is still
+  scanning, which is a test that agrees with the comment instead of checking it. Fix the
+  scan first, then the spy is a regression guard rather than a known failure.
+
+  Asserting on `rowEls` instead does not test this at all — an interaction that swapped
+  `rowEls.get(path)` for `treeEl.querySelector(...)` leaves the map the right size and
+  still resolves the right element, so the map-shaped assertion passes while the O(1)
+  guarantee is gone. The check has to watch the call that must not be made.
+
+**Cost.** One test file under `test/view/`, using `makeView` and the existing fixtures.
+Smaller than the earlier draft of this note assumed, because half the work is done.
+
+---
+
+### 5. Every user-visible string is inline, in ~141 places — **Ready, and larger than it looks**
+
+**Evidence.** [[Multilang]] already counted it, from a derived grep rather than a
+recalled list: **about 141 user-facing text sites across 15 files**, every one an English
+literal spelled inline. `domain/viewOptions.ts` alone holds 30, `render/toolbar.ts` 23,
+`render/columns.ts` 20, `interactions/menu.ts` 16, `ui/prompts.ts` 13. There is no place
+to read the plugin's whole voice, and the marketplace's sentence-case rule is enforced by
+eye. (An earlier draft of this note said "40-odd" — that was a narrow grep of `Notice`
+and `text:`, and the register's number is the right one.)
+
+**Shape.** Specified across [[The string catalog]], [[A bare string cannot reach the UI]]
+and the feature note above them. Three of that specification's decisions are already
+argued, and this plan defers to all three rather than re-deciding them:
+
+- **The catalog is a new leaf below everything**, not a file in an existing directory.
+  [[Multilang]]'s *"Where the catalog lives"* works it out: `ui/` may import nothing
+  (`forbidden('ui', ['view', 'commands', 'domain', 'storage'])`) yet `ui/prompts.ts` has
+  13 sites, and `domain/` may not reach `ui/` yet `domain/viewOptions.ts` has 30. A
+  catalog in either is unreachable from at least one caller, so it needs its own
+  directory plus its own `forbidden` entry naming every other one.
+- **The enforcement is typed rendering wrappers plus bans on the raw sinks**, not a
+  selector over `Notice`. [[A bare string cannot reach the UI]] derives the sink
+  inventory from the code — `setTooltip` 23, `setTitle` 20, `new Notice` 14, `setText`
+  11, `text:` 30, `displayName:` 21, and the native DOM assignments a branded type cannot
+  reach — and records that listing that set from memory came up short three times. A
+  narrower rule would leave a literal assigned to a local, or returned from a helper,
+  passing.
+- **The whole layer lands before the sweep.** [[Multilang]]'s *"Order of work"* refuses
+  the tempting split — catalog first, locale resolution later — with the reason: *"A
+  half-built layer means a hundred strings get moved against an interface that then
+  changes."* English still ships as the only catalog ([[English ships alone]]); that is a
+  scope decision, not a staging one.
+
+**Cost.** Real: the layer, then a 141-site sweep, then the lint rule. This is the largest
+item in this plan and the one whose specification is most complete. It is here as the
+maintainability finding it is, not as something to squeeze into a polish pass.
+
+---
+
+### 6. The thin coverage is concentrated in the failure branches of shared code
+
+**Evidence.** The four weakest branch figures are not random:
+
+| Module | Branches | Why it matters |
+| --- | --- | --- |
+| `view/interactions/cardDrag.ts` | **60%** (lowest in `src/`) | the ONE drag controller both card projections ride |
+| `view/interactions/tags.ts` | 71% | the delta write, whose whole reason is a race |
+| `view/interactions/undo.ts` | 80% | the partial-failure remainder and `UndoRecovery` |
+| `view/backlogView.ts` | 80.5% | the projection dispatch and lifecycle |
+
+**A low figure is a question, not a work item.** Reading the branches behind these numbers
+changed the answer twice. `cardDrag.ts` holds two real ones — the guards where a move is
+**not** announced because the projection snapshot is absent, and the drop that resolves to
+nothing because a refresh mid-drag dropped the note. `tags.ts` holds neither: its refusal
+branch is already tested, and the other may be unreachable in production, so a test written
+to the percentage would have been a duplicate plus a contrived host state.
+
+**Shape.** One named increment, not a coverage push: `cardDrag.ts`, the module
+`docs/issues/Pragmatic drag and drop for the board.md` introduced and the one whose failure
+would be silent in two projections at once. The rest of this table stays **evidence, not
+scope** — a module joins the work when someone has read its branches, which is what
+[[Coverage where the projections share code]] now says and what this finding got wrong
+first. Raise the branch threshold in `vitest.config.mts` as the increment lands; that file
+already says thresholds only go up.
+
+---
+
+### 7. The live-vault verifications have no cadence
+
+**Evidence.** `docs/issues/` holds a body of "verification to run" notes — the tree's
+badges, columns, menu, drag, keyboard, filter and undo; the board's cards, moves, filtered
+headers and column agreements; the roadmap's axis picker, month header, inferred bars and
+milestones; the folder-note layout; the visual changes; and now the touch paths. Nearly
+all are open. Every one exists because jsdom cannot see it, and `docs/README.md` says so
+plainly: *"appearance and base identity cannot be tested here."* Several are explicitly
+written to be **re-run**, not closed.
+
+**How many is deliberately not written here.** Three drafts of this paragraph carried a
+figure and all three were wrong — counted off filenames, then off a prefix-matching grep,
+then invalidated by a note added in the same commit. The number lives in the register and
+is asked of it: the query is Issues carrying `## How to check` as a whole heading line,
+which [[A cadence for the checks CI cannot run]] specifies along with the three legacy
+headings it has to normalize first. A count in a plan is a count that goes stale between
+writing and reading.
+
+**One is `Done` with a conditional trigger, and must stay out of the sweep.**
+[[Verify base identity in a live vault]] passed on 2026-08-01 and asks to be repeated
+only **after an Obsidian or bundler upgrade** — not a release cadence. Folding it into a
+per-release checklist would silently replace the cadence its own outcome specifies with
+one less likely to find anything. Conditional verifications keep their own trigger; only
+the re-runnable ones join the release step.
+
+This is the project's real stability ceiling, and it is currently a stack rather than a
+process. `npm run test-build` already made each run cheap — the note recording the last
+pre-release sweep (`cfb655d`) is the proof.
+
+**Shape.** Not automation. Make the sweep a **release step**: `RELEASING.md` gains a line
+saying the **re-runnable** verifications run against a `test-build` vault before a tag,
+and each note's `Outcome` is dated. Conditional ones stay on their own trigger and are
+named as such, so the checklist says which instrument each note is. If a subset turns out never to catch
+anything across two releases, that triggers a **review** — kept, narrowed or retired as a
+recorded decision, judged on what the check is *about*. Touch, appearance and platform
+behaviour can regress long after a quiet spell, so a low hit rate is a prompt to look, not
+a verdict; [[A cadence for the checks CI cannot run]] governs this and an earlier draft
+here read it as automatic retirement.
+
+**Explicitly rejected:** driving a real Obsidian from Playwright. It would be a second
+harness with its own failure modes, gating releases on an app this repository does not
+ship, to replace a checklist that takes under an hour.
+
+---
+
+### 8. Modal is already a service — the remaining gap is small
+
+**Evidence.** All four dialogs (`TitlePromptModal`, `FolderPromptModal`,
+`TagPromptModal`, `SchedulePromptModal`) live in `src/ui/prompts.ts`, and every caller
+imports from there: `interactions/create.ts`, `interactions/plan.ts`,
+`interactions/tags.ts`, `commands/scaffold.ts`. No `Modal` subclass exists anywhere else
+in `src/`. [[One file per concern]] extension 2b already decided this — *"the code is a
+reusable dialog. It goes in `ui/`, a leaf that knows about none of the layers"* — and
+`eslint.config.mjs` enforces the leaf with `forbidden('ui', [...])`.
+
+So the consolidation this asks for is **done**. What is left is a shape question, not a
+structural one: callers construct with a callback options object
+(`new TitlePromptModal(app, { onSubmit })`) rather than awaiting a result. Promise-returning
+helpers — `promptForTitle(app, opts): Promise<string | null>` — would read better beside
+the `await`-heavy write paths that call them.
+
+**Cost and rank.** Small, and low. It buys readability at four call sites and no
+correctness. Take it opportunistically when one of those files is open for another
+reason; it does not deserve a branch. The one thing that would raise it: if
+`ui/prompts.ts` needs splitting anyway (finding 9), do both in the same pass.
+
+**A `Notice` service was considered and dropped.** `new Notice(...)` is constructed at 19
+sites across three layers — `view/writeGate.ts` (5), `view/interactions/*` (8),
+`commands/*` (6) — so there is no place to read the plugin's whole voice, and
+`src/view/CLAUDE.md` carves out an exception for it (*"Notices are its own"*) precisely
+because it is reachable from anywhere. That is a real observation and still not worth its
+own work item: [[A bare string cannot reach the UI]] **already requires a typed wrapper
+over `new Notice`**, among every other text sink, with a `no-restricted-syntax` ban behind
+it. A service built now is the same call wrapped twice, the second wrap unpicking the
+first. The seam arrives with finding 5 or not at all; it is recorded here so nobody
+proposes it a second time as if it were new.
+
+---
+
+### 9. File structure: nothing forced, three seams worth taking when nearby
+
+Measured in the metric lint actually uses — effective lines, blanks and comments skipped
+against the 400 cap:
+
+| File | Effective | Note |
+| --- | --- | --- |
+| `domain/model.ts` | 376 | closest to the cap; three typed build phases, a real single concern |
+| `domain/backlogReadme.ts` | 369 | next closest |
+| `view/interactions/keyboard.ts` | 339 | three projections' key handling |
+| `view/backlogView.ts` | 330 | down from its pre-`writeGate` size |
+| `domain/settings.ts` | 310 | **34 exports** — the most concerns in one file by a distance |
+
+**Nothing is over the cap, so nothing is forced.** Three observations, in the order I
+would act on them:
+
+1. **The type vocabulary sits in `settings.ts` to break a cycle.** `LEVELS`,
+   `EXTRA_TYPES`, `MARKER_TYPES` and `ALL_TYPES` are declared in `domain/settings.ts`, and
+   `byName` — the safe lookup for user-supplied type names — carries the reason in its own
+   comment: *"It lives here rather than in `itemTypes.ts`, which is where it reads more
+   naturally, because that module imports this one and the dependency cannot run both
+   ways."* A cycle broken by putting code in the wrong file is a seam wearing a workaround.
+   A vocabulary leaf below both would let `itemTypes.ts` be what its name and the module
+   table both say it is. **This is the one I would actually do** — and it becomes cheaper
+   the moment finding 5 needs a dependency-free leaf anyway, since that is the same
+   structural move twice.
+2. **`ui/prompts.ts` is four unrelated dialogs in one file** (258 effective, 12 exports).
+   Under the cap, so not urgent — but it is the same shape as the test suite that grew to
+   59% of all test code while every source file stayed in budget, and the fix there was to
+   split by subject *before* the cap forced it. One file per dialog, or two by kind.
+3. **The README feature spans six files across three layers** — `domain/backlogReadme.ts`,
+   `readmeText.ts`, `readmeStamps.ts`, `readmeMarker.ts`, `storage/readmeFile.ts`,
+   `commands/readme.ts`. Each split has a stated reason and I am not proposing to undo any
+   of them; recorded because it is the one place the codebase reads as *over*-split, and a
+   future reader deserves to know it was noticed and left alone deliberately.
+
+**What I am not proposing:** splitting `create.ts` or `dropTargets.ts` on fallow's ROI
+hints. Both are far under budget in a report reading "0 above threshold", and the signal
+there is fan-in, not size — splitting a file to lower a coupling number moves the coupling.
+
+---
+
+### 10. Rule 7's stated reason is about to be deleted, and its real value is somewhere else
+
+**The objection, and it is half right.** `docs-check.mjs` rule 7 requires every module in
+`src/` to be named by at least one note under `docs/`. The register **already retired this
+exact rule for `test/`**, in its own words: *"what the rule actually asserts is that a path
+token appears somewhere under `docs/` — satisfiable by mentioning the file and describing
+nothing — so every new test file cost a register edit that guaranteed no reader
+anything."* That criticism is sound, and it applies to `src/` word for word.
+
+Worse, the reason given for keeping it on `src/` is anchored to something finding 3
+deletes: *"A module is different: **the architecture table names one per concern**, so a
+module nothing describes is a real gap."* Take the table away and the stated justification
+goes with it. On the documents alone, the rule should go.
+
+**But the documents are not what it is doing.** Measured against every module in `src/`:
+
+| Question | Answer |
+| --- | --- |
+| Modules named only in record notes (`tasks/`, `issues/`, `bugs/`) | **0** |
+| Modules named inside a `## Where it lives` section of a use case | **48 / 49** |
+| The exception | `src/view/host.ts`, named in ADR 0003 — an interface, not a behaviour |
+
+So in practice the rule is not "a path token appears somewhere". It is **every module is
+claimed by a use case that says what it is for**, with the one architectural module
+claimed by an ADR instead. That is a real property, and it is the strongest one this
+register has: every line of shipped code traces to a specified behaviour, and a module
+that traces to none is a capability built without anyone asking for it.
+
+**Where "self-documenting code" stops.** Code documents *how* it works, and this codebase
+does that unusually well. It cannot document *why the module exists* or *which
+user-visible behaviour it serves*. `domain/roadmap.ts` can make its bucket partition
+obvious; it cannot say that someone wanted a shelf that un-places and stays reachable
+while empty. That sentence lives in a use case or nowhere.
+
+**Decided: re-anchor, do not delete.** Change rule 7 from *"named somewhere under
+`docs/`"* to *"named in a `## Where it lives` section, or in an ADR"*. That:
+
+- **costs nothing to adopt** — it is already true 48/49, and the 49th is legitimately the
+  ADR case, so the rule lands on a clean file the way [[Styling rules are checks]] argues
+  for;
+- **closes the hole the `test/` retirement named** — mentioning a path in passing stops
+  satisfying it, which is precisely what made the old rule hollow;
+- **survives finding 3**, because it stops depending on a table that is being deleted.
+
+**The cost, accepted knowingly.** This keeps one obligation: splitting a module means
+adding a path to an existing use case's `Where it lives`. The 400-line cap says *split*,
+and this rule says *and name the halves* — two rules pulling against each other, one line
+of friction each time. For `test/` that trade was refused because the line bought nothing.
+Here it buys the trace from shipped code to specified behaviour, and the maintainer's call
+is that `Where it lives` is the better framing: the rule should assert the thing that has
+value rather than the string match that stands in for it.
+
+So the rule's **reason** changes with its anchor. It stops being *"the architecture table
+names one per concern"* — a table that is going away — and becomes *"a module nothing
+specifies is a capability nobody asked for."* That sentence is what makes the one line
+worth writing, and it is what the note gating it should say.
+
+---
+
+### 11. The findings above are not backlog notes yet
+
+This plan lives in `docs/superpowers/`, which `docs-check.mjs` exempts from work-item
+frontmatter. That is right for a plan and wrong as a resting place: nothing here is
+ranked, nothing shows up in `Product Backlog.base`, and the register cannot see it.
+
+**Where they go: a second round under the existing [[Codebase health]] epic.** Its
+frontmatter is already `status: Open`; what closed was its prose, which says *"As of
+2026-08-01 every actionable finding is closed … This epic is done; the next one should be
+opened by new evidence, not by grooming this one."*
+
+Reopening it and keeping that paragraph are not in conflict, and both matter. The
+paragraph is a **dated record** of what the first round bought, and this register's own
+rule is that a record of a moment is not rewritten. So it stays as written, and a second
+paragraph is added beside it opening the next round and naming this plan as the evidence
+the first one asked for. What must not happen is editing "every actionable finding is
+closed" into something hedged — that sentence was true on the day it was written, and its
+being true then is the whole reason the second round is legible as a second round.
+
+**One of the three existing features stays closed; two reopen.** `Enforced invariants`
+(order 20) keeps its `Done` status — nothing in this round belongs under it.
+**[[Module structure]] (order 30) reopens** along with its PBI [[One file per concern]],
+because [[Give the type vocabulary its own leaf]] is a new instance of exactly that PBI's
+subject; leaving a `Done` chain above an `Open` task is the same unactionable status this
+paragraph rejects one sentence later, and an earlier draft did precisely that while
+stating the rule. **[[Test harness and coverage]] (order 10) reopens**, because
+[[Coverage where the projections share code]] is that feature's own subject and a `Done`
+feature carrying an `Open` child would be a status the backlog cannot act on. That is the
+narrower move rather than minting a fourth feature to say what the first one already says
+— the duplication [[Check that a feature lists its use cases]] retired.
+
+An earlier draft of this paragraph said all three stayed closed, while the same commit
+reopened one. Status drives the backlog, so a plan and a frontmatter disagreeing about it
+is two instructions, not one.
+
+**As of 2026-08-03, the reopen above has been spent on [[Test harness and coverage]] and
+that feature is `Done` again**, along with [[Coverage where the projections share code]].
+The paragraph above is kept as written rather than edited to say the feature stayed
+closed: it was reopened, the work landed, and it closed again, and a plan rewritten to
+hide the middle step would be the same falsified record this round refuses one paragraph
+earlier. [[Module structure]] and [[One file per concern]] are still `Open`, correctly —
+[[Give the type vocabulary its own leaf]] is deferred to step 6, so the reopen there is
+still carrying work. A reader arriving after this date takes the status from the notes,
+which is what the frontmatter is for; this plan records which round asked for it.
+
+**Shape.** New features at orders 40+, grouping the findings by kind:
+
+| Feature | Covers |
+| --- | --- |
+| the gates that do not exist yet | findings 1, 4 |
+| guides and structure | findings 3, 9, 10 |
+| the verifications and their cadence | findings 2, 7 |
+
+with a PBI per finding in the enforced use-case shape: the
+`**As** … **I want** … **so that** …` opening, the four-field table, main flow,
+extensions carrying their reasons, testable acceptance criteria, and `## Where it lives`.
+Finding 6 (branch coverage) hangs off the existing `Test harness and coverage` rather than
+a new feature — it is that feature's own subject, and a second feature saying the same
+thing is the duplication [[Check that a feature lists its use cases]] retired. Finding 5
+stays where it already lives, under `Cross-cutting concerns`, and finding 8 is recorded
+prose rather than a note.
+
+`npm run docs` gates all of it: sibling orders unique, every parent pair legal, every
+wikilink resolving, every use-case section present once and in order, every extension
+labelled against a step the main flow has.
+
+**Cost.** Around eight notes. The extensions are where the work is — that is where this
+register puts the thinking, and eight review findings on this plan alone say the hard
+parts are the ones a first draft states too confidently.
+
+---
+
+## Second wave — what this review itself missed
+
+Written 2026-08-03, after findings 1, 3, 4 and 6 landed and the stylesheet split began.
+Each of these is a gap in the **review**, not in the codebase's own record: something the
+first pass either never looked at or quoted without acting on. Ranked the same way as
+above.
+
+### 12. The model rebuild has no cost check, and finding 4 quoted its admission
+
+**Evidence.** `buildModel` runs on **every data update** and makes several full passes over
+every item — `createItems`, `linkAll`, `breakCycles`, `pruneOutsideHierarchy`, two
+vocabulary collections, `sortSiblingsDeep`, `assignAll`. Finding 4 checked that
+*interactions* stay O(1) and never touched this, though it **quoted** the sentence in
+`src/view/CLAUDE.md` that admits it: *"Data updates still rebuild everything."* Every
+`buildModel` test in `test/domain/` is behavioural; none runs at scale, and no threshold
+or shape check exists.
+
+**Why it is worth more than the render check that already landed.** A write batch ends in a
+refresh, so this cost is paid on every move, not only on a resize or a data change the user
+did not cause. And it sits in `domain/`, which has **node tests and no harness** — so unlike
+render cost, it can be measured honestly rather than measured through jsdom.
+
+**Shape.** Not a benchmark. The checkable properties are structural: the number of passes
+over the item set is bounded and stated, the **traversal** phases stay linear, and a model
+built from a several-hundred-item fixture does not walk the tree more times than the phases
+declare.
+
+**The overall bound is O(n log n), not O(n)**, and saying otherwise would send an
+implementer at correct code. `sortSiblingsDeep` calls `Array.sort` per sibling group —
+comparison sorting, and the right tool for ranking siblings — so the sort is the one
+deliberately superlinear step. State it as the bound rather than as a violation; the thing
+worth checking is that nothing *else* becomes superlinear, and that the cycle break stays
+the single pass it is written as.
+Where a property cannot be reached, narrow the guide sentence rather than leave it, which
+is the rule this round learned twice.
+
+---
+
+### 13. The register gates two note shapes out of seven, and this round made that load-bearing
+
+**Evidence.** `docs-check.mjs` gates `USE_CASE_SECTIONS` and `ADR_SECTIONS`. The other five
+kinds `docs/README.md` documents — `Epic`, `Feature`, `Task`, `Issue`, `Bug`, each with
+named sections — rest on convention alone.
+
+That was tolerable while nothing depended on it. This round changed it **once**: the release
+sweep derives its set by querying Issues for `## How to check`
+([[A cadence for the checks CI cannot run]]), and the `Issue` shapes are ungated. The drift
+had already arrived before the gate — three notes spelled that heading `## What to look at`
+and the query silently dropped them, one being the note that owns the mobile drag verdict.
+
+**Not twice.** A draft of this finding also claimed module ownership rested on an unchecked
+heading. It does not: `## Where it lives` is a member of `USE_CASE_SECTIONS`, and
+`checkSections` runs over every PBI, so [[A module is named where it is specified]] reads a
+section the gate already requires to be present and in order. That is the *good* case and
+the argument for doing the same to `Issue` — not a second instance of the defect.
+
+**Shape — and scope it to the evidence.** Extend `checkSections` to the `Issue` kind, using
+the sections `docs/README.md` already documents, and plant both directions in
+`test/docs/checkerRejects.test.ts` and `checkerAccepts.test.ts` the way the existing shapes
+are. The judgement to make first: an `Issue` has **three** documented shapes (a decision, a
+limitation, a verification) and a checker must not force one onto another — so the rule is
+per-shape, keyed on which heading the note leads with, or it is not worth having.
+
+`Epic`, `Feature`, `Task` and `Bug` stay ungated **until something leans on them**. Nothing
+does today, and gating a kind on the grounds that gating is good is how the `test/` module
+rule earned its retirement — friction bought with no defect behind it. Scope promised is
+scope checked, which this finding's own first draft got wrong by generalising from one
+instance to five.
+
+**Why it belongs to this round.** It is the round's own defect one layer out: a rule with no
+check, discovered because two new rules leaned on it.
+
+---
+
+### 14. Accessibility is implemented and asserted, and specified nowhere
+
+**Evidence.** Assertions on `aria-*` and `role` are spread across most of the view suite,
+and `src/view/CLAUDE.md` covers tab stops, the two focus zones, live-region ownership and
+the "roles are earned, not assumed" rule for the roadmap. So this is not neglected work.
+
+What is missing is a **contract**: no note says what a screen-reader user is promised — which
+roles each projection earns and when, what an accessible name must contain, what the live
+region announces and what it must not. The consequence is that a11y is checked per feature
+by whoever wrote that feature, with nothing to check a *new* projection against. The board
+and the roadmap each had to rediscover the same questions; a fourth projection would too.
+
+**Shape.** A specification before any code — this is the one item here that deserves
+brainstorming rather than a drafted note, because the contract is a product decision (what
+do we promise?) and not a refactor. It also crosses [[Multilang]]: an accessible name built
+by concatenation is a sentence, and a sentence is a string the catalog owns.
+
+**Honest note on scope.** The brief for this review was "all product perspectives". This is
+the perspective it under-covered, and the reason is worth recording — the review followed
+the register, and the register has no a11y note to follow.
+
+---
+
+### 15. Bundle size has no budget
+
+**Evidence.** `main.js` ships around 160 KB, carrying three bundled runtime dependencies.
+ADR 0018 admits those **by exception**, which is a decision about whether to take a
+dependency and not about what it costs thereafter. Nothing measures the result, so a fourth
+dependency — or a heavier version of an existing one — changes the shipped size with no
+signal.
+
+**Shape.** The same shape as the 400-line cap that just landed for the stylesheet partials:
+a number in the build, failing when it is exceeded, raised deliberately with a reason rather
+than drifting. Small enough to ride along with any other build change.
+
+---
+
+### 16. Nothing in this plan closes the round
+
+**Evidence.** What made *this* round legible was the first round's dated paragraph in
+[[Codebase health]] — *"as of 2026-08-01 every actionable finding is closed"* — and its
+instruction that the next round be opened by new evidence. No step here writes the
+equivalent. Without it the epic accumulates two rounds of notes with no boundary between
+them, and a third round has nothing to open against.
+
+**Shape.** A step, not a note: when the last finding closes, add a dated paragraph beside
+the existing ones saying what this round bought and what it deliberately left. Leave both
+earlier paragraphs as written — that rule is already established here.
+
+---
+
+### 17. Obsidian version drift has no owner — recorded, not scheduled
+
+**Evidence.** `manifest.json` sets `minAppVersion` 1.10.2 against the Bases custom-view API,
+which is young; the `obsidian` typings track ahead of it and, per the root guide, trail the
+app in places. ADR 0019 put **dependencies** on a clock and gave the reason. The **host
+app** is on no clock at all: nothing notices when Obsidian changes something the view rests
+on, and the live-vault sweep only catches it if someone runs it.
+
+**Shape.** Probably none, and that is the finding. This repository cannot run Obsidian, so
+there is no check to write — only a cadence question: does the verification sweep also run
+on an Obsidian upgrade, the way [[Verify base identity in a live vault]] already does for
+its own subject? If the answer is yes, it belongs in
+[[A cadence for the checks CI cannot run]] as a second conditional trigger and costs
+nothing. Recorded so it is decided rather than rediscovered.
+
+---
+
+## Sequence
+
+Each step is independently shippable and ends `npm run check` green.
+
+0. **Write the notes** (finding 11) — reopen [[Codebase health]] for a second round and
+   hang a feature-plus-PBIs off it per finding, so the rest of this list is ranked in the
+   register rather than in a plan file. Everything below is then picked from the backlog,
+   not from here.
+1. **Re-anchor rule 7, then delete the module table** (findings 10 **then** 3) — **one
+   change in two steps, in that order, never one without the other.** Rule 7 currently
+   justifies itself by the very table step 3 deletes (*"the architecture table names one
+   per concern"*), so deleting the table alone leaves the gate green on a reason that no
+   longer exists — the exact defect this round is about. And deleting *both* is worse:
+   the table's deletion is safe only because rule 7 keeps the guarantee that every module
+   is described somewhere. Re-anchor first to `## Where it lives`, then the table goes.
+   Also fixes `docs/README.md`'s folder table.
+2. **Answer the mobile question** (finding 2) — a verification, not code; it may change
+   what "done" means for the drag work below it.
+3. **`cardDrag.ts` branch coverage** (finding 6) — raises the floor under the one
+   controller both card projections ride. **`cardDrag.ts` only**: an earlier draft of this
+   step also named `tags.ts`, and [[Coverage where the projections share code]] then took
+   it out — its refusal branch is already tested and its other branch may be unreachable,
+   so the work would be a duplicate test plus a contrived host state. The other thin
+   modules get a note once someone has read their branches.
+4. **The two untested render-cost claims** (finding 4) — the other two are already pinned.
+5. **[[One stylesheet per concern]], then the direction fixes, then
+   [[Styling rules are checks]]** (finding 1) — the largest item, and the one with the most
+   already decided. The split goes first: it is what gives the later sweeps stable
+   addresses, and the build step it needs already exists in `esbuild.config.mjs`.
+6. **The `Multilang` layer, then the sweep, then the sink ban** (finding 5) — after
+   the styling gate, because both touch the same render modules and doing them together
+   doubles the merge surface. The `Notice` seam arrives here, as the typed wrapper
+   [[A bare string cannot reach the UI]] specifies — not as a service of its own. Its own
+   epic, not a step in a polish pass.
+7. **Make the verification sweep runnable** (findings 7 and 17) — **not one line.**
+   Finding 17 rides along: decide whether an Obsidian upgrade is a second conditional
+   trigger, the way [[Verify base identity in a live vault]] already treats one.
+   Otherwise:
+   [[A cadence for the checks CI cannot run]] governs it and asks for four things before
+   `RELEASING.md` gains its step: normalize the three legacy `## What to look at` headings,
+   fix the query to match the whole heading line and plant a case proving it, take a fresh
+   count against the register, and have every verification say whether it is re-runnable or
+   conditional. A draft of this step said "one line, any time" — which would have looked
+   complete after the one part that changes nothing.
+
+Steps 1–4 are a coherent first increment, and it **does** change shipped behaviour once:
+step 4's precondition is [[The drag cleanup scans the whole tree]], a real cost defect that
+has to be fixed before anything asserts the invariant it breaks. Everything else in 1–4
+closes a finding that is *only* a missing check. An earlier draft called the whole
+increment behaviour-neutral, which would have left the planned spy failing on a known
+defect and reading as a broken test. Steps 5 and 6 are the
+two real bodies of work and each deserves its own branch — 6 more than one.
+
+8. **The model rebuild's cost check** (finding 12) — the render pass's sibling, in the layer
+   that can measure honestly. Do it after finding 4's work has settled, so the two cost
+   stories are written in the same shape.
+9. **Gate the `Issue` shapes** (finding 13) — after the sweep query is in use, since that is
+   what makes the heading load-bearing. The other ungated kinds stay ungated until something
+   leans on them.
+10. **A bundle-size budget** (finding 15) — small; ride it along with any build change.
+11. **Close the round** (finding 16) — a dated paragraph beside the existing ones in
+    [[Codebase health]], saying what this round bought and what it left. Last, by definition.
+
+**Finding 14 (accessibility) is deliberately not numbered into this list.** It needs a
+specification before a sequence, and that specification is a product decision rather than a
+refactor — brainstorm it, do not draft it cold. It is recorded as
+[[What a screen-reader user is promised]], which states the open questions and deliberately
+carries no acceptance criteria: a note with criteria nobody has agreed would be the drafted
+specification this paragraph refuses.
+
+**Findings 8 and 9 are the only ones deliberately absent from this sequence** — every
+other finding, 10 included, has a step. Nothing in them is over a
+budget or failing a check, so scheduling them would be scheduling churn. Take them when a
+branch already has the file open — with one exception: the vocabulary leaf (finding 9.1)
+is the same structural move the catalog needs (finding 5), so if step 6 happens, do both
+in it.
+
+---
+
+## Deliberately not doing
+
+- **Splitting `create.ts` or `dropTargets.ts`.** fallow lists them as refactoring targets
+  on ROI, at 190 and 115 LOC — both far under budget in a report that says *"0 above
+  threshold"*. Fan-in is the signal there, not size, and splitting a file to lower a
+  coupling number moves the coupling.
+- **Rebuilding the outcome report.** [[The outcome report was built from one sentence]]
+  records eleven findings across seven rounds without reaching a correct rule, and names
+  the reason: nothing correlates a Bases pass with a write. Read that note before anyone
+  proposes it again.
+- **Adding `npm audit` to `check`.** ADR 0019 refuses it with a reason.
+- **Chasing coverage on `src/main.ts`.** It is excluded by policy and exercised by
+  `test/docs/surfaces.test.ts`, which runs `onload()` to discover the commands. Covering it
+  for a number would test the Obsidian `Plugin` runtime.
+- **Widening the TypeScript or `@types/node` ranges.** `.github/dependabot.yml` states why
+  both are pinned; neither is staleness.
+
+## Where it lives
+
+- `styles.css`, `eslint.config.mjs`, `docs-check.mjs`, `vitest.config.mts` — the four gates
+- `test/view/rendering.test.ts` — the six stylesheet pins, and the two render-cost claims
+  already checked
+- `src/view/render/columns.ts`, `src/view/render/rows.ts` — the TS↔CSS geometry boundary
+- `src/view/interactions/cardDrag.ts`, `src/view/interactions/tags.ts`,
+  `src/view/interactions/undo.ts` — the thin branches
+- `CLAUDE.md` — the 57 table rows that are the whole staleness surface; the four layer
+  guides carry 0 and are the shape to copy
+- `src/domain/vocabulary.ts` — the module the architecture table forgot
+- `src/domain/settings.ts` — 34 exports, and the type vocabulary parked there to break a
+  cycle with `src/domain/itemTypes.ts`
+- `src/ui/prompts.ts` — the four dialogs, and the Modal consolidation that already happened
+- `src/domain/viewOptions.ts`, `src/ui/prompts.ts` — the two string sites that prove the
+  catalog cannot live in either existing directory
+- `manifest.json` — the platform promise

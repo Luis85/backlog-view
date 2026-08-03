@@ -13,6 +13,7 @@ demonstrating itself:
 | `tasks/` | Engineering work done to keep it maintainable | `Task` |
 | `issues/` | Open questions, verifications and recorded decisions | `Issue` |
 | `bugs/` | Defects, with what was learned from them | `Bug` |
+| `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
 
@@ -196,9 +197,11 @@ can run is worse than none, because it invites trust it has not earned:
    `parent:` with no value still reads as an explicit root and enrols the note. Checking
    only the fields an ADR should have would never notice a field it must not.
 
-   Sections, in both shapes, are matched as **lines, with code stripped first**. A heading
-   deleted and quoted in a sentence is not a heading, and an example inside a fence is not
-   the document's own structure.
+   **These two shape checks** — a use case's sections and an ADR's — match a section as a
+   **line, with code stripped first**. A heading deleted and quoted in a sentence is not a
+   heading, and an example inside a fence is not the document's own structure. Rule 7 reads
+   sections too and matches the heading the same way, but strips **fences only**: what it
+   looks for inside a section is paths, and every path here is written in backticks.
 
    They are also **counted**, not merely found. Two branches once converted the same note
    to a use case at the same time; neither edit conflicted, the merge kept both, and the
@@ -206,17 +209,29 @@ can run is worse than none, because it invites trust it has not earned:
    `## Where it lives` — passing every rule above, because "is it there" and "is it in
    order" are each satisfied twice over. The two halves then disagreed about what the
    feature guarantees, which is what a document that says a thing twice eventually does.
-7. Every module in `src/` is named by at least one note, **as a whole path**. This is the
-   check that finds *missing* notes rather than wrong ones, and matching by substring let a
-   mistyped `src/main.tsx` stand in for the `src/main.ts` it misspells while the reference
-   check parsed the prefix and found the real file: one typo, passing twice.
+7. Every module in `src/` is **specified** by at least one note, **as a whole path** — in a
+   use case's `## Where it lives`, or in an ADR's `## Decision`. Nowhere else counts: not a
+   `Task`, `Issue` or `Bug`, not a use case's prose or criteria, not this page, and not an
+   ADR's `## Context`, `## Consequences`, `## Alternatives` or `## Revisit when`. The reason
+   is the whole rule — **a module nothing specifies is a capability nobody asked for** —
+   and a passing mention says nothing about what the file is for. Matching is by whole path
+   for a second reason: by substring, a mistyped `src/main.tsx` stood in for the
+   `src/main.ts` it misspells while the reference check parsed the prefix and found the real
+   file, so one typo passed twice.
 
-   **`test/` is deliberately not covered.** It was, and it paid for itself in friction
-   rather than defects: what the rule actually asserts is that a path token appears
-   somewhere under `docs/` — satisfiable by mentioning the file and describing nothing — so
-   every new test file cost a register edit that guaranteed no reader anything. A module
-   is different: the architecture table names one per concern, so a module nothing
-   describes is a real gap. The suite's shape is documented where it belongs, in
+   **The ADR arm is one section, not the record.** `## Context` and `## Alternatives` exist
+   to describe what was considered and **rejected**, so a path there is evidence a module
+   was *discussed* — which is exactly the mention-only satisfaction this rule removes.
+   `## Decision` is where the choice is made. `src/view/host.ts` is the case that needs
+   this form: it is the interface the layer rule is built on, no use case owns it, and
+   [ADR 0003](adrs/0003-four-layers-enforced-by-lint.md) names it under `## Decision`.
+
+   **`test/` is deliberately not covered.** It was, under the older, looser form of this
+   rule, and it paid for itself in friction rather than defects: a path token appearing
+   somewhere under `docs/` is satisfiable by mentioning the file and describing nothing, so
+   every new test file cost a register edit that guaranteed no reader anything. Tightening
+   what counts does not bring it back — the friction was the register edit, not its
+   weakness — and the suite's shape is documented where it belongs, in
    [`test/CLAUDE.md`](../test/CLAUDE.md) and in the task notes that split it.
 
 **One check lives elsewhere, on purpose.** That every **view-option key** and **command id**
@@ -366,7 +381,15 @@ in the first heading rather than making a reader infer it:
   reader can disagree with it.
 - **A verification to run** — `Why this exists` · `How to check` · `Acceptance criteria` ·
   `Outcome`. Written as a checklist someone can execute, because appearance and base identity
-  cannot be tested here.
+  cannot be tested here. `## How to check` is carried by this kind and no other, which is
+  what lets `RELEASING.md` derive the release sweep instead of holding a list — so spelling
+  that heading anything else removes the note from the sweep silently. It also takes
+  `cadence:` in frontmatter, `release` (run in the pre-tag sweep) or `conditional` (its own
+  trigger, stated in its prose). `docs-check.mjs` holds those two to each other: the heading
+  and the cadence must both be present or both absent, and the cadence must be one of the
+  two. What it does **not** check is the section sequences above — see
+  [[The documented Issue shapes are not the ones in the folder]] — so a verification that
+  declares itself nowhere is still invisible to the sweep.
 
 An Issue may legitimately have **no acceptance criteria**, and should say so out loud
 ("None; recorded so the trade-off is re-decided knowingly rather than rediscovered"). A

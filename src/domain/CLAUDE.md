@@ -5,6 +5,29 @@ DOM — enforced by `no-restricted-imports` in `eslint.config.mjs`. The rules be
 the ones that bite when changing anything here; the cross-cutting context-row rule lives
 in the root `CLAUDE.md` because it spans every layer.
 
+## Cost
+
+`buildModel` is rebuilt WHOLE on every data update — including the refresh that ends every
+write batch, so this is paid on each move and not only when the vault changes underneath.
+Its phases are a fixed list of passes over the item set: `createItems`, `linkAll`,
+`breakCycles`, the scope prune, two vocabulary collections, `sortSiblingsDeep`,
+`assignAll`. `sortSiblingsDeep` is the one deliberately superlinear step — comparison
+sorting is the right tool for ranking siblings — so the bound is **O(n log n)**, and what
+must not appear is a *second* superlinear step beside it.
+
+Two of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
+paragraph above is prose. Checked: the vault is read **once per note loaded** — `addItem`
+holds the only `getFileCache` call site in this layer, so a later phase re-reading the
+cache per item shows up as n² — and **every item is sorted exactly once**, the sum of the
+sibling groups `sortSiblingsDeep` sorts equalling the item count, so a phase that
+re-sorts or a sort that moves into a per-item path fails. Not checked, and deliberately
+not claimed: a traversal phase that turned quadratic without reading the vault again or
+sorting again. Nothing observes a walk from outside `buildModel`, and inventing a seam to
+count one would be a seam built for the test. Nothing here measures elapsed time either;
+a node test that did would be measuring the runner.
+
+## Rules
+
 - The model is built in three phases and **each has its own type**: `RawItem` (what one
   note says about itself) → `LinkedItem` (+ `parent`, `children`, `orphan`, once the tree
   is resolved) → `BacklogItem` (+ levels, depth, `focusRoot`, rollups). A field exists

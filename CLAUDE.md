@@ -27,9 +27,10 @@ framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
 `usedClassMembers`, not suppressed inline. `docs-check.mjs` gates `docs/` the same way:
 the register's hierarchy and sibling orders, every wikilink, every source path a current
 note names, the use-case shape, the ADR frontmatter — and the check that finds *missing*
-notes, since every module in `src/` must be named by at least one. `test/` is deliberately
-outside that rule: naming a path is not describing it, so the check bought a register edit
-per new test file and nothing else. That gate has a
+notes, since every module in `src/` must be *specified* by at least one — in a use case's
+`## Where it lives` or an ADR's `## Decision`, a mention anywhere else counting for
+nothing. `test/` is deliberately outside that rule: naming a path is not describing it, so
+the check bought a register edit per new test file and nothing else. That gate has a
 gate: `test/docs/checkerAccepts.test.ts` and `test/docs/checkerRejects.test.ts` run it over
 planted trees in both directions, so a rule quietly lost fails a test, and a legal form it
 starts refusing does too — the direction that blocks a contributor rather than letting one
@@ -57,58 +58,28 @@ main → commands → view → storage → domain
 `ui/` is a leaf of reusable Obsidian dialogs that knows about none of them. `test/`
 mirrors the same directories.
 
-| File | Responsibility | Testable |
-| --- | --- | --- |
-| `src/main.ts` | Registers the view via `registerBasesView`, plus the command | — |
-| **`domain/`** | **The backlog itself. Reads the vault, never writes it; never touches the DOM.** | |
-| `domain/settings.ts` | `BacklogSettings`, defaults, config resolution, `configProblems` validation, the optional-property table every layer reads a key through | node tests |
-| `domain/viewOptions.ts` | The declarative Bases view-options schema (its `key`s are persisted user data) | node tests |
-| `domain/itemTypes.ts` | The type vocabulary: the level ladder, the extra types beside it, and the markers that sit on no rung at all | node tests |
-| `domain/noteFields.ts` | Reading a work item's fields off a note: wikilink/bare/alias/list parents, tolerant numbers | node tests |
-| `domain/model.ts` | Tree building in three typed phases: parent links, cycles, sorting, effective levels, focus re-rooting, rollups | node tests |
-| `domain/folderNotes.ts` | Folder-note inference — the same ancestor walk over loaded items and over the vault | node tests |
-| `domain/dropTargets.ts` | Drop-target math and the `DropZone`/`DropTarget` vocabulary (zones, no-op/cycle/stale-link rules) | node tests |
-| `domain/board.ts` | Board derivation: columns from the workflow, card assignment, context-card placement and sorting | node tests |
-| `domain/roadmap.ts` | Roadmap derivation: the declared axis, horizon buckets, timeline placement, the shelf partition, context handling, a marker reduced to its target point | node tests |
-| `domain/timeline.ts` | Civil-date arithmetic: spans, the bounded month window, bar geometry — today is always injected | node tests |
-| `domain/writePlan.ts` | What a change *would* write: drop plans (tree, state, horizon), ranking, backfill. Pure — applies nothing | node tests |
-| `domain/backlogReadme.ts` | The README a backlog folder carries: the schema in the view's own keys, generated from configuration and the offered states. Pure text | node tests |
-| `domain/readmeText.ts` | Putting a configured value into that text without it changing meaning: the code span, the table cell, the copyable YAML | node tests |
-| `domain/readmeStamps.ts` | The dates the view writes by itself: which states stamp them, the rows that name them, the rule that says so | node tests |
-| `domain/readmeMarker.ts` | What the generated README *is*: its file name, and the one line saying which view wrote it | node tests |
-| **`storage/`** | **The only place anything is persisted.** | |
-| `storage/frontmatter.ts` | ALL frontmatter writes + note creation | node tests |
-| `storage/baseFile.ts` | Writing the `.base` file itself | node tests |
-| `storage/readmeFile.ts` | Writing the generated README: the marker check, the identical-file no-op, the refusal | node tests |
-| `storage/collapseStore.ts` | Per-view UI state (collapse sets + projection mode + roadmap-axis pick) in vault-scoped localStorage: base identity, defensive read, pruning | jsdom tests |
-| **`view/`** | **DOM and interaction.** | |
-| `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
-| `view/registry.ts` | The live views, and which one the workspace is showing — how a palette command reaches a Bases view | jsdom tests |
-| `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch | jsdom tests |
-| `view/writeGate.ts` | The write gate: validation, one batch at a time, progress, the undo slot, the deferred mid-batch refresh | jsdom tests |
-| `view/selection.ts` | The one selection either projection holds — row/card by path, or a board column stop — and its aria bookkeeping | jsdom tests |
-| `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
-| `view/filterState.ts` | The quick filter's session state: the text, the match path that renders, the matches themselves | jsdom tests |
-| `view/render/toolbar.ts`, `view/render/rows.ts` | DOM rendering: toolbar, and the tree/row lead | jsdom tests |
-| `view/render/projections.ts` | The content-pane fork: which projection draws into the scroller, the role/label the pane claims, and where the scroll offsets belong | jsdom tests |
-| `view/render/board.ts` | The board projection: columns, cards, the advisory beside empty stages — and the card body every projection shares | jsdom tests |
-| `view/render/roadmap.ts` | The roadmap projection: buckets or the dated grid, the shelf, the context strip, the advisory — and, on the horizon axis, the drop targets and the per-bucket New | jsdom tests |
-| `view/render/timeline.ts` | The dated grid: month header, bars and milestones with exact-date tooltips, the today line | jsdom tests |
-| `view/render/emptyStates.ts` | What the tree shows with no rows: loading, empty, no match, all done — plus the board's and roadmap's unconfigured guidance and the one-press setup beside it | jsdom tests |
-| `view/render/columns.ts` | `RowContext` (per-pass row index + hoisted config lookups), the column header and every trailing column: property cells, tags, the state and horizon chips, rollup | jsdom tests |
-| `view/interactions/dragDrop.ts` | The tree's drag: transient state, indicators, hover-expand, root strip | jsdom tests |
-| `view/interactions/cardDrag.ts` | The card drag both projections share: Pragmatic wiring, drop targets that take their own plan, announcements (ADR 0018) | jsdom tests |
-| `view/interactions/keyboard.ts` | Tree keyboard navigation + shortcuts | jsdom tests |
-| `view/interactions/menu.ts` | Context menu | jsdom tests |
-| `view/interactions/structure.ts` | Move/indent/outdent, and the setup action (bind the missing properties, then backfill) | jsdom + node |
-| `view/interactions/create.ts` | New-item flow (config-gated) + folder inference | jsdom tests |
-| `view/interactions/plan.ts` | The roadmap's placement writes from a row: set/clear horizon, schedule, unschedule | jsdom tests |
-| `view/interactions/tags.ts` | Tag vocabulary, normalization and the add/remove writes | jsdom tests |
-| `view/interactions/undo.ts` | The undo replay: the slot, the partial-failure remainder, and `UndoRecovery` | jsdom tests |
-| `src/ui/prompts.ts` | New-item, folder and schedule prompts (native date fields + folder suggest) | jsdom tests |
-| `src/ui/valueSuggest.ts` | Shared `AbstractInputSuggest` base the folder and tag suggesters extend | jsdom tests |
-| `src/commands/scaffold.ts` | "Create backlog" command flow | jsdom tests |
-| `src/commands/readme.ts` | "Write backlog readme" command: the config gate, the outcomes, the active-view check | jsdom tests |
+**`domain/`** is the backlog itself — what the tree *is*, what a change *would* mean, what
+each projection derives — and it reads the vault without ever writing it or touching the
+DOM. That is what makes it the layer with node tests and no harness: a rule about levels,
+ranking, scope or placement can be asked of a function rather than of a screen.
+
+**`storage/`** is the only place anything is persisted, and it has node tests like
+`domain/` — apart from `collapseStore.ts`, which reads localStorage and so needs jsdom.
+Not a convention: "everything that puts bytes in the vault is in one directory" is
+established by the `no-restricted-syntax` ban named below, since reading the directory
+shows what is inside it and never that nothing outside writes. That is why the `.base`
+file and the generated README live there too rather than beside the code that decides
+them.
+
+**`view/`** is the DOM and every input that reaches it, so it is the layer the jsdom
+harness exists for. `commands/` is the palette's way in, and `main.ts` is the only place
+anything is registered with Obsidian — the view itself and the commands both.
+
+There is deliberately no list of the modules here. `src/` is the list, one file per
+concern, and it cannot go stale; what a module is *for* is stated where its behaviour is
+specified, which `docs-check.mjs` rule 7 requires of every module in `src/` — the two
+sections named under **Definition of done** above. Read from the behaviour you are
+changing rather than from an index of the tree.
 
 Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites` /
 `createBacklogItem`), and every write path — including creation — goes through the
@@ -121,6 +92,14 @@ A type belongs with the code that *produces* it, not the code that consumes it �
 why `DropTarget` and `DropZone` live in `domain/dropTargets.ts` rather than with the
 writer and the view that read them. Both used to sit upstream and made the pure layer
 depend on the effectful one.
+
+**The stylesheet lives under the same rule.** `styles/` is one partial per concern and
+`styles/index.css` assembles them; the root `styles.css` is generated and gitignored
+beside `main.js`, so the file to edit is always the partial. `styles-assemble.mjs` is
+what makes that a gate rather than a habit — `npm run build` fails on a partial over 400
+lines or one no entry file imports. The import ORDER is behaviour, not organisation: two
+rules of equal specificity are decided by which came last, and `index.css` says which
+positions in its list are load-bearing and why.
 
 ## Testing
 
@@ -137,7 +116,8 @@ there. What stays here binds while you are editing `src/`:
   on one pull request were comments precisely stating the rule the code beside them
   broke, so a confident paragraph is evidence of intent and of nothing else — see
   `docs/issues/A comment that states a rule is not a check.md`. Twice, watching the test
-  fail was what showed it asserted less than it read as.
+  fail was what showed it asserted less than it read as. What to do when the check cannot
+  reach the whole claim is in **Claims, and the checks under them**, below.
 
 ## Invariants that bite
 
@@ -253,6 +233,42 @@ correct rule. Read `docs/issues/The outcome report was built from one sentence.m
 before building it again: the open question is that nothing correlates a Bases pass with
 a write, and a design that needs that correlation cannot be made to work here.
 
+
+## Claims, and the checks under them
+
+The rules above are the ones this codebase learned from bugs. These are the ones it
+learned from *reviews* — every one was broken here first, several of them inside the
+change that was fixing the previous instance.
+
+- **Read the register before reasoning from the code.** `docs/` holds decisions the code
+  cannot show: an alternative already refused and why, an ordering two pieces of work must
+  keep, which note already owns a question. Code answers *what is*; only a note answers
+  *what was decided*. A proposal that reads as obvious from the source alone is the one
+  most likely to have been considered and rejected already — check before proposing, and
+  say so when the register disagrees with you.
+- **Write the guarantee to the check, never ahead of it.** When a check cannot reach the
+  whole claim, narrow the sentence rather than leaving the wider one standing. A guide that
+  promises more than lint and the suite deliver is the same defect as an unchecked comment,
+  and harder to catch because it reads as settled. If narrowing makes the sentence ugly —
+  *"a direct call fails lint; an aliased one is caught only on a path the spy drives"* —
+  the sentence has become honest and the ugliness is the information.
+- **A category invariant is checked at the forbidden thing, not by listing the places.**
+  "Nothing does X" cannot be verified by driving the paths someone thought of; the next
+  path is exactly the one that breaks it. Put the check on the call — a lint rule, or a spy
+  on the call itself — so it holds for code not yet written. Where the rule cannot see
+  every spelling, name the spelling it does see.
+- **Measure a set with an instrument that can see all of it, and test the instrument
+  first.** A grep for `foo(` silently misses `foo<T>(`. A search for one heading misses the
+  notes that spell it differently. Both happened here, and both times the wrong count was
+  used as the evidence for a decision before anyone counted a second way.
+- **Address code by name, not by position.** Selectors, symbols and paths survive an edit;
+  line numbers are correct until the next insertion above them. A stylesheet that grew by
+  most of its own size again left every line citation in the register pointing at the wrong
+  rule, while every selector still resolved.
+- **A table that enumerates code goes stale; a table that states a rule does not.** The
+  first kind duplicates something the tree already says and is wrong the moment a file
+  moves; the second cannot be falsified by a code change. Prefer prose that names a module
+  only where the sentence is *about* that module — the layer guides are the worked example.
 
 ## Gotchas
 

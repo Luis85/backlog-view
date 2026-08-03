@@ -1,0 +1,19 @@
+/* The shared dialogs — `src/ui/prompts.ts`. */
+
+/* "Under "Epic X" · in folder "Backlog"" context line of the new-item prompt */
+.pbl-modal-detail {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-bottom: var(--size-4-3);
+}
+
+/* Why a prompt refused what was typed. Always in the DOM and empty until there is
+   something to say, so the dialog does not resize under the pointer on submit. */
+.pbl-modal-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-modal-error:not(:empty) {
+	margin-bottom: var(--size-4-2);
+}

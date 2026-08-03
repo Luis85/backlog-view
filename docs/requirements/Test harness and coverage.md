@@ -3,6 +3,7 @@ type: Feature
 parent: "[[Codebase health]]"
 order: 10
 status: Done
+closed: 2026-08-03
 ---
 
 # Test harness and coverage

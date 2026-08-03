@@ -10,7 +10,7 @@ source: user request
 files:
   - src/domain/timeline.ts
   - src/view/render/timeline.ts
-  - styles.css
+  - styles/timeline.css
 ---
 
 # A milestone line across the plan

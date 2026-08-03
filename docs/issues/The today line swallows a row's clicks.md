@@ -9,7 +9,7 @@ created: 2026-08-02
 source: 2026-08-02 Codex review of PR #56, found while fixing the milestone line's twin
 files:
   - src/view/render/timeline.ts
-  - styles.css
+  - styles/timeline.css
 ---
 
 # The today line swallows a row's clicks

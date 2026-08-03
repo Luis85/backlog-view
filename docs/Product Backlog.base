@@ -16,3 +16,4 @@ views:
       - note.status
       - note.priority
       - note.area
+      - note.tags

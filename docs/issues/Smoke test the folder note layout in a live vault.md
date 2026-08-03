@@ -5,6 +5,7 @@ parent: "[[Creating items]]"
 status: Open
 priority: P2
 area: verification
+cadence: release
 created: 2026-08-01
 source: Backlog as folder notes design
 ---
@@ -25,7 +26,7 @@ Run it in a `npm run test-build` vault once the option lands. `docs/` is the tes
 it is already a backlog, and it is already flat, so it exercises the mixed case from the
 first item created.
 
-## What to look at
+## How to check
 
 - **The shape** — a created item is `<container>/<Title>/<Title>.md`, the folder and note
   named identically, and the file explorer shows the item where the tree does.

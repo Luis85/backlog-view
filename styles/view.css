@@ -1,0 +1,10 @@
+/* The view root — the pane `src/view/backlogView.ts` builds everything into. */
+
+.pbl-view {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+}

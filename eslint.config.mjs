@@ -104,6 +104,31 @@ const OVERBY = {
 };
 
 /**
+ * The tree element is the container; querying it is a walk of every rendered row to
+ * find something the view already has by reference (`rowEls`, the selected row, the
+ * drag source). A full-tree `querySelectorAll` on every `dragend` shipped once. The
+ * ban is on the RECEIVER, not on a directory: every legitimate query in `src/` narrows
+ * to a row, a column or the toolbar first, so none of them names `treeEl` and none
+ * needs an exemption. It sees the receiver's SPELLING — dotted (`this.els.treeEl`),
+ * bare (`treeEl`) and computed (`this.els['treeEl']`, a Literal with no `.name`, which
+ * is why the third alternative reads `object.property.value`) — but not an alias:
+ * `const el = this.els.treeEl; el.querySelectorAll(...)` passes, and closing that needs
+ * type information about the receiver, which is a bigger tool than this invariant is
+ * worth.
+ *
+ * The alternation has to be GROUPED. `All?` makes only the trailing `l` optional, so
+ * `/^querySelectorAll?$/` matches `querySelectorAl` and `querySelectorAll` and never
+ * plain `querySelector` — it let every single-element query through, and lint stayed
+ * green on a planted one. Ordinary regex semantics, not an esquery quirk.
+ */
+const TREE_SCAN = {
+	selector:
+		"MemberExpression[property.name=/^querySelector(All)?$/]:matches([object.name='treeEl'], [object.property.name='treeEl'], [object.property.value='treeEl'])",
+	message:
+		'Reach rows through the rowEls index (or the element already held) — querying treeEl walks every rendered row.',
+};
+
+/**
  * Flat config sets a rule wholesale per file: a narrower block REPLACES the wider one's
  * options rather than adding to them, so two blocks matching the same file would leave
  * it with only the later one's selectors — silently dropping the rest.
@@ -137,6 +162,7 @@ export default defineConfig([
 			'docs-check.mjs',
 			'eslint.config.mjs',
 			'esbuild.config.mjs',
+			'styles-assemble.mjs',
 			'test-build.mjs',
 			'version-bump.mjs',
 			'vitest.config.mts',
@@ -161,33 +187,33 @@ export default defineConfig([
 		// Everything that is not one of the four special cases below.
 		files: ['src/**/*.ts'],
 		ignores: [STORAGE, MENU, RENDER, ...RANKING],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY]),
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
 		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else
 		// about it is special — the menu rule and the overBy rule still do.
 		files: [STORAGE],
-		rules: syntaxRules([MENU_ANCHOR, OVERBY]),
+		rules: syntaxRules([MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
 		// allowed to make it. It writes nothing and plans nothing, so both other rules hold.
 		files: [MENU],
-		rules: syntaxRules([...WRITE_BOUNDARY, OVERBY]),
+		rules: syntaxRules([...WRITE_BOUNDARY, OVERBY, TREE_SCAN]),
 	},
 	{
 		// Ranking code: what it writes is an order among real siblings, and a type is
 		// the rung its parent chain puts it on — never the depth it is drawn at. It plans
 		// writes, which is exactly what overBy must stay out of.
 		files: RANKING,
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY]),
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
 	},
 	{
 		// view/render/ is the one region allowed to import overBy: it draws the column,
 		// never plans a write. The write boundary and the menu-anchor rule still apply —
 		// nothing here is exempt from those, only from OVERBY.
 		files: [RENDER],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR]),
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN]),
 	},
 	{
 		// Everything but `test/`, rather than `src/**` by name: a `files` pattern is

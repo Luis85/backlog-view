@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Module structure]]"
 order: 10
-status: Done
+status: Open
 ---
 
 # One file per concern
@@ -59,6 +59,8 @@ change one behaviour.
 
 `eslint.config.mjs` (per-directory `no-restricted-imports`, the line caps) ·
 `.fallowrc.json` (dead code, duplication, complexity) ·
-`CLAUDE.md` and the per-layer `src/*/CLAUDE.md` files (the table of what each file owns).
+`CLAUDE.md` and the per-layer `src/*/CLAUDE.md` files (what each layer is for, and which
+rules bite where — prose, not an inventory: see
+[[A guide is prose, not an inventory]]).
 Done by: [[Lift empty states out of rows]], [[Split the view options schema]],
 [[Split the view test suite]], [[Split the view dispatch hub]].

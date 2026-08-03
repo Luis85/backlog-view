@@ -54,7 +54,7 @@ knob:
 | `--pbl-indent` | `rows.ts:47` | Indent step |
 | `--pbl-depth` | `rows.ts:130,150` | This row's depth |
 | `--pbl-progress` | `columns.ts:271` | This bar's fill percentage |
-| `--pbl-badge-rgb` | `styles.css` per level class | The badge colour |
+| `--pbl-badge-rgb` | `styles/badges.css` per level class | The badge colour |
 
 Seven of the eight are written by TypeScript on every render, so a snippet that overrides
 one is overwritten immediately — or worse, wins for the rules it reaches and loses for
@@ -95,7 +95,7 @@ is a bug report after the next refactor.
 
 **Nothing yet — this note is design.** `src/view/render/rows.ts` sets six of the eight
 `--pbl-*` properties per render, and
-`src/view/render/columns.ts` sets the seventh · `styles.css` sets `--pbl-badge-rgb` per
+`src/view/render/columns.ts` sets the seventh · `styles/badges.css` sets `--pbl-badge-rgb` per
 level class, which is the one that looks like a knob and is the obvious contract candidate ·
 `README.md` is where a theme author will look, so the contract goes there rather than only
 in `docs/` · `RELEASING.md` carries the versioning terms a breaking rename would need.

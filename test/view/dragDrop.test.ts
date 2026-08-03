@@ -220,6 +220,27 @@ describe('drag state details', () => {
 		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-dragging')).toBe(false);
 		expect(row.classList.contains('pbl-drag-source')).toBe(false);
 	});
+
+	// A sibling collapse mid-drag rebuilds the dragged row's group via refreshRowChildren,
+	// which detaches it WITHOUT a full render (no onRenderStart) — the source element is
+	// gone from the tree, but the drag session still targets it directly. `document`'s
+	// dragend listener is the one that fires here (the detached row has no path to bubble
+	// through), so this is also the "never touched a row" cleanup path.
+	it('still clears the drag-source class after the row is detached mid-drag by a sibling refresh', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const source = rowByTitle(containerEl, 'Feature B1');
+		source.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		expect(source.classList.contains('pbl-drag-source')).toBe(true);
+
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.contains(source)).toBe(false);
+
+		document.dispatchEvent(new MouseEvent('dragend'));
+		expect(source.classList.contains('pbl-drag-source')).toBe(false);
+	});
 });
 
 describe('what the browser is told about the drag', () => {

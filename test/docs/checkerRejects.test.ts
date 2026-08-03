@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { note, runRejections, useCase } from '../helpers/register';
+import { adr, note, runRejections, useCase } from '../helpers/register';
 
 /**
  * **Does an invalid document fail?**
@@ -181,11 +181,68 @@ describe('cross-references', () => {
 			'names src/gone.ts, which does not exist',
 		],
 		[
-			'a module no note names',
+			'a module no use case and no ADR specifies',
 			(files) => {
 				files['src/orphan.ts'] = 'export const orphan = 1;\n';
 			},
-			'no note names src/orphan.ts',
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
+			'a module named by a use case outside its `## Where it lives`',
+			(files) => {
+				// The satisfaction the old rule accepted and this one does not: a path token
+				// somewhere under `docs/`. A criterion is a claim about behaviour, not a
+				// statement of where the behaviour lives.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/requirements/Doing the thing.md'] = useCase().replace(
+					'- It happens.',
+					'- It happens, in `src/orphan.ts`.',
+				);
+			},
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
+			'a module named only by an ADR `## Context`',
+			(files) => {
+				// The direction nobody would check. `## Context` and `## Alternatives` exist to
+				// describe what was **considered and rejected**, so a path there is evidence a
+				// module was discussed — which is the mention-only satisfaction this rule
+				// exists to stop. Accepting a path anywhere in an ADR would keep the loophole
+				// open for exactly the notes least likely to be read as specifications.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision').replace(
+					'## Context\n\nSomething.',
+					'## Context\n\nWe weighed `src/orphan.ts` and went the other way.',
+				);
+			},
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
+			'a module named only by an ADR `## Consequences`',
+			(files) => {
+				// The other end of `## Decision`, and the one nothing else pins. `## Context`
+				// comes BEFORE it, so every case above stays red under a `sectionBody` that
+				// reads the decision to the end of the note — the mutation that widens
+				// acceptance is invisible to a case planted on the near side. A section that
+				// FOLLOWS `## Decision` is what asks whether the slice stops where it says.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision').replace(
+					'## Consequences\n\nSomething.',
+					'## Consequences\n\nWhat it cost: `src/orphan.ts` now has two callers.',
+				);
+			},
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
+			'a module named only by a record note',
+			(files) => {
+				// A `Task`, `Issue` or `Bug` is a record of a moment rather than a
+				// specification — and those notes are explicitly allowed to name paths that
+				// have since moved, so a rule satisfied by one is satisfied by history.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/tasks/Some work.md'] = note('Task', 10, 'Doing the thing', '# Some work\n\nTouched `src/orphan.ts`.\n');
+			},
+			'no use case or ADR specifies src/orphan.ts',
 		],
 	]);
 });
@@ -294,6 +351,119 @@ describe('the use-case shape', () => {
 	]);
 });
 
+/**
+ * The sweep in `RELEASING.md` finds its checklist by querying `docs/issues/`, so these
+ * three are the only shape rules an `Issue` has. The gate deliberately does not enforce the
+ * three section shapes `docs/README.md` documents — see the comment on `CADENCES` in
+ * `docs-check.mjs` — so there are no cases here for those, and their absence is the rule.
+ */
+describe('a verification and its cadence', () => {
+	const verification = (body: string, cadence?: string) => {
+		const text = note('Issue', 20, 'Thing', body);
+		return cadence === undefined ? text : text.replace('status: Open', `status: Open\ncadence: ${cadence}`);
+	};
+
+	runRejections([
+		[
+			'a note the sweep would find, leaving its cadence to be guessed',
+			(files) => {
+				files['docs/issues/Look at the thing.md'] = verification('# Look at the thing\n\n## How to check\n\nOpen it.\n');
+			},
+			'carries `## How to check` but no `cadence:`',
+		],
+		[
+			'a note declaring a cadence the query will never reach — the drift that started this',
+			(files) => {
+				// Exactly the three notes that were headed `## What to look at`: marked as a
+				// verification, and invisible to the sweep that is supposed to run it.
+				files['docs/issues/Look at the thing.md'] = verification(
+					'# Look at the thing\n\n## What to look at\n\nOpen it.\n',
+					'release',
+				);
+			},
+			"has no `## How to check` heading — the sweep's query will never find it",
+		],
+		[
+			'a cadence outside the two the release sweep reads',
+			(files) => {
+				files['docs/issues/Look at the thing.md'] = verification(
+					'# Look at the thing\n\n## How to check\n\nOpen it.\n',
+					'sometimes',
+				);
+			},
+			'cadence "sometimes" is not one of',
+		],
+	]);
+});
+
+/**
+ * **Skipped on Windows, and the reason is the rule.** Each case plants a filename Windows
+ * cannot represent, so on Windows the *planting* fails rather than the gate — the harness
+ * would be blocked by exactly the constraint being checked. The rule is platform-neutral
+ * (it reads a string), so Linux and macOS runs cover it and the count test below pins the
+ * sites on every platform.
+ *
+ * This gate exists because CI already caught one of these the expensive way: a note titled
+ * with double quotes failed `git checkout` on the Windows job, before any build step, so
+ * the tree could not be cloned and nothing in `docs-check.mjs` ever ran.
+ */
+describe.skipIf(process.platform === 'win32')('a filename Windows cannot check out', () => {
+	runRejections([
+		[
+			'a note whose prose title contains a double quote',
+			(files) => {
+				files['docs/issues/A note about "a quoted phrase".md'] = note(
+					'Issue',
+					20,
+					'Thing',
+					'# A note about a quoted phrase\n\n## The decision\n\nWe did it.\n',
+				);
+			},
+			'which Windows forbids',
+		],
+		[
+			// The one in the forbidden set that is an ordinary character everywhere else: a
+			// name holding a backslash commits cleanly from Linux and is unrepresentable on
+			// Windows. The rule reads `entry.name`, so the separator on a Windows run is not
+			// in what it tests — checking the joined path would flag every entry in the tree.
+			'a note whose name holds a backslash, which only Windows reads as a separator',
+			(files) => {
+				files['docs/issues/A\\B.md'] = note('Issue', 20, 'Thing', '# A B\n\n## The decision\n\nWe did it.\n');
+			},
+			'which Windows forbids',
+		],
+		[
+			// A tab is a byte like any other in a POSIX name, so this commits and pushes
+			// from Linux without anything objecting, and Windows cannot represent any of
+			// 0-31. The literal below really does hold one.
+			'a note whose name holds a control character',
+			(files) => {
+				files['docs/issues/A\tB.md'] = note('Issue', 20, 'Thing', '# A B\n\n## The decision\n\nWe did it.\n');
+			},
+			'holds a control character',
+		],
+		[
+			'a note named after a reserved device',
+			(files) => {
+				files['docs/issues/NUL.md'] = note('Issue', 20, 'Thing', '# NUL\n\n## The decision\n\nWe did it.\n');
+			},
+			'reserved device name on Windows',
+		],
+		[
+			// The name Windows actually refuses, which is NOT a `.md` file — so a check
+			// running over the walk's results could never have seen it. The first version of
+			// this case planted `A trailing thought..md` instead, which is a perfectly legal
+			// Windows name ending in `d`, and passed against a rule that was reading a
+			// stripped stem. It asserted a false positive and read like a check.
+			'a directory entry whose name ends in a dot',
+			(files) => {
+				files['docs/issues/A trailing thought.md.'] = 'Not a note, and not a name Windows can hold.\n';
+			},
+			'ends in a space or a dot',
+		],
+	]);
+});
+
 describe('the corpus covers every rule', () => {
 	it('is built against every place the gate can report a problem', async () => {
 		// The two rejection files were written by enumerating the gate's report sites and
@@ -310,6 +480,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(43);
+		expect(sites.length).toBe(47);
 	});
 });

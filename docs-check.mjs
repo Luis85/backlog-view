@@ -154,15 +154,44 @@ function between(text, start, end) {
 	return from === -1 || to <= from ? "" : text.slice(from, to);
 }
 
+/**
+ * Fenced blocks removed. Both fence characters: CommonMark fences with ``` or ~~~, and
+ * stripping only the first left every structural question in this file — headings,
+ * sections, index entries — readable inside a tilde fence, where nothing renders and
+ * nothing is real.
+ *
+ * Split out from `withoutCode` for the one question that needs a document's structure and
+ * its code spans at once: `sectionBody` locates a heading and then reads the PATHS under
+ * it, and this register writes every path in backticks, so stripping spans would leave the
+ * section empty of the only thing being looked for. Fences are what protect a heading from
+ * an example anyway — a `## Decision` inside a code span cannot open a line to begin with,
+ * so `sectionHits`' line anchor already refuses it.
+ */
+const withoutFences = (text) => text.replace(/```[\s\S]*?```/g, "").replace(/~~~[\s\S]*?~~~/g, "");
+
 /** Wikilinks and paths inside code spans are examples, not references. */
 function withoutCode(text) {
-	// Both fence characters. CommonMark fences with ``` or ~~~, and stripping only the
-	// first left every structural question in this file — headings, sections, index
-	// entries — readable inside a tilde fence, where nothing renders and nothing is real.
-	return text
-		.replace(/```[\s\S]*?```/g, "")
-		.replace(/~~~[\s\S]*?~~~/g, "")
-		.replace(/`[^`\n]*`/g, "");
+	return withoutFences(text).replace(/`[^`\n]*`/g, "");
+}
+
+/**
+ * What one section says: from its heading to the next `## `, or to the end of the note —
+ * `## Where it lives` is a use case's last section, so running to the end is the ordinary
+ * case here rather than the edge one. A `###` subheading is inside the section, not after
+ * it.
+ *
+ * The heading is found by `sectionHits`, so a section is the same thing here as everywhere
+ * else in this file: a line of its own, never a phrase in a sentence. A duplicated heading
+ * is already reported by `checkSections`; the first one is read, which is the half a
+ * reader meets first.
+ */
+function sectionBody(text, section) {
+	const prose = withoutFences(text);
+	const [hit] = sectionHits(prose, section);
+	if (!hit) return "";
+	const after = prose.slice(hit.index + hit[0].length);
+	const next = /^## /m.exec(after);
+	return next ? after.slice(0, next.index) : after;
 }
 
 /**
@@ -184,10 +213,54 @@ function frontmatter(text) {
 	return { field, has, raw: match[1] };
 }
 
+/**
+ * **A name Windows cannot check out**, asked of the entry as it sits on disk.
+ *
+ * Notes here are titled in prose, and prose contains punctuation NTFS forbids —
+ * `< > : " | ? * \`, a trailing space or dot, and the reserved device names. A note called
+ * `Finding 4 — "a few hundred rows" is a comment, not a check.md` was committed from Linux,
+ * where it is an ordinary filename, and the Windows CI job failed at `git checkout` with
+ * `error: invalid path` — before any build step, so nothing in this file ever ran and the
+ * repository could not be cloned on half the platforms it supports.
+ *
+ * It runs inside `walk` rather than over the `.md` files walk returns, and the first
+ * version got that wrong in both directions at once. Stripping `.md` to find the "stem"
+ * made `A trailing thought..md` look like it ended in a dot — it ends in `d`, and Windows
+ * is perfectly happy with it — while the name that actually breaks a checkout,
+ * `A trailing thought.md.`, is not a `.md` file at all and so was never in the list being
+ * checked. The rule is about the bytes of the directory entry, so the directory entry is
+ * what it reads, extension included and before any filtering.
+ *
+ * Directories are checked too: a folder named `NUL` or ending in a space is exactly as
+ * unclonable as a file, and `walk` is the one place both are in hand.
+ */
+const WINDOWS_NAME_RULES = [
+	// A backslash belongs here for the same reason as the rest and is the easiest to leave
+	// out: on Linux and macOS it is an ordinary character in a NAME, so `A\B.md` is a file
+	// somebody can create and commit, and only Windows reads it as a separator. `/` is
+	// deliberately absent — no POSIX filesystem can hold it in a name, so a rule for it
+	// could never fire. This tests `entry.name`, never the joined path, which is what keeps
+	// the separator on a Windows run from matching every entry in the tree.
+	[/[<>:"|?*\\]/, 'uses one of `< > : " | ? * \\`, which Windows forbids — git cannot check this out'],
+	// A tab or any other control character is an ordinary byte in a POSIX name — `A\tB.md`
+	// is a file that commits and pushes cleanly — and Windows cannot represent any of
+	// 0–31. Written as a predicate rather than a `[\x01-\x1f]` class because that class
+	// trips `no-control-regex`, and silencing a rule in order to write the thing it warns
+	// about is worse than not needing it. `\0` is included for free and is unreachable, for
+	// the same reason `/` is absent above.
+	[{ test: (name) => [...name].some((c) => c.charCodeAt(0) < 32) }, "holds a control character, which Windows cannot represent"],
+	[/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i, "is a reserved device name on Windows"],
+	[/[ .]$/, "ends in a space or a dot, which Windows cannot represent"],
+];
+function checkWindowsName(full, name) {
+	for (const [pattern, why] of WINDOWS_NAME_RULES) if (pattern.test(name)) fail(full, `name ${why}`);
+}
+
 async function walk(dir) {
 	const found = [];
 	for (const entry of await readdir(dir, { withFileTypes: true })) {
 		const full = path.join(dir, entry.name);
+		checkWindowsName(full, entry.name);
 		if (entry.isDirectory()) found.push(...(await walk(full)));
 		else if (entry.name.endsWith(".md")) found.push(full);
 	}
@@ -224,7 +297,6 @@ const readText = async (file) => (await readFile(file, "utf8")).replaceAll("\r\n
 const files = (await walk(DOCS)).sort();
 const texts = new Map(await Promise.all(files.map(async (f) => [f, await readText(f)])));
 const stems = new Set(files.map((f) => path.basename(f, ".md")));
-const allText = [...texts.values()].join("\n");
 
 // ---------------------------------------------------------------- the backlog tree
 const notes = new Map();
@@ -409,6 +481,50 @@ for (const [, note] of notes) {
 	}
 }
 
+// ------------------------------------------------------------------- verification notes
+/**
+ * **What makes a verification findable, and nothing else about an `Issue`.**
+ *
+ * `RELEASING.md` derives the pre-tag sweep by querying `docs/issues/` for notes carrying
+ * `## How to check` as a whole heading line and reading their `cadence:`. That query is the
+ * only thing in this repository leaning on an `Issue`'s shape, so it is the only thing
+ * checked here. The three shapes `docs/README.md` documents — a decision, a limitation, a
+ * verification — are deliberately NOT enforced: most notes in the folder do not match the
+ * one their opening heading implies, and `## Outcome` is legitimately absent from a check
+ * nobody has run yet, since the README says an outcome is written *after* the work. A gate
+ * that failed three-quarters of the corpus would be answered by editing the corpus.
+ *
+ * The rule is a biconditional because the drift went both ways at once. Three verifications
+ * headed their section `## What to look at` and the query dropped them silently — including
+ * the note that owns the mobile drag verdict another note delegates to — while nothing
+ * marked them as verifications at all.
+ *
+ * **Stated exactly**: a note that DECLARES itself a verification cannot be spelled out of
+ * the sweep, and a note the sweep would find cannot leave its cadence to be guessed. What
+ * this cannot see is a verification that declares itself nowhere — no cadence, heading
+ * spelled freely. Nothing distinguishes that from a note about a check, and inventing a
+ * heuristic for it would gate on a guess.
+ */
+const CADENCES = new Set(["release", "conditional"]);
+for (const [, note] of notes) {
+	if (note.type !== "Issue") continue;
+	const text = texts.get(note.file);
+	// Whole-line, via the same matcher every other section rule uses: `## How to check,
+	// properly` heads an investigation into a CI gate that never ran, and a prefix match
+	// sweeps it into a checklist of things a person is supposed to do in a live vault.
+	const swept = sectionHits(withoutCode(text), "## How to check").length > 0;
+	const cadence = frontmatter(text)?.field("cadence");
+	if (swept && cadence === null) {
+		fail(note.file, "carries `## How to check` but no `cadence:` — the release sweep cannot place it");
+	}
+	if (!swept && cadence !== null) {
+		fail(note.file, `declares \`cadence: ${cadence}\` but has no \`## How to check\` heading — the sweep's query will never find it`);
+	}
+	if (cadence !== null && !CADENCES.has(cadence)) {
+		fail(note.file, `cadence "${cadence}" is not one of ${[...CADENCES]}`);
+	}
+}
+
 // ----------------------------------------------------------------------------- ADRs
 /**
  * An ADR is any note under `docs/adrs/` that is not the index — discovered by **where it
@@ -553,37 +669,56 @@ async function collectTs(dir, keep) {
 	return found;
 }
 
-// Every `.ts` under both trees, helpers included: `test/helpers/view.ts` is the harness
-// every view test is written against, so it is at least as worth naming as a suite.
 /**
- * `src/` only. This is the check that finds *missing* notes rather than wrong ones, and
- * it earns that for modules: the architecture table names one per concern, so a module
- * nothing describes is a gap someone has to answer for.
+ * `src/` only. This is the check that finds *missing* notes rather than wrong ones, and it
+ * earns that for modules: **a module nothing specifies is a capability nobody asked for.**
  *
- * `test/` used to be here too and paid for itself in friction rather than defects. What
- * it actually asserts is that a path token appears somewhere under `docs/` — satisfiable
- * by mentioning the file and describing nothing — so it taxed every new test file with a
- * register edit while guaranteeing no reader anything. The suite's shape is documented
- * where it belongs, in `test/CLAUDE.md` and in the task notes that split it.
+ * `test/` used to be here too and paid for itself in friction rather than defects, for the
+ * reason the section below now removes: what it asserted was that a path token appears
+ * somewhere under `docs/` — satisfiable by mentioning the file and describing nothing — so
+ * it taxed every new test file with a register edit while guaranteeing no reader anything.
+ * Naming a path is not describing it, and a suite's shape is documented where it belongs,
+ * in `test/CLAUDE.md` and in the task notes that split it. Tightening what counts does not
+ * bring `test/` back: the friction was the register edit, not its weakness.
  */
 const sources = await collectTs("src", (n) => n.endsWith(".ts"));
 /**
- * The paths the docs actually name, as whole tokens. `allText.includes(file)` credited a
- * *mistyped* path with naming the real one — `src/main.tsx` contains `src/main.ts` — so a
- * typo simultaneously passed the reference check (which parses the `.ts` prefix and finds
- * the file) and stood in for the module it misspells. Trailing sentence punctuation is
- * trimmed; `.tsx` is not, so it stays the different name it is.
+ * The paths a note **specifies**, as whole tokens, from the two places that specify one: a
+ * use case's `## Where it lives`, and an ADR's `## Decision`.
  *
- * Same rule as `test/docs/surfaces.test.ts` uses for option keys and command ids, arrived
- * at from the same failure: membership in a token set has no ends to get wrong.
+ * Nowhere else, and that is the rule. Scanning the whole register accepted a path token
+ * anywhere under `docs/`, which the register itself called *"satisfiable by mentioning the
+ * file and describing nothing"* when it retired the same rule for `test/`. A `Task`, an
+ * `Issue` and a `Bug` are records of a moment — they are explicitly allowed to name a file
+ * that has since moved — so a rule they can satisfy is a rule history can satisfy.
+ *
+ * The ADR arm is one SECTION rather than the record, for the same reason. `## Context` and
+ * `## Alternatives` exist to describe what was considered and **rejected**, so a path there
+ * is evidence a module was discussed; `## Decision` is where the choice is made.
+ * `src/view/host.ts` is the case that exists — the interface the layer rule is built on,
+ * owned by no use case, named in ADR 0003.
+ *
+ * Whole tokens, because a substring search once credited a *mistyped* path with naming the
+ * real one — `src/main.tsx` contains `src/main.ts` — so a typo simultaneously passed the
+ * reference check (which parses the `.ts` prefix and finds the file) and stood in for the
+ * module it misspells. Trailing sentence punctuation is trimmed; `.tsx` is not, so it stays
+ * the different name it is. Same rule as `test/docs/surfaces.test.ts` uses for option keys
+ * and command ids, arrived at from the same failure: membership in a token set has no ends
+ * to get wrong.
  */
-const namedPaths = new Set(
-	(allText.match(/[\w./-]+/g) ?? []).map((token) => token.replace(/[.-]+$/, "")).filter((t) => t.endsWith(".ts")),
+const specified = new Set(
+	[
+		...[...notes.values()].filter((n) => n.type === "PBI").map((n) => sectionBody(texts.get(n.file), "## Where it lives")),
+		...adrFiles.map((f) => sectionBody(texts.get(f), "## Decision")),
+	]
+		.flatMap((body) => body.match(/[\w./-]+/g) ?? [])
+		.map((token) => token.replace(/[.-]+$/, ""))
+		.filter((t) => t.endsWith(".ts")),
 );
 for (const file of sources) {
 	// Notes write `/`; `collectTs` returns the platform separator. The old substring check
 	// had the same split and nobody had run this on Windows to find out.
-	if (!namedPaths.has(file.split(path.sep).join("/"))) fail("docs", `no note names ${file}`);
+	if (!specified.has(file.split(path.sep).join("/"))) fail("docs", `no use case or ADR specifies ${file}`);
 }
 
 // --------------------------------------------------------------------------- report

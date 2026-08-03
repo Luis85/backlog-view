@@ -1,0 +1,169 @@
+/* The tree: rows, their titles and states, and the indent guides that connect a
+   child group to its parent — `src/view/render/rows.ts`. */
+
+.pbl-tree {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	/* Rows clip at the pane edge rather than making the whole tree scroll sideways */
+	overflow-x: hidden;
+	/* No padding on an edge something is pinned to: a sticky child pins at the
+	   scroller's CONTENT edge, so padding there is a gutter the scrolled content
+	   stays visible in — rows above the column header, bars left of the timeline's
+	   lead. Whatever wants the gap owns it, inside the box that pins. */
+	padding: 0 var(--size-4-2) var(--size-4-4);
+}
+
+.pbl-row {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	min-height: 30px;
+	padding: var(--size-2-1) var(--size-4-1);
+	padding-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * var(--pbl-indent, 24px));
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	user-select: none;
+}
+
+.pbl-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-row.pbl-selected {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+/* A move has been written and the view is waiting for the Bases refresh */
+.pbl-row.pbl-pending,
+.pbl-card.pbl-pending {
+	opacity: 0.45;
+	animation: pbl-pending-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes pbl-pending-pulse {
+	from {
+		opacity: 0.45;
+	}
+	to {
+		opacity: 0.7;
+	}
+}
+
+/* The matching part of a title while the quick filter is active */
+.pbl-match {
+	background-color: hsla(var(--interactive-accent-hsl), 0.25);
+	border-radius: 2px;
+}
+
+/* The selection is the focus ring — but only once there is one. Tabbing into an
+   unselected tree used to show nothing at all, so the container carries the ring
+   until the first row is selected. */
+.pbl-tree:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
+}
+
+/* The view sets this class alongside aria-activedescendant. `:has()` would express
+   the same thing without the bookkeeping, but it invalidates on every subtree change,
+   and this tree rebuilds itself on every data update. */
+.pbl-tree:focus-visible.pbl-has-selection {
+	outline: none;
+}
+
+/* With keyboard focus in the tree, the selection doubles as the focus ring */
+.pbl-tree:focus-visible .pbl-row.pbl-selected {
+	background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
+}
+
+.pbl-grip {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+	cursor: grab;
+	flex: 0 0 auto;
+}
+
+.pbl-row:hover .pbl-grip {
+	opacity: 1;
+}
+
+.pbl-grip .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	flex: 0 0 auto;
+	transition: transform 100ms ease-in-out;
+}
+
+.pbl-chevron:not(.pbl-leaf):hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-chevron.pbl-expanded {
+	transform: rotate(90deg);
+}
+
+.pbl-chevron .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.pbl-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex: 0 1 auto;
+	min-width: 60px;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.pbl-row:hover .pbl-title {
+	color: var(--text-accent);
+}
+
+/* A broken parent link deserves attention — the context menu can clear it */
+.pbl-orphan {
+	display: flex;
+	align-items: center;
+	color: rgb(var(--color-orange-rgb));
+	opacity: 0.85;
+	flex: 0 0 auto;
+}
+
+.pbl-orphan .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* Indent guides connect each child group to its parent's chevron column */
+.pbl-children {
+	position: relative;
+}
+
+.pbl-children::before {
+	content: '';
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	inset-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * var(--pbl-indent, 24px) + 26px);
+	width: 1px;
+	background-color: var(--background-modifier-border);
+	pointer-events: none;
+}

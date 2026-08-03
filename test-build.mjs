@@ -29,8 +29,8 @@ execFileSync(process.execPath, ["esbuild.config.mjs", "once"], { stdio: "inherit
 
 await mkdir(pluginDir, { recursive: true });
 for (const file of VAULT_FILES) {
-	// styles.css is hand-edited source rather than a build artifact — the readable copy
-	// is the one worth debugging against, so it is copied as it stands.
+	// styles.css is a build artifact like main.js — the `once` run above assembled it
+	// from styles/, unminified, which is the copy worth debugging against.
 	await copyFile(file, path.join(pluginDir, file));
 }
 

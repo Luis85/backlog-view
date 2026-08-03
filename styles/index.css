@@ -1,0 +1,53 @@
+/* ==========================================================================
+   Product Backlog — Bases view
+
+   The entry file. `styles-assemble.mjs` concatenates these in the order below and
+   writes the single `styles.css` Obsidian loads; nothing here is loaded by the
+   browser directly, so `@import` is a build instruction rather than a runtime one.
+
+   THE ORDER IS BEHAVIOUR, NOT ORGANISATION. Two rules of equal specificity are
+   decided by which came last, so moving a line in this list can change what the user
+   sees while every partial still parses. Three places in it are load-bearing beyond
+   "later wins in general":
+
+   - `motion.css` and `touch.css` are the two partials named for a CONDITION rather
+     than a module, and they sit here — after the component partials they override,
+     before the projections — because that is exactly where the shared blocks sat in
+     the single file they came out of. Each says in its own header why it is not filed
+     under a component.
+   - `cards.css` follows `board.css`, and `timeline.css` follows `roadmap.css`: the
+     later of each pair overrides the earlier at equal specificity.
+   - The two hover-revealed create buttons are the one case where a `hover: none`
+     block does NOT live in `touch.css`. See that file's header.
+
+   `@keyframes` are global and `pbl-`-prefixed, so nothing collides wherever they are
+   defined. They stay with their first user (`pbl-busy-in` and `pbl-spin` in
+   `toolbar.css`, `pbl-pending-pulse` in `tree.css`, `pbl-expand-nudge` in
+   `dragDrop.css`) rather than being hoisted into a partial of their own: a keyframes
+   file would be one more place to look for four rules and would still not tell you
+   who animates with them.
+   ========================================================================== */
+
+@import "./view.css";
+
+/* Components, in the order the view builds them */
+@import "./toolbar.css";
+@import "./tree.css";
+@import "./columns.css";
+@import "./badges.css";
+@import "./propertyColumns.css";
+@import "./tags.css";
+
+/* Cross-cutting conditions, over everything above */
+@import "./motion.css";
+@import "./touch.css";
+
+@import "./dragDrop.css";
+@import "./emptyStates.css";
+@import "./modals.css";
+
+/* The two other projections, each with its overrides after what they override */
+@import "./board.css";
+@import "./cards.css";
+@import "./roadmap.css";
+@import "./timeline.css";

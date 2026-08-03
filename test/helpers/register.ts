@@ -91,7 +91,8 @@ async function execute(root: string): Promise<CheckResult> {
  * CI cannot see because the workflow is Ubuntu-only. Normalized here rather than at each
  * of the ~80 assertions: the separator is the OS's, never the checker's answer, and a
  * per-case `path.join` would be eighty chances to forget one. Whole-line rather than just
- * the `where:` prefix, since a message body carries a path too (`no note names src/x.ts`).
+ * the `where:` prefix, since a message body carries a path too (`no use case or ADR
+ * specifies src/x.ts`).
  */
 function parseProblems(stderr: string): string[] {
 	const start = stderr.indexOf('problem(s):');

@@ -1,0 +1,214 @@
+/* The fixed columns anchored to a row's end — the state chip, the horizon chip and
+   the rollup — plus the create button that shares the lead — `src/view/render/columns.ts`. */
+
+/* The state chip and the rollup sit in fixed columns anchored to the row's end,
+   so they line up across rows instead of trailing each item's title. */
+/* Like the property columns they never shrink: the title truncates instead (it has
+   an ellipsis and a tooltip), and a column that ran out of room drops out whole
+   rather than sliding out from under its neighbours on rows with long titles. */
+.pbl-state-col {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	width: var(--pbl-state-col, 116px);
+	overflow: hidden;
+}
+
+.pbl-horizon-col {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	width: var(--pbl-horizon-col, 116px);
+	overflow: hidden;
+}
+
+.pbl-meta-col {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 0 0 auto;
+	width: var(--pbl-meta-col, 84px);
+}
+
+/* An ancestor the Base's filter excluded: context for the tree, not a result */
+.pbl-row.pbl-outside .pbl-title {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.pbl-row.pbl-outside .pbl-badge {
+	opacity: 0.65;
+}
+
+.pbl-outside-marker {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+	flex: 0 0 auto;
+}
+
+.pbl-outside-marker .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-count {
+	flex: 0 0 auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+	border-radius: var(--radius-l);
+	padding: 0 var(--size-4-1);
+	min-width: 20px;
+	text-align: center;
+}
+
+/*
+ * Done items dim out, and that is the whole signal. A strike-through on top of muting
+ * says the same thing twice, and it says it by making the title harder to read — which
+ * a finished item still has to be, since a backlog is read as much as it is worked.
+ */
+.pbl-row.pbl-done .pbl-title {
+	color: var(--text-faint);
+}
+
+.pbl-row.pbl-done .pbl-badge {
+	opacity: 0.6;
+}
+
+/* Rollup progress on parent rows when a state property is configured */
+.pbl-progress {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex: 0 0 auto;
+}
+
+.pbl-progress-bar {
+	width: 48px;
+	height: 5px;
+	border-radius: 3px;
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.pbl-progress-fill {
+	width: var(--pbl-progress, 0%);
+	height: 100%;
+	border-radius: 3px;
+	background-color: rgb(var(--color-green-rgb));
+}
+
+.pbl-progress-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	min-width: 28px;
+	text-align: end;
+}
+
+/* Everything below this item is done */
+.pbl-progress.pbl-complete .pbl-progress-label {
+	color: rgb(var(--color-green-rgb));
+	font-weight: var(--font-medium);
+}
+
+.pbl-add {
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+/* Focus can only arrive programmatically (tabindex -1), but a control that is
+   focused and invisible is worse than one that is merely always shown */
+.pbl-row:hover .pbl-add,
+.pbl-add:focus-visible {
+	opacity: 1;
+}
+
+.pbl-add .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* A touch user can produce neither the hover above nor a tab stop (these buttons are
+   `tabindex="-1"`, because the tree and the roadmap are each one stop), so without
+   this the control is not merely hidden — it is unreachable.
+
+   It sits HERE, immediately after the rule it overrides, rather than in the shared
+   `hover: none` block further down: a media query adds no specificity, so an override
+   written above the `opacity: 0` it is undoing simply loses the cascade and reveals
+   nothing. That shipped once. Each hover-revealed control therefore carries its own
+   reveal beside itself, where a later rule for the same selector cannot get in
+   between — and `test/view/rendering.test.ts` checks the ordering rather than
+   trusting this paragraph. */
+@media (hover: none) {
+	.pbl-add {
+		opacity: 1;
+	}
+}
+
+/* Clickable workflow-state and horizon chips (real buttons, minus the button chrome).
+   One shape for two properties: they sit in adjacent columns on the same row, and a
+   second look would read as a second kind of thing. */
+.pbl-state-chip,
+.pbl-horizon-chip {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	max-width: 140px;
+	overflow: hidden;
+	white-space: nowrap;
+	font-family: inherit;
+	font-size: var(--font-ui-smaller);
+	font-weight: inherit;
+	color: var(--text-muted);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-4-1);
+	line-height: 1.7;
+	height: auto;
+	box-shadow: none;
+	flex: 0 1 auto;
+	margin: 0;
+	cursor: var(--cursor);
+}
+
+.pbl-state-chip:not(.pbl-state-static):hover,
+.pbl-horizon-chip:not(.pbl-state-static):hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* The state of a row outside the filter: shown, but not a write surface */
+.pbl-state-static {
+	cursor: default;
+	opacity: 0.75;
+}
+
+.pbl-state-chip .svg-icon,
+.pbl-horizon-chip .svg-icon {
+	width: var(--icon-xs);
+	height: var(--icon-xs);
+}
+
+.pbl-state-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-state-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pbl-state-chip.pbl-state-done {
+	color: rgb(var(--color-green-rgb));
+	border-color: rgba(var(--color-green-rgb), 0.35);
+}
+
+.pbl-state-chip.pbl-state-unset,
+.pbl-horizon-chip.pbl-horizon-unset {
+	color: var(--text-faint);
+	border-style: dashed;
+}

@@ -9,7 +9,7 @@ created: 2026-08-02
 source: 2026-08-02 Codex review of PR #56; independently confirmed a known follow-up
 files:
   - src/view/render/timeline.ts
-  - styles.css
+  - styles/timeline.css
 ---
 
 # Nearby milestone labels cover each other

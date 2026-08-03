@@ -10,7 +10,7 @@ source: PR #47 — seventeen review findings across nine rounds, counted afterwa
 files:
   - src/view/interactions/menu.ts
   - src/view/backlogView.ts
-  - styles.css
+  - styles/columns.css
   - src/view/interactions/keyboard.ts
 ---
 

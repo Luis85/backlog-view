@@ -1,0 +1,45 @@
+/* Touch devices: no hover to reveal controls, and targets need to be larger.
+
+   This is one of the two partials named for a CONDITION rather than for a module,
+   because the rules in it restyle elements the toolbar, the tree and the tags partial
+   each own — filing them under any one of those would leave the next touch change
+   owned by a file nobody would think to open. A `hover: none` rule is found by opening
+   the file named `touch`. */
+@media (hover: none) {
+	.pbl-grip {
+		display: none;
+	}
+
+	/* The two hover-revealed create buttons are NOT here. A media query adds no
+	   specificity, so their reveal has to come after the `opacity: 0` it undoes; each
+	   therefore carries its own `hover: none` block beside itself — `.pbl-add` in
+	   `columns.css`, `.pbl-bucket-add` in `roadmap.css` — where no later rule for the
+	   same selector can get between the pair. `test/view/rendering.test.ts` checks that
+	   ordering rather than trusting this paragraph. */
+
+	/* Revealed by row hover on a pointer device, which a touch user cannot produce —
+	   without this the inline tag editing has no reachable control at all. */
+	.pbl-tag-remove,
+	.pbl-tag-add {
+		display: inline-flex;
+	}
+
+	.pbl-tag-remove {
+		width: 16px;
+		height: 16px;
+	}
+
+	.pbl-tag-add {
+		width: 20px;
+		height: 20px;
+	}
+
+	.pbl-row {
+		min-height: 40px;
+	}
+
+	.pbl-chevron {
+		width: 24px;
+		height: 24px;
+	}
+}
