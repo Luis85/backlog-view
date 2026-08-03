@@ -52,16 +52,27 @@ Run `npm run test-build`, open this repository as a vault on a phone, open
 1. **Does a long press open the context menu** — on a tree row, and on a board card? Every
    non-drag path on touch hangs off that one event, and no note asks it. The board smoke
    test asks whether *drag* works; this asks whether the documented fallback exists.
-2. **Are the hover-revealed controls reachable?** `styles.css` carries a `(hover: none)`
-   block revealing `.pbl-add` and `.pbl-bucket-add`, and `test/view/rendering.test.ts` pins
-   its cascade order because it shipped broken once. That the order is right is checked;
-   that the buttons can be pressed on a device is not.
+2. **Are the hover-revealed controls reachable — all four of them?** Press each one:
+   - `.pbl-add` and `.pbl-bucket-add`, the per-row and per-bucket create buttons. Each
+     carries its **own** `(hover: none)` reveal written after the `opacity: 0` it
+     overrides, and `test/view/rendering.test.ts` pins that cascade order because the
+     bucket button shipped unreachable on touch once.
+   - `.pbl-tag-add` and `.pbl-tag-remove`, by **adding a tag and removing one**. These are
+     `display: none` until row hover, so the shared `(hover: none)` block is their only
+     touch path — the stylesheet says so beside them: *"without this the inline tag editing
+     has no reachable control at all."* `README.md` promises they are always visible on
+     touch, which makes this a documented claim rather than a nicety.
+
+   Cascade order is checked here; that a finger can press the result is not.
 
 Alt+arrow is deliberately not on this list. It needs a keyboard and was never a touch path.
 
 ## Acceptance criteria
 
-- Both questions answered, with the device and Obsidian version recorded.
+- Both questions answered, with the device and Obsidian version recorded — and question 2
+  answered by **pressing all four controls**, including a tag added and a tag removed.
+  Naming only the create buttons would let a broken tag reveal ship with this note marked
+  answered, which is how the bucket button shipped unreachable the first time.
 - The drag verdict is **not** recorded here. It stays with
   [[Smoke test the board in a live vault]] and [[Pragmatic drag and drop for the board]],
   which own it; this note references them rather than answering for them.
