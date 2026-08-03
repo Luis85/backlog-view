@@ -55,10 +55,11 @@ a backlog that got slow between releases.
   enumerate-the-places failure one level larger. **The receiver is the invariant; the
   directory is a proxy for it.**
 - **1c — the exempt calls have to be enumerated.** They do not, and that is the point of
-  the receiver form: `render/rows.ts:75` narrows to a row, `render/toolbar.ts` to the
-  toolbar bar, `selection.ts:97` to a column, `backlogView.ts:235` to the toolbar. None
-  names `treeEl`, so none needs an exemption and none can be broken by the rule.
-  **Sweep for them with a pattern that matches the generic form.** An earlier draft grepped
+  the receiver form: every query in `src/` narrows to a row, a column or the toolbar bar
+  first, so **none of them names `treeEl`** — none needs an exemption and none can be
+  broken by the rule. The property is what is relied on, not a tally; this note has
+  carried a wrong one three times, and each was arrived at by a search that could not see
+  every spelling. **Sweep with a pattern that matches the generic form.** An earlier draft grepped
   `querySelector(` and silently missed every `querySelector<HTMLElement>(` — a type argument
   sits between the name and the paren — so it reported well under half of them and that
   undercount was used twice to argue this rule's shape. The same defect as everything else

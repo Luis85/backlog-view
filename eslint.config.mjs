@@ -113,9 +113,10 @@ const OVERBY = {
  * el.querySelectorAll(...)` passes, and closing that needs type information about the
  * receiver, which is a bigger tool than this invariant is worth.
  *
- * The alternation is `(All)?` rather than `All?` because esquery's attribute regexes
- * are not JavaScript's: `/^querySelectorAll?$/` matched `querySelectorAll` and nothing
- * else here, letting every plain `querySelector` through. Verified by planting both.
+ * The alternation has to be GROUPED. `All?` makes only the trailing `l` optional, so
+ * `/^querySelectorAll?$/` matches `querySelectorAl` and `querySelectorAll` and never
+ * plain `querySelector` — it let every single-element query through, and lint stayed
+ * green on a planted one. Ordinary regex semantics, not an esquery quirk.
  */
 const TREE_SCAN = {
 	selector:

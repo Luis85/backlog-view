@@ -19,8 +19,8 @@ free of runtime code so imports stay cycle-free.
   per-render config lookups (`getOrder`, `getDisplayName`) are resolved once per data
   update by `chipProps` onto `host.chips`, which `RowContext` carries as a snapshot,
   never in the per-row path. `refreshRowChildren` must prune the subtree it removes
-  from `rowEls`, and anything captured at wire time (drag handlers) must read expansion state live, because
-  a targeted refresh leaves surrounding rows in place. Data updates still rebuild
+  from `rowEls`, and anything captured at wire time (drag handlers) must read expansion
+  state live, because a targeted refresh leaves surrounding rows in place. Data updates still rebuild
   everything — skipping that needs to account for arbitrary chip property values.
 - The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
   slot, `recovery`, the deferred update and the busy state — five fields serving one
