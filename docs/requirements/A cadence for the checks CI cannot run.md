@@ -39,9 +39,13 @@ that grows.
   one that is less likely to find anything — a check run at the wrong moment is not a
   stricter check.
 - **2b — a note does not say which kind it is.** Then it is not runnable as a checklist
-  item, and saying so is part of this work. Counted by frontmatter rather than by filename:
-  **18 of 20** verification notes are `Open`; the other two are `Done`, one of them
-  conditional.
+  item, and saying so is part of this work. **The count is deliberately not written here.**
+  A first draft said "18 of 20", and a note added in the same commit made it 19 of 20
+  before anyone read it — which is the staleness this whole round is about, committed
+  inside the note complaining of it. `docs/README.md` already states the habit: *"A count
+  belongs here only as long as it takes to go stale."* The sweep covers **every** note of
+  the verification kind, and is found by asking the register rather than by remembering a
+  number.
 - **3a — a verification fails.** It becomes a bug note with what was seen, and the release
   decision is the maintainer's. The sweep reports; it does not block by itself.
 - **3b — a verification has caught nothing across two releases.** That is evidence to

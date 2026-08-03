@@ -21,14 +21,16 @@ the file they are reading has kept up with the tree beside it.
 The two use cases below pull in opposite directions and the order matters, because the
 first one removes the thing the second one currently leans on.
 
-**Delete the table first, then re-anchor the rule.**
-[[A guide is prose, not an inventory]] deletes the root `CLAUDE.md` module table.
+**Re-anchor the rule first, then delete the table** — the two PBIs below are ordered
+10 then 20 for this reason and not for reading order.
 `docs-check.mjs` rule 7 — every module in `src/` is named by a note — currently justifies
-itself *by* that table: *"the
-architecture table names one per concern, so a module nothing describes is a real gap."*
-Delete the table while rule 7 still cites it and the rule is left standing on a reason
-that no longer exists, which is the exact defect this feature is about. Re-anchoring it
-([[A module is named where it is specified]]) is what gives it a reason of its own.
+itself *by* the module table: *"the architecture table names one per concern, so a module
+nothing describes is a real gap."* Run
+[[A guide is prose, not an inventory]] first and the table is gone while rule 7 still
+cites it, leaving the gate green on a reason that no longer exists — the exact defect this
+feature is about, introduced by the change meant to remove it.
+[[A module is named where it is specified]] is what gives the rule a reason of its own,
+so it goes first.
 
 **The quiet seam: the table's deletion is safe only because rule 7 survives.** The
 argument for deleting the table is that the fact it carries — every module is described

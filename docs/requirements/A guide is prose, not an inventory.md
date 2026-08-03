@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Guides that describe rather than enumerate]]"
-order: 10
+order: 20
 status: Open
 area: docs
 created: 2026-08-03

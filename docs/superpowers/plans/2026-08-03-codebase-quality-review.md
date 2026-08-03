@@ -69,14 +69,43 @@ moves a threshold in TypeScript that nothing re-derives, and the symptom is a cl
 rather than a failed build. Seventeen `--pbl-*` custom properties cross that boundary the
 other way.
 
-**Shape.** [[Styling rules are checks]] specifies the file-wide rules down to their
-extensions (`transparent` is not a literal colour; a literal in a `var()` fallback still
-counts; the direction rule must not key on property names). Its stated precondition —
-*"the direction fixes have landed, so the rules pass on today's file"* — belongs to
-[[Theming and styling]] and goes first. **Scope the new checker to what the six pins do
-not cover**, and leave them where they are: a pin on a specific past defect is a different
-instrument from a rule about the file, and folding one into the other loses the reason the
-pin exists.
+**Shape — and the note that goes first.** [[One stylesheet per concern]] already owns most
+of this finding and is more thorough than the draft above: it makes the same "the only
+file in the repository that escapes the rule the repository is built on" argument, settles
+the cross-cutting `@media` question, names the four global `@keyframes`, and — the part
+the draft missed entirely — records that **the CSS build step already exists**.
+`esbuild.config.mjs` runs esbuild over `styles.css` in production and writes the minified
+`dist/styles.css` the release uploads, so what is missing is not a build but *sources for
+it to assemble*; esbuild resolves `@import` natively, making this a small change to an
+existing step. It also settles sequencing: it *"lands first among the styling PBIs"*,
+because the tokenization and bound audits edit the stylesheet heavily and doing that
+against nine stable files is the difference between a reviewable diff and a 2000-line one.
+
+**It also carries the sharpest evidence in this finding, by having gone stale itself.**
+The note measures `styles.css` at **1143 lines**. It is **1995** today — 74% growth, some
+850 lines, while the note describing it sat unchanged. Its own section table is wrong with
+it: `tags` is given as 733-838 and now starts at 768, `drag & drop` as 976-1095 and now
+starts at 1020. That is the finding demonstrating itself, and it is the argument the note
+makes in its closing section: **cite by file and selector, not by line**, because
+`.pbl-row.pbl-selected` is findable forever and `styles.css:336` is findable until the next
+insertion above it. Two sibling notes still carry line citations
+([[Layout survives translated text]], [[Styling rules are checks]]) and are re-cited as
+part of that work.
+
+So the order is: **[[One stylesheet per concern]] → the direction fixes under
+[[Theming and styling]] → [[Styling rules are checks]]**, which specifies the file-wide
+rules down to their extensions (`transparent` is not a literal colour; a literal in a
+`var()` fallback still counts; the direction rule must not key on property names) and
+whose own precondition is that those fixes have landed.
+
+**Scope the checker to what the six pins do not cover**, and leave them where they are: a
+pin on a specific past defect is a different instrument from a rule about the file, and
+folding one into the other loses the reason the pin exists.
+
+**What this finding still adds** beyond those notes is one seam none of them names: the
+`ROW_LEAD_WIDTH` terms in `src/view/render/columns.ts`, hand-checked against the
+stylesheet. A split makes that seam *cheaper* to check, not harder — the terms would then
+face one small partial rather than a 2000-line file.
 
 **Cost.** One script step in `npm run check`, in the shape `docs-check.mjs` already has,
 plus its own accept/reject corpus the way `test/docs/checkerRejects.test.ts` guards the
@@ -84,8 +113,8 @@ docs gate. No new dependency: the rules are line-oriented, and the one that need
 TypeScript (icon-name classification) reads source the way `test/docs/surfaces.test.ts`
 already does.
 
-**Why first.** Best risk-to-effort ratio in the list, and the only finding whose
-specification is finished.
+**Why first.** Best risk-to-effort ratio in the list, and the finding whose specification
+is furthest along — three notes deep, with the build step already built.
 
 ---
 
@@ -540,8 +569,10 @@ Each step is independently shippable and ends `npm run check` green.
 3. **`cardDrag.ts` branch coverage, then `tags.ts`** (finding 6) — raises the floor under
    everything the card projections do.
 4. **The two untested render-cost claims** (finding 4) — the other two are already pinned.
-5. **The direction fixes, then `Styling rules are checks`** (finding 1) — the largest item,
-   and the one with the most already decided.
+5. **[[One stylesheet per concern]], then the direction fixes, then
+   [[Styling rules are checks]]** (finding 1) — the largest item, and the one with the most
+   already decided. The split goes first: it is what gives the later sweeps stable
+   addresses, and the build step it needs already exists in `esbuild.config.mjs`.
 6. **The `Multilang` layer, then the sweep, then the sink ban** (finding 5) — after
    the styling gate, because both touch the same render modules and doing them together
    doubles the merge surface. The `Notice` seam arrives here, as the typed wrapper
