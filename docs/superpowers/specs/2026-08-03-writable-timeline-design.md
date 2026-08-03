@@ -289,6 +289,15 @@ the identity; `timelineDrag.ts` decides what a position means.
   the day the pointer names and `inferSpan` places the result: `keepsOrder` already
   drops evidence falling on the wrong side of a stated end and leaves that end open.
   Again the existing rule, asked rather than restated.
+- **The shelf takes its removal from the axis, not from a truthy controller.**
+  `renderShelf` currently reads `dnd` as "the horizon axis" — it hardcodes
+  `performHorizonMove(item, null)` as the drop and words its tooltip "removes its
+  horizon". Both are correct today only because the dated axis passes `null`, which is
+  the withholding this increment removes. Handed a controller unchanged, a bar dropped
+  on the timeline's shelf would clear its **horizon** while the tooltip promised exactly
+  that — consistent wording for the wrong write, which is worse than either alone. So
+  the shelf is given the removal to plan and the words to say it in, and the axis
+  chooses both; `dnd` goes back to meaning only "drops are live here".
 - A bar dropped on the shelf removes keys rather than blanking them, and undo restores
   them with their values. **Which** keys is `placementEnds` in `interactions/plan.ts`,
   not "the configured ones": it already narrows a marker to its target alone, which is
@@ -327,6 +336,20 @@ the store where collapse state already lives, never in the `.base`. The narrow-p
 is a container query in `styles/timeline.css` collapsing the shelf to its labelled count,
 its header becoming the control that reopens it: an unplaced result may lose its card,
 never its existence.
+
+**Moving the scroller inward is a stylesheet change, not only a code one.** The pane is
+the horizontal scroller today because `styles/roadmap.css` puts `overflow-x: auto` on
+`.pbl-roadmap-mode .pbl-tree` while `.pbl-roadmap` is `min-width: max-content` and
+`.pbl-timeline` is `width: max-content`. Adding an inner scroller without touching those
+gives **two** horizontal scrollers nested — the containment guarantee broken by the change
+meant to keep it. So the dated axis stops the pane overflowing sideways and stops the
+frame demanding `max-content`, while the timeline itself takes `overflow-x`. The rules
+have to be axis-specific and the only class today is `pbl-roadmap-mode`, which both axes
+wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class already
+is and where the axis is already known. A `:has()` selector would need no new state and is
+the reason to mention it — but it is the clever answer to a question the boring one
+already closes, and it raises specificity in a stylesheet whose ordering is documented as
+load-bearing.
 
 ## The context-row rule, asked of a third set of gestures
 
@@ -407,6 +430,10 @@ Named honestly rather than claimed, and filed as a smoke note under `Feature Tes
 - Whether a drag toward the pane edge actually pans the grid, and at a usable rate.
   Registering the scroller is checkable here; that it *engages toward an edge* is a
   pointer-position behaviour of the drag library, which jsdom does not run.
+- **That exactly one thing scrolls sideways.** jsdom computes no layout, so nested
+  scrollers are invisible to it: a test can assert which element carries the class and
+  never that the pane stopped overflowing. This is the one place in the increment where
+  the check genuinely stops short of the claim, so the claim is the smoke note's.
 - The narrow-pane shelf compaction, and whether anything clips under the header in an
   embedded base.
 - The today line and jump-to-today from a scrolled position.
