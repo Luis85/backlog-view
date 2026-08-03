@@ -517,9 +517,18 @@ new shelf element while the button keeps pointing at the old one, and an
 `aria-controls` naming a detached node exposes no region at all. The shelf's id is
 therefore fixed for the life of the view rather than minted per render — per *view*, not
 a constant, since two saved views can sit in split panes and duplicate ids would make
-one button address the other's shelf. And the toggle renders only where the shelf does:
-a control for a region that is not on screen is the same defect in a different
-direction.
+one button address the other's shelf.
+
+The same survival means the toggle is **synced, not conditionally rendered**. A control
+for a region that is not on screen is a defect in the other direction, but "render it
+only where the shelf does" cannot be honoured by a render that never touches the
+toolbar: a quick filter that empties the shelf would leave the button standing, and one
+that brings shelf cards back would leave it missing. The toolbar already answers this
+three times — `syncBusy`, `syncFilterUi` and `syncCountLabel` all update a standing
+toolbar after a render — so the toggle is built once and a `syncShelfToggle` beside them
+carries its presence, its pressed state and its `aria-expanded`. The button keeps focus
+across a filter keystroke, which is the reason that render path leaves the toolbar alone
+in the first place.
 
 But a container query plus a button is **two** deciders, and they desynchronise: at a
 wide pane the query shows the cards while the flag still says closed, so the control
