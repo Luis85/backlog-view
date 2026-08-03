@@ -303,6 +303,16 @@ the identity; `timelineDrag.ts` decides what a position means.
   the day the pointer names and `inferSpan` places the result: `keepsOrder` already
   drops evidence falling on the wrong side of a stated end and leaves that end open.
   Again the existing rule, asked rather than restated.
+- **The shelf accepts the body hold and refuses the grips.** `wireDropTarget` admits any
+  source carrying the view's token and hands its callback the resolved item alone, so
+  with the bar holds wired as sources it cannot tell a resize from a body drag: a start
+  grip released over the shelf would fire the full unschedule and delete both keys
+  instead of moving one end. The hold the payload already carries is therefore read by
+  the shelf's own `canDrop`, which admits the body and the shelf card and refuses the
+  grips — refused rather than ignored, so the strip never highlights for a drag it would
+  not honour, the same reason `canDrop` refuses a foreign view's card instead of
+  dropping it silently. A grip released there is a drag that ended nowhere: no write,
+  indicators clear, undo slot untouched.
 - **The shelf takes its removal from the axis, not from a truthy controller.**
   `renderShelf` currently reads `dnd` as "the horizon axis" — it hardcodes
   `performHorizonMove(item, null)` as the drop and words its tooltip "removes its
@@ -347,9 +357,17 @@ A zoom picker and a jump-to-today button beside the focus picker, both rendered 
 the dated axis. `CollapseSnapshot` gains `zoom`, validated against the three scale ids
 exactly as `axis` is validated against `AXIS_VALUES` — a per-screen working position, in
 the store where collapse state already lives, never in the `.base`. The narrow-pane rule
-is a container query in `styles/timeline.css` collapsing the shelf to its labelled count,
-its header becoming the control that reopens it: an unplaced result may lose its card,
-never its existence.
+is a container query in `styles/timeline.css` collapsing the shelf to its labelled count
+— **and a real control to open it again**, which the query cannot supply. `renderShelf`
+builds its header as a plain `div` with no listener and no button semantics, so a query
+alone would hide every unplaced card with no way back until the pane was widened: the
+opposite of "may lose its card, never its existence". The header becomes a `button` with
+`aria-expanded`, keeping its icon, label and count, and toggling a class that overrides
+the query in the open direction. The container query supplies the *default* for the
+width; the user's press wins over it. That open flag is view state that survives a
+render, the way the selected board column already is — a rebuild must not re-collapse a
+strip the reader just opened — and it stays out of the collapse store, which keys on
+paths and has nothing to key this on.
 
 **Moving the scroller inward is a stylesheet change, not only a code one.** The pane is
 the horizontal scroller today because `styles/roadmap.css` puts `overflow-x: auto` on
@@ -411,10 +429,13 @@ covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
 
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
 slide, both end grips, the clamp at equal, the bar-to-shelf removal, the drag that ends
-nowhere, the marker on a start-only axis offering no grip, and the one-ended bar whose
-body slide leaves its open end open — every pointer case driven against a **panned grid
-at a nonzero viewport offset**, because a fixture at the origin with no scroll passes
-whether or not the pointer is converted at all. The clamp gets both sides of its condition: two
+nowhere, the marker on a start-only axis offering no grip, the one-ended bar whose body
+slide leaves its open end open, and a grip released over the shelf writing nothing —
+every pointer case driven against a **panned grid at a nonzero viewport offset**, because
+a fixture at the origin with no scroll passes whether or not the pointer is converted at
+all. The shelf's toggle is asserted as a control, not as a class: it carries
+`aria-expanded`, it responds to a keyboard activation, and pressing it while the
+container query would compact the strip leaves the cards rendered. The clamp gets both sides of its condition: two
 stated ends clamp at equal, while a stated end dragged past an inferred one writes the
 day the pointer named and re-places with that end open. A marker with both properties configured is driven
 through **every** gesture — shelf drop, body slide, bar-to-shelf — asserting the same
