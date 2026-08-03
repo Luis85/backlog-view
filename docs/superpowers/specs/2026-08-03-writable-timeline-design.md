@@ -120,11 +120,19 @@ TimelineScale { id: 'week' | 'month' | 'quarter'; dayPx: number; unit: ... }
 
 Today's fixed rendering becomes the `month` scale at `dayPx: 4`, so zoom adds a
 parameter to functions that already exist rather than a second drawing path.
-`timelineWindow` aligns its bounds to the scale's unit, and `MAX_TIMELINE_MONTHS`
-becomes `MAX_TIMELINE_CELLS` — sixty cells of whatever the scale is. That keeps the
-drawn width bounded at every zoom (the backstop's actual purpose: a typo'd year must
-not render tens of thousands of header cells) and is identical to today's behaviour at
-month zoom.
+`timelineWindow` aligns its bounds to the scale's unit.
+
+**The backstop stays a time budget.** `MAX_TIMELINE_MONTHS` becomes `MAX_TIMELINE_DAYS`
+— the same span it already means, rounded out to whole cells of the active scale — and
+**not** a cell count. A cell count would make the reachable calendar depend on the zoom
+(sixty weeks is fourteen months; sixty quarters is fifteen years), so a two-year plan
+visible at month zoom would clip to edge indicators at week zoom. That contradicts the
+guarantee [[Zoom and the today marker]] states outright: at every zoom the same results
+place and only the granularity changes. A day budget also bounds the header better than
+a cell budget did — the cell count it implies is largest at the finest scale, and there
+it is a few hundred, nowhere near the tens of thousands the backstop exists to refuse.
+What varies with zoom is the drawn width, which is what a scroll container is for and
+what choosing a zoom is choosing.
 
 Three new pure functions:
 
@@ -315,8 +323,11 @@ surface.
 
 ## Testing
 
-Node tests in `test/domain/timeline.test.ts` for the scale, the unit-aligned window, the
-cell backstop, `addDays`, `cellSpan` and `barHolds`; `dayAt` is tested **as
+Node tests in `test/domain/timeline.test.ts` for the scale, the unit-aligned window,
+`addDays`, `cellSpan` and `barHolds`. The backstop is tested as the guarantee rather
+than as a number: **the same spans place at all three zooms** — one assertion that fails
+if the cap is ever expressed per-cell again, which a test naming sixty of anything would
+not. `dayAt` is tested **as
 `barGeometry`'s inverse** — a date placed and read back is the same date — rather than
 against hand-computed pixels, since the round trip is the property that matters.
 
