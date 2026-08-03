@@ -280,6 +280,15 @@ about a different thing, and `applySafely` already refuses whole for the same re
 that a partly-applied batch leaves the note in a state nobody asked for. The refresh
 then redraws what the note has become, and the next gesture is made against that.
 
+For the writer to see that disagreement, **the batch has to say what it was planned
+against**. Dates alone cannot: a marker that became an ordinary item leaves a target-only
+request arriving at an ordinary item, which is exactly what a legitimate end-grip write
+looks like, so one of the two transition directions would pass unnoticed. `AxisWrite`
+therefore carries the placement shape the plan was made under, and the writer compares
+that against the live one. It is the same discipline as the restore's compare-and-swap,
+which already refuses a key whose live value is not what the batch believed it wrote:
+a write states its expectation, and the writer is where the expectation is checked.
+
 *An unchanged write is not a move, and must not be announced as one.* With the check in
 the writer, the planner now hands the gate a non-empty batch for a re-confirmed date;
 `runExclusively` reports success for anything that completed, and `applyCardMove`
@@ -324,8 +333,12 @@ remembered.
 One new host method, `performScheduleMove(item, plan)` — the only place a date batch is
 planned and the only place it is announced, which is the epic's "one move, three inputs"
 rule reaching a third projection. It shares `applyCardMove`, and therefore its capture
-rule: the dates that will *name* the move are read before the await, because the batch's
-own refresh rebuilds the timeline and the window may have moved under it.
+rule — which covers **vocabulary**: a label that the batch's own refresh may destroy is
+read before the await, because the rebuilt timeline cannot name a bucket that has gone
+with its last card. Dates are not vocabulary and are **not** captured there: they come
+back with the writer's verdict, from the live values it actually saw, and the resulting
+placement comes from the rebuilt model (both below). Capturing them here would reproduce
+the stale announcement the live comparison exists to prevent.
 
 The menu's `promptSchedule` and `unschedule` are routed through it. They call
 `host.applySafely` directly today; leaving them there would make the drag a second idea
