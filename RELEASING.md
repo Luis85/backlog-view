@@ -66,9 +66,12 @@ the cadence its outcome specifies with a more frequent one less likely to find a
 Those are **not** part of this sweep. A note carrying `## How to check` with no `cadence:`
 is a defect in the note: fix it rather than guessing which it meant.
 
-Nothing enforces this convention yet — `docs-check.mjs` gates the use-case and ADR shapes
-and not the `Issue` shapes. The query rests on a convention with no checker, which is
-stated here rather than left to be discovered.
+`docs-check.mjs` holds the two halves of that convention to each other, so a note cannot
+carry `## How to check` without a cadence or declare a cadence the query will never reach.
+The limit worth knowing when you trust this sweep: it checks that a note which *declares*
+itself a verification is findable, not that every verification declares itself. A note with
+no cadence and its own spelling of the heading is indistinguishable from a note *about* a
+check, and is simply absent from the list above.
 
 ### When the version files are already committed
 

@@ -68,11 +68,14 @@ that grows.
   count either sweeps a check no device can run or hunts one that does not exist. Match the
   whole heading line. This was found the third time the set was counted, after two earlier
   counts were quoted as evidence.
-- **2d — the normalized convention drifts again.** It can, and nothing yet stops it:
-  `docs-check.mjs` gates the use-case and ADR shapes and **not** the `Issue` shapes. Stated
-  rather than hidden — the query rests on a convention, and a convention with no checker is
-  what this whole round is about. Gating the `Issue` shapes is the obvious follow-up and is
-  deliberately not smuggled in here.
+- **2d — the normalized convention drifts again.** It could, and when this note shipped
+  nothing stopped it: `docs-check.mjs` gated the use-case and ADR shapes and not the
+  `Issue` shapes. Stated rather than hidden — the query rested on a convention, and a
+  convention with no checker is what this whole round is about. The follow-up was
+  deliberately not smuggled in here; it landed separately as
+  [[The sweep query rests on a checked convention]], which holds the heading and the
+  cadence to each other. What that gate does *not* reach is recorded there and in
+  [[The documented Issue shapes are not the ones in the folder]].
 - **2e — the count is written into a note.** Deliberately not. A first draft said "18 of
   20", and a note added in the same commit made it 19 of 20 before anyone read it — the
   staleness this round is about, committed inside the note complaining of it. A later draft

@@ -385,8 +385,11 @@ in the first heading rather than making a reader infer it:
   what lets `RELEASING.md` derive the release sweep instead of holding a list — so spelling
   that heading anything else removes the note from the sweep silently. It also takes
   `cadence:` in frontmatter, `release` (run in the pre-tag sweep) or `conditional` (its own
-  trigger, stated in its prose). Nothing checks either yet; gating the `Issue` shapes the way
-  `docs-check.mjs` gates use cases is the follow-up.
+  trigger, stated in its prose). `docs-check.mjs` holds those two to each other: the heading
+  and the cadence must both be present or both absent, and the cadence must be one of the
+  two. What it does **not** check is the section sequences above — see
+  [[The documented Issue shapes are not the ones in the folder]] — so a verification that
+  declares itself nowhere is still invisible to the sweep.
 
 An Issue may legitimately have **no acceptance criteria**, and should say so out loud
 ("None; recorded so the trade-off is re-decided knowingly rather than rediscovered"). A
