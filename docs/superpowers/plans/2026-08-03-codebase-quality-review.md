@@ -87,32 +87,45 @@ specification is finished.
 
 ---
 
-### 2. `isDesktopOnly: false` is a promise nothing checks
+### 2. The touch path is decided, built, and has never met a device
 
-**Evidence.** `manifest.json` ships the plugin to mobile. All direct manipulation is
-HTML5 drag: `src/view/render/rows.ts:136` sets `row.draggable`, and
-`src/view/interactions/cardDrag.ts` uses Pragmatic's `element/adapter`, which is the same
-native drag events underneath. Touch fires none of them. So on a phone, in all three
-projections, **every drag is silently absent** — not refused, not explained, just inert.
+**What is already decided.** Mobile support is not an open question, and this note does
+not reopen it. [[Keyboard, menu and touch]] settles it in prose — *"The menu is the
+answer on every platform either way"* — and in its acceptance criteria, where Set state
+in the context menu is *"the equivalent non-drag path on every platform, and the required
+one on touch."* `src/view/render/board.ts:288` wires it, saying so in the comment: *"The
+menu is the non-drag path, and on touch the only one."* `styles.css` carries a
+`(hover: none)` block revealing the two hover-hidden create buttons, and
+`test/view/rendering.test.ts` pins that reveal's cascade order because it once shipped
+broken. So `isDesktopOnly: false` is a supported claim, not a careless one, and **flipping
+it would remove a path this project deliberately built.**
 
-The non-drag paths exist and are good — the card menu, the row menu's move section,
-`performBoardMove` / `performHorizonMove` reachable from three inputs each — but
-Alt+arrow needs a keyboard, and `styles.css:983` already carries a `(hover: none)` block
-admitting the reveal-on-hover controls are unreachable. [[Keyboard, menu and touch]] is
-`status: Active`, `priority: P2`, and has never been answered by a device.
+**The gap.** None of it has been run on a phone. Three questions have no answer:
 
-**Shape.** Not code, at first: a verification. Run the existing menu paths on a phone
-against `npm run test-build`, and then take one of two decisions and record it —
-either the menu paths are the documented mobile story (README says so, and the drag
-affordances hide under `(hover: none)` rather than pretending), or `isDesktopOnly` flips
-to `true` until a touch drag layer exists.
+1. **Does `contextmenu` fire from a long press** in Obsidian mobile? Every non-drag path
+   on touch — the card menu, the row menu's move section — hangs off that one event. If
+   it does not fire, the "required one on touch" criterion is unmet everywhere at once.
+2. **Is mobile drag-plus-menu or menu-only?** [[Keyboard, menu and touch]] names the
+   uncertainty exactly — *"on Obsidian mobile native drag from touch has historically not
+   fired — the chosen engine claims otherwise, a verdict the smoke test owns"* — and
+   assigns it to [[Pragmatic drag and drop for the board]]. Still unrun.
+3. **Are the hover-revealed controls actually reachable?** The cascade order is pinned by
+   a test; that the reveal *works on a device* is not something jsdom can answer.
 
-**Cost.** An afternoon with a phone plus one note. **Do not** build a pointer-events drag
-layer to close this — Pragmatic ships no touch adapter this project has admitted, and
-ADR 0018 admits runtime dependencies by exception, not by convenience.
+Alt+arrow is not a mobile path and is not expected to be — it needs a keyboard.
 
-**Why second.** It is the only finding that can be wrong in a user's hands today, and the
-cheapest thing here is finding out.
+**Shape.** A verification, not code: run the menu paths on a phone against
+`npm run test-build` and record the three answers. Question 2's outcome belongs on
+[[Pragmatic drag and drop for the board]], which already owns it. If question 1 fails,
+*that* is a defect worth a bug note — the fallback the design rests on being absent —
+and it is exactly the kind of thing nothing here can discover.
+
+**Cost.** An afternoon with a phone. **Do not** build a pointer-events drag layer off the
+back of it — Pragmatic ships no touch adapter this project has admitted, and ADR 0018
+admits runtime dependencies by exception, not by convenience.
+
+**Why second.** It is the only finding whose subject can be wrong in a user's hands today,
+and the cheapest thing here is finding out.
 
 ---
 
@@ -165,11 +178,18 @@ assertions on the DOM:
 is itself slightly stale — they resolve through `chipProps` into `host.chips`. Worth
 correcting in the same change.)
 
-**Shape.** Not a benchmark — a benchmark in jsdom measures jsdom. Count calls: the fake
-config in the view harness spies `getOrder` / `getDisplayName`, and one test renders a
-several-hundred-row fixture and asserts the count is bounded by the column count rather
-than growing with the rows. The DOM-scan claim is the same shape from the other side —
-assert `rowEls.size` matches the rendered rows and that selection resolves through it.
+**Shape.** Not a benchmark — a benchmark in jsdom measures jsdom. **Both claims are about
+calls that should not happen, so both are spies, not assertions on state.**
+
+- Hoisting: spy `getOrder` / `getDisplayName` on the harness's fake config, render a
+  several-hundred-row fixture, assert the count is bounded by the column count rather than
+  growing with the rows.
+- No DOM scan: spy `querySelector` / `querySelectorAll` on the tree element, then drive
+  selection and a subtree refresh, and assert neither was called. Asserting on `rowEls`
+  instead does not test this — an interaction that swapped `rowEls.get(path)` for
+  `treeEl.querySelector(...)` leaves the map the right size and still resolves the right
+  element, so the map-shaped assertion passes while the O(1) guarantee is gone. The check
+  has to watch the call that must not be made.
 
 **Cost.** One test file under `test/view/`, using `makeView` and the existing fixtures.
 Smaller than the earlier draft of this note assumed, because half the work is done.
