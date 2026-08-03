@@ -46,8 +46,19 @@ the same device twice. If the phone is already in hand, answer it **there**.
 What this note owns is the part no existing verification covers: the paths that are
 supposed to work when drag does not.
 
-Run `npm run test-build`, open this repository as a vault on a phone, open
-`docs/Product Backlog.base`, and answer two questions.
+**Getting the build onto the device is the first problem, and cloning does not solve it.**
+`npm run test-build` writes into `.obsidian/plugins/<id>/` in the repository root, and
+`.gitignore` excludes `.obsidian/` — so a phone that pulls this repository gets the vault
+and the notes but **not the plugin**, and the Base would open with nothing to test. Some
+transfer step is required, and which one is the maintainer's call: Obsidian Sync over the
+same vault, a manual copy of the generated plugin folder onto the device, or any
+shared-vault route that carries `.obsidian/plugins/<id>/` with it. Whichever is used,
+record it in the outcome — the next person running this needs the route more than the
+result. On first open the vault also needs Restricted Mode turned off, which
+`test-build.mjs` prints as a reminder.
+
+With the plugin actually installed on the device, open `docs/Product Backlog.base` and
+answer two questions.
 
 1. **Does a long press open the context menu** — on a tree row, and on a board card? Every
    non-drag path on touch hangs off that one event, and no note asks it. The board smoke
@@ -73,6 +84,9 @@ Alt+arrow is deliberately not on this list. It needs a keyboard and was never a 
 
 ## Acceptance criteria
 
+- The transfer route is named in the outcome, and the run confirms the plugin was loaded
+  on the device rather than assumed — a Base opening with no view registered looks like a
+  configuration problem and is really a missing build.
 - Both questions answered, with the device and Obsidian version recorded — and question 2
   answered by **pressing all four controls**, including a tag added and a tag removed.
   Naming only the create buttons would let a broken tag reveal ship with this note marked
