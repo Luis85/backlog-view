@@ -285,9 +285,12 @@ maintainability finding it is, not as something to squeeze into a polish pass.
 | `view/interactions/undo.ts` | 80% | the partial-failure remainder and `UndoRecovery` |
 | `view/backlogView.ts` | 80.5% | the projection dispatch and lifecycle |
 
-Uncovered ranges point at the same thing in each: `cardDrag.ts:40-57` and `:157-161` are
-the registration cleanup and the announcement, `tags.ts:20-22,36-39` the normalization
-refusals, `undo.ts:102,118` the recovery path.
+Uncovered ranges, read in the source rather than inferred from their numbers:
+`cardDrag.ts:40-57` is the pair of null guards on `announceBoardMove`/`announceHorizonMove`,
+`:157-161` the drop-time payload check and the item resolution that can miss because a
+refresh mid-drag dropped the note; `tags.ts:20-22` folds the item's own tags into the
+offered vocabulary and `:36-39` is the normalization refusal; `undo.ts:102,118` is the
+recovery path. Every one needs a race or an absence constructed to reach it.
 
 **Shape.** Named increments, not a coverage push. `cardDrag.ts` first — it is the module
 `docs/issues/Pragmatic drag and drop for the board.md` introduced, and the one whose
@@ -442,7 +445,7 @@ user-visible behaviour it serves*. `domain/roadmap.ts` can make its bucket parti
 obvious; it cannot say that someone wanted a shelf that un-places and stays reachable
 while empty. That sentence lives in a use case or nowhere.
 
-**Recommendation: re-anchor, do not delete.** Change rule 7 from *"named somewhere under
+**Decided: re-anchor, do not delete.** Change rule 7 from *"named somewhere under
 `docs/`"* to *"named in a `## Where it lives` section, or in an ADR"*. That:
 
 - **costs nothing to adopt** — it is already true 48/49, and the 49th is legitimately the
@@ -452,15 +455,18 @@ while empty. That sentence lives in a use case or nowhere.
   satisfying it, which is precisely what made the old rule hollow;
 - **survives finding 3**, because it stops depending on a table that is being deleted.
 
-**The cost, stated plainly, because it is the real objection.** This keeps one obligation:
-splitting a module means adding a path to an existing use case's `Where it lives`. The
-400-line cap says *split*, and this rule says *and name the halves* — two rules pulling
-against each other, one line of friction each time. For `test/` that trade was refused
-because the line bought nothing. Here it buys the traceability above. **That is a judgment
-call about how much the trace is worth, and it is the maintainer's to make** — if the
-answer is that it is not worth the line, delete rule 7 outright and let the layer guides
-and the code carry it. What should not happen is keeping the rule with its current
-justification, which finding 3 is about to falsify.
+**The cost, accepted knowingly.** This keeps one obligation: splitting a module means
+adding a path to an existing use case's `Where it lives`. The 400-line cap says *split*,
+and this rule says *and name the halves* — two rules pulling against each other, one line
+of friction each time. For `test/` that trade was refused because the line bought nothing.
+Here it buys the trace from shipped code to specified behaviour, and the maintainer's call
+is that `Where it lives` is the better framing: the rule should assert the thing that has
+value rather than the string match that stands in for it.
+
+So the rule's **reason** changes with its anchor. It stops being *"the architecture table
+names one per concern"* — a table that is going away — and becomes *"a module nothing
+specifies is a capability nobody asked for."* That sentence is what makes the one line
+worth writing, and it is what the note gating it should say.
 
 ---
 
@@ -521,8 +527,14 @@ Each step is independently shippable and ends `npm run check` green.
    hang a feature-plus-PBIs off it per finding, so the rest of this list is ranked in the
    register rather than in a plan file. Everything below is then picked from the backlog,
    not from here.
-1. **Delete the module table, fix the folder table** (finding 3) — smallest diff, removes
-   a gate rather than adding one.
+1. **Re-anchor rule 7, then delete the module table** (findings 10 **then** 3) — **one
+   change in two steps, in that order, never one without the other.** Rule 7 currently
+   justifies itself by the very table step 3 deletes (*"the architecture table names one
+   per concern"*), so deleting the table alone leaves the gate green on a reason that no
+   longer exists — the exact defect this round is about. And deleting *both* is worse:
+   the table's deletion is safe only because rule 7 keeps the guarantee that every module
+   is described somewhere. Re-anchor first to `## Where it lives`, then the table goes.
+   Also fixes `docs/README.md`'s folder table.
 2. **Answer the mobile question** (finding 2) — a verification, not code; it may change
    what "done" means for the drag work below it.
 3. **`cardDrag.ts` branch coverage, then `tags.ts`** (finding 6) — raises the floor under
@@ -541,7 +553,8 @@ Steps 1–4 are a coherent first increment: nothing in them changes shipped beha
 together they close every finding that is *only* a missing check. Steps 5 and 6 are the
 two real bodies of work and each deserves its own branch — 6 more than one.
 
-**Findings 8 and 9 are deliberately not in this sequence.** Nothing in them is over a
+**Findings 8 and 9 are the only ones deliberately absent from this sequence** — every
+other finding, 10 included, has a step. Nothing in them is over a
 budget or failing a check, so scheduling them would be scheduling churn. Take them when a
 branch already has the file open — with one exception: the vocabulary leaf (finding 9.1)
 is the same structural move the catalog needs (finding 5), so if step 6 happens, do both

@@ -29,6 +29,23 @@ What remains is three notes with no acceptance criteria — recorded decisions a
 limitations waiting on evidence rather than on effort. This epic is done; the next one
 should be opened by new evidence, not by grooming this one.
 
+**Second round, opened 2026-08-03 by the evidence the paragraph above asked for.** The
+sentence before it stays as written: on the day it was written every actionable finding
+*was* closed, and hedging it now would make this round unreadable as a second one rather
+than as the first quietly reopening. What reopened the epic is a review of `0.4.0` from a
+clean install — `docs/superpowers/plans/2026-08-03-codebase-quality-review.md` — against a
+gate that passes all five steps, coverage at 97.77/93.44/99.08/99.12 and fallow
+maintainability at 88.5. Nothing it found is a shipped defect either.
+
+What it found is the same shape the first round did, one level further out: **properties
+that are true today, stated in prose, with nothing that would notice them becoming
+false.** The first round turned the rules that could be lint rules into lint rules. This
+one asks the same question of what lint cannot reach — the stylesheet, the render path's
+own cost claims, the guides that describe the code, and the behaviour only a device can
+answer for. One of them was not merely unchecked but already false, which is the argument
+for the whole round: `src/view/interactions/dragDrop.ts` scans the entire tree on every
+drag end, under a guide that says no interaction scans the DOM.
+
 ## Reading this as a backlog
 
 These notes carry the plugin's own frontmatter vocabulary, so the plugin can display
