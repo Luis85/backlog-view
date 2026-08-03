@@ -63,15 +63,21 @@ describe('the keyboard reaches the column menu', () => {
 		// stops by columns (extension 3a). The menu is the keyboard path instead.
 		const { containerEl, view } = makeBoard(boardVault(), POLICY);
 		view.selectBoardColumn(columnNames(containerEl).indexOf('Active'));
-		key(treeOf(containerEl), 'ContextMenu');
+		const evt = key(treeOf(containerEl), 'ContextMenu');
 		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Someone is actually on it']);
+		expect(evt.defaultPrevented).toBe(true);
 	});
 
-	it('opens nothing from a column with no policy', () => {
+	it('opens nothing from a column with no policy, and leaves the key alone', () => {
+		// The pointer path only consumes the event once it HAS a menu; the keyboard path
+		// consumed it first and unconditionally, so ContextMenu on a column with nothing
+		// agreed was a dead end — no menu of ours, and none of Obsidian's either. The
+		// same claim, twice: nothing opens, and nothing was swallowed to open it.
 		const { containerEl, view } = makeBoard(boardVault(), POLICY);
 		view.selectBoardColumn(columnNames(containerEl).indexOf('New'));
-		key(treeOf(containerEl), 'ContextMenu');
+		const evt = key(treeOf(containerEl), 'ContextMenu');
 		expect(Menu.lastShown).toBeNull();
+		expect(evt.defaultPrevented).toBe(false);
 	});
 
 	it('still opens the CARD menu when a card is selected, not the column one', () => {

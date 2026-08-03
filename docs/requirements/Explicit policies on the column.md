@@ -46,6 +46,11 @@ difference between a board that shows states and one that shows the working agre
 - **3a — the user reaches it by keyboard.** Through the column's existing menu, not a new
   tab stop. The board is one tab stop by design ([[Keyboard, menu and touch]]), and a
   per-column control would multiply stops by columns.
+- **3b — the column has nothing agreed.** There is no menu, so the key is **left alone**
+  rather than consumed: the stop still exists (it is a place to stand), and `ContextMenu`
+  there reaches whatever would have had it. Withholding an offer is not the same as
+  swallowing the gesture that asked for it — the first is 1a applied to the menu, the
+  second is a dead end that looks like a broken feature.
 - **4a — a card moves into a column whose policy is not met.** It moves. Nothing enforces
   a policy, exactly as the type ladder guides and never refuses — the rules here decide
   what is *offered*, never what is *permitted*.
@@ -61,7 +66,9 @@ difference between a board that shows states and one that shows the working agre
   hearing it as the column's description.
 - Policies render. Nothing enforces them — a card moves into a column whether or not
   its policy is met, exactly as the ladder guides and never refuses.
-- With no policies configured, headers are unchanged: no empty affordances.
+- With no policies configured, headers are unchanged: no empty affordances — and the
+  keyboard path consumes `ContextMenu` only when it actually opened something, the rule
+  the pointer path already kept.
 
 ## Where it lives
 
@@ -69,8 +76,11 @@ One generated option per configured state — `columnPolicy.<state>`, lowercased
 declared in `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The
 column carries its own policy (`src/domain/board.ts`); the header's affordance and its
 `aria-describedby` are in `src/view/render/board.ts`, and the column menu is
-`buildColumnMenu` in `src/view/interactions/menu.ts`, opened by the header and by
-`src/view/interactions/keyboard.ts` on the selected column stop.
+`buildColumnMenu` in `src/view/interactions/menu.ts` — null when there is no policy —
+opened by the header and by `handleColumnStopKey` in
+`src/view/interactions/keyboard.ts` on the selected column stop. That keyboard path
+consumes the key only on what `showColumnMenuFor` reports it opened, which is why that
+host method returns a boolean rather than void.
 
 Driven by `test/domain/viewOptions.test.ts` and `test/domain/board.test.ts`.
 

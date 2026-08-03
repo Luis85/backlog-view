@@ -218,13 +218,20 @@ function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	if (handleBoardNavigationKey(host, snapshot, pos, evt)) return;
 	const card = pos && pos.card >= 0 ? snapshot.board.columns[pos.col].cards[pos.card] : null;
 	if (card) handleBoardCardKey(host, card, evt);
-	// A column stop is a place to stand too, and the policy is the one thing there is
-	// to say about it. The card branch runs first: the two menus share a key, and the
-	// card is the more specific selection.
-	else if (pos && isMenuKey(evt)) {
-		evt.preventDefault();
-		host.showColumnMenuFor(pos.col);
-	}
+	// A column stop is a place to stand too. The card branch runs first: the two menus
+	// share a key, and the card is the more specific selection.
+	else if (pos) handleColumnStopKey(host, pos.col, evt);
+}
+
+/**
+ * The keys a column stop answers — the policy menu, which is the one thing there is
+ * to say about a column you are standing in. A column with nothing agreed has no menu
+ * to open, and then the key is left alone rather than swallowed: the same rule the
+ * pointer path (`showColumnMenu`) already kept, and the reason `showColumnMenuFor`
+ * reports rather than returning void.
+ */
+function handleColumnStopKey(host: BacklogViewHost, col: number, evt: KeyboardEvent): void {
+	if (isMenuKey(evt) && host.showColumnMenuFor(col)) evt.preventDefault();
 }
 
 /** Arrow/Home/End selection movement; true when the key was one of those. */

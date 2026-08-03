@@ -84,7 +84,8 @@ mirrors the same directories.
 | **`view/`** | **DOM and interaction.** | |
 | `view/host.ts` | `BacklogViewHost` — the interface modules use to reach view state | — |
 | `view/registry.ts` | The live views, and which one the workspace is showing — how a palette command reaches a Bases view | jsdom tests |
-| `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch, write gate | jsdom tests |
+| `view/backlogView.ts` | The BasesView subclass: state, lifecycle, projection dispatch | jsdom tests |
+| `view/writeGate.ts` | The write gate: validation, one batch at a time, progress, the undo slot, the deferred mid-batch refresh | jsdom tests |
 | `view/selection.ts` | The one selection either projection holds — row/card by path, or a board column stop — and its aria bookkeeping | jsdom tests |
 | `view/collapseState.ts` | The view's working position: which rows are shut (once-only default), the projection mode, the debounced save | jsdom tests |
 | `view/filterState.ts` | The quick filter's session state: the text, the match path that renders, the matches themselves | jsdom tests |
@@ -201,7 +202,9 @@ results.
 Writes go through `applySafely` (forward batches) or `undoLast` (replaying the last
 batch's inverses), both over one gate (`runExclusively`): serialized (`applying` flag)
 and blocked when `configProblems` is non-empty; forward batches are additionally
-refused whole if any write targets an `outsideFilter` item. Everything applied was
+refused whole if any write targets an `outsideFilter` item. All three live in
+`view/writeGate.ts` — the view owns a `WriteGate`, delegates the host's three write
+methods to it, and publishes its progress; the gate itself touches no DOM. Everything applied was
 planned by `domain/writePlan.ts`, which touches nothing, and applied by
 `storage/frontmatter.ts`, which is the only module that may — and which captures each
 write's inverse as it lands, so the last effective batch can always be taken back

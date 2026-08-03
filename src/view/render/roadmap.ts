@@ -39,8 +39,11 @@ export function renderRoadmap(
 	const frameEl = treeEl.createDiv({ cls: 'pbl-roadmap' });
 	const cards: BacklogItem[] = [];
 	let todayLeft: number | null = null;
-	// Null on the dated axis, and that null is the whole withholding: no draggables,
-	// no targets, no shelf strip — one condition rather than a flag per affordance.
+	// Null on the dated axis, and that null is the whole withholding: no draggables and
+	// no drop targets — one condition rather than a flag per affordance. It is the
+	// TARGETING that goes, not the strip: an occupied shelf still renders there, because
+	// what sits outside the plan is worth reading whether or not it can be moved. What
+	// the dated axis loses is the EMPTY shelf, which exists only to be dropped onto.
 	const placing = axis === 'horizons' ? dnd : null;
 	if (placing) {
 		const bucketsEl = frameEl.createDiv({ cls: 'pbl-roadmap-buckets' });

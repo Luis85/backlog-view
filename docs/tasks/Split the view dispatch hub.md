@@ -2,13 +2,16 @@
 type: Task
 order: 40
 parent: "[[One file per concern]]"
-status: Open
+status: Done
 priority: P2
 area: refactor
 created: 2026-08-02
+closed: 2026-08-02
 source: fix wave over the per-column agreements increment
 files:
   - src/view/backlogView.ts
+  - src/view/writeGate.ts
+  - src/view/interactions/keyboard.ts
 ---
 
 # Split the view dispatch hub
@@ -88,3 +91,42 @@ moving its invariants intact (documented in the root `CLAUDE.md`'s "The write pa
 would be a correctness risk disguised as a line-count fix. Whatever seam is chosen,
 prove the gate's behaviour is unchanged with the existing test suite before trusting a
 smaller file to mean a safer one.
+
+## Outcome
+
+**The seam was the write gate**, not the menu trio the evidence pointed at. Reading the
+file fresh, the gate was the only block in it with state of its own — `applying`, the
+undo slot, `recovery`, the deferred data update and `busy`, five of the class's fields
+serving one concern, and only `busy` read from anywhere outside its own methods — while
+the menu trio is three short methods sharing a helper and no state at all. Extracting the trio would have moved about twenty lines
+and left the file needing this task again; extracting the gate moved a hundred and
+twenty and left the shape the repository already uses three times over. `WriteGate` in
+`src/view/writeGate.ts` is the same collaborator shape as `CollapseState`, `FilterState`
+and `SelectionController`: constructed with the host, reaching view state through
+`BacklogViewHost` like every other module, and reaching none of the view's elements —
+it publishes progress through a hook the view implements (`syncBusyUi`) and flushes the
+deferred refresh through another. The view keeps the three host methods (`applySafely`,
+`canUndo`, `undoLast`) as one-line delegations, so `BacklogViewHost` still resolves to
+one class and not one of their callers changed.
+
+`backlogView.ts` measures **330 effective lines** against the 400-line cap, from exactly
+400 — 70 lines of headroom where there were none. `writeGate.ts` is 106.
+
+The risk the task named was handled by not touching the invariants: every comment in the
+gate moved with the code it explains, the context-row refusal and the compare-and-swap
+bookkeeping included, and the existing suites (`test/view/state.test.ts`,
+`test/view/undo.test.ts`, `test/view/contextRowWrites.test.ts`,
+`test/view/toolbar.test.ts`) passed with no assertion touched — which is what "prove the
+gate's behaviour is unchanged with the existing test suite" asked for.
+
+**The fix this task was filed to unblock is in the same change**, because the task note
+was its only record and closing the note without it would have lost it.
+`showColumnMenuFor` now reports whether it opened anything, and the keyboard's column
+stop consumes `ContextMenu` only when it did — the rule the pointer path
+(`showColumnMenu`) already kept, and a textbook instance of "a correction applied in one
+place and not its twin". `handleColumnStopKey` came out of `handleBoardKeydown` to hold
+it, because the extra condition pushed that function one over its complexity budget;
+mirroring `handleBoardCardKey` was the shape already there. Extension 3b and an
+acceptance criterion were added to [[Explicit policies on the column]], since a spec
+that did not ask what happens on a column with nothing agreed is how the dead end got
+written in the first place.

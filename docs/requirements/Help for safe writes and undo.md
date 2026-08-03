@@ -6,7 +6,7 @@ status: Open
 priority: P2
 created: 2026-08-01
 files:
-  - src/view/backlogView.ts
+  - src/view/writeGate.ts
   - src/storage/frontmatter.ts
   - src/domain/settings.ts
 ---
@@ -90,6 +90,6 @@ section that decides whether a new user trusts it.
 
 **Nothing yet — this note is design.** The behaviour it describes is
 `src/storage/frontmatter.ts` (the only module that writes, and where each write's inverse
-is captured), `src/view/backlogView.ts` (`applySafely`, `undoLast` and the gate they share),
+is captured), `src/view/writeGate.ts` (`applySafely`, `undoLast` and the gate they share),
 and `src/domain/settings.ts` (`configProblems`, which is what "misconfigured" means
 concretely).

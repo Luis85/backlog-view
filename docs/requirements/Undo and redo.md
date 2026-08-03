@@ -12,7 +12,7 @@ shipped: 0.3.0 (single level — see The 0.3.0 record)
 files:
   - src/storage/frontmatter.ts
   - src/view/interactions/undo.ts
-  - src/view/backlogView.ts
+  - src/view/writeGate.ts
   - src/view/render/toolbar.ts
   - src/domain/viewOptions.ts
 ---
@@ -158,7 +158,7 @@ As built, and where the change lands:
 `src/storage/frontmatter.ts` (`RestoreWrite` capture inside `processFrontMatter`,
 `applyRestores` with per-key compare-and-swap — **unchanged**) ·
 `src/view/interactions/undo.ts` (today the slot's state machine and `UndoRecovery`;
-becomes the two stacks) · `src/view/backlogView.ts` (`runExclusively`, `undoLast`,
+becomes the two stacks) · `src/view/writeGate.ts` (`runExclusively`, `undoLast`,
 `canUndo` — gains the redo half) · `src/view/render/toolbar.ts` (the ↩ button; gains ↪) ·
 `src/view/interactions/keyboard.ts` (`Ctrl`/`Cmd`+`Z`; gains the redo chord) ·
 `src/domain/viewOptions.ts` (the new depth option).

@@ -31,7 +31,7 @@ Obsidian translates its own UI and hands a plugin the code to translate its own.
 What the plugin does with that today is nothing. A grep for the sites that produce
 user-facing text — `setTitle`, `setName`, `setTooltip`, `setPlaceholder`,
 `setButtonText`, `new Notice`, `text:`, `aria-label`, `displayName:`, `placeholder:` —
-finds **about 141 of them across 14 files**, every one an English literal spelled inline:
+finds **about 141 of them across 15 files**, every one an English literal spelled inline:
 
 | File | Sites |
 | --- | --- |
@@ -41,7 +41,9 @@ finds **about 141 of them across 14 files**, every one an English literal spelle
 | `view/interactions/menu.ts` | 16 |
 | `ui/prompts.ts` | 13 |
 | `view/render/rows.ts` | 11 |
-| `view/render/emptyStates.ts`, `view/backlogView.ts` | 8 each |
+| `view/render/emptyStates.ts` | 8 |
+| `view/writeGate.ts` | 5 |
+| `view/backlogView.ts` | 3 |
 | `view/interactions/{tags,create}.ts` | 3 each |
 | `view/interactions/structure.ts`, `commands/scaffold.ts` | 2 each |
 | `view/interactions/undo.ts`, `view/host.ts` | 1 each |
