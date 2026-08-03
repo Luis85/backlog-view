@@ -224,10 +224,20 @@ positional sibling of `wireDropTarget` gates on the same token and keeps the sam
 resolve-at-drop-time rule, since a refresh mid-drag can drop the note. One place mints
 the identity; `timelineDrag.ts` decides what a position means.
 
-- The grid track is one drop target. `onDrag` reads the pointer's X, asks `dayAt`, and
-  paints the preview — a ghost bar and the dates it means — through CSS props. `onDrop`
-  builds the plan and calls `performScheduleMove`. A drag ending off both grid and shelf
-  writes nothing and does not consume the undo slot.
+- The grid track is one drop target. `onDrag` paints the preview — a ghost bar and the
+  dates it means — through CSS props; `onDrop` builds the plan and calls
+  `performScheduleMove`. A drag ending off both grid and shelf writes nothing and does
+  not consume the undo slot.
+- **The pointer is converted before `dayAt` sees it.** `dayAt` takes an offset from the
+  window's first day; the drag adapter reports a **viewport** `clientX`. The view
+  subtracts the *track's* bounding rect — the days area, so the sticky lead column is
+  excluded by construction rather than by a constant that has to stay in step with the
+  CSS. One subtraction and no scroll term: a bounding rect already moves with the
+  scroll, and adding `scrollLeft` on top would double-count the pan. Untranslated, the
+  preview and the write would both be off by the pane's position plus the scroll — a
+  drop over one day scheduling another, which is a correctness bug wearing a rendering
+  bug's clothes. The test drives a panned grid at a nonzero viewport offset, since a
+  fixture at origin with no scroll cannot fail this.
 - **The timeline registers its scroller.** Auto-scroll is opt-in per element and
   `renderRoadmap` calls `wireScroller` only in the horizon branch, so without this a
   drag could reach no date that is not already on screen — and the grid is thousands of
@@ -237,6 +247,17 @@ the identity; `timelineDrag.ts` decides what a position means.
   timeline's own horizontal scroller, not the pane, because
   [[Zoom and the today marker]] requires the scrolling to stay inside the view and the
   pane never to scroll sideways.
+
+  **That inner scroller moves the today anchoring with it.** `restoreScroll` sets
+  `treeEl.scrollLeft` and centres `todayLeft` on the pane, which works today only
+  because the pane *is* the horizontal scroller; introducing an inner one would leave
+  that assignment inert and today off-screen on any window wider than the view. So
+  `RoadmapSnapshot` returns the scroller element, `restoreScroll` takes its horizontal
+  target separately from its vertical one — falling back to the pane where there is no
+  inner scroller, which is every other projection — and the opening centre, the
+  preserved offset across a zoom change, and jump-to-today all address that one
+  element. Horizontal and vertical stop being the same element here, and the
+  signature says so rather than each caller remembering.
 - Three sources, and **two different gates**, because they are asked different
   questions. The bar body and the two end grips are gated by `barHolds`, which is about
   a rendered bar. A shelf card has no bar, so it is gated by `canSchedule` — the
@@ -354,7 +375,9 @@ covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
 slide, both end grips, the clamp at equal, the bar-to-shelf removal, the drag that ends
 nowhere, the marker on a start-only axis offering no grip, and the one-ended bar whose
-body slide leaves its open end open. The clamp gets both sides of its condition: two
+body slide leaves its open end open — every pointer case driven against a **panned grid
+at a nonzero viewport offset**, because a fixture at the origin with no scroll passes
+whether or not the pointer is converted at all. The clamp gets both sides of its condition: two
 stated ends clamp at equal, while a stated end dragged past an inferred one writes the
 day the pointer named and re-places with that end open. A marker with both properties configured is driven
 through **every** gesture — shelf drop, body slide, bar-to-shelf — asserting the same
