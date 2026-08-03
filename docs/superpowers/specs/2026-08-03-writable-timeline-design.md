@@ -68,6 +68,19 @@ cell, minus a day. Week zoom gives seven days, month zoom the dropped month's ow
 length, quarter zoom the quarter's. Day-exact anchoring, and a default duration that
 still decays with distance.
 
+**`cellSpan` is a duration, not a cell**, and the distinction carries the anchoring rule
+the register states twice — "a start takes the cell's first day, a target its last"
+(`2c`, and step 2 of the bar drag). Decision 1 made the cell a **day**, so both halves of
+that rule collapse to the same thing: the day under the pointer. It reads as a narrowing
+of the rule and is in fact its unchanged application to a one-day cell.
+
+The case that shows the two apart is a marker, which takes a target and no span
+([[Drag from the shelf to schedule]] extension `2e`). Having no duration, it has nothing
+for `cellSpan` to default, so it lands on **the drop day** — not on the drop day plus a
+span it does not have. Offsetting it by a week because the reader happened to be zoomed
+out would be exactly the silent coarsening decision 1 exists to refuse: a deadline is the
+one date on this screen a gesture must never move on its own.
+
 ### 3. Whole-day steps, so the month-end clamp stops being reachable
 
 [[Move and resize a bar]] step 1 slides "by whole-cell steps" and extension `1f` states
