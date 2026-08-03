@@ -19,7 +19,7 @@ what the code is for rather than mentioning a path in passing.
 | --- | --- |
 | **Actor** | Whoever adds, splits or renames a module in `src/` |
 | **Trigger** | `npm run check`, on every build |
-| **Preconditions** | None. The rule is already true of 48 of 49 modules, so it lands on a clean file |
+| **Preconditions** | None. The rule already holds for every module but the ADR-named one, so it lands on a clean file without a note written to satisfy it |
 | **Guarantee** | A module that no use case and no ADR claims fails the build. What satisfies the rule is a description, never a mention. |
 
 **Main flow**

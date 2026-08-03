@@ -83,11 +83,11 @@ a backlog that got slow between releases.
   while `dragDrop.ts` is still scanning, which is a test agreeing with the comment instead
   of checking it. The drag path is the one that was actually broken, so it is the one that
   must be in it.
-- **2b — the check asserts on `rowEls` instead of on the calls.** It proves nothing. An
+- **3b — the check asserts on `rowEls` instead of on the calls.** It proves nothing. An
   interaction that swapped `rowEls.get(path)` for `treeEl.querySelector(...)` leaves the
   map the right size and still resolves the right element, so a map-shaped assertion passes
   with the guarantee gone. The check has to watch the call that must not be made.
-- **3a — the hoisted lookups are described in the wrong place.** `src/view/CLAUDE.md` says
+- **2a — the hoisted lookups are described in the wrong place.** `src/view/CLAUDE.md` says
   `getOrder` and `getDisplayName` live "on `RowContext`". They do not: `chipProps` resolves
   the columns once per data update onto `host.chips`, and `RowContext` carries that
   snapshot. Correct the sentence in the same change, or the test and the guide disagree
@@ -99,7 +99,10 @@ a backlog that got slow between releases.
 ## Acceptance criteria
 
 - `npm run lint` fails on `querySelector`/`querySelectorAll` called on `treeEl` anywhere in
-  `src/view/**`, and passes on all eleven existing calls, none of which name it. Verified
+  `src/view/**`, and passes on **every** call that survives the prerequisite fix — none of
+   which names `treeEl`, which is the property being relied on rather than a tally. (A
+   draft said "all eleven", counted *before* [[The drag cleanup scans the whole tree]]
+   removes one of them: a criterion its own precondition made unmeetable.) Verified
   the way this repository verifies its lint rules: by planting the violation and watching
   lint reject it.
 - Whatever region the rule is added to keeps the write boundary, the menu-anchor rule and

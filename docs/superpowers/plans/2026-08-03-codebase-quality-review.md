@@ -598,7 +598,13 @@ Each step is independently shippable and ends `npm run check` green.
    doubles the merge surface. The `Notice` seam arrives here, as the typed wrapper
    [[A bare string cannot reach the UI]] specifies — not as a service of its own. Its own
    epic, not a step in a polish pass.
-7. **Fold the verification sweep into `RELEASING.md`** (finding 7) — one line, any time.
+7. **Make the verification sweep runnable** (finding 7) — **not one line.**
+   [[A cadence for the checks CI cannot run]] governs it and asks for four things before
+   `RELEASING.md` gains its step: normalize the three legacy `## What to look at` headings,
+   fix the query to match the whole heading line and plant a case proving it, take a fresh
+   count against the register, and have every verification say whether it is re-runnable or
+   conditional. A draft of this step said "one line, any time" — which would have looked
+   complete after the one part that changes nothing.
 
 Steps 1–4 are a coherent first increment: nothing in them changes shipped behaviour, and
 together they close every finding that is *only* a missing check. Steps 5 and 6 are the
