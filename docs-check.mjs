@@ -217,7 +217,7 @@ function frontmatter(text) {
  * **A name Windows cannot check out**, asked of the entry as it sits on disk.
  *
  * Notes here are titled in prose, and prose contains punctuation NTFS forbids —
- * `< > : " | ? *`, a trailing space or dot, and the reserved device names. A note called
+ * `< > : " | ? * \`, a trailing space or dot, and the reserved device names. A note called
  * `Finding 4 — "a few hundred rows" is a comment, not a check.md` was committed from Linux,
  * where it is an ordinary filename, and the Windows CI job failed at `git checkout` with
  * `error: invalid path` — before any build step, so nothing in this file ever ran and the
@@ -235,7 +235,13 @@ function frontmatter(text) {
  * unclonable as a file, and `walk` is the one place both are in hand.
  */
 const WINDOWS_NAME_RULES = [
-	[/[<>:"|?*]/, 'uses one of `< > : " | ? *`, which Windows forbids — git cannot check this out'],
+	// A backslash belongs here for the same reason as the rest and is the easiest to leave
+	// out: on Linux and macOS it is an ordinary character in a NAME, so `A\B.md` is a file
+	// somebody can create and commit, and only Windows reads it as a separator. `/` is
+	// deliberately absent — no POSIX filesystem can hold it in a name, so a rule for it
+	// could never fire. This tests `entry.name`, never the joined path, which is what keeps
+	// the separator on a Windows run from matching every entry in the tree.
+	[/[<>:"|?*\\]/, 'uses one of `< > : " | ? * \\`, which Windows forbids — git cannot check this out'],
 	[/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i, "is a reserved device name on Windows"],
 	[/[ .]$/, "ends in a space or a dot, which Windows cannot represent"],
 ];

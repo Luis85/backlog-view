@@ -28,7 +28,7 @@ The Windows CI job then failed with
 error: invalid path 'docs/issues/Finding 4 — "a few hundred rows" is a comment, not a check.md'
 ```
 
-at `git checkout` — **before any build step ran**. NTFS forbids `< > : " | ? *`, a trailing
+at `git checkout` — **before any build step ran**. NTFS forbids `< > : " | ? * \`, a trailing
 space or dot, and the reserved device names. The consequence is worse than a failing test:
 the repository could not be cloned at all on half the platforms it supports, so no test and
 no gate in `docs-check.mjs` had any chance to report it, and the failure surfaced as an
@@ -62,6 +62,13 @@ positive was correct behaviour and went green. Reading the *directory entry as i
 disk* is what makes both cases come out right; the fix is now covered from both sides —
 an accept case for `A trailing thought..md` that fails if the stem-stripping returns, and
 a reject case for `A trailing thought.md.` that fails if the rule is removed.
+
+The backslash in that set is the one worth naming: on Linux and macOS it is an ordinary
+character in a *name*, so `A\B.md` commits cleanly and only Windows reads it as a
+separator. It was missing from the first two versions of the rule. `/` is deliberately
+absent — no POSIX filesystem can hold it in a name, so a rule for it could never fire. The
+check reads `entry.name` rather than the joined path, which is what stops the separator on
+a Windows run from matching every entry in the tree.
 
 The three rules are a table of pattern-and-reason rather than three `if`s, which is what
 keeps the function under fallow's complexity threshold — the first shape crossed it, and

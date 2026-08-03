@@ -422,6 +422,17 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 			'which Windows forbids',
 		],
 		[
+			// The one in the forbidden set that is an ordinary character everywhere else: a
+			// name holding a backslash commits cleanly from Linux and is unrepresentable on
+			// Windows. The rule reads `entry.name`, so the separator on a Windows run is not
+			// in what it tests — checking the joined path would flag every entry in the tree.
+			'a note whose name holds a backslash, which only Windows reads as a separator',
+			(files) => {
+				files['docs/issues/A\\B.md'] = note('Issue', 20, 'Thing', '# A B\n\n## The decision\n\nWe did it.\n');
+			},
+			'which Windows forbids',
+		],
+		[
 			'a note named after a reserved device',
 			(files) => {
 				files['docs/issues/NUL.md'] = note('Issue', 20, 'Thing', '# NUL\n\n## The decision\n\nWe did it.\n');
