@@ -27,16 +27,19 @@ once.
 
 1. `src/view/interactions/cardDrag.ts` is covered first — **60% branches, the lowest figure
    in `src/`**, in the one controller both card projections ride.
-2. `src/view/interactions/tags.ts` follows at 71% — the other module both projections
-   share, since a card body renders the same tag pills a row does.
-3. Each increment raises the matching threshold in `vitest.config.mts`.
-4. `npm run check` passes on the new floor.
+2. Each increment raises the matching threshold in `vitest.config.mts`.
+3. `npm run check` passes on the new floor.
 
-**This PBI is those two modules and no more.** `undo.ts` (80%) and `backlogView.ts`
-(80.5%) are the next-lowest figures and are deliberately **not** promised here: neither is
-code the projections share, which is what this note is about, and listing them in a flow
-with no acceptance criterion behind them is a scope that can be silently dropped at
-closure. They get their own note when someone has the evidence to write one.
+**This PBI is one module.** `tags.ts` was in an earlier draft and came out: a review
+showed that its refusal branch is **already tested** (`test/view/tags.test.ts` submits
+`123` and asserts the Notice), and that the own-tag fold may not be reachable in
+production at all — `collectObservedTags` already carries every editable result's tags,
+and a context row is not offered tag editing. Writing to that draft would have produced a
+duplicate test and a contrived host state, which extension 1c refuses.
+
+**Nothing replaces it here.** `tags.ts`, `undo.ts` (80%) and `backlogView.ts` (80.5%) each
+need someone to read the branch before promising it — the same reading that corrected this
+note twice. They get their own note when that reading has been done.
 
 **Extensions**
 
@@ -50,22 +53,21 @@ closure. They get their own note when someone has the evidence to write one.
   - `cardDrag.ts:157-161` — the drop-time payload check, and the item resolution that
     **can miss because a refresh mid-drag dropped the note**, which the code says in as
     many words. The branch is the drop that resolves to nothing and writes nothing.
-  - `tags.ts:20-22` — `tagChoices` folding the item's own tags into the offered
-    vocabulary, so a tag the base has never seen elsewhere is still offered on its own item.
-  - `tags.ts:36-39` — the normalization refusal, and the Notice that says so rather than
-    closing the prompt as if the tag had been added.
+  Both need an absence constructed to reach them, which is why they are the ones left.
 
-  Every one needs a race, an absence or a refusal constructed to reach it, which is why
-  they are the ones left — and why they are worth reaching.
+  **A coverage line number is not a branch description.** Both `tags.ts` entries in an
+  earlier draft were wrong — one already covered, one possibly unreachable — because they
+  were written from the report's ranges rather than from the source. Read the branch, say
+  what it does, then decide whether it is worth a test.
 - **1b — the number is chased rather than the branch.** Refused. A test written to move a
   percentage asserts whatever is cheapest to assert. Each increment names the branch it
   covers and what would break if that branch were wrong; a threshold moves because a
   behaviour got checked, never the other way round.
-- **3a — a threshold would have to go down.** It does not go down. `vitest.config.mts`
+- **2a — a threshold would have to go down.** It does not go down. `vitest.config.mts`
   says so already, and the one time a figure moved down it was because vitest 4 remapped
   v8's byte ranges onto AST nodes — a measurement change with no test lost, recorded in
   that file rather than absorbed.
-- **4a — a branch turns out unreachable.** It is deleted, or declared the way
+- **1c — a branch turns out unreachable.** It is deleted, or declared the way
   `.fallowrc.json` declares framework-invoked members. An unreachable branch covered by a
   contrived test is worse than no test: it pins code nothing can execute.
 
@@ -74,10 +76,8 @@ closure. They get their own note when someone has the evidence to write one.
 - `cardDrag.ts` branch coverage is no longer the lowest figure in `src/`, and each of its
   named branches above has a test: the two silent-announcement guards assert that
   **nothing** was announced, and the missed drop asserts that nothing was written.
-- `tags.ts` branch coverage covers both named branches — the own-tag fold and the
-  normalization refusal with its Notice.
-- No criterion here mentions `undo.ts` or `backlogView.ts`, and neither does the flow.
-  Scope promised is scope checked.
+- No criterion here mentions `tags.ts`, `undo.ts` or `backlogView.ts`, and neither does
+  the flow. Scope promised is scope checked.
 - Every new test names the branch it covers, and is watched failing without the code it
   exercises.
 - Thresholds in `vitest.config.mts` are raised to the new measured floor, and none is
@@ -86,6 +86,9 @@ closure. They get their own note when someone has the evidence to write one.
 
 ## Where it lives
 
-`src/view/interactions/cardDrag.ts` · `src/view/interactions/tags.ts` ·
-`src/view/interactions/undo.ts` · `src/view/backlogView.ts` · `vitest.config.mts` ·
-`test/view/board.test.ts` · `test/view/tags.test.ts` · `test/view/undo.test.ts`
+`src/view/interactions/cardDrag.ts` · `vitest.config.mts` · `test/view/board.test.ts`
+
+Only what this note owns. `undo.ts` and `backlogView.ts` are named in the flow as
+explicitly **out** of scope, and once [[A module is named where it is specified]] lands a
+path in this section is a claim that this use case specifies that module — so listing an
+excluded one would make the checker green on an ownership nobody meant.

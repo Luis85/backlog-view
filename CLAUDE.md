@@ -137,7 +137,8 @@ there. What stays here binds while you are editing `src/`:
   on one pull request were comments precisely stating the rule the code beside them
   broke, so a confident paragraph is evidence of intent and of nothing else — see
   `docs/issues/A comment that states a rule is not a check.md`. Twice, watching the test
-  fail was what showed it asserted less than it read as.
+  fail was what showed it asserted less than it read as. What to do when the check cannot
+  reach the whole claim is in **Claims, and the checks under them**, below.
 
 ## Invariants that bite
 
@@ -253,6 +254,42 @@ correct rule. Read `docs/issues/The outcome report was built from one sentence.m
 before building it again: the open question is that nothing correlates a Bases pass with
 a write, and a design that needs that correlation cannot be made to work here.
 
+
+## Claims, and the checks under them
+
+The rules above are the ones this codebase learned from bugs. These are the ones it
+learned from *reviews* — every one was broken here first, several of them inside the
+change that was fixing the previous instance.
+
+- **Read the register before reasoning from the code.** `docs/` holds decisions the code
+  cannot show: an alternative already refused and why, an ordering two pieces of work must
+  keep, which note already owns a question. Code answers *what is*; only a note answers
+  *what was decided*. A proposal that reads as obvious from the source alone is the one
+  most likely to have been considered and rejected already — check before proposing, and
+  say so when the register disagrees with you.
+- **Write the guarantee to the check, never ahead of it.** When a check cannot reach the
+  whole claim, narrow the sentence rather than leaving the wider one standing. A guide that
+  promises more than lint and the suite deliver is the same defect as an unchecked comment,
+  and harder to catch because it reads as settled. If narrowing makes the sentence ugly —
+  *"a direct call fails lint; an aliased one is caught only on a path the spy drives"* —
+  the sentence has become honest and the ugliness is the information.
+- **A category invariant is checked at the forbidden thing, not by listing the places.**
+  "Nothing does X" cannot be verified by driving the paths someone thought of; the next
+  path is exactly the one that breaks it. Put the check on the call — a lint rule, or a spy
+  on the call itself — so it holds for code not yet written. Where the rule cannot see
+  every spelling, name the spelling it does see.
+- **Measure a set with an instrument that can see all of it, and test the instrument
+  first.** A grep for `foo(` silently misses `foo<T>(`. A search for one heading misses the
+  notes that spell it differently. Both happened here, and both times the wrong count was
+  used as the evidence for a decision before anyone counted a second way.
+- **Address code by name, not by position.** Selectors, symbols and paths survive an edit;
+  line numbers are correct until the next insertion above them. A stylesheet that grew by
+  most of its own size again left every line citation in the register pointing at the wrong
+  rule, while every selector still resolved.
+- **A table that enumerates code goes stale; a table that states a rule does not.** The
+  first kind duplicates something the tree already says and is wrong the moment a file
+  moves; the second cannot be falsified by a code change. Prefer prose that names a module
+  only where the sentence is *about* that module — the layer guides are the worked example.
 
 ## Gotchas
 

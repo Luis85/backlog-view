@@ -47,8 +47,8 @@ that grows.
   **The shape distinguishes them, but only after three notes are normalized.**
   `docs/README.md` documents a verification-to-run as `Why this exists` · `How to check` ·
   `Acceptance criteria` · `Outcome`, and `## How to check` is carried by that kind and no
-  other. It selects 18 notes where `area: verification` selects 26 — **but three
-  verifications do not use it.** [[Smoke test the board in a live vault]],
+  other. Matched **as a whole heading line**, it selects 17 notes where `area:
+  verification` selects 26 — **but three verifications do not use it.** [[Smoke test the board in a live vault]],
   [[Smoke test the folder note layout in a live vault]] and
   [[Smoke test the visual changes]] head that section `## What to look at` instead, so the
   query as first written would have silently dropped them.
@@ -61,14 +61,21 @@ that grows.
   **So the three headings are normalized to `## How to check` as part of this work**, and
   the note says why the alternative was refused: teaching the query both spellings makes
   the set depend on a list of synonyms that grows every time someone invents a fourth.
-- **2c — the normalized convention drifts again.** It can, and nothing yet stops it:
+- **2c — the heading is matched as a prefix.** Then it is the wrong query. A prefix match
+  picks up `## How to check, properly` in a note about a CI gate that never ran — an
+  investigation, not a live-vault verification — and an implementer chasing the resulting
+  count either sweeps a check no device can run or hunts one that does not exist. Match the
+  whole heading line. This was found the third time the set was counted, after two earlier
+  counts were quoted as evidence.
+- **2d — the normalized convention drifts again.** It can, and nothing yet stops it:
   `docs-check.mjs` gates the use-case and ADR shapes and **not** the `Issue` shapes. Stated
   rather than hidden — the query rests on a convention, and a convention with no checker is
   what this whole round is about. Gating the `Issue` shapes is the obvious follow-up and is
   deliberately not smuggled in here.
-- **2d — the count is written into a note.** Deliberately not. A first draft said "18 of
+- **2e — the count is written into a note.** Deliberately not. A first draft said "18 of
   20", and a note added in the same commit made it 19 of 20 before anyone read it — the
-  staleness this round is about, committed inside the note complaining of it.
+  staleness this round is about, committed inside the note complaining of it. A later draft
+  then said "18 of 21" and was wrong again, for the prefix reason above.
   `docs/README.md` already states the habit: *"A count belongs here only as long as it
   takes to go stale."* The figure above belongs to this note's evidence for choosing the
   query, not to the checklist, which asks the register every time.
@@ -88,8 +95,11 @@ that grows.
 
 - `RELEASING.md` names the sweep, and names it before the tag rather than after.
 - The three notes heading their section `## What to look at` are normalized to
-  `## How to check` **before** the query is relied on, and a fresh count confirms the query
-  returns every verification rather than the 18 of 21 it returned first.
+  `## How to check` **before** the query is relied on.
+- The query matches the **whole heading line**, so `## How to check, properly` in a
+  non-verification note is not swept in. A planted case proves it.
+- After normalizing, a fresh count is taken and agrees with the register — not with any
+  figure quoted while this note was being written, two of which were wrong.
 - The set is **derived, not listed**: the sweep names the query — Issues carrying
   `## How to check` — so a verification added tomorrow is in it without anyone editing a
   checklist. `RELEASING.md` must not contain an enumeration of the notes.

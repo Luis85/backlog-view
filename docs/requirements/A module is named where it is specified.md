@@ -91,4 +91,9 @@ what the code is for rather than mentioning a path in passing.
 ## Where it lives
 
 `docs-check.mjs` · `docs/README.md` · `test/docs/checkerAccepts.test.ts` ·
-`test/docs/checkerRejects.test.ts` · `src/view/host.ts` (the ADR-named case)
+`test/docs/checkerRejects.test.ts`
+
+**The ADR-named module is deliberately not listed here.** Naming it in a `Where it lives`
+section would satisfy the rule through the use-case arm, leaving the ADR arm unexercised
+by anything but a planted fixture — and would break this note's own criterion that no note
+is written to satisfy the rule. It stays in ADR 0003, which is the case being tested.
