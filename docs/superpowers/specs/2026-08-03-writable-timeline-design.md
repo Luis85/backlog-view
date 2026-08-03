@@ -1,0 +1,257 @@
+# A writable timeline — the roadmap's next increment
+
+**Date** 2026-08-03
+**Delivers** [[Zoom and the today marker]], [[Drag from the shelf to schedule]] and
+[[Move and resize a bar]] — the first under `The timeline`, the other two under
+`Scheduling work`
+**Closes on the way** [[The unplaced shelf]] and [[Roadmap empty states]], both of
+which stay Open only on the dated half of the drag and on the drop targets
+**Answers to** the milestone [[Ship the roadmap epic]], due 2026-09-30
+
+## Why this increment, and why now
+
+The horizon axis is finished — buckets, moves, keyboard, menu, chip. The dated axis
+draws bars, rolled-up spans, milestone diamonds and a today line, and **no gesture on it
+writes anything**. `renderRoadmap` passes the drag controller on only where a drop has a
+write behind it, so the timeline currently offers nothing it cannot keep. That is the
+epic's largest honest gap, and three notes are held open by it.
+
+The last two increments were codebase-health sweeps. This is the return to product work,
+and it is the slice with the most notes closing per file touched: the writes reuse a
+planner, a geometry function and a store that all already exist.
+
+## Scope
+
+**In:** the three PBIs named above, plus one defect they expose — a datetime's time and
+offset are erased by the existing schedule path (below, under *The domain*).
+
+**Out**, each with a stated owner:
+
+- The keyboard lift, and bucket stops ([[Keyboard and menu on the roadmap]], which stays
+  `Active`). `Schedule` and `Unschedule` already give every date write a non-pointer
+  path, so WCAG 2.2 SC 2.5.7 is satisfied the day the drags land; the lift is the
+  combined-move and ergonomic path, not the compliance one.
+- Lanes and the combined lane-plus-axis batch ([[Lanes on the roadmap]]). Extension
+  `2d` of the shelf drag and `1d` of the bar drag both defer to it by name.
+- Progress fills on bars ([[Progress on the bar]]) and the roadmap's focus fills
+  ([[Focus level picks the rows]]).
+- The outcome report — announcing that a write took its own note out of the base. See
+  *What is deliberately not built*, below.
+
+## The decisions this increment makes
+
+Four questions were open in the register and are settled here. Each contradicts a
+sentence someone wrote before the code existed, so each comes with the note it corrects.
+
+### 1. Snapping is by the day, at every zoom
+
+[[Zoom and the today marker]] says each zoom "declares the grid cell that drags snap
+to", and the epic quotes ProductPlan's precision-decays-with-distance rule. Taken
+literally, the same gesture would write different dates depending on zoom, and a user
+who zoomed out for context and nudged a bar would silently coarsen a date they had set
+precisely.
+
+**Decided:** zoom changes pixel density and header granularity only. A drop writes the
+day under the pointer at every zoom — the day being the finest unit the data model has,
+and the only one a date property can hold. The ISO week then governs header cell
+boundaries and the shelf drop's default length, not the write's granularity.
+
+### 2. A shelf drop anchors on the day and takes its length from the zoom
+
+[[Drag from the shelf to schedule]] step 2 writes "start and target spanning that one
+cell — its first day and its last". Under day snapping, one cell is one day, so that
+wording writes `start === target` — which [[Bars from two dates]] step 4 renders as a
+**milestone diamond**. A dropped PBI would arrive looking like a deadline.
+
+**Decided:** start is the day under the pointer; target is start plus the current zoom's
+cell, minus a day. Week zoom gives seven days, month zoom the dropped month's own
+length, quarter zoom the quarter's. Day-exact anchoring, and a default duration that
+still decays with distance.
+
+### 3. Whole-day steps, so the month-end clamp stops being reachable
+
+[[Move and resize a bar]] step 1 slides "by whole-cell steps" and extension `1f` states
+a calendar step landing on the same day of the target unit, clamped to the last day
+where that day does not exist. With day snapping there is no unit larger than a day to
+step by, so the overflow the clamp guards against cannot occur.
+
+**Decided:** slides and resizes step whole days. `1f` is deleted rather than left as a
+rule about a case no code can reach — an unreachable rule is a claim with nothing under
+it, and this repository already has a note about what those cost.
+
+### 4. The outcome report is not built
+
+Both drag notes carry a case where a date write takes its own note out of the Base's
+filter and say it is "announced with an open path". `CLAUDE.md` and
+[[The outcome report was built from one sentence]] record that this mechanism was built
+once, removed, and cost eleven review findings across seven rounds without reaching a
+correct rule — the blocker being that nothing correlates a Bases pass with a write.
+
+**Decided:** not built. The write stands, the card leaves on the refresh, and undo still
+takes it back across the boundary. The acceptance criteria that promise the announcement
+are narrowed to what actually ships, and the question stays owned by its issue. Writing
+the guarantee to the check rather than ahead of it.
+
+## Architecture
+
+Four layers, in the order the change moves through them. Nothing reaches upward, and
+nothing below `view/` learns what a gesture is.
+
+### The domain — `src/domain/timeline.ts`
+
+The scale is a record, not a mode:
+
+```
+TimelineScale { id: 'week' | 'month' | 'quarter'; dayPx: number; unit: ... }
+```
+
+Today's fixed rendering becomes the `month` scale at `dayPx: 4`, so zoom adds a
+parameter to functions that already exist rather than a second drawing path.
+`timelineWindow` aligns its bounds to the scale's unit, and `MAX_TIMELINE_MONTHS`
+becomes `MAX_TIMELINE_CELLS` — sixty cells of whatever the scale is. That keeps the
+drawn width bounded at every zoom (the backstop's actual purpose: a typo'd year must
+not render tens of thousands of header cells) and is identical to today's behaviour at
+month zoom.
+
+Three new pure functions:
+
+| | |
+| --- | --- |
+| `dayAt(window, scale, x)` | Pixel offset → `CivilDate`, clamped into the window. The exact inverse of the `daysBetween(window.start, date)` that `barGeometry` already computes, so px↔date is one rule stated in two directions rather than two rules that can drift apart. |
+| `addDays(date, n)` | The whole-day step every slide and resize is made of. Civil arithmetic beside `daysBetween`, consulting no clock and no zone. |
+| `cellSpan(scale, day)` | The shelf drop's default duration — 7, the month's own length, or the quarter's. Used by that one gesture and by nothing else; it is not a snapping unit. |
+
+**`barHolds(item, settings, bar)`** answers where a gesture may take hold — body, start
+grip, end grip — as one predicate the renderer and the drag both ask. A marker offers no
+end grips (a point has no duration to resize); an inferred end withholds the body hold
+too, not only its own; an unconfigured key offers no grip at all. Asking it once is what
+keeps what is drawn as grabbable and what can actually be written from disagreeing.
+
+**The datetime defect.** [[Move and resize a bar]]'s acceptance criteria require that a
+datetime keep its time of day and its shape on disk. `computeScheduleWrites` → `planDate`
+writes a plain `formatCivil` string, so a note carrying `2026-08-01T09:00+02:00` loses
+its time — and this is live today on the shipped menu path, since `SchedulePromptModal`
+uses native `type="date"` fields. The fix belongs in `planDate`, where both the menu and
+the new gestures route through: re-emit the new civil date carrying the original value's
+time and offset. One guard in the shared function, not one per caller.
+
+### The plan — `src/domain/writePlan.ts`
+
+**Nothing new.** `computeScheduleWrites` is already the batch these gestures want: both
+ends on one `ItemWrite` so a span is one undo rather than two halves that can be taken
+back separately; `null` removing a key only where the note carries it; an end that would
+change nothing dropped from the batch. The gestures build a `SchedulePlan` of civil-date
+strings and hand it over.
+
+### The write path — `src/view/host.ts`, `src/view/interactions/plan.ts`
+
+One new host method, `performScheduleMove(item, plan)` — the only place a date batch is
+planned and the only place it is announced, which is the epic's "one move, three inputs"
+rule reaching a third projection. It shares `applyCardMove`, and therefore its capture
+rule: the dates that will *name* the move are read before the await, because the batch's
+own refresh rebuilds the timeline and the window may have moved under it.
+
+The menu's `promptSchedule` and `unschedule` are routed through it. They call
+`host.applySafely` directly today; leaving them there would make the drag a second idea
+of what scheduling is, which is exactly the drift the rule exists to prevent.
+
+`announceScheduleMove` joins `announceBoardMove` and `announceHorizonMove` in
+`cardDrag.ts` — old span and new, or "Unscheduled" when the keys go — so a menu move and
+a gesture are told to a screen-reader user in the same words.
+
+### The gestures — `src/view/interactions/timelineDrag.ts` (new)
+
+A new file rather than an extension of `cardDrag.ts`, which is explicitly *the whole
+region is the target and the highlight is the only drop signal*. A drag with grips, live
+geometry and a positional drop is a second concern, and folding it in would push that
+module past its budget as well as past its stated job.
+
+- The grid track is one drop target. `onDrag` reads the pointer's X, asks `dayAt`, and
+  paints the preview — a ghost bar and the dates it means — through CSS props. `onDrop`
+  builds the plan and calls `performScheduleMove`. A drag ending off both grid and shelf
+  writes nothing and does not consume the undo slot.
+- Three sources: the shelf card (already a draggable through `cardDrag`; its data needs
+  only to carry the item), the bar body, and the two end grips. Every one gated by
+  `barHolds`.
+- A shelf drop writes decision 2's span. A body slide steps whole days with the target
+  following at the bar's own day count, so a slide never changes duration. An end drag
+  moves one date and clamps at equal rather than crossing — a reversed span is
+  unreadable, so no gesture may write one.
+- A bar dropped on the shelf removes the configured date keys rather than blanking them,
+  and undo restores them with their values.
+- `renderRoadmap` passes `dnd: null` on the dated axis today as the deliberate
+  withholding. Flipping that on is what this increment is.
+
+### Zoom and today — `render/toolbar.ts`, `storage/collapseStore.ts`, `styles/timeline.css`
+
+A zoom picker and a jump-to-today button beside the focus picker, both rendered only on
+the dated axis. `CollapseSnapshot` gains `zoom`, validated against the three scale ids
+exactly as `axis` is validated against `AXIS_VALUES` — a per-screen working position, in
+the store where collapse state already lives, never in the `.base`. The narrow-pane rule
+is a container query in `styles/timeline.css` collapsing the shelf to its labelled count,
+its header becoming the control that reopens it: an unplaced result may lose its card,
+never its existence.
+
+## The context-row rule, asked of a third set of gestures
+
+Every new entry point is a write path, so each is subject to the same rule: an
+`outsideFilter` row is never a write target, never a ranking peer, never a source of
+anything derived. Context rows are never shelved and never draggable; `applySafely`
+refuses whole any batch naming one. This is not re-derived for the timeline — the check
+is added to `test/view/contextCardWrites.test.ts`, which already asks the three questions
+of each card projection, so the new gestures fail it without anyone having predicted the
+surface.
+
+## The register corrections this increment owes
+
+1. [[Zoom and the today marker]] — decision 1: the zoom's cell is the shelf drop's
+   default length, not the write's granularity.
+2. [[Drag from the shelf to schedule]] — decision 2: anchored on the drop day,
+   `cellSpan` long.
+3. [[Move and resize a bar]] — decision 3 (whole days; `1f` deleted) and decision 4
+   (`3b` and its criterion narrowed to what ships).
+4. [[Keyboard and menu on the roadmap]] — delete "the roadmap's dated axis has no
+   non-pointer moves *and no pointer ones either*". `Schedule` and `Unschedule` write
+   today, and after this increment the pointer paths do too. The sentence is already
+   false and would be doubly so on merge.
+5. [[The unplaced shelf]] and [[Roadmap empty states]] — both close: the dated half of
+   the shelf drag lands, and every grid region becomes a drop target.
+6. [[Bars from two dates]] — close it. Its stated reason for staying open was inferred
+   parent spans waiting on [[Spans roll up the tree]]; that PBI is Done and `deriveBars`
+   in `src/domain/roadmap.ts` sets `inferredStart` / `inferredEnd` today, so the note is
+   held open by a sentence rather than by a gap.
+
+## Testing
+
+Node tests in `test/domain/timeline.test.ts` for the scale, the unit-aligned window, the
+cell backstop, `addDays`, `cellSpan` and `barHolds`; `dayAt` is tested **as
+`barGeometry`'s inverse** — a date placed and read back is the same date — rather than
+against hand-computed pixels, since the round trip is the property that matters.
+
+The datetime shape preservation gets a test in `test/domain/writePlanAxis.test.ts` that
+is **watched failing first**: it is a live defect on the shipped menu path, and watching
+it fail is the evidence the test asserts what it reads as.
+
+A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
+slide, both end grips, the clamp at equal, the bar-to-shelf removal, and the drag that
+ends nowhere. `test/view/contextCardWrites.test.ts` gains the timeline's entry points.
+Coverage thresholds in `vitest.config.mts` only ever go up.
+
+`npm run check` — build, lint, coverage-thresholded tests, fallow, docs register — is
+the gate, on Ubuntu and Windows both.
+
+## What jsdom cannot answer
+
+Named honestly rather than claimed, and filed as a smoke note under `Feature Test`:
+
+- Whether the preview reads as a contract — that the ghost bar and its dates are
+  legible while the pointer is moving.
+- Whether an end grip is reachable at four pixels per day, and whether the three zooms
+  are three *usable* scales rather than three numbers.
+- The narrow-pane shelf compaction, and whether anything clips under the header in an
+  embedded base.
+- The today line and jump-to-today from a scrolled position.
+
+`npm run test-build` bundles into this repository's own `.obsidian/plugins/`, and
+`docs/Product Backlog.base` is a real backlog with a real milestone on it — the plugin
+displaying its own register is the smoke test.
