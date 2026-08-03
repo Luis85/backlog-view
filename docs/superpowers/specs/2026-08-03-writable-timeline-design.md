@@ -74,12 +74,19 @@ the register states twice — "a start takes the cell's first day, a target its 
 that rule collapse to the same thing: the day under the pointer. It reads as a narrowing
 of the rule and is in fact its unchanged application to a one-day cell.
 
-The case that shows the two apart is a marker, which takes a target and no span
-([[Drag from the shelf to schedule]] extension `2e`). Having no duration, it has nothing
-for `cellSpan` to default, so it lands on **the drop day** — not on the drop day plus a
-span it does not have. Offsetting it by a week because the reader happened to be zoomed
-out would be exactly the silent coarsening decision 1 exists to refuse: a deadline is the
-one date on this screen a gesture must never move on its own.
+So the rule is: **`cellSpan` supplies a duration only where a span is written; a
+one-ended plan takes the drop day.** Both ways of arriving at one end obey it — a marker,
+which takes a target and no span whatever is configured
+([[Drag from the shelf to schedule]] extension `2e`), and an ordinary item on an axis
+where only one date property is named (`2c`). Neither has a duration for `cellSpan` to
+default, so neither is offset from the day the pointer named.
+
+Stated as one rule because the two were about to disagree: computing the span and then
+narrowing it to the configured end would put a target-only drop on 3 August at week zoom
+onto 9 August, while the marker paragraph put the same drop on 3 August. Offsetting a
+lone date by a week because the reader happened to be zoomed out is the silent coarsening
+decision 1 exists to refuse — and on a deadline it moves the one date on the screen a
+gesture must never move on its own.
 
 ### 3. Whole-day steps, so the month-end clamp stops being reachable
 
@@ -173,8 +180,13 @@ parameter to functions that already exist rather than a second drawing path.
 `timelineWindow` aligns its bounds to the scale's unit.
 
 **The backstop stays a time budget.** `MAX_TIMELINE_MONTHS` becomes `MAX_TIMELINE_DAYS`
-— the same span it already means, rounded out to whole cells of the active scale — and
-**not** a cell count. A cell count would make the reachable calendar depend on the zoom
+— the same span it already means — and **not** a cell count. Its bounds are computed
+without reference to the scale, so the window covers the **same dates at every zoom** and
+header cells clip where it ends rather than the window growing to whole cells. Rounding
+the cap out to whole cells of the active scale would put the scale back into the answer
+by the side door: a quarter boundary reaches further than a week one, so a bar in that
+margin would render normally at one zoom and as an edge indicator at another — the exact
+thing the day budget is here to prevent. A cell count would make the reachable calendar depend on the zoom
 (sixty weeks is fourteen months; sixty quarters is fifteen years), so a two-year plan
 visible at month zoom would clip to edge indicators at week zoom. That contradicts the
 guarantee [[Zoom and the today marker]] states outright: at every zoom the same results
@@ -254,6 +266,16 @@ announces on that. A screen-reader user would hear a move that did not happen. S
 write path reports whether it changed anything — which is exactly what capturing no
 inverse already means — and the announcement asks that rather than asking whether the
 call returned.
+
+*And it reports the dates it moved between.* `applyCardMove` names a move from the
+`item` it was handed, which is the model's view and may be a refresh behind — so on the
+very case above, where the screen says 1 August and the note says 2 August and the user
+re-confirms 1 August, the write is effective and the announcement would say "from 1
+August to 1 August". The before/after come back with the verdict, from the values the
+writer actually saw. This does not weaken `applyCardMove`'s capture rule, which is about
+the *vocabulary* — a bucket label can vanish with the refresh, so it is read before the
+await — and dates are not vocabulary: they come from the write, and only the writer knows
+what was there.
 
 ### The plan — `src/domain/writePlan.ts`
 
@@ -547,7 +569,18 @@ reads them on restore and constructs the snapshot it saves. A store-only change 
 give a picker that works all session and reverts the moment the view is reopened — the
 worst shape of this bug, because nothing fails until someone comes back the next day.
 So `zoom` joins those fields with its accessor, its restore and its flush, and the test
-is a **round trip**: pick, save, reload, and find the same scale. The narrow-pane rule
+is a **round trip**: pick, save, reload, and find the same scale.
+
+**Except in an embedded base, where it is session-only** — and the requirement says so
+rather than promising otherwise. `collapseStoreIdentity` deliberately returns no identity
+for an embedded view, so nothing persists there today: not collapse state, not the mode,
+not the axis, and now not the zoom. That is a known gap with a note of its own
+([[Embedded bases do not persist collapse state]]) and this increment does not reopen it
+— minting an identity for an embedded base is a collision question about where a base
+is embedded, not a timeline question. The zoom simply joins the state that already has
+this exception, the round-trip test asserts persistence for a normal view, and a second
+case pins the embedded one as session-only so the exception is checked rather than
+assumed. The narrow-pane rule
 needs **a real control**, and therefore **one decider** — and the control goes in the
 **toolbar**, not on the shelf header. Hiding the cards in CSS alone would strand every
 unplaced card until the pane was widened, the opposite of "may lose its card, never its
