@@ -99,7 +99,8 @@ note twice. They get their own note when that reading has been done.
 
 ## Where it lives
 
-`src/view/interactions/cardDrag.ts` · `vitest.config.mts` · `test/view/board.test.ts`
+`src/view/interactions/cardDrag.ts` · `vitest.config.mts` · `test/view/board.test.ts` ·
+`test/view/cardDrag.test.ts`
 
 Only what this note owns — the excluded modules are named in the flow above and
 deliberately nowhere in this section. Once [[A module is named where it is specified]]

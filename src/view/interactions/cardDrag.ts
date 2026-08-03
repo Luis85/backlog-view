@@ -154,6 +154,16 @@ export class CardDragController {
 					const path = source.data.path;
 					// The dragged path outlives the model it was taken from — a refresh
 					// mid-drag can drop the note — so the item is resolved at drop time.
+					//
+					// The `typeof` is the TYPE system's, not a runtime case: pragmatic
+					// hands `source.data` back as `Record<string, unknown>`, so the
+					// narrowing cannot be deleted — while `canDrop` above admits only a
+					// source carrying this controller's private token, and the one place
+					// minting that token (`wireCard`) pairs it with `item.file.path`, a
+					// string, always. Its false arm is therefore unreachable by
+					// construction and undeletable by typing: declared here rather than
+					// covered, the way `.fallowrc.json` declares a member only a
+					// framework calls. Reaching it would take a faked adapter payload.
 					const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
 					// The host owns the write AND the announcement: a drop is one of three
 					// inputs to the same move, and three callers announcing separately is
