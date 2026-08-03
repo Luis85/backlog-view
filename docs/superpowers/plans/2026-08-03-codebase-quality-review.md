@@ -32,6 +32,23 @@ be opened by new evidence, not by grooming this one."* What follows is that evid
 it opens a **second round under that same epic** — its closing paragraph kept as the dated
 record of what the first round bought, a new one added beside it (finding 11).
 
+## Where this stands
+
+Statuses live in the register, not here — `Product Backlog.base` under [[Codebase health]]
+is current and this paragraph is not. What is worth recording is the **shape** of the round
+so far: the guide and rule-7 work landed together in the order their landmines required,
+the render-cost claims became checks and the defect one of them was hiding became a closed
+`Bug`, the card-drag branches got covered, and the stylesheet split landed with a
+400-line gate of its own in `styles-assemble.mjs`.
+
+What has **not** started is the part no check can do for us: the device verification, the
+`Multilang` layer, and the release cadence. Those are also the three where the specification
+is furthest ahead of the code, which is the good direction for them to be in.
+
+**Findings 12–17 below were written after that work**, and they are gaps in *this review*
+rather than in the codebase — things the first pass never looked at, or quoted and did not
+act on.
+
 **The through-line:** every finding below is the same defect this repository already named
 in [[A comment that states a rule is not a check]] — a property that is true today, stated
 in prose, with nothing that would notice it becoming false. The four biggest are the four
@@ -583,6 +600,131 @@ parts are the ones a first draft states too confidently.
 
 ---
 
+## Second wave — what this review itself missed
+
+Written 2026-08-03, after findings 1, 3, 4 and 6 landed and the stylesheet split began.
+Each of these is a gap in the **review**, not in the codebase's own record: something the
+first pass either never looked at or quoted without acting on. Ranked the same way as
+above.
+
+### 12. The model rebuild has no cost check, and finding 4 quoted its admission
+
+**Evidence.** `buildModel` runs on **every data update** and makes several full passes over
+every item — `createItems`, `linkAll`, `breakCycles`, `pruneOutsideHierarchy`, two
+vocabulary collections, `sortSiblingsDeep`, `assignAll`. Finding 4 checked that
+*interactions* stay O(1) and never touched this, though it **quoted** the sentence in
+`src/view/CLAUDE.md` that admits it: *"Data updates still rebuild everything."* Every
+`buildModel` test in `test/domain/` is behavioural; none runs at scale, and no threshold
+or shape check exists.
+
+**Why it is worth more than the render check that already landed.** A write batch ends in a
+refresh, so this cost is paid on every move, not only on a resize or a data change the user
+did not cause. And it sits in `domain/`, which has **node tests and no harness** — so unlike
+render cost, it can be measured honestly rather than measured through jsdom.
+
+**Shape.** Not a benchmark. The checkable properties are structural: the number of passes
+over the item set is bounded and stated, each pass is O(n) rather than O(n²) — the cycle
+break and the sibling sort are the two to look at — and a model built from a
+several-hundred-item fixture does not walk the tree more times than the phases declare.
+Where a property cannot be reached, narrow the guide sentence rather than leave it, which
+is the rule this round learned twice.
+
+---
+
+### 13. The register gates two note shapes out of seven, and this round made that load-bearing
+
+**Evidence.** `docs-check.mjs` gates `USE_CASE_SECTIONS` and `ADR_SECTIONS`. The other five
+kinds `docs/README.md` documents — `Epic`, `Feature`, `Task`, `Issue`, `Bug`, each with
+named sections — rest on convention alone.
+
+That was tolerable while nothing depended on it. This round changed that **twice**: the
+release sweep's set is derived by querying Issues for `## How to check`
+([[A cadence for the checks CI cannot run]]), and module ownership is decided by what sits
+under `## Where it lives` ([[A module is named where it is specified]]). Both are now
+mechanisms resting on a heading nothing checks — and the sweep query already had to
+normalize three notes that spelled their heading differently, which is the drift arriving
+before the gate.
+
+**Shape.** Extend `checkSections` to the remaining kinds, using the sections
+`docs/README.md` already documents, and plant both directions in
+`test/docs/checkerRejects.test.ts` and `checkerAccepts.test.ts` the way the existing shapes
+are. The one judgement to make first: an `Issue` has **three** documented shapes (a decision,
+a limitation, a verification) and a checker must not force one onto another — so the rule is
+per-shape, keyed on which heading the note leads with, or it is not worth having.
+
+**Why it belongs to this round.** It is the round's own defect one layer out: a rule with no
+check, discovered because two new rules leaned on it.
+
+---
+
+### 14. Accessibility is implemented and asserted, and specified nowhere
+
+**Evidence.** Assertions on `aria-*` and `role` are spread across most of the view suite,
+and `src/view/CLAUDE.md` covers tab stops, the two focus zones, live-region ownership and
+the "roles are earned, not assumed" rule for the roadmap. So this is not neglected work.
+
+What is missing is a **contract**: no note says what a screen-reader user is promised — which
+roles each projection earns and when, what an accessible name must contain, what the live
+region announces and what it must not. The consequence is that a11y is checked per feature
+by whoever wrote that feature, with nothing to check a *new* projection against. The board
+and the roadmap each had to rediscover the same questions; a fourth projection would too.
+
+**Shape.** A specification before any code — this is the one item here that deserves
+brainstorming rather than a drafted note, because the contract is a product decision (what
+do we promise?) and not a refactor. It also crosses [[Multilang]]: an accessible name built
+by concatenation is a sentence, and a sentence is a string the catalog owns.
+
+**Honest note on scope.** The brief for this review was "all product perspectives". This is
+the perspective it under-covered, and the reason is worth recording — the review followed
+the register, and the register has no a11y note to follow.
+
+---
+
+### 15. Bundle size has no budget
+
+**Evidence.** `main.js` ships around 160 KB, carrying three bundled runtime dependencies.
+ADR 0018 admits those **by exception**, which is a decision about whether to take a
+dependency and not about what it costs thereafter. Nothing measures the result, so a fourth
+dependency — or a heavier version of an existing one — changes the shipped size with no
+signal.
+
+**Shape.** The same shape as the 400-line cap that just landed for the stylesheet partials:
+a number in the build, failing when it is exceeded, raised deliberately with a reason rather
+than drifting. Small enough to ride along with any other build change.
+
+---
+
+### 16. Nothing in this plan closes the round
+
+**Evidence.** What made *this* round legible was the first round's dated paragraph in
+[[Codebase health]] — *"as of 2026-08-01 every actionable finding is closed"* — and its
+instruction that the next round be opened by new evidence. No step here writes the
+equivalent. Without it the epic accumulates two rounds of notes with no boundary between
+them, and a third round has nothing to open against.
+
+**Shape.** A step, not a note: when the last finding closes, add a dated paragraph beside
+the existing ones saying what this round bought and what it deliberately left. Leave both
+earlier paragraphs as written — that rule is already established here.
+
+---
+
+### 17. Obsidian version drift has no owner — recorded, not scheduled
+
+**Evidence.** `manifest.json` sets `minAppVersion` 1.10.2 against the Bases custom-view API,
+which is young; the `obsidian` typings track ahead of it and, per the root guide, trail the
+app in places. ADR 0019 put **dependencies** on a clock and gave the reason. The **host
+app** is on no clock at all: nothing notices when Obsidian changes something the view rests
+on, and the live-vault sweep only catches it if someone runs it.
+
+**Shape.** Probably none, and that is the finding. This repository cannot run Obsidian, so
+there is no check to write — only a cadence question: does the verification sweep also run
+on an Obsidian upgrade, the way [[Verify base identity in a live vault]] already does for
+its own subject? If the answer is yes, it belongs in
+[[A cadence for the checks CI cannot run]] as a second conditional trigger and costs
+nothing. Recorded so it is decided rather than rediscovered.
+
+---
+
 ## Sequence
 
 Each step is independently shippable and ends `npm run check` green.
@@ -617,7 +759,10 @@ Each step is independently shippable and ends `npm run check` green.
    doubles the merge surface. The `Notice` seam arrives here, as the typed wrapper
    [[A bare string cannot reach the UI]] specifies — not as a service of its own. Its own
    epic, not a step in a polish pass.
-7. **Make the verification sweep runnable** (finding 7) — **not one line.**
+7. **Make the verification sweep runnable** (findings 7 and 17) — **not one line.**
+   Finding 17 rides along: decide whether an Obsidian upgrade is a second conditional
+   trigger, the way [[Verify base identity in a live vault]] already treats one.
+   Otherwise:
    [[A cadence for the checks CI cannot run]] governs it and asks for four things before
    `RELEASING.md` gains its step: normalize the three legacy `## What to look at` headings,
    fix the query to match the whole heading line and plant a case proving it, take a fresh
@@ -632,6 +777,19 @@ closes a finding that is *only* a missing check. An earlier draft called the who
 increment behaviour-neutral, which would have left the planned spy failing on a known
 defect and reading as a broken test. Steps 5 and 6 are the
 two real bodies of work and each deserves its own branch — 6 more than one.
+
+8. **The model rebuild's cost check** (finding 12) — the render pass's sibling, in the layer
+   that can measure honestly. Do it after finding 4's work has settled, so the two cost
+   stories are written in the same shape.
+9. **Gate the remaining note shapes** (finding 13) — after the sweep query and the ownership
+   rule are both in use, since they are what makes it load-bearing.
+10. **A bundle-size budget** (finding 15) — small; ride it along with any build change.
+11. **Close the round** (finding 16) — a dated paragraph beside the existing ones in
+    [[Codebase health]], saying what this round bought and what it left. Last, by definition.
+
+**Finding 14 (accessibility) is deliberately not numbered into this list.** It needs a
+specification before a sequence, and that specification is a product decision rather than a
+refactor — brainstorm it, do not draft it cold.
 
 **Findings 8 and 9 are the only ones deliberately absent from this sequence** — every
 other finding, 10 included, has a step. Nothing in them is over a
