@@ -129,26 +129,48 @@ and the cheapest thing here is finding out.
 
 ---
 
-### 3. The architecture table nothing gates is already wrong
+### 3. Delete the module table rather than gate it
 
-**Evidence.** The root `CLAUDE.md` opens with a table claiming one row per module —
-the first thing any contributor or agent reads. It names 48 modules. `src/` holds **49**.
-The missing one is **`src/domain/vocabulary.ts`**, which has been there since
-`798a0c1` folded the three vocabulary collectors onto one walk.
+**Evidence.** The root `CLAUDE.md` opens with a table claiming one row per module — the
+first thing any contributor or agent reads. It names 48 modules. `src/` holds **49**. The
+missing one is **`src/domain/vocabulary.ts`**, there since `798a0c1` folded the three
+vocabulary collectors onto one walk. `docs/README.md` has the same hole in miniature: its
+folder table lists six and `docs/milestones/` is not one of them, though the prose names it.
 
-`docs-check.mjs` rule 7 already asserts that every module in `src/` is named by at least
-one note under `docs/` — so the register caught it and the table did not, because nothing
-reads the table. `docs/README.md` has the same hole in miniature: its folder table lists
-six folders and `docs/milestones/` is not one of them, though the prose names it.
+**The measurement that decides the shape.** Counting what each guide actually contains:
 
-**Shape.** One rule in `docs-check.mjs`, the same shape as rule 7 and matching whole
-paths for the same reason: every `src/**/*.ts` appears in the root `CLAUDE.md` table, and
-every path the table names exists. Add the reject case to
-`test/docs/checkerRejects.test.ts` and the accept case beside it.
+| File | Table rows | Reads as |
+| --- | --- | --- |
+| `CLAUDE.md` (root) | **57** | a module inventory plus a rules table |
+| `src/domain/CLAUDE.md` | 0 | prose rules, naming a file where a rule is about that file |
+| `src/storage/CLAUDE.md` | 0 | the same |
+| `src/view/CLAUDE.md` | 0 | the same |
+| `test/CLAUDE.md` | 0 | the same |
 
-**Cost.** Perhaps twenty lines and two test cases. Fix the two current gaps in the same
-change so the rule lands on a clean file — the argument [[Styling rules are checks]]
-already makes for itself.
+**The layer guides are already the shape to aim for** and need no rework. That is not an
+accident: [[Invariants as checks, not conventions]] step 4 decided it — *"If it cannot be
+mechanised, it goes in the layer's own `CLAUDE.md`, beside the code"* — and its extension
+4a decided against one wall of text. The entire staleness surface is the root file.
+
+**The rule worth writing down:** *a table that enumerates code goes stale; a table that
+states a rule does not.* The module inventory is the first kind. `docs/README.md`'s
+conventions, hierarchy pairs and note-kind tables are the second — a code change cannot
+falsify them — and they stay.
+
+**Shape.** **Delete the module table**, and replace it with what the layer guides do:
+prose saying what each layer is for and which invariants live where, naming a module only
+where the sentence is about that module. Nothing is lost, because the fact the table
+carries already exists once and is already gated — `docs-check.mjs` rule 7 asserts every
+module in `src/` is named by a note under `docs/`, which is how this defect was findable
+at all. The table was a second copy of a checked fact, which is the shape
+[[Check that a feature lists its use cases]] already retired once for the same reason.
+
+**This supersedes the earlier draft of this finding**, which proposed a new `docs-check`
+rule gating the table against `src/`. Gating a duplicate is more machinery than deleting
+it. Fix `docs/README.md`'s folder table in the same change — that one is short enough to
+be worth keeping accurate.
+
+**Cost.** A documentation edit and one deletion. No new gate.
 
 ---
 
@@ -281,12 +303,135 @@ ship, to replace a checklist that takes under an hour.
 
 ---
 
+### 8. `new Notice` has 19 call sites in three layers and no seam
+
+**Evidence.** `new Notice(...)` is constructed in `view/writeGate.ts` (5),
+`view/interactions/{structure,create,undo,tags}.ts` (8), and `commands/{scaffold,readme}.ts`
+(6). Three layers each decide independently how the plugin speaks. There is no place to
+read its whole voice, no way to assert "this action said one thing" other than by mocking
+the constructor, and the marketplace's sentence-case rule is checked by eye.
+
+It also strains one stated boundary: `src/view/CLAUDE.md` says the write gate *"touches
+none of the view's ELEMENTS (Notices are its own)"* — an exception carved out precisely
+because `Notice` is reachable from anywhere.
+
+**Shape, and the collision to respect.** A notification seam is a thin module —
+`notify(message)` over `new Notice`, plus a `no-restricted-syntax` rule banning the bare
+constructor outside it. That is the same shape as the write boundary and needs no
+abstraction beyond one function.
+
+But it is **not a new idea**: [[A bare string cannot reach the UI]] already requires a
+typed wrapper over `new Notice` (14 sites on its derived inventory) alongside every other
+sink. Building a Notice service now and a text wrapper later means wrapping the same call
+twice, with the second wrap having to unpick the first. **Build the seam once, in the
+shape that requirement specifies**, and let the string catalog land through it.
+
+The one thing worth doing ahead of that layer: nothing. This is a finding to *record*, not
+to act on before finding 5.
+
+---
+
+### 9. Modal is already a service — the remaining gap is small
+
+**Evidence.** All four dialogs (`TitlePromptModal`, `FolderPromptModal`,
+`TagPromptModal`, `SchedulePromptModal`) live in `src/ui/prompts.ts`, and every caller
+imports from there: `interactions/create.ts`, `interactions/plan.ts`,
+`interactions/tags.ts`, `commands/scaffold.ts`. No `Modal` subclass exists anywhere else
+in `src/`. [[One file per concern]] extension 2b already decided this — *"the code is a
+reusable dialog. It goes in `ui/`, a leaf that knows about none of the layers"* — and
+`eslint.config.mjs` enforces the leaf with `forbidden('ui', [...])`.
+
+So the consolidation this asks for is **done**. What is left is a shape question, not a
+structural one: callers construct with a callback options object
+(`new TitlePromptModal(app, { onSubmit })`) rather than awaiting a result. Promise-returning
+helpers — `promptForTitle(app, opts): Promise<string | null>` — would read better beside
+the `await`-heavy write paths that call them.
+
+**Cost and rank.** Small, and low. It buys readability at four call sites and no
+correctness. Take it opportunistically when one of those files is open for another
+reason; it does not deserve a branch. The one thing that would raise it: if
+`ui/prompts.ts` needs splitting anyway (finding 10), do both in the same pass.
+
+---
+
+### 10. File structure: nothing forced, three seams worth taking when nearby
+
+Measured in the metric lint actually uses — effective lines, blanks and comments skipped
+against the 400 cap:
+
+| File | Effective | Note |
+| --- | --- | --- |
+| `domain/model.ts` | 376 | closest to the cap; three typed build phases, a real single concern |
+| `domain/backlogReadme.ts` | 369 | next closest |
+| `view/interactions/keyboard.ts` | 339 | three projections' key handling |
+| `view/backlogView.ts` | 330 | down from its pre-`writeGate` size |
+| `domain/settings.ts` | 310 | **34 exports** — the most concerns in one file by a distance |
+
+**Nothing is over the cap, so nothing is forced.** Three observations, in the order I
+would act on them:
+
+1. **The type vocabulary sits in `settings.ts` to break a cycle.** `LEVELS`,
+   `EXTRA_TYPES`, `MARKER_TYPES` and `ALL_TYPES` are declared in `domain/settings.ts`, and
+   `byName` — the safe lookup for user-supplied type names — carries the reason in its own
+   comment: *"It lives here rather than in `itemTypes.ts`, which is where it reads more
+   naturally, because that module imports this one and the dependency cannot run both
+   ways."* A cycle broken by putting code in the wrong file is a seam wearing a workaround.
+   A vocabulary leaf below both would let `itemTypes.ts` be what its name and the module
+   table both say it is. **This is the one I would actually do** — and it becomes cheaper
+   the moment finding 5 needs a dependency-free leaf anyway, since that is the same
+   structural move twice.
+2. **`ui/prompts.ts` is four unrelated dialogs in one file** (258 effective, 12 exports).
+   Under the cap, so not urgent — but it is the same shape as the test suite that grew to
+   59% of all test code while every source file stayed in budget, and the fix there was to
+   split by subject *before* the cap forced it. One file per dialog, or two by kind.
+3. **The README feature spans six files across three layers** — `domain/backlogReadme.ts`,
+   `readmeText.ts`, `readmeStamps.ts`, `readmeMarker.ts`, `storage/readmeFile.ts`,
+   `commands/readme.ts`. Each split has a stated reason and I am not proposing to undo any
+   of them; recorded because it is the one place the codebase reads as *over*-split, and a
+   future reader deserves to know it was noticed and left alone deliberately.
+
+**What I am not proposing:** splitting `create.ts` or `dropTargets.ts` on fallow's ROI
+hints. Both are far under budget in a report reading "0 above threshold", and the signal
+there is fan-in, not size — splitting a file to lower a coupling number moves the coupling.
+
+---
+
+### 11. The findings above are not backlog notes yet
+
+This plan lives in `docs/superpowers/`, which `docs-check.mjs` exempts from work-item
+frontmatter. That is right for a plan and wrong as a resting place: nothing here is
+ranked, nothing shows up in `Product Backlog.base`, and the register cannot see it.
+
+**Where they go.** Not under [[Codebase health]] as it stands. That epic closed on
+2026-08-01 with an explicit instruction — *"This epic is done; the next one should be
+opened by new evidence, not by grooming this one"* — and reopening it to hang eight new
+features off would be exactly the grooming it forbids. So: a **second epic**, taking this
+plan as the evidence its predecessor asked for, with the closed one left closed as the
+record of what the first round bought.
+
+**Shape.** Features grouping the findings by kind — the gates that do not exist yet
+(findings 1, 4), the guides and structure (3, 10), the text layer (5, 8, 9), the
+verifications (2, 7) — with a PBI per finding in the enforced use-case shape: the
+`**As** … **I want** … **so that** …` opening, the four-field table, main flow,
+extensions carrying their reasons, testable acceptance criteria, and `## Where it lives`.
+`npm run docs` gates all of it, and `test/docs/surfaces.test.ts` will want the
+view-option keys and command ids named in `requirements/` if any finding adds one.
+
+**Cost.** Around ten notes. The extensions are where the work is — that is where this
+register puts the thinking, and six review findings on this plan alone say the hard parts
+are the ones a first draft states too confidently.
+
+---
+
 ## Sequence
 
 Each step is independently shippable and ends `npm run check` green.
 
-1. **Fix the two documentation gaps and gate the table** (finding 3) — smallest diff, and
-   it lands the enforcement on a clean file.
+0. **Write the notes** (finding 11) — a second epic with a PBI per finding, so the rest of
+   this list is ranked in the register rather than in a plan file. Everything below is then
+   picked from the backlog, not from here.
+1. **Delete the module table, fix the folder table** (finding 3) — smallest diff, removes
+   a gate rather than adding one.
 2. **Answer the mobile question** (finding 2) — a verification, not code; it may change
    what "done" means for the drag work below it.
 3. **`cardDrag.ts` branch coverage, then `tags.ts`** (finding 6) — raises the floor under
@@ -294,14 +439,21 @@ Each step is independently shippable and ends `npm run check` green.
 4. **The two untested render-cost claims** (finding 4) — the other two are already pinned.
 5. **The direction fixes, then `Styling rules are checks`** (finding 1) — the largest item,
    and the one with the most already decided.
-6. **The `Multilang` layer, then the sweep, then the sink ban** (finding 5) — after the
-   styling gate, because both touch the same render modules and doing them together
-   doubles the merge surface. Its own epic, not a step in a polish pass.
+6. **The `Multilang` layer, then the sweep, then the sink ban** (findings 5 and 8) — after
+   the styling gate, because both touch the same render modules and doing them together
+   doubles the merge surface. The `Notice` seam is part of this, not a separate service.
+   Its own epic, not a step in a polish pass.
 7. **Fold the verification sweep into `RELEASING.md`** (finding 7) — one line, any time.
 
 Steps 1–4 are a coherent first increment: nothing in them changes shipped behaviour, and
 together they close every finding that is *only* a missing check. Steps 5 and 6 are the
 two real bodies of work and each deserves its own branch — 6 more than one.
+
+**Findings 9 and 10 are deliberately not in this sequence.** Nothing in them is over a
+budget or failing a check, so scheduling them would be scheduling churn. Take them when a
+branch already has the file open — with one exception: the vocabulary leaf (finding 10.1)
+is the same structural move the catalog needs (finding 5), so if step 6 happens, do both
+in it.
 
 ---
 
@@ -330,7 +482,12 @@ two real bodies of work and each deserves its own branch — 6 more than one.
 - `src/view/render/columns.ts`, `src/view/render/rows.ts` — the TS↔CSS geometry boundary
 - `src/view/interactions/cardDrag.ts`, `src/view/interactions/tags.ts`,
   `src/view/interactions/undo.ts` — the thin branches
+- `CLAUDE.md` — the 57 table rows that are the whole staleness surface; the four layer
+  guides carry 0 and are the shape to copy
 - `src/domain/vocabulary.ts` — the module the architecture table forgot
+- `src/domain/settings.ts` — 34 exports, and the type vocabulary parked there to break a
+  cycle with `src/domain/itemTypes.ts`
+- `src/ui/prompts.ts` — the four dialogs, and the Modal consolidation that already happened
 - `src/domain/viewOptions.ts`, `src/ui/prompts.ts` — the two string sites that prove the
   catalog cannot live in either existing directory
 - `manifest.json` — the platform promise
