@@ -40,33 +40,49 @@ architecture table, and render cost.
 
 ## Findings, ranked by risk removed per unit of work
 
-### 1. The stylesheet is the one ungoverned file in the repository — **Ready**
+### 1. The stylesheet has regression pins, not rules — **Ready**
 
-**Evidence.** `styles.css` is **1995 lines and 280 rule blocks**, larger than the two
-biggest `src/` modules combined. `eslint.config.mjs` ignores everything that is not a
-`.ts` file, so of the budgets the rest of the codebase lives under — 400 effective lines,
-complexity 16, layer direction, banned syntax — the stylesheet is subject to **none**.
-`npm run check` never reads it.
+**What is already there.** `test/view/rendering.test.ts:15` reads `styles.css` and asserts
+against it through a `ruleAt` helper that answers cascade questions by source position.
+Six assertions, and each is a **pin on a defect that already shipped**: every declared type
+gets a badge colour and every extra type its own icon; a struck-through done title stays
+removed; both hover-revealed create buttons have a `(hover: none)` reveal written *after*
+the `opacity: 0` it overrides; the double-clipped bar override wins on specificity rather
+than order; the milestone line takes `pointer-events: none` and its label does not; an
+inferred bar stays open at an undated end. So the earlier draft of this note was wrong to
+say the gate never reads the stylesheet — it does, and what it checks it checks well.
 
-It is not decoration. `src/view/render/columns.ts` computes `ROW_LEAD_WIDTH` from terms
-that `src/view/CLAUDE.md` says are *"written as its terms … so it can be checked against
-`styles.css`"* — by hand. A padding value changed in the stylesheet moves a threshold in
-TypeScript that nothing re-derives, and the symptom is a clipped row rather than a failed
-build. Seventeen `--pbl-*` custom properties cross that boundary in the other direction.
+**The gap.** Those are pins on known failures, not properties of the file. `styles.css` is
+**1995 lines and 280 rule blocks**, larger than the two biggest `src/` modules combined,
+and `eslint.config.mjs` ignores everything that is not a `.ts` file — so of the budgets
+the rest of the codebase lives under (400 effective lines, complexity, layer direction,
+banned syntax) it is subject to none, and no rule holds for the file as a whole. Nothing
+would notice a literal colour, an `!important`, an unscoped selector, a
+direction-dependent value or a `:has()` on a container arriving tomorrow.
 
-**Shape.** Already fully specified in [[Styling rules are checks]], down to the extensions
-(`transparent` is not a literal colour; a literal in a `var()` fallback still counts; the
-direction rule must not key on property names). Its stated precondition — *"the direction
-fixes have landed, so the rules pass on today's file"* — belongs to [[Theming and styling]]
-and has to go first.
+The sharpest gap is one no existing pin covers: `src/view/render/columns.ts` computes
+`ROW_LEAD_WIDTH` from terms `src/view/CLAUDE.md` says are *"written as its terms … so it
+can be checked against `styles.css`"* — **by hand**. A padding changed in the stylesheet
+moves a threshold in TypeScript that nothing re-derives, and the symptom is a clipped row
+rather than a failed build. Seventeen `--pbl-*` custom properties cross that boundary the
+other way.
 
-**Cost.** One new script step in `npm run check`, in the shape `docs-check.mjs` already
-has, plus its own accept/reject corpus the way `test/docs/checkerRejects.test.ts` guards
-the docs gate. No new dependency: the rules are line-oriented and the one that needs
+**Shape.** [[Styling rules are checks]] specifies the file-wide rules down to their
+extensions (`transparent` is not a literal colour; a literal in a `var()` fallback still
+counts; the direction rule must not key on property names). Its stated precondition —
+*"the direction fixes have landed, so the rules pass on today's file"* — belongs to
+[[Theming and styling]] and goes first. **Scope the new checker to what the six pins do
+not cover**, and leave them where they are: a pin on a specific past defect is a different
+instrument from a rule about the file, and folding one into the other loses the reason the
+pin exists.
+
+**Cost.** One script step in `npm run check`, in the shape `docs-check.mjs` already has,
+plus its own accept/reject corpus the way `test/docs/checkerRejects.test.ts` guards the
+docs gate. No new dependency: the rules are line-oriented, and the one that needs
 TypeScript (icon-name classification) reads source the way `test/docs/surfaces.test.ts`
 already does.
 
-**Why first.** Highest risk-to-effort ratio in the list, and the only finding whose
+**Why first.** Best risk-to-effort ratio in the list, and the only finding whose
 specification is finished.
 
 ---
@@ -127,25 +143,36 @@ already makes for itself.
 
 **Evidence.** `src/view/CLAUDE.md` opens its Cost section with *"Rendering cost is the
 scaling limit (a few hundred rows is a normal backlog)"* and then states four structural
-claims that keep it true: expand/collapse calls `refreshSubtree` and never `render()`;
-`rowEls` indexes path → element so no interaction scans the DOM; `refreshRowChildren`
-prunes the subtree it removes from `rowEls`; per-render config lookups are hoisted onto
-`RowContext`. It also admits the one that is not true: *"Data updates still rebuild
-everything."*
+claims that keep it true. **Two are already tested**, in
+`test/view/rendering.test.ts`'s *targeted subtree rendering* block: `:365` asserts that
+collapsing and re-expanding leaves untouched rows' element identities unchanged — which is
+exactly the "never `render()`" guarantee — and `:405` asserts that a collapsed subtree
+leaves the selection index, which is `refreshRowChildren` pruning `rowEls`.
 
-Every one of those is a testable structural property, and **none is tested**. The
-repository's own rule says an invariant asserted in a comment gets a test that fails
-without it — six of ten review findings on one pull request were exactly this
-([[A comment that states a rule is not a check]]).
+The two still asserted only in prose are the ones that need instrumentation rather than
+assertions on the DOM:
 
-**Shape.** Not a benchmark — a benchmark in jsdom measures jsdom. One regression guard:
-build a several-hundred-item model through the existing view harness, then assert the
-structural claims. Expanding a row leaves the sibling rows' element identities unchanged
-(so `render()` did not run); collapsing prunes `rowEls` to the rows on screen; the row
-count is the visible count and not the model count. Each fails if someone reaches for
-`render()` in the targeted path.
+- **No interaction scans the tree.** `rowEls` exists so selection and subtree updates are
+  O(1); nothing fails today if a new interaction reaches for `querySelector` over
+  `.pbl-tree` instead.
+- **Config lookups are hoisted out of the per-row path.** `chipProps` resolves the columns
+  once per data update onto `host.chips`, and `RowContext` carries that snapshot; the
+  expensive calls behind it are `config.getOrder()` and `config.getDisplayName()`. Nothing
+  fails today if one moves back inside the row loop — the tree still renders, just once
+  per row instead of once per pass.
+
+(The `CLAUDE.md` sentence naming `getOrder` / `getDisplayName` as living "on `RowContext`"
+is itself slightly stale — they resolve through `chipProps` into `host.chips`. Worth
+correcting in the same change.)
+
+**Shape.** Not a benchmark — a benchmark in jsdom measures jsdom. Count calls: the fake
+config in the view harness spies `getOrder` / `getDisplayName`, and one test renders a
+several-hundred-row fixture and asserts the count is bounded by the column count rather
+than growing with the rows. The DOM-scan claim is the same shape from the other side —
+assert `rowEls.size` matches the rendered rows and that selection resolves through it.
 
 **Cost.** One test file under `test/view/`, using `makeView` and the existing fixtures.
+Smaller than the earlier draft of this note assumed, because half the work is done.
 
 ---
 
@@ -244,7 +271,7 @@ Each step is independently shippable and ends `npm run check` green.
    what "done" means for the drag work below it.
 3. **`cardDrag.ts` branch coverage, then `tags.ts`** (finding 6) — raises the floor under
    everything the card projections do.
-4. **The render-cost regression guard** (finding 4) — turns four prose claims into checks.
+4. **The two untested render-cost claims** (finding 4) — the other two are already pinned.
 5. **The direction fixes, then `Styling rules are checks`** (finding 1) — the largest item,
    and the one with the most already decided.
 6. **The `Multilang` layer, then the sweep, then the sink ban** (finding 5) — after the
@@ -278,6 +305,8 @@ two real bodies of work and each deserves its own branch — 6 more than one.
 ## Where it lives
 
 - `styles.css`, `eslint.config.mjs`, `docs-check.mjs`, `vitest.config.mts` — the four gates
+- `test/view/rendering.test.ts` — the six stylesheet pins, and the two render-cost claims
+  already checked
 - `src/view/render/columns.ts`, `src/view/render/rows.ts` — the TS↔CSS geometry boundary
 - `src/view/interactions/cardDrag.ts`, `src/view/interactions/tags.ts`,
   `src/view/interactions/undo.ts` — the thin branches
