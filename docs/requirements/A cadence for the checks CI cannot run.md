@@ -81,9 +81,15 @@ that grows.
   query, not to the checklist, which asks the register every time.
 - **3a — a verification fails.** It becomes a bug note with what was seen, and the release
   decision is the maintainer's. The sweep reports; it does not block by itself.
-- **3b — a verification has caught nothing across two releases.** That is evidence to
-  retire it, and retiring it is a recorded decision rather than a lapse. A checklist nobody
-  believes is worse than a shorter one.
+- **3b — a verification has caught nothing across two releases.** That triggers a review of
+  it, not its retirement. A quiet check is the *expected* result for a check CI cannot run:
+  it exists because nothing else watches that behaviour, so two clean runs say the
+  behaviour has not regressed yet, and nothing at all about whether it can. What retires
+  one is that the thing it watches is gone, or that an automated test now watches it —
+  evidence about the check's subject, never about its hit rate. The review is a recorded
+  decision either way, because a checklist nobody believes is worse than a shorter one, and
+  a check dropped for finding nothing is how a sweep empties itself while reading as
+  disciplined.
 - **4a — the sweep is proposed as automation instead.** Refused, and the reason is worth
   keeping: driving a real Obsidian from a browser harness would be a second test system
   with its own failures, gating releases on an app this repository does not ship, to

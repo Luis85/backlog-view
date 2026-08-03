@@ -21,8 +21,9 @@ the issue folder.
 - The re-runnable verifications have a stated point in the release process, and each run
   dates its note's `Outcome`.
 - A conditional verification is not folded into that sweep, and says which it is.
-- A verification that has caught nothing across two releases is retired on that evidence,
-  rather than kept because retiring it feels like a loss of rigour.
+- A verification that has caught nothing across two releases is **reviewed** on that
+  evidence — kept, narrowed or retired as a recorded decision, rather than either drifting
+  on unread or being dropped because a quiet check reads as a spent one.
 
 ## Where it lives
 
