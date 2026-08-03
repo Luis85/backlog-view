@@ -261,16 +261,32 @@ the identity; `timelineDrag.ts` decides what a position means.
   lands on carries no meaning**: the dragged item is the subject and only the X says
   anything. When [[Lanes on the roadmap]] makes the Y meaningful it will be reworking
   this area regardless, and it is the note that owns the combined batch.
-- **The pointer is converted before `dayAt` sees it.** `dayAt` takes an offset from the
-  window's first day; the drag adapter reports a **viewport** `clientX`. The view
-  subtracts the *track's* bounding rect — the days area, so the sticky lead column is
-  excluded by construction rather than by a constant that has to stay in step with the
-  CSS. One subtraction and no scroll term: a bounding rect already moves with the
-  scroll, and adding `scrollLeft` on top would double-count the pan. Untranslated, the
-  preview and the write would both be off by the pane's position plus the scroll — a
-  drop over one day scheduling another, which is a correctness bug wearing a rendering
-  bug's clothes. The test drives a panned grid at a nonzero viewport offset, since a
-  fixture at origin with no scroll cannot fail this.
+- **Placing reads the pointer; moving reads the delta.** Two gestures, two rules, and
+  conflating them is a bug at the sparse scales.
+
+  A **shelf drop** has no origin to move from, so it reads the pointer's position:
+  `dayAt` takes an offset from the window's first day while the drag adapter reports a
+  **viewport** `clientX`, so the view subtracts the overlay's own bounding rect — which
+  starts past the sticky lead column, so that exclusion is structural rather than a
+  constant kept in step with the CSS. One subtraction and no scroll term: a bounding
+  rect already moves with the scroll, and adding `scrollLeft` would double-count the
+  pan. Untranslated, preview and write are both off by the pane's position plus the
+  scroll — a drop over one day scheduling another.
+
+  A **hold on an existing bar** must not, because a rendered edge is not always its
+  date. A span shorter than the minimum drawable width is drawn wider than it is, so at
+  quarter zoom the end grip of a one-day bar sits days past its target: reading the
+  pointer absolutely would mean *grabbing* the grip already previews a later date, and
+  the smallest twitch writes it. So a hold captures the endpoint's own date and the
+  pointer's start, and each frame moves that date by `round((x - x₀) / dayPx)` days.
+  Zero movement is zero days at every zoom, which is the property that matters and the
+  one an absolute read cannot promise. The body slide was always a delta; this makes
+  the grips agree with it.
+
+  Both are driven against a **panned grid at a nonzero viewport offset** — a fixture at
+  the origin with no scroll cannot fail the conversion — and the grips additionally
+  against a **one-day bar at quarter zoom**, the case where the drawn edge and the date
+  are furthest apart.
 - **The timeline registers its scroller.** Auto-scroll is opt-in per element and
   `renderRoadmap` calls `wireScroller` only in the horizon branch, so without this a
   drag could reach no date that is not already on screen — and the grid is thousands of
@@ -291,6 +307,16 @@ the identity; `timelineDrag.ts` decides what a position means.
   jump-to-today all address that one element. Both axes stay one element's job, because
   the timeline scrolls in both (see *Zoom and today*); what changes is *which* element,
   not how many.
+
+  **And the offsets are captured from the OLD scroller, before the DOM goes.**
+  `renderTreeContent` reads `treeEl.scrollTop` / `scrollLeft` just before `treeEl.empty()`,
+  which is the pane — on the dated axis those are the offsets of a box that no longer
+  scrolls, so restoring them would silently discard the reader's pan and jump back to
+  today on every refresh and every zoom change. The previous snapshot is already held on
+  the view as `this.roadmap`, so the capture reads its scroller where it reads the pane
+  today. Capture and restore are one decision about which element is the scroll box, and
+  they have to name the same one — a half-applied version of this change is worse than
+  none, because it restores a real offset onto the wrong box.
 - Three sources, and **two different gates**, because they are asked different
   questions. The bar body and the two end grips are gated by `barHolds`, which is about
   a rendered bar. A shelf card has no bar, so it is gated by `canSchedule` — the
