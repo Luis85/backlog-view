@@ -623,9 +623,16 @@ did not cause. And it sits in `domain/`, which has **node tests and no harness**
 render cost, it can be measured honestly rather than measured through jsdom.
 
 **Shape.** Not a benchmark. The checkable properties are structural: the number of passes
-over the item set is bounded and stated, each pass is O(n) rather than O(n²) — the cycle
-break and the sibling sort are the two to look at — and a model built from a
-several-hundred-item fixture does not walk the tree more times than the phases declare.
+over the item set is bounded and stated, the **traversal** phases stay linear, and a model
+built from a several-hundred-item fixture does not walk the tree more times than the phases
+declare.
+
+**The overall bound is O(n log n), not O(n)**, and saying otherwise would send an
+implementer at correct code. `sortSiblingsDeep` calls `Array.sort` per sibling group —
+comparison sorting, and the right tool for ranking siblings — so the sort is the one
+deliberately superlinear step. State it as the bound rather than as a violation; the thing
+worth checking is that nothing *else* becomes superlinear, and that the cycle break stays
+the single pass it is written as.
 Where a property cannot be reached, narrow the guide sentence rather than leave it, which
 is the rule this round learned twice.
 
@@ -637,20 +644,30 @@ is the rule this round learned twice.
 kinds `docs/README.md` documents — `Epic`, `Feature`, `Task`, `Issue`, `Bug`, each with
 named sections — rest on convention alone.
 
-That was tolerable while nothing depended on it. This round changed that **twice**: the
-release sweep's set is derived by querying Issues for `## How to check`
-([[A cadence for the checks CI cannot run]]), and module ownership is decided by what sits
-under `## Where it lives` ([[A module is named where it is specified]]). Both are now
-mechanisms resting on a heading nothing checks — and the sweep query already had to
-normalize three notes that spelled their heading differently, which is the drift arriving
-before the gate.
+That was tolerable while nothing depended on it. This round changed it **once**: the release
+sweep derives its set by querying Issues for `## How to check`
+([[A cadence for the checks CI cannot run]]), and the `Issue` shapes are ungated. The drift
+had already arrived before the gate — three notes spelled that heading `## What to look at`
+and the query silently dropped them, one being the note that owns the mobile drag verdict.
 
-**Shape.** Extend `checkSections` to the remaining kinds, using the sections
-`docs/README.md` already documents, and plant both directions in
+**Not twice.** A draft of this finding also claimed module ownership rested on an unchecked
+heading. It does not: `## Where it lives` is a member of `USE_CASE_SECTIONS`, and
+`checkSections` runs over every PBI, so [[A module is named where it is specified]] reads a
+section the gate already requires to be present and in order. That is the *good* case and
+the argument for doing the same to `Issue` — not a second instance of the defect.
+
+**Shape — and scope it to the evidence.** Extend `checkSections` to the `Issue` kind, using
+the sections `docs/README.md` already documents, and plant both directions in
 `test/docs/checkerRejects.test.ts` and `checkerAccepts.test.ts` the way the existing shapes
-are. The one judgement to make first: an `Issue` has **three** documented shapes (a decision,
-a limitation, a verification) and a checker must not force one onto another — so the rule is
+are. The judgement to make first: an `Issue` has **three** documented shapes (a decision, a
+limitation, a verification) and a checker must not force one onto another — so the rule is
 per-shape, keyed on which heading the note leads with, or it is not worth having.
+
+`Epic`, `Feature`, `Task` and `Bug` stay ungated **until something leans on them**. Nothing
+does today, and gating a kind on the grounds that gating is good is how the `test/` module
+rule earned its retirement — friction bought with no defect behind it. Scope promised is
+scope checked, which this finding's own first draft got wrong by generalising from one
+instance to five.
 
 **Why it belongs to this round.** It is the round's own defect one layer out: a rule with no
 check, discovered because two new rules leaned on it.
@@ -781,8 +798,9 @@ two real bodies of work and each deserves its own branch — 6 more than one.
 8. **The model rebuild's cost check** (finding 12) — the render pass's sibling, in the layer
    that can measure honestly. Do it after finding 4's work has settled, so the two cost
    stories are written in the same shape.
-9. **Gate the remaining note shapes** (finding 13) — after the sweep query and the ownership
-   rule are both in use, since they are what makes it load-bearing.
+9. **Gate the `Issue` shapes** (finding 13) — after the sweep query is in use, since that is
+   what makes the heading load-bearing. The other ungated kinds stay ungated until something
+   leans on them.
 10. **A bundle-size budget** (finding 15) — small; ride it along with any build change.
 11. **Close the round** (finding 16) — a dated paragraph beside the existing ones in
     [[Codebase health]], saying what this round bought and what it left. Last, by definition.
