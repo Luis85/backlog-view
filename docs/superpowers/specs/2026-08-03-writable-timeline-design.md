@@ -456,11 +456,18 @@ the identity; `timelineDrag.ts` decides what a position means.
   with the bar holds wired as sources it cannot tell a resize from a body drag: a start
   grip released over the shelf would fire the full unschedule and delete both keys
   instead of moving one end. The hold the payload already carries is therefore read by
-  the shelf's own `canDrop`, which admits the body and the shelf card and refuses the
-  grips — refused rather than ignored, so the strip never highlights for a drag it would
-  not honour, the same reason `canDrop` refuses a foreign view's card instead of
-  dropping it silently. A grip released there is a drag that ended nowhere: no write,
-  indicators clear, undo slot untouched.
+  the shelf's own `canDrop`, which admits **the bar body alone** — refused rather than
+  ignored, so the strip never highlights for a drag it would not honour, the same reason
+  `canDrop` refuses a foreign view's card instead of dropping it silently. A grip
+  released there is a drag that ended nowhere: no write, indicators clear, undo slot
+  untouched.
+
+  A **shelf card** is refused there too, and that one is not merely tidiness. Dropping a
+  shelf card back on the shelf looks like a no-op, but a card shelved as *unreadable* or
+  *reversed* still carries its date keys — `deriveBars` shelves it with a reason rather
+  than for want of dates — so the removal would fire and delete the very values the
+  reason is telling the user to correct. The shelf takes what is placed and un-places it;
+  it has nothing to do with a card already on it.
 - **The shelf takes its removal from the axis, not from a truthy controller.**
   `renderShelf` currently reads `dnd` as "the horizon axis" — it hardcodes
   `performHorizonMove(item, null)` as the drop and words its tooltip "removes its
@@ -605,7 +612,22 @@ screen while the grid they name stays.
 
 **So the timeline becomes the scroll box for both axes on the dated axis**: it takes a
 bounded height, its rows scroll vertically inside it, the header pins to its top and the
-lead column to its left, and the pane scrolls neither way. That is the structure a grid
+lead column to its left, and the pane scrolls neither way.
+
+**That is two elements, not one.** `.pbl-timeline` is `position: relative` today and the
+today line, the milestone lines and the new drop overlay are all absolutely positioned
+against it with `top: 0; bottom: 0`. Make that same element the scroll box and those
+children resolve their height against its **padding box** — the visible height, not the
+content height — so every full-height mark becomes viewport-tall and scrolls away,
+leaving the lower rows crossed by nothing and the overlay covering only what was on
+screen when it was made. A line that stops partway down is worse than no line: it says
+the plan divides there.
+
+So the bounded, two-axis `overflow` goes on an outer element and a `position: relative`
+content wrapper at `max-content` in both dimensions holds the header, the rows, the
+lines and the overlay. Positioned descendants then size to the whole grid. Sticky still
+works through it — the nearest scrollport is the outer box and the wrapper's overflow
+stays `visible` — so the header and the lead column keep pinning as they do now. That is the structure a grid
 with a frozen header and a frozen first column has to have, and taking it deliberately
 also *simplifies* what the earlier finding forced: `restoreScroll` does not need a
 horizontal target apart from a vertical one, because on this axis **one element carries
