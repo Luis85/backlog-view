@@ -270,6 +270,16 @@ to `domain/itemTypes.ts`, where the type rules already live, and `placementEnds`
 `interactions/plan.ts` becomes a caller of it rather than a second statement of it —
 which also stops `storage/` needing anything from `view/`.
 
+And the live type governs **what is written**, not only what is validated. `axisEntries`
+applies every field the batch carries, so an external edit that turns an ordinary item
+into a marker while a modal or a drag is open would let a stale two-ended plan write the
+start that type may not touch — the narrowing kept everywhere else and lost at the last
+step. Where the planned shape and the live shape disagree the batch is **refused**,
+not filtered down: applying the half that still fits would commit a plan the user made
+about a different thing, and `applySafely` already refuses whole for the same reason,
+that a partly-applied batch leaves the note in a state nobody asked for. The refresh
+then redraws what the note has become, and the next gesture is made against that.
+
 *An unchanged write is not a move, and must not be announced as one.* With the check in
 the writer, the planner now hands the gate a non-empty batch for a re-confirmed date;
 `runExclusively` reports success for anything that completed, and `applyCardMove`
