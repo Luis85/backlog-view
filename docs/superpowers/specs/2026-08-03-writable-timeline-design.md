@@ -511,6 +511,16 @@ already outside the composite, already real buttons — carrying `aria-expanded`
 naming the shelf with `aria-controls`. The header keeps its icon, label and count and
 stays a `div`.
 
+Living in the toolbar means it **outlives the thing it names**: a content-only render
+(the quick filter's, which rebuilds the pane and leaves the toolbar standing) mints a
+new shelf element while the button keeps pointing at the old one, and an
+`aria-controls` naming a detached node exposes no region at all. The shelf's id is
+therefore fixed for the life of the view rather than minted per render — per *view*, not
+a constant, since two saved views can sit in split panes and duplicate ids would make
+one button address the other's shelf. And the toggle renders only where the shelf does:
+a control for a region that is not on screen is the same defect in a different
+direction.
+
 But a container query plus a button is **two** deciders, and they desynchronise: at a
 wide pane the query shows the cards while the flag still says closed, so the control
 would announce "collapsed" over visible content. CSS cannot write an ARIA attribute, so
