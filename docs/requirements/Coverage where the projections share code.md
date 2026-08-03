@@ -88,7 +88,8 @@ note twice. They get their own note when that reading has been done.
 
 `src/view/interactions/cardDrag.ts` · `vitest.config.mts` · `test/view/board.test.ts`
 
-Only what this note owns. `undo.ts` and `backlogView.ts` are named in the flow as
-explicitly **out** of scope, and once [[A module is named where it is specified]] lands a
-path in this section is a claim that this use case specifies that module — so listing an
-excluded one would make the checker green on an ownership nobody meant.
+Only what this note owns — the excluded modules are named in the flow above and
+deliberately nowhere in this section. Once [[A module is named where it is specified]]
+lands, a path here is a claim that this use case specifies that module, so even a sentence
+*explaining* an exclusion must not spell one out: the first draft of this paragraph did,
+and reintroduced the ownership it was written to disclaim.

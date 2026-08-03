@@ -314,17 +314,20 @@ maintainability finding it is, not as something to squeeze into a polish pass.
 | `view/interactions/undo.ts` | 80% | the partial-failure remainder and `UndoRecovery` |
 | `view/backlogView.ts` | 80.5% | the projection dispatch and lifecycle |
 
-Uncovered ranges, read in the source rather than inferred from their numbers:
-`cardDrag.ts:40-57` is the pair of null guards on `announceBoardMove`/`announceHorizonMove`,
-`:157-161` the drop-time payload check and the item resolution that can miss because a
-refresh mid-drag dropped the note; `tags.ts:20-22` folds the item's own tags into the
-offered vocabulary and `:36-39` is the normalization refusal; `undo.ts:102,118` is the
-recovery path. Every one needs a race or an absence constructed to reach it.
+**A low figure is a question, not a work item.** Reading the branches behind these numbers
+changed the answer twice. `cardDrag.ts` holds two real ones — the guards where a move is
+**not** announced because the projection snapshot is absent, and the drop that resolves to
+nothing because a refresh mid-drag dropped the note. `tags.ts` holds neither: its refusal
+branch is already tested, and the other may be unreachable in production, so a test written
+to the percentage would have been a duplicate plus a contrived host state.
 
-**Shape.** Named increments, not a coverage push. `cardDrag.ts` first — it is the module
-`docs/issues/Pragmatic drag and drop for the board.md` introduced, and the one whose
-failure would be silent in two projections at once. Raise the branch threshold in
-`vitest.config.mts` as each lands; that file already says thresholds only go up.
+**Shape.** One named increment, not a coverage push: `cardDrag.ts`, the module
+`docs/issues/Pragmatic drag and drop for the board.md` introduced and the one whose failure
+would be silent in two projections at once. The rest of this table stays **evidence, not
+scope** — a module joins the work when someone has read its branches, which is what
+[[Coverage where the projections share code]] now says and what this finding got wrong
+first. Raise the branch threshold in `vitest.config.mts` as the increment lands; that file
+already says thresholds only go up.
 
 ---
 
@@ -579,8 +582,12 @@ Each step is independently shippable and ends `npm run check` green.
    Also fixes `docs/README.md`'s folder table.
 2. **Answer the mobile question** (finding 2) — a verification, not code; it may change
    what "done" means for the drag work below it.
-3. **`cardDrag.ts` branch coverage, then `tags.ts`** (finding 6) — raises the floor under
-   everything the card projections do.
+3. **`cardDrag.ts` branch coverage** (finding 6) — raises the floor under the one
+   controller both card projections ride. **`cardDrag.ts` only**: an earlier draft of this
+   step also named `tags.ts`, and [[Coverage where the projections share code]] then took
+   it out — its refusal branch is already tested and its other branch may be unreachable,
+   so the work would be a duplicate test plus a contrived host state. The other thin
+   modules get a note once someone has read their branches.
 4. **The two untested render-cost claims** (finding 4) — the other two are already pinned.
 5. **[[One stylesheet per concern]], then the direction fixes, then
    [[Styling rules are checks]]** (finding 1) — the largest item, and the one with the most
