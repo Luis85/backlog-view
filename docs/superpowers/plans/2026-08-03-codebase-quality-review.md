@@ -357,9 +357,12 @@ pre-release sweep (`cfb655d`) is the proof.
 **Shape.** Not automation. Make the sweep a **release step**: `RELEASING.md` gains a line
 saying the **re-runnable** verifications run against a `test-build` vault before a tag,
 and each note's `Outcome` is dated. Conditional ones stay on their own trigger and are
-named as such, so the checklist says which instrument each note is. If a subset turns out
-never to catch anything across two releases, that is evidence to retire it — also worth
-recording.
+named as such, so the checklist says which instrument each note is. If a subset turns out never to catch
+anything across two releases, that triggers a **review** — kept, narrowed or retired as a
+recorded decision, judged on what the check is *about*. Touch, appearance and platform
+behaviour can regress long after a quiet spell, so a low hit rate is a prompt to look, not
+a verdict; [[A cadence for the checks CI cannot run]] governs this and an earlier draft
+here read it as automatic retirement.
 
 **Explicitly rejected:** driving a real Obsidian from Playwright. It would be a second
 harness with its own failure modes, gating releases on an app this repository does not
@@ -606,8 +609,12 @@ Each step is independently shippable and ends `npm run check` green.
    conditional. A draft of this step said "one line, any time" — which would have looked
    complete after the one part that changes nothing.
 
-Steps 1–4 are a coherent first increment: nothing in them changes shipped behaviour, and
-together they close every finding that is *only* a missing check. Steps 5 and 6 are the
+Steps 1–4 are a coherent first increment, and it **does** change shipped behaviour once:
+step 4's precondition is [[The drag cleanup scans the whole tree]], a real cost defect that
+has to be fixed before anything asserts the invariant it breaks. Everything else in 1–4
+closes a finding that is *only* a missing check. An earlier draft called the whole
+increment behaviour-neutral, which would have left the planned spy failing on a known
+defect and reading as a broken test. Steps 5 and 6 are the
 two real bodies of work and each deserves its own branch — 6 more than one.
 
 **Findings 8 and 9 are the only ones deliberately absent from this sequence** — every

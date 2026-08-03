@@ -26,9 +26,13 @@ One does. `DragDropController.clearDragState` ends with
 this.els.treeEl.querySelectorAll('.pbl-drag-source').forEach((el) => el.classList.remove('pbl-drag-source'));
 ```
 
-a full-tree query, run on every `dragend` — which the view wires on `document`, so it
-fires whether or not the drag was ever over the tree. On a several-hundred-row backlog
-that is a scan of every row to clear a class from exactly one.
+a full-tree query, run on every `dragend`. There are **two** registrations that reach it,
+which is worth stating precisely because a search of `interactions/` alone finds only one:
+`dragDrop.ts` wires `dragend` on each rendered row inside `wireRow`, and `backlogView.ts`
+additionally wires it on **`document`** via `registerDomEvent`. So the scan runs after a
+tree-row drag — twice, since the row listener and the document listener both fire — and it
+also runs on a `dragend` that never involved the tree at all. On a several-hundred-row
+backlog each of those is a walk of every row to clear a class from exactly one.
 
 The mechanism is that the controller already tracks its *other* transient element by
 reference — `activeDropRow` is held, cleared explicitly, and nulled in `onRenderStart`
