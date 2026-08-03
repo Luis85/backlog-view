@@ -629,8 +629,20 @@ not", learned here three times in a row. If a band is added later it declares a 
 too, and nobody has to remember this paragraph to get that right.
 
 Regions yield space before results are hidden — the tree's rule, applied to a frame that
-now owns its own height — and no band can starve another, because each states what it
-may take.
+now owns its own height.
+
+**What happens when there is not enough height for all of it** has to be stated, because
+a floor plus four maxima can exceed a short or embedded pane and no allocation makes
+that fit. "No band can starve another" was the wrong guarantee: it is not true, and
+`.pbl-view` clips, so the failure it papers over is a region nobody can reach. The
+guarantee is narrower and checkable — **no region is ever unreachable** — and it is kept
+in two steps. Bands yield in a stated order first: the shelf to its labelled count (the
+compaction that already exists), then the context strip to its own count, the advisory
+last because it is the one band that exists to be read. When yielding runs out, **the
+pane scrolls vertically** rather than clipping. That is a fallback and not a retreat
+from the containment rule, which is about the horizontal axis: the pane still never
+scrolls sideways, and the header and lead column still pin inside the timeline. A pane
+too short for the frame is a worse view than a tall one, and it is not a broken one.
 
 The rules are axis-specific and the only class today is `pbl-roadmap-mode`, which both
 axes wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class
