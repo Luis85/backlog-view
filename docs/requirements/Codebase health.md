@@ -35,7 +35,11 @@ sentence before it stays as written: on the day it was written every actionable 
 than as the first quietly reopening. What reopened the epic is a review of `0.4.0` from a
 clean install — `docs/superpowers/plans/2026-08-03-codebase-quality-review.md` — against a
 gate that passes all five steps, coverage at 97.77/93.44/99.08/99.12 and fallow
-maintainability at 88.5. Nothing it found is a shipped defect either.
+maintainability at 88.5. It found no *correctness* defect — nothing computes a wrong
+answer or writes a wrong note — but it did find one in shipped code:
+[[The drag cleanup scans the whole tree]], filed P2, is a cost defect against a guarantee
+this repository states in prose. Saying "nothing shipped" here and describing it four lines
+below would be this round's own subject, committed in the note announcing it.
 
 What it found is the same shape the first round did, one level further out: **properties
 that are true today, stated in prose, with nothing that would notice them becoming
