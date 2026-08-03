@@ -161,9 +161,11 @@ export class CardDragController {
 					// source carrying this controller's private token, and the one place
 					// minting that token (`wireCard`) pairs it with `item.file.path`, a
 					// string, always. Its false arm is therefore unreachable by
-					// construction and undeletable by typing: declared here rather than
-					// covered, the way `.fallowrc.json` declares a member only a
-					// framework calls. Reaching it would take a faked adapter payload.
+					// construction and undeletable by typing, so it is left uncovered
+					// on purpose and the reason is written here — the same reasoning
+					// `.fallowrc.json` uses for a member only a framework calls, though
+					// that file is read by a tool and this paragraph by a person.
+					// Reaching the branch would take a faked adapter payload.
 					const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
 					// The host owns the write AND the announcement: a drop is one of three
 					// inputs to the same move, and three callers announcing separately is

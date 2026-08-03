@@ -109,9 +109,12 @@ const OVERBY = {
  * drag source). A full-tree `querySelectorAll` on every `dragend` shipped once. The
  * ban is on the RECEIVER, not on a directory: every legitimate query in `src/` narrows
  * to a row, a column or the toolbar first, so none of them names `treeEl` and none
- * needs an exemption. It sees the name only — `const el = this.els.treeEl;
- * el.querySelectorAll(...)` passes, and closing that needs type information about the
- * receiver, which is a bigger tool than this invariant is worth.
+ * needs an exemption. It sees the receiver's SPELLING — dotted (`this.els.treeEl`),
+ * bare (`treeEl`) and computed (`this.els['treeEl']`, a Literal with no `.name`, which
+ * is why the third alternative reads `object.property.value`) — but not an alias:
+ * `const el = this.els.treeEl; el.querySelectorAll(...)` passes, and closing that needs
+ * type information about the receiver, which is a bigger tool than this invariant is
+ * worth.
  *
  * The alternation has to be GROUPED. `All?` makes only the trailing `l` optional, so
  * `/^querySelectorAll?$/` matches `querySelectorAl` and `querySelectorAll` and never
@@ -120,7 +123,7 @@ const OVERBY = {
  */
 const TREE_SCAN = {
 	selector:
-		"MemberExpression[property.name=/^querySelector(All)?$/]:matches([object.name='treeEl'], [object.property.name='treeEl'])",
+		"MemberExpression[property.name=/^querySelector(All)?$/]:matches([object.name='treeEl'], [object.property.name='treeEl'], [object.property.value='treeEl'])",
 	message:
 		'Reach rows through the rowEls index (or the element already held) — querying treeEl walks every rendered row.',
 };

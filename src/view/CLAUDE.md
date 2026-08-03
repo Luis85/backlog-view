@@ -10,7 +10,8 @@ free of runtime code so imports stay cycle-free.
   expand/collapse calls `host.refreshSubtree(item)` — which re-renders that row's child
   group in place — never `host.render()`; the view keeps a path → row element index
   (`rowEls`) plus the selected row, so rows are reached by lookup rather than by
-  searching for them — a direct `treeEl.querySelector`/`querySelectorAll` fails lint
+  searching for them — a `treeEl.querySelector`/`querySelectorAll` naming the receiver,
+  dotted (`this.els.treeEl`), bare or computed (`els['treeEl']`), fails lint
   (`no-restricted-syntax`, the receiver is the ban), an aliased one
   (`const el = this.els.treeEl; el.querySelectorAll(...)`) is caught only if it is on a
   path the spy in `test/view/renderCost.test.ts` drives — selection, subtree refresh and
@@ -20,8 +21,9 @@ free of runtime code so imports stay cycle-free.
   update by `chipProps` onto `host.chips`, which `RowContext` carries as a snapshot,
   never in the per-row path. `refreshRowChildren` must prune the subtree it removes
   from `rowEls`, and anything captured at wire time (drag handlers) must read expansion
-  state live, because a targeted refresh leaves surrounding rows in place. Data updates still rebuild
-  everything — skipping that needs to account for arbitrary chip property values.
+  state live, because a targeted refresh leaves surrounding rows in place. Data updates
+  still rebuild everything — skipping that needs to account for arbitrary chip property
+  values.
 - The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
   slot, `recovery`, the deferred update and the busy state — five fields serving one
   concern, of which only `busy` was ever read from outside it — and the view owns one,

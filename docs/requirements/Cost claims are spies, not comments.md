@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[The render path states its costs as checks]]"
 order: 10
-status: Open
+status: Done
 area: testing
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # Cost claims are spies, not comments
@@ -25,7 +26,7 @@ a backlog that got slow between releases.
 **Main flow**
 
 1. The no-scan claim becomes a **lint rule on the receiver**: `querySelector` and
-   `querySelectorAll` are banned **on `treeEl`**, anywhere in `src/view/**`. The tree
+   `querySelectorAll` are banned **on `treeEl`**, anywhere in `src/`. The tree
    element is what makes a query a scan — every legitimate call in `src/` narrows to
    something smaller first (a row, a column, the toolbar), and the one violation took the
    container.
@@ -99,7 +100,7 @@ a backlog that got slow between releases.
 ## Acceptance criteria
 
 - `npm run lint` fails on `querySelector`/`querySelectorAll` called on `treeEl` anywhere in
-  `src/view/**`, and passes on **every** call that survives the prerequisite fix — the
+  `src/`, and passes on **every** call that survives the prerequisite fix — the
   property being relied on is that none of them names `treeEl`, not how many there are. A
   draft wrote the tally instead, counted *before* [[The drag cleanup scans the whole tree]]
   removes one of them, which made the criterion unmeetable unless the forbidden scan were
@@ -110,12 +111,13 @@ a backlog that got slow between releases.
   rather than merging them.
 - **`src/view/CLAUDE.md`'s sentence is narrowed to the shape actually banned**, which is
   narrower again than the previous draft of this criterion. Lint forbids
-  **`treeEl.querySelector` / `treeEl.querySelectorAll` written directly**; it does not
-  forbid querying the tree element, because `const el = this.els.treeEl;
-  el.querySelectorAll(...)` passes, and in an unexercised interaction it escapes the spy
-  too. So the guide says: *rows are reached through `rowEls`; a direct
-  `treeEl.querySelector*` fails lint; an aliased one is caught only if it is on a path the
-  spy drives.* Ugly, and true.
+  **`querySelector`/`querySelectorAll` on a receiver spelled `treeEl`** — dotted, bare or
+  computed (`els['treeEl']`, whose property is a Literal and needs its own alternative in
+  the selector); it does not forbid querying the tree element, because
+  `const el = this.els.treeEl; el.querySelectorAll(...)` passes, and in an unexercised
+  interaction it escapes the spy too. So the guide says: *rows are reached through
+  `rowEls`; a `treeEl.querySelector*` naming the receiver fails lint; an aliased one is
+  caught only if it is on a path the spy drives.* Ugly, and true.
 
   This is the **third** narrowing of the same sentence in this note's history — first "no
   interaction scans the DOM", then "the tree element is never queried", now the shape lint

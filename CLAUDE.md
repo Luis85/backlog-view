@@ -63,10 +63,13 @@ each projection derives — and it reads the vault without ever writing it or to
 DOM. That is what makes it the layer with node tests and no harness: a rule about levels,
 ranking, scope or placement can be asked of a function rather than of a screen.
 
-**`storage/`** is the only place anything is persisted. Not a convention — the point of
-the boundary is that "everything that puts bytes in the vault is in one directory" can be
-checked by reading that directory, which is why the `.base` file and the generated README
-live there too rather than beside the code that decides them.
+**`storage/`** is the only place anything is persisted, and it has node tests like
+`domain/` — apart from `collapseStore.ts`, which reads localStorage and so needs jsdom.
+Not a convention: "everything that puts bytes in the vault is in one directory" is
+established by the `no-restricted-syntax` ban named below, since reading the directory
+shows what is inside it and never that nothing outside writes. That is why the `.base`
+file and the generated README live there too rather than beside the code that decides
+them.
 
 **`view/`** is the DOM and every input that reaches it, so it is the layer the jsdom
 harness exists for. `commands/` is the palette's way in, and `main.ts` is the only place
@@ -74,9 +77,9 @@ anything is registered with Obsidian — the view itself and the commands both.
 
 There is deliberately no list of the modules here. `src/` is the list, one file per
 concern, and it cannot go stale; what a module is *for* is stated where its behaviour is
-specified — the `## Where it lives` section of the use case that owns it, or an ADR's
-`## Decision`, which `docs-check.mjs` rule 7 requires of every file in `src/`. Read from
-the behaviour you are changing rather than from an index of the tree.
+specified, which `docs-check.mjs` rule 7 requires of every module in `src/` — the two
+sections named under **Definition of done** above. Read from the behaviour you are
+changing rather than from an index of the tree.
 
 Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites` /
 `createBacklogItem`), and every write path — including creation — goes through the

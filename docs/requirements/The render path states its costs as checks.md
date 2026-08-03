@@ -2,9 +2,10 @@
 type: Feature
 parent: "[[Codebase health]]"
 order: 50
-status: Open
+status: Done
 area: testing
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # The render path states its costs as checks

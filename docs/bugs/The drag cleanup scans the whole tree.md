@@ -2,10 +2,11 @@
 type: Bug
 parent: "[[The render path states its costs as checks]]"
 order: 20
-status: Open
+status: Done
 area: performance
 priority: P2
 created: 2026-08-03
+closed: 2026-08-03
 source: Codex review on PR #61, verified against the source
 files:
   - src/view/interactions/dragDrop.ts

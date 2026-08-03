@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Guides that describe rather than enumerate]]"
 order: 20
-status: Open
+status: Done
 area: docs
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # A guide is prose, not an inventory
@@ -68,5 +69,11 @@ created: 2026-08-03
 
 ## Where it lives
 
-`CLAUDE.md` · `docs/README.md` · `src/domain/CLAUDE.md` · `src/storage/CLAUDE.md` ·
-`src/view/CLAUDE.md` · `test/CLAUDE.md`
+`CLAUDE.md` · `docs/README.md`
+
+**The four layer guides are deliberately not listed**, though extension 2b measured them.
+Since [[A module is named where it is specified]], a path in this section is a claim that
+this use case specifies that file — and this note's own criterion is that the layer guides
+are *untouched* by it. A note cannot disclaim ownership in its criteria and claim it here.
+They are named in the extension instead, where the sentence is about them; that they are
+`.md` and so outside rule 7 is why nothing failed, not why it was right.

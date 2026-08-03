@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Guides that describe rather than enumerate]]"
 order: 10
-status: Open
+status: Done
 area: docs
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # A module is named where it is specified
@@ -20,7 +21,7 @@ what the code is for rather than mentioning a path in passing.
 | **Actor** | Whoever adds, splits or renames a module in `src/` |
 | **Trigger** | `npm run check`, on every build |
 | **Preconditions** | None. The rule already holds for every module but the ADR-named one, so it lands on a clean file without a note written to satisfy it |
-| **Guarantee** | A module that no use case and no ADR claims fails the build. What satisfies the rule is a description, never a mention. |
+| **Guarantee** | A module that no use case and no ADR claims fails the build. What satisfies the rule is a claim of ownership by a use case or an ADR, in the section where that claim is made — never a path token anywhere under `docs/`. The check sees the *section*, not whether the sentence around the path describes anything: it is a proxy for description, and a good one because those two sections are where a note says what it owns. |
 
 **Main flow**
 
@@ -61,7 +62,7 @@ what the code is for rather than mentioning a path in passing.
   `.fallowrc.json`'s `usedClassMembers` uses — declare the answer in one place rather than
   suppress the question at the site.
 - **4a — the reason cited for the rule is the architecture table.** It was, and that table
-  is being deleted by [[A guide is prose, not an inventory]]. The reason changes with the
+  was deleted by [[A guide is prose, not an inventory]]. The reason changes with the
   anchor: not *"the architecture table names one per concern"* but **"a module nothing
   specifies is a capability nobody asked for."** A rule kept with a justification its own
   register has falsified is the defect this epic exists to remove.

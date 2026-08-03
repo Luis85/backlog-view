@@ -2,9 +2,10 @@
 type: Feature
 parent: "[[Codebase health]]"
 order: 40
-status: Open
+status: Done
 area: docs
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # Guides that describe rather than enumerate
@@ -23,14 +24,14 @@ first one removes the thing the second one currently leans on.
 
 **Re-anchor the rule first, then delete the table** — the two PBIs below are ordered
 10 then 20 for this reason and not for reading order.
-`docs-check.mjs` rule 7 — every module in `src/` is named by a note — currently justifies
+`docs-check.mjs` rule 7 — every module in `src/` is named by a note — used to justify
 itself *by* the module table: *"the architecture table names one per concern, so a module
-nothing describes is a real gap."* Run
-[[A guide is prose, not an inventory]] first and the table is gone while rule 7 still
-cites it, leaving the gate green on a reason that no longer exists — the exact defect this
-feature is about, introduced by the change meant to remove it.
-[[A module is named where it is specified]] is what gives the rule a reason of its own,
-so it goes first.
+nothing describes is a real gap."* Running
+[[A guide is prose, not an inventory]] first would have taken the table away while rule 7
+still cited it, leaving the gate green on a reason that no longer exists — the exact
+defect this feature is about, introduced by the change meant to remove it.
+[[A module is named where it is specified]] is what gave the rule a reason of its own, so
+it went first: both landed on 2026-08-03, in that order.
 
 **The quiet seam: the table's deletion is safe only because rule 7 survives.** The
 argument for deleting the table is that the fact it carries — every module is described
