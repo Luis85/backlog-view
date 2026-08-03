@@ -122,7 +122,7 @@ TimelineScale { id: 'week' | 'month' | 'quarter'; dayPx: number; unit: ... }
 | --- | --- | --- | --- |
 | `week` | 16 | a comfortable pointer target | ~5,840px |
 | `month` | 4 | today's density, unchanged | ~1,460px |
-| `quarter` | 2 | the floor, below | ~730px |
+| `quarter` | 2 | as wide as the two marks it must hold | ~730px |
 
 Strictly decreasing, each a clean multiple of the next, and `month` is exactly what
 ships today so the default view does not move under anyone. Without stated values the
@@ -145,16 +145,28 @@ belongs to. The floor and the nudge are the two constants this increment convert
 one rule: **a length in days is scaled and a length in pixels is not**, and mixing them
 is what a zoom control turns into a bug.
 
-**That nudge is also why `dayPx` has a floor of 2.** [[A milestone line across the plan]]
-extension `1d` requires today's line and a milestone dated today to both draw and **not**
-merge, and `.pbl-milestone-line` sits at `z-index: 0` beneath `.pbl-today`'s `1` — so a
-coincident line is not a merged mark, it is an erased one. A sub-day nudge that keeps
-the mark in its day and still separates the two needs at least two pixels of day to
-work with. Rather than a collision rule that special-cases the sparse scales, the
-constraint is read as what it is — a lower bound on how sparse a scale may be — so
-`quarter` is 2 rather than 1. A scale is not free to be arbitrarily coarse; the marks
-the grid must distinguish say how coarse it may get. Whether two adjacent pixels *read*
-as two lines is not a thing jsdom can answer, so it joins the smoke list.
+**And the nudge puts a relation on the scale, which is the thing to state rather than
+another number.** [[A milestone line across the plan]] extension `1d` requires today's
+line and a milestone dated today to both draw and **not** merge, and
+`.pbl-milestone-line` sits at `z-index: 0` beneath `.pbl-today`'s `1` — so a coincident
+line is not a merged mark, it is an erased one. Two marks side by side inside one day
+therefore need the day to be at least as wide as both of them:
+
+> **`dayPx ≥ 2 × lineWidth`**, for every scale in the table.
+
+Both lines are `width: 2px` today, so the two together want four pixels of day — which
+`quarter` at 2 does not have, and cannot get by nudging. The line width becomes a
+scale-derived custom property rather than a constant: 2px at `week` and `month`, where
+there is room, and 1px at `quarter`, where there is not. Nothing changes at the two
+densities most reading happens in, and the sparse scale narrows the marks instead of
+losing one.
+
+Stating the relation is the point. This is the third revision of the same constraint —
+first the nudge, then the floor, now the widths — and each earlier one fixed the
+instance while leaving the rule unwritten, so the next scale would have broken it again
+in silence. As a relation it is checkable over the scale table itself, which is a test
+that fails for a scale nobody has added yet. Whether 1px at 0.55 opacity *reads* as a
+line is not something jsdom can answer, so that joins the smoke list.
 
 Today's fixed rendering becomes the `month` scale at `dayPx: 4`, so zoom adds a
 parameter to functions that already exist rather than a second drawing path.
@@ -628,9 +640,9 @@ Named honestly rather than claimed, and filed as a smoke note under `Feature Tes
   reasoned, not measured, and the width of a real pane is the only thing that can say
   whether quarter zoom shows enough plan to be worth having.
 - Whether today's line and a milestone dated today read as **two** marks at quarter
-  zoom, where the nudge separating them is one pixel. The floor of 2 is derived from
-  that requirement, so this is the check on the derivation: if two pixels is not enough
-  to see, the floor is wrong rather than the rule.
+  zoom, where each is one pixel at 0.55 opacity. `dayPx ≥ 2 × lineWidth` is satisfiable
+  there only by narrowing the lines, so this is the check on that trade: if a one-pixel
+  line cannot be seen, the answer is a denser `quarter`, not a thinner mark.
 - The narrow-pane shelf compaction, and whether anything clips under the header in an
   embedded base.
 - The today line and jump-to-today from a scrolled position.
