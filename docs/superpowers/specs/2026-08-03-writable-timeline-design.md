@@ -224,10 +224,24 @@ positional sibling of `wireDropTarget` gates on the same token and keeps the sam
 resolve-at-drop-time rule, since a refresh mid-drag can drop the note. One place mints
 the identity; `timelineDrag.ts` decides what a position means.
 
-- The grid track is one drop target. `onDrag` paints the preview — a ghost bar and the
+- **The drop target is one overlay over the day area, not "the track".** There is no
+  single track to register: `.pbl-timeline-track` is created once inside the header and
+  again inside every row, so registering any one of them would take drops over that row
+  alone and none over the gaps or the empty space below the last row — most of the grid
+  a user would aim at. Instead the day area gains one element spanning the full height,
+  positioned past the sticky lead column, which is both the drop target and the surface
+  the pointer is measured against. It takes pointer events **only while a drag is live**,
+  so it never sits between the reader and a bar's grips — the empty shelf's existing
+  trick (in the DOM so a drop has somewhere to land, out of the way until a drag needs
+  it), reached by a second surface. `onDrag` paints the preview — a ghost bar and the
   dates it means — through CSS props; `onDrop` builds the plan and calls
   `performScheduleMove`. A drag ending off both grid and shelf writes nothing and does
   not consume the undo slot.
+
+  One overlay rather than a target per row because, without lanes, **the row a drop
+  lands on carries no meaning**: the dragged item is the subject and only the X says
+  anything. When [[Lanes on the roadmap]] makes the Y meaningful it will be reworking
+  this area regardless, and it is the note that owns the combined batch.
 - **The pointer is converted before `dayAt` sees it.** `dayAt` takes an offset from the
   window's first day; the drag adapter reports a **viewport** `clientX`. The view
   subtracts the *track's* bounding rect — the days area, so the sticky lead column is
