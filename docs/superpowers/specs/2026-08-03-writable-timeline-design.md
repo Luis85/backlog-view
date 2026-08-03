@@ -208,10 +208,15 @@ the identity; `timelineDrag.ts` decides what a position means.
   names: a marker on a start-only axis has no key it may write, so its card offers no
   grip at all and stays on the shelf until a target property is configured
   ([[Drag from the shelf to schedule]] extension `2e`).
-- A shelf drop writes decision 2's span. A body slide steps whole days with the target
-  following at the bar's own day count, so a slide never changes duration. An end drag
-  moves one date and clamps at equal rather than crossing — a reversed span is
-  unreadable, so no gesture may write one.
+- A shelf drop writes decision 2's span. A body slide steps whole days, moving **only
+  the ends the note actually states** — both, so a two-ended slide never changes
+  duration; the stated one alone where the bar has one, its open end staying open. The
+  bar's rendered width is not a duration to preserve when half of it is an absence:
+  filling it in would close a one-ended plan by a gesture that promised to move it, and
+  equal ends would draw a milestone the note never claimed
+  ([[Move and resize a bar]] extension `1a`). An end drag moves one date and clamps at
+  equal rather than crossing — a reversed span is unreadable, so no gesture may write
+  one.
 - A bar dropped on the shelf removes keys rather than blanking them, and undo restores
   them with their values. **Which** keys is `placementEnds` in `interactions/plan.ts`,
   not "the configured ones": it already narrows a marker to its target alone, which is
@@ -222,13 +227,22 @@ the identity; `timelineDrag.ts` decides what a position means.
 - **The shelf drop's indicator says which outcome it is, before release.** Removing a
   parent's own dates does not always shelve it: where descendants still supply dates the
   bar stays, inferred, and step 4 of [[Drag from the shelf to schedule]] requires the
-  indicator to distinguish that from actually shelving. It costs nothing to answer
-  correctly — `descendantStart` and `descendantTarget` are gathered from children alone,
-  never from the item's own dates, so the prospective placement is `inferSpan` called
-  with the ends the removal would leave stated: null for both on an ordinary
-  unscheduling, the surviving start on a marker. Null means the shelf; anything else
-  means the bar stays and says so. The same call names the announcement above, so the
-  preview and what the screen reader hears cannot disagree.
+  indicator to distinguish that from actually shelving.
+
+  **The outcome is asked of the function that places, never derived beside it.**
+  `deriveBars` decides bar-or-shelf per item over several rules that do not compose into
+  one — a marker goes through `placeMarker`, which ignores the start entirely and shelves
+  whenever the target is absent, so a marker that keeps a stale start still shelves and
+  never reaches `inferSpan` at all; an unreadable or reversed pair shelves with its
+  reason before any inference is asked. So the per-item decision comes out of
+  `deriveBars` as a pure function taking the item's *effective* stated ends, `deriveBars`
+  calls it for what renders, and the preview calls it with the ends the removal would
+  leave. That is the register's own "the checkmark is asked of the plan" rule reaching a
+  third surface: a comparison written beside a placement rule and expected to agree with
+  it is exactly what drifted when the second axis arrived. It costs nothing extra —
+  `descendantStart` and `descendantTarget` are already gathered from children alone,
+  never from the item's own dates. The same call names the announcement above, so the
+  preview and what the screen reader hears cannot disagree either.
 - `renderRoadmap` passes `dnd: null` on the dated axis today as the deliberate
   withholding. Flipping that on is what this increment is.
 
@@ -285,11 +299,12 @@ covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
 
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
 slide, both end grips, the clamp at equal, the bar-to-shelf removal, the drag that ends
-nowhere, and the marker on a start-only axis offering no grip. Two of its cases are
-about what the removal *leaves*, not what it takes: a parent with dated descendants
-previews and announces the inferred span it keeps, while one with a wholly dateless
-subtree previews and announces the shelf — the pair being the check that the outcome is
-derived rather than assumed. Split-pane isolation is asserted where the token is minted:
+nowhere, the marker on a start-only axis offering no grip, and the one-ended bar whose
+body slide leaves its open end open. Three of its cases are about what a removal
+*leaves*, not what it takes: a parent with dated descendants previews and announces the
+inferred span it keeps, one with a wholly dateless subtree previews and announces the
+shelf, and a marker carrying a stale start previews the shelf — the trio being the check
+that the outcome comes from the placement rule rather than from a comparison beside it. Split-pane isolation is asserted where the token is minted:
 a source wired by one controller must not be droppable on another's target, which is the
 `canDrop` contract stated as a test rather than as the comment it is today.
 `test/view/contextCardWrites.test.ts` gains the timeline's entry points. Coverage
