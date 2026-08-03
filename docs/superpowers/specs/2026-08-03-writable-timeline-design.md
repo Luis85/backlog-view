@@ -617,6 +617,16 @@ the identity; `timelineDrag.ts` decides what a position means.
   forecast. `applyCardMove`'s capture rule is untouched and still points the other way for
   what it covers — a bucket label can vanish with the refresh, so the *vocabulary* is read
   before the await. Labels before, outcome after; each read where it is knowable.
+
+  **And sometimes it is not knowable, which the announcement says by not saying it.** A
+  date write can take its own note out of the base — decision 4's case — and `buildModel`
+  keeps an excluded note only where it is an ancestor of a remaining result, so the
+  rebuilt model may hold no row for the item at all. Then there is no placement to report
+  and nothing to dereference: the announcement names the dates the writer wrote and stops
+  there. It does **not** say the card left the view. That would be the outcome report,
+  which needs a note's disappearance correlated with the write that caused it — the thing
+  [[The outcome report was built from one sentence]] records as unsolved here — and an
+  announcement guessing at it would be that mechanism rebuilt badly in a live region.
 - `renderRoadmap` passes `dnd: null` on the dated axis today as the deliberate
   withholding. Flipping that on is what this increment is.
 
