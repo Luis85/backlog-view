@@ -257,11 +257,18 @@ call returned.
 
 ### The plan — `src/domain/writePlan.ts`
 
-**Nothing new.** `computeScheduleWrites` is already the batch these gestures want: both
-ends on one `ItemWrite` so a span is one undo rather than two halves that can be taken
-back separately; `null` removing a key only where the note carries it; an end that would
-change nothing dropped from the batch. The gestures build a `SchedulePlan` of civil-date
-strings and hand it over.
+**Almost nothing new.** `computeScheduleWrites` is already the batch shape these gestures
+want: both ends on one `ItemWrite`, so a span is one undo rather than two halves that can
+be taken back separately, and `null` removing a key only where the note carries it. The
+gestures build a `SchedulePlan` of civil-date strings and hand it over.
+
+The one change is that it **stops dropping ends that look unchanged**. That comparison
+runs against `plannedStart` / `plannedTarget`, which the model may hold a refresh behind,
+so it can discard a request the note actually needs — the case the writer section below
+sets out in full. The planner carries every requested valid end, and whether an end is an
+effective change is the writer's question, asked of the live value. Nothing here reads a
+date to decide whether to write it; `writePlan.ts` touches nothing and now claims nothing
+about what a note currently holds.
 
 It stays type-agnostic, deliberately: **which** ends a plan may name is `placementEnds`
 in `interactions/plan.ts`, where the type rules already live and where `unschedule`
@@ -646,8 +653,13 @@ screen when it was made. A line that stops partway down is worse than no line: i
 the plan divides there.
 
 So the bounded, two-axis `overflow` goes on an outer element and a `position: relative`
-content wrapper at `max-content` in both dimensions holds the header, the rows, the
-lines and the overlay. Positioned descendants then size to the whole grid. Sticky still
+content wrapper holds the header, the rows, the lines and the overlay. Positioned
+descendants then size to the whole grid. The wrapper is `max-content` in both dimensions
+**over a minimum of the scrollport**, because `max-content` alone is the height of the
+rows that exist: a timeline with few bars — or none, which is the state every fresh
+backlog starts in — would leave the blank grid below the last row outside the overlay
+and refusing drops, while [[Roadmap empty states]] requires every region of the frame to
+be a drop target. It grows with the rows and never shrinks below what is on screen. Sticky still
 works through it — the nearest scrollport is the outer box and the wrapper's overflow
 stays `visible` — so the header and the lead column keep pinning as they do now. That is the structure a grid
 with a frozen header and a frozen first column has to have, and taking it deliberately
