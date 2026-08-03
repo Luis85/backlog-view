@@ -546,6 +546,16 @@ An earlier draft of this paragraph said all three stayed closed, while the same 
 reopened one. Status drives the backlog, so a plan and a frontmatter disagreeing about it
 is two instructions, not one.
 
+**As of 2026-08-03, the reopen above has been spent on [[Test harness and coverage]] and
+that feature is `Done` again**, along with [[Coverage where the projections share code]].
+The paragraph above is kept as written rather than edited to say the feature stayed
+closed: it was reopened, the work landed, and it closed again, and a plan rewritten to
+hide the middle step would be the same falsified record this round refuses one paragraph
+earlier. [[Module structure]] and [[One file per concern]] are still `Open`, correctly —
+[[Give the type vocabulary its own leaf]] is deferred to step 6, so the reopen there is
+still carrying work. A reader arriving after this date takes the status from the notes,
+which is what the frontmatter is for; this plan records which round asked for it.
+
 **Shape.** New features at orders 40+, grouping the findings by kind:
 
 | Feature | Covers |
