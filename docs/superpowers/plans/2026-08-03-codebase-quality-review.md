@@ -518,8 +518,17 @@ the first one asked for. What must not happen is editing "every actionable findi
 closed" into something hedged — that sentence was true on the day it was written, and its
 being true then is the whole reason the second round is legible as a second round.
 
-The three existing features (`Test harness and coverage`, `Enforced invariants`,
-`Module structure`, all `Done`, orders 10/20/30) stay closed and stay where they are.
+**Two of the three existing features stay closed; one reopens.** `Enforced invariants` and
+`Module structure` (orders 20 and 30) keep their `Done` status — nothing in this round
+belongs under either. **[[Test harness and coverage]] (order 10) reopens**, because
+[[Coverage where the projections share code]] is that feature's own subject and a `Done`
+feature carrying an `Open` child would be a status the backlog cannot act on. That is the
+narrower move rather than minting a fourth feature to say what the first one already says
+— the duplication [[Check that a feature lists its use cases]] retired.
+
+An earlier draft of this paragraph said all three stayed closed, while the same commit
+reopened one. Status drives the backlog, so a plan and a frontmatter disagreeing about it
+is two instructions, not one.
 
 **Shape.** New features at orders 40+, grouping the findings by kind:
 

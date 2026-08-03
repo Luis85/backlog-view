@@ -27,22 +27,36 @@ once.
 
 1. `src/view/interactions/cardDrag.ts` is covered first — **60% branches, the lowest figure
    in `src/`**, in the one controller both card projections ride.
-2. `src/view/interactions/tags.ts` follows at 71%, then `undo.ts` at 80% and
-   `backlogView.ts` at 80.5%.
+2. `src/view/interactions/tags.ts` follows at 71% — the other module both projections
+   share, since a card body renders the same tag pills a row does.
 3. Each increment raises the matching threshold in `vitest.config.mts`.
 4. `npm run check` passes on the new floor.
 
+**This PBI is those two modules and no more.** `undo.ts` (80%) and `backlogView.ts`
+(80.5%) are the next-lowest figures and are deliberately **not** promised here: neither is
+code the projections share, which is what this note is about, and listing them in a flow
+with no acceptance criterion behind them is a scope that can be silently dropped at
+closure. They get their own note when someone has the evidence to write one.
+
 **Extensions**
 
-- **1a — the uncovered ranges are not arbitrary.** Read in the source rather than inferred
-  from their line numbers: `cardDrag.ts:40-57` is the pair of null guards on
-  `announceBoardMove` / `announceHorizonMove` — a move announced when the projection
-  snapshot is absent; `:157-161` is the drop-time payload check and the item resolution
-  that **can miss because a refresh mid-drag dropped the note**, which the code says in as
-  many words; `tags.ts:20-22` is `tagChoices` folding the item's own tags into the offered
-  vocabulary; `tags.ts:36-39` is the normalization refusal; `undo.ts:102,118` the recovery
-  path. Every one is a branch a test has to construct a race or an absence to reach, which
-  is why they are the ones left — and why they are worth reaching.
+- **1a — the uncovered ranges are not arbitrary.** Read in the source, and stated as the
+  behaviour the branch produces rather than as the line it sits on:
+  - `cardDrag.ts:40` and `:57` — `announceBoardMove` and `announceHorizonMove` **return
+    without announcing** when their projection snapshot is absent. The branch is the
+    **silence**, so the test asserts that nothing was announced. A test written from a
+    looser description could assert an announcement here and pin the opposite of what the
+    code deliberately does.
+  - `cardDrag.ts:157-161` — the drop-time payload check, and the item resolution that
+    **can miss because a refresh mid-drag dropped the note**, which the code says in as
+    many words. The branch is the drop that resolves to nothing and writes nothing.
+  - `tags.ts:20-22` — `tagChoices` folding the item's own tags into the offered
+    vocabulary, so a tag the base has never seen elsewhere is still offered on its own item.
+  - `tags.ts:36-39` — the normalization refusal, and the Notice that says so rather than
+    closing the prompt as if the tag had been added.
+
+  Every one needs a race, an absence or a refusal constructed to reach it, which is why
+  they are the ones left — and why they are worth reaching.
 - **1b — the number is chased rather than the branch.** Refused. A test written to move a
   percentage asserts whatever is cheapest to assert. Each increment names the branch it
   covers and what would break if that branch were wrong; a threshold moves because a
@@ -57,7 +71,13 @@ once.
 
 ## Acceptance criteria
 
-- `cardDrag.ts` branch coverage is no longer the lowest figure in `src/`.
+- `cardDrag.ts` branch coverage is no longer the lowest figure in `src/`, and each of its
+  named branches above has a test: the two silent-announcement guards assert that
+  **nothing** was announced, and the missed drop asserts that nothing was written.
+- `tags.ts` branch coverage covers both named branches — the own-tag fold and the
+  normalization refusal with its Notice.
+- No criterion here mentions `undo.ts` or `backlogView.ts`, and neither does the flow.
+  Scope promised is scope checked.
 - Every new test names the branch it covers, and is watched failing without the code it
   exercises.
 - Thresholds in `vitest.config.mts` are raised to the new measured floor, and none is
