@@ -24,11 +24,13 @@ Everything the gate can see is green, and most of it is not merely passing:
 | `npm run docs` | 179 backlog notes, 88 use cases, 19 ADRs, 49 modules — consistent |
 | Layering | `main → commands → view → storage → domain` enforced by `no-restricted-imports`, not by prose |
 | Write boundary | `processFrontMatter`, `vault.create`, `load/saveLocalStorage` banned outside `storage/` by `no-restricted-syntax` |
-| Size | largest `src/` file 652 raw lines (652 → under the 400 effective-line cap); 49 modules, one concern each |
+| Size | largest `src/` file 376 effective lines against a 400 cap (`domain/model.ts`); 49 modules |
 | Dependencies | 0 advisories, 3 runtime deps, all three admitted by ADR 0018 |
 
-`Codebase health` closed on 2026-08-01 saying *"this epic is done; the next one should be
-opened by new evidence, not by grooming this one."* What follows is that evidence.
+[[Codebase health]] closed on 2026-08-01 saying *"this epic is done; the next one should
+be opened by new evidence, not by grooming this one."* What follows is that evidence, and
+it opens a **second round under that same epic** — its closing paragraph kept as the dated
+record of what the first round bought, a new one added beside it (finding 10).
 
 **The through-line:** every finding below is the same defect this repository already named
 in [[A comment that states a rule is not a check]] — a property that is true today, stated
@@ -187,9 +189,20 @@ leaves the selection index, which is `refreshRowChildren` pruning `rowEls`.
 The two still asserted only in prose are the ones that need instrumentation rather than
 assertions on the DOM:
 
-- **No interaction scans the tree.** `rowEls` exists so selection and subtree updates are
-  O(1); nothing fails today if a new interaction reaches for `querySelector` over
-  `.pbl-tree` instead.
+- **No interaction scans the tree** — and this one **is already false as written**.
+  `src/view/interactions/dragDrop.ts:139` ends every drag with
+  `treeEl.querySelectorAll('.pbl-drag-source')`, a full-tree scan on every `dragend`. So
+  the claim in `view/CLAUDE.md` is not merely untested; a test written to it would fail
+  today, which is the strongest possible argument for writing it. (The two other scans in
+  `src/` are bounded and fine: `rows.ts:75` searches one row, `toolbar.ts:129,150` search
+  the toolbar.)
+
+  Two ways to make it true, and the smaller one is better: `clearDragState` already holds
+  `activeDropRow` as a single element reference and nulls it on render — the drag source
+  can be held the same way, since a mid-drag rebuild detaches the stale element and makes
+  it irrelevant by the same reasoning. **Replace the scan** rather than narrowing the
+  invariant to the paths that happen to honour it; a rule with an exception carved to fit
+  the one violator is not much of a rule.
 - **Config lookups are hoisted out of the per-row path.** `chipProps` resolves the columns
   once per data update onto `host.chips`, and `RowContext` carries that snapshot; the
   expensive calls behind it are `config.getOrder()` and `config.getDisplayName()`. Nothing
@@ -206,12 +219,16 @@ calls that should not happen, so both are spies, not assertions on state.**
 - Hoisting: spy `getOrder` / `getDisplayName` on the harness's fake config, render a
   several-hundred-row fixture, assert the count is bounded by the column count rather than
   growing with the rows.
-- No DOM scan: spy `querySelector` / `querySelectorAll` on the tree element, then drive
-  selection and a subtree refresh, and assert neither was called. Asserting on `rowEls`
-  instead does not test this — an interaction that swapped `rowEls.get(path)` for
-  `treeEl.querySelector(...)` leaves the map the right size and still resolves the right
-  element, so the map-shaped assertion passes while the O(1) guarantee is gone. The check
-  has to watch the call that must not be made.
+- No DOM scan: spy `querySelector` / `querySelectorAll` on the tree element and assert
+  neither is called. **Drive drag cleanup as well as selection and a subtree refresh** —
+  exercising only the latter two would pass today while `dragDrop.ts:139` is still
+  scanning, which is a test that agrees with the comment instead of checking it. Fix the
+  scan first, then the spy is a regression guard rather than a known failure.
+
+  Asserting on `rowEls` instead does not test this at all — an interaction that swapped
+  `rowEls.get(path)` for `treeEl.querySelector(...)` leaves the map the right size and
+  still resolves the right element, so the map-shaped assertion passes while the O(1)
+  guarantee is gone. The check has to watch the call that must not be made.
 
 **Cost.** One test file under `test/view/`, using `makeView` and the existing fixtures.
 Smaller than the earlier draft of this note assumed, because half the work is done.
@@ -279,23 +296,35 @@ failure would be silent in two projections at once. Raise the branch threshold i
 
 ---
 
-### 7. Sixteen live-vault verifications are open and there is no cadence for them
+### 7. Eighteen live-vault verifications are open and there is no cadence for them
 
-**Evidence.** `docs/issues/` holds 16 notes of the "verification to run" kind — the tree's
-badges, columns, menu, drag, keyboard, filter and undo; the board's cards, moves and
-filtered headers; the roadmap's axis picker, month header, inferred bars and milestones;
-the folder-note layout; base identity. Every one exists because jsdom cannot see it, and
-`docs/README.md` says so plainly: *"appearance and base identity cannot be tested here."*
-Several are explicitly written to be **re-run**, not closed.
+**Evidence.** Counted by status rather than by filename: `docs/issues/` holds 20 notes of
+the "verification to run" kind, of which **18 are `Open`** — the tree's badges, columns,
+menu, drag, keyboard, filter and undo; the board's cards, moves, filtered headers and
+column agreements; the roadmap's axis picker, month header, inferred bars and milestones;
+the folder-note layout; the visual changes. Every one exists because jsdom cannot see it,
+and `docs/README.md` says so plainly: *"appearance and base identity cannot be tested
+here."* Several are explicitly written to be **re-run**, not closed.
+
+**Two are already `Done`, and one of those must stay out of the sweep.**
+[[Verify base identity in a live vault]] passed on 2026-08-01 and asks to be repeated
+only **after an Obsidian or bundler upgrade** — a conditional trigger, not a release
+cadence. Folding it into a per-release checklist would silently replace the cadence its
+own outcome specifies, and the checks it would replace it with are the ones least likely
+to find anything. Conditional verifications keep their own trigger; only the re-runnable
+ones join the release step. (An earlier draft of this note said "sixteen", counted off
+filenames rather than frontmatter — wrong in both directions.)
 
 This is the project's real stability ceiling, and it is currently a stack rather than a
 process. `npm run test-build` already made each run cheap — the note recording the last
 pre-release sweep (`cfb655d`) is the proof.
 
 **Shape.** Not automation. Make the sweep a **release step**: `RELEASING.md` gains a line
-saying the re-runnable verifications run against a `test-build` vault before a tag, and
-each note's `Outcome` is dated. If a subset turns out never to catch anything across two
-releases, that is evidence to retire it — also worth recording.
+saying the **re-runnable** verifications run against a `test-build` vault before a tag,
+and each note's `Outcome` is dated. Conditional ones stay on their own trigger and are
+named as such, so the checklist says which instrument each note is. If a subset turns out
+never to catch anything across two releases, that is evidence to retire it — also worth
+recording.
 
 **Explicitly rejected:** driving a real Obsidian from Playwright. It would be a second
 harness with its own failure modes, gating releases on an app this repository does not
@@ -303,35 +332,7 @@ ship, to replace a checklist that takes under an hour.
 
 ---
 
-### 8. `new Notice` has 19 call sites in three layers and no seam
-
-**Evidence.** `new Notice(...)` is constructed in `view/writeGate.ts` (5),
-`view/interactions/{structure,create,undo,tags}.ts` (8), and `commands/{scaffold,readme}.ts`
-(6). Three layers each decide independently how the plugin speaks. There is no place to
-read its whole voice, no way to assert "this action said one thing" other than by mocking
-the constructor, and the marketplace's sentence-case rule is checked by eye.
-
-It also strains one stated boundary: `src/view/CLAUDE.md` says the write gate *"touches
-none of the view's ELEMENTS (Notices are its own)"* — an exception carved out precisely
-because `Notice` is reachable from anywhere.
-
-**Shape, and the collision to respect.** A notification seam is a thin module —
-`notify(message)` over `new Notice`, plus a `no-restricted-syntax` rule banning the bare
-constructor outside it. That is the same shape as the write boundary and needs no
-abstraction beyond one function.
-
-But it is **not a new idea**: [[A bare string cannot reach the UI]] already requires a
-typed wrapper over `new Notice` (14 sites on its derived inventory) alongside every other
-sink. Building a Notice service now and a text wrapper later means wrapping the same call
-twice, with the second wrap having to unpick the first. **Build the seam once, in the
-shape that requirement specifies**, and let the string catalog land through it.
-
-The one thing worth doing ahead of that layer: nothing. This is a finding to *record*, not
-to act on before finding 5.
-
----
-
-### 9. Modal is already a service — the remaining gap is small
+### 8. Modal is already a service — the remaining gap is small
 
 **Evidence.** All four dialogs (`TitlePromptModal`, `FolderPromptModal`,
 `TagPromptModal`, `SchedulePromptModal`) live in `src/ui/prompts.ts`, and every caller
@@ -350,11 +351,22 @@ the `await`-heavy write paths that call them.
 **Cost and rank.** Small, and low. It buys readability at four call sites and no
 correctness. Take it opportunistically when one of those files is open for another
 reason; it does not deserve a branch. The one thing that would raise it: if
-`ui/prompts.ts` needs splitting anyway (finding 10), do both in the same pass.
+`ui/prompts.ts` needs splitting anyway (finding 9), do both in the same pass.
+
+**A `Notice` service was considered and dropped.** `new Notice(...)` is constructed at 19
+sites across three layers — `view/writeGate.ts` (5), `view/interactions/*` (8),
+`commands/*` (6) — so there is no place to read the plugin's whole voice, and
+`src/view/CLAUDE.md` carves out an exception for it (*"Notices are its own"*) precisely
+because it is reachable from anywhere. That is a real observation and still not worth its
+own work item: [[A bare string cannot reach the UI]] **already requires a typed wrapper
+over `new Notice`**, among every other text sink, with a `no-restricted-syntax` ban behind
+it. A service built now is the same call wrapped twice, the second wrap unpicking the
+first. The seam arrives with finding 5 or not at all; it is recorded here so nobody
+proposes it a second time as if it were new.
 
 ---
 
-### 10. File structure: nothing forced, three seams worth taking when nearby
+### 9. File structure: nothing forced, three seams worth taking when nearby
 
 Measured in the metric lint actually uses — effective lines, blanks and comments skipped
 against the 400 cap:
@@ -396,30 +408,52 @@ there is fan-in, not size — splitting a file to lower a coupling number moves 
 
 ---
 
-### 11. The findings above are not backlog notes yet
+### 10. The findings above are not backlog notes yet
 
 This plan lives in `docs/superpowers/`, which `docs-check.mjs` exempts from work-item
 frontmatter. That is right for a plan and wrong as a resting place: nothing here is
 ranked, nothing shows up in `Product Backlog.base`, and the register cannot see it.
 
-**Where they go.** Not under [[Codebase health]] as it stands. That epic closed on
-2026-08-01 with an explicit instruction — *"This epic is done; the next one should be
-opened by new evidence, not by grooming this one"* — and reopening it to hang eight new
-features off would be exactly the grooming it forbids. So: a **second epic**, taking this
-plan as the evidence its predecessor asked for, with the closed one left closed as the
-record of what the first round bought.
+**Where they go: a second round under the existing [[Codebase health]] epic.** Its
+frontmatter is already `status: Open`; what closed was its prose, which says *"As of
+2026-08-01 every actionable finding is closed … This epic is done; the next one should be
+opened by new evidence, not by grooming this one."*
 
-**Shape.** Features grouping the findings by kind — the gates that do not exist yet
-(findings 1, 4), the guides and structure (3, 10), the text layer (5, 8, 9), the
-verifications (2, 7) — with a PBI per finding in the enforced use-case shape: the
+Reopening it and keeping that paragraph are not in conflict, and both matter. The
+paragraph is a **dated record** of what the first round bought, and this register's own
+rule is that a record of a moment is not rewritten. So it stays as written, and a second
+paragraph is added beside it opening the next round and naming this plan as the evidence
+the first one asked for. What must not happen is editing "every actionable finding is
+closed" into something hedged — that sentence was true on the day it was written, and its
+being true then is the whole reason the second round is legible as a second round.
+
+The three existing features (`Test harness and coverage`, `Enforced invariants`,
+`Module structure`, all `Done`, orders 10/20/30) stay closed and stay where they are.
+
+**Shape.** New features at orders 40+, grouping the findings by kind:
+
+| Feature | Covers |
+| --- | --- |
+| the gates that do not exist yet | findings 1, 4 |
+| guides and structure | findings 3, 9 |
+| the verifications and their cadence | findings 2, 7 |
+
+with a PBI per finding in the enforced use-case shape: the
 `**As** … **I want** … **so that** …` opening, the four-field table, main flow,
 extensions carrying their reasons, testable acceptance criteria, and `## Where it lives`.
-`npm run docs` gates all of it, and `test/docs/surfaces.test.ts` will want the
-view-option keys and command ids named in `requirements/` if any finding adds one.
+Finding 6 (branch coverage) hangs off the existing `Test harness and coverage` rather than
+a new feature — it is that feature's own subject, and a second feature saying the same
+thing is the duplication [[Check that a feature lists its use cases]] retired. Finding 5
+stays where it already lives, under `Cross-cutting concerns`, and finding 8 is recorded
+prose rather than a note.
 
-**Cost.** Around ten notes. The extensions are where the work is — that is where this
-register puts the thinking, and six review findings on this plan alone say the hard parts
-are the ones a first draft states too confidently.
+`npm run docs` gates all of it: sibling orders unique, every parent pair legal, every
+wikilink resolving, every use-case section present once and in order, every extension
+labelled against a step the main flow has.
+
+**Cost.** Around eight notes. The extensions are where the work is — that is where this
+register puts the thinking, and eight review findings on this plan alone say the hard
+parts are the ones a first draft states too confidently.
 
 ---
 
@@ -427,9 +461,10 @@ are the ones a first draft states too confidently.
 
 Each step is independently shippable and ends `npm run check` green.
 
-0. **Write the notes** (finding 11) — a second epic with a PBI per finding, so the rest of
-   this list is ranked in the register rather than in a plan file. Everything below is then
-   picked from the backlog, not from here.
+0. **Write the notes** (finding 10) — reopen [[Codebase health]] for a second round and
+   hang a feature-plus-PBIs off it per finding, so the rest of this list is ranked in the
+   register rather than in a plan file. Everything below is then picked from the backlog,
+   not from here.
 1. **Delete the module table, fix the folder table** (finding 3) — smallest diff, removes
    a gate rather than adding one.
 2. **Answer the mobile question** (finding 2) — a verification, not code; it may change
@@ -439,19 +474,20 @@ Each step is independently shippable and ends `npm run check` green.
 4. **The two untested render-cost claims** (finding 4) — the other two are already pinned.
 5. **The direction fixes, then `Styling rules are checks`** (finding 1) — the largest item,
    and the one with the most already decided.
-6. **The `Multilang` layer, then the sweep, then the sink ban** (findings 5 and 8) — after
+6. **The `Multilang` layer, then the sweep, then the sink ban** (finding 5) — after
    the styling gate, because both touch the same render modules and doing them together
-   doubles the merge surface. The `Notice` seam is part of this, not a separate service.
-   Its own epic, not a step in a polish pass.
+   doubles the merge surface. The `Notice` seam arrives here, as the typed wrapper
+   [[A bare string cannot reach the UI]] specifies — not as a service of its own. Its own
+   epic, not a step in a polish pass.
 7. **Fold the verification sweep into `RELEASING.md`** (finding 7) — one line, any time.
 
 Steps 1–4 are a coherent first increment: nothing in them changes shipped behaviour, and
 together they close every finding that is *only* a missing check. Steps 5 and 6 are the
 two real bodies of work and each deserves its own branch — 6 more than one.
 
-**Findings 9 and 10 are deliberately not in this sequence.** Nothing in them is over a
+**Findings 8 and 9 are deliberately not in this sequence.** Nothing in them is over a
 budget or failing a check, so scheduling them would be scheduling churn. Take them when a
-branch already has the file open — with one exception: the vocabulary leaf (finding 10.1)
+branch already has the file open — with one exception: the vocabulary leaf (finding 9.1)
 is the same structural move the catalog needs (finding 5), so if step 6 happens, do both
 in it.
 
