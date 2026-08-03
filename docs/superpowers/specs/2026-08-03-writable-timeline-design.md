@@ -496,6 +496,16 @@ the identity; `timelineDrag.ts` decides what a position means.
   scrolled. This is the collapse store's rule about identity, one layer up: an offset
   belongs to the thing that made it, and position is not identity.
 
+  **Band identity applies within the same drawn content, and `restoreScroll` already
+  knows what that means.** It derives `drawn` — `dates`, `horizons`, or the projection —
+  and keeps offsets only when that matches the anchor's, precisely because the roadmap's
+  two axes are different content on one scroller. Both frames have a band called the
+  shelf, holding different cards under different layouts, so matching on the band name
+  alone would restore a deeply scrolled dated shelf onto the horizon one and open it past
+  its first cards. So the existing rule stands and the new keying sits inside it: change
+  the content and every band starts at the top; keep it and each band gets its own offset
+  back by name.
+
   **The pane is one of those boxes, not an exception to them.** It stops scrolling on
   the dated axis in the ordinary case, but the short-pane fallback gives it a vertical
   offset again, and a reader who has scrolled the frame there would be thrown to the top
