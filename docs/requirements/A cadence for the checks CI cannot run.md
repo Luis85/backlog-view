@@ -38,14 +38,24 @@ that grows.
   it in would silently replace the cadence its own outcome specifies with a more frequent
   one that is less likely to find anything — a check run at the wrong moment is not a
   stricter check.
-- **2b — a note does not say which kind it is.** Then it is not runnable as a checklist
-  item, and saying so is part of this work. **The count is deliberately not written here.**
-  A first draft said "18 of 20", and a note added in the same commit made it 19 of 20
-  before anyone read it — which is the staleness this whole round is about, committed
-  inside the note complaining of it. `docs/README.md` already states the habit: *"A count
-  belongs here only as long as it takes to go stale."* The sweep covers **every** note of
-  the verification kind, and is found by asking the register rather than by remembering a
-  number.
+- **2b — "every note of the verification kind" is not something the register can answer.**
+  It has to be, or the sweep is a hand-maintained list that misses the next check while
+  satisfying every criterion below. `type: Issue` is too broad — the kind covers decisions
+  and limitations too — and `area: verification` is broader still, labelling records like
+  [[A comment that states a rule is not a check]] that no device can run.
+
+  **The shape already distinguishes them, and `docs/README.md` already documents it:** a
+  verification-to-run is the Issue written as `Why this exists` · `How to check` ·
+  `Acceptance criteria` · `Outcome`, and **`## How to check` is carried by that kind and no
+  other**. Measured: it selects **18** notes where `area: verification` selects 26. So the
+  query is the documented shape, needs no new frontmatter field, and cannot drift from the
+  convention because it *is* the convention.
+- **2c — the count is written into a note.** Deliberately not. A first draft said "18 of
+  20", and a note added in the same commit made it 19 of 20 before anyone read it — the
+  staleness this round is about, committed inside the note complaining of it.
+  `docs/README.md` already states the habit: *"A count belongs here only as long as it
+  takes to go stale."* The figure above belongs to this note's evidence for choosing the
+  query, not to the checklist, which asks the register every time.
 - **3a — a verification fails.** It becomes a bug note with what was seen, and the release
   decision is the maintainer's. The sweep reports; it does not block by itself.
 - **3b — a verification has caught nothing across two releases.** That is evidence to
@@ -61,7 +71,12 @@ that grows.
 ## Acceptance criteria
 
 - `RELEASING.md` names the sweep, and names it before the tag rather than after.
-- Every verification note states whether it is re-runnable or conditional.
+- The set is **derived, not listed**: the sweep names the query — Issues carrying
+  `## How to check` — so a verification added tomorrow is in it without anyone editing a
+  checklist. `RELEASING.md` must not contain an enumeration of the notes.
+- Every verification note states whether it is re-runnable or conditional, and a note that
+  carries `## How to check` without saying which fails the sweep rather than being guessed
+  at.
 - The conditional ones are absent from the release checklist and present in their own
   trigger's wording.
 - No automation is added by this note.

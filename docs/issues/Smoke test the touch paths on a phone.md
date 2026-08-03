@@ -69,7 +69,7 @@ Alt+arrow is deliberately not on this list. It needs a keyboard and was never a 
   not exist, and `isDesktopOnly` becomes a real question rather than a settled one. It is
   **not** a question to answer in advance — flipping the manifest on a guess would remove a
   path this project deliberately built.
-- If all three pass, the README says what a touch user can do, in its own words rather than
+- If both pass, the README says what a touch user can do, in its own words rather than
   by omission.
 
 ## Outcome
