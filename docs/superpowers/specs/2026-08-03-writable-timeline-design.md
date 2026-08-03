@@ -168,23 +168,46 @@ The menu's `promptSchedule` and `unschedule` are routed through it. They call
 of what scheduling is, which is exactly the drift the rule exists to prevent.
 
 `announceScheduleMove` joins `announceBoardMove` and `announceHorizonMove` in
-`cardDrag.ts` — old span and new, or "Unscheduled" when the keys go — so a menu move and
-a gesture are told to a screen-reader user in the same words.
+`cardDrag.ts`, so a menu move and a gesture are told to a screen-reader user in the same
+words. It says old span and new — and **"Unscheduled" is only true where the item
+actually leaves the axis**. A parent whose descendants still carry dates keeps a bar:
+`inferSpan` refills an end the note no longer states, so announcing a removal as
+"Unscheduled" would describe something other than what renders. The announcement names
+the inferred span instead. This is `announceHorizonMove`'s own lesson — its preamble
+records reporting a cleanup as "from Unplaced to Unplaced" — reached by the other axis,
+and it is fixed in the one host method so the menu's `Unschedule` inherits it rather
+than being a second place that can get it wrong.
 
 ### The gestures — `src/view/interactions/timelineDrag.ts` (new)
 
-A new file rather than an extension of `cardDrag.ts`, which is explicitly *the whole
-region is the target and the highlight is the only drop signal*. A drag with grips, live
-geometry and a positional drop is a second concern, and folding it in would push that
-module past its budget as well as past its stated job.
+The geometry, the grips and the preview are a new file — `cardDrag.ts` is explicitly
+*the whole region is the target and the highlight is the only drop signal*, and a
+positional drag is a second concern that would push it past its stated job as well as
+its budget.
+
+**The registration is not new, and must not be.** `CardDragController` holds a private
+`token` whose comment states the hazard exactly: the adapter's registry is
+document-global, two saved views can sit in split panes over the same notes, and a card
+that crosses between them resolves its path against the receiving view's model and
+writes *its* keys — a different property changed than the gesture showed. On the
+timeline the stakes are the receiving view's `startKey` / `targetKey`. So every timeline
+source and target registers **through the controller**: `wireCard` mints the token for
+the bar holds as it already does for cards (carrying which hold was taken), and a
+positional sibling of `wireDropTarget` gates on the same token and keeps the same
+resolve-at-drop-time rule, since a refresh mid-drag can drop the note. One place mints
+the identity; `timelineDrag.ts` decides what a position means.
 
 - The grid track is one drop target. `onDrag` reads the pointer's X, asks `dayAt`, and
   paints the preview — a ghost bar and the dates it means — through CSS props. `onDrop`
   builds the plan and calls `performScheduleMove`. A drag ending off both grid and shelf
   writes nothing and does not consume the undo slot.
-- Three sources: the shelf card (already a draggable through `cardDrag`; its data needs
-  only to carry the item), the bar body, and the two end grips. Every one gated by
-  `barHolds`.
+- Three sources, and **two different gates**, because they are asked different
+  questions. The bar body and the two end grips are gated by `barHolds`, which is about
+  a rendered bar. A shelf card has no bar, so it is gated by `canSchedule` — the
+  existing `placementEnds`-based predicate that already answers the case the register
+  names: a marker on a start-only axis has no key it may write, so its card offers no
+  grip at all and stays on the shelf until a target property is configured
+  ([[Drag from the shelf to schedule]] extension `2e`).
 - A shelf drop writes decision 2's span. A body slide steps whole days with the target
   following at the bar's own day count, so a slide never changes duration. An end drag
   moves one date and clamps at equal rather than crossing — a reversed span is
@@ -196,6 +219,16 @@ module past its budget as well as past its stated job.
   type ignores stays on the note, because a gesture may only take back what the
   projection actually drew. `unschedule` loops it today, so the gesture inherits the
   narrowing by routing through the same plan rather than restating it.
+- **The shelf drop's indicator says which outcome it is, before release.** Removing a
+  parent's own dates does not always shelve it: where descendants still supply dates the
+  bar stays, inferred, and step 4 of [[Drag from the shelf to schedule]] requires the
+  indicator to distinguish that from actually shelving. It costs nothing to answer
+  correctly — `descendantStart` and `descendantTarget` are gathered from children alone,
+  never from the item's own dates, so the prospective placement is `inferSpan` called
+  with the ends the removal would leave stated: null for both on an ordinary
+  unscheduling, the surviving start on a marker. Null means the shelf; anything else
+  means the bar stays and says so. The same call names the announcement above, so the
+  preview and what the screen reader hears cannot disagree.
 - `renderRoadmap` passes `dnd: null` on the dated axis today as the deliberate
   withholding. Flipping that on is what this increment is.
 
@@ -251,9 +284,16 @@ it fail is the evidence the test asserts what it reads as. `test/domain/model.te
 covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
 
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
-slide, both end grips, the clamp at equal, the bar-to-shelf removal, and the drag that
-ends nowhere. `test/view/contextCardWrites.test.ts` gains the timeline's entry points.
-Coverage thresholds in `vitest.config.mts` only ever go up.
+slide, both end grips, the clamp at equal, the bar-to-shelf removal, the drag that ends
+nowhere, and the marker on a start-only axis offering no grip. Two of its cases are
+about what the removal *leaves*, not what it takes: a parent with dated descendants
+previews and announces the inferred span it keeps, while one with a wholly dateless
+subtree previews and announces the shelf — the pair being the check that the outcome is
+derived rather than assumed. Split-pane isolation is asserted where the token is minted:
+a source wired by one controller must not be droppable on another's target, which is the
+`canDrop` contract stated as a test rather than as the comment it is today.
+`test/view/contextCardWrites.test.ts` gains the timeline's entry points. Coverage
+thresholds in `vitest.config.mts` only ever go up.
 
 `npm run check` — build, lint, coverage-thresholded tests, fallow, docs register — is
 the gate, on Ubuntu and Windows both.
