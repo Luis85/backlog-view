@@ -218,6 +218,22 @@ describe('cross-references', () => {
 			'no use case or ADR specifies src/orphan.ts',
 		],
 		[
+			'a module named only by an ADR `## Consequences`',
+			(files) => {
+				// The other end of `## Decision`, and the one nothing else pins. `## Context`
+				// comes BEFORE it, so every case above stays red under a `sectionBody` that
+				// reads the decision to the end of the note — the mutation that widens
+				// acceptance is invisible to a case planted on the near side. A section that
+				// FOLLOWS `## Decision` is what asks whether the slice stops where it says.
+				files['src/orphan.ts'] = 'export const orphan = 1;\n';
+				files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision').replace(
+					'## Consequences\n\nSomething.',
+					'## Consequences\n\nWhat it cost: `src/orphan.ts` now has two callers.',
+				);
+			},
+			'no use case or ADR specifies src/orphan.ts',
+		],
+		[
 			'a module named only by a record note',
 			(files) => {
 				// A `Task`, `Issue` or `Bug` is a record of a moment rather than a

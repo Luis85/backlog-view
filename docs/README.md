@@ -196,9 +196,11 @@ can run is worse than none, because it invites trust it has not earned:
    `parent:` with no value still reads as an explicit root and enrols the note. Checking
    only the fields an ADR should have would never notice a field it must not.
 
-   Sections, in both shapes, are matched as **lines, with code stripped first**. A heading
-   deleted and quoted in a sentence is not a heading, and an example inside a fence is not
-   the document's own structure.
+   **These two shape checks** — a use case's sections and an ADR's — match a section as a
+   **line, with code stripped first**. A heading deleted and quoted in a sentence is not a
+   heading, and an example inside a fence is not the document's own structure. Rule 7 reads
+   sections too and matches the heading the same way, but strips **fences only**: what it
+   looks for inside a section is paths, and every path here is written in backticks.
 
    They are also **counted**, not merely found. Two branches once converted the same note
    to a use case at the same time; neither edit conflicted, the merge kept both, and the
