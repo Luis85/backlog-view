@@ -251,8 +251,14 @@ the identity; `timelineDrag.ts` decides what a position means.
   filling it in would close a one-ended plan by a gesture that promised to move it, and
   equal ends would draw a milestone the note never claimed
   ([[Move and resize a bar]] extension `1a`). An end drag moves one date and clamps at
-  equal rather than crossing — a reversed span is unreadable, so no gesture may write
-  one.
+  equal rather than crossing — but **only against an end the note itself states**. A
+  reversed span is a property of a note's own pair, which is the only pair
+  `reversedSpan` is ever asked about; where the opposite end is inferred there is no
+  span to reverse, and clamping would write a bound taken from the children's dates —
+  the inference `1c` forbids writing. Dragged past inferred evidence, the gesture writes
+  the day the pointer names and `inferSpan` places the result: `keepsOrder` already
+  drops evidence falling on the wrong side of a stated end and leaves that end open.
+  Again the existing rule, asked rather than restated.
 - A bar dropped on the shelf removes keys rather than blanking them, and undo restores
   them with their values. **Which** keys is `placementEnds` in `interactions/plan.ts`,
   not "the configured ones": it already narrows a marker to its target alone, which is
@@ -339,7 +345,9 @@ covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
 slide, both end grips, the clamp at equal, the bar-to-shelf removal, the drag that ends
 nowhere, the marker on a start-only axis offering no grip, and the one-ended bar whose
-body slide leaves its open end open. A marker with both properties configured is driven
+body slide leaves its open end open. The clamp gets both sides of its condition: two
+stated ends clamp at equal, while a stated end dragged past an inferred one writes the
+day the pointer named and re-places with that end open. A marker with both properties configured is driven
 through **every** gesture — shelf drop, body slide, bar-to-shelf — asserting the same
 thing each time: the target moves and the start is never written. One case per gesture,
 because "the plan is narrowed by type" is a category claim and the next gesture is
