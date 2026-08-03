@@ -44,13 +44,29 @@ that grows.
   and limitations too — and `area: verification` is broader still, labelling records like
   [[A comment that states a rule is not a check]] that no device can run.
 
-  **The shape already distinguishes them, and `docs/README.md` already documents it:** a
-  verification-to-run is the Issue written as `Why this exists` · `How to check` ·
-  `Acceptance criteria` · `Outcome`, and **`## How to check` is carried by that kind and no
-  other**. Measured: it selects **18** notes where `area: verification` selects 26. So the
-  query is the documented shape, needs no new frontmatter field, and cannot drift from the
-  convention because it *is* the convention.
-- **2c — the count is written into a note.** Deliberately not. A first draft said "18 of
+  **The shape distinguishes them, but only after three notes are normalized.**
+  `docs/README.md` documents a verification-to-run as `Why this exists` · `How to check` ·
+  `Acceptance criteria` · `Outcome`, and `## How to check` is carried by that kind and no
+  other. It selects 18 notes where `area: verification` selects 26 — **but three
+  verifications do not use it.** [[Smoke test the board in a live vault]],
+  [[Smoke test the folder note layout in a live vault]] and
+  [[Smoke test the visual changes]] head that section `## What to look at` instead, so the
+  query as first written would have silently dropped them.
+
+  That is not a hypothetical loss. The board note is the one that **owns the mobile drag
+  verdict** — the item [[Smoke test the touch paths on a phone]] deliberately delegates to
+  it. A release sweep built on the unnormalized query would omit precisely the check
+  another note points at, which is worse than no query: it looks complete.
+
+  **So the three headings are normalized to `## How to check` as part of this work**, and
+  the note says why the alternative was refused: teaching the query both spellings makes
+  the set depend on a list of synonyms that grows every time someone invents a fourth.
+- **2c — the normalized convention drifts again.** It can, and nothing yet stops it:
+  `docs-check.mjs` gates the use-case and ADR shapes and **not** the `Issue` shapes. Stated
+  rather than hidden — the query rests on a convention, and a convention with no checker is
+  what this whole round is about. Gating the `Issue` shapes is the obvious follow-up and is
+  deliberately not smuggled in here.
+- **2d — the count is written into a note.** Deliberately not. A first draft said "18 of
   20", and a note added in the same commit made it 19 of 20 before anyone read it — the
   staleness this round is about, committed inside the note complaining of it.
   `docs/README.md` already states the habit: *"A count belongs here only as long as it
@@ -71,6 +87,9 @@ that grows.
 ## Acceptance criteria
 
 - `RELEASING.md` names the sweep, and names it before the tag rather than after.
+- The three notes heading their section `## What to look at` are normalized to
+  `## How to check` **before** the query is relied on, and a fresh count confirms the query
+  returns every verification rather than the 18 of 21 it returned first.
 - The set is **derived, not listed**: the sweep names the query — Issues carrying
   `## How to check` — so a verification added tomorrow is in it without anyone editing a
   checklist. `RELEASING.md` must not contain an enumeration of the notes.

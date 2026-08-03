@@ -65,13 +65,14 @@ a backlog that got slow between releases.
   to argue this rule's shape, and because it is the same defect as everything else here: a
   claim about a category, checked by a method that could only see part of it.
 - **1d — the rule can be defeated by an alias.** It can: `const el = this.els.treeEl;
-  el.querySelectorAll(...)` passes any selector keyed on the receiver's name. **This is a
-  stated limitation, not a closed hole.** No lint rule available here distinguishes a
-  container from a narrow element in general, so the honest position is that the static
-  rule catches the shape every violation has actually taken, the runtime spy catches the
-  paths under test, and **the guide's sentence is narrowed to what those two together
-  guarantee** rather than left as an absolute nothing enforces. Claiming otherwise would
-  be this feature's own defect a third time.
+  el.querySelectorAll(...)` passes any selector keyed on the receiver's name, and if it is
+  added on a path the spy does not drive, nothing catches it at all. **This is a stated
+  limitation, not a closed hole**, and the guide is written to the shape lint can see
+  rather than to the property one would like to have. No lint rule available here
+  distinguishes a container from a narrow element in general; an alias-aware rule needs
+  type information about the receiver, which is a bigger tool than this invariant is worth.
+  The honest position — the one this note has now reached on its third attempt — is that
+  the check defines the sentence, never the other way round.
 - **1e — the ban is added as a new `files` block.** `eslint.config.mjs` warns about exactly
   this: flat config sets a rule wholesale per file, so a narrower block **replaces** the
   wider one's options rather than adding to them. Adding a region means removing its files
@@ -104,12 +105,21 @@ a backlog that got slow between releases.
 - Whatever region the rule is added to keeps the write boundary, the menu-anchor rule and
   the `overBy` rule, checked rather than assumed — flat config replaces a block's options
   rather than merging them.
-- **`src/view/CLAUDE.md`'s sentence is narrowed to what is actually enforced.** It says "no
-  interaction scans the DOM"; a receiver-keyed rule plus a three-path spy does not
-  guarantee that, and an alias defeats the rule. The guide states the enforced property —
-  the tree element is never queried, and rows are reached through `rowEls` — and says which
-  mechanism holds it up. A sentence promising more than its checks deliver is the defect
-  this whole feature exists to remove.
+- **`src/view/CLAUDE.md`'s sentence is narrowed to the shape actually banned**, which is
+  narrower again than the previous draft of this criterion. Lint forbids
+  **`treeEl.querySelector` / `treeEl.querySelectorAll` written directly**; it does not
+  forbid querying the tree element, because `const el = this.els.treeEl;
+  el.querySelectorAll(...)` passes, and in an unexercised interaction it escapes the spy
+  too. So the guide says: *rows are reached through `rowEls`; a direct
+  `treeEl.querySelector*` fails lint; an aliased one is caught only if it is on a path the
+  spy drives.* Ugly, and true.
+
+  This is the **third** narrowing of the same sentence in this note's history — first "no
+  interaction scans the DOM", then "the tree element is never queried", now the shape lint
+  can see. Each earlier version was a guarantee written slightly ahead of its check, which
+  is the exact defect this feature exists to remove, committed inside the feature that
+  removes it. Recorded so the next person writing this sentence writes the enforced version
+  first.
 - A runtime spy additionally fails if the tree is scanned during selection, subtree refresh
   or drag cleanup. It is a regression guard for the paths that exist, and the note says so
   rather than presenting it as the invariant.
