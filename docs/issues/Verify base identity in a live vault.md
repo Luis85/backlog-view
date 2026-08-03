@@ -5,6 +5,7 @@ parent: "[[Collapse persistence]]"
 status: Done
 priority: P1
 area: verification
+cadence: conditional
 closed: 2026-08-01
 created: 2026-07-31
 source: PR #14, collapse-state persistence

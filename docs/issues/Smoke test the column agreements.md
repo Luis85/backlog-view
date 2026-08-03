@@ -5,6 +5,7 @@ order: 20
 status: Open
 priority: P2
 area: verification
+cadence: release
 created: 2026-08-02
 source: implementation of the per-column agreements increment
 files:

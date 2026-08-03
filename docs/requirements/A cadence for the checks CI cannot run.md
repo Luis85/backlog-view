@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[Verifications a device has to answer]]"
 order: 10
-status: Open
+status: Done
 area: verification
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # A cadence for the checks CI cannot run
@@ -47,8 +48,8 @@ that grows.
   **The shape distinguishes them, but only after three notes are normalized.**
   `docs/README.md` documents a verification-to-run as `Why this exists` · `How to check` ·
   `Acceptance criteria` · `Outcome`, and `## How to check` is carried by that kind and no
-  other. Matched **as a whole heading line**, it selects 17 notes where `area:
-  verification` selects 26 — **but three verifications do not use it.** [[Smoke test the board in a live vault]],
+  other. Matched **as a whole heading line**, it selected a strict subset of what `area:
+  verification` labels — **but three verifications did not use it.** [[Smoke test the board in a live vault]],
   [[Smoke test the folder note layout in a live vault]] and
   [[Smoke test the visual changes]] head that section `## What to look at` instead, so the
   query as first written would have silently dropped them.
@@ -79,6 +80,20 @@ that grows.
   `docs/README.md` already states the habit: *"A count belongs here only as long as it
   takes to go stale."* The figure above belongs to this note's evidence for choosing the
   query, not to the checklist, which asks the register every time.
+- **2f — the query is scoped by type or heading and not by folder.** Then it sweeps notes
+  that do not exist. The plans under `docs/superpowers/` quote draft notes *verbatim* —
+  `type: Issue` frontmatter and `## How to check` heading included — so
+  `2026-08-02-per-column-agreements.md` carries a whole-line match for a note that also
+  exists for real in `docs/issues/`. A query matching on heading alone returns the same
+  verification twice, once at a path nobody can date an `Outcome` on. Found while running
+  the query this note specifies, not while writing it: extensions 2b and 2c were both
+  discovered by counting, and this one only by executing.
+- **2g — the query is quoted rather than run.** Every note in this backlog is titled in
+  prose, so every path holds spaces, and `grep -rlx ... | xargs grep -l ...` splits
+  `Board card moves.md` into four missing files. The first version written into
+  `RELEASING.md` did exactly that; it printed errors and a plausible-looking result. The
+  fix is `-Z`/`-0`, and the lesson is the one this round keeps relearning — a documented
+  command is a claim, and a claim gets executed before it is committed.
 - **3a — a verification fails.** It becomes a bug note with what was seen, and the release
   decision is the maintainer's. The sweep reports; it does not block by itself.
 - **3b — a verification has caught nothing across two releases.** That triggers a review of
@@ -103,7 +118,10 @@ that grows.
 - The three notes heading their section `## What to look at` are normalized to
   `## How to check` **before** the query is relied on.
 - The query matches the **whole heading line**, so `## How to check, properly` in a
-  non-verification note is not swept in. A planted case proves it.
+  non-verification note is not swept in. No case needs planting:
+  [[A gate that did not run looks like one that passed]] heads a section exactly that way
+  and is a real Issue in the folder the query reads, so the counterexample is load-bearing
+  tree rather than a fixture that a later cleanup could delete as unused.
 - After normalizing, a fresh count is taken and agrees with the register — not with any
   figure quoted while this note was being written, two of which were wrong.
 - The set is **derived, not listed**: the sweep names the query — Issues carrying

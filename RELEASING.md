@@ -15,6 +15,61 @@ file directly, and `npm run dev` rewrites it whenever a partial changes. Each bu
 asset also gets a signed provenance attestation, verifiable with
 `gh attestation verify <file> --repo Luis85/backlog-view`.
 
+### Before the tag: the live-vault sweep
+
+Some of this plugin's behaviour cannot be checked here at all — appearance, base identity,
+whether a long press opens a menu. Obsidian does not run in the jsdom harness, so those
+checks are notes in `docs/issues/` and a person is the runner. Walk them **before** the
+tag: after it, the only thing a failure can produce is a second release.
+
+1. `npm run test-build` installs the plugin into `.obsidian/plugins/` in this repository,
+   so the repository root opens as a vault with `docs/` already a backlog. That is what
+   makes the sweep cheap enough to actually do.
+2. Ask the register for the set — do not read a list from this file. The verifications are
+   the notes **in `docs/issues/` that carry `## How to check` as a whole heading line and
+   are marked `cadence: release`**. One way to ask:
+
+   ```bash
+   grep -rlxZ "## How to check" docs/issues/ | xargs -0 grep -l "^cadence: release"
+   ```
+
+   The `-Z`/`-0` is not decoration: every note in this backlog is titled in prose, so every
+   path has spaces in it, and the same query written without them reports `docs/issues/Board`
+   and `card` as missing files while still exiting cleanly enough to look like it worked.
+   That is how this line was first written here, and running it is what caught it.
+
+   Each of the three conditions is load-bearing, and each is a case that exists in the tree
+   today rather than a hypothetical:
+   - **`docs/issues/` and not the whole of `docs/`** — the plans under
+     `docs/superpowers/` quote draft notes verbatim, headings and `type: Issue`
+     frontmatter included, so a query scoped by type or heading alone sweeps a copy of a
+     note instead of the note.
+   - **A whole line, not a prefix** — `A gate that did not run looks like one that passed`
+     heads a section `## How to check, properly`. It is an investigation into a CI gate, not
+     something a device can run, and a prefix match sweeps it in.
+   - **`cadence: release`** — see below.
+3. Date each note's `Outcome` with what was seen. A verification that fails becomes a bug
+   note; whether it blocks the release is your call, not the sweep's.
+
+**A check that has found nothing across two releases gets reviewed, not retired.** A quiet
+result is the *expected* one here: these notes exist because nothing else watches that
+behaviour, so two clean runs say it has not regressed yet and nothing about whether it can.
+What retires a verification is evidence about its subject — the thing it watches is gone, or
+an automated test now watches it — never its hit rate. Record the decision either way. A
+sweep that drops its quietest checks empties itself while reading as disciplined.
+
+**`cadence:` says when a verification is due**, and every note carrying `## How to check`
+declares it. `release` means this sweep. `conditional` means the note keeps its own
+trigger, stated in its own prose — [Verify base identity in a live vault](docs/issues/Verify%20base%20identity%20in%20a%20live%20vault.md)
+asks to be repeated after an Obsidian or bundler upgrade, and running it every release would replace
+the cadence its outcome specifies with a more frequent one less likely to find anything.
+Those are **not** part of this sweep. A note carrying `## How to check` with no `cadence:`
+is a defect in the note: fix it rather than guessing which it meant.
+
+Nothing enforces this convention yet — `docs-check.mjs` gates the use-case and ADR shapes
+and not the `Issue` shapes. The query rests on a convention with no checker, which is
+stated here rather than left to be discovered.
+
 ### When the version files are already committed
 
 This is the case for the **first release** (the repository was authored at `0.1.0`), and

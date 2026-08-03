@@ -5,6 +5,7 @@ parent: "[[Smoke test the tree]]"
 status: Open
 priority: P3
 area: verification
+cadence: release
 created: 2026-08-02
 source: Feature Test epic
 ---

@@ -5,6 +5,7 @@ parent: "[[Product Kanban]]"
 status: Open
 priority: P2
 area: verification
+cadence: release
 created: 2026-08-01
 source: Product Kanban epic design
 ---
@@ -21,7 +22,7 @@ asserted in this repository. Run it once the epic's features land, and re-run it
 board markup or `styles.css` changes; `docs/` itself is the test data, since this base
 carries states.
 
-## What to look at
+## How to check
 
 - **The toggle** — mode survives an Obsidian restart on the same device (it is UI
   state in vault-scoped localStorage, never the `.base` — confirm the `.base` file is

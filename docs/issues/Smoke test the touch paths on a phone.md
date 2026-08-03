@@ -4,6 +4,7 @@ parent: "[[Verifications a device has to answer]]"
 order: 20
 status: Open
 area: verification
+cadence: release
 priority: P1
 created: 2026-08-03
 source: Review of 0.4.0; the touch decision in Keyboard, menu and touch has never been run

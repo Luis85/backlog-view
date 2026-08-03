@@ -5,6 +5,7 @@ parent: "[[Product Backlog]]"
 status: Open
 priority: P2
 area: verification
+cadence: release
 created: 2026-07-31
 source: PR #14; reopened 2026-08-02 for the roadmap
 files:
@@ -35,7 +36,7 @@ vault with the plugin installed. On a first open, turn off Restricted Mode under
 `docs/issues/` is a ready-made backlog to point a Base at — these very notes — so the
 checks below have real data to run against.
 
-## What to look at
+## How to check
 
 **Toolbar** — every icon control became a `<button>`. Obsidian's `.clickable-icon`
 should strip the default button chrome, but `styles.css` also resets `border`,

@@ -381,7 +381,12 @@ in the first heading rather than making a reader infer it:
   reader can disagree with it.
 - **A verification to run** — `Why this exists` · `How to check` · `Acceptance criteria` ·
   `Outcome`. Written as a checklist someone can execute, because appearance and base identity
-  cannot be tested here.
+  cannot be tested here. `## How to check` is carried by this kind and no other, which is
+  what lets `RELEASING.md` derive the release sweep instead of holding a list — so spelling
+  that heading anything else removes the note from the sweep silently. It also takes
+  `cadence:` in frontmatter, `release` (run in the pre-tag sweep) or `conditional` (its own
+  trigger, stated in its prose). Nothing checks either yet; gating the `Issue` shapes the way
+  `docs-check.mjs` gates use cases is the follow-up.
 
 An Issue may legitimately have **no acceptance criteria**, and should say so out loud
 ("None; recorded so the trade-off is re-decided knowingly rather than rediscovered"). A
