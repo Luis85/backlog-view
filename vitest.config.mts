@@ -17,7 +17,7 @@ export default defineConfig({
 			// Registration glue that needs the real Obsidian Plugin runtime.
 			exclude: ['src/main.ts'],
 			reporter: ['text-summary', 'json', 'lcov'],
-			// Measured 97.76/93.43/99.07/99.12 — thresholds sit just below to catch
+			// Measured 97.77/93.45/99.08/99.12 — thresholds sit just below to catch
 			// regressions without being brittle. Raise them as coverage grows, never lower.
 			// Functions dipped from a prior 99.2: the per-column-agreements increment's
 			// `wipLimits`/`columnPolicies` defaults call `nameTable` with an empty

@@ -18,6 +18,7 @@ export class DragDropController {
 	private readonly host: BacklogViewHost;
 	private readonly els: DragDropElements;
 	private draggedPath: string | null = null;
+	private dragSourceRow: HTMLElement | null = null;
 	private activeDropRow: HTMLElement | null = null;
 	private hoverExpand: { path: string; timer: number; row: HTMLElement } | null = null;
 
@@ -41,6 +42,7 @@ export class DragDropController {
 			}
 			this.els.viewEl.addClass('pbl-dragging');
 			row.addClass('pbl-drag-source');
+			this.dragSourceRow = row;
 		});
 
 		row.addEventListener('dragover', (evt) => {
@@ -122,9 +124,10 @@ export class DragDropController {
 		});
 	}
 
-	/** Rows are about to be rebuilt; drop the reference to the old indicator row. */
+	/** Rows are about to be rebuilt; drop the references to the old indicator and source rows. */
 	onRenderStart(): void {
 		this.activeDropRow = null;
+		this.dragSourceRow = null;
 	}
 
 	clearDragState(): void {
@@ -136,7 +139,10 @@ export class DragDropController {
 			this.activeDropRow.classList.remove('pbl-drop-before', 'pbl-drop-after', 'pbl-drop-inside');
 			this.activeDropRow = null;
 		}
-		this.els.treeEl.querySelectorAll('.pbl-drag-source').forEach((el) => el.classList.remove('pbl-drag-source'));
+		if (this.dragSourceRow) {
+			this.dragSourceRow.classList.remove('pbl-drag-source');
+			this.dragSourceRow = null;
+		}
 	}
 
 	dispose(): void {
