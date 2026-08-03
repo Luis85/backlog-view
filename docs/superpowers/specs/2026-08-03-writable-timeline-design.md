@@ -118,6 +118,25 @@ The scale is a record, not a mode:
 TimelineScale { id: 'week' | 'month' | 'quarter'; dayPx: number; unit: ... }
 ```
 
+| Scale | `dayPx` | A day is | A year is |
+| --- | --- | --- | --- |
+| `week` | 16 | a comfortable pointer target | ~5,840px |
+| `month` | 4 | today's density, unchanged | ~1,460px |
+| `quarter` | 1 | a hairline | ~365px |
+
+Strictly decreasing, each a clean multiple of the next, and `month` is exactly what
+ships today so the default view does not move under anyone. Without stated values the
+three "discrete scales" would either render identically or be invented at
+implementation time, which is how a zoom control becomes three buttons that do nothing
+visible.
+
+**A sparser scale needs a minimum bar width that is not `dayPx`.** `renderBarRow` clamps
+a bar to `Math.max(spanDays * DAY_PX, DAY_PX)`, which at quarter zoom is one pixel — a
+stated plan rendered as an invisible one. The floor becomes its own constant, which is
+what [[Zoom and the today marker]] extension `2a` already means by "the minimum drawable
+width": the dates are the fact and the pixels are the zoom's, but a fact drawn at zero
+width has stopped being reported.
+
 Today's fixed rendering becomes the `month` scale at `dayPx: 4`, so zoom adds a
 parameter to functions that already exist rather than a second drawing path.
 `timelineWindow` aligns its bounds to the scale's unit.
@@ -399,6 +418,17 @@ horizontal target apart from a vertical one, because on this axis **one element 
 both** — the snapshot returns it, and opening, zoom preservation and jump-to-today all
 address it. Everywhere else the pane stays what it is.
 
+**The shelf is not inside that box, so the frame has to give it room.** `renderRoadmap`
+appends the shelf and the advisory as siblings after the timeline, so a pane that no
+longer scrolls vertically would clip a long shelf below the grid with nothing to scroll
+— unreachable cards, which is the failure [[The unplaced shelf]] exists to prevent, and
+worse than the compaction it sits beside because nothing would say they were there. The
+dated frame is therefore a column: the timeline takes the space that is left
+(`flex: 1 1 auto` over `min-height: 0`, without which a scroll box refuses to shrink),
+and the shelf and the advisory keep their own height and scroll themselves. Regions
+yield space before results are hidden — the tree's rule, applied to a frame that now
+owns its own height.
+
 The rules are axis-specific and the only class today is `pbl-roadmap-mode`, which both
 axes wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class
 already is and where the axis is already known. A `:has()` selector would need no new
@@ -495,6 +525,9 @@ Named honestly rather than claimed, and filed as a smoke note under `Feature Tes
   moved under them. This is the one part of the increment where the checks genuinely
   stop short of the claims, so the claims are the smoke note's — and the two-axis
   restructure makes it the part most worth looking at first.
+- Whether the three densities are three *usable* scales — 16, 4 and 1 pixels per day are
+  reasoned, not measured, and the width of a real pane is the only thing that can say
+  whether quarter zoom shows enough plan to be worth having.
 - The narrow-pane shelf compaction, and whether anything clips under the header in an
   embedded base.
 - The today line and jump-to-today from a scrolled position.
