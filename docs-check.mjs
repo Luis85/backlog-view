@@ -242,6 +242,13 @@ const WINDOWS_NAME_RULES = [
 	// could never fire. This tests `entry.name`, never the joined path, which is what keeps
 	// the separator on a Windows run from matching every entry in the tree.
 	[/[<>:"|?*\\]/, 'uses one of `< > : " | ? * \\`, which Windows forbids — git cannot check this out'],
+	// A tab or any other control character is an ordinary byte in a POSIX name — `A\tB.md`
+	// is a file that commits and pushes cleanly — and Windows cannot represent any of
+	// 0–31. Written as a predicate rather than a `[\x01-\x1f]` class because that class
+	// trips `no-control-regex`, and silencing a rule in order to write the thing it warns
+	// about is worse than not needing it. `\0` is included for free and is unreachable, for
+	// the same reason `/` is absent above.
+	[{ test: (name) => [...name].some((c) => c.charCodeAt(0) < 32) }, "holds a control character, which Windows cannot represent"],
 	[/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i, "is a reserved device name on Windows"],
 	[/[ .]$/, "ends in a space or a dot, which Windows cannot represent"],
 ];

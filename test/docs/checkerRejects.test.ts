@@ -433,6 +433,16 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 			'which Windows forbids',
 		],
 		[
+			// A tab is a byte like any other in a POSIX name, so this commits and pushes
+			// from Linux without anything objecting, and Windows cannot represent any of
+			// 0-31. The literal below really does hold one.
+			'a note whose name holds a control character',
+			(files) => {
+				files['docs/issues/A\tB.md'] = note('Issue', 20, 'Thing', '# A B\n\n## The decision\n\nWe did it.\n');
+			},
+			'holds a control character',
+		],
+		[
 			'a note named after a reserved device',
 			(files) => {
 				files['docs/issues/NUL.md'] = note('Issue', 20, 'Thing', '# NUL\n\n## The decision\n\nWe did it.\n');
