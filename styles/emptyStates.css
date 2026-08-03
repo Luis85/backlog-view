@@ -1,0 +1,46 @@
+/* What the view says when it has nothing to show — `src/view/render/emptyStates.ts`. */
+
+.pbl-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
+	text-align: center;
+}
+
+.pbl-empty-icon {
+	color: var(--text-faint);
+}
+
+.pbl-empty-icon .svg-icon {
+	width: 40px;
+	height: 40px;
+}
+
+.pbl-empty-title {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+}
+
+.pbl-empty-hint {
+	max-width: 420px;
+	font-size: var(--font-ui-small);
+	color: var(--text-faint);
+}
+
+.pbl-empty button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	margin-top: var(--size-4-2);
+}
+
+/* ----- why the board is empty, said beside the columns, never instead of them */
+
+.pbl-board-advisory {
+	margin-top: var(--size-4-4);
+	border-top: 1px solid var(--background-modifier-border);
+}

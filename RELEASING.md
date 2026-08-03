@@ -7,10 +7,12 @@ GitHub release with `main.js`, `manifest.json` and `styles.css` attached as indi
 assets. Both refuse to publish over a version that already has a release.
 
 The two built assets are minified: `npm run build` minifies the bundle into `main.js`
-and writes a minified `styles.css` to `dist/`, which is what the release uploads. The
-`styles.css` at the repository root stays readable and is the file to edit — a dev vault
-symlinked at the repo reads it directly. Each built asset also gets a signed provenance
-attestation, verifiable with
+and writes a minified `styles.css` to `dist/`, which is what the release uploads. Both
+stylesheets are assembled from `styles/` by `styles-assemble.mjs`, so the file to edit
+is the partial — the `styles.css` at the repository root is generated and gitignored
+exactly as `main.js` is. A dev vault symlinked at the repository still reads that root
+file directly, and `npm run dev` rewrites it whenever a partial changes. Each built
+asset also gets a signed provenance attestation, verifiable with
 `gh attestation verify <file> --repo Luis85/backlog-view`.
 
 ### When the version files are already committed

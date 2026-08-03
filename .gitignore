@@ -1,5 +1,6 @@
-# build output
+# build output — styles.css is assembled from styles/ by styles-assemble.mjs
 main.js
+styles.css
 *.js.map
 
 # the test vault `npm run test-build` writes into this repository

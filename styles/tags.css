@@ -1,0 +1,106 @@
+/* Tag pills and the inline tag editor — `src/view/render/columns.ts`, `src/view/interactions/tags.ts`. */
+
+.pbl-prop-tags {
+	gap: var(--size-2-2);
+}
+
+/* Only the pills clip: the add button beside them keeps its place in the cell */
+.pbl-tag-list {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	/* Overflowing tags fade out instead of clipping hard */
+	-webkit-mask-image: linear-gradient(to right, black calc(100% - 12px), transparent);
+	mask-image: linear-gradient(to right, black calc(100% - 12px), transparent);
+}
+
+.pbl-tag {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	max-width: 100%;
+	overflow: hidden;
+	border-radius: var(--radius-l);
+	padding: 0 var(--size-2-2);
+	line-height: 1.6;
+	color: var(--text-accent);
+	background-color: hsla(var(--interactive-accent-hsl), 0.12);
+}
+
+.pbl-tag-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* A note the Base excluded shows its tags but never offers to change them */
+.pbl-row.pbl-outside .pbl-tag {
+	opacity: 0.7;
+}
+
+/* The remove affordance stays out of the way until the row is under the pointer */
+.pbl-tag-remove {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	appearance: none;
+	box-shadow: none;
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-s);
+	padding: 0;
+	margin-inline-start: var(--size-2-1);
+	width: 12px;
+	height: 12px;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.pbl-row:hover .pbl-tag-remove,
+.pbl-card:hover .pbl-tag-remove {
+	display: inline-flex;
+}
+
+.pbl-tag-remove:hover {
+	color: var(--text-error);
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-tag-remove .svg-icon {
+	width: 10px;
+	height: 10px;
+}
+
+.pbl-tag-add {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	appearance: none;
+	box-shadow: none;
+	background: transparent;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	padding: 0;
+	width: 16px;
+	height: 16px;
+	flex: 0 0 auto;
+	color: var(--text-faint);
+	cursor: pointer;
+}
+
+.pbl-row:hover .pbl-tag-add,
+.pbl-card:hover .pbl-tag-add {
+	display: inline-flex;
+}
+
+.pbl-tag-add:hover {
+	color: var(--text-accent);
+	border-color: var(--text-accent);
+}
+
+.pbl-tag-add .svg-icon {
+	width: 11px;
+	height: 11px;
+}

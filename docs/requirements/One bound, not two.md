@@ -72,15 +72,16 @@ place.
 This is not hypothetical. `INDENT_PER_DEPTH` **is** published to CSS as `--pbl-indent`,
 and two rules ignore it and spell the number anyway:
 
-| Line | Indent term |
+| Rule | Indent term |
 | --- | --- |
-| 324 | `calc(var(--size-4-1) + var(--pbl-depth, 0) * var(--pbl-indent, 24px))` |
-| 909 | `… * var(--pbl-indent, 24px) + 26px)` |
-| **986** | `calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px)` |
-| **1008** | `calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px - 3px)` |
+| `tree.css`, `.pbl-row` | `calc(var(--size-4-1) + var(--pbl-depth, 0) * var(--pbl-indent, 24px))` |
+| `tree.css`, `.pbl-children::before` | `… * var(--pbl-indent, 24px) + 26px)` |
+| **`dragDrop.css`, `.pbl-row.pbl-drop-before::before`** | `calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px)` |
+| **`dragDrop.css`, `.pbl-row.pbl-drop-before::after`** | `calc(var(--size-4-1) + var(--pbl-depth, 0) * 24px - 3px)` |
 
-Two of the four indent-dependent rules read the property; two hard-code it. Lines 986 and
-1008 are the drag indicators, so changing `INDENT_PER_DEPTH` today moves every row and
+Two of the four indent-dependent rules read the property; two hard-code it. The two in
+`dragDrop.css` are the drag indicators (each grouped with its `.pbl-drop-after` twin), so
+changing `INDENT_PER_DEPTH` today moves every row and
 leaves the drop indicator behind — silently, and only while dragging, which is the
 hardest state to notice a few pixels in.
 
@@ -111,7 +112,8 @@ per term — is what this PBI is for.
   they are.
 - The relationship is stated in `src/view/CLAUDE.md` beside the existing paragraph, which
   currently describes the manual arrangement as though it were the end state.
-- Lines 986 and 1008 read `--pbl-indent` like lines 324 and 909 already do, and a check
+- The two drop-indicator rules read `--pbl-indent` as `.pbl-row` and `.pbl-children::before`
+  already do, and a check
   keeps a fourth rule from spelling the number again. Publishing a value and then
   allowing a rule to bypass it is the same duplication with an extra step.
 - The two gap terms Obsidian owns stay as they are, with the existing accepted-cost note

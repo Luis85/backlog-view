@@ -1,0 +1,32 @@
+/* Reduced motion: every transition and animation this view runs, turned down in one
+   place.
+
+   Named for the CONDITION rather than for a module, for the reason `touch.css` gives:
+   these rules restyle the toolbar's spinners, the tree's rows and the drag nudge
+   alike, and a `prefers-reduced-motion` change is found by opening the file named
+   `motion`. `pbl-spin` is defined in `toolbar.css` and used here — see `index.css` on
+   why the keyframes stay with their first user. */
+@media (prefers-reduced-motion: reduce) {
+	.pbl-grip,
+	.pbl-add,
+	.pbl-chevron,
+	.pbl-filter-input {
+		transition: none;
+	}
+
+	.pbl-row.pbl-pending,
+	.pbl-card.pbl-pending,
+	.pbl-row.pbl-hover-expanding .pbl-chevron {
+		animation: none;
+	}
+
+	/* The spinners still have to read as "working", so they step rather than spin */
+	.pbl-busy-spinner,
+	.pbl-loading-spinner {
+		animation: pbl-spin 3s steps(8) infinite;
+	}
+
+	.pbl-busy.pbl-busy-on {
+		animation: none;
+	}
+}

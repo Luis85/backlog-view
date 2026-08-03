@@ -19,7 +19,7 @@ files:
   - src/view/interactions/plan.ts
   - src/view/render/rows.ts
   - src/view/render/toolbar.ts
-  - styles.css
+  - styles/badges.css
 ---
 
 # Milestones as their own type

@@ -8,7 +8,9 @@ area: verification
 created: 2026-07-31
 source: PR #14; reopened 2026-08-02 for the roadmap
 files:
-  - styles.css
+  - styles/toolbar.css
+  - styles/tree.css
+  - styles/emptyStates.css
   - src/view/render/toolbar.ts
   - src/view/render/rows.ts
   - src/view/render/roadmap.ts
@@ -176,7 +178,7 @@ themselves". Nothing else depends on the value.
 ## Acceptance criteria
 
 - Checked in both light and dark themes, and on one non-default theme if convenient.
-- Anything adjusted is adjusted in `styles.css` only — none of this should require a
+- Anything adjusted is adjusted in a `styles/` partial only — none of this should require a
   behaviour change.
 
 ---

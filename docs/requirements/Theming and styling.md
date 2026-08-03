@@ -44,18 +44,17 @@ stylesheet into a stylesheet that cannot quietly stop being good.
 
 Five gaps, each its own PBI:
 
-- **One file, 1143 lines.** The root `CLAUDE.md` opens on *"one file per concern,
-  400-line max enforced by lint"*, and `styles.css` is 2.8× that cap. It is the only file
-  in the repository exempt from the rule the repository is built on, and it is exempt
-  because `eslint src test` does not read CSS — an accident, not an argument. It splits
-  first: every other PBI here edits the stylesheet, and doing that in nine small files is
-  the difference between a reviewable diff and a 1143-line one.
+- ~~**One file, 1143 lines.**~~ **Done 2026-08-03** — `One stylesheet per concern`. It
+  was 1995 by the time it was split, into sixteen partials under `styles/` that the build
+  assembles; the root `styles.css` is now a generated artifact. It went first for the
+  reason stated here: every other PBI below edits the stylesheet, and each now edits a
+  page rather than a fifth of a two-thousand-line file.
 - **97 raw pixel values**, where Obsidian publishes `--size-*` tokens a theme can
   rescale. Not all of them can go — some are load-bearing, which is the interesting part.
 - **A bound spelled in two places.** `ROW_LEAD_WIDTH` in `columns.ts` sums eight widths
-  that live in `styles.css`, and the comment says it is *"a sum of the bounds in
-  styles.css rather than a guess, so it can be checked against them."* Checked by hand,
-  by whoever remembers.
+  that live in `styles/tree.css` and `styles/columns.css`, and the comment says it is
+  *"a sum of the bounds in styles.css rather than a guess, so it can be checked against
+  them."* Checked by hand, by whoever remembers.
 - **No restyling contract.** Eight `--pbl-*` custom properties exist, but they are
   internal plumbing set per render, not a surface a snippet author can rely on.
 - **No enforcement, and no way to see the result.** The rules above, plus light/dark and

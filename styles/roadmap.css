@@ -1,0 +1,124 @@
+/* The roadmap frame and its horizon axis — `src/view/render/roadmap.ts`. */
+
+/* The tree's "move to top level" strip has no meaning on an axis. */
+.pbl-roadmap-mode .pbl-root-drop {
+	display: none;
+}
+
+/* Time and buckets scroll sideways inside the same scroller the tree uses;
+   the pane itself never scrolls horizontally. The scroller is also the query
+   container that hands the pinned strips below their scrollport width. */
+.pbl-roadmap-mode .pbl-tree {
+	overflow-x: auto;
+	container-type: inline-size;
+	/* The lead column and the pinned strips stick to left: 0, so an inline gutter
+	   here is where the bars behind them show through. */
+	padding-inline: 0;
+}
+
+.pbl-roadmap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	min-width: max-content;
+	/* Scrolls away under the pinned header, unlike a gap on the scroller itself */
+	padding-block-start: var(--size-4-2);
+}
+
+/* Pinned to the scrollport: a pan across months must never scroll the unplaced
+   work, the context strip or the advisory out of reach. Sticky needs a box
+   narrower than its containing block — the lead column's own trick — so the
+   strips take the scrollport's width inside the max-content frame. */
+.pbl-roadmap .pbl-shelf,
+.pbl-roadmap .pbl-roadmap-context,
+.pbl-roadmap .pbl-board-advisory {
+	position: sticky;
+	left: 0;
+	width: 100cqw;
+	align-self: flex-start;
+	box-sizing: border-box;
+}
+
+/* The projection toggle and the axis picker are segmented button groups. */
+.pbl-mode-toggle,
+.pbl-axis-picker {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+/* ----- the horizon axis: buckets, styled as the board's columns are */
+
+.pbl-roadmap-buckets {
+	display: flex;
+	align-items: stretch;
+	gap: var(--size-4-3);
+	min-height: 220px;
+}
+
+.pbl-bucket {
+	flex: 0 0 260px;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+/* A value the declared horizons do not name — present, visibly outside them. */
+.pbl-bucket-undeclared {
+	border-style: dashed;
+}
+
+.pbl-bucket-stray {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.pbl-bucket-stray .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-bucket-cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2);
+	overflow-y: auto;
+	flex: 1 1 auto;
+	min-height: var(--size-4-8);
+}
+
+/* Create into this bucket. Hidden until the bucket is hovered or the button takes
+   focus, exactly as the tree row's add button is: an affordance per bucket, not a
+   permanent row of plus signs across the roadmap. */
+.pbl-bucket-add {
+	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+.pbl-bucket:hover .pbl-bucket-add,
+.pbl-bucket-add:focus-visible {
+	opacity: 1;
+}
+
+.pbl-bucket-add .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* Reachable without hover, beside the rule it overrides — see `.pbl-add` above for
+   why the position is the whole point. */
+@media (hover: none) {
+	.pbl-bucket-add {
+		opacity: 1;
+	}
+}

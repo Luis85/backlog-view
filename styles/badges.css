@@ -1,0 +1,69 @@
+/* Type badges: one colour per rung of the ladder — `src/view/render/rows.ts`. */
+
+.pbl-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-2-1);
+	flex: 0 0 auto;
+	/* A shared minimum keeps titles starting at an even column for the default level
+	   names; the maximum keeps a long custom level from eating the row — the fit
+	   calculation budgets for a badge no wider than this. */
+	min-width: 58px;
+	max-width: 120px;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	line-height: 1.6;
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	border: 1px solid transparent;
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+	white-space: nowrap;
+}
+
+.pbl-badge-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+.pbl-badge-icon {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.pbl-badge-icon .svg-icon {
+	width: 11px;
+	height: 11px;
+}
+
+/* One colour per rung of the ladder, in ladder order. The ladder is fixed at four, so
+ * this list is the whole of it — there is no rotation to fall off the end of. */
+.pbl-lvl-0 { --pbl-badge-rgb: var(--color-orange-rgb); }
+.pbl-lvl-1 { --pbl-badge-rgb: var(--color-purple-rgb); }
+.pbl-lvl-2 { --pbl-badge-rgb: var(--color-blue-rgb); }
+.pbl-lvl-3 { --pbl-badge-rgb: var(--color-yellow-rgb); }
+
+/*
+ * The extra types get colours of their own rather than a slot after the ladder: a Bug
+ * should read as a problem, not as whatever came after Task. Both are clear of the
+ * four levels (orange, purple, blue, yellow).
+ */
+.pbl-lvl-issue { --pbl-badge-rgb: var(--color-pink-rgb); }
+.pbl-lvl-bug { --pbl-badge-rgb: var(--color-red-rgb); }
+/* A marker is not work, so it takes a colour no rung and no container uses. */
+.pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
+
+.pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
+	color: rgb(var(--pbl-badge-rgb));
+	background-color: rgba(var(--pbl-badge-rgb), 0.14);
+}
+
+.pbl-badge.pbl-implied {
+	background-color: transparent;
+	border-color: rgba(var(--pbl-badge-rgb, 128, 128, 128), 0.4);
+	border-style: dashed;
+	opacity: 0.8;
+}

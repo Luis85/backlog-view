@@ -93,6 +93,14 @@ why `DropTarget` and `DropZone` live in `domain/dropTargets.ts` rather than with
 writer and the view that read them. Both used to sit upstream and made the pure layer
 depend on the effectful one.
 
+**The stylesheet lives under the same rule.** `styles/` is one partial per concern and
+`styles/index.css` assembles them; the root `styles.css` is generated and gitignored
+beside `main.js`, so the file to edit is always the partial. `styles-assemble.mjs` is
+what makes that a gate rather than a habit — `npm run build` fails on a partial over 400
+lines or one no entry file imports. The import ORDER is behaviour, not organisation: two
+rules of equal specificity are decided by which came last, and `index.css` says which
+positions in its list are load-bearing and why.
+
 ## Testing
 
 The harness itself — the helpers, what a view test drives, and the limits of the jsdom

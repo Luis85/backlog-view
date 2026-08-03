@@ -11,7 +11,9 @@ files:
   - manifest.json
   - src/view/render/board.ts
   - src/view/interactions/menu.ts
-  - styles.css
+  - styles/touch.css
+  - styles/columns.css
+  - styles/roadmap.css
 ---
 
 # Smoke test the touch paths on a phone

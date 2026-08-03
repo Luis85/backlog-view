@@ -1,0 +1,298 @@
+/* The dated axis: the month grid, the bars, the today line and the shelf —
+   `src/view/render/timeline.ts`. */
+
+/* ----- the dated axis: the month grid, bars, and the today line */
+
+.pbl-timeline {
+	position: relative;
+	width: max-content;
+}
+
+.pbl-timeline-header {
+	display: flex;
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	background-color: var(--background-primary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-lead {
+	flex: 0 0 var(--pbl-tl-lead);
+	width: var(--pbl-tl-lead);
+	min-width: 0;
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-1) var(--size-4-2);
+	background-color: var(--background-primary);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-lead .pbl-card-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-timeline-track {
+	position: relative;
+	flex: 0 0 var(--pbl-tl-days);
+	width: var(--pbl-tl-days);
+	display: flex;
+}
+
+.pbl-timeline-month {
+	flex: 0 0 var(--pbl-month-w);
+	width: var(--pbl-month-w);
+	padding: var(--size-4-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	border-left: 1px dashed var(--background-modifier-border);
+}
+
+/* A timeline row is a card wearing the row layout: the shell keeps the card's
+   selection and context styling while the geometry goes horizontal. */
+.pbl-card.pbl-timeline-row {
+	flex-direction: row;
+	align-items: stretch;
+	gap: 0;
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background-color: transparent;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-row .pbl-timeline-track {
+	min-height: 34px;
+}
+
+.pbl-bar {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	height: 14px;
+	border-radius: var(--radius-s);
+	/* One color for solid and open bars alike: states override the variable,
+	   never the background, so an open end can never reveal a solid backing. */
+	--pbl-bar-color: var(--interactive-accent);
+	background-color: var(--pbl-bar-color);
+}
+
+.pbl-timeline-row.pbl-done .pbl-bar {
+	--pbl-bar-color: var(--color-green);
+	opacity: 0.7;
+}
+
+/* A dateless or clipped end is styled open: the plan's gap stays visible
+   instead of being filled in, and the exact dates ride on the tooltip. */
+.pbl-bar-open-end {
+	background: linear-gradient(to right, var(--pbl-bar-color) 55%, transparent);
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.pbl-bar-open-start {
+	background: linear-gradient(to left, var(--pbl-bar-color) 55%, transparent);
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.pbl-bar-open-start.pbl-bar-open-end {
+	background: linear-gradient(to right, transparent, var(--pbl-bar-color) 35%, var(--pbl-bar-color) 65%, transparent);
+	border-radius: 0;
+}
+
+/* An inference is a summary the view drew, not a plan somebody made. Outlined
+   rather than filled, so the two never read alike at a glance — and the border
+   inherits --pbl-bar-color, so a done subtree's inferred bar stays green. */
+.pbl-bar-inferred {
+	background: none;
+	border: 1px dashed var(--pbl-bar-color);
+}
+
+/* .pbl-bar-open-start.pbl-bar-open-end is a two-class compound (0,2,0), which
+   outranks the single-class .pbl-bar-inferred (0,1,0) regardless of source
+   order — a window clamp can clip both ends of an inferred bar at once (see
+   MAX_TIMELINE_MONTHS in domain/timeline.ts), and without this rule the
+   gradient would win back the fill. Match the compound's own specificity to
+   override it explicitly rather than reordering rules or reaching for
+   !important. */
+.pbl-bar-open-start.pbl-bar-open-end.pbl-bar-inferred {
+	background: none;
+}
+
+/* An outlined bar cannot say "open" with the gradient: `background: none` is
+   what makes it an outline at all, and it wins the equal-specificity tie
+   against .pbl-bar-open-*, so an inferred bar missing an end would draw as a
+   closed box. Say it the way an outline can — leave that side unclosed. This
+   is the ordinary case, not an edge one: a backlog that states target dates
+   and no start dates infers every parent's end and leaves every start open. */
+.pbl-bar-inferred.pbl-bar-open-start {
+	border-left: none;
+}
+
+.pbl-bar-inferred.pbl-bar-open-end {
+	border-right: none;
+}
+
+/* A point in time is not a span: an equal pair, stated or inferred, renders as the Gantt diamond. */
+.pbl-bar-milestone {
+	width: 12px;
+	height: 12px;
+	border-radius: var(--radius-s);
+	transform: translateY(-50%) rotate(45deg);
+}
+
+/* Wholly past an edge: a direction, not a date. Half the bar height and no fill of its
+   own, so it can never be mistaken for a span that happens to be short. */
+.pbl-bar-outside {
+	width: 10px;
+	height: 8px;
+	border-radius: 0;
+	background: none;
+	border-top: 2px solid var(--pbl-bar-color);
+	opacity: 0.7;
+}
+
+.pbl-today {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-today-left);
+	width: 2px;
+	z-index: 1;
+	background-color: var(--color-red);
+	opacity: 0.55;
+}
+
+/* A milestone's line runs the grid's full height at its date, behind the bars. Same
+   shape as .pbl-today and deliberately a lower layer: today stays on top because it is
+   the reader's own mark, and the two sit side by side inside one day cell. Cyan to match
+   the milestone badge (--color-cyan-rgb) — purple is already .pbl-lvl-1 (Feature). */
+.pbl-milestone-line {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-milestone-left);
+	width: 2px;
+	z-index: 0;
+	background-color: var(--color-cyan);
+	opacity: 0.55;
+	/* A timeline row sets no `position`, so it paints in the non-positioned layers
+	   while this line — absolute, with a z-index — paints above them. Hit-testing
+	   follows paint order, so without this the line is the event target wherever it
+	   crosses a row: a 2px dead strip through every row, per milestone, swallowing
+	   the row's activation and context menu. The line is aria-hidden decoration and
+	   its tooltip lives on the header label, so it wants no events at all. */
+	pointer-events: none;
+}
+
+/* In the header band, so the name reads where the months do. Backed, because it sits
+   over the month labels; truncating, because horizontal space is what a pane runs out
+   of first and the full name is one hover away — which needs the label to actually
+   receive the hover: the month cells underneath are presentational (the header is
+   aria-hidden, no click handler anywhere in it) and the bars live in a different row
+   entirely, so nothing below this label ever needed the pointer to pass through it. */
+.pbl-milestone-label {
+	position: absolute;
+	top: 0;
+	left: var(--pbl-milestone-left);
+	max-width: 140px;
+	padding: var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--color-cyan);
+	background-color: var(--background-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ----- the shelf: what the axis cannot place, visible and counted */
+
+.pbl-shelf,
+.pbl-roadmap-context {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+/* Context stands beside the shelf, visibly not part of its count. */
+.pbl-roadmap-context {
+	border-style: dashed;
+	background-color: transparent;
+}
+
+/* An empty shelf takes no space — and is still the target that un-places, which a
+   strip appearing only while a drag is live can be and an absent element cannot.
+   The DOM keeps it so a drop has somewhere to land; this keeps it out of the way. */
+.pbl-shelf-empty {
+	display: none;
+}
+
+.pbl-dragging .pbl-shelf-empty {
+	display: flex;
+	border-style: dashed;
+}
+
+.pbl-shelf-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-shelf-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.pbl-shelf-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-shelf-cards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	align-items: stretch;
+}
+
+.pbl-shelf-cards .pbl-card {
+	flex: 0 1 240px;
+}
+
+/* Why a value could not be read: the reason travels on the card it shelved. */
+.pbl-shelf-reason {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-warning);
+}
+
+.pbl-shelf-reason-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-shelf-reason-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}

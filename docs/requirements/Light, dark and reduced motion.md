@@ -54,9 +54,11 @@ this PBI is the theming half of the same arrangement.
 The stylesheet already handles the cases; what is missing is evidence and a repeatable
 way to get it:
 
-- `@media (prefers-reduced-motion: reduce)` at line 915 — spinners step rather than spin,
-  the busy chip appears without a fade.
-- `@media (hover: none)` at line 940 — the hover-revealed controls need a touch path.
+- `@media (prefers-reduced-motion: reduce)`, the whole of `styles/motion.css` — spinners
+  step rather than spin, the busy chip appears without a fade.
+- `@media (hover: none)`, the whole of `styles/touch.css` plus the two reveals that have
+  to sit beside what they override (`.pbl-add` in `columns.css`, `.pbl-bucket-add` in
+  `roadmap.css`) — the hover-revealed controls need a touch path.
 - Every colour reads a variable, so both theme variants *should* follow automatically.
   "Should" is the word this PBI exists to remove.
 

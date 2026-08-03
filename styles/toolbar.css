@@ -1,0 +1,292 @@
+/* The toolbar and its controls — `src/view/render/toolbar.ts`. */
+
+.pbl-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-1);
+	row-gap: var(--size-4-1);
+	padding: var(--size-4-2) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex: 0 0 auto;
+}
+
+.pbl-new-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-btn-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-btn-icon .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* Toolbar icon controls are <button>s so they sit in the tab order; the shared
+   reset below drops the default button chrome clickable-icon does not cover */
+.pbl-icon-btn,
+.pbl-filter-clear,
+.pbl-focus-clear,
+.pbl-add {
+	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
+}
+
+/* The eye button lights up while completed items are hidden */
+.pbl-completed-toggle.is-active {
+	color: var(--text-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+/* Collapse state is overridden while filtering — the controls pause with it.
+   The disabled attribute does the refusing; this only says so visually. */
+.pbl-icon-btn:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.pbl-icon-btn:disabled:hover {
+	background-color: transparent;
+}
+
+/* Dragging is disabled while filtering; a grab handle would be a lie */
+.pbl-view.pbl-filtering .pbl-grip {
+	display: none;
+}
+
+.pbl-toolbar-spacer {
+	flex: 1 1 auto;
+}
+
+.pbl-toolbar-sep {
+	width: 1px;
+	height: 16px;
+	background-color: var(--background-modifier-border);
+	flex: 0 0 auto;
+}
+
+/* A bare row: the input keeps its own border, background and focus ring, so the
+   wrapper only has to line the icon and the clear button up beside it. */
+.pbl-filter {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	margin-left: var(--size-4-1);
+}
+
+.pbl-filter-icon {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-faint);
+	/* Clear of the input's own box rather than tucked against it */
+	margin-inline-end: var(--size-2-3);
+}
+
+.pbl-filter-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-filter-input {
+	width: 130px;
+	height: 24px;
+	font-size: var(--font-ui-small);
+	transition: width 120ms ease-in-out;
+}
+
+/* A little room to breathe while actually typing */
+.pbl-filter-input:focus {
+	width: 170px;
+}
+
+.pbl-filter-input::placeholder {
+	color: var(--text-faint);
+}
+
+.pbl-filter-clear {
+	display: none;
+	padding: 0;
+}
+
+.pbl-filter.pbl-filter-active .pbl-filter-clear {
+	display: flex;
+}
+
+.pbl-filter-clear .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* Focus level picker: the level dropdown lives here, not in the view options, and
+   doubles as the cue that a level is narrowing the tree */
+.pbl-focus {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	flex: 0 0 auto;
+}
+
+.pbl-focus-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
+}
+
+.pbl-focus-btn .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* An active focus hides rows, so say so louder than a plain button would */
+.pbl-focus-active .pbl-focus-btn {
+	color: var(--text-accent);
+	box-shadow: inset 0 0 0 1px var(--interactive-accent);
+}
+
+.pbl-focus-clear {
+	padding: 0;
+}
+
+.pbl-focus-clear .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-empty-filter {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
+	text-align: center;
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-empty-filter-icon {
+	color: var(--text-faint);
+}
+
+.pbl-empty-filter-icon .svg-icon {
+	width: 24px;
+	height: 24px;
+}
+
+/* Write-in-flight indicator. Held back by an animation delay so a single-file
+   write — the common case — finishes before it would ever appear, and only a
+   batch long enough to be worth reporting actually shows up. */
+.pbl-busy {
+	display: none;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding-inline-end: var(--size-4-1);
+}
+
+.pbl-busy.pbl-busy-on {
+	display: inline-flex;
+	animation: pbl-busy-in 120ms ease-out 250ms both;
+}
+
+@keyframes pbl-busy-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.pbl-busy-spinner,
+.pbl-loading-spinner {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-accent);
+	animation: pbl-spin 900ms linear infinite;
+}
+
+.pbl-busy-spinner .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+@keyframes pbl-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Before the first result set arrives — an empty pane reads as a broken view */
+.pbl-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-loading-spinner .svg-icon {
+	width: 24px;
+	height: 24px;
+}
+
+.pbl-count-label {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	padding-inline-end: var(--size-4-1);
+}
+
+.pbl-toolbar-note {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	cursor: help;
+}
+
+.pbl-toolbar-note-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-toolbar-note-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.pbl-config-warning {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: rgb(var(--color-orange-rgb));
+	background-color: rgba(var(--color-orange-rgb), 0.12);
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-4-1);
+	cursor: help;
+}
+
+.pbl-warning-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.pbl-warning-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}

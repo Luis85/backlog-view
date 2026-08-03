@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+// @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
+import { assembleStyles } from '../../styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
 import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/settings';
 import { Menu, Notice } from '../helpers/obsidian-mock';
@@ -11,8 +12,12 @@ useViewHarness();
 /**
  * The stylesheet as shipped. Appearance cannot be tested here, but a rule that was
  * deliberately REMOVED can be kept out — otherwise it comes back unnoticed.
+ *
+ * Assembled rather than read from disk: the root `styles.css` is a build artifact now
+ * (see `styles-assemble.mjs`), so reading the file would test whichever build last ran
+ * — or nothing at all on a fresh clone. This runs the same assembler the build does.
  */
-const styles = readFileSync('styles.css', 'utf8');
+const styles: string = assembleStyles();
 
 /**
  * Where the last rule naming `selector` and declaring `decl` starts, or -1. Grouped

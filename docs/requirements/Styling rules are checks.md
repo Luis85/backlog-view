@@ -61,8 +61,8 @@ every selector `.pbl`-scoped — and every one of those is a fact about an after
 twice corrected. The rules are real, they are followed, and they are written nowhere a
 contributor would meet them.
 
-Two things make the case sharper than it looks. `eslint src test` does not read
-`styles.css` at all, so *nothing* in the definition of done currently examines the file.
+Two things make the case sharper than it looks. `eslint .` ignores CSS entirely, so
+*nothing* in the definition of done currently examines the stylesheet.
 And the one rule already written down — `setCssProps` over inline styles, in `CLAUDE.md`
 under marketplace rules — is followed everywhere, which is what a rule looks like right
 up until it isn't.
@@ -75,11 +75,11 @@ argue about.
 
 | Rule | Today |
 | --- | --- |
-| No literal **rendered** colour — `var(--…)` only | 1, and it is dead code (642) |
+| No literal **rendered** colour — `var(--…)` only | 1, and it is dead code (`.pbl-badge.pbl-implied`) |
 | No `!important` | 0 |
 | Every selector inside the `.pbl` namespace | 0 outside it, keyframe steps aside |
-| No physical `left`/`right` property where a logical twin exists | 1 (line 96) |
-| No direction-dependent value in a shadow, mask or gradient | 2 (line 336, lines 748-749) |
+| No physical `left`/`right` property where a logical twin exists | 1 (`.pbl-filter`) |
+| No direction-dependent value in a shadow, mask or gradient | 2 (`.pbl-row.pbl-selected`, `.pbl-tag-list`) |
 | No `:has()` on a container | Already reasoned about in `src/view/CLAUDE.md` |
 
 ### The colour rule needs one word of care
@@ -108,13 +108,13 @@ the path settles it:
   root or `min(x+1, LEVELS.length-1)` otherwise — so an implied item's `levelIndex` is
   always in **0-3**.
 - `renderBadge` then adds `pbl-lvl-${levelIndex % 8}`, and `.pbl-lvl-0` through `.pbl-lvl-3`
-  each define `--pbl-badge-rgb` (styles.css:618-621).
+  each define `--pbl-badge-rgb` (`badges.css`).
 
 So `.pbl-badge.pbl-implied` never renders without the property set, and the grey can never
 appear. An earlier version of this note claimed the off-ladder `Bugfix` case reached it,
 which is wrong twice over: an unknown type *has* a `typeName`, so it is never implied, and
-it gets `pbl-lvl-unknown`, which line 635 explicitly excludes from the colour rules
-entirely.
+it gets `pbl-lvl-unknown`, which `.pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown)`
+explicitly excludes from the colour rules entirely.
 
 The right treatment is therefore neither "tokenize it" nor "exempt it" but **remove it**.
 An unreachable fallback is dead code, which this repository already gates with fallow, and
@@ -129,17 +129,17 @@ rather than the reading of it:
 1. The first audit matched `#hex` and bare `rgb()`/`hsl()`, and reported zero. True of the
    forms it searched for, not of the rule — CSS colour **keywords** are a third form.
 2. The second audit added the keywords but **excluded every line containing `var(--`**, on
-   the reasoning that such a line reads a variable. Line 642 reads a variable *and supplies
-   a literal fallback*, so the filter removed the one line that could still violate the
-   rule.
+   the reasoning that such a line reads a variable. `.pbl-badge.pbl-implied` reads a variable
+   *and supplies a literal fallback*, so the filter removed the one rule that could still
+   violate the rule.
 
 The second is the same failure as the icon enumeration in `Layout survives translated
 text`, and it happened *after* that note added **step 0 — verify the search finds what you
 think it finds**. The step was written for the icon audit and never applied back here. A
 method recorded in one note does not run itself in another.
 
-The third correction is a different mistake and worth separating. Having accepted that 642
-was a violation, this note then *explained why* — reaching for the off-ladder `Bugfix` case
+The third correction is a different mistake and worth separating. Having accepted that the
+fallback was a violation, this note then *explained why* — reaching for the off-ladder `Bugfix` case
 without tracing whether that case sets `impliedType`. It does not. **The justification was
 invented to fit a conclusion already accepted**, which is a failure the previous two
 lessons do not cover: enumerating correctly says nothing about whether the reason attached
@@ -149,7 +149,8 @@ The last two rows of the table are why this is not just "add stylelint and take 
 defaults".
 
 The direction rule has to match on **values**, not property names. `box-shadow: inset 2px
-0 0` (line 336) and `linear-gradient(to right, …)` (748-749) both pin a side, and neither
+0 0` on `.pbl-row.pbl-selected` and `linear-gradient(to right, …)` on `.pbl-tag-list` both
+pin a side, and neither
 property has a logical twin for a property-name rule to demand. A check that greps for
 `left`/`right` passes both — which is not hypothetical: `Layout survives translated text`
 missed one of them twice while being written, and the second miss was a category that
@@ -164,22 +165,23 @@ instead. Neither rule comes out of a default config.
 
 ## Acceptance criteria
 
-- `npm run check` examines `styles.css`. Whether that is stylelint, a script, or an
-  eslint processor is an implementation call; that the definition of done stops ignoring
-  the file is not.
+- `npm run check` examines the stylesheet — the partials under `styles/`, since
+  `One stylesheet per concern` has landed and the root `styles.css` is now assembled from
+  them. Whether that is stylelint, a script, or an eslint processor is an implementation
+  call; that the definition of done stops ignoring them is not.
 - Every rule in the table above fails the build when violated. Prove each one by
   violating it and watching it go red — the register has already recorded that a check
   which has never failed is a check nobody has tested.
 - The two **direction** violations are fixed by `Layout survives translated text`, so this
   PBI either lands after it or lands with the direction rules staged. Deleting the dead
-  fallback at 642 belongs to this PBI — it is housekeeping the rule motivates, not a
+  fallback on `.pbl-badge.pbl-implied` belongs to this PBI — it is housekeeping the rule motivates, not a
   defect it catches.
 - The colour rule is scoped to **rendered** colour. `transparent` and mask stops are
   outside it by reason, not by a suppression list — if the implementation needs eight
   `/* stylelint-disable */` comments to go green, the rule is wrong rather than the
   stylesheet.
 - It matches inside `var()` **fallbacks**, since a literal there still renders if the
-  property is ever unset. The file's one instance (642) is **deleted rather than
+  property is ever unset. The file's one instance (`.pbl-badge.pbl-implied`) is **deleted rather than
   tokenized**: the path that would show it does not exist, so it is dead code rather than
   a wrong colour. Removing it is also what lets this PBI keep its central property — every
   rule passing on the file as it stands.
@@ -202,8 +204,8 @@ instead. Neither rule comes out of a default config.
 
 **Nothing yet — this note is design.** `eslint.config.mjs` holds the existing
 `no-restricted-syntax` bans this copies, and does
-not read CSS today · `package.json` chains the checks `npm run check` runs · `styles.css`,
-after `One stylesheet per concern` its partials, is what gains a reader · `.fallowrc.json`
+not read CSS today · `package.json` chains the checks `npm run check` runs · the partials
+under `styles/`, assembled by `styles-assemble.mjs`, are what gain a reader · `.fallowrc.json`
 is the other static gate, for the precedent of a config with reasons written into it ·
 `src/view/CLAUDE.md` is where the rules get stated beside the render-cost notes ·
 `src/view/render/toolbar.ts`, `src/view/render/rows.ts`, `src/view/interactions/menu.ts`

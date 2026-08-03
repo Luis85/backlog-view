@@ -162,6 +162,7 @@ export default defineConfig([
 			'docs-check.mjs',
 			'eslint.config.mjs',
 			'esbuild.config.mjs',
+			'styles-assemble.mjs',
 			'test-build.mjs',
 			'version-bump.mjs',
 			'vitest.config.mts',
