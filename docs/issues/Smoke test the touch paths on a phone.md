@@ -57,8 +57,12 @@ Run `npm run test-build`, open this repository as a vault on a phone, open
      carries its **own** `(hover: none)` reveal written after the `opacity: 0` it
      overrides, and `test/view/rendering.test.ts` pins that cascade order because the
      bucket button shipped unreachable on touch once.
-   - `.pbl-tag-add` and `.pbl-tag-remove`, by **adding a tag and removing one**. These are
-     `display: none` until row hover, so the shared `(hover: none)` block is their only
+   - `.pbl-tag-add` and `.pbl-tag-remove`, by **adding a tag and removing one**. These
+     render only while the tags property is one of the view's visible columns
+     (`chipProps` skips it otherwise), so `docs/Product Backlog.base` carries
+     `note.tags` in its `order` for this check — if the column is not on screen, the
+     controls are absent rather than unreachable and the question has not been asked.
+     They are `display: none` until row hover, so the shared `(hover: none)` block is their only
      touch path — the stylesheet says so beside them: *"without this the inline tag editing
      has no reachable control at all."* `README.md` promises they are always visible on
      touch, which makes this a documented claim rather than a nicety.
