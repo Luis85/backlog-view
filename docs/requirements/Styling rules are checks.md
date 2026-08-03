@@ -20,7 +20,7 @@ by `npm run check`.
 | --- | --- |
 | **Actor** | Whoever changes the plugin |
 | **Trigger** | `npm run check`, on every build |
-| **Preconditions** | The direction fixes have landed, so the rules pass on today's file |
+| **Preconditions** | [[Nothing pins a physical side]] has landed, so the direction rules pass on today's file |
 | **Guarantee** | Every rule passes on the file as it stands. A check added to a clean file is a check nobody has to argue about. |
 
 **Main flow**
@@ -78,20 +78,23 @@ argue about.
 | No literal **rendered** colour — `var(--…)` only | 1, and it is dead code (`.pbl-badge.pbl-implied`) |
 | No `!important` | 0 |
 | Every selector inside the `.pbl` namespace | 0 outside it, keyframe steps aside |
-| No physical `left`/`right` property where a logical twin exists | 1 (`.pbl-filter`) |
-| No direction-dependent value in a shadow, mask or gradient | 2 (`.pbl-row.pbl-selected`, `.pbl-tag-list`) |
+| No physical `left`/`right` property where a logical twin exists | Fixed by [[Nothing pins a physical side]], which carries the inventory |
+| No direction-dependent value in a shadow, mask or gradient | The same, and the group that has no twin to swap to |
 | No `:has()` on a container | Already reasoned about in `src/view/CLAUDE.md` |
 
 ### The colour rule needs one word of care
 
-Stated as *"no literal colour value"* the rule reports **10** violations against today's
-file, not zero, and all 10 are correct code:
+Stated as *"no literal colour value"* the rule reports violations against today's file
+rather than zero, and every one of them is correct code. A tally is deliberately not
+written here — the `transparent` occurrences move with every rule added, and this note
+already had to correct the same table three times. The kinds are what the rule has to
+know about:
 
 | Literal | Where | Verdict |
 | --- | --- | --- |
-| `transparent` ×8 | 53, 71, 595, 641, 782, 813, and twice in the mask | **Stays.** Not a colour — the *absence* of one, and no theme variable means "nothing" |
-| `black` ×2 | 748-749, the mask stops | **Stays.** A mask's channel is **alpha**. `black` there means fully opaque and is never rendered; tokenizing it would substitute a colour for an opacity |
-| `128, 128, 128` ×1 | 642, `rgba(var(--pbl-badge-rgb, 128, 128, 128), 0.4)` | **Delete the fallback.** It is unreachable — see below |
+| `transparent` | Spread across the partials, wherever a background or a border is turned off, and in the tag mask's far stop | **Stays.** Not a colour — the *absence* of one, and no theme variable means "nothing" |
+| `black` | The tag mask's near stop, `styles/tags.css`, `.pbl-tag-list` | **Stays.** A mask's channel is **alpha**. `black` there means fully opaque and is never rendered; tokenizing it would substitute a colour for an opacity |
+| `128, 128, 128` | `styles/badges.css`, `.pbl-badge.pbl-implied` — `rgba(var(--pbl-badge-rgb, 128, 128, 128), 0.4)` | **Delete the fallback.** It is unreachable — see below |
 
 So the rule is about **rendered** colour: a literal naming a colour the user sees. That is
 a narrowing by reason rather than an exception list, which matters because an exception
@@ -101,8 +104,8 @@ without anyone adding a row.
 The third row is the only literal rendered colour in the file, and it is **dead**. Tracing
 the path settles it:
 
-- `impliedType` is true in exactly one branch — the `else` at `model.ts:576`, reached only
-  when the note has **no** `typeName` at all. Any type name, known or not, takes the other
+- `impliedType` is true in exactly one branch — the `else` in `computeLevel`
+  (`src/domain/model.ts`), reached only when the note has **no** `typeName` at all. Any type name, known or not, takes the other
   branch and sets it false.
 - That branch also sets `levelIndex = childSlot`, and `childLevelIndex` returns `0` for a
   root or `min(x+1, LEVELS.length-1)` otherwise — so an implied item's `levelIndex` is
@@ -172,8 +175,10 @@ instead. Neither rule comes out of a default config.
 - Every rule in the table above fails the build when violated. Prove each one by
   violating it and watching it go red — the register has already recorded that a check
   which has never failed is a check nobody has tested.
-- The two **direction** violations are fixed by `Layout survives translated text`, so this
-  PBI either lands after it or lands with the direction rules staged. Deleting the dead
+- The **direction** violations are fixed by [[Nothing pins a physical side]], so this
+  PBI either lands after it or lands with the direction rules staged. That note also owns
+  the inventory, because the version this one used to carry was a count of a file that has
+  since grown. Deleting the dead
   fallback on `.pbl-badge.pbl-implied` belongs to this PBI — it is housekeeping the rule motivates, not a
   defect it catches.
 - The colour rule is scoped to **rendered** colour. `transparent` and mask stops are
