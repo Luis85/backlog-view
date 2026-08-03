@@ -576,12 +576,22 @@ intrinsic height, so an unbounded band in a short pane grows until it squeezes t
 timeline out or is clipped below it. The timeline is `flex: 1 1 auto` over
 `min-height: 0` — without which a scroll box refuses to shrink — with a floor beneath
 which it stops yielding. The shelf is `flex: 0 1 auto` with a maximum share and its own
-`overflow-y`. **So is the context strip**, which is a third band between them and can
-run to several rows on a focused filtered base; it was not bounded by the first version
-of this paragraph, which is exactly the recurrence a rule prevents and a list of two
-does not. The advisory keeps its intrinsic height, being one line. Regions yield space
-before results are hidden — the tree's rule, applied to a frame that now owns its own
-height — and no band can starve another, because each states what it may take.
+`overflow-y`. So is the context strip, which can run to several rows on a focused
+filtered base. **So is the advisory**, which is not the one line it looks like:
+`renderRoadmapAdvisory` delegates to `renderEmptyState` and its siblings, and those
+render an icon, a title, wrapping text and a button.
+
+The rule has **no exceptions**, and that is the point of writing it as one. Both of the
+bands above were carved out of an earlier draft of this paragraph — the context strip by
+omission, the advisory by an explicit "being one line" that was simply wrong about the
+DOM. Each time the enumeration was the defect and the rule was the fix, which is this
+repository's own "a table that enumerates goes stale; a table that states a rule does
+not", learned here three times in a row. If a band is added later it declares a maximum
+too, and nobody has to remember this paragraph to get that right.
+
+Regions yield space before results are hidden — the tree's rule, applied to a frame that
+now owns its own height — and no band can starve another, because each states what it
+may take.
 
 The rules are axis-specific and the only class today is `pbl-roadmap-mode`, which both
 axes wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class
