@@ -509,7 +509,19 @@ or going can only be shown by rebuilding the rows, while the shelf's cards are a
 in the DOM and a class decides whether they show. So the shelf measure toggles a class
 and stops — no `refitting` re-entry guard, because there is no re-entry. The test moves
 a pane across the threshold *after* the first render, since a fixture that is only ever
-measured once cannot fail this. The open flag is view state that
+measured once cannot fail this.
+
+**But hidden cards leave the navigable set, and a selection on one is reconciled.** The
+roadmap's arrow handler walks `snapshot.cards` unconditionally, and `renderShelf` puts
+every shelf item in it, so a class-only collapse would let Arrow and End select a card
+nobody can see and point `aria-activedescendant` at hidden content — a keyboard user
+with no visible position, which is the worse half of "hidden versus absent". So the
+resolved compaction narrows what is navigable, and a resize that collapses the strip
+clamps a selection already sitting in it, the way a vanished board column already
+clamps `selectedBoardColumn`. Reachability is not lost, and that is the second reason
+the toggle sits in the toolbar: it is a real focusable control outside the composite
+that `aria-controls` the shelf, so the way back to those cards is a press rather than an
+arrow into the dark. The open flag is view state that
 survives a render, the way the selected board column already is — a rebuild must not
 re-collapse a strip the reader just opened — and it stays out of the collapse store,
 which keys on paths and has nothing to key this on.
@@ -542,15 +554,23 @@ appends the shelf and the advisory as siblings after the timeline, so a pane tha
 longer scrolls vertically would clip a long shelf below the grid with nothing to scroll
 — unreachable cards, which is the failure [[The unplaced shelf]] exists to prevent, and
 worse than the compaction it sits beside because nothing would say they were there. The
-dated frame is therefore a column, **and every band in it is bounded**. Saying the shelf
-"scrolls itself" creates no scrollport: cards wrap to an intrinsic height, so an
-unbounded shelf in a short pane grows until it squeezes the timeline out or overflows
-below it. So the timeline is `flex: 1 1 auto` over `min-height: 0` — without which a
-scroll box refuses to shrink — with a floor beneath which it stops yielding; the shelf
-is `flex: 0 1 auto` with a maximum share of the frame and its own `overflow-y`; the
-advisory keeps its intrinsic height, being one line. Regions yield space before results
-are hidden — the tree's rule, applied to a frame that now owns its own height — and
-neither band can starve the other, because both state what they may take.
+dated frame is therefore a column under one rule, stated as a rule because the frame has
+more bands than the two that prompted it:
+
+> The timeline takes what is left; **every other band declares a maximum and scrolls
+> itself**.
+
+Saying a band "scrolls itself" creates no scrollport: cards and rows wrap to an
+intrinsic height, so an unbounded band in a short pane grows until it squeezes the
+timeline out or is clipped below it. The timeline is `flex: 1 1 auto` over
+`min-height: 0` — without which a scroll box refuses to shrink — with a floor beneath
+which it stops yielding. The shelf is `flex: 0 1 auto` with a maximum share and its own
+`overflow-y`. **So is the context strip**, which is a third band between them and can
+run to several rows on a focused filtered base; it was not bounded by the first version
+of this paragraph, which is exactly the recurrence a rule prevents and a list of two
+does not. The advisory keeps its intrinsic height, being one line. Regions yield space
+before results are hidden — the tree's rule, applied to a frame that now owns its own
+height — and no band can starve another, because each states what it may take.
 
 The rules are axis-specific and the only class today is `pbl-roadmap-mode`, which both
 axes wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class
