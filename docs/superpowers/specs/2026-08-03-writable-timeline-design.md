@@ -228,6 +228,15 @@ the identity; `timelineDrag.ts` decides what a position means.
   paints the preview — a ghost bar and the dates it means — through CSS props. `onDrop`
   builds the plan and calls `performScheduleMove`. A drag ending off both grid and shelf
   writes nothing and does not consume the undo slot.
+- **The timeline registers its scroller.** Auto-scroll is opt-in per element and
+  `renderRoadmap` calls `wireScroller` only in the horizon branch, so without this a
+  drag could reach no date that is not already on screen — and the grid is thousands of
+  pixels wide by design. The element to register is the one that actually scrolls, which
+  is the horizon branch's own recorded lesson ("the frame is `max-content` wide and
+  scrolls nothing") reaching the other axis with a different answer: here it is the
+  timeline's own horizontal scroller, not the pane, because
+  [[Zoom and the today marker]] requires the scrolling to stay inside the view and the
+  pane never to scroll sideways.
 - Three sources, and **two different gates**, because they are asked different
   questions. The bar body and the two end grips are gated by `barHolds`, which is about
   a rendered bar. A shelf card has no bar, so it is gated by `canSchedule` — the
@@ -372,6 +381,9 @@ Named honestly rather than claimed, and filed as a smoke note under `Feature Tes
   legible while the pointer is moving.
 - Whether an end grip is reachable at four pixels per day, and whether the three zooms
   are three *usable* scales rather than three numbers.
+- Whether a drag toward the pane edge actually pans the grid, and at a usable rate.
+  Registering the scroller is checkable here; that it *engages toward an edge* is a
+  pointer-position behaviour of the drag library, which jsdom does not run.
 - The narrow-pane shelf compaction, and whether anything clips under the header in an
   embedded base.
 - The today line and jump-to-today from a scrolled position.
