@@ -331,24 +331,30 @@ already says thresholds only go up.
 
 ---
 
-### 7. Eighteen live-vault verifications are open and there is no cadence for them
+### 7. The live-vault verifications have no cadence
 
-**Evidence.** Counted by status rather than by filename: `docs/issues/` holds 20 notes of
-the "verification to run" kind, of which **18 are `Open`** — the tree's badges, columns,
-menu, drag, keyboard, filter and undo; the board's cards, moves, filtered headers and
-column agreements; the roadmap's axis picker, month header, inferred bars and milestones;
-the folder-note layout; the visual changes. Every one exists because jsdom cannot see it,
-and `docs/README.md` says so plainly: *"appearance and base identity cannot be tested
-here."* Several are explicitly written to be **re-run**, not closed.
+**Evidence.** `docs/issues/` holds a body of "verification to run" notes — the tree's
+badges, columns, menu, drag, keyboard, filter and undo; the board's cards, moves, filtered
+headers and column agreements; the roadmap's axis picker, month header, inferred bars and
+milestones; the folder-note layout; the visual changes; and now the touch paths. Nearly
+all are open. Every one exists because jsdom cannot see it, and `docs/README.md` says so
+plainly: *"appearance and base identity cannot be tested here."* Several are explicitly
+written to be **re-run**, not closed.
 
-**Two are already `Done`, and one of those must stay out of the sweep.**
+**How many is deliberately not written here.** Three drafts of this paragraph carried a
+figure and all three were wrong — counted off filenames, then off a prefix-matching grep,
+then invalidated by a note added in the same commit. The number lives in the register and
+is asked of it: the query is Issues carrying `## How to check` as a whole heading line,
+which [[A cadence for the checks CI cannot run]] specifies along with the three legacy
+headings it has to normalize first. A count in a plan is a count that goes stale between
+writing and reading.
+
+**One is `Done` with a conditional trigger, and must stay out of the sweep.**
 [[Verify base identity in a live vault]] passed on 2026-08-01 and asks to be repeated
-only **after an Obsidian or bundler upgrade** — a conditional trigger, not a release
-cadence. Folding it into a per-release checklist would silently replace the cadence its
-own outcome specifies, and the checks it would replace it with are the ones least likely
-to find anything. Conditional verifications keep their own trigger; only the re-runnable
-ones join the release step. (An earlier draft of this note said "sixteen", counted off
-filenames rather than frontmatter — wrong in both directions.)
+only **after an Obsidian or bundler upgrade** — not a release cadence. Folding it into a
+per-release checklist would silently replace the cadence its own outcome specifies with
+one less likely to find anything. Conditional verifications keep their own trigger; only
+the re-runnable ones join the release step.
 
 This is the project's real stability ceiling, and it is currently a stack rather than a
 process. `npm run test-build` already made each run cheap — the note recording the last
