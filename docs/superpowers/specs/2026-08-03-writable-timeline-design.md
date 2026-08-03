@@ -122,7 +122,7 @@ TimelineScale { id: 'week' | 'month' | 'quarter'; dayPx: number; unit: ... }
 | --- | --- | --- | --- |
 | `week` | 16 | a comfortable pointer target | ~5,840px |
 | `month` | 4 | today's density, unchanged | ~1,460px |
-| `quarter` | 1 | a hairline | ~365px |
+| `quarter` | 2 | the floor, below | ~730px |
 
 Strictly decreasing, each a clean multiple of the next, and `month` is exactly what
 ships today so the default view does not move under anyone. Without stated values the
@@ -139,14 +139,22 @@ width has stopped being reported.
 
 **Every other fixed pixel count on the grid has the same problem.** `TODAY_NUDGE_PX = 2`
 steps a milestone line aside from today's where they share a date; at one pixel per day
-that is a two-day displacement, putting the line and its label in the wrong day while
-[[Milestones as their own type]] requires both marks inside the same day cell. A nudge
-is a *sub-day* offset, so it is expressed as a fraction of `dayPx` and can never leave
-the day it belongs to. At the sparse scales the two marks then coincide, which is what
-one pixel per day means and is the honest report of it — the tooltips still say which
-is which. The floor and the nudge are the two constants this increment converts; the
-rule under both is that a length in days is scaled and a length in pixels is not, and
-mixing them is what a zoom control turns into a bug.
+that is a two-day displacement, putting the line and its label in the wrong day. A nudge
+is a *sub-day* offset, so it becomes a fraction of `dayPx` and can never leave the day it
+belongs to. The floor and the nudge are the two constants this increment converts, under
+one rule: **a length in days is scaled and a length in pixels is not**, and mixing them
+is what a zoom control turns into a bug.
+
+**That nudge is also why `dayPx` has a floor of 2.** [[A milestone line across the plan]]
+extension `1d` requires today's line and a milestone dated today to both draw and **not**
+merge, and `.pbl-milestone-line` sits at `z-index: 0` beneath `.pbl-today`'s `1` — so a
+coincident line is not a merged mark, it is an erased one. A sub-day nudge that keeps
+the mark in its day and still separates the two needs at least two pixels of day to
+work with. Rather than a collision rule that special-cases the sparse scales, the
+constraint is read as what it is — a lower bound on how sparse a scale may be — so
+`quarter` is 2 rather than 1. A scale is not free to be arbitrarily coarse; the marks
+the grid must distinguish say how coarse it may get. Whether two adjacent pixels *read*
+as two lines is not a thing jsdom can answer, so it joins the smoke list.
 
 Today's fixed rendering becomes the `month` scale at `dayPx: 4`, so zoom adds a
 parameter to functions that already exist rather than a second drawing path.
@@ -334,6 +342,18 @@ the identity; `timelineDrag.ts` decides what a position means.
   the timeline scrolls in both (see *Zoom and today*); what changes is *which* element,
   not how many.
 
+  **Across a zoom change, what is preserved is a date, not a pixel count.** `scrollLeft`
+  measures pixels and a zoom redefines what a pixel is worth: a day a hundred days out
+  sits 400px away at month zoom and 200px at quarter, so carrying the number across
+  would reopen the view about twice as far into the plan as the reader left it — and
+  `restoreScroll`'s existing `saved + (newTodayLeft - oldTodayLeft)` correction cannot
+  see it, because it corrects for the window moving and not for the ruler changing. The
+  anchor across a scale change is therefore the civil date at the viewport's leading
+  edge, captured before and turned back into an offset against the new `dayPx`.
+  Same-scale re-renders keep the pixel carry, which is exact for them. The test changes
+  zoom **while panned away from today**, since at today the two rules agree and the bug
+  is invisible.
+
   **And the offsets are captured from the OLD scroller, before the DOM goes.**
   `renderTreeContent` reads `treeEl.scrollTop` / `scrollLeft` just before `treeEl.empty()`,
   which is the pane — on the dated axis those are the offsets of a box that no longer
@@ -428,11 +448,17 @@ A zoom picker and a jump-to-today button beside the focus picker, both rendered 
 the dated axis. `CollapseSnapshot` gains `zoom`, validated against the three scale ids
 exactly as `axis` is validated against `AXIS_VALUES` — a per-screen working position, in
 the store where collapse state already lives, never in the `.base`. The narrow-pane rule
-needs **a real control**, and therefore **one decider**. `renderShelf` builds its header
-as a plain `div` with no listener and no button semantics, so hiding the cards in CSS
-alone would strand every unplaced card until the pane was widened — the opposite of "may
-lose its card, never its existence". The header becomes a `button` with `aria-expanded`,
-keeping its icon, label and count.
+needs **a real control**, and therefore **one decider** — and the control goes in the
+**toolbar**, not on the shelf header. Hiding the cards in CSS alone would strand every
+unplaced card until the pane was widened, the opposite of "may lose its card, never its
+existence"; but making the header itself a button puts a focusable non-option child
+inside the `role="listbox"` that `renderRoadmapContent` gives the pane whenever cards
+render, which is a second tab stop in a composite that has exactly one. Reaching it
+properly would need the region stops [[Keyboard and menu on the roadmap]] owns and this
+increment defers. So the toggle joins the zoom picker and jump-to-today in the toolbar —
+already outside the composite, already real buttons — carrying `aria-expanded` and
+naming the shelf with `aria-controls`. The header keeps its icon, label and count and
+stays a `div`.
 
 But a container query plus a button is **two** deciders, and they desynchronise: at a
 wide pane the query shows the cards while the flag still says closed, so the control
@@ -475,11 +501,15 @@ appends the shelf and the advisory as siblings after the timeline, so a pane tha
 longer scrolls vertically would clip a long shelf below the grid with nothing to scroll
 — unreachable cards, which is the failure [[The unplaced shelf]] exists to prevent, and
 worse than the compaction it sits beside because nothing would say they were there. The
-dated frame is therefore a column: the timeline takes the space that is left
-(`flex: 1 1 auto` over `min-height: 0`, without which a scroll box refuses to shrink),
-and the shelf and the advisory keep their own height and scroll themselves. Regions
-yield space before results are hidden — the tree's rule, applied to a frame that now
-owns its own height.
+dated frame is therefore a column, **and every band in it is bounded**. Saying the shelf
+"scrolls itself" creates no scrollport: cards wrap to an intrinsic height, so an
+unbounded shelf in a short pane grows until it squeezes the timeline out or overflows
+below it. So the timeline is `flex: 1 1 auto` over `min-height: 0` — without which a
+scroll box refuses to shrink — with a floor beneath which it stops yielding; the shelf
+is `flex: 0 1 auto` with a maximum share of the frame and its own `overflow-y`; the
+advisory keeps its intrinsic height, being one line. Regions yield space before results
+are hidden — the tree's rule, applied to a frame that now owns its own height — and
+neither band can starve the other, because both state what they may take.
 
 The rules are axis-specific and the only class today is `pbl-roadmap-mode`, which both
 axes wear: an axis class is toggled beside it in `backlogView.ts`, where the mode class
@@ -577,9 +607,13 @@ Named honestly rather than claimed, and filed as a smoke note under `Feature Tes
   moved under them. This is the one part of the increment where the checks genuinely
   stop short of the claims, so the claims are the smoke note's — and the two-axis
   restructure makes it the part most worth looking at first.
-- Whether the three densities are three *usable* scales — 16, 4 and 1 pixels per day are
+- Whether the three densities are three *usable* scales — 16, 4 and 2 pixels per day are
   reasoned, not measured, and the width of a real pane is the only thing that can say
   whether quarter zoom shows enough plan to be worth having.
+- Whether today's line and a milestone dated today read as **two** marks at quarter
+  zoom, where the nudge separating them is one pixel. The floor of 2 is derived from
+  that requirement, so this is the check on the derivation: if two pixels is not enough
+  to see, the floor is wrong rather than the rule.
 - The narrow-pane shelf compaction, and whether anything clips under the header in an
   embedded base.
 - The today line and jump-to-today from a scrolled position.
