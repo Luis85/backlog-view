@@ -2,9 +2,10 @@
 type: PBI
 parent: "[[The model build states its cost as a check]]"
 order: 10
-status: Open
+status: Done
 area: testing
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # One vault read per note, one sort per item

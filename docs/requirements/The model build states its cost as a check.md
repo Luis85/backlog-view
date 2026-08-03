@@ -2,9 +2,10 @@
 type: Feature
 parent: "[[Codebase health]]"
 order: 70
-status: Open
+status: Done
 area: testing
 created: 2026-08-03
+closed: 2026-08-03
 ---
 
 # The model build states its cost as a check
