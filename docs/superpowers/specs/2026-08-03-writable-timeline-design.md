@@ -378,6 +378,16 @@ the identity; `timelineDrag.ts` decides what a position means.
   zoom **while panned away from today**, since at today the two rules agree and the bug
   is invisible.
 
+  **And it is every scroll box the frame owns, not just the timeline.** Bounding the
+  bands (see *Zoom and today*) turned each of them into a scroll box of its own, so the
+  shelf and the context strip now have offsets to lose — and a rebuild empties the whole
+  pane. The shelf is the one that bites: scheduling a card *is* a rebuild, so a reader
+  working down a long shelf would be thrown back to its top on every single drop, which
+  is worse than never having scrolled it. So the snapshot returns the frame's scroll
+  boxes and capture and restore walk them, rather than naming the timeline and being
+  extended once per band anyone remembers. A band that scrolls has its place kept; that
+  follows from the band rule instead of being maintained alongside it.
+
   **And the offsets are captured from the OLD scroller, before the DOM goes.**
   `renderTreeContent` reads `treeEl.scrollTop` / `scrollLeft` just before `treeEl.empty()`,
   which is the pane — on the dated axis those are the offsets of a box that no longer
