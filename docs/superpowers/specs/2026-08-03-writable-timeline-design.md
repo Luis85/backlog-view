@@ -155,6 +155,12 @@ back separately; `null` removing a key only where the note carries it; an end th
 change nothing dropped from the batch. The gestures build a `SchedulePlan` of civil-date
 strings and hand it over.
 
+It stays type-agnostic, deliberately: **which** ends a plan may name is `placementEnds`
+in `interactions/plan.ts`, where the type rules already live and where `unschedule`
+already asks. Pushing the marker narrowing down into the planner would put a type rule
+in two places, and the one that got updated would be whichever the next gesture
+remembered.
+
 ### The write path — `src/view/host.ts`, `src/view/interactions/plan.ts`
 
 One new host method, `performScheduleMove(item, plan)` — the only place a date batch is
@@ -208,9 +214,18 @@ the identity; `timelineDrag.ts` decides what a position means.
   names: a marker on a start-only axis has no key it may write, so its card offers no
   grip at all and stays on the shelf until a target property is configured
   ([[Drag from the shelf to schedule]] extension `2e`).
-- A shelf drop writes decision 2's span. A body slide steps whole days, moving **only
-  the ends the note actually states** — both, so a two-ended slide never changes
-  duration; the stated one alone where the bar has one, its open end staying open. The
+- **Every date plan is built from `placementEnds`, not from what the bar draws.** The
+  narrowing is one rule and it reaches every gesture: `computeScheduleWrites` is
+  deliberately type-agnostic, so a plan assembled from the rendered span would write a
+  marker's start on the shelf drop ([[Drag from the shelf to schedule]] extension `2e` —
+  target alone, however many properties are configured) and carry its stale start along
+  on a slide ([[Move and resize a bar]] extension `1g`). Stating it per gesture is how
+  the third one gets missed; the ends a gesture may touch are asked once, from the same
+  predicate that already decides what is draggable and what an unschedule removes.
+- A shelf drop writes decision 2's span — for a marker, its target alone at the drop
+  day. A body slide steps whole days, moving **only the ends the note actually states**
+  (and may touch) — both, so a two-ended slide never changes duration; the stated one
+  alone where the bar has one, its open end staying open. The
   bar's rendered width is not a duration to preserve when half of it is an absence:
   filling it in would close a one-ended plan by a gesture that promised to move it, and
   equal ends would draw a milestone the note never claimed
@@ -300,7 +315,11 @@ covers `rawStart` / `rawTarget` surviving the read the parsed triple discards.
 A new `test/view/timelineDrag.test.ts` drives the gestures — the shelf drop, the body
 slide, both end grips, the clamp at equal, the bar-to-shelf removal, the drag that ends
 nowhere, the marker on a start-only axis offering no grip, and the one-ended bar whose
-body slide leaves its open end open. Three of its cases are about what a removal
+body slide leaves its open end open. A marker with both properties configured is driven
+through **every** gesture — shelf drop, body slide, bar-to-shelf — asserting the same
+thing each time: the target moves and the start is never written. One case per gesture,
+because "the plan is narrowed by type" is a category claim and the next gesture is
+exactly the one that would break it. Three further cases are about what a removal
 *leaves*, not what it takes: a parent with dated descendants previews and announces the
 inferred span it keeps, one with a wholly dateless subtree previews and announces the
 shelf, and a marker carrying a stale start previews the shelf — the trio being the check
