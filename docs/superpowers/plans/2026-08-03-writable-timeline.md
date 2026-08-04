@@ -2501,13 +2501,18 @@ describe('preserving a place across a zoom change', () => {
 		const window = view.roadmap?.window;
 		if (!window) throw new Error('no window');
 		const monthPx = scaleFor('month').dayPx;
-		scroller().scrollLeft = 100 * monthPx;
-		const leading = dayAt(window, scaleFor('month'), scroller().scrollLeft);
+		// Day 100 of the window, in CONTENT coordinates — past the sticky lead column,
+		// which is what `scrollLeft` counts from. Asserted against a pixel offset
+		// computed here from first principles rather than by calling the production
+		// conversion on both sides: a test that reuses the instrument passes whatever
+		// the instrument does with the lead, which is exactly how this one hid the bug.
+		scroller().scrollLeft = TIMELINE_LEAD_PX + 100 * monthPx;
 
 		view.setZoom('quarter');
 
 		const after = view.roadmap?.window;
-		expect(dayAt(after!, scaleFor('quarter'), scroller().scrollLeft)).toEqual(leading);
+		const day = daysBetween(after!.start, window.start) + 100;
+		expect(scroller().scrollLeft).toBe(TIMELINE_LEAD_PX + day * scaleFor('quarter').dayPx);
 	});
 });
 ```
@@ -2593,8 +2598,15 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 		offsets[box.key] = { top: box.el.scrollTop, left: box.el.scrollLeft };
 	}
 	const scroller = roadmap?.scroller ?? null;
+	// `scrollLeft` is measured from the CONTENT's left edge, and the first
+	// `TIMELINE_LEAD_PX` of that is the sticky lead column, not plan. Feeding it to
+	// `dayAt` unadjusted reads the row labels as 55 days of calendar at month zoom, so
+	// the anchor names a date nobody was looking at. Every conversion between an offset
+	// on this scroller and a date subtracts the lead going in and adds it coming out.
 	const leadingDate =
-		scroller && roadmap?.window && roadmap.scale ? dayAt(roadmap.window, roadmap.scale, scroller.scrollLeft) : null;
+		scroller && roadmap?.window && roadmap.scale
+			? dayAt(roadmap.window, roadmap.scale, scroller.scrollLeft - TIMELINE_LEAD_PX)
+			: null;
 	return { ...anchor, offsets, leadingDate };
 }
 
@@ -2645,7 +2657,10 @@ function anchorScrollLeft(
 ): number {
 	if (!same) return todayLeft == null ? 0 : Math.max(todayLeft - viewport / 2, 0);
 	if (scale !== anchor.scale && anchor.leadingDate && roadmap?.window && roadmap.scale) {
-		return Math.max(daysBetween(roadmap.window.start, anchor.leadingDate) * roadmap.scale.dayPx, 0);
+		// The lead comes back on: these offsets are content coordinates, which is also
+		// what `todayLeft` is measured in (`renderTimeline` adds the same constant).
+		const day = daysBetween(roadmap.window.start, anchor.leadingDate);
+		return Math.max(TIMELINE_LEAD_PX + day * roadmap.scale.dayPx, 0);
 	}
 	const saved = anchor.offsets['timeline']?.left ?? anchor.offsets['pane']?.left ?? 0;
 	if (todayLeft != null && anchor.todayLeft != null) return Math.max(saved + (todayLeft - anchor.todayLeft), 0);
@@ -3058,6 +3073,10 @@ const SHELF_COMPACT_PX = 560;
 export function syncShelfFit(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const snapshot = host.roadmap;
 	if (!snapshot || snapshot.roadmap.axis !== 'dates' || !snapshot.shelfEl) return;
+	// Same rule as the toggle's: the cards decide. An empty shelf is still an element —
+	// the drop target a drag needs — and compacting THAT would put `pbl-shelf-compact` on
+	// the strip that has to be reachable while a card is in the air.
+	if (snapshot.shelfPaths.size === 0) return;
 	// Two cases, not three: no press yet means the width decides, and a press means the
 	// press decides. Written as one conditional so nothing else can be read into it.
 	const compact = host.shelfOpen === null ? treeEl.clientWidth < SHELF_COMPACT_PX : !host.shelfOpen;
@@ -3127,7 +3146,12 @@ In `src/view/render/toolbar.ts`, built inside `renderTimelineControls` and updat
 export function syncShelfToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	const btn = barEl.querySelector<HTMLButtonElement>('.pbl-shelf-toggle');
 	if (!btn) return;
-	const shelf = host.roadmap?.shelfEl ?? null;
+	const snapshot = host.roadmap ?? null;
+	// The CARDS decide, not the element. An empty shelf still renders — `pbl-shelf-empty`
+	// exists so a drag has somewhere to land, kept out of the layout until one is live —
+	// so `shelfEl !== null` is true with nothing on it, and the toggle would offer to
+	// collapse a region that is empty and invisible.
+	const shelf = snapshot && snapshot.shelfPaths.size > 0 ? snapshot.shelfEl : null;
 	btn.toggleClass('pbl-hidden-ctl', shelf === null);
 	if (shelf === null) return;
 	const open = !shelf.hasClass('pbl-shelf-compact');
