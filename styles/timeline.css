@@ -304,6 +304,13 @@
 	display: none;
 }
 
+/* Cards nest one level deeper than this rule was written for (`.pbl-shelf-group` wraps
+   the header and its `.pbl-shelf-cards`), so the group wrapper needs its own rule or
+   the type-group headers survive compaction with no cards left under them. */
+.pbl-shelf-compact .pbl-shelf-group {
+	display: none;
+}
+
 /* A control for a region that is not on screen is a defect in the other direction. */
 .pbl-hidden-ctl {
 	display: none;

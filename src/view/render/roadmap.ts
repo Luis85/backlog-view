@@ -137,7 +137,7 @@ export function syncShelfFit(host: BacklogViewHost, treeEl: HTMLElement): void {
 	// Same rule as the toggle's: the cards decide. An empty shelf is still an element —
 	// the drop target a drag needs — and compacting THAT would put `pbl-shelf-compact` on
 	// the strip that has to be reachable while a card is in the air.
-	if (snapshot.shelfPaths.size === 0) return;
+	if (snapshot.shelfPaths.size === 0 || host.shelfCollapsed) return;
 	// Zero while detached or before the first layout — the same guard `syncColumnFit`
 	// keeps for the tree's own ladder: keep the last decision rather than reading an
 	// unmeasured pane as narrow. Only the width-decided branch can be fooled by it; a

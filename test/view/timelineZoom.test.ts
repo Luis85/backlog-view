@@ -127,6 +127,7 @@ describe('the shelf on a narrow pane', () => {
 		const vault = shelvedVault();
 		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		widthOf(treeOf(containerEl), 320);
 		view.render();
 
@@ -159,6 +160,7 @@ describe('the shelf on a narrow pane', () => {
 		const vault = shelvedVault();
 		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		widthOf(treeOf(containerEl), 320);
 		view.render();
 		const toggle = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-toggle');
@@ -200,6 +202,7 @@ describe('the shelf on a narrow pane', () => {
 		const vault = shelvedVault();
 		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		widthOf(treeOf(containerEl), 900);
 		view.render();
 		expect(shelfOf(containerEl)?.hasClass('pbl-shelf-compact')).toBe(false);
@@ -247,6 +250,7 @@ describe('the shelf on a narrow pane', () => {
 		const vault = shelvedVault();
 		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		widthOf(treeOf(containerEl), 320);
 		view.render();
 		const before = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-toggle')?.getAttribute('aria-controls');

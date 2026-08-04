@@ -134,8 +134,10 @@ paints nothing, so a test can assert the class and never the layout — is
 [[Smoke test the visual changes]]'s to check.
 
 **2a's narrow-pane compaction** ([[Zoom and the today marker]] extension 2a) is built
-too: the shelf compacts to its labelled count in a narrow pane, one action from open,
-carried by a real toolbar control — synced rather than conditionally rendered, so a
-render that rebuilds the pane without touching the toolbar still leaves the toggle
-naming a shelf that exists — never vanishing outright, because an unplaced result may
-lose its card but never its existence.
+too: an already-expanded shelf compacts to its labelled count in a narrow pane, carried
+by a real toolbar control — synced rather than conditionally rendered, so a render that
+rebuilds the pane without touching the toolbar still leaves the toggle naming a shelf
+that exists — never vanishing outright, because an unplaced result may lose its card but
+never its existence. Opening a shelf collapsed in the first place is a separate control,
+[[The shelf, organized]]'s own collapse toggle; this one only governs how an already-open
+shelf behaves on a narrow pane.

@@ -392,7 +392,7 @@ export function syncShelfToggle(host: BacklogViewHost, barEl: HTMLElement): void
 	// exists so a drag has somewhere to land, kept out of the layout until one is live —
 	// so `shelfEl !== null` is true with nothing on it, and the toggle would offer to
 	// collapse a region that is empty and invisible.
-	const shelf = snapshot && snapshot.shelfPaths.size > 0 ? snapshot.shelfEl : null;
+	const shelf = snapshot && snapshot.shelfPaths.size > 0 && !host.shelfCollapsed ? snapshot.shelfEl : null;
 	btn.toggleClass('pbl-hidden-ctl', shelf === null);
 	if (shelf === null) return;
 	const open = !shelf.hasClass('pbl-shelf-compact');

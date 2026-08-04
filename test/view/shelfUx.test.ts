@@ -121,14 +121,14 @@ describe('the shelf toolbar controls', () => {
 });
 
 /**
- * `syncShelfControls`'s call site (a render-loop hook, alongside `syncCountLabel`) is
- * Task 5's job, not this one — see `shelfControls.ts`'s own doc comment. These tests
- * drive the function directly against the toolbar `renderShelfControls` already built,
- * the same way a domain function is unit-tested ahead of the caller that will invoke it
- * in production: the point is coverage of the function's own branches, not the
- * render-lifecycle wiring, which is out of scope here.
+ * `syncShelfControls` is driven directly here rather than through its real call site (a
+ * render-loop hook, alongside `syncCountLabel`, now wired in `renderTreeContent` — see
+ * `shelfControls.ts`'s own doc comment) — the same way a domain function is unit-tested
+ * ahead of the caller that invokes it in production: the point is coverage of the
+ * function's own branches, not the render-lifecycle wiring, which the view's other
+ * suites already exercise.
  */
-describe('syncing the shelf controls directly (call site arrives in a later task)', () => {
+describe('syncing the shelf controls directly', () => {
 	it('fills the real shelf count and the accessible collapse-toggle name', () => {
 		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		const bar = toolbarOf(containerEl);

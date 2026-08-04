@@ -11,8 +11,7 @@ export interface ShelfGroup {
 }
 
 /** The trailing group for any type `ALL_TYPES` does not name. */
-// fallow-ignore-next-line unused-export
-export const OTHER_GROUP = 'Other';
+const OTHER_GROUP = 'Other';
 
 /**
  * The canonical `ALL_TYPES` entry this card's own badge names, or `OTHER_GROUP` when
