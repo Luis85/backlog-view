@@ -1,5 +1,5 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
-import { hasTag, normalizeTag, ownValue, readString, readTags } from '../domain/noteFields';
+import { hasTag, normalizeTag, ownValue, readDate, readString, readTags } from '../domain/noteFields';
 import { AXIS_FIELDS, BacklogSettings, isDoneValue, OptionalField, optionalKeyFor, vaultFolder } from '../domain/settings';
 import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
@@ -107,7 +107,7 @@ function applyInto(
 	// to, not a pair of empty strings.
 	for (const { key, value } of axisEntries(settings, write.axis)) {
 		if (value === null) delete fm[key];
-		else setOwn(fm, key, value);
+		else setOwn(fm, key, mergeDate(ownValue(fm, key), value));
 	}
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
 	// here rather than trusted from the plan for the reason the tag delta and the start
@@ -246,6 +246,42 @@ function isBlank(value: unknown): boolean {
 	if (typeof value === 'string') return value.trim() === '';
 	if (Array.isArray(value)) return value.every((entry) => isBlank(entry));
 	return false;
+}
+
+/**
+ * The requested CIVIL date, wearing whatever time and offset the note currently holds.
+ *
+ * The merge happens here rather than in the plan because the live value is the only
+ * one that can be trusted: the row that planned this can be a refresh behind the note,
+ * and a suffix taken from the model would overwrite a time somebody changed in
+ * between. [[Move and resize a bar]] extension 1e is the requirement — a drag re-plans
+ * a date, it does not re-format a value.
+ *
+ * A value the reader REFUSES contributes no shape: `soon` is not a date with a time
+ * attached, and carrying its text forward would write `2026-08-05soon`. Only the
+ * suffix of a value that actually parses as a date rides along, which is exactly the
+ * `readDate` regex's own trailing group.
+ */
+function mergeDate(live: unknown, requested: string): unknown {
+	// The CONTAINER is part of the shape. `readDate` reads the first entry of ANY
+	// non-empty list, so `[2026-08-10T09:00+02:00, …]` is an accepted datetime — and a
+	// merge that only understood strings would answer it with a bare scalar, dropping
+	// the time, the list and every entry after the first in one move. Unwrap the way the
+	// reader unwraps: replace the entry it read, leave the rest exactly as they are.
+	if (Array.isArray(live) && live.length > 0) {
+		const rest = live.slice(1) as unknown[];
+		return [mergeDate(live[0] as unknown, requested), ...rest];
+	}
+	// ASKED OF `readDate`, not of the pattern alone. A regex matching the shape is not
+	// the same question as the model's reader accepting the value: `2026-02-30T09:00+02:00`
+	// is datetime-shaped and refused (February has no thirtieth), so a pattern-only test
+	// would carry its suffix onto the correction while this paragraph claimed refused
+	// values contribute no shape. Borrowing the model's own reader is this codebase's
+	// rule for every live read anyway — a stricter or looser second reader is how one
+	// question came to have two answers.
+	if (typeof live !== 'string' || readDate(live).value === null) return requested;
+	const match = /^\d{4}-\d{1,2}-\d{1,2}([Tt\s].*)$/.exec(live.trim());
+	return match ? `${requested}${match[1]}` : requested;
 }
 
 /**

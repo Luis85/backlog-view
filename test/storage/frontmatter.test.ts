@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyRestores, applyWrites, createBacklogItem, RestoreWrite } from '../../src/storage/frontmatter';
-import { defaultSettings } from '../../src/domain/settings';
-import { FakeVault } from '../helpers/vault';
+import { defaultSettings, resolveSettings } from '../../src/domain/settings';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 const settings = defaultSettings();
 
@@ -562,5 +562,66 @@ describe('applying date stamps', () => {
 		// Nothing changed, so nothing is undoable — a declined stamp must not cost the
 		// user the undo of the change before it.
 		expect(inverses).toEqual([]);
+	});
+});
+
+describe('the axis write keeps the value’s own shape', () => {
+	it('replaces the date and leaves the time and offset the note carries', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { start: '2026-08-01T09:00+02:00' } });
+		const settings = resolveSettings(new FakeViewConfig({ startProperty: 'note.start' }));
+
+		await applyWrites(vault.app, settings, [{ file, axis: { start: '2026-08-05' } }]);
+
+		expect(vault.fm('Item.md').start).toBe('2026-08-05T09:00+02:00');
+	});
+
+	it('keeps a shape the note gained AFTER the model was built', async () => {
+		// The case a model-carried suffix could not see and would silently overwrite:
+		// the plan was made against a plain date, and by the time it lands the note
+		// carries a time somebody else set. A planner-level test cannot reach this.
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { start: '2026-08-01' } });
+		const settings = resolveSettings(new FakeViewConfig({ startProperty: 'note.start' }));
+		vault.fm('Item.md').start = '2026-08-01T14:30:00';
+
+		await applyWrites(vault.app, settings, [{ file, axis: { start: '2026-08-05' } }]);
+
+		expect(vault.fm('Item.md').start).toBe('2026-08-05T14:30:00');
+	});
+
+	it('writes a plain date where the note has no time to keep, and never invents one', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: {} });
+		const settings = resolveSettings(new FakeViewConfig({ targetProperty: 'note.target' }));
+
+		await applyWrites(vault.app, settings, [{ file, axis: { target: '2026-08-05' } }]);
+
+		expect(vault.fm('Item.md').target).toBe('2026-08-05');
+	});
+
+	it('takes no shape from a datetime whose DATE the reader refuses', async () => {
+		// Shaped like a datetime and still refused — February has no thirtieth — so a
+		// pattern-only test would carry `T09:00+02:00` onto the correction. Watched
+		// failing with the `readDate` gate removed: the regex matches either way.
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { target: '2026-02-30T09:00+02:00' } });
+		const settings = resolveSettings(new FakeViewConfig({ targetProperty: 'note.target' }));
+
+		await applyWrites(vault.app, settings, [{ file, axis: { target: '2026-08-05' } }]);
+
+		expect(vault.fm('Item.md').target).toBe('2026-08-05');
+	});
+
+	it('takes no shape from a value the reader refuses', async () => {
+		// `soon` is not a date with a time attached; replacing it is a correction, and
+		// carrying its text forward would write `2026-08-05soon`.
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { target: 'soon' } });
+		const settings = resolveSettings(new FakeViewConfig({ targetProperty: 'note.target' }));
+
+		await applyWrites(vault.app, settings, [{ file, axis: { target: '2026-08-05' } }]);
+
+		expect(vault.fm('Item.md').target).toBe('2026-08-05');
 	});
 });
