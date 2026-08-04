@@ -317,6 +317,66 @@ describe('holding a bar', () => {
 		expect(vault.fm('Parent.md').start).toBe('2026-08-31');
 	});
 
+	it('counts a start grip from the window edge when the note states neither end — target inferred from a child alone', async () => {
+		// `heldDate`'s own docstring calls the `?? parts.window.start` arm unreachable
+		// "through `barHolds` (a grip exists only where at least one end is genuinely
+		// the note's own)". That claim does not hold: `barHolds` withholds a START grip
+		// only for an INFERRED start, and a start that is simply absent — no evidence
+		// from children either — is not inferred (`inferredStart` is false whenever the
+		// derived start stays null, whether or not anything was ever stated). A parent
+		// whose only child supplies a TARGET still offers a start grip on a bar whose
+		// own start and target are both null, and this drags exactly that grip.
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-09-01' }, parentLink: 'Parent' });
+		const { containerEl } = datedView(vault);
+		const scale = scaleFor('month');
+
+		expect(gripNames(containerEl, 'Parent')).toEqual(['start']);
+
+		gridDrag(gripOf(containerEl, 'Parent', 'start'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 3 * scale.dayPx });
+		await flush();
+
+		// Three days from the window's own left edge (2026-07-01) — the only baseline
+		// left once neither end is the note's own.
+		expect(vault.fm('Parent.md').start).toBe('2026-07-04');
+	});
+
+	it('clamps a start grip at equal rather than crossing a stated target', async () => {
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+		const scale = scaleFor('month');
+
+		gridDrag(gripOf(containerEl, 'Planned', 'start'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 30 * scale.dayPx });
+		await flush();
+
+		// The mirror of the end-grip clamp above: dragged past its own target, the
+		// start clamps to it rather than crossing into a reversed pair.
+		expect(vault.fm('Planned.md').start).toBe('2026-08-10');
+		expect(vault.fm('Planned.md').target).toBe('2026-08-10');
+	});
+
+	it('previews no ghost when a live refusal on the untouched end would shelve the result', () => {
+		// The preview asks the same `placeItem` the write does, against the CURRENT
+		// model (`source.item` is re-resolved by path, not the captured snapshot) — so
+		// a concurrent edit that makes the untouched end unreadable is seen before the
+		// drop, and the grid draws nothing rather than a ghost for a bar that would not
+		// exist. `bodySlide` only plans the end being dragged; the other end's value on
+		// preview comes from `plannedEnds`' live fallback.
+		const vault = scheduleVault();
+		const { containerEl, view } = datedView(vault);
+		const scale = scaleFor('month');
+
+		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'end'), { clientX: 1000 });
+		vault.setFrontmatter('Planned.md', { type: 'PBI', order: 10, start: 'not a date', target: '2026-08-10' });
+		refresh(view, vault);
+
+		const overlay = overlayOf(containerEl);
+		gesture.over(overlay, { clientX: 1000 + 3 * scale.dayPx });
+		expect(overlay.querySelector('.pbl-drop-ghost')).toBeNull();
+		gesture.cancel();
+	});
+
 	it('a source wired by one controller is not droppable on another’s target', () => {
 		// The `canDrop` contract stated as a test rather than as the comment it is
 		// today: two saved views can sit in split panes over the same notes, and the

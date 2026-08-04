@@ -5,10 +5,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BacklogItem } from '../../src/domain/model';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { flush, refresh, useViewHarness } from '../helpers/view';
-import { announced, cardDrag, startCardDrag } from '../helpers/dnd';
+import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
+import { announced, cardDrag, gridDrag, overlayOf, pannedGrid, startCardDrag } from '../helpers/dnd';
 import { boardVault, cardByTitle, columnByName, makeBoard } from '../helpers/board';
-import { horizonVault, makeRoadmap } from '../helpers/roadmap';
+import { gripOf, horizonVault, makeRoadmap } from '../helpers/roadmap';
+import { FakeVault } from '../helpers/vault';
 
 useViewHarness();
 
@@ -76,5 +77,39 @@ describe('a drop whose note went away mid-drag', () => {
 		cardDrag(cardByTitle(containerEl, 'Epic B'), columnByName(containerEl, 'Done'));
 		await flush();
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Epic B.md']);
+	});
+});
+
+describe('a positional drag whose note is gone by the time the grid resolves it', () => {
+	it('previews nothing and writes nothing', async () => {
+		// The dated axis's grid is the one target `wirePositionalTarget` wires
+		// (`interactions/timelineDrag.ts`), and its `canDrop` checks only the view
+		// token, not resolvability — so a vanished note reaches `report`'s and
+		// `onDrop`'s own `if (resolved)` guards rather than being refused earlier, the
+		// same way the region target above is. Taken straight out of the live model
+		// rather than a full `refresh`, which would rebuild the grid and its
+		// listeners along with everything else and drop the gesture with them.
+		const vault = new FakeVault();
+		vault.addFile('Planned.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' },
+		});
+		const harness = makeView(vault, { startProperty: 'note.start', targetProperty: 'note.target' }, { collapsed: true });
+		harness.view.setProjection('roadmap');
+		// 700, matching the other grid fixtures' placing tests, keeps the pointer well
+		// clear of the sticky lead column — a coordinate that landed there would take
+		// `onDrag`'s and `onDrop`'s OWN early return before ever reaching `resolved`,
+		// which would make this pass whether or not `report`'s guard does its job.
+		const at = pannedGrid(harness.containerEl, { rectLeft: 220, scrollLeft: 640 });
+
+		const gesture = gridDrag.start(gripOf(harness.containerEl, 'Planned', 'body'), { clientX: at(700) });
+		harness.view.model?.byPath.delete('Planned.md');
+
+		const overlay = overlayOf(harness.containerEl);
+		gesture.over(overlay, { clientX: at(700) });
+		expect(overlay.querySelector('.pbl-drop-ghost')).toBeNull();
+		gesture.drop(overlay, { clientX: at(700) });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
 	});
 });

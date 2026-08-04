@@ -402,6 +402,22 @@ describe('scheduling from the row', () => {
 		expect(inputs[0].value).toBe('2026-08-03');
 	});
 
+	it('validates a start-only vault’s one-field entry with no target key to compare against', async () => {
+		// The mirror of the milestone case above: here it is `target` that is absent
+		// from the submitted values, not `start` — `validateSchedule`'s own two `?? ''`
+		// fallbacks answered from the other side, on the ordinary work-item path this
+		// vault's configuration (not the type) narrows to one field.
+		const vault = planVault();
+		const { containerEl } = makeView(vault, { horizonProperty: 'note.horizon', startProperty: 'note.start' });
+
+		menuFor(containerEl, 'Untriaged').item('Schedule')?.click();
+		submitSchedule(['2026-09-01']);
+		await flush();
+
+		expect(vault.fm('Untriaged.md')['start']).toBe('2026-09-01');
+		expect('due' in vault.fm('Untriaged.md')).toBe(false);
+	});
+
 	it('leaves an end alone that another edit changed while the prompt sat open, unless the user touched it', async () => {
 		const vault = planVault();
 		const { containerEl } = makeView(vault, AXES);
@@ -543,5 +559,26 @@ describe('placement actions answer for the milestone type', () => {
 		const { containerEl } = makeView(vault, AXES);
 
 		expect(titlesOfMenu(menuFor(containerEl, 'Ship 1.0'))).not.toContain('Unschedule');
+	});
+
+	it('writes a milestone’s target alone from its one-field entry, leaving an unreadable start it was never asked about', async () => {
+		// The entry narrows to the fields the type answers for (`scheduleFields`), so
+		// a milestone's submitted values never carry a `start` key at all —
+		// `validateSchedule` and `planFrom` both have to answer a field that is simply
+		// ABSENT rather than blank, which an ordinary work item's entry (both fields
+		// always present) never exercises. The stray unreadable start proves the
+		// difference: a blank SUBMITTED field clears a value the reader refuses (see
+		// "still clears a date the note does state" above), but a field the entry
+		// never offered must leave one alone, unreadable or not.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, start: 'not a real date' } });
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Ship 1.0').item('Schedule')?.click();
+		submitSchedule(['2026-10-01']);
+		await flush();
+
+		expect(vault.fm('Ship 1.0.md')['due']).toBe('2026-10-01');
+		expect(vault.fm('Ship 1.0.md')['start']).toBe('not a real date');
 	});
 });
