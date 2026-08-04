@@ -24,9 +24,12 @@ criteria, which is why they get two backlog notes rather than one.
 
 **In:**
 - Shelf collapse (default collapsed), remembered per view like `mode`/`axis`.
-- Shelf items grouped under always-on type sub-headers (Epic → Feature → PBI → Task,
-  the fixed vocabulary `domain/settings.ts` already declares as `LEVELS`), fixed order,
-  empty groups omitted.
+- Shelf items grouped under always-on type sub-headers, in `ALL_TYPES` order (Epic,
+  Feature, PBI, Task, Issue, Bug, Milestone — `domain/settings.ts`'s complete declared
+  vocabulary, not just the four-rung `LEVELS` ladder), with a trailing "Other" group for
+  any further custom type the model admits when `hierarchyOnly` is off. Fixed order,
+  empty groups omitted. Every card the shelf holds lands in exactly one group — the
+  shelf's own "no result is ever silently omitted" guarantee must survive grouping.
 - A display-only sort control, applied *within* each type group: tree order (default),
   title A→Z, last modified. Never written anywhere — `domain/CLAUDE.md`'s rule that
   order inside a column is derived, never stored, holds unchanged.
@@ -69,9 +72,13 @@ function organizeShelf(
 ): ShelfGroup[];            // ShelfGroup = { type: string; cards: ShelfCard[] }
 ```
 
-Group order is the fixed level ladder (`LEVELS` from `settings.ts`), never the input
-order. A group is omitted entirely when it is empty or its type is in `hiddenTypes` —
-same rule, one branch. Within a surviving group, `'tree'` keeps the input order (the
+Group order is fixed — `ALL_TYPES` from `settings.ts` (Epic, Feature, PBI, Task, Issue,
+Bug, Milestone), then a trailing `Other` group for any type `ALL_TYPES` doesn't name —
+never the input order. A group is omitted entirely when it is empty or its type is in
+`hiddenTypes` — same rule, one branch. The `Other` group exists so that a custom type
+(reachable when `hierarchyOnly` is off) still gets a home instead of vanishing from the
+shelf, which is what a `LEVELS`-only ladder would have done to it, and to every Issue,
+Bug and Milestone card besides. Within a surviving group, `'tree'` keeps the input order (the
 shelf's existing sibling-order guarantee), `'title'` compares item titles, and
 `'modified'` reads `item.file.stat.mtime` — already on every `BacklogItem` via its
 `TFile`, so no new field or vault read is needed, only a comparator. Pure, so it is a
@@ -135,9 +142,12 @@ position its load-order comment calls for.
   card grid below, so every card in the roadmap is sized the same way.
 - Spacing and the horizontal-overflow bug get a pass alongside the rewrite — both were
   living in code being rewritten anyway.
-- `styles/roadmap.css`: `.pbl-bucket` changes from `flex: 0 0 260px` to
-  `flex: 1 1 280px`, so buckets share the row's full width equally down to 280px before
-  the row falls back to its existing horizontal scroll. `.pbl-bucket-cards` changes from
+- `styles/roadmap.css`: `.pbl-bucket` changes from `flex: 0 0 260px` (with today's
+  `min-width: 0`, which lets a flex-shrink basis be ignored entirely) to
+  `flex: 1 1 280px; min-width: 280px` — the explicit `min-width` is what actually stops
+  the shrink at 280px; `flex-basis` alone is not a floor once shrinking is enabled. Only
+  past that floor does the row overflow into its existing `.pbl-tree` horizontal scroll.
+  `.pbl-bucket-cards` changes from
   a flex column to `display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))` —
   the same grid rule as the shelf, so a wide bucket shows multiple card columns and a
   narrow one (many buckets, or a narrow pane) stays single-column with no code branch
@@ -146,10 +156,13 @@ position its load-order comment calls for.
 ## Testing
 
 - **Domain** (`test/domain/`, new file beside `shelf.ts`): fixed group order regardless
-  of input order; empty groups omitted; each sort variant (`tree`, `title`, `modified`);
-  a hidden type's group entirely absent from the output; the count of `organizeShelf`'s
-  output cards across all groups always equals the input length (nothing silently
-  dropped by grouping, only by the explicit hide).
+  of input order (including `Other` for an off-ladder type); empty groups omitted; each
+  sort variant (`tree`, `title`, `modified`); a hidden type's group entirely absent from
+  the output. Two separate conservation assertions, not one: with no hidden types, the
+  output's total card count equals the input length (grouping alone drops nothing); with
+  `hiddenTypes` non-empty, it equals the input length minus the cards whose type is
+  hidden (the filter is the only thing allowed to drop a card, and it must drop exactly
+  those).
 - **Storage** (`test/storage/collapseStore.test.ts`): round-trip for the three new
   fields, and defensive rejection of a malformed stored value for each — mirroring the
   existing `mode`/`axis` coverage exactly.
