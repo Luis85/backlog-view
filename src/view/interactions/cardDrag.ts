@@ -1,11 +1,12 @@
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/types';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { HorizonSource, placementLabel, RoadmapModel, targetLabel } from '../../domain/roadmap';
-import { Placement, StatedEnds, UNSCHEDULED_LABEL } from '../../domain/bars';
+import { BarHold, Placement, StatedEnds, UNSCHEDULED_LABEL } from '../../domain/bars';
 import { PlacementEnd } from '../../domain/itemTypes';
 import { DateSpan, daysBetween, formatCivil } from '../../domain/timeline';
 import { DateChange } from '../../storage/frontmatter';
@@ -60,6 +61,38 @@ export function announceHorizonMove(
 ): void {
 	if (!roadmap) return;
 	announceMove(title, placementLabel(roadmap, from), targetLabel(roadmap, to));
+}
+
+/**
+ * A resolved drag source: the card's item, which hold was taken, and where it began.
+ */
+export interface CardSource {
+	item: BacklogItem;
+	/** Null for an ordinary card — a bucket's, the shelf's, the board's. */
+	hold: BarHold | null;
+	/**
+	 * The scroller's offset when this drag STARTED, for the delta a positional gesture
+	 * measures. On the payload rather than latched by the target, because the baseline
+	 * belongs to the GESTURE: a hold that auto-scrolls, leaves the overlay over the
+	 * sticky lead column or the shelf, and comes back would re-latch on re-entry and
+	 * lose every pixel of pan accumulated before it — moving the bar by fewer days than
+	 * the pointer asked for. Minted where the token is, so it cannot outlive its drag
+	 * or be cleared at the wrong moment. Null for a card wired without a scroller.
+	 */
+	scrollLeft: number | null;
+}
+
+/**
+ * What a region does beyond taking the drop. All optional: a bucket needs none of them,
+ * while the dated shelf needs both — it honours one hold and previews what its removal
+ * would leave. The hooks carry the RESOLVED source, which the highlight-only contract
+ * never had to expose and a hover preview cannot do without.
+ */
+export interface DropHooks {
+	/** Which sources this region honours. Refusing withholds the highlight too. */
+	accepts?: (source: CardSource) => boolean;
+	onEnter?: (source: CardSource) => void;
+	onLeave?: () => void;
 }
 
 /**
@@ -118,13 +151,22 @@ export class CardDragController {
 	 * A result card is a drag source. A context card never is — it is placement,
 	 * not population, and the write a drag plans is exactly what the context-row
 	 * rule forbids for it.
+	 *
+	 * `hold` and `originScroll` ride the payload rather than being read at drop time:
+	 * `getInitialData` runs at drag START, which is exactly when a hold and a scroll
+	 * baseline mean something — see `CardSource`.
 	 */
-	wireCard(cardEl: HTMLElement, item: BacklogItem): void {
+	wireCard(cardEl: HTMLElement, item: BacklogItem, hold: BarHold | null = null, originScroll?: () => number): void {
 		if (item.outsideFilter) return;
 		this.cleanups.push(
 			draggable({
 				element: cardEl,
-				getInitialData: () => ({ path: item.file.path, view: this.token }),
+				getInitialData: () => ({
+					path: item.file.path,
+					hold,
+					scrollLeft: originScroll?.() ?? null,
+					view: this.token,
+				}),
 				onDragStart: () => {
 					this.viewEl.addClass('pbl-dragging');
 					cardEl.addClass('pbl-drag-source');
@@ -139,42 +181,111 @@ export class CardDragController {
 	}
 
 	/**
+	 * The item a payload names, resolved at DROP time — the dragged path outlives the
+	 * model it was taken from, because a refresh mid-drag can drop the note.
+	 *
+	 * The `typeof` is the TYPE system's, not a runtime case: pragmatic hands
+	 * `source.data` back as `Record<string, unknown>`, while `canDrop` admits only a
+	 * source carrying this controller's private token and the one place minting that
+	 * token pairs it with `item.file.path`, a string, always. Its false arm is
+	 * therefore unreachable by construction and undeletable by typing, so it is left
+	 * uncovered on purpose and the reason is written here — the same reasoning
+	 * `.fallowrc.json` uses for a member only a framework calls, though that file is
+	 * read by a tool and this paragraph by a person. Reaching the branch would take a
+	 * faked adapter payload.
+	 */
+	private resolve(data: Record<string, unknown>): CardSource | null {
+		const path = data.path;
+		const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
+		if (!item) return null;
+		return {
+			item,
+			hold: (data.hold as BarHold | null | undefined) ?? null,
+			scrollLeft: typeof data.scrollLeft === 'number' ? data.scrollLeft : null,
+		};
+	}
+
+	/**
 	 * A region a card can be dropped on, for as long as it renders — an empty column
 	 * and an empty shelf included. `plan` is what the drop MEANS, and it belongs to
 	 * the caller: this module knows how to resolve a dragged card, never what moving
-	 * it should write.
+	 * it should write. `hooks` is optional and unused by a plain region — the dated
+	 * shelf is the first caller that needs it, to preview what its removal would leave.
 	 */
-	wireDropTarget(el: HTMLElement, plan: (item: BacklogItem) => void): void {
+	wireDropTarget(el: HTMLElement, plan: (item: BacklogItem) => void, hooks: DropHooks = {}): void {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
-				// Only this view's own drags: a foreign card must not even highlight,
-				// or the signal would promise a drop the write path should never make.
-				canDrop: ({ source }) => source.data.view === this.token,
-				onDragEnter: () => el.addClass(DROP_OVER),
-				onDragLeave: () => el.removeClass(DROP_OVER),
+				// Only this view's own drags, and — where the caller asks — only the
+				// sources this region actually honours. REFUSED rather than ignored, so
+				// the strip never highlights for a drag it would not act on, the same
+				// reason a foreign view's card is refused instead of dropped silently.
+				canDrop: ({ source }) => {
+					if (source.data.view !== this.token) return false;
+					const resolved = this.resolve(source.data);
+					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
+				},
+				onDragEnter: ({ source }) => {
+					el.addClass(DROP_OVER);
+					const resolved = this.resolve(source.data);
+					if (resolved) hooks.onEnter?.(resolved);
+				},
+				onDragLeave: () => {
+					el.removeClass(DROP_OVER);
+					hooks.onLeave?.();
+				},
 				onDrop: ({ source }) => {
 					el.removeClass(DROP_OVER);
-					const path = source.data.path;
-					// The dragged path outlives the model it was taken from — a refresh
-					// mid-drag can drop the note — so the item is resolved at drop time.
-					//
-					// The `typeof` is the TYPE system's, not a runtime case: pragmatic
-					// hands `source.data` back as `Record<string, unknown>`, so the
-					// narrowing cannot be deleted — while `canDrop` above admits only a
-					// source carrying this controller's private token, and the one place
-					// minting that token (`wireCard`) pairs it with `item.file.path`, a
-					// string, always. Its false arm is therefore unreachable by
-					// construction and undeletable by typing, so it is left uncovered
-					// on purpose and the reason is written here — the same reasoning
-					// `.fallowrc.json` uses for a member only a framework calls, though
-					// that file is read by a tool and this paragraph by a person.
-					// Reaching the branch would take a faked adapter payload.
-					const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
+					hooks.onLeave?.();
 					// The host owns the write AND the announcement: a drop is one of three
 					// inputs to the same move, and three callers announcing separately is
 					// how they come to say different things about the same change.
-					if (item) plan(item);
+					const resolved = this.resolve(source.data);
+					if (resolved) plan(resolved.item);
+				},
+			}),
+		);
+	}
+
+	/**
+	 * A region where the POSITION of the pointer is the message, not merely the region
+	 * — the timeline's grid. Registered through this controller like every other
+	 * target, so it gates on the same private token and keeps the same
+	 * resolve-at-drop-time rule: the stakes here are the RECEIVING view's date keys, so
+	 * a card crossing between two split panes would write a different property than the
+	 * gesture showed.
+	 *
+	 * What a position MEANS is the caller's, exactly as `plan` is for a region target.
+	 */
+	wirePositionalTarget(
+		el: HTMLElement,
+		handlers: {
+			onDrag: (source: CardSource, clientX: number, originX: number) => void;
+			onDrop: (source: CardSource, clientX: number, originX: number) => void;
+			onLeave: () => void;
+		},
+	): void {
+		const report = ({ source, location }: { source: { data: Record<string, unknown> }; location: DragLocationHistory }) => {
+			const resolved = this.resolve(source.data);
+			// Both coordinates, always: `initial` is where the drag STARTED, which a
+			// delta read needs and no handler should have to capture for itself.
+			if (resolved) handlers.onDrag(resolved, location.current.input.clientX, location.initial.input.clientX);
+		};
+		this.cleanups.push(
+			dropTargetForElements({
+				element: el,
+				canDrop: ({ source }) => source.data.view === this.token,
+				// `onDragEnter` fires SYNCHRONOUSLY (a hierarchy change), so the preview
+				// paints on the very first frame a drag crosses onto the overlay — the
+				// adapter's own `onDrag` is throttled to one animation frame, which would
+				// otherwise leave the pointer's first position unshown until the next one.
+				onDragEnter: report,
+				onDrag: report,
+				onDragLeave: () => handlers.onLeave(),
+				onDrop: ({ source, location }) => {
+					handlers.onLeave();
+					const resolved = this.resolve(source.data);
+					if (resolved) handlers.onDrop(resolved, location.current.input.clientX, location.initial.input.clientX);
 				},
 			}),
 		);

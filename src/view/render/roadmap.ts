@@ -6,6 +6,8 @@ import { renderTimeline } from './timeline';
 import { BacklogViewHost, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
+import { canSchedule } from '../interactions/plan';
+import { wireTimelineDrag } from '../interactions/timelineDrag';
 import { BacklogItem } from '../../domain/model';
 import { ShelfCard } from '../../domain/bars';
 import { buildRoadmap, HorizonBucket, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
@@ -19,12 +21,14 @@ import { CivilDate } from '../../domain/noteFields';
  * always renders once an axis exists: an empty roadmap is an empty frame, never
  * no frame.
  *
- * The horizon axis writes: a bucket is a drop target, the shelf is the one that
- * un-places, and both plan through the host's one move. The dated axis is still
- * read-only — its gestures are the scheduling feature's, and a drag with no write
- * behind it would be a promise this projection cannot keep — so `dnd` is passed on
- * only where a drop means something, and that null is what withholds every
- * draggable on the timeline.
+ * Both axes write: the horizon axis's bucket and shelf are drop TARGETS, the board's
+ * rule; the dated axis's grid is one POSITIONAL target instead — there are no lanes
+ * yet, so only the pointer's X says anything, and `interactions/timelineDrag.ts`
+ * decides what it means. `dnd` is the same controller either way, wired differently
+ * per axis by `renderBucket`/`wireTimelineDrag` below. What is still withheld on the
+ * dated axis is a BAR as a drag source — moving one already placed reads a delta, not
+ * a position, and is the next increment's — so today only a shelf card can be picked
+ * up there.
  */
 export function renderRoadmap(
 	ctx: RowContext,
@@ -57,18 +61,12 @@ export function renderRoadmap(
 	let scroller: HTMLElement | null = null;
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
-	// Null on the dated axis, and that null is the whole withholding: no draggables and
-	// no drop targets — one condition rather than a flag per affordance. It is the
-	// TARGETING that goes, not the strip: an occupied shelf still renders there, because
-	// what sits outside the plan is worth reading whether or not it can be moved. What
-	// the dated axis loses is the EMPTY shelf, which exists only to be dropped onto.
-	const placing = axis === 'horizons' ? dnd : null;
-	if (placing) {
+	if (axis === 'horizons') {
 		const bucketsEl = frameEl.createDiv({ cls: 'pbl-roadmap-buckets' });
-		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, placing));
+		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd));
 		// The pane is the scroller, not the frame: the frame is `max-content` wide and
 		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
-		placing.wireScroller(treeEl);
+		dnd.wireScroller(treeEl);
 	} else {
 		const activeScale = scaleFor(host.zoom);
 		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, today, activeScale);
@@ -77,8 +75,14 @@ export function renderRoadmap(
 		scroller = timeline.scroller;
 		window = timeline.window;
 		scale = activeScale;
+		wireTimelineDrag(ctx, dnd, {
+			overlay: timeline.overlay,
+			scroller: timeline.scroller,
+			window: timeline.window,
+			scale: activeScale,
+		});
 	}
-	const shelf = renderShelf(ctx, frameEl, roadmap.shelf, placing, host.shelfId);
+	const shelf = renderShelf(ctx, frameEl, roadmap.shelf, dnd, axis);
 	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);
@@ -233,22 +237,24 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
  * reports how much of the backlog is not yet planned instead of implying the
  * plan is the whole story.
  *
- * `dnd` is non-null exactly where a drop on the shelf means something, and it is
- * also what keeps an EMPTY shelf on the page: the shelf is the target that
- * un-places, and a target that exists only while it is occupied is one nothing can
- * ever reach. It carries `pbl-shelf-empty` then, which the stylesheet keeps out of
- * the layout until a drag is live — so "takes no space" and "is reachable" are both
- * true, one in CSS and one in the DOM.
+ * An EMPTY shelf stays in the DOM only where a drop on it means something — the
+ * horizon axis, where it is the target that un-places, and a target that exists
+ * only while it is occupied is one nothing can ever reach. On the dated axis a drop
+ * back onto the shelf writes nothing yet (a bar is not a drag source until the hold
+ * gestures ship), so an empty strip there would be the projection promising a write
+ * it cannot make — [[Roadmap empty states]]'s own rule, restated for this band. A
+ * NON-empty shelf always renders regardless: its cards are worth reading, and on the
+ * dated axis they are now a drag source of their own, one gesture onto the grid.
  */
 function renderShelf(
 	ctx: RowContext,
 	frameEl: HTMLElement,
 	shelf: ShelfCard[],
-	dnd: CardDragController | null,
-	shelfId: string,
+	dnd: CardDragController,
+	axis: RoadmapAxis,
 ): { cards: BacklogItem[]; el: HTMLElement | null } {
 	const empty = shelf.length === 0;
-	if (empty && !dnd) return { cards: [], el: null };
+	if (empty && axis !== 'horizons') return { cards: [], el: null };
 	const shelfEl = frameEl.createDiv({
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : ''),
 		attr: { role: 'group', 'aria-label': `${SHELF_LABEL}, ${shelf.length} item${shelf.length === 1 ? '' : 's'}` },
@@ -257,7 +263,7 @@ function renderShelf(
 	// toolbar's toggle names this id in `aria-controls`, and the toolbar survives a
 	// content-only render that rebuilds this element — a per-render id would leave
 	// the button pointing at a detached node the instant that happened.
-	shelfEl.id = shelfId;
+	shelfEl.id = ctx.host.shelfId;
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
 	setIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
 	header.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
@@ -266,9 +272,9 @@ function renderShelf(
 	// the board's no-state column does.
 	setTooltip(
 		header,
-		dnd
+		axis === 'horizons'
 			? 'Results this axis cannot place — dropping a card here removes its horizon'
-			: 'Results this axis cannot place — no placement on their own notes yet',
+			: 'Results this axis cannot place — drag one onto the grid to schedule it',
 	);
 	const cardsEl = shelfEl.createDiv({ cls: 'pbl-shelf-cards' });
 	for (const entry of shelf) {
@@ -282,11 +288,16 @@ function renderShelf(
 			reason.createSpan({ text: entry.reason });
 		}
 		wireCardActivation(ctx, card, entry.item);
-		dnd?.wireCard(card, entry.item);
+		// A gesture whose only possible batch is empty must not begin: on the dated
+		// axis that is `canSchedule`, the same gate the row's own Schedule entry uses
+		// (`interactions/plan.ts`) — a marker with no writable end offers no grip at
+		// all. On the horizon axis every shelved item can always be placed.
+		if (axis === 'horizons' || canSchedule(ctx.host.settings, entry.item)) dnd.wireCard(card, entry.item);
 	}
 	// Entering the vocabulary is the triage gesture, so the shelf is a drag SOURCE as
-	// much as a target — and dropping back on it un-places, the mirror write.
-	dnd?.wireDropTarget(shelfEl, (item) => void ctx.host.performHorizonMove(item, null));
+	// much as a target — and dropping back on it un-places, the mirror write. Only on
+	// the horizon axis: the dated axis has no drag source that would land here yet.
+	if (axis === 'horizons') dnd.wireDropTarget(shelfEl, (item) => void ctx.host.performHorizonMove(item, null));
 	return { cards: shelf.map((entry) => entry.item), el: shelfEl };
 }
 

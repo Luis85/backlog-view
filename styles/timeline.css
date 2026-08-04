@@ -34,6 +34,51 @@
 	min-height: 100%;
 }
 
+/* The one drop target over the day area — never "the track", which is redrawn per row
+   and per header and covers none of the gaps or the blank space below the last row.
+   Positioned past the sticky lead column, which is what makes that exclusion structural
+   rather than a constant the pointer conversion has to keep in step with. Pointer events
+   only while a drag is live, the empty shelf's own trick, so it never sits between the
+   reader and a bar's grips the rest of the time. */
+.pbl-timeline-drop {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-tl-lead);
+	right: 0;
+	z-index: 2;
+	pointer-events: none;
+}
+
+.pbl-dragging .pbl-timeline-drop {
+	pointer-events: auto;
+}
+
+/* The preview: a ghost bar and the dates it means, so the drop states its contract
+   before it commits it. */
+.pbl-drop-ghost {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: var(--pbl-ghost-left);
+	width: var(--pbl-ghost-width);
+	height: 14px;
+	border-radius: var(--radius-s);
+	border: 1px dashed var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-drop-ghost-dates {
+	position: absolute;
+	top: calc(50% + 14px);
+	left: var(--pbl-ghost-left);
+	padding: var(--size-2-1) var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	white-space: nowrap;
+}
+
 .pbl-timeline-header {
 	display: flex;
 	position: sticky;

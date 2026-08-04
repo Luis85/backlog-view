@@ -114,7 +114,13 @@ the keys rather than blanking them.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The span-at-a-cell plan is a date write beside
-the drop plans in `src/domain/writePlan.ts`; the gesture and its indicators extend
-`src/view/interactions/dragDrop.ts`; the write, the key removal and their inverses are
-`src/storage/frontmatter.ts`.
+The shelf-to-grid half is built: the pointer is turned into a date by
+`src/view/interactions/timelineDrag.ts`, which registers the grid's one positional
+target through `src/view/interactions/cardDrag.ts` — never a target per row, since
+without lanes only the X says anything — and hands the resulting plan to
+`host.performScheduleMove` in `src/view/backlogView.ts`, the single place a date batch
+is planned, applied through `src/storage/frontmatter.ts`, and announced. The drop
+overlay itself is `src/view/render/timeline.ts`'s, spanning the day area past the
+sticky lead column. What is still open: the grid-to-shelf removal (extension 4) and a
+lane's reparent (extension 2d) are later increments' — see [[Lanes on the roadmap]] —
+and neither is built here.

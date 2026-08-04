@@ -310,11 +310,20 @@ free of runtime code so imports stay cycle-free.
   is focusable or written, so the milestone's own row carries the name and the exact
   dates together in its accessible name, which is where a fact the line shows must also
   be reachable without it.
-- On top of that, the HORIZON axis is directly manipulable and the dated axis is not,
-  and the difference is structural rather than a flag: `renderRoadmap` passes the drag
-  controller on only where a drop has a write behind it, so nothing on the timeline is
-  draggable and the shelf there is not a target. A projection must not offer a gesture
-  it cannot keep — moving a *bar* is scheduling's own feature, arriving with its plans.
+- Both axes are directly manipulable now, but not the same way. The horizon axis's
+  buckets and shelf are ordinary drop TARGETS — the board's rule, a region highlights
+  and the highlight is the whole signal. The dated axis has no lanes, so a row carries
+  no meaning of its own; `renderRoadmap` wires its grid as ONE positional target
+  instead (`interactions/timelineDrag.ts`, registered through `CardDragController`
+  like every other target), where only the pointer's X says anything and `dayAt` turns
+  it into a date. A projection must not offer a gesture it cannot keep: what the dated
+  axis still withholds is a BAR as a drag source — sliding or resizing one already
+  placed reads a delta rather than a position, and is scheduling's own next
+  increment — so today only a shelf card, gated by `canSchedule` (a marker with no
+  writable end offers no grip at all), can be picked up there, and only onto the grid;
+  dropping back onto the shelf writes nothing yet, so an EMPTY dated-axis shelf stays
+  out of the DOM exactly as before, the same "no write, no target" rule the horizon
+  axis's occupied one never had to answer to.
 - So on the horizon axis: a bucket and the shelf are drop targets, a result card is a
   drag source (a context card never is), and Alt+Left/Right steps one placement. All
   three land on `performHorizonMove`, and so does Set horizon while that axis is drawn

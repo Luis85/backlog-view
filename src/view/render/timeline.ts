@@ -48,6 +48,8 @@ export interface TimelineRender {
 	content: HTMLElement;
 	/** The window the grid drew, for the drag's px↔date and for the zoom anchor. */
 	window: TimelineWindow;
+	/** The one drop target spanning the day area — see `renderTimeline`'s own comment. */
+	overlay: HTMLElement;
 }
 
 export function renderTimeline(
@@ -86,7 +88,18 @@ export function renderTimeline(
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
-	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window };
+	// One overlay over the day area, spanning the full height of the CONTENT (which is
+	// at least the scrollport, so the blank grid below the last row — the state every
+	// fresh backlog starts in — is a drop target too). Positioned past the sticky lead
+	// column in CSS, so the exclusion the pointer conversion depends on is structural
+	// rather than a constant kept in step with the stylesheet.
+	//
+	// It takes pointer events only while a drag is LIVE, so it never sits between the
+	// reader and a bar's grips: the empty shelf's own trick — in the DOM so a drop has
+	// somewhere to land, out of the way until a drag needs it — reached by a second
+	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
+	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
+	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay };
 }
 
 /** Presentational, like the tree's column header: every row carries its own dates. */
@@ -226,7 +239,8 @@ function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
 	return cls;
 }
 
-function spanText(bar: TimelineBar): string {
+/** One sentence about a span, said identically on the grid and in the drop ghost. */
+export function spanText(bar: TimelineBar): string {
 	const span = bar.span;
 	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
 	if (span.start !== null && span.target !== null) {
