@@ -2121,6 +2121,8 @@ files:
   - src/view/render/shelfControls.ts
   - src/view/render/toolbar.ts
   - src/view/render/roadmap.ts
+  - styles/shelf.css
+  - styles/roadmap.css
 ---
 
 # The shelf, organized
@@ -2222,11 +2224,16 @@ focused view whose only visible row is a context card already placed inside a bu
 Driven in `test/view/shelfUx.test.ts` (accessors added to `test/helpers/roadmap.ts`),
 including the invariant that the shelf stays a drop target while collapsed.
 
-Card sizing and the spacing/overflow fixes live in the new `styles/shelf.css`, moved out
-of `styles/timeline.css` (which carried it only because the shelf and the timeline
-shipped together, not because it belongs there). The full-width/grid layout itself is a
-live-vault check — jsdom has no layout engine — recorded verified only after
-`npm run test-build`.
+Card sizing — the uniform-width grid, the collapsed footprint — lives in the new
+`styles/shelf.css`, moved out of `styles/timeline.css` (which carried it only because
+the shelf and the timeline shipped together, not because it belongs there). The
+flush-edge gutter and overflow fix is NOT in `shelf.css`: it is the pinned-strip rule
+(`.pbl-roadmap .pbl-shelf, .pbl-roadmap .pbl-roadmap-context, .pbl-roadmap
+.pbl-board-advisory`) in `styles/roadmap.css`, changed by the same task that gives the
+buckets their own full-width layout — the rule governs the shelf's POSITION within the
+roadmap's scrollport, which is a roadmap-layout concern `roadmap.css` already owns,
+not shelf-internal appearance. The full-width/grid layout itself is a live-vault check
+— jsdom has no layout engine — recorded verified only after `npm run test-build`.
 ```
 
 - [ ] **Step 2: Create the second PBI note**
@@ -2289,8 +2296,11 @@ a fixed 260px column under-uses a wide pane far more than the board's columns do
   that point the row scrolls horizontally exactly as it did before this PBI.
 - Cards inside a bucket lay out as a CSS grid, reflowing into more columns as the
   bucket's rendered width allows, with no stretch applied to a sparse bucket's cards.
-- No behavior changes for the shelf, the context strip, the dated axis, or the board:
-  this PBI is `styles/roadmap.css` only.
+- No BUCKET-behavior changes for the shelf, the context strip, the dated axis, or the
+  board — this PBI's own rules are `.pbl-bucket`/`.pbl-bucket-cards` in
+  `styles/roadmap.css` only. That file also carries the shelf's flush-edge gutter fix
+  in the same task, but that fix is "The shelf, organized"'s acceptance criterion, not
+  this one's — sharing a stylesheet is not sharing behavior.
 
 ## Where it lives
 
