@@ -86,6 +86,25 @@ embedded case.
 then press jump-to-today: confirm it returns in one action and the line is where it
 lands.
 
+**The band rule holds on the dated axis.** Shrink the pane's height until the shelf,
+the context strip and the advisory cannot all fit. Confirm each one caps its own
+height and scrolls its own content — none of them sticks to the scrollport the way
+they do on the horizon axis, because the frame no longer scrolls sideways under them
+there. `styles/roadmap.css` states this cascade; jsdom cannot compute a winner between
+two same-specificity rules, so whether the cap actually applies is a vault question.
+
+**The ghost's date label can render off-screen at a bar's far grip.** Pan the timeline
+so a bar's start sits off the left edge of the pane — a plan spanning back before the
+window's current view — and grab that bar's END grip. The pointer and the grip are
+both plainly visible, but `timelineDrag.ts`'s preview positions
+`.pbl-drop-ghost-dates` at the bar's START day (`--pbl-ghost-left`, the same variable
+the ghost bar itself uses), so the date text can render off-screen or under the sticky
+lead column while the thing being dragged is in full view. This is the specific case
+where "the preview reads as a contract" above is reliably answered no — not a general
+claim about the preview, but this one grip, on this one shape of bar. Not a fix for
+this note: the label is chrome and legitimately wants a viewport-relative position,
+unlike everything else this module draws, and that redesign is not this note's call.
+
 ## Acceptance criteria
 
 - Checked in both light and dark themes.

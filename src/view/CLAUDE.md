@@ -372,8 +372,11 @@ free of runtime code so imports stay cycle-free.
   with the scheduling feature.
 - `todayCivil()` is computed in the view and INJECTED into the domain: nothing under
   `domain/` reads a clock, which is what keeps every window and geometry test able to
-  say which day today is. The timeline scrolls to today only while `scrollLeft` is 0 —
-  a data update mid-session must not yank the view back to now.
+  say which day today is. The timeline centres on today only when the drawn content
+  CHANGES — `anchorScrollLeft`'s `same` test, comparing `drawnContent` against the
+  previous `ScrollAnchor.content` — never on a same-content refresh, whatever
+  `scrollLeft` happens to be: a data update mid-session must not yank the view back to
+  now.
 - The board- and roadmap-mode CSS guards both clear the tree's stale `pbl-hide-*`
   verdicts; the fit ladder is the tree's alone.
 
