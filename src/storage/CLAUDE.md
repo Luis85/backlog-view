@@ -14,7 +14,12 @@ can be checked by reading one directory.
   `createBacklogItem`), and every write path — including creation — goes through the
   `configProblems` gate.
 - `applyWrites` is serialized but not transactional: a mid-batch failure leaves the
-  earlier writes applied (orders self-correct on the next renumbering drop).
+  earlier writes applied (orders self-correct on the next renumbering drop). A date
+  batch REFUSED against the live note stops there for the same reason and reports what
+  landed rather than claiming nothing did — the refusal needs frontmatter only readable
+  inside `processFrontMatter`, so there is no pass that could refuse every file up front
+  without opening each twice. Every date batch today is one write, which is why the two
+  readings coincide; the outcome is what makes the difference visible if that changes.
 - `applyWrites` hands each write's inverse to `onInverse` AS IT LANDS — incrementally,
   because a mid-batch failure leaves the earlier writes applied, and those are exactly
   the ones still needing undo. A write that changed nothing emits no inverse: a state
@@ -72,7 +77,12 @@ can be checked by reading one directory.
 - The roadmap's placement keys (`ItemWrite.axis`) follow the state key's two rules:
   never written to an unconfigured key, and a null REMOVES rather than blanks. Applying
   and capturing read the same `axisEntries` list — a key written but not captured would
-  be a change no undo could reach, which is exactly how a hole gets in.
+  be a change no undo could reach, which is exactly how a hole gets in. They share that
+  writer and NOT a meaning: the dated ends get civil-date equality and the datetime shape
+  merge, the horizon gets neither. `readDate` accepts a trailing group, so a label like
+  `2026-08-01 Planning` parses as a date — treated as one, re-picking `2026-08-01 Review`
+  compares equal and writes nothing, and the merge carries ` Planning` onto its
+  replacement. `axisEntries` yields the FIELD with the key so that stays decidable.
 - Two writes here are not work items — the `.base` file and the generated README — and
   both are in this directory for the same reason: "everything that puts bytes in the vault
   is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also

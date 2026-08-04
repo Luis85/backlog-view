@@ -12,7 +12,15 @@ import {
 	readString,
 	readTags,
 } from '../domain/noteFields';
-import { AXIS_FIELDS, BacklogSettings, isDoneValue, OptionalField, optionalKeyFor, vaultFolder } from '../domain/settings';
+import {
+	AXIS_FIELDS,
+	AxisField,
+	BacklogSettings,
+	isDoneValue,
+	OptionalField,
+	optionalKeyFor,
+	vaultFolder,
+} from '../domain/settings';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
@@ -106,10 +114,14 @@ export async function applyWrites(
 			// changed — a marker's stale start most of all.
 			const ends = placementEnds(readString(ownValue(fm, settings.typeKey)));
 			const before = axisSpan(fm, settings);
-			// Refusals are asked of the LIVE note before anything is touched, and they
-			// refuse the batch WHOLE: a partly-applied batch leaves the note in a state
-			// nobody asked for, which is `applySafely`'s own rule reaching the one
-			// decision it cannot make from outside the file.
+			// Asked of the LIVE note before this file is touched, so a note that no longer
+			// fits the plan is never half-written. It stops the batch where it stands
+			// rather than undoing what came before it: the check needs the live
+			// frontmatter, which is only readable inside this callback, so there is no
+			// pass that could refuse every file up front without opening each of them
+			// twice. Every date batch today is ONE write, so the two are the same thing —
+			// and the outcome below reports what actually landed rather than claiming
+			// nothing did, which is what makes the difference visible if that changes.
 			if (refusesAxis(fm, settings, write, ends)) {
 				refused = true;
 				return;
@@ -131,8 +143,16 @@ export async function applyWrites(
 		});
 		if (refused) {
 			console.error('Product Backlog: refused a date batch the note no longer fits', write);
-			new Notice('That note changed while the move was in flight, so nothing was written.');
-			return { changed: false, dates: null };
+			new Notice(
+				outcome.changed
+					? 'That note changed while the move was in flight, so the rest of the move was not written.'
+					: 'That note changed while the move was in flight, so nothing was written.',
+			);
+			// The accumulated outcome, not a fresh `changed: false`: writes before this
+			// one landed and emitted their inverses, and reporting otherwise would tell
+			// the caller — and the announcement — that a change nobody can see did not
+			// happen.
+			return outcome;
 		}
 		if (inverse) {
 			outcome.changed = true;
@@ -203,12 +223,21 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
  * unscheduled is a state a note returns to, not a pair of empty strings.
  */
 function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	for (const { key, value } of axisEntries(settings, write.axis)) {
+	for (const { field, key, value } of axisEntries(settings, write.axis)) {
 		if (value === null) {
 			// A removal for a key that is not there changes nothing, and `captureInverse`
 			// already reports that by capturing no inverse — but deleting a missing key
 			// is also not a write, so this is the same statement made once.
 			delete fm[key];
+			continue;
+		}
+		// A HORIZON is a label, not a date, and the two rules below would both misread
+		// one. `readDate` accepts a trailing group, so `2026-08-01 Planning` parses as a
+		// date: picking `2026-08-01 Review` over it would compare equal and be skipped as
+		// a re-pick, and a merge would carry ` Planning` onto whatever replaced it. The
+		// axis fields share a writer, not a meaning.
+		if (field === 'horizon') {
+			setOwn(fm, key, value);
 			continue;
 		}
 		const live = readDate(ownValue(fm, key));
@@ -376,13 +405,16 @@ function sameCivil(a: CivilDate, b: CivilDate | null): boolean {
  * Applying and capturing read the SAME list: a key written but not captured would
  * be a change no undo could reach, which is exactly how a hole gets in.
  */
-function axisEntries(settings: BacklogSettings, axis?: AxisWrite): { key: string; value: string | null }[] {
+function axisEntries(
+	settings: BacklogSettings,
+	axis?: AxisWrite,
+): { field: AxisField; key: string; value: string | null }[] {
 	if (!axis) return [];
-	const entries: { key: string; value: string | null }[] = [];
+	const entries: { field: AxisField; key: string; value: string | null }[] = [];
 	for (const field of AXIS_FIELDS) {
 		const key = optionalKeyFor(settings, field);
 		const value = axis[field];
-		if (key !== '' && value !== undefined) entries.push({ key, value });
+		if (key !== '' && value !== undefined) entries.push({ field, key, value });
 	}
 	return entries;
 }
