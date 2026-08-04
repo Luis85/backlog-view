@@ -5,6 +5,10 @@ import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { HorizonSource, placementLabel, RoadmapModel, targetLabel } from '../../domain/roadmap';
+import { Placement, UNSCHEDULED_LABEL } from '../../domain/bars';
+import { PlacementEnd } from '../../domain/itemTypes';
+import { DateSpan, daysBetween, formatCivil } from '../../domain/timeline';
+import { DateChange } from '../../storage/frontmatter';
 
 /**
  * The class every card drop target wears while a card hovers it. One name for the
@@ -175,4 +179,61 @@ export class CardDragController {
 			}),
 		);
 	}
+}
+
+/**
+ * Say what a date move changed. Old span and new, in the same live region and the same
+ * words as a board or a horizon move — a drag, a grip, the row's entry and the menu's
+ * Unschedule are one move said once.
+ *
+ * "Unscheduled" is only true where the item actually LEAVES the axis. A parent whose
+ * descendants still carry dates keeps a bar: `inferSpan` refills an end the note no
+ * longer states, so announcing a removal as "Unscheduled" would describe something
+ * other than what renders. The placement is asked of `placeItem` — the function that
+ * decides what draws — never of a comparison written beside it.
+ *
+ * A null placement means the rebuilt model has no row for this item at all: the write
+ * took its own note out of the base. Then the dates it wrote are the whole of what can
+ * honestly be said. This does NOT announce that the card left the view — that is the
+ * outcome report, which needs a note's disappearance correlated with the write that
+ * caused it, and `docs/issues/The outcome report was built from one sentence.md`
+ * records that as unsolved here.
+ */
+export function announceScheduleMove(
+	title: string,
+	change: DateChange,
+	placement: Placement | null,
+	ends: PlacementEnd[],
+): void {
+	const to = placement === null ? spanWords(change.after, ends) : placementWords(placement, ends);
+	announceMove(title, spanWords(change.before, ends), to);
+}
+
+function placementWords(placement: Placement, ends: PlacementEnd[]): string {
+	return placement.kind === 'shelf' ? UNSCHEDULED_LABEL : spanWords(placement.bar.span, ends);
+}
+
+/**
+ * A span in the register's own date format; the shelf's word when there is none.
+ *
+ * `ends` is what the placement HAS, not what the note happens to carry — the same
+ * narrowing the writer applies to the verdict. A one-ended placement is a POINT and is
+ * named by its date alone; a two-ended one with a single date stated is an OPEN bar and
+ * says which end it is open at. Both sides of the announcement go through here, so the
+ * source and the destination cannot be described in different vocabularies — the
+ * mistake `placementLabel` and `targetLabel` were split to stop making.
+ */
+function spanWords(span: DateSpan, ends: PlacementEnd[]): string {
+	if (span.start !== null && span.target !== null) {
+		return daysBetween(span.start, span.target) === 0
+			? formatCivil(span.start)
+			: `${formatCivil(span.start)} to ${formatCivil(span.target)}`;
+	}
+	const only = span.start ?? span.target;
+	if (only === null) return UNSCHEDULED_LABEL;
+	if (ends.length < 2) return formatCivil(only);
+	// Neither phrase may begin with `from` or `to`: `announceMove` already wraps both
+	// sides in "from … to …", and an open end that spelled itself that way would say
+	// "from from 2026-08-01 to Unscheduled".
+	return span.start !== null ? `${formatCivil(only)} onwards` : `up to ${formatCivil(only)}`;
 }

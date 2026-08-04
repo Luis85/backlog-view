@@ -55,6 +55,14 @@ export function withoutEnds(stated: StatedEnds, ends: PlacementEnd[]): StatedEnd
 }
 
 /** Where one item lands on this axis. */
+/**
+ * What the dated axis calls an item with no placement, wherever one is named out loud.
+ * The shelf's own word is `SHELF_LABEL` ("Unplaced") and this is deliberately not it:
+ * a horizon is triage and a date is a plan, so an item with neither is unplaced on one
+ * axis and unscheduled on the other.
+ */
+export const UNSCHEDULED_LABEL = 'Unscheduled';
+
 export type Placement = { kind: 'bar'; bar: TimelineBar } | { kind: 'shelf'; reason: string | null };
 
 /**

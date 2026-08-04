@@ -6,6 +6,7 @@ import { flush, key, makeView, refresh, submitPrompt, treeOf, useViewHarness } f
 import { announced, cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 import { bucketByName, bucketNames, horizonVault, makeRoadmap, shelfOf, shelfTitles } from '../helpers/roadmap';
+import { unschedule } from '../../src/view/interactions/plan';
 
 useViewHarness();
 
@@ -453,5 +454,111 @@ describe('creating from a bucket', () => {
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+	});
+});
+
+describe('scheduling from the row, on the one path', () => {
+	function datedVault() {
+		vi.useFakeTimers();
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-08-01', target: '2026-08-31' },
+		});
+		vault.addFile('Child.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-08-10', target: '2026-08-20' },
+			parentLink: 'Parent',
+		});
+		return vault;
+	}
+
+	function datedView(vault: FakeVault) {
+		const harness = makeView(
+			vault,
+			{ startProperty: 'note.start', targetProperty: 'note.target' },
+			{ collapsed: true },
+		);
+		harness.view.setProjection('roadmap');
+		return harness;
+	}
+
+	it('announces the dates the WRITER saw, not the ones the row was drawn from', async () => {
+		vi.useFakeTimers();
+		const vault = datedVault();
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Child.md');
+		// The note moved under the row: the screen says the 10th, the note says the 11th.
+		vault.fm('Child.md').start = '2026-08-11';
+
+		await view.performScheduleMove(item as never, { start: '2026-08-12' });
+
+		expect(await announced()).toBe('Moved "Child" from 2026-08-11 to 2026-08-20 to 2026-08-12 to 2026-08-20');
+	});
+
+	it('says nothing at all when the write changed nothing', async () => {
+		vi.useFakeTimers();
+		const vault = datedVault();
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Child.md');
+
+		const moved = await view.performScheduleMove(item as never, { start: '2026-08-10' });
+
+		expect(moved).toBe(false);
+		expect(await announced()).toBe('');
+	});
+
+	it('names the INFERRED span a parent keeps rather than claiming it was unscheduled', async () => {
+		// `inferSpan` refills an end the note no longer states, so announcing a removal
+		// as "Unscheduled" would describe something other than what renders. This is
+		// `announceHorizonMove`'s own lesson — it recorded a cleanup as "from Unplaced
+		// to Unplaced" — reached by the other axis.
+		vi.useFakeTimers();
+		const vault = datedVault();
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Parent.md');
+
+		await view.performScheduleMove(item as never, { start: null, target: null });
+
+		expect(await announced()).toBe('Moved "Parent" from 2026-08-01 to 2026-08-31 to 2026-08-10 to 2026-08-20');
+	});
+
+	it('says Unscheduled only where the item actually leaves the axis', async () => {
+		vi.useFakeTimers();
+		const vault = new FakeVault();
+		vault.addFile('Alone.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01' } });
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Alone.md');
+
+		await view.performScheduleMove(item as never, { start: null, target: null });
+
+		expect(await announced()).toBe('Moved "Alone" from 2026-08-01 onwards to Unscheduled');
+	});
+
+	it('names a marker as the point it is drawn as, on both sides of the sentence', async () => {
+		// A marker keeps a stale start deliberately, so an unnarrowed source span would
+		// announce "from 2026-07-01 to 2026-09-30 to 2026-10-15" for a note the timeline
+		// draws and edits as one September point.
+		vi.useFakeTimers();
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', {
+			frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' },
+		});
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Ship.md');
+
+		await view.performScheduleMove(item as never, { target: '2026-10-15' });
+
+		expect(await announced()).toBe('Moved "Ship" from 2026-09-30 to 2026-10-15');
+	});
+
+	it('routes the menu’s Unschedule through the same method', async () => {
+		vi.useFakeTimers();
+		const vault = datedVault();
+		const { view } = datedView(vault);
+		const spy = vi.spyOn(view, 'performScheduleMove');
+		const item = view.model?.byPath.get('Child.md');
+
+		await unschedule(view, item as never);
+
+		expect(spy).toHaveBeenCalledOnce();
 	});
 });

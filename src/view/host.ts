@@ -3,7 +3,8 @@ import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
-import { ItemWrite } from '../domain/writePlan';
+import { PlacementEnd } from '../domain/itemTypes';
+import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings, OptionalProperty } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
 
@@ -159,6 +160,27 @@ export interface BacklogViewHost {
 	 * resolves false, leaving the undo slot untouched.
 	 */
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean>;
+
+	/**
+	 * Plan and apply the date batch a schedule move means — the ends the item's own
+	 * type answers for, or their removal. The board's and the horizon axis's rule on
+	 * the dated one: one path for every input (a drag, a grip, the row's entry, the
+	 * menu's Unschedule), so no input can reach a date another cannot, and every move
+	 * that lands announces itself once. A batch the WRITER decides changed nothing
+	 * resolves false, leaving the undo slot untouched and saying nothing.
+	 *
+	 * `from` is the base a RELATIVE gesture measured against and `ends` the placement
+	 * shape it was planned under. Both ride through to the writer, which is the only
+	 * place they can be checked against the live note; both are absent from the modal
+	 * and the menu, which state a date rather than a displacement and were planned
+	 * against the item in hand.
+	 */
+	performScheduleMove(
+		item: BacklogItem,
+		plan: SchedulePlan,
+		from?: Partial<Record<PlacementEnd, string | null>>,
+		ends?: PlacementEnd[],
+	): Promise<boolean>;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;

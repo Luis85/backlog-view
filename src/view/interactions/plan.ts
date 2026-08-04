@@ -16,8 +16,15 @@ import { SchedulePromptModal } from '../../ui/prompts';
  * item rather than from the mode: the projections share one model, one gate and one
  * undo history, so a property that could only be set inside roadmap mode would be a
  * projection disagreeing about what the backlog can do. Everything here plans in
- * `domain/writePlan.ts` and applies through `host.applySafely`, which is what makes
- * a context row unwritable by construction rather than by remembering.
+ * `domain/writePlan.ts` and reaches the vault through the gate, which is what makes a
+ * context row unwritable by construction rather than by remembering.
+ *
+ * The DATE entries go the last step through `host.performScheduleMove` rather than
+ * calling the gate themselves: it is the one place a date batch is planned and the one
+ * place it is announced, so the drag, the grips, this prompt and the menu's Unschedule
+ * are one move said once. Left on `applySafely`, the row's entry would be a second idea
+ * of what scheduling is — which is the drift the rule exists to prevent, and it would
+ * show up first as a gesture that announces and a menu action that does not.
  */
 
 /**
@@ -186,14 +193,13 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 		description: 'Pick a date for each end, or clear a field to remove that date.',
 		fields: scheduleFields(host, item),
 		validate: validateSchedule,
-		onSubmit: (values) =>
-			void host.applySafely(computeScheduleWrites(item, planFrom(item, values), placementEnds(item.typeName))),
+		onSubmit: (values) => void host.performScheduleMove(item, planFrom(item, values)),
 	}).open();
 }
 
 /** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
-export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<unknown> {
+export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
 	const plan: SchedulePlan = {};
 	for (const field of placementEnds(item.typeName)) plan[field] = null;
-	return host.applySafely(computeScheduleWrites(item, plan, placementEnds(item.typeName)));
+	return host.performScheduleMove(item, plan);
 }

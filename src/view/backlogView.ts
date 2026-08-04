@@ -10,16 +10,30 @@ import {
 	RoadmapSnapshot,
 } from './host';
 import { WriteGate } from './writeGate';
-import { announceBoardMove, announceHorizonMove, CardDragController } from './interactions/cardDrag';
+import {
+	announceBoardMove,
+	announceHorizonMove,
+	announceScheduleMove,
+	CardDragController,
+} from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildColumnMenu, buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
-import { childTypeChoices } from '../domain/itemTypes';
+import { childTypeChoices, placementEnds, PlacementEnd } from '../domain/itemTypes';
+import { placeItem, StatedEnds } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { horizonSource, RoadmapAxis } from '../domain/roadmap';
-import { computeDropWrites, computeHorizonWrites, computeStateWrites, ItemWrite } from '../domain/writePlan';
-import { todayStamp } from '../domain/noteFields';
+import {
+	computeDropWrites,
+	computeHorizonWrites,
+	computeScheduleWrites,
+	computeStateWrites,
+	ItemWrite,
+	SchedulePlan,
+} from '../domain/writePlan';
+import { absentReading, CivilDate, FieldReading, todayStamp } from '../domain/noteFields';
+import { DateSpan } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
@@ -492,6 +506,41 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		);
 	}
 
+	async performScheduleMove(
+		item: BacklogItem,
+		plan: SchedulePlan,
+		from?: Partial<Record<PlacementEnd, string | null>>,
+		ends?: PlacementEnd[],
+	): Promise<boolean> {
+		// Both expectations ride through untouched: what a relative gesture measured
+		// against, and the placement shape it was planned under. Neither can be recomputed
+		// here — deriving `ends` from the item this method was handed asks the CURRENT
+		// type, which is the very thing the writer is meant to catch having changed. A
+		// PBI that became a Milestone mid-hold would narrow a two-ended slide to a
+		// target-only write and apply it; the reverse would make a marker's slide arrive
+		// looking like an ordinary end-grip write. The caller that has no captured shape —
+		// the modal, the menu — passes none and gets the item's own, which is right for a
+		// gesture that was planned against it a moment ago.
+		const writes = computeScheduleWrites(item, plan, ends ?? placementEnds(item.typeName), from);
+		if (writes.length === 0) return false;
+		const outcome = await this.applyMove(item, writes);
+		// Not "did the call return" but "did the note change": the planner now hands the
+		// gate a non-empty batch for a re-confirmed date, and `runExclusively` reports
+		// success for anything that completed. Announcing on that would tell a
+		// screen-reader user about a move that did not happen.
+		if (outcome === null || !outcome.changed || outcome.dates === null) return false;
+		// The placement is asked of `placeItem` — the function that decides what draws —
+		// with the ends the WRITER saw rather than the ones the model holds. Reading a
+		// rebuilt model here would be a race: the refresh is Obsidian re-running the
+		// query, not something this await orders, so the row could be either side of the
+		// write depending on timing. The writer's verdict has no such ambiguity, and the
+		// only thing `placeItem` needs beyond it — the descendants a parent's span is
+		// inferred from — is untouched by a write to this note's own keys.
+		const spoken = placementEnds(item.typeName);
+		announceScheduleMove(item.title, outcome.dates, placeItem(item, writtenEnds(outcome.dates.after)), spoken);
+		return true;
+	}
+
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
 		// Dropping into a collapsed parent reveals where the item landed.
 		if (target.parent) this.setCollapsed(target.parent.file.path, false);
@@ -534,4 +583,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (busy) this.treeEl.setAttribute('aria-busy', 'true');
 		else this.treeEl.removeAttribute('aria-busy');
 	}
+}
+
+/**
+ * The span the writer landed, as the tri-state ends `placeItem` reads. Absent, never
+ * invalid: these came back from a write, so they are values this plugin just produced
+ * and there is nothing unreadable to report. The distinction still has to be made
+ * explicitly, because collapsing absent into invalid would shelve a cleared end with a
+ * reason nobody caused.
+ */
+function writtenEnds(span: DateSpan): StatedEnds {
+	const end = (date: CivilDate | null): FieldReading<CivilDate> =>
+		date === null ? absentReading() : { value: date, invalid: false };
+	return { start: end(span.start), target: end(span.target) };
 }
