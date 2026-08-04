@@ -2507,13 +2507,29 @@ verify, and none of them may be reported as "done" until someone has actually lo
 
 - [ ] **Step 3: Note what still needs a human's eyes**
 
-Do not check this box until a live vault has confirmed:
-- Buckets share the pane's width on an ordinary 3-4 horizon vault, with no horizontal
-  scrollbar, and multiple card columns appear in a wide bucket.
+Every item below is a visual acceptance criterion from one of the two PBI notes Task 10
+wrote (jsdom cannot verify any of them); this list has to cover both notes' criteria in
+full, not a sample, or Step 4 can mark a PBI `Done` while one of its own stated
+guarantees is still broken. Do not check this box until a live vault has confirmed:
+
+From "Buckets that use the room they have":
+- Buckets share the pane's width equally on an ordinary 3-4 horizon vault, with no
+  horizontal scrollbar, and multiple card columns appear in a wide bucket.
+- Narrowing the pane (or adding horizons) until a bucket would drop below 280px falls
+  back to the row's horizontal scroll instead of compressing further — the same
+  behavior the fixed-width layout already had, now triggered by the floor rather than
+  always-on.
+- A sparse bucket's cards keep their natural size — they do not stretch to fill the
+  row's shared height the way the flex-column layout used to let them.
+
+From "The shelf, organized":
 - The shelf's edges have a visible gutter, not flush against the pane.
 - A collapsed shelf reads as compact chrome, not an empty box taking noticeable space.
 - The shelf's toolbar controls (collapse button, sort picker, type-filter chips) are
   legible and usable at the toolbar's normal size.
+- Shelf and context-strip cards render at a uniform width, and neither the shelf nor
+  the context strip forces a scrollbar of its own (distinct from the bucket row's,
+  above — the strips are pinned via `position: sticky`, not part of the scrolling row).
 
 - [ ] **Step 4: Only now, mark both PBIs `Done` and describe them in the README**
 
