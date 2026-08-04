@@ -8,10 +8,12 @@ import { isMarkerType } from '../../domain/itemTypes';
 import {
 	BarGeometry,
 	barGeometry,
-	DAY_PX,
 	daysBetween,
 	formatCivil,
+	MIN_BAR_PX,
+	timelineCells,
 	timelineWindow,
+	TimelineScale,
 	TimelineWindow,
 } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
@@ -38,20 +40,21 @@ export function renderTimeline(
 	containerEl: HTMLElement,
 	bars: TimelineBar[],
 	today: CivilDate,
+	scale: TimelineScale,
 ): TimelineRender {
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	const grid = containerEl.createDiv({ cls: 'pbl-timeline' });
 	grid.setCssProps({
 		'--pbl-tl-lead': `${TIMELINE_LEAD_PX}px`,
-		'--pbl-tl-days': `${window.days * DAY_PX}px`,
+		'--pbl-tl-days': `${window.days * scale.dayPx}px`,
 	});
-	const headerTrack = renderMonthHeader(grid, window);
+	const headerTrack = renderMonthHeader(grid, window, scale);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
-	renderMilestoneLines(grid, headerTrack, window, bars, today);
-	for (const bar of bars) renderBarRow(ctx, grid, window, bar);
-	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today);
+	renderMilestoneLines({ grid, headerTrack }, window, bars, today, scale);
+	for (const bar of bars) renderBarRow(ctx, grid, window, bar, scale);
+	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
 	const line = grid.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
@@ -59,13 +62,13 @@ export function renderTimeline(
 }
 
 /** Presentational, like the tree's column header: every row carries its own dates. */
-function renderMonthHeader(grid: HTMLElement, window: TimelineWindow): HTMLElement {
+function renderMonthHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
 	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-timeline-lead' });
 	const track = header.createDiv({ cls: 'pbl-timeline-track' });
-	for (const month of window.months) {
-		const cell = track.createDiv({ cls: 'pbl-timeline-month', text: month.label });
-		cell.setCssProps({ '--pbl-month-w': `${month.days * DAY_PX}px` });
+	for (const cell of timelineCells(window, scale)) {
+		const cellEl = track.createDiv({ cls: 'pbl-timeline-month', text: cell.label });
+		cellEl.setCssProps({ '--pbl-month-w': `${cell.days * scale.dayPx}px` });
 	}
 	return track;
 }
@@ -86,12 +89,13 @@ const TODAY_NUDGE_PX = 2;
  * decoration of a row, and every fact it shows is in that row's accessible name.
  */
 function renderMilestoneLines(
-	grid: HTMLElement,
-	headerTrack: HTMLElement,
+	mounts: { grid: HTMLElement; headerTrack: HTMLElement },
 	window: TimelineWindow,
 	bars: TimelineBar[],
 	today: CivilDate,
+	scale: TimelineScale,
 ): void {
+	const { grid, headerTrack } = mounts;
 	// Insertion order is bar order, which is row order — so a shared line names its
 	// milestones the way the rows read.
 	const byDay = new Map<number, string[]>();
@@ -109,7 +113,7 @@ function renderMilestoneLines(
 		// since a day is wider than either mark.
 		const nudge = day === todayDay ? TODAY_NUDGE_PX : 0;
 		const line = grid.createDiv({ cls: 'pbl-milestone-line', attr: { 'aria-hidden': 'true' } });
-		line.setCssProps({ '--pbl-milestone-left': `${TIMELINE_LEAD_PX + day * DAY_PX + nudge}px` });
+		line.setCssProps({ '--pbl-milestone-left': `${TIMELINE_LEAD_PX + day * scale.dayPx + nudge}px` });
 		// The label sits in the header band, where the month header already is, and the
 		// full name stays in the tooltip: horizontal space is the scarce resource in an
 		// Obsidian pane, so the line survives the narrowing and the text is what gives way.
@@ -117,12 +121,18 @@ function renderMilestoneLines(
 		// includes the sticky lead column, and the label inside the track, which does not.
 		const label = names.join(' · ');
 		const labelEl = headerTrack.createDiv({ cls: 'pbl-milestone-label', text: label });
-		labelEl.setCssProps({ '--pbl-milestone-left': `${day * DAY_PX + nudge}px` });
+		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
 	}
 }
 
-function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow, bar: TimelineBar): void {
+function renderBarRow(
+	ctx: RowContext,
+	grid: HTMLElement,
+	window: TimelineWindow,
+	bar: TimelineBar,
+	scale: TimelineScale,
+): void {
 	const row = createCard(ctx, grid, bar.item);
 	row.addClass('pbl-timeline-row');
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
@@ -135,8 +145,8 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
 	const geometry = barGeometry(window, bar.span);
 	const el = track.createDiv({ cls: barClasses(bar, geometry) });
 	el.setCssProps({
-		'--pbl-bar-left': `${geometry.startDay * DAY_PX}px`,
-		'--pbl-bar-width': `${Math.max(geometry.spanDays * DAY_PX, DAY_PX)}px`,
+		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
+		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
 	});
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
@@ -199,7 +209,7 @@ function spanText(bar: TimelineBar): string {
 	return `Target ${formatCivil(span.target as CivilDate)}, start not set${inferred}`;
 }
 
-function todayOffset(window: TimelineWindow, today: CivilDate): number {
+function todayOffset(window: TimelineWindow, today: CivilDate, scale: TimelineScale): number {
 	const days = Math.min(Math.max(daysBetween(window.start, today), 0), window.days - 1);
-	return days * DAY_PX;
+	return days * scale.dayPx;
 }

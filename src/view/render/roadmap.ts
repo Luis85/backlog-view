@@ -8,6 +8,7 @@ import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { BacklogItem } from '../../domain/model';
 import { buildRoadmap, HorizonBucket, RoadmapAxis, SHELF_LABEL, ShelfCard } from '../../domain/roadmap';
+import { scaleFor } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
 /**
@@ -52,7 +53,7 @@ export function renderRoadmap(
 		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
 		placing.wireScroller(treeEl);
 	} else {
-		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, today);
+		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, today, scaleFor(null));
 		cards.push(...timeline.cards);
 		todayLeft = timeline.todayLeft;
 	}

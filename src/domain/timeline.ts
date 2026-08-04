@@ -14,31 +14,82 @@ export interface DateSpan {
 	target: CivilDate | null;
 }
 
-/**
- * The grid's fixed scale, pixels per day. Months render at their true lengths
- * (28–31 days) rather than as equal boxes, so a bar's width is its duration.
- */
-export const DAY_PX = 4;
+/** Which discrete density the grid draws at. Three scales, never a continuous zoom. */
+export type ScaleId = 'week' | 'month' | 'quarter';
 
 /**
- * Backstop on how many months the grid will draw. A typo'd year must not hang
- * the view under tens of thousands of header cells; the window clamps around
- * today and the far-flung bar clips to the edge, styled as running beyond it.
+ * One density of the grid. `dayPx` is the only thing that scales — a length in DAYS is
+ * multiplied by it and a length in PIXELS is not, and mixing the two is what a zoom
+ * control turns into a bug.
+ *
+ * `lineWidth` is here rather than in the stylesheet because it is not free: today's
+ * line and a milestone dated today must both draw and not merge
+ * ([[A milestone line across the plan]] extension 1d), and the milestone's line steps
+ * aside by exactly one line width inside the same day. So a day has to be at least as
+ * wide as both marks together — `dayPx >= 2 * lineWidth`, for every scale in this
+ * table, which `test/domain/timeline.test.ts` asks of the table itself rather than of
+ * three hand-picked cases. Quarter cannot satisfy it at 2px marks and narrows them
+ * instead of losing one.
  */
-export const MAX_TIMELINE_MONTHS = 60;
+export interface TimelineScale {
+	id: ScaleId;
+	dayPx: number;
+	/** The header cell this scale draws — the unit, never the snapping grid. */
+	unit: ScaleId;
+	/** Width in pixels of a full-height mark (today, a milestone) at this density. */
+	lineWidth: number;
+}
 
-/** One header cell: a month at its true length. */
-export interface TimelineMonth {
-	label: string;
+/** Densest first. `month` is exactly what shipped, so the default view does not move. */
+export const SCALES: TimelineScale[] = [
+	{ id: 'week', dayPx: 16, unit: 'week', lineWidth: 2 },
+	{ id: 'month', dayPx: 4, unit: 'month', lineWidth: 2 },
+	{ id: 'quarter', dayPx: 2, unit: 'quarter', lineWidth: 1 },
+];
+
+export const DEFAULT_SCALE_ID: ScaleId = 'month';
+
+/** The scale a stored or picked id names; the default for anything unrecognised. */
+export function scaleFor(id: string | null): TimelineScale {
+	return SCALES.find((scale) => scale.id === id) ?? SCALES.find((scale) => scale.id === DEFAULT_SCALE_ID)!;
+}
+
+/**
+ * The narrowest a bar may be drawn, in PIXELS — its own constant rather than `dayPx`,
+ * which at quarter zoom would be one pixel: a stated plan rendered as an invisible one.
+ * This is what [[Zoom and the today marker]] extension 2a means by "the minimum
+ * drawable width". The dates are the fact and the pixels are the zoom's, but a fact
+ * drawn at zero width has stopped being reported.
+ */
+export const MIN_BAR_PX = 4;
+
+/**
+ * Backstop on how much CALENDAR the grid will draw — a time budget, never a cell
+ * count. A cell count would make the reachable calendar depend on the zoom (sixty
+ * weeks is fourteen months; sixty quarters is fifteen years), so a two-year plan
+ * visible at month zoom would clip to edge indicators at week zoom — contradicting
+ * the guarantee [[Zoom and the today marker]] states outright, that at every zoom the
+ * same results place and only the granularity changes. Roughly the sixty months this
+ * already meant.
+ */
+export const MAX_TIMELINE_DAYS = 1830;
+
+/**
+ * The dated grid: every placed date and today, padded a month each side, bounded by
+ * the day budget. Computed WITHOUT reference to the scale, so it covers the same dates
+ * at every zoom; the header cells clip against it rather than the window growing out
+ * to whole cells of whichever scale happens to be showing.
+ */
+export interface TimelineWindow {
+	start: CivilDate;
+	/** Total days the grid covers. */
 	days: number;
 }
 
-/** The dated grid: month-aligned, spanning every placed date and today, bounded. */
-export interface TimelineWindow {
-	start: CivilDate;
-	/** Total days the grid covers — the sum of the month cells. */
+/** One header cell: a unit of the active scale, clipped where the window ends. */
+export interface TimelineCell {
+	label: string;
 	days: number;
-	months: TimelineMonth[];
 }
 
 /** Days from `a` to `b` (negative when `b` precedes `a`); Date.UTC so no zone leaks in. */
@@ -96,17 +147,6 @@ function addMonths(point: MonthPoint, count: number): MonthPoint {
 	return { year: Math.floor(index / 12), month: (((index % 12) + 12) % 12) + 1 };
 }
 
-function monthsBetween(a: MonthPoint, b: MonthPoint): number {
-	return b.year * 12 + (b.month - 1) - (a.year * 12 + (a.month - 1));
-}
-
-/**
- * The month-aligned window the grid draws: every placed date and today, padded a
- * month each side. When the dates would blow past `MAX_TIMELINE_MONTHS`, the
- * window clamps to that many months around today instead — today stays in view,
- * and a bar beyond the edge clips rather than dragging thousands of empty header
- * cells into the DOM. With nothing placed it is the dated grid around today.
- */
 export function timelineWindow(spans: DateSpan[], today: CivilDate): TimelineWindow {
 	let min = today;
 	let max = today;
@@ -117,21 +157,18 @@ export function timelineWindow(spans: DateSpan[], today: CivilDate): TimelineWin
 			if (daysBetween(max, date) > 0) max = date;
 		}
 	}
-	let first: MonthPoint = addMonths({ year: min.year, month: min.month }, -1);
-	let last: MonthPoint = addMonths({ year: max.year, month: max.month }, 1);
-	if (monthsBetween(first, last) + 1 > MAX_TIMELINE_MONTHS) {
-		const anchor: MonthPoint = { year: today.year, month: today.month };
-		first = addMonths(anchor, -Math.floor(MAX_TIMELINE_MONTHS / 2));
-		last = addMonths(first, MAX_TIMELINE_MONTHS - 1);
-	}
-	const months: TimelineMonth[] = [];
-	let days = 0;
-	for (let point = first; monthsBetween(point, last) >= 0; point = addMonths(point, 1)) {
-		const length = daysInMonth(point.year, point.month);
-		months.push({ label: `${MONTH_LABELS[point.month - 1]} ${point.year}`, days: length });
-		days += length;
-	}
-	return { start: { year: first.year, month: first.month, day: 1 }, days, months };
+	const first = addMonths({ year: min.year, month: min.month }, -1);
+	const last = addMonths({ year: max.year, month: max.month }, 1);
+	const start: CivilDate = { year: first.year, month: first.month, day: 1 };
+	const end = addDays({ year: last.year, month: last.month, day: 1 }, daysInMonth(last.year, last.month) - 1);
+	const days = daysBetween(start, end) + 1;
+	if (days <= MAX_TIMELINE_DAYS) return { start, days };
+	// Clamped around TODAY, in days: the reader's own mark stays in view and the far
+	// bar clips to the edge, styled as running beyond it. The clamp is not rounded out
+	// to whole cells — that would put the scale back into the answer by the side door,
+	// since a quarter boundary reaches further than a week one, and the same bar would
+	// render normally at one zoom and as an edge indicator at another.
+	return { start: addDays(today, -Math.floor(MAX_TIMELINE_DAYS / 2)), days: MAX_TIMELINE_DAYS };
 }
 
 /**
@@ -181,4 +218,71 @@ export function barGeometry(window: TimelineWindow, span: DateSpan): BarGeometry
 		clippedEnd: endDay > lastDay,
 		outside: endDay < 0 || startDay > lastDay,
 	};
+}
+
+/** Whole-day civil arithmetic — the step every slide and resize is made of. */
+export function addDays(date: CivilDate, count: number): CivilDate {
+	const moved = new Date(utc(date) + count * 86_400_000);
+	return { year: moved.getUTCFullYear(), month: moved.getUTCMonth() + 1, day: moved.getUTCDate() };
+}
+
+/**
+ * The day a pixel offset inside the grid names, clamped into the window. The exact
+ * inverse of the `daysBetween(window.start, date)` that `barGeometry` computes, so
+ * px→date and date→px are one rule stated in two directions rather than two rules that
+ * can drift apart. A drop writes the day under the pointer at EVERY zoom: the day is
+ * the finest unit the data model has, and coarsening a date because the reader zoomed
+ * out is the silent rewrite decision 1 exists to refuse.
+ */
+export function dayAt(window: TimelineWindow, scale: TimelineScale, x: number): CivilDate {
+	const day = Math.min(Math.max(Math.floor(x / scale.dayPx), 0), window.days - 1);
+	return addDays(window.start, day);
+}
+
+/**
+ * The whole unit `day` falls in, in days — the default DURATION a shelf drop takes
+ * when the item arrives with none of its own. Used by that one gesture and by nothing
+ * else: it is not a snapping unit, and no gesture that already has a date consults it.
+ */
+export function cellSpan(scale: TimelineScale, day: CivilDate): number {
+	if (scale.unit === 'week') return 7;
+	if (scale.unit === 'month') return daysInMonth(day.year, day.month);
+	const first = quarterFirstMonth(day.month);
+	return [0, 1, 2].reduce((sum, i) => sum + daysInMonth(day.year, first + i), 0);
+}
+
+/** The header cells of one scale across the window, clipped at both edges. */
+export function timelineCells(window: TimelineWindow, scale: TimelineScale): TimelineCell[] {
+	const cells: TimelineCell[] = [];
+	for (let day = 0; day < window.days; ) {
+		const date = addDays(window.start, day);
+		const offset = unitOffset(scale, date);
+		const length = Math.min(cellSpan(scale, date) - offset, window.days - day);
+		cells.push({ label: cellLabel(scale, addDays(date, -offset)), days: length });
+		day += length;
+	}
+	return cells;
+}
+
+/** How far into its own unit a date sits — 0 when the cell starts there. */
+function unitOffset(scale: TimelineScale, date: CivilDate): number {
+	if (scale.unit === 'week') return isoWeekday(date);
+	if (scale.unit === 'month') return date.day - 1;
+	return daysBetween({ year: date.year, month: quarterFirstMonth(date.month), day: 1 }, date);
+}
+
+/** Monday is 0 — ISO 8601, one boundary on every device rather than a locale guess. */
+function isoWeekday(date: CivilDate): number {
+	return (new Date(utc(date)).getUTCDay() + 6) % 7;
+}
+
+function quarterFirstMonth(month: number): number {
+	return month - ((month - 1) % 3);
+}
+
+/** The cell's name, taken from the unit's own first day so a clipped cell still names it. */
+function cellLabel(scale: TimelineScale, unitStart: CivilDate): string {
+	if (scale.unit === 'week') return `${unitStart.day} ${MONTH_LABELS[unitStart.month - 1]}`;
+	if (scale.unit === 'month') return `${MONTH_LABELS[unitStart.month - 1]} ${unitStart.year}`;
+	return `Q${Math.floor((unitStart.month - 1) / 3) + 1} ${unitStart.year}`;
 }
