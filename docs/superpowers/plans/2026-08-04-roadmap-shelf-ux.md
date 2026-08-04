@@ -1036,12 +1036,62 @@ pass by moving the code.
 
 - [ ] **Step 1: Add helpers to `test/helpers/roadmap.ts`**
 
+This step is also what keeps every EARLIER roadmap test passing once this task makes
+`renderShelf` collapse-aware: `test/view/roadmapMoves.test.ts`, `test/view/roadmap.test.ts`
+and `test/view/roadmapFrame.test.ts` all pre-date the collapsed-by-default shelf and
+assert on shelf cards (`shelfTitles`, `cardByTitle(..., 'Untriaged' | 'Garbled' | 'Bare')`)
+being visible immediately — none of them expand the shelf first, because there was
+nothing to expand when they were written. Rather than editing each of those files,
+`makeRoadmap` itself auto-expands the shelf by default, mirroring the same precedent
+`makeView` already sets for the tree (`{ collapsed: true }` to assert on the collapsed
+state itself instead of the harness's auto-expand):
+
 ```ts
 export function shelfGroupHeaders(containerEl: HTMLElement): string[] {
 	return Array.from(shelfOf(containerEl)?.querySelectorAll<HTMLElement>('.pbl-shelf-group-name') ?? []).map(
 		(h) => h.textContent ?? '',
 	);
 }
+```
+
+Replace the existing `makeRoadmap`:
+
+```ts
+/**
+ * A view already showing the roadmap. The mode is UI state, not a base setting, so
+ * it is flipped through the host exactly as the toolbar does — never the config.
+ * The shelf itself opens collapsed by default (Task 3) — expanded here unless the
+ * caller passes `shelfCollapsed: true` to assert on the collapsed state itself, the
+ * same escape hatch `makeView`'s `collapsed` param gives the tree.
+ */
+export function makeRoadmap(
+	vault: FakeVault,
+	extra: Record<string, unknown> = {},
+	{ shelfCollapsed = false }: { shelfCollapsed?: boolean } = {},
+): Harness {
+	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true });
+	harness.view.setProjection('roadmap');
+	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
+	return harness;
+}
+```
+
+Every existing call site (`roadmapMoves.test.ts`, `roadmap.test.ts`, `roadmapFrame.test.ts`,
+`cardDrag.test.ts`) needs no change — they get the auto-expanded shelf they already assumed.
+Only tests that mean to exercise the TRUE collapsed-by-default state pass `{ shelfCollapsed:
+true }` explicitly, in the new tests below and in Task 7's drop-target test.
+
+One EARLIER test needs the same treatment retroactively: Task 5's "marks the collapse
+toggle accessibly, and flips it when toggled" asserted `aria-expanded="false"` on first
+render, which was correct against the two-argument `makeRoadmap` in place when that task
+was written — this task's new default changes what "first render" means for every caller.
+Update that test now, in `test/view/shelfUx.test.ts`:
+
+```ts
+it('marks the collapse toggle accessibly, and flips it when toggled', () => {
+	const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+	const collapseBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn');
+	// ...unchanged from here.
 ```
 
 - [ ] **Step 2: Write the failing tests**
@@ -1056,7 +1106,7 @@ import { shelfCountOf, shelfGroupHeaders, shelfOf, shelfTitles } from '../helper
 ```ts
 describe('the shelf, collapsed by default', () => {
 	it('renders nothing inside the tree until expanded, but stays a drop target', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
+		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		expect(shelfTitles(containerEl)).toEqual([]);
 		expect(shelfOf(containerEl)).not.toBeNull();
 
@@ -1065,7 +1115,7 @@ describe('the shelf, collapsed by default', () => {
 	});
 
 	it('keeps a visible label on the collapsed drop target — a user mid-drag is looking at it, not the toolbar', () => {
-		const { containerEl } = makeRoadmap(horizonVault());
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		const shelf = shelfOf(containerEl);
 		expect(shelf?.querySelector('.pbl-shelf-name')?.textContent).toBe('Unplaced');
 	});
@@ -1106,7 +1156,7 @@ describe('the shelf, collapsed by default', () => {
 	});
 
 	it('excludes collapsed shelf cards from Arrow/End keyboard navigation', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
+		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		const tree = containerEl.querySelector<HTMLElement>('.pbl-tree');
 		expect(tree?.getAttribute('role')).toBe('listbox'); // Now/Later buckets still have cards
 		expect(view.selectedPath).toBeNull();
@@ -1121,7 +1171,7 @@ describe('the shelf, collapsed by default', () => {
 	it('renders no advisory when everything is shelved and collapsed', () => {
 		const vault = new FakeVault();
 		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
-		const { containerEl } = makeRoadmap(vault);
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
 	});
 });
@@ -1397,7 +1447,7 @@ describe('the shelf as a drop target while collapsed', () => {
 	it('still un-places a card dropped on it', async () => {
 		const vault = horizonVault();
 		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 5, horizon: 'Now' } });
-		const { containerEl } = makeRoadmap(vault);
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
 		// Default collapsed — confirm the premise before testing the drop.
 		expect(shelfOf(containerEl)?.hasClass('pbl-shelf-collapsed')).toBe(true);
 
