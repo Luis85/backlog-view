@@ -51,11 +51,16 @@ recognised correctly the first time and I never have to remember the property na
 - **2a — the name matches a template that already exists in `templatesFolder`.** A number
   is appended, the same collision handling [[New item flow]] already uses.
 - **1c — `templatesFolder` is not yet configured**, whichever trigger started the flow.
-  The action asks for the folder first (reusing the folder-prompt shape
-  [[Scaffolding a backlog]] already has), sets it, then proceeds — it does not simply
-  fail with nothing to do. This is what makes **New template** and **Save as template**
-  the way someone with no templates yet gets their first one, and why neither is gated
-  behind [[Configuring the templates folder]] being done already.
+  The action asks for the folder first — the same prompt shape [[Scaffolding a backlog]]
+  uses, except an empty submission is refused here rather than accepted: there, an empty
+  answer is a legitimate "vault root"; here `''` is the exact value
+  [[Configuring the templates folder]] defines as the whole feature being off, and
+  accepting it would set the folder to "off" in the same breath as creating a template
+  inside it — leaving that template immediately undiscoverable. The prompt stays open
+  until a non-empty folder is given, then sets `templatesFolder` and proceeds. This is
+  what makes **New template** and **Save as template** the way someone with no templates
+  yet gets their first one, and why neither is gated behind
+  [[Configuring the templates folder]] being done already.
 - **3a — the folder does not exist.** It is created, the same as any other creation path.
 - **3b — the write fails.** A notice says so and points at the console, the same as
   every other creation path.
@@ -74,6 +79,9 @@ recognised correctly the first time and I never have to remember the property na
 - Both go through the same config gate as every other write.
 - A name collision in `templatesFolder` is handled the same way a title collision is
   handled elsewhere — a number appended, nothing overwritten.
+- The first-use folder prompt refuses an empty submission, so this flow can never end
+  with `templatesFolder` still `''` — the value that means the feature is off — while a
+  template note it just created sits undiscoverable.
 
 ## Where it lives
 
