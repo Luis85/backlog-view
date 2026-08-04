@@ -96,7 +96,7 @@ export function renderRoadmap(
 	// simply absent, so `captureScroll`/`restoreScroll` neither read nor write it.
 	const boxes: ScrollBox[] = [];
 	if (scroller) boxes.push({ key: 'timeline', el: scroller });
-	if (shelf.el) boxes.push({ key: 'shelf', el: shelf.el });
+	boxes.push({ key: 'shelf', el: shelf.el });
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
@@ -331,7 +331,7 @@ function renderShelf(
 	shelf: ShelfCard[],
 	dnd: CardDragController,
 	removal: ShelfRemoval,
-): { cards: BacklogItem[]; el: HTMLElement | null } {
+): { cards: BacklogItem[]; el: HTMLElement } {
 	const empty = shelf.length === 0;
 	const shelfEl = frameEl.createDiv({
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : ''),

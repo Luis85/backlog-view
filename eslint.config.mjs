@@ -242,6 +242,9 @@ export default defineConfig([
 			complexity: ['error', 16],
 			'max-depth': ['error', 4],
 			'max-params': ['error', 5],
+			// Debug logging has no other gate. console.error on a genuine failure path
+			// is the one console call this codebase makes on purpose.
+			'no-console': ['error', { allow: ['error'] }],
 		},
 	},
 	{
