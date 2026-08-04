@@ -10,6 +10,7 @@ files:
   - src/domain/shelf.ts
   - src/domain/noteFields.ts
   - src/view/render/roadmap.ts
+  - src/view/render/shelf.ts
   - src/view/render/shelfControls.ts
   - test/domain/shelf.test.ts
   - test/helpers/obsidian-mock.ts
@@ -88,18 +89,33 @@ Built. Whether a result places is a domain question answered in `src/domain/road
 (`buildRoadmap`), from fields read the way every field is read — `readPlacement` and
 `readDate` in `src/domain/noteFields.ts`, whose absent-versus-invalid distinction is
 what lets a card say why. The shelf's grouping, sorting, and filtering logic lives in
-`src/domain/shelf.ts` (`organizeShelf`). The shelf renders in `src/view/render/roadmap.ts`,
-driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts` (accessors
-in `test/helpers/roadmap.ts`).
+`src/domain/shelf.ts` (`organizeShelf`). The shelf and the context strip render in
+`src/view/render/shelf.ts` (`renderShelf`, `renderContextStrip`) — split out of
+`src/view/render/roadmap.ts`, which still builds the frame and the two axes and calls
+into `shelf.ts` for the bands beside them — driven in `test/domain/roadmap.test.ts`,
+`test/view/roadmapFrame.test.ts` and `test/view/shelfUx.test.ts` (accessors in
+`test/helpers/roadmap.ts`).
+
+The shelf's own toolbar picks (`host.shelfCollapsed`, `shelfSort`, `shelfHiddenTypes`,
+persisted UI state beside the collapse store) are what `renderShelf` now consults:
+collapsed contributes zero cards to the DOM (the drop target and its outcome preview
+are wired before that check, never after, so collapsing can never disable the one thing
+that un-places), and an expanded shelf groups its cards through `organizeShelf` — by
+type, in `ALL_TYPES` order plus a trailing `Other` — sorted within each group and
+filtered by type, all three display-only. The advisory gate on the roadmap's own empty
+state was fixed in the same change: it sums the axis's own rendered count (captured
+before the shelf renders, so collapsing the shelf cannot make it lie), the shelf's real
+count and the context strip's count, rather than counting what is currently on screen —
+an all-shelved, collapsed backlog is not empty, it is a backlog not yet planned.
 
 The shelf's interactive chrome — a collapse toggle, a sort picker, a type filter —
 cannot live inside the roadmap pane itself: it wears `role="listbox"` while any cards
 render, a one-tab-stop composite widget with no room for a `<select>` or checkboxes. It
 is built instead as toolbar chrome, a sibling of the pane rather than a descendant, in
 `src/view/render/shelfControls.ts` (`renderShelfControls`, called from `renderToolbar`),
-driven in `test/view/shelfUx.test.ts`. `syncShelfControls`, beside it, is what will fill
-the built structure with the shelf's live population, current picks, and per-type
-counts once the render loop calls it.
+driven in `test/view/shelfUx.test.ts`. `syncShelfControls`, beside it, fills the built
+structure with the shelf's live population, current picks, and per-type counts; it runs
+after every content render, alongside `syncCountLabel`.
 
 Step 4 and 2a arrived first with [[Moving between horizons]], on the horizon axis: a
 shelf card is a drag source, the shelf itself is the target that un-places, and an empty

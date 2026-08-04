@@ -31,10 +31,18 @@ export function shelfHeavyVault(): FakeVault {
 /**
  * A view already showing the roadmap. The mode is UI state, not a base setting, so
  * it is flipped through the host exactly as the toolbar does — never the config.
+ * The shelf itself opens collapsed by default (Task 3) — expanded here unless the
+ * caller passes `shelfCollapsed: true` to assert on the collapsed state itself, the
+ * same escape hatch `makeView`'s `collapsed` param gives the tree.
  */
-export function makeRoadmap(vault: FakeVault, extra: Record<string, unknown> = {}): Harness {
+export function makeRoadmap(
+	vault: FakeVault,
+	extra: Record<string, unknown> = {},
+	{ shelfCollapsed = false }: { shelfCollapsed?: boolean } = {},
+): Harness {
 	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true });
 	harness.view.setProjection('roadmap');
+	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
 	return harness;
 }
 
@@ -73,6 +81,12 @@ export function shelfIsEmptyStrip(containerEl: HTMLElement): boolean {
 export function shelfTitles(containerEl: HTMLElement): string[] {
 	return Array.from(shelfOf(containerEl)?.querySelectorAll<HTMLElement>('.pbl-card-title') ?? []).map(
 		(t) => t.textContent ?? '',
+	);
+}
+
+export function shelfGroupHeaders(containerEl: HTMLElement): string[] {
+	return Array.from(shelfOf(containerEl)?.querySelectorAll<HTMLElement>('.pbl-shelf-group-name') ?? []).map(
+		(h) => h.textContent ?? '',
 	);
 }
 

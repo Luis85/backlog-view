@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { horizonVault, makeRoadmap, shelfCountOf } from '../helpers/roadmap';
-import { useViewHarness } from '../helpers/view';
+import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfOf, shelfTitles } from '../helpers/roadmap';
+import { key, useViewHarness } from '../helpers/view';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { syncShelfControls } from '../../src/view/render/shelfControls';
+import { ProductBacklogView } from '../../src/view/backlogView';
 
 useViewHarness();
 
@@ -51,7 +53,7 @@ describe('the shelf toolbar controls', () => {
 	});
 
 	it('marks the collapse toggle accessibly, and flips it when toggled', () => {
-		const { containerEl } = makeRoadmap(horizonVault());
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		const collapseBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn');
 		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('false');
 		expect(collapseBtn?.getAttribute('aria-label')).toContain('Expand');
@@ -126,7 +128,7 @@ describe('the shelf toolbar controls', () => {
  */
 describe('syncing the shelf controls directly (call site arrives in a later task)', () => {
 	it('fills the real shelf count and the accessible collapse-toggle name', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
+		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		const bar = toolbarOf(containerEl);
 		syncShelfControls(view, bar);
 
@@ -234,5 +236,109 @@ describe('syncing the shelf controls directly (call site arrives in a later task
 		// Off the roadmap `renderShelfControls` built nothing; syncing must be a no-op
 		// rather than throwing on a missing `.pbl-shelf-controls`.
 		expect(() => syncShelfControls(view, toolbarOf(containerEl))).not.toThrow();
+	});
+});
+
+describe('the shelf, collapsed by default', () => {
+	it('renders nothing inside the tree until expanded, but stays a drop target', () => {
+		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+		expect(shelfTitles(containerEl)).toEqual([]);
+		expect(shelfOf(containerEl)).not.toBeNull();
+
+		view.setShelfCollapsed(false);
+		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
+	});
+
+	it('keeps a visible label on the collapsed drop target — a user mid-drag is looking at it, not the toolbar', () => {
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+		const shelf = shelfOf(containerEl);
+		expect(shelf?.querySelector('.pbl-shelf-name')?.textContent).toBe('Unplaced');
+	});
+
+	it('groups the expanded shelf by type, in a fixed order', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl, view } = makeRoadmap(vault);
+		view.setShelfCollapsed(false);
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
+	});
+
+	it('changes display order within a group via the sort control, without touching group order', () => {
+		const vault = new FakeVault();
+		vault.addFile('Zed Task.md', { frontmatter: { type: 'Task', order: 10 } });
+		vault.addFile('Ann Task.md', { frontmatter: { type: 'Task', order: 20 } });
+		const { containerEl, view } = makeRoadmap(vault);
+		view.setShelfCollapsed(false);
+		// Tree/sibling order is the default: the order the notes were declared in.
+		expect(shelfTitles(containerEl)).toEqual(['Zed Task', 'Ann Task']);
+
+		// A real change on the actual <select>, not a direct setShelfSort call: this
+		// is what exercises the select's own change listener and proves it produces
+		// the right resulting order, not just that the render logic sorts correctly
+		// when told to.
+		const sortSelect = containerEl.querySelector<HTMLSelectElement>('.pbl-shelf-sort');
+		if (sortSelect) sortSelect.value = 'title';
+		sortSelect?.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(shelfTitles(containerEl)).toEqual(['Ann Task', 'Zed Task']);
+	});
+
+	it('hides a whole type group via the type filter, while the shelf count stays the true total', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl, view } = makeRoadmap(vault);
+		view.setShelfCollapsed(false);
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
+		expect(shelfCountOf(containerEl)).toBe('2');
+
+		view.setShelfHiddenTypes(new Set(['Task']));
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
+		// Both shelved items still count — the filter only changes what is displayed.
+		expect(shelfCountOf(containerEl)).toBe('2');
+	});
+
+	it('excludes collapsed shelf cards from Arrow/End keyboard navigation', () => {
+		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+		const tree = containerEl.querySelector<HTMLElement>('.pbl-tree');
+		expect(tree?.getAttribute('role')).toBe('listbox'); // Now/Later buckets still have cards
+		expect(view.selectedPath).toBeNull();
+
+		key(tree as HTMLElement, 'End');
+		// The shelf's one card ("Untriaged") is collapsed and must never be reachable —
+		// the walk lands on the last AXIS card instead.
+		expect(view.selectedPath).toBe('Later item.md');
+		expect(view.selectedPath).not.toBe('Untriaged.md');
+	});
+
+	it('renders no advisory when everything is shelved and collapsed', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+		// The design's own requirement, not just "no advisory": a pane with nothing
+		// keyboard-reachable must not keep announcing itself as a listbox with options.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+	});
+
+	it('renders no advisory when the only visible card is a context row already placed in a bucket', () => {
+		// Mirrors test/domain/roadmap.test.ts's "an excluded focus-level item sits in a
+		// bucket that already exists, uncounted": placedCount, shelf and context are ALL
+		// zero here, yet a card IS on screen (the Epic, as a context row inside 'Now') —
+		// exactly the case the axisCardCount term exists to catch, since none of
+		// placedCount/shelf.length/context.length would count it.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'now' } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon', focusLevel: 'Epic' });
+		// The Base returns only the feature; the Epic surfaces purely as context, the
+		// same shape the domain fixture's own vault.entries().filter(...) sets up.
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
+		view.onDataUpdated();
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
 	});
 });

@@ -181,6 +181,7 @@ describe('the shelf on a narrow pane', () => {
 		const vault = shelvedVault();
 		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		widthOf(treeOf(containerEl), 900);
 		view.render();
 		const shelfCard = view.roadmap?.cards.at(-1);
@@ -213,6 +214,7 @@ describe('the shelf on a narrow pane', () => {
 		const vault = shelvedVault();
 		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		const shelfCard = view.roadmap?.cards.at(-1);
 		view.selectItem(shelfCard as never);
 
