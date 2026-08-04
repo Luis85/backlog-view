@@ -72,12 +72,18 @@
    work, the context strip or the advisory out of reach. Sticky needs a box
    narrower than its containing block — the lead column's own trick — so the
    strips take the scrollport's width inside the max-content frame. */
+/* A visible gutter from the pane's edges — the value matches .pbl-shelf's own
+   internal inline padding in shelf.css, so the gutter reads as a continuation of it
+   rather than a second, different margin. Width is reduced by twice the gutter so
+   the margin box still fits the scrollport exactly; a bare 100cqw with a margin
+   added on top would overflow by 2 * the gutter and reintroduce a scrollbar. */
 .pbl-roadmap .pbl-shelf,
 .pbl-roadmap .pbl-roadmap-context,
 .pbl-roadmap .pbl-board-advisory {
 	position: sticky;
 	left: 0;
-	width: 100cqw;
+	width: calc(100cqw - 2 * var(--size-4-3));
+	margin-inline: var(--size-4-3);
 	align-self: flex-start;
 	box-sizing: border-box;
 }
@@ -101,11 +107,15 @@
 	min-height: 220px;
 }
 
+/* Buckets grow to share the row's full width equally, down to a floor of 280px —
+   the explicit min-width is load-bearing: flex-basis alone is not a floor once
+   shrinking is enabled, and the shrink would otherwise go all the way to 0. Only
+   past that floor does the row fall back to `.pbl-tree`'s existing horizontal scroll. */
 .pbl-bucket {
-	flex: 0 0 260px;
+	flex: 1 1 280px;
+	min-width: 280px;
 	display: flex;
 	flex-direction: column;
-	min-width: 0;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	background-color: var(--background-secondary);
@@ -127,9 +137,18 @@
 	height: 14px;
 }
 
+/* align-content: start is not optional: .pbl-roadmap-buckets is a flex row with
+   align-items: stretch, so every bucket already stretches to the tallest one, and a
+   grid's default alignment would otherwise stretch a sparse bucket's own cards into
+   that surplus height instead of leaving them their natural size. `min(240px, 100%)`
+   for the same reason as the shelf's own grid: a bucket's floor width minus its own
+   padding can still fall under 240px with enough buckets on a narrow pane, and a bare
+   floor would force the track past its container rather than degrading to one
+   narrower column. */
 .pbl-bucket-cards {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+	align-content: start;
 	gap: var(--size-4-2);
 	padding: var(--size-4-2);
 	overflow-y: auto;
