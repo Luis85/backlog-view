@@ -10,6 +10,7 @@ files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
+  - src/view/cardMoves.ts
   - src/view/writeGate.ts
   - src/view/interactions/cardDrag.ts
 ---
@@ -89,8 +90,11 @@ The plan is `computeStateWrites` in `src/domain/writePlan.ts`, beside the drop p
 it already builds — renamed from `computeStateDropWrites` once the date stamps made it
 the one planner every state-changing input uses ([[Stamp when work starts and finishes]]); the remove-state write (`removeStateKey`) joined
 `removeParentKey` in `src/storage/frontmatter.ts`, the only module that may write; the
-batch goes through the same `applySafely` in `src/view/backlogView.ts` — reached via
-`performBoardMove`, which is now the one method all three inputs land on
+batch goes through the same `applySafely` — reached via `performBoardMove` in
+`src/view/cardMoves.ts` (`CardMoveController`, the card-move plumbing extracted from
+`src/view/backlogView.ts` when it hit its line cap a second time; `src/view/writeGate.ts`
+was the first such extraction, [[Split the view dispatch hub]]) — which is now the one
+method all three inputs land on
 ([[Keyboard, menu and touch]]), so a drop cannot plan a different write than the key
 or the menu that mean the same thing, and it is where the move announces itself; and
 the gesture itself is `src/view/interactions/cardDrag.ts`, wiring the Pragmatic

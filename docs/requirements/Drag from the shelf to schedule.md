@@ -15,6 +15,7 @@ files:
   - src/view/render/roadmap.ts
   - src/view/interactions/plan.ts
   - src/view/backlogView.ts
+  - src/view/cardMoves.ts
   - src/storage/frontmatter.ts
 ---
 
@@ -149,7 +150,10 @@ mid-hold can leave the item a different type than the one the hold was taken on.
 writer's own shape check (`refusesAxis` in `src/storage/frontmatter.ts`) is what catches
 the two having drifted apart: it refuses the whole batch rather than silently narrowing
 it to whatever the note currently answers for. Both hand their plan to
-`host.performScheduleMove` in `src/view/backlogView.ts`, the single place a date batch is
+`host.performScheduleMove`, implemented in `src/view/cardMoves.ts` (`CardMoveController`,
+extracted from `src/view/backlogView.ts` when the view hit its line cap a second time —
+`src/view/writeGate.ts` was the first such extraction, [[Split the view dispatch hub]]),
+the single place a date batch is
 planned, applied through `src/storage/frontmatter.ts`, and announced. The pre-release
 indicator that says which placement a removal would leave, and `barHolds`, which says
 where a gesture may take hold in the first place, are both `src/domain/bars.ts`, asking
