@@ -955,26 +955,41 @@ Actually, add these test cases inside the existing `describe` block:
 	});
 
 	it('marks the collapse toggle accessibly, and flips it when toggled', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
+		const { containerEl } = makeRoadmap(horizonVault());
 		const collapseBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn');
 		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('false');
 		expect(collapseBtn?.getAttribute('aria-label')).toContain('Expand');
 
-		view.setShelfCollapsed(false);
+		// A real click, not a direct setShelfCollapsed call: this is the one test that
+		// exercises renderShelfControls' own click listener, so a dropped or miswired
+		// listener fails here rather than passing every test that bypasses it.
+		collapseBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('true');
 		expect(collapseBtn?.getAttribute('aria-label')).toContain('Collapse');
 	});
 
 	it('never rebuilds the rest of the toolbar when a shelf control changes', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
 		const modeBtn = containerEl.querySelector('.pbl-mode-btn[aria-label="Show as roadmap"]');
 		expect(modeBtn).not.toBeNull();
 
 		// A full render() would tear down and rebuild the whole toolbar, replacing
 		// this element — the same DOM node before and after is the proof it didn't.
-		view.setShelfCollapsed(false);
-		view.setShelfSort('title');
-		view.setShelfHiddenTypes(new Set(['Task']));
+		// Real gestures on all three controls, not direct setter calls: the same
+		// listeners exercised above and below, driven together here.
+		containerEl
+			.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const sortSelect = containerEl.querySelector<HTMLSelectElement>('.pbl-shelf-sort');
+		if (sortSelect) sortSelect.value = 'title';
+		sortSelect?.dispatchEvent(new Event('change', { bubbles: true }));
+		const taskCheckbox = containerEl.querySelector<HTMLInputElement>(
+			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
+		);
+		if (taskCheckbox) taskCheckbox.checked = false;
+		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
 
 		expect(containerEl.querySelector('.pbl-mode-btn[aria-label="Show as roadmap"]')).toBe(modeBtn);
 	});
@@ -1190,7 +1205,7 @@ Update that test now, in `test/view/shelfUx.test.ts`:
 
 ```ts
 it('marks the collapse toggle accessibly, and flips it when toggled', () => {
-	const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+	const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 	const collapseBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn');
 	// ...unchanged from here.
 ```
@@ -1238,7 +1253,13 @@ describe('the shelf, collapsed by default', () => {
 		// Tree/sibling order is the default: the order the notes were declared in.
 		expect(shelfTitles(containerEl)).toEqual(['Zed Task', 'Ann Task']);
 
-		view.setShelfSort('title');
+		// A real change on the actual <select>, not a direct setShelfSort call: this
+		// is what exercises the select's own change listener and proves it produces
+		// the right resulting order, not just that the render logic sorts correctly
+		// when told to.
+		const sortSelect = containerEl.querySelector<HTMLSelectElement>('.pbl-shelf-sort');
+		if (sortSelect) sortSelect.value = 'title';
+		sortSelect?.dispatchEvent(new Event('change', { bubbles: true }));
 		expect(shelfTitles(containerEl)).toEqual(['Ann Task', 'Zed Task']);
 	});
 
