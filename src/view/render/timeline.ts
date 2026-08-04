@@ -2,8 +2,9 @@ import { setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderTitleText } from './rows';
+import { CardDragController } from '../interactions/cardDrag';
 import { BacklogItem } from '../../domain/model';
-import { TimelineBar } from '../../domain/bars';
+import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
 import {
 	BarGeometry,
@@ -52,13 +53,21 @@ export interface TimelineRender {
 	overlay: HTMLElement;
 }
 
+/** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
+export interface TimelineDrawing {
+	today: CivilDate;
+	scale: TimelineScale;
+	/** The controller every bar's grips are wired through — the same one the shelf uses. */
+	dnd: CardDragController;
+}
+
 export function renderTimeline(
 	ctx: RowContext,
 	containerEl: HTMLElement,
 	bars: TimelineBar[],
-	today: CivilDate,
-	scale: TimelineScale,
+	drawing: TimelineDrawing,
 ): TimelineRender {
+	const { today, scale, dnd } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// TWO elements, not one. The scroll box is the outer one; the positioned layer is
 	// the inner. Full-height marks — the today line, the milestone lines, and the drop
@@ -83,7 +92,8 @@ export function renderTimeline(
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
 	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
-	for (const bar of bars) renderBarRow(ctx, content, window, bar, scale);
+	const mounts: BarRowMounts = { content, scroller: grid, dnd };
+	for (const bar of bars) renderBarRow(ctx, mounts, window, bar, scale);
 	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -168,14 +178,22 @@ function renderMilestoneLines(
 	}
 }
 
+/** Where a bar's grips land and how they are wired — grouped to stay under max-params. */
+interface BarRowMounts {
+	content: HTMLElement;
+	/** The element that actually scrolls, for a grip's own pan baseline. */
+	scroller: HTMLElement;
+	dnd: CardDragController;
+}
+
 function renderBarRow(
 	ctx: RowContext,
-	grid: HTMLElement,
+	mounts: BarRowMounts,
 	window: TimelineWindow,
 	bar: TimelineBar,
 	scale: TimelineScale,
 ): void {
-	const row = createCard(ctx, grid, bar.item);
+	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderBadge(ctx.host, lead, bar.item);
@@ -193,6 +211,16 @@ function renderBarRow(
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
+	// Asked ONCE, of `barHolds`, by the renderer that draws these and the drag that
+	// honours them — so what looks grabbable and what can actually be written cannot
+	// disagree. The body hold IS the bar; the grips are its two edges.
+	for (const hold of barHolds(bar.item, ctx.host.settings, bar)) {
+		const grip = hold === 'body' ? el : el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
+		grip.dataset.pblHold = hold;
+		// The scroller's offset at drag start rides the payload, for the delta a hold
+		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
+		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
+	}
 	// The row is the timeline's one selection stop, so a MARKER'S row is where the
 	// line and the diamond's facts have to be readable (criterion 4a: neither is
 	// focusable, so nothing about a milestone may exist only under a hover). An

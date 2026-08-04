@@ -4,6 +4,7 @@ import { FakeVault } from '../helpers/vault';
 import { flush, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
 import { gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
+import { gripNames, gripOf, shelfOf } from '../helpers/roadmap';
 import { addDays, cellSpan, dayAt, scaleFor } from '../../src/domain/timeline';
 
 useViewHarness();
@@ -112,6 +113,186 @@ describe('dragging a shelf card onto the grid', () => {
 		finish.leave(overlay);
 		expect(overlay.querySelector('.pbl-drop-ghost')).toBeNull();
 		finish.cancel();
+	});
+});
+
+describe('holding a bar', () => {
+	it('slides both stated ends by whole days, never changing the duration', async () => {
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+		const scale = scaleFor('month');
+
+		gridDrag(gripOf(containerEl, 'Planned', 'body'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 3 * scale.dayPx });
+		await flush();
+
+		expect(vault.fm('Planned.md').start).toBe('2026-08-07');
+		expect(vault.fm('Planned.md').target).toBe('2026-08-13');
+	});
+
+	it('reads the DELTA, so grabbing a one-day bar at quarter zoom previews nothing', async () => {
+		// A span shorter than the minimum drawable width is drawn WIDER than it is, so
+		// at quarter zoom the end grip of a one-day bar sits days past its target.
+		// Reading the pointer absolutely means grabbing the grip already previews a
+		// later date — and the smallest twitch writes it.
+		const vault = new FakeVault();
+		vault.addFile('Day.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-04' } });
+		const { view, containerEl } = datedView(vault);
+		view.setZoom('quarter');
+		pannedGrid(containerEl, { rectLeft: 220, scrollLeft: 640 });
+
+		gridDrag(gripOf(containerEl, 'Day', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+	});
+
+	it('plans nothing at all when a drag wanders and comes back', async () => {
+		// A drag that expressed no change must produce no BATCH — not a batch the
+		// writer then decides about. Its job is to judge a REQUESTED date against the
+		// live one, and if a hold that moved nowhere submitted the model's own
+		// endpoints, an editor who had changed that date meanwhile would have their
+		// work quietly reverted.
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'body'), { clientX: 1000 });
+		gesture.over(overlayOf(containerEl), { clientX: 1400 });
+		gesture.drop(overlayOf(containerEl), { clientX: 1000 });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+	});
+
+	it('keeps the scroll baseline when the pointer leaves the overlay and comes back', async () => {
+		// A held bar that auto-scrolls, crosses the sticky lead column or the shelf, and
+		// re-enters: a baseline latched by the TARGET would re-latch on re-entry and lose
+		// every pixel of pan before it. The baseline is the gesture's, so it rides the
+		// payload — which is why this passes with no lifetime bookkeeping at all.
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+		const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
+		if (!scroller) throw new Error('no scroller');
+		const overlay = overlayOf(containerEl);
+		const shelf = shelfOf(containerEl);
+		if (!shelf) throw new Error('no shelf');
+
+		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'body'), { clientX: 1000 });
+		gesture.over(overlay, { clientX: 1000 });
+		// Auto-scroll pans four days' worth of grid under a pointer that has not moved.
+		scroller.scrollLeft = 640 + 4 * scaleFor('month').dayPx;
+		gesture.leave(overlay);
+		gesture.over(overlay, { clientX: 1000 });
+		gesture.drop(overlay, { clientX: 1000 });
+		await flush();
+
+		expect(vault.fm('Planned.md').start).toBe('2026-08-08');
+	});
+
+	it('moves one date on an end grip and clamps at equal rather than crossing', async () => {
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+		const scale = scaleFor('month');
+
+		gridDrag(gripOf(containerEl, 'Planned', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 - 30 * scale.dayPx });
+		await flush();
+
+		// 2a: a reversed span is unreadable, so no gesture may write one — and it
+		// clamps rather than refusing, because the diamond a coincident pair draws is
+		// the shape and not the type.
+		expect(vault.fm('Planned.md').target).toBe('2026-08-04');
+		expect(vault.fm('Planned.md').start).toBe('2026-08-04');
+	});
+
+	it('leaves a one-ended bar’s open end open on a body slide', async () => {
+		// 1a: shifting an absence would invent a date the note never stated, and equal
+		// ends would draw a milestone the note never claimed.
+		const vault = new FakeVault();
+		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04' } });
+		const { containerEl } = datedView(vault);
+
+		gridDrag(gripOf(containerEl, 'Open', 'body'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 3 * scaleFor('month').dayPx });
+		await flush();
+
+		expect(vault.fm('Open.md').start).toBe('2026-08-07');
+		expect(vault.fm('Open.md').target).toBeUndefined();
+	});
+
+	it('writes an open end from its own grip, counting days from the stated one', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04' } });
+		const { containerEl } = datedView(vault);
+
+		gridDrag(gripOf(containerEl, 'Open', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 5 * scaleFor('month').dayPx });
+		await flush();
+
+		expect(vault.fm('Open.md').target).toBe('2026-08-09');
+	});
+
+	it('writes nothing when an open end is released without moving', async () => {
+		// Zero days from the borrowed baseline would be a date EQUAL to the stated end —
+		// a milestone diamond — and a plan that stated no end still states none. Absent
+		// is a value here, and a gesture that did not move must not turn it into one.
+		const vault = new FakeVault();
+		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-08-20' } });
+		const { containerEl } = datedView(vault);
+
+		gridDrag(gripOf(containerEl, 'Open', 'start'), overlayOf(containerEl), { from: 1000, clientX: 1000 });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+	});
+
+	it('carries no stale start on a marker’s slide, at any zoom', async () => {
+		// 1g, and the category claim: "the plan is narrowed by type" is checked once per
+		// gesture, because the next gesture is exactly the one that would break it.
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' } });
+		const { containerEl } = datedView(vault);
+
+		gridDrag(gripOf(containerEl, 'Ship', 'body'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 2 * scaleFor('month').dayPx });
+		await flush();
+
+		expect(vault.fm('Ship.md').target).toBe('2026-10-02');
+		expect(vault.fm('Ship.md').start).toBe('2026-07-01');
+	});
+
+	it('offers no grip where a bar’s end is inferred, and none at all where both are', () => {
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, start: '2026-08-01' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-08-20' }, parentLink: 'Parent' });
+		const { containerEl } = datedView(vault);
+
+		expect(gripNames(containerEl, 'Parent')).toEqual(['start']);
+	});
+
+	it('writes the day the pointer names when dragged past an inferred opposite end, never the child’s date', async () => {
+		// 1c: the opposite end here is INFERRED from the child, not stated by the note —
+		// there is no span to reverse, so clamping against it would write a bound taken
+		// from the child's own date rather than the one the pointer named.
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, start: '2026-08-01' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-08-20' }, parentLink: 'Parent' });
+		const { containerEl } = datedView(vault);
+		const scale = scaleFor('month');
+
+		// Past 2026-08-20, the child's target — the inferred evidence a real clamp would
+		// have wrongly bounced off of.
+		gridDrag(gripOf(containerEl, 'Parent', 'start'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 30 * scale.dayPx });
+		await flush();
+
+		expect(vault.fm('Parent.md').start).toBe('2026-08-31');
+	});
+
+	it('a source wired by one controller is not droppable on another’s target', () => {
+		// The `canDrop` contract stated as a test rather than as the comment it is
+		// today: two saved views can sit in split panes over the same notes, and the
+		// stakes here are the RECEIVING view's date keys.
+		const vault = scheduleVault();
+		const first = datedView(vault);
+		const second = datedView(vault);
+
+		gridDrag(cardByTitle(first.containerEl, 'Unplanned'), overlayOf(second.containerEl), { clientX: 500 });
+
+		expect(vault.writeLog).toHaveLength(0);
 	});
 });
 

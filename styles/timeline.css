@@ -156,12 +156,24 @@
 	   never the background, so an open end can never reveal a solid backing. */
 	--pbl-bar-color: var(--interactive-accent);
 	background-color: var(--pbl-bar-color);
+	cursor: grab; /* the body IS a hold — see barHolds */
 }
 
 .pbl-timeline-row.pbl-done .pbl-bar {
 	--pbl-bar-color: var(--color-green);
 	opacity: 0.7;
 }
+
+/* Wide enough to hit at 4px/day (a vault check, not a jsdom one); children of the positioned `.pbl-bar`, so `left`/`right` resolve against its own edges. */
+.pbl-bar-grip {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 6px;
+	cursor: ew-resize;
+}
+.pbl-bar-grip-start { left: -3px; }
+.pbl-bar-grip-end { right: -3px; }
 
 /* A dateless or clipped end is styled open: the plan's gap stays visible
    instead of being filled in, and the exact dates ride on the tooltip. */

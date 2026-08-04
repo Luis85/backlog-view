@@ -7,7 +7,7 @@ import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { HorizonSource, placementLabel, RoadmapModel, targetLabel } from '../../domain/roadmap';
 import { BarHold, Placement, StatedEnds, UNSCHEDULED_LABEL } from '../../domain/bars';
-import { PlacementEnd } from '../../domain/itemTypes';
+import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { DateSpan, daysBetween, formatCivil } from '../../domain/timeline';
 import { DateChange } from '../../storage/frontmatter';
 
@@ -80,6 +80,22 @@ export interface CardSource {
 	 * or be cleared at the wrong moment. Null for a card wired without a scroller.
 	 */
 	scrollLeft: number | null;
+	/**
+	 * The dates and the placement shape a hold measures against — what the note stated
+	 * when the drag began, read ONCE by `getInitialData` and never again. A relative
+	 * gesture's baseline is what the reader was looking at when they picked the bar up
+	 * and what every preview frame has been drawing against since; re-reading it from a
+	 * refreshed model mid-drag would make `staleBase` compare a value against itself and
+	 * never fire. Meaningless for an ordinary card (`hold === null`), which reads the
+	 * pointer's position instead and has no baseline to carry.
+	 */
+	span: DateSpan;
+	ends: PlacementEnd[];
+}
+
+/** The dates a hold's baseline is captured from — the note's own, never the drawn bar. */
+function statedSpan(item: BacklogItem): DateSpan {
+	return { start: item.plannedStart.value, target: item.plannedTarget.value };
 }
 
 /**
@@ -165,6 +181,8 @@ export class CardDragController {
 					path: item.file.path,
 					hold,
 					scrollLeft: originScroll?.() ?? null,
+					span: statedSpan(item),
+					ends: placementEnds(item.typeName),
 					view: this.token,
 				}),
 				onDragStart: () => {
@@ -202,6 +220,11 @@ export class CardDragController {
 			item,
 			hold: (data.hold as BarHold | null | undefined) ?? null,
 			scrollLeft: typeof data.scrollLeft === 'number' ? data.scrollLeft : null,
+			// The payload's own span and ends, minted at drag start — never recomputed from
+			// `item` here. `item` is the file the path still resolves to, which is what THIS
+			// rule is for; it says nothing about what the gesture is relative to.
+			span: (data.span as DateSpan | undefined) ?? { start: null, target: null },
+			ends: Array.isArray(data.ends) ? (data.ends as PlacementEnd[]) : [],
 		};
 	}
 

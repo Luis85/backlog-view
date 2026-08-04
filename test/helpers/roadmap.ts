@@ -102,6 +102,19 @@ export function barFor(containerEl: HTMLElement, title: string): HTMLElement {
 	return barOf(row);
 }
 
+/** One of a bar's grips, by which hold it is. */
+export function gripOf(containerEl: HTMLElement, title: string, hold: 'body' | 'start' | 'end'): HTMLElement {
+	const el = barFor(containerEl, title).parentElement?.querySelector<HTMLElement>(`[data-pbl-hold="${hold}"]`);
+	if (!el) throw new Error(`no ${hold} grip on ${title}`);
+	return el;
+}
+
+/** Which holds a bar actually offers, in drawn order. */
+export function gripNames(containerEl: HTMLElement, title: string): string[] {
+	const row = rowFor(containerEl, title);
+	return Array.from(row?.querySelectorAll<HTMLElement>('[data-pbl-hold]') ?? []).map((el) => el.dataset.pblHold ?? '');
+}
+
 /** Every milestone line's label text, in the order the header draws them. */
 export function labelTexts(containerEl: HTMLElement): string[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label')).map((l) => l.textContent ?? '');
