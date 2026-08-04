@@ -78,7 +78,7 @@ describe('the dated frame', () => {
 		expect(barOf(rows[1]).getAttribute('aria-label')).toBe('Starts 2026-08-05, target not set');
 		expect(barOf(rows[2]).hasClass('pbl-bar-milestone')).toBe(true);
 		expect(containerEl.querySelector('.pbl-today')).not.toBeNull();
-		expect(containerEl.querySelectorAll('.pbl-timeline-month').length).toBeGreaterThan(0);
+		expect(containerEl.querySelectorAll('.pbl-timeline-cell').length).toBeGreaterThan(0);
 	});
 
 	it('leaves an ordinary row’s accessible name to its content — badge and title, not overridden', () => {

@@ -19,20 +19,30 @@ import {
 import { CivilDate } from '../../domain/noteFields';
 
 /**
- * The dated axis: a month grid at its true day lengths, one row per placed
- * result, a bar per row stating exactly the dates the note states, and the today
- * line — the one thing on the grid that is the reader's own. Fixed month scale
- * for now; the discrete zooms and jump-to-today are the timeline feature's work.
+ * The dated axis: a grid of the active scale's cells at their true day lengths, one row
+ * per placed result, a bar per row stating exactly the dates the note states, and the
+ * today line — the one thing on the grid that is the reader's own.
+ *
+ * Everything positional is a length in DAYS multiplied by `scale.dayPx`; the two lengths
+ * that are pixels — the bar floor and the sub-day nudge — do not scale, and keeping those
+ * apart is the whole of what a zoom control gets wrong. The picker that chooses the scale
+ * and the control that returns to today are the toolbar's.
  */
 
 /** Width of the sticky lead column naming each row. Published to CSS below. */
 const TIMELINE_LEAD_PX = 220;
 
-/** What the timeline pass hands back: the rows in reading order, and where today sits. */
+/** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {
 	cards: BacklogItem[];
 	/** Pixel offset of the today line from the grid's left edge. */
 	todayLeft: number;
+	/** The element that scrolls — both axes, on this projection. */
+	scroller: HTMLElement;
+	/** The positioned layer inside it; full-height marks and the overlay live here. */
+	content: HTMLElement;
+	/** The window the grid drew, for the drag's px↔date and for the zoom anchor. */
+	window: TimelineWindow;
 }
 
 export function renderTimeline(
@@ -43,38 +53,48 @@ export function renderTimeline(
 	scale: TimelineScale,
 ): TimelineRender {
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
+	// TWO elements, not one. The scroll box is the outer one; the positioned layer is
+	// the inner. Full-height marks — the today line, the milestone lines, and the drop
+	// overlay that joins them — resolve `top: 0; bottom: 0` against their containing
+	// block's PADDING box, which for a scroll container is its visible height rather
+	// than its content height. Making the scroll box the containing block would make
+	// every one of them viewport-tall and scroll away, leaving the lower rows crossed by
+	// nothing. A line that stops partway down is worse than no line: it says the plan
+	// divides there.
 	const grid = containerEl.createDiv({ cls: 'pbl-timeline' });
-	grid.setCssProps({
+	const content = grid.createDiv({ cls: 'pbl-timeline-content' });
+	content.setCssProps({
 		'--pbl-tl-lead': `${TIMELINE_LEAD_PX}px`,
 		'--pbl-tl-days': `${window.days * scale.dayPx}px`,
+		// The stylesheet stops hard-coding 2px: the width is the scale's, because
+		// `dayPx >= 2 * lineWidth` is what lets today's line and a coincident
+		// milestone's both draw inside one day instead of one erasing the other.
+		'--pbl-tl-line': `${scale.lineWidth}px`,
 	});
-	const headerTrack = renderMonthHeader(grid, window, scale);
+	const headerTrack = renderCellHeader(content, window, scale);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
-	renderMilestoneLines({ grid, headerTrack }, window, bars, today, scale);
-	for (const bar of bars) renderBarRow(ctx, grid, window, bar, scale);
+	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
+	for (const bar of bars) renderBarRow(ctx, content, window, bar, scale);
 	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
-	const line = grid.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
+	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
-	return { cards: bars.map((bar) => bar.item), todayLeft };
+	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window };
 }
 
 /** Presentational, like the tree's column header: every row carries its own dates. */
-function renderMonthHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
+function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
 	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-timeline-lead' });
 	const track = header.createDiv({ cls: 'pbl-timeline-track' });
 	for (const cell of timelineCells(window, scale)) {
-		const cellEl = track.createDiv({ cls: 'pbl-timeline-month', text: cell.label });
-		cellEl.setCssProps({ '--pbl-month-w': `${cell.days * scale.dayPx}px` });
+		const cellEl = track.createDiv({ cls: 'pbl-timeline-cell', text: cell.label });
+		cellEl.setCssProps({ '--pbl-cell-w': `${cell.days * scale.dayPx}px` });
 	}
 	return track;
 }
-
-/** How far a milestone's line steps aside for today's, inside the same day cell. */
-const TODAY_NUDGE_PX = 2;
 
 /**
  * A line down the whole plan per milestone DATE, behind the bars — a diamond says *when*,
@@ -111,7 +131,11 @@ function renderMilestoneLines(
 		// that is the reader's own, and no plan may hide *now*. The milestone's line is
 		// what gives way, drawn beside it inside the same day cell — room the grid has,
 		// since a day is wider than either mark.
-		const nudge = day === todayDay ? TODAY_NUDGE_PX : 0;
+		// A sub-day offset, so it is the SCALE's line width and never a constant: two
+		// fixed pixels at two pixels per day is a whole day's displacement, putting the
+		// line and its label in the day after the one they belong to. `dayPx >= 2 *
+		// lineWidth` is what guarantees the step still fits inside the day it steps in.
+		const nudge = day === todayDay ? scale.lineWidth : 0;
 		const line = grid.createDiv({ cls: 'pbl-milestone-line', attr: { 'aria-hidden': 'true' } });
 		line.setCssProps({ '--pbl-milestone-left': `${TIMELINE_LEAD_PX + day * scale.dayPx + nudge}px` });
 		// The label sits in the header band, where the month header already is, and the

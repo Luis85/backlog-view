@@ -4,6 +4,17 @@
 /* ----- the dated axis: the month grid, bars, and the today line */
 
 .pbl-timeline {
+	/* The scroll box in Task 9; a plain block until then. Deliberately NOT the
+	   positioned layer — see `.pbl-timeline-content`. */
+	min-width: 0;
+}
+
+/* The positioned layer, and the containing block for every full-height mark. It is
+   inside the scroll box rather than being it: an absolutely positioned child resolves
+   `top: 0; bottom: 0` against its containing block's padding box, so a scroll container
+   in that role would size the today line, the milestone lines and the drop overlay to
+   the VISIBLE height and scroll them away from the rows below. */
+.pbl-timeline-content {
 	position: relative;
 	width: max-content;
 }
@@ -45,9 +56,9 @@
 	display: flex;
 }
 
-.pbl-timeline-month {
-	flex: 0 0 var(--pbl-month-w);
-	width: var(--pbl-month-w);
+.pbl-timeline-cell {
+	flex: 0 0 var(--pbl-cell-w);
+	width: var(--pbl-cell-w);
 	padding: var(--size-4-1) var(--size-4-2);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
@@ -168,7 +179,10 @@
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-today-left);
-	width: 2px;
+	/* The scale's, not a constant: `dayPx >= 2 * lineWidth` is what lets this line and a
+	   milestone dated today both draw inside one day instead of one erasing the other.
+	   See SCALES in `src/domain/timeline.ts`. */
+	width: var(--pbl-tl-line);
 	z-index: 1;
 	background-color: var(--color-red);
 	opacity: 0.55;
@@ -183,7 +197,7 @@
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-milestone-left);
-	width: 2px;
+	width: var(--pbl-tl-line);
 	z-index: 0;
 	background-color: var(--color-cyan);
 	opacity: 0.55;

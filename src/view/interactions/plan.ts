@@ -5,7 +5,7 @@ import { placementEnds } from '../../domain/itemTypes';
 import { sameValue } from '../../domain/noteFields';
 import { BacklogSettings, horizonMenuValues, optionalKeyFor } from '../../domain/settings';
 import { formatCivil } from '../../domain/timeline';
-import { computeHorizonWrites, computeScheduleWrites, SchedulePlan } from '../../domain/writePlan';
+import { computeHorizonWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 
 /**
