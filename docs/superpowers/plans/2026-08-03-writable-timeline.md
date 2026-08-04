@@ -990,6 +990,19 @@ describe('the axis write keeps the value’s own shape', () => {
 		expect(vault.fm('Item.md').target).toBe('2026-08-05');
 	});
 
+	it('takes no shape from a datetime whose DATE the reader refuses', async () => {
+		// Shaped like a datetime and still refused — February has no thirtieth — so a
+		// pattern-only test would carry `T09:00+02:00` onto the correction. Watched
+		// failing with the `readDate` gate removed: the regex matches either way.
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { target: '2026-02-30T09:00+02:00' } });
+		const settings = resolveSettings(new FakeViewConfig({ targetProperty: 'note.target' }));
+
+		await applyWrites(vault.app, settings, [{ file, axis: { target: '2026-08-05' } }]);
+
+		expect(vault.fm('Item.md').target).toBe('2026-08-05');
+	});
+
 	it('takes no shape from a value the reader refuses', async () => {
 		// `soon` is not a date with a time attached; replacing it is a correction, and
 		// carrying its text forward would write `2026-08-05soon`.
@@ -1040,18 +1053,23 @@ and add, beside `isBlank`:
  * `readDate` regex's own trailing group.
  */
 function mergeDate(live: unknown, requested: string): string {
-	if (typeof live !== 'string') return requested;
+	// ASKED OF `readDate`, not of the pattern alone. A regex matching the shape is not
+	// the same question as the model's reader accepting the value: `2026-02-30T09:00+02:00`
+	// is datetime-shaped and refused (February has no thirtieth), so a pattern-only test
+	// would carry its suffix onto the correction while this paragraph claimed refused
+	// values contribute no shape. Borrowing the model's own reader is this codebase's
+	// rule for every live read anyway — a stricter or looser second reader is how one
+	// question came to have two answers.
+	if (typeof live !== 'string' || readDate(live).value === null) return requested;
 	const match = /^\d{4}-\d{1,2}-\d{1,2}([Tt\s].*)$/.exec(live.trim());
 	return match ? `${requested}${match[1]}` : requested;
 }
 ```
 
-`readDate`'s own pattern is `^(\d{4})-(\d{1,2})-(\d{1,2})([Tt\s].*)?$`; this is the
-same shape with the suffix required, so a value this merge carries a suffix from is
-always one the model read as a date. Add `readDate` to the imports only if the
-implementation ends up using it — it does not, deliberately: parsing the live value
-into a `CivilDate` and re-formatting it would tidy `2026-8-1` into `2026-08-01`, and
-the spelling on disk is the user's.
+The pattern is `readDate`'s own with the suffix required, so it only ever splits a value
+the line above has already accepted. What is deliberately NOT done is parsing the live
+value into a `CivilDate` and re-formatting it: that would tidy `2026-8-1` into
+`2026-08-01`, and the spelling on disk is the user's.
 
 - [ ] **Step 4: Run it to verify it passes**
 
@@ -2869,6 +2887,25 @@ describe('the shelf on a narrow pane', () => {
 		expect(shelfOf(containerEl)?.hasClass('pbl-shelf-compact')).toBe(false);
 	});
 
+	it('releases a selection the toggle itself just hid', () => {
+		// The toggle path re-renders nothing, so a selection left behind would keep
+		// `aria-activedescendant` pointing into hidden content until some later
+		// navigation happened to move it. Reconciled in the one compaction path, so
+		// this passes for the same reason the resize case does.
+		const vault = shelvedVault();
+		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
+		view.setProjection('roadmap');
+		widthOf(treeOf(containerEl), 900);
+		view.render();
+		const shelfCard = view.roadmap?.cards.at(-1);
+		view.selectItem(shelfCard as never);
+
+		containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-toggle')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.selectedPath).not.toBe(shelfCard?.file.path);
+		expect(treeOf(containerEl).getAttribute('aria-activedescendant')).not.toBe(shelfCard?.file.path);
+	});
+
 	it('measures again after a resize, not only on the first render', () => {
 		// A fixture that is only ever measured once cannot fail this: the pane crosses
 		// the threshold AFTER the first render, which is the case the tree's own ladder
@@ -3015,6 +3052,15 @@ export function syncShelfFit(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const compact = host.shelfOpen === null ? treeEl.clientWidth < SHELF_COMPACT_PX : !host.shelfOpen;
 	snapshot.shelfEl.toggleClass('pbl-shelf-compact', compact);
 	snapshot.cards = compact ? snapshot.allCards.filter((item) => !snapshot.shelfPaths.has(item.file.path)) : snapshot.allCards;
+	// The selection is reconciled HERE, in the one place compaction resolves, rather than
+	// beside each caller: a resize is not the only way a card leaves the navigable set —
+	// pressing the toggle does it too, and that path re-renders nothing, so a selection
+	// left behind would keep `aria-activedescendant` pointing into hidden content until
+	// some later navigation happened to move it. Same shape as a vanished board column
+	// clamping `selectedBoardColumn`, put where every caller inherits it.
+	if (host.selectedPath !== null && !snapshot.cards.some((card) => card.file.path === host.selectedPath)) {
+		host.clearSelection();
+	}
 	// Resolved AFTER compaction, never at render: on a narrow pane whose only cards are
 	// shelved, every option leaves the navigable set and the pane would stay an empty
 	// listbox — a composite promising options it no longer has.
@@ -3030,19 +3076,11 @@ last and a widening resize could never restore what an earlier one removed.
 unnarrowed reading order) and `shelfPaths: Set<string>`; `renderShelf` sets
 `shelfEl.id = host.shelfId` and returns its element.
 
-- [ ] **Step 5: Clamp a selection that has just left the set**
+- [ ] **Step 5: Run the measure from every path that can change the verdict**
 
-In `src/view/backlogView.ts`, after `syncShelfFit` runs:
-
-```ts
-		// A resize that collapses the strip clamps a selection already sitting in it,
-		// the way a vanished board column already clamps `selectedBoardColumn`.
-		if (this.selectedPath !== null && !this.roadmap?.cards.some((c) => c.file.path === this.selectedPath)) {
-			this.clearSelection();
-		}
-```
-
-`onResize` stops returning early for the roadmap:
+The reconciliation itself is inside `syncShelfFit` (Step 4) rather than beside each
+caller, so a render, a resize and a toggle press all inherit it. What each caller owes is
+calling the measure at all. `onResize` stops returning early for the roadmap:
 
 ```ts
 	private onResize(): void {
@@ -3154,8 +3192,9 @@ git commit -m "Compact the shelf where the pane is narrow, and give it a way bac
 - Consumes: `dayAt`, `addDays`, `cellSpan` (Task 1); `barHolds`, `BarHold` (Task 2);
   `performScheduleMove` (Task 6); `RoadmapSnapshot.window` / `.scale` / `.scroller` (Task 9).
 - Produces:
-  - `export interface CardSource { item: BacklogItem; hold: BarHold | null }` (cardDrag.ts)
-  - `CardDragController.wireCard(el, item, hold?: BarHold)` — the hold rides the payload
+  - `export interface CardSource { item: BacklogItem; hold: BarHold | null; scrollLeft: number | null }` (cardDrag.ts)
+  - `CardDragController.wireCard(el, item, hold?: BarHold, originScroll?: () => number)` —
+    the hold AND the scroller's offset at drag start ride the payload
   - `CardDragController.wireDropTarget(el, plan, accepts?: (source: CardSource) => boolean)`
   - `CardDragController.wirePositionalTarget(el, handlers)` where handlers are
     `{ onDrag(source, clientX, originX): void; onDrop(source, clientX, originX): void; onLeave(): void }`
@@ -3369,16 +3408,36 @@ Expected: FAIL — `the timeline is not rendered` (no `.pbl-timeline-drop`).
 In `src/view/interactions/cardDrag.ts`:
 
 ```ts
-/** A resolved drag source: the card's item, and which hold was taken on a bar. */
+/** A resolved drag source: the card's item, which hold was taken, and where it began. */
 export interface CardSource {
 	item: BacklogItem;
 	/** Null for an ordinary card — a bucket's, the shelf's, the board's. */
 	hold: BarHold | null;
+	/**
+	 * The scroller's offset when this drag STARTED, for the delta a positional gesture
+	 * measures. On the payload rather than latched by the target, because the baseline
+	 * belongs to the GESTURE: a hold that auto-scrolls, leaves the overlay over the
+	 * sticky lead column or the shelf, and comes back would re-latch on re-entry and
+	 * lose every pixel of pan accumulated before it — moving the bar by fewer days than
+	 * the pointer asked for. Minted where the token is, so it cannot outlive its drag
+	 * or be cleared at the wrong moment. Null for a card wired without a scroller.
+	 */
+	scrollLeft: number | null;
 }
 ```
 
-`wireCard` gains `hold: BarHold | null = null` and puts it on the payload
-(`getInitialData: () => ({ path: item.file.path, hold, view: this.token })`).
+`wireCard` gains `hold: BarHold | null = null` and `originScroll?: () => number`, and
+puts both on the payload — `getInitialData` runs at drag start, which is exactly when
+that offset means something:
+
+```ts
+				getInitialData: () => ({
+					path: item.file.path,
+					hold,
+					scrollLeft: originScroll?.() ?? null,
+					view: this.token,
+				}),
+```
 
 `wireDropTarget` gains an optional `accepts`:
 
@@ -3411,7 +3470,11 @@ with the resolution factored out, since three call sites now need it:
 		const path = data.path;
 		const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
 		if (!item) return null;
-		return { item, hold: (data.hold as BarHold | null | undefined) ?? null };
+		return {
+			item,
+			hold: (data.hold as BarHold | null | undefined) ?? null,
+			scrollLeft: typeof data.scrollLeft === 'number' ? data.scrollLeft : null,
+		};
 	}
 ```
 
@@ -3551,19 +3614,15 @@ export interface TimelineParts {
 
 export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
 	const host = ctx.host;
-	// The one thing a gesture here has to remember; see Task 12 Step 4 for why it is the
-	// scroller and not the pointer.
-	const scroll: { origin: number | null } = { origin: null };
+	// No gesture state at all: both baselines ride the payload (the pointer's from the
+	// adapter's `location.initial`, the scroller's from `wireCard`), so nothing here can
+	// be latched at the wrong moment, cleared at the wrong moment, or outlive its drag.
 	dnd.wirePositionalTarget(parts.overlay, {
-		onDrag: (source, clientX, originX) => preview(host, parts, source, clientX, originX, scroll),
-		onLeave: () => {
-			clearPreview(parts);
-			scroll.origin = null;
-		},
+		onDrag: (source, clientX, originX) => preview(host, parts, source, clientX, originX),
+		onLeave: () => clearPreview(parts),
 		onDrop: (source, clientX, originX) => {
 			clearPreview(parts);
-			const plan = planFor(host, parts, source, clientX, originX, scroll);
-			scroll.origin = null;
+			const plan = planFor(host, parts, source, clientX, originX);
 			// A drag ending nowhere meaningful writes nothing and does not consume the
 			// undo slot — and a hold that moved nowhere plans nothing at all, so a
 			// request the user never made never reaches the writer.
@@ -3631,12 +3690,11 @@ function preview(
 	source: CardSource,
 	clientX: number,
 	originX: number,
-	scroll: { origin: number | null },
 ): void {
 	clearPreview(parts);
 	// The ghost is drawn from the SAME plan the drop will submit, so the preview and the
 	// write cannot disagree about what a position means.
-	const plan = planFor(host, parts, source, clientX, originX, scroll);
+	const plan = planFor(host, parts, source, clientX, originX);
 	if (!plan) return;
 	const span = previewSpan(source.item, plan);
 	if (span.start === null && span.target === null) return;
@@ -3802,6 +3860,31 @@ describe('holding a bar', () => {
 		expect(vault.writeLog).toHaveLength(0);
 	});
 
+	it('keeps the scroll baseline when the pointer leaves the overlay and comes back', async () => {
+		// A held bar that auto-scrolls, crosses the sticky lead column or the shelf, and
+		// re-enters: a baseline latched by the TARGET would re-latch on re-entry and lose
+		// every pixel of pan before it. The baseline is the gesture's, so it rides the
+		// payload — which is why this passes with no lifetime bookkeeping at all.
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+		const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
+		if (!scroller) throw new Error('no scroller');
+		const overlay = overlayOf(containerEl);
+		const shelf = shelfOf(containerEl);
+		if (!shelf) throw new Error('no shelf');
+
+		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'body'), { clientX: 1000 });
+		gesture.over(overlay, { clientX: 1000 });
+		// Auto-scroll pans four days' worth of grid under a pointer that has not moved.
+		scroller.scrollLeft = 640 + 4 * scaleFor('month').dayPx;
+		gesture.leave(overlay);
+		gesture.over(overlay, { clientX: 1000 });
+		gesture.drop(overlay, { clientX: 1000 });
+		await flush();
+
+		expect(vault.fm('Planned.md').start).toBe('2026-08-08');
+	});
+
 	it('moves one date on an end grip and clamps at equal rather than crossing', async () => {
 		const vault = scheduleVault();
 		const { containerEl } = datedView(vault);
@@ -3929,11 +4012,13 @@ In `renderBarRow`, after the bar element:
 	for (const hold of barHolds(bar.item, ctx.host.settings, bar)) {
 		const grip = hold === 'body' ? el : el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
 		grip.dataset.pblHold = hold;
-		dnd.wireCard(grip, bar.item, hold);
+		// The scroller's offset at drag start rides the payload; see Step 4.
+		dnd.wireCard(grip, bar.item, hold, () => scroller.scrollLeft);
 	}
 ```
 
-`renderBarRow` therefore takes the controller. `styles/timeline.css`:
+`renderBarRow` therefore takes the controller and the scroller — `renderTimeline`
+creates the latter before the rows, so it has both to hand. `styles/timeline.css`:
 
 ```css
 /* The two edges, wide enough to hit at four pixels per day — whether they actually are
@@ -4003,18 +4088,23 @@ function heldDate(item: BacklogItem, hold: BarHold, parts: TimelineParts): Civil
 }
 ```
 
-**The one thing that IS captured is the scroll origin**, and only because
-`location.initial` cannot know about it:
+**The scroll origin is the one thing `location.initial` cannot supply, so it rides the
+payload instead** — minted in `wireCard` alongside the token (Task 11), read at drag
+start by `getInitialData`, and carried to every frame as `source.scrollLeft`.
+
+It is on the payload rather than latched by the target because the baseline belongs to
+the GESTURE, not to the hover. A hold that auto-scrolls, leaves the overlay — over the
+sticky lead column, or over the shelf — and re-enters before the drop would re-latch on
+re-entry and lose every pixel of pan accumulated before it, moving the bar by fewer days
+than the pointer asked for. Nothing in `timelineDrag.ts` keeps gesture state, so there
+is no lifetime to get wrong:
 
 ```ts
-export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
-	// Auto-scroll is driven by the drag frames themselves, so the scroller cannot have
-	// panned before the first frame this target sees — which is what makes reading it
-	// on that frame sound, where reading the POINTER there is not. Cleared on both
-	// `onLeave` and `onDrop`, or a stale origin outlives its gesture. A closure rather
-	// than a module-level `let`, so two views in split panes cannot share it.
-	let scrollOrigin: number | null = null;
-	…
+	for (const hold of barHolds(bar.item, ctx.host.settings, bar)) {
+		const grip = hold === 'body' ? el : el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
+		grip.dataset.pblHold = hold;
+		dnd.wireCard(grip, bar.item, hold, () => scroller.scrollLeft);
+	}
 ```
 
 - [ ] **Step 5: The three hold branches**
@@ -4034,12 +4124,12 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
 function holdPlan(
 	host: BacklogViewHost,
 	parts: TimelineParts,
-	scrollOrigin: number,
-	item: BacklogItem,
+	source: CardSource,
 	hold: BarHold,
 	clientX: number,
 	originX: number,
 ): SchedulePlan | null {
+	const item = source.item;
 	// Viewport-relative, so the pan is INCLUDED: while auto-scroll moves the grid under
 	// a held pointer, `clientX - originX` stays zero while later dates slide beneath it.
 	// The placing read subtracts a bounding rect, which already moves with the scroll,
@@ -4051,7 +4141,8 @@ function holdPlan(
 	// overlay sees discards every pixel of movement before it, and in a synthetic
 	// gesture it equals the drop coordinate, which makes this whole expression zero.
 	const days = Math.round(
-		(clientX - originX + (parts.scroller.scrollLeft - scrollOrigin)) / parts.scale.dayPx,
+		(clientX - originX + (parts.scroller.scrollLeft - (source.scrollLeft ?? parts.scroller.scrollLeft))) /
+			parts.scale.dayPx,
 	);
 	if (days === 0) return null;
 	const ends = writableEnds(host.settings, item);
@@ -4106,19 +4197,14 @@ function planFor(
 	source: CardSource,
 	clientX: number,
 	originX: number,
-	scroll: { origin: number | null },
 ): SchedulePlan | null {
 	// A shelf card has no origin to move from, so it reads the pointer's position; a
 	// hold reads the delta. Two gestures, two rules, and conflating them is a bug at the
 	// sparse scales.
 	if (source.hold === null) return shelfPlan(host, parts, source.item, clientX);
-	scroll.origin ??= parts.scroller.scrollLeft;
-	return holdPlan(host, parts, scroll.origin, source.item, source.hold, clientX, originX);
+	return holdPlan(host, parts, source, source.hold, clientX, originX);
 }
 ```
-
-`wireTimelineDrag`'s handlers pass `{ origin: scrollOrigin }` and reset it to null in
-both `onLeave` and `onDrop`, after the plan is built.
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
