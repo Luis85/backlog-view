@@ -1052,7 +1052,13 @@ and add, beside `isBlank`:
  * suffix of a value that actually parses as a date rides along, which is exactly the
  * `readDate` regex's own trailing group.
  */
-function mergeDate(live: unknown, requested: string): string {
+function mergeDate(live: unknown, requested: string): unknown {
+	// The CONTAINER is part of the shape. `readDate` accepts a one-item list by reading
+	// its first entry, so `[2026-08-10T09:00+02:00]` is an accepted datetime — and a
+	// merge that only understood strings would answer it with a bare scalar, dropping
+	// the time and the list in one move. Unwrap the way the reader unwraps, merge the
+	// entry, and put it back where it was.
+	if (Array.isArray(live) && live.length === 1) return [mergeDate(live[0], requested)];
 	// ASKED OF `readDate`, not of the pattern alone. A regex matching the shape is not
 	// the same question as the model's reader accepting the value: `2026-02-30T09:00+02:00`
 	// is datetime-shaped and refused (February has no thirtieth), so a pattern-only test
@@ -1065,6 +1071,12 @@ function mergeDate(live: unknown, requested: string): string {
 	return match ? `${requested}${match[1]}` : requested;
 }
 ```
+
+A list of two or more is not unwrapped, because `readDate` does not read one either — it
+takes the first entry of a ONE-item list and refuses nothing else, so there is no accepted
+value to preserve the shape of. Such a note's date is unreadable, its card is on the shelf
+saying so, and a gesture that reached the writer with one is the shape refusal's business,
+not this function's.
 
 The pattern is `readDate`'s own with the suffix required, so it only ever splits a value
 the line above has already accepted. What is deliberately NOT done is parsing the live
@@ -1391,19 +1403,46 @@ function narrowSpan(span: DateSpan, ends: PlacementEnd[]): DateSpan {
  *   only where the placement HAS a pair: a marker's start is ignored and preserved, so
  *   a stale one later than the target is not a conflict, it is a value the projection
  *   never drew.
+ * - the BASE, for a relative gesture. A slide means "one day further than this", and
+ *   the plan already turned that into an absolute date using what the render showed. If
+ *   the note moved meanwhile, that absolute date walks the other edit backwards, so
+ *   every baseline the batch states is compared against the live value and any
+ *   disagreement refuses the whole batch. Refused rather than rebased: the preview is
+ *   the contract and release writes the dates it showed, so a rebased date is one the
+ *   user was never shown.
  */
 function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite, live: PlacementEnd[]): boolean {
 	const axis = write.axis;
 	if (!axis || axis.ends === undefined) return false;
 	if (live.length !== axis.ends.length || live.some((end) => !axis.ends?.includes(end))) return true;
-	if (live.length < 2) return false;
 	const current = axisSpan(fm, settings);
+	if (axis.from && staleBase(axis.from, current)) return true;
+	if (live.length < 2) return false;
 	const requested = (field: PlacementEnd): CivilDate | null => {
 		const value = axis[field];
 		if (value === undefined) return current[field];
 		return value === null ? null : readDate(value).value;
 	};
 	return reversedSpan(requested('start'), requested('target'));
+}
+
+/**
+ * True where any baseline the gesture stated is not what the note now holds. Compared as
+ * civil DATES, like every other comparison here: a note respelled `2026-8-1` while a drag
+ * was live has not moved, and refusing over a spelling would make a legal gesture fail
+ * for a reason nobody could see. `null` means the gesture measured against an ABSENT end
+ * — an open-end grip's own end, which it is there to fill — so absence is the expectation
+ * and a value appearing there is exactly the conflict this catches.
+ */
+function staleBase(from: Partial<Record<PlacementEnd, string | null>>, current: DateSpan): boolean {
+	return (['start', 'target'] as const).some((end) => {
+		const expected = from[end];
+		if (expected === undefined) return false;
+		const live = current[end];
+		if (expected === null) return live !== null;
+		const parsed = readDate(expected).value;
+		return live === null || parsed === null || daysBetween(parsed, live) !== 0;
+	});
 }
 ```
 
@@ -1776,15 +1815,23 @@ In `src/view/host.ts`:
 	performScheduleMove(item: BacklogItem, plan: SchedulePlan): Promise<boolean>;
 ```
 
-with `import { ItemWrite, SchedulePlan } from '../domain/writePlan';`.
+with `import { ItemWrite, SchedulePlan } from '../domain/writePlan';` and `PlacementEnd`
+from `../domain/itemTypes`.
 
 - [ ] **Step 4: Implement it, and let the announcement read the verdict**
 
 In `src/view/backlogView.ts`:
 
 ```ts
-	async performScheduleMove(item: BacklogItem, plan: SchedulePlan): Promise<boolean> {
-		const writes = computeScheduleWrites(item, plan, placementEnds(item.typeName));
+	async performScheduleMove(
+		item: BacklogItem,
+		plan: SchedulePlan,
+		from?: Partial<Record<PlacementEnd, string | null>>,
+	): Promise<boolean> {
+		// `from` rides through untouched: the base a relative gesture measured against is
+		// an expectation for the WRITER to check, and nothing between here and there can
+		// see the live note to check it against.
+		const writes = computeScheduleWrites(item, plan, placementEnds(item.typeName), from);
 		if (writes.length === 0) return false;
 		const outcome = await this.applyMove(item, writes);
 		// Not "did the call return" but "did the note change": the planner now hands
@@ -4308,10 +4355,23 @@ function holdPlan(
 	// writes the day the pointer names, and `inferSpan` places the result: `keepsOrder`
 	// already drops evidence falling on the wrong side of a stated end.
 	const clamped = opposite === null ? moved : clampAtEqual(end, moved, opposite);
-	// The grip is relative too, so it states its base for the same reason the body does.
-	// An open end borrowed its baseline from the stated opposite one, which is a date the
-	// note does state, so the expectation is real there as well.
-	return { plan: { [end]: formatCivil(clamped) }, from: { [end]: formatCivil(held) } };
+	// The grip is relative too, so it states its base for the same reason the body does —
+	// but it states the base it ACTUALLY had. An open end borrowed its baseline from the
+	// stated opposite end, so recording that borrowed date under the missing end would
+	// expect a value the note does not have, and every attempt to fill an open end would
+	// be refused. What the gesture assumed is two things and both are recorded: this end
+	// was absent, and the end it borrowed from was where it was.
+	const own = span[end];
+	const from: Partial<Record<PlacementEnd, string | null>> =
+		own === null
+			? { [end]: null, [other(end)]: opposite === null ? null : formatCivil(opposite) }
+			: { [end]: formatCivil(own) };
+	return { plan: { [end]: formatCivil(clamped) }, from };
+}
+
+/** The other end of a span — one name for a flip that reads wrong as a ternary. */
+function other(end: PlacementEnd): PlacementEnd {
+	return end === 'start' ? 'target' : 'start';
 }
 
 function clampAtEqual(end: PlacementEnd, moved: CivilDate, opposite: CivilDate): CivilDate {
