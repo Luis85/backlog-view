@@ -118,11 +118,11 @@ import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
 import { organizeShelf } from '../../src/domain/shelf';
-import { defaultSettings } from '../../src/domain/settings';
+import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
-function shelfFrom(vault: FakeVault) {
-	const settings = { ...defaultSettings(), horizonKey: 'horizon', horizonValues: ['Now', 'Next', 'Later'] };
+function shelfFrom(vault: FakeVault, overrides: Partial<BacklogSettings> = {}) {
+	const settings = { ...defaultSettings(), horizonKey: 'horizon', horizonValues: ['Now', 'Next', 'Later'], ...overrides };
 	const model = buildModel(vault.app, vault.entries(), settings);
 	return buildRoadmap(model, settings, () => true, 'horizons').shelf;
 }
@@ -137,9 +137,13 @@ describe('organizing the shelf', () => {
 		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 10 } });
 		vault.addFile('A Bug.md', { frontmatter: { type: 'Bug', order: 20 } });
 		vault.addFile('An Epic.md', { frontmatter: { type: 'Epic', order: 30 } });
+		// A root-level custom type with no parent would normally be pruned by
+		// hierarchyOnly (the default) — it matches no declared level or extra type
+		// and has nothing to anchor it, so it disables that pruning rather than
+		// giving the note a parent it does not need for what this test is about.
 		vault.addFile('A Custom.md', { frontmatter: { type: 'Spike', order: 40 } });
 
-		const groups = organizeShelf(shelfFrom(vault), 'tree', new Set());
+		const groups = organizeShelf(shelfFrom(vault, { hierarchyOnly: false }), 'tree', new Set());
 		expect(groups.map((g) => g.type)).toEqual(['Epic', 'Task', 'Bug', 'Other']);
 	});
 
@@ -798,9 +802,24 @@ export function syncShelfControls(host: BacklogViewHost, barEl: HTMLElement): vo
 
 	const filterEl = wrap.querySelector<HTMLElement>('.pbl-shelf-type-filter');
 	if (!filterEl) return;
+	// Rebuilding the chips would destroy whichever one the user just activated,
+	// taking its focus with it — the same problem the toolbar rebuild has, one level
+	// deeper. `group.type` is a stable identifier across a rebuild where the DOM node
+	// is not, so capture which type currently holds focus (if any) and hand it back
+	// to the freshly-built checkbox for that same type below. `document.activeElement`
+	// plus `contains`/`closest`, not a `:focus` selector — no dependency on how
+	// thoroughly the test environment's selector engine matches live focus state.
+	const active = document.activeElement;
+	const focusedType =
+		active instanceof HTMLElement && filterEl.contains(active)
+			? active.closest<HTMLElement>('.pbl-shelf-type-chip')?.dataset.shelfType
+			: undefined;
 	filterEl.empty();
 	for (const group of organizeShelf(shelf, 'tree', new Set())) {
-		const chip = filterEl.createEl('label', { cls: 'pbl-shelf-type-chip' });
+		const chip = filterEl.createEl('label', {
+			cls: 'pbl-shelf-type-chip',
+			attr: { 'data-shelf-type': group.type },
+		});
 		const checkbox = chip.createEl('input', { type: 'checkbox' });
 		checkbox.checked = !host.shelfHiddenTypes.has(group.type);
 		checkbox.addEventListener('change', () => {
@@ -810,6 +829,7 @@ export function syncShelfControls(host: BacklogViewHost, barEl: HTMLElement): vo
 			host.setShelfHiddenTypes(hidden);
 		});
 		chip.createSpan({ text: `${group.type} (${group.cards.length})` });
+		if (group.type === focusedType) checkbox.focus();
 	}
 }
 ```
@@ -927,6 +947,31 @@ Actually, add these test cases inside the existing `describe` block:
 
 		expect(containerEl.querySelector('.pbl-mode-btn[aria-label="Show as roadmap"]')).toBe(modeBtn);
 	});
+
+	it('keeps focus on the type-filter checkbox that was just toggled, not merely the rest of the toolbar', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+		const taskCheckbox = containerEl.querySelector<HTMLInputElement>(
+			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
+		);
+		expect(taskCheckbox).not.toBeNull();
+		taskCheckbox?.focus();
+
+		// The `change` handler calls setShelfHiddenTypes, which re-renders the content
+		// pane and rebuilds every chip from scratch — the very node holding focus
+		// right now does not survive that. What must survive is focus landing on
+		// WHATEVER checkbox now represents "Task", even though it is a new DOM node.
+		taskCheckbox!.checked = false;
+		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
+
+		const rebuiltCheckbox = containerEl.querySelector<HTMLInputElement>(
+			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
+		);
+		expect(rebuiltCheckbox).not.toBeNull();
+		expect(rebuiltCheckbox).not.toBe(taskCheckbox);
+		expect(document.activeElement).toBe(rebuiltCheckbox);
+	});
 ```
 
 `shelfCountOf` comes from `test/helpers/roadmap.ts` (Task 4 already repointed it at the
@@ -961,7 +1006,7 @@ In `renderTreeContent()`, add the call right after `syncCountLabel(this, this.to
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run test/view/shelfUx.test.ts`
-Expected: PASS (all six tests so far).
+Expected: PASS (all seven tests so far).
 
 - [ ] **Step 5: Commit**
 
@@ -1316,12 +1361,26 @@ collapse toggle fails it without anyone predicting the surface. It needs its own
 because it exercises the write path (`performHorizonMove`), not just rendering.
 
 **Interfaces:**
-- Consumes: `drag`, `flush` from `test/helpers/view.ts`; `shelfOf` from `test/helpers/roadmap.ts`.
+- Consumes: `cardDrag` from `test/helpers/dnd.ts`, `flush` from `test/helpers/view.ts`, `cardByTitle` from `test/helpers/board.ts`, `shelfOf` from `test/helpers/roadmap.ts`.
+
+Roadmap cards are wired through Pragmatic Drag and Drop, not the tree's native HTML5
+drag events — `test/helpers/view.ts`'s `drag` helper is for tree-row reordering and
+emits a plain `MouseEvent` with no `dataTransfer`, which the card's Pragmatic adapter
+silently ignores. `test/helpers/dnd.ts`'s `cardDrag(card, region)` is the one that
+actually supplies the adapter's payload — `test/view/roadmapMoves.test.ts` already
+drives every roadmap card move through it, including the near-identical "drop onto an
+empty, live-drag-only shelf" case this task's test mirrors. Using the wrong helper here
+would not fail loudly: the drop would silently do nothing, `horizon` would stay
+whatever it started as, and a test written the wrong way around that assertion could
+easily read as passing for the wrong reason — or, worse, send whoever hits a real
+failure here chasing a bug in `shelf.ts` that does not exist.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-import { drag, flush } from '../helpers/view'; // extend existing import
+import { cardDrag } from '../helpers/dnd'; // new import
+import { cardByTitle } from '../helpers/board'; // new import
+import { flush } from '../helpers/view'; // extend existing import
 ```
 
 ```ts
@@ -1333,22 +1392,13 @@ describe('the shelf as a drop target while collapsed', () => {
 		// Default collapsed — confirm the premise before testing the drop.
 		expect(shelfOf(containerEl)?.hasClass('pbl-shelf-collapsed')).toBe(true);
 
-		const card = containerEl.querySelector<HTMLElement>('.pbl-bucket .pbl-card');
-		const shelf = shelfOf(containerEl);
-		expect(card).not.toBeNull();
-		expect(shelf).not.toBeNull();
-		drag(card as HTMLElement, shelf as HTMLElement, 'inside');
+		cardDrag(cardByTitle(containerEl, 'Placed'), shelfOf(containerEl) as HTMLElement);
 		await flush();
 
-		expect(vault.fm('Placed.md')?.horizon).toBeUndefined();
+		expect('horizon' in vault.fm('Placed.md')).toBe(false);
 	});
 });
 ```
-
-Check `test/helpers/vault.ts`'s `FakeVault.fm(path)` return shape before relying on
-`.horizon` — if the project's convention reads `undefined` differently (e.g. the key is
-simply absent from the object), adjust the assertion to match (`expect('horizon' in
-(vault.fm('Placed.md') ?? {})).toBe(false)` is the safe fallback).
 
 - [ ] **Step 2: Run the test to verify it fails or passes for the wrong reason**
 
