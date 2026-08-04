@@ -3,13 +3,13 @@ import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderTimeline } from './timeline';
-import { RoadmapSnapshot } from '../host';
+import { RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { BacklogItem } from '../../domain/model';
 import { ShelfCard } from '../../domain/bars';
 import { buildRoadmap, HorizonBucket, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
-import { scaleFor } from '../../domain/timeline';
+import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
 /**
@@ -41,6 +41,9 @@ export function renderRoadmap(
 			cards: [],
 			todayLeft: null,
 			scroller: null,
+			boxes: [],
+			window: null,
+			scale: null,
 		};
 	}
 	const roadmap = buildRoadmap(model, host.settings, (item) => !host.isRowHidden(item), axis);
@@ -49,6 +52,8 @@ export function renderRoadmap(
 	const cards: BacklogItem[] = [];
 	let todayLeft: number | null = null;
 	let scroller: HTMLElement | null = null;
+	let window: TimelineWindow | null = null;
+	let scale: TimelineScale | null = null;
 	// Null on the dated axis, and that null is the whole withholding: no draggables and
 	// no drop targets — one condition rather than a flag per affordance. It is the
 	// TARGETING that goes, not the strip: an occupied shelf still renders there, because
@@ -62,15 +67,30 @@ export function renderRoadmap(
 		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
 		placing.wireScroller(treeEl);
 	} else {
-		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, today, scaleFor(host.zoom));
+		const activeScale = scaleFor(host.zoom);
+		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, today, activeScale);
 		cards.push(...timeline.cards);
 		todayLeft = timeline.todayLeft;
 		scroller = timeline.scroller;
+		window = timeline.window;
+		scale = activeScale;
 	}
-	cards.push(...renderShelf(ctx, frameEl, roadmap.shelf, placing));
-	cards.push(...renderContextStrip(ctx, frameEl, roadmap.context));
-	renderRoadmapAdvisory(ctx, frameEl, cards.length);
-	return { roadmap, cards, todayLeft, scroller };
+	const shelf = renderShelf(ctx, frameEl, roadmap.shelf, placing);
+	cards.push(...shelf.cards);
+	const context = renderContextStrip(ctx, frameEl, roadmap.context);
+	cards.push(...context.cards);
+	const advisoryEl = renderRoadmapAdvisory(ctx, frameEl, cards.length);
+
+	// Keyed by WHICH BAND IT IS, in the order the bands render — a band that did not
+	// render (an empty shelf with nothing to un-place, no context, cards on screen) is
+	// simply absent, so `captureScroll`/`restoreScroll` neither read nor write it.
+	const boxes: ScrollBox[] = [];
+	if (scroller) boxes.push({ key: 'timeline', el: scroller });
+	if (shelf.el) boxes.push({ key: 'shelf', el: shelf.el });
+	if (context.el) boxes.push({ key: 'context', el: context.el });
+	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
+
+	return { roadmap, cards, todayLeft, scroller, boxes, window, scale };
 }
 
 /**
@@ -167,9 +187,9 @@ function renderShelf(
 	frameEl: HTMLElement,
 	shelf: ShelfCard[],
 	dnd: CardDragController | null,
-): BacklogItem[] {
+): { cards: BacklogItem[]; el: HTMLElement | null } {
 	const empty = shelf.length === 0;
-	if (empty && !dnd) return [];
+	if (empty && !dnd) return { cards: [], el: null };
 	const shelfEl = frameEl.createDiv({
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : ''),
 		attr: { role: 'group', 'aria-label': `${SHELF_LABEL}, ${shelf.length} item${shelf.length === 1 ? '' : 's'}` },
@@ -203,7 +223,7 @@ function renderShelf(
 	// Entering the vocabulary is the triage gesture, so the shelf is a drag SOURCE as
 	// much as a target — and dropping back on it un-places, the mirror write.
 	dnd?.wireDropTarget(shelfEl, (item) => void ctx.host.performHorizonMove(item, null));
-	return shelf.map((entry) => entry.item);
+	return { cards: shelf.map((entry) => entry.item), el: shelfEl };
 }
 
 /**
@@ -212,8 +232,12 @@ function renderShelf(
  * stand beside the shelf, apart from its count: a context row is not a result,
  * and the shelf is a statement about the results.
  */
-function renderContextStrip(ctx: RowContext, frameEl: HTMLElement, context: BacklogItem[]): BacklogItem[] {
-	if (context.length === 0) return [];
+function renderContextStrip(
+	ctx: RowContext,
+	frameEl: HTMLElement,
+	context: BacklogItem[],
+): { cards: BacklogItem[]; el: HTMLElement | null } {
+	if (context.length === 0) return { cards: [], el: null };
 	const stripEl = frameEl.createDiv({ cls: 'pbl-roadmap-context', attr: { role: 'group', 'aria-label': 'Context' } });
 	const header = stripEl.createDiv({ cls: 'pbl-shelf-header' });
 	setIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'corner-left-down');
@@ -225,7 +249,7 @@ function renderContextStrip(ctx: RowContext, frameEl: HTMLElement, context: Back
 		renderCardBody(ctx, card, item);
 		wireCardActivation(ctx, card, item);
 	}
-	return context;
+	return { cards: context, el: stripEl };
 }
 
 /**
@@ -234,12 +258,13 @@ function renderContextStrip(ctx: RowContext, frameEl: HTMLElement, context: Back
  * an all-shelved roadmap is not empty, it is a backlog not yet planned, and the
  * shelf's count is the fact — nothing suggests placements the user has not made.
  */
-function renderRoadmapAdvisory(ctx: RowContext, frameEl: HTMLElement, renderedCards: number): void {
+function renderRoadmapAdvisory(ctx: RowContext, frameEl: HTMLElement, renderedCards: number): HTMLElement | null {
 	const host = ctx.host;
 	const model = host.model;
-	if (!model || renderedCards > 0) return;
+	if (!model || renderedCards > 0) return null;
 	const aside = frameEl.createDiv({ cls: 'pbl-board-advisory' });
 	if (model.results.length === 0) renderEmptyState(host, aside);
 	else if (host.isFiltering()) renderFilterEmptyState(host, aside);
 	else renderAllDoneState(host, aside, model.results.length);
+	return aside;
 }

@@ -4,6 +4,7 @@ import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { flush, key, makeView, noOptionalProperties, projectionButton, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { bucketNames, bucketsOf, shelfTitles } from '../helpers/roadmap';
+import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 useViewHarness();
 
@@ -253,10 +254,22 @@ describe('the shared scroller across projections', () => {
 		return vault;
 	}
 
+	// The dated axis's own scroll box is `.pbl-timeline`, not the pane — Task 9 moved
+	// it there. Every other projection (board, tree, the horizon axis) still scrolls
+	// the pane, so this picks whichever is on screen rather than assuming one.
 	function scroller(containerEl: HTMLElement): HTMLElement {
-		const el = containerEl.querySelector<HTMLElement>('.pbl-tree');
+		const el = containerEl.querySelector<HTMLElement>('.pbl-timeline') ?? containerEl.querySelector<HTMLElement>('.pbl-tree');
 		if (!el) throw new Error('the scroller is missing');
 		return el;
+	}
+
+	/**
+	 * Where `centreOnToday` puts the scroller in THIS harness: jsdom lays out nothing,
+	 * so `clientWidth` is always 0, which is narrower than the lead column itself —
+	 * the clamped case the centring math has for a pane that narrow.
+	 */
+	function centredOnToday(todayLeft: number): number {
+		return Math.max(todayLeft - TIMELINE_LEAD_PX, 0);
 	}
 
 	it('centers on today whatever offset the scroller inherited from another projection', () => {
@@ -268,13 +281,13 @@ describe('the shared scroller across projections', () => {
 
 		view.setProjection('roadmap');
 		expect(containerEl.querySelector('.pbl-timeline')).not.toBeNull();
-		expect(scroller(containerEl).scrollLeft).toBe(view.roadmap?.todayLeft);
+		expect(scroller(containerEl).scrollLeft).toBe(centredOnToday(view.roadmap?.todayLeft ?? 0));
 	});
 
 	it('keeps a timeline panned to its far-past edge there across a data update', () => {
 		const vault = datedVault();
 		const { view, containerEl } = roadmapView(vault, { ...DATES });
-		expect(scroller(containerEl).scrollLeft).toBe(view.roadmap?.todayLeft);
+		expect(scroller(containerEl).scrollLeft).toBe(centredOnToday(view.roadmap?.todayLeft ?? 0));
 
 		scroller(containerEl).scrollLeft = 0;
 		refresh(view, vault);

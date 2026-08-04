@@ -3,20 +3,35 @@
 
 /* ----- the dated axis: the month grid, bars, and the today line */
 
+/* The scroll box, on BOTH axes. Not `.pbl-timeline-content`: full-height marks resolve
+   `top: 0; bottom: 0` against their containing block's padding box, so making the
+   scroll box the containing block would make every line viewport-tall and scroll away.
+
+   REPLACE the existing rule rather than adding to it: `width: max-content` moves to the
+   content wrapper below. A scroll box as wide as its own content has nothing to scroll —
+   the overflow would happen outside it, where `.pbl-roadmap-dates .pbl-tree` now clips
+   instead of scrolling, so every date past the pane's edge would be unreachable and the
+   registered scroller would have nothing to pan. `min-width: 0` because a flex item's
+   automatic minimum is its content size, which would restore the same width by another
+   route. */
 .pbl-timeline {
-	/* The scroll box in Task 9; a plain block until then. Deliberately NOT the
-	   positioned layer — see `.pbl-timeline-content`. */
+	position: relative;
+	width: 100%;
 	min-width: 0;
+	overflow: auto;
 }
 
-/* The positioned layer, and the containing block for every full-height mark. It is
-   inside the scroll box rather than being it: an absolutely positioned child resolves
-   `top: 0; bottom: 0` against its containing block's padding box, so a scroll container
-   in that role would size the today line, the milestone lines and the drop overlay to
-   the VISIBLE height and scroll them away from the rows below. */
 .pbl-timeline-content {
 	position: relative;
+	/* Over a minimum of the scrollport, because `max-content` alone is the height of
+	   the rows that exist: a timeline with few bars — or none, which is the state every
+	   fresh backlog starts in — would leave the blank grid below the last row outside
+	   the drop overlay and refusing drops, while [[Roadmap empty states]] requires
+	   every region of the frame to be a drop target. */
 	width: max-content;
+	min-width: 100%;
+	height: max-content;
+	min-height: 100%;
 }
 
 .pbl-timeline-header {

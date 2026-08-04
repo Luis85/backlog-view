@@ -3,10 +3,12 @@ import { RowContext } from './columns';
 import { renderBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptyStates';
 import { renderRoadmap } from './roadmap';
 import { renderTree } from './rows';
-import { BoardSnapshot, Projection, RoadmapSnapshot } from '../host';
+import { TIMELINE_LEAD_PX } from './timeline';
+import { BoardSnapshot, Projection, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { CivilDate } from '../../domain/noteFields';
 import { activeAxis } from '../../domain/roadmap';
+import { daysBetween, dayAt } from '../../domain/timeline';
 
 /**
  * The content-pane fork: which projection draws into the scroller, and what the
@@ -24,54 +26,147 @@ export interface ProjectionContent {
 	label: string;
 }
 
-/** The scroller's memory across renders: what it drew, and where today sat. */
+/** The scroller's memory across renders: what it drew, at what scale, and where each band sat. */
 export interface ScrollAnchor {
 	content: string;
 	todayLeft: number | null;
+	/** The scale the offsets were measured at; null off the dated axis. */
+	scale: string | null;
+	/** Each band's own offsets, by identity — never by position in a collection. */
+	offsets: Record<string, { top: number; left: number }>;
+	/** The civil date at the timeline's leading edge, which is what a zoom change preserves. */
+	leadingDate: CivilDate | null;
+}
+
+/** The pane plus whatever bands the frame owns. One list, so capture and restore agree. */
+function scrollBoxes(treeEl: HTMLElement, roadmap: RoadmapSnapshot | null): ScrollBox[] {
+	// The pane is one of these, not an exception to them: it stops scrolling on the
+	// dated axis in the ordinary case, but the short-pane fallback gives it a vertical
+	// offset again. Conditioning the capture on whether that fallback is active would be
+	// a second question to keep in step with the layout; capturing a zero costs nothing.
+	return [{ key: 'pane', el: treeEl }, ...(roadmap?.boxes ?? [])];
 }
 
 /**
- * Where the horizontal scroll belongs after a render. An offset belongs to the
- * content that made it: the same content restores it — corrected by how far
- * today moved, because a data update can shift the timeline window's origin by
- * months and a raw pixel offset would then show a different stretch of
- * calendar — while a switch resets it, and entering the dated timeline centers
- * on today. Tracked through the anchor, never read off the position: zero is a
- * place a user can pan to.
+ * Read every band's offset off the DOM that is about to be destroyed. Called from the
+ * view BEFORE `treeEl.empty()`, against the PREVIOUS snapshot — reading the pane there
+ * would capture a box that no longer scrolls on this axis, and restoring that would
+ * discard the reader's pan on every refresh.
  */
-function anchorScrollLeft(
-	anchor: ScrollAnchor,
-	drawn: string,
-	todayLeft: number | null,
-	saved: number,
-	viewport: number,
-): number {
-	if (drawn !== anchor.content) return todayLeft == null ? 0 : Math.max(todayLeft - viewport / 2, 0);
-	if (todayLeft != null && anchor.todayLeft != null) return Math.max(saved + (todayLeft - anchor.todayLeft), 0);
-	return saved;
+export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | null, anchor: ScrollAnchor): ScrollAnchor {
+	const offsets: Record<string, { top: number; left: number }> = {};
+	for (const box of scrollBoxes(treeEl, roadmap)) {
+		offsets[box.key] = { top: box.el.scrollTop, left: box.el.scrollLeft };
+	}
+	const scroller = roadmap?.scroller ?? null;
+	// `scrollLeft` IS the day-track offset of the first visible date, and no lead-column
+	// term belongs here. The lead is `position: sticky; left: 0`, so it stays pinned at
+	// the scrollport's edge and covers the track beneath it: the first day a reader can
+	// actually see sits at viewport x = 220, which is content x = scrollLeft + 220, which
+	// is day-track offset scrollLeft. Subtracting the lead names a date hidden underneath
+	// it — at 4px/day and scrollLeft 620 that is day 100 while the reader is looking at
+	// day 155 — and it was doing so in an earlier revision of this plan, together with a
+	// guard for the negative offsets it produced near zero. Both are gone: a sticky
+	// element shifts what is painted, not where the content is.
+	const leadingDate =
+		scroller && roadmap?.window && roadmap.scale ? dayAt(roadmap.window, roadmap.scale, scroller.scrollLeft) : null;
+	return { ...anchor, offsets, leadingDate };
 }
 
 /**
- * Put the scroller back where the content about to be shown left it, and return
- * the anchor the next pass is measured against. Both offsets belong to the content
- * that made them, and what was DRAWN is finer than which projection ran — the
- * roadmap's two axes are different content on one scroller — so the name is derived
- * here, beside the fork that chose it. Vertical keeps the horizontal rule without
- * the centering: the same content keeps the reader's place, a switch starts at the
- * top, because a tree's depth means nothing to a row of buckets.
+ * Where the scroller must sit for today to be centred in the part of it a reader can
+ * SEE. The lead column is `position: sticky; left: 0`, so it covers viewport 0…220 at
+ * every scroll position and the day area is the band from 220 to the right edge.
+ * Centring on `clientWidth / 2` therefore hides today behind the labels in any pane
+ * narrower than twice the lead — a 320px split puts it at viewport 160, under an opaque
+ * column — which defeats both the opening scroll and Jump to today in exactly the narrow
+ * panes the timeline note says are the common case. Clamped at zero for a pane narrower
+ * than the lead itself, where the best available answer is the first visible pixel of
+ * day.
  */
+function centreOnToday(todayLeft: number, viewport: number): number {
+	const band = Math.max(viewport - TIMELINE_LEAD_PX, 0);
+	return Math.max(todayLeft - TIMELINE_LEAD_PX - band / 2, 0);
+}
+
+/** What the render just drew, named finer than the projection: the roadmap's two axes are different content on one frame. */
+function drawnContent(roadmap: RoadmapSnapshot | null, todayLeft: number | null, projection: Projection): string {
+	if (todayLeft != null) return 'dates';
+	if (roadmap) return 'horizons';
+	return projection;
+}
+
+/** One band's own offset, restored by its key — never by its position in the pass. */
+function restoreBox(box: ScrollBox, scroller: HTMLElement, same: boolean, anchor: ScrollAnchor): void {
+	const saved = same ? anchor.offsets[box.key] : undefined;
+	box.el.scrollTop = saved?.top ?? 0;
+	// The one box whose horizontal offset is decided by the anchor policy below.
+	if (box.el === scroller) return;
+	box.el.scrollLeft = saved?.left ?? 0;
+}
+
 export function restoreScroll(
-	el: HTMLElement,
+	treeEl: HTMLElement,
 	anchor: ScrollAnchor,
 	roadmap: RoadmapSnapshot | null,
 	projection: Projection,
-	saved: { top: number; left: number },
 ): ScrollAnchor {
 	const todayLeft = roadmap?.todayLeft ?? null;
-	const drawn = todayLeft != null ? 'dates' : roadmap ? 'horizons' : projection;
-	el.scrollTop = drawn === anchor.content ? saved.top : 0;
-	el.scrollLeft = anchorScrollLeft(anchor, drawn, todayLeft, saved.left, el.clientWidth);
-	return { content: drawn, todayLeft };
+	const drawn = drawnContent(roadmap, todayLeft, projection);
+	const scale = roadmap?.scale?.id ?? null;
+	// Band identity applies WITHIN the same drawn content, which is the rule that was
+	// already here: both frames have a band called the shelf, holding different cards
+	// under different layouts, so matching on the band name alone would restore a
+	// deeply scrolled dated shelf onto the horizon one.
+	const same = drawn === anchor.content;
+	const scroller = roadmap?.scroller ?? treeEl;
+	for (const box of scrollBoxes(treeEl, roadmap)) restoreBox(box, scroller, same, anchor);
+	scroller.scrollLeft = anchorScrollLeft(anchor, same, todayLeft, roadmap, scroller.clientWidth);
+	return { content: drawn, todayLeft, scale, offsets: {}, leadingDate: null };
+}
+
+/**
+ * The same content at a DIFFERENT scale: keep the DATE at the leading edge, not the
+ * pixel count — a zoom redefines what a pixel is worth, and `anchorScrollLeft`'s
+ * today-correction cannot see it, because it corrects for the window moving rather
+ * than for the ruler changing. Null where there is nothing to convert (no capture, or
+ * a render with no window/scale of its own), which asks `anchorScrollLeft` to fall
+ * through to the pixel-carry case instead.
+ */
+function scaleChangeScrollLeft(anchor: ScrollAnchor, roadmap: RoadmapSnapshot): number | null {
+	if (!anchor.leadingDate || !roadmap.window || !roadmap.scale) return null;
+	// The mirror of the capture, and just as free of the lead: put the same date back
+	// at the scrollport's edge under the new ruler.
+	const day = daysBetween(roadmap.window.start, anchor.leadingDate);
+	return Math.max(day * roadmap.scale.dayPx, 0);
+}
+
+/**
+ * Where the horizontal offset belongs. Three cases, in the order they are decided:
+ *
+ * - different content — the switch — centres on today, or starts at 0 where there is
+ *   no today to centre on;
+ * - the same content at a different scale keeps the date at the leading edge
+ *   (`scaleChangeScrollLeft`);
+ * - the same content at the same scale keeps the pixel carry, corrected by how far
+ *   today moved — exact for that case, which is every ordinary refresh.
+ */
+function anchorScrollLeft(
+	anchor: ScrollAnchor,
+	same: boolean,
+	todayLeft: number | null,
+	roadmap: RoadmapSnapshot | null,
+	viewport: number,
+): number {
+	if (!same) return todayLeft == null ? 0 : centreOnToday(todayLeft, viewport);
+	const scale = roadmap?.scale?.id ?? null;
+	if (scale !== anchor.scale && roadmap) {
+		const zoomed = scaleChangeScrollLeft(anchor, roadmap);
+		if (zoomed !== null) return zoomed;
+	}
+	const saved = anchor.offsets['timeline']?.left ?? anchor.offsets['pane']?.left ?? 0;
+	if (todayLeft != null && anchor.todayLeft != null) return Math.max(saved + (todayLeft - anchor.todayLeft), 0);
+	return saved;
 }
 
 export function renderProjectionContent(

@@ -4,7 +4,7 @@ import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { PlacementEnd } from '../domain/itemTypes';
-import { ScaleId } from '../domain/timeline';
+import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings, OptionalProperty } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
@@ -47,6 +47,12 @@ export interface BoardSnapshot {
 	colEls: HTMLElement[];
 }
 
+/** One scroll box the frame owns, keyed by WHICH BAND IT IS rather than by position. */
+export interface ScrollBox {
+	key: string;
+	el: HTMLElement;
+}
+
 /**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
@@ -57,8 +63,23 @@ export interface RoadmapSnapshot {
 	cards: BacklogItem[];
 	/** Pixel offset of the today line inside the grid, or null on the horizon axis. */
 	todayLeft: number | null;
-	/** The dated axis's own scroller, for `jumpToToday`; null on the horizon axis. */
+	/**
+	 * The element that scrolls the timeline — both axes on the dated one. Null off it,
+	 * where the pane is still the scroll box, which is every other projection.
+	 */
 	scroller: HTMLElement | null;
+	/**
+	 * Every scroll box in the frame, the pane excluded (the view adds that). Bounding
+	 * the bands turned each of them into a scroll box of its own, and a rebuild empties
+	 * the whole pane: the shelf is the one that bites, because scheduling a card IS a
+	 * rebuild, so a reader working down a long shelf would be thrown back to its top on
+	 * every drop.
+	 */
+	boxes: ScrollBox[];
+	/** The window the grid drew, for the drag's px↔date and for the zoom anchor. */
+	window: TimelineWindow | null;
+	/** The density the grid drew at; null on the horizon axis. */
+	scale: TimelineScale | null;
 }
 
 /**

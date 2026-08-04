@@ -15,6 +15,20 @@ export function horizonVault(): FakeVault {
 }
 
 /**
+ * One long-spanning item (so the dated axis's window has enough days to pan across)
+ * beside several undated epics (so the shelf renders a band with real content) — the
+ * fixture the frame's scroll-box and zoom-anchor tests share.
+ */
+export function shelfHeavyVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Anchor.md', { frontmatter: { type: 'Epic', order: 5, start: '2026-08-01', due: '2027-08-01' } });
+	for (let i = 1; i <= 6; i++) {
+		vault.addFile(`Undated ${i}.md`, { frontmatter: { type: 'Epic', order: i * 10 } });
+	}
+	return vault;
+}
+
+/**
  * A view already showing the roadmap. The mode is UI state, not a base setting, so
  * it is flipped through the host exactly as the toolbar does — never the config.
  */

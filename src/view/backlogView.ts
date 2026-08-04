@@ -23,7 +23,7 @@ import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, placementEnds, PlacementEnd } from '../domain/itemTypes';
 import { placeItem } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
-import { horizonSource, RoadmapAxis } from '../domain/roadmap';
+import { activeAxis, horizonSource, RoadmapAxis } from '../domain/roadmap';
 import {
 	computeDropWrites,
 	computeHorizonWrites,
@@ -39,7 +39,7 @@ import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
-import { renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
+import { captureScroll, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { TIMELINE_LEAD_PX } from './render/timeline';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
@@ -72,7 +72,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
 	/** What the scroller last drew and where today sat — see `restoreScroll`. */
-	private scroll: ScrollAnchor = { content: '', todayLeft: null };
+	private scroll: ScrollAnchor = { content: '', todayLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -432,6 +432,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const projection = this.projection;
 		this.viewEl.toggleClass('pbl-board-mode', projection === 'board');
 		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
+		this.viewEl.toggleClass(
+			'pbl-roadmap-dates',
+			projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates',
+		);
 		// The keyboard instructions belong to the board and are rebuilt with it below;
 		// dropped here so the attribute never outlives the element it points at — a
 		// dangling `aria-describedby` is read as no description at all.
@@ -442,8 +446,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Collapse controls and drag grips are inert while a filter is active.
 		this.viewEl.toggleClass('pbl-filtering', this.isFiltering());
 
-		const scrollTop = this.treeEl.scrollTop;
-		const scrollLeft = this.treeEl.scrollLeft;
+		// Captured from the OLD frame, before its DOM goes: on the dated axis the pane
+		// is not the scroll box, and reading it here would capture zeros.
+		this.scroll = captureScroll(this.treeEl, this.roadmap, this.scroll);
 		this.treeEl.empty();
 		this.rowEls.clear();
 		if (projection !== 'tree') {
@@ -465,7 +470,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Both offsets belong to the content that made them — restored, corrected,
 		// reset or replaced by the anchor policy `restoreScroll` states beside the
 		// fork that decides what was drawn.
-		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection, { top: scrollTop, left: scrollLeft });
+		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
 		if (projection !== 'tree') return;

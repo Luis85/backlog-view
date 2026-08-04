@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
+import { makeView, refresh, useViewHarness } from '../helpers/view';
 import {
 	barFor,
 	barOf,
@@ -15,12 +15,13 @@ import {
 	labelTexts,
 	rowFor,
 	shelfCountOf,
+	shelfHeavyVault,
 	shelfIsEmptyStrip,
 	shelfOf,
 	shelfTitles,
 	timelineRows,
 } from '../helpers/roadmap';
-import { scaleFor } from '../../src/domain/timeline';
+import { daysBetween, scaleFor } from '../../src/domain/timeline';
 
 useViewHarness();
 
@@ -38,6 +39,19 @@ function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { bas
 /** The dated axis alone, at its default zoom — the fixture the density tests share. */
 function datedRoadmap(vault: FakeVault) {
 	return roadmapView(vault, { ...DATES });
+}
+
+/**
+ * Both axes configured, opened on dates explicitly — the fixture for a genuine axis
+ * switch. `datedRoadmap` alone cannot exercise one: with only the dated axis
+ * configured, picking 'horizons' resolves back to 'dates' (`activeAxis`'s "a
+ * configured axis always beats guidance"), so nothing about the drawn content
+ * actually changes.
+ */
+function datedAndHorizonRoadmap(vault: FakeVault) {
+	const harness = roadmapView(vault, { ...DATES, horizonProperty: 'note.horizon' });
+	harness.view.setAxisPick('dates');
+	return harness;
 }
 
 describe('the horizon frame', () => {
@@ -510,5 +524,79 @@ describe('the grid at each density', () => {
 		expect(cellLabels(containerEl).some((label) => /^Q[1-4] \d{4}$/.test(label))).toBe(true);
 		view.setZoom('month');
 		expect(cellLabels(containerEl)).toContain('Aug 2026');
+	});
+});
+
+describe('the dated frame’s scroll boxes', () => {
+	it('keeps each band’s place by WHICH BAND IT IS, never by its position', () => {
+		// The bands are conditional — the context strip renders only with context rows,
+		// the advisory only when no cards do — so a filter can change which bands exist
+		// between two renders, and a positional pairing would restore the context
+		// strip's offset onto the advisory and open it scrolled past its own heading.
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedRoadmap(vault);
+		const shelfEl = shelfOf(containerEl);
+		if (!shelfEl) throw new Error('no shelf');
+		shelfEl.scrollTop = 120;
+
+		refresh(view, vault);
+
+		expect(shelfOf(containerEl)?.scrollTop).toBe(120);
+	});
+
+	it('starts a band that has just appeared at the top', () => {
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedAndHorizonRoadmap(vault);
+		shelfOf(containerEl)!.scrollTop = 120;
+		view.setAxisPick('horizons');
+		view.setAxisPick('dates');
+		// Different drawn content — the roadmap's two axes are different content on one
+		// frame — so every band starts at the top rather than inheriting the other
+		// axis's shelf offset.
+		expect(shelfOf(containerEl)?.scrollTop).toBe(0);
+	});
+
+	it('captures the offsets from the OLD scroller, before the DOM goes', () => {
+		// `renderTreeContent` reads `treeEl.scrollTop/scrollLeft` just before
+		// `treeEl.empty()` — the PANE, which on this axis no longer scrolls. Restoring
+		// those would silently discard the reader's pan and jump back to today on every
+		// refresh. Capture and restore are one decision about which element the scroll
+		// box is, and they have to name the same one.
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedRoadmap(vault);
+		const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
+		scroller!.scrollLeft = 900;
+
+		refresh(view, vault);
+
+		expect(containerEl.querySelector<HTMLElement>('.pbl-timeline')?.scrollLeft).toBe(900);
+	});
+});
+
+describe('preserving a place across a zoom change', () => {
+	it('reopens at the same DATE, not the same pixel count', () => {
+		// A zoom redefines what a pixel is worth: a day a hundred days out sits 400px
+		// away at month zoom and 200px at quarter. `restoreScroll`'s existing
+		// `saved + (newTodayLeft - oldTodayLeft)` correction cannot see it — it corrects
+		// for the window moving, not for the ruler changing. Driven while PANNED AWAY
+		// from today, since at today the two rules agree and the bug is invisible.
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedRoadmap(vault);
+		const scroller = () => containerEl.querySelector<HTMLElement>('.pbl-timeline')!;
+		const window = view.roadmap?.window;
+		if (!window) throw new Error('no window');
+		const monthPx = scaleFor('month').dayPx;
+		// Day 100 of the window at the scrollport's edge. `scrollLeft` is the day-track
+		// offset of the first VISIBLE day: the lead is sticky, so it covers the track
+		// rather than displacing it. Asserted against a pixel offset computed here from
+		// first principles rather than by calling the production conversion on both
+		// sides — a test that reuses the instrument passes whatever the instrument does.
+		scroller().scrollLeft = 100 * monthPx;
+
+		view.setZoom('quarter');
+
+		const after = view.roadmap?.window;
+		const day = daysBetween(after!.start, window.start) + 100;
+		expect(scroller().scrollLeft).toBe(day * scaleFor('quarter').dayPx);
 	});
 });
