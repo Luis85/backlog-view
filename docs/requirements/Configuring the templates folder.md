@@ -58,9 +58,12 @@ which of my item types each one is for without me maintaining a second list anyw
   what it carries. Anyone who wants a real item there has to move it out first. This is
   the model's own exclusion, not the Base's: if `templatesFolder` sits inside the Base's
   own filtered folder, `file.inFolder(...)` matches subfolders
-  ([[Backlog as folder notes]]), so the Base still returns the note as a raw result —
-  `model.results` carries it, `model.items` does not. The two are different sets for
-  exactly this reason elsewhere in the register, and nothing here changes that.
+  ([[Backlog as folder notes]]), so the Base's own query still returns the note — the
+  raw entries `buildModel` receives still include it. But `model.results` is not that raw
+  query: it is `model.items` filtered by `outsideFilter`, built from the same linked tree,
+  so a note excluded before linking is absent from **both** — there is no array in the
+  model where this note appears. "The Base still queries it, the model never does" is the
+  accurate version of the sentence that used to be here.
 - **1d — `templatesFolder` is an ancestor of, or equal to, `homeFolder` or any
   `typeFolder.<type>`** (`templatesFolder: docs` with `homeFolder: docs/backlog`, say).
   Every note under that item folder is excluded from the tree too, real items included —

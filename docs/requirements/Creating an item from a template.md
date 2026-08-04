@@ -18,7 +18,7 @@ start blank every time, without losing the one-title-and-done speed of a plain i
 | **Actor** | Backlog owner, creating an item ([[New item flow]]) |
 | **Trigger** | Choosing a type in the new-item modal for which at least one template exists |
 | **Preconditions** | `templatesFolder` is configured and at least one template matches the chosen type ([[Configuring the templates folder]]) |
-| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in. The plugin's own hierarchy keys (`type`, `parent`, `order`), the roadmap's axis keys (`horizon`, `start`, `target`) and the workflow's transition stamps (`started`, `finished`) are never taken from a template at all — stripped before anything is written, not merely overridden, since creation does not always supply its own value for every one of them to win with. The workflow state is the one exception: a plugin-supplied placement state always wins, but where creation supplies none, the template's own state is what the note gets. |
+| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in. The plugin's own hierarchy keys (`type`, `parent`, `order`), the roadmap's axis keys (`horizon`, `start`, `target`) and the workflow's transition stamps (`started`, `finished`) are never taken from a template at all — stripped before anything is written, not merely overridden, since creation does not always supply its own value for every one of them to win with. The workflow state is tri-state, not binary: an EXPLICIT placement — a real column, or the no-state column's deliberate absence — always wins over a template's state; only the ABSENCE of any placement at all (creation with no board-column context) lets the template's state survive. |
 
 **Main flow**
 
@@ -55,14 +55,22 @@ start blank every time, without losing the one-title-and-done speed of a plain i
   start, not a merge of two templates' bodies.
 - **5a — the body field is left empty**, whether or not a template was picked. The note
   is created with an empty body, same as today.
-- **5b — the template carries a state, and creation is happening from a board column**
-  ([[New cards in place]], itself still design). The column's own preset state wins —
-  the same placement precedence the roadmap's bucket creation already gives `horizon`
-  over anything else. State is not stripped unconditionally the way the axis keys and
-  the transition stamps are: unlike a leftover date, a state is a plausible deliberate
-  default for a template to declare ("this kind of Task starts in Backlog"), so absent a
-  column placement the template's own state is what the note gets, same as any other
-  extra frontmatter.
+- **5b — the template carries a state, and creation is happening from a board column
+  with a real state** ([[New cards in place]], itself still design). The column's own
+  preset state wins — the same placement precedence the roadmap's bucket creation
+  already gives `horizon` over anything else. State is not stripped unconditionally the
+  way the axis keys and the transition stamps are: unlike a leftover date, a state is a
+  plausible deliberate default for a template to declare ("this kind of Task starts in
+  Backlog"), so where creation supplies no placement at all, the template's own state is
+  what the note gets, same as any other extra frontmatter.
+- **5c — the template carries a state, and creation is happening from the board's
+  no-state column.** The template's state does *not* survive here, even though creation
+  "supplies none" in the sense of writing no state key: the no-state column's placement
+  is an explicit absence, not the absence of a placement, and [[New cards in place]]'s 1a
+  is exactly this distinction ("absence is a value here"). A template's state is only
+  ever a default for creation with *no board-column context at all* — the tree's **+**,
+  the toolbar's **New**, a row's context menu — never for a column that placed the card
+  in "no state" on purpose.
 
 ## Acceptance criteria
 
@@ -78,11 +86,13 @@ start blank every time, without losing the one-title-and-done speed of a plain i
   stamps (`started`, `finished`) are stripped from it before the merge, unconditionally —
   never relying on the plugin supplying its own value to override one with, since a
   top-level creation with folder mode off writes no `parent` value at all.
-- The workflow state is not on that stripped list: a column's preset state (creating
-  from a board column) wins over a template's state, but a template's state survives as
-  the note's state when creation supplies none — the only key in the merge with that
-  shape, because it is the only one of the group with a plausible reason to be a
-  deliberate template default rather than incidental copy-through.
+- The workflow state is not on that stripped list, and is not simply "plugin value wins,
+  else template default": an explicit placement — a real column's state, or the
+  no-state column's deliberate absence — always wins over a template's state; the
+  template's state survives only when creation carries no board-column placement at
+  all. It is the only key in the merge with that three-way shape, because it is the
+  only one of the group with a plausible reason to be a deliberate template default
+  rather than incidental copy-through.
 - Creation still goes through the same config gate as every other write.
 
 ## Where it lives
