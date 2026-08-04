@@ -1053,12 +1053,12 @@ and add, beside `isBlank`:
  * `readDate` regex's own trailing group.
  */
 function mergeDate(live: unknown, requested: string): unknown {
-	// The CONTAINER is part of the shape. `readDate` accepts a one-item list by reading
-	// its first entry, so `[2026-08-10T09:00+02:00]` is an accepted datetime — and a
+	// The CONTAINER is part of the shape. `readDate` reads the first entry of ANY
+	// non-empty list, so `[2026-08-10T09:00+02:00, …]` is an accepted datetime — and a
 	// merge that only understood strings would answer it with a bare scalar, dropping
-	// the time and the list in one move. Unwrap the way the reader unwraps, merge the
-	// entry, and put it back where it was.
-	if (Array.isArray(live) && live.length === 1) return [mergeDate(live[0], requested)];
+	// the time, the list and every entry after the first in one move. Unwrap the way the
+	// reader unwraps: replace the entry it read, leave the rest exactly as they are.
+	if (Array.isArray(live) && live.length > 0) return [mergeDate(live[0], requested), ...live.slice(1)];
 	// ASKED OF `readDate`, not of the pattern alone. A regex matching the shape is not
 	// the same question as the model's reader accepting the value: `2026-02-30T09:00+02:00`
 	// is datetime-shaped and refused (February has no thirtieth), so a pattern-only test
@@ -1072,11 +1072,13 @@ function mergeDate(live: unknown, requested: string): unknown {
 }
 ```
 
-A list of two or more is not unwrapped, because `readDate` does not read one either — it
-takes the first entry of a ONE-item list and refuses nothing else, so there is no accepted
-value to preserve the shape of. Such a note's date is unreadable, its card is on the shelf
-saying so, and a gesture that reached the writer with one is the shape refusal's business,
-not this function's.
+The list rule is `readDate`'s, read off `readDate` rather than guessed at: it unwraps
+every non-empty array by taking the first entry, so every non-empty array is a value the
+axis places and every one of them has a shape to keep. An earlier draft of this paragraph
+said the reader accepted one-item lists alone and refused the rest — a claim about a
+function three lines away that was simply false, and it would have quietly normalized a
+multi-entry list into a scalar on the first drag. Ask the reader; do not describe it from
+memory.
 
 The pattern is `readDate`'s own with the suffix required, so it only ever splits a value
 the line above has already accepted. What is deliberately NOT done is parsing the live
@@ -2652,9 +2654,17 @@ export interface ScrollBox {
 ```
 
 `renderRoadmap` collects them: `{ key: 'timeline', el: timeline.scroller }`,
-`{ key: 'shelf', el: shelfCardsEl }`, `{ key: 'context', el: contextCardsEl }`,
+`{ key: 'shelf', el: shelfEl }`, `{ key: 'context', el: stripEl }`,
 `{ key: 'advisory', el: asideEl }`, each pushed only where that band rendered. The keys
 are literals in one place, so a band added later declares its own.
+
+**The element registered is the one the stylesheet gives `overflow-y` to** — the band
+itself, not the cards container inside it. The band rule puts the scrollport on
+`.pbl-shelf` and `.pbl-roadmap-context`, so registering their inner `*CardsEl` would key
+boxes whose `scrollTop` is always zero: every capture would record nothing and every
+restore would leave the real scroller at the top. The test that sets `shelfEl.scrollTop`
+and expects it back is the check on exactly this, and it fails against the inner element —
+which is the only reason this is a rule worth writing down rather than a detail.
 
 - [ ] **Step 4: Capture before the DOM goes, restore by identity**
 
