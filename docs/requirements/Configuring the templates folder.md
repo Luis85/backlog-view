@@ -45,15 +45,22 @@ which of my item types each one is for without me maintaining a second list anyw
   **Save as template** stay available regardless: running either asks for the folder
   first, the same first-use path [[Adding templates from the plugin]] describes.
 - **2a — a note in the folder carries no `templateForKey`, or a value outside the
-  vocabulary.** It is not a template. It renders and edits as an ordinary note; the
-  plugin does not touch it.
+  vocabulary.** It is not a template — and, like everything else under `templatesFolder`,
+  it is not a backlog item either, by step 4's folder-wide exclusion rather than by
+  anything of its own. "Renders and edits as an ordinary note" means outside this view:
+  in Obsidian's file explorer and editor as always. It never renders as a row in the
+  tree, marked or not, the same as a README in that folder never does.
 - **2b — two notes in the folder name the same type.** Both are offered as separate
   templates for that type — a shared folder holds a set, not a slot.
 - **4a — a note under `templatesFolder` is hand-edited to carry `type` and `parent`, and
   put to real use as a work item anyway.** It still never appears: the exclusion is on
   the folder, not on the frontmatter, so nothing inside it links into the tree no matter
-  what it carries. Anyone who wants a real item there has to move it out first — the same
-  way nothing inside `templatesFolder` is a Base result either.
+  what it carries. Anyone who wants a real item there has to move it out first. This is
+  the model's own exclusion, not the Base's: if `templatesFolder` sits inside the Base's
+  own filtered folder, `file.inFolder(...)` matches subfolders
+  ([[Backlog as folder notes]]), so the Base still returns the note as a raw result —
+  `model.results` carries it, `model.items` does not. The two are different sets for
+  exactly this reason elsewhere in the register, and nothing here changes that.
 - **1d — `templatesFolder` is an ancestor of, or equal to, `homeFolder` or any
   `typeFolder.<type>`** (`templatesFolder: docs` with `homeFolder: docs/backlog`, say).
   Every note under that item folder is excluded from the tree too, real items included —
