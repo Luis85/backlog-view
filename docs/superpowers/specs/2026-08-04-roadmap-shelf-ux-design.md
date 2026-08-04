@@ -299,8 +299,13 @@ position its load-order comment calls for.
 
 - `.pbl-shelf-cards` / `.pbl-roadmap-context .pbl-shelf-cards` (today's wrapping flex
   row, the direct cause of uneven card widths) become
-  `grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))` — matching the bucket
-  card grid below, so every card in the roadmap is sized the same way.
+  `grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr))` — matching
+  the bucket card grid below, so every card in the roadmap is sized the same way. The
+  `min(240px, 100%)` is load-bearing, not decorative: a bare `240px` floor forces the
+  grid track past a content box that has shrunk below it (the shelf's own gutter and
+  padding can put it there even on an otherwise reasonable pane), reintroducing the
+  horizontal scrollbar this fix exists to remove; `min(…, 100%)` lets the track
+  degrade to the container's own width instead.
 - **The flush-edge and overflow bug, diagnosed and fixed, not merely "passed over".**
   `styles/roadmap.css` pins the shelf, the context strip and the advisory to the
   scrollport with `position: sticky; left: 0; width: 100cqw`, while
@@ -321,8 +326,11 @@ position its load-order comment calls for.
   the shrink at 280px; `flex-basis` alone is not a floor once shrinking is enabled. Only
   past that floor does the row overflow into its existing `.pbl-tree` horizontal scroll.
   `.pbl-bucket-cards` changes from
-  a flex column to `display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-content: start` —
-  the same grid rule as the shelf, so a wide bucket shows multiple card columns and a
+  a flex column to `display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); align-content: start` —
+  the same grid rule as the shelf (same reason: a bucket's floor width minus its own
+  padding can still fall under 240px with enough buckets on a narrow pane, and a bare
+  floor would force the track past its container rather than degrading to one narrower
+  column), so a wide bucket shows multiple card columns and a
   narrow one (many buckets, or a narrow pane) stays single-column with no code branch
   needed for either case. `align-content: start` is not optional: `.pbl-roadmap-buckets`
   is a flex row with `align-items: stretch`, so every bucket already stretches to the
@@ -397,9 +405,19 @@ position its load-order comment calls for.
 | New PBI under `[[The horizon board]]`, sibling of `[[Buckets from a horizon property]]` | Full-width buckets with a minimum-width scroll fallback, and the multi-column card grid inside each bucket. |
 | `docs/README.md` | The Product Roadmap paragraph gains a third and fourth increment once both PBIs are `Done`. |
 
-No existing note changes status or gets amended — both ideas are genuinely new ground,
-per the research this brainstorm ran before writing this spec (no doc anywhere proposes
-or rejects shelf collapse, shelf grouping, or a responsive bucket grid).
+Both PBIs are genuinely new ground — no doc anywhere proposes or rejects shelf collapse,
+shelf grouping, or a responsive bucket grid, which is what the research this brainstorm
+ran before writing this spec found. That is a claim about the two new PBIs' own status,
+not about every existing note: four already-`Built`/`Active` notes state something this
+increment's own behavior makes false, and the implementation plan amends each rather
+than leaving a living requirement pointing at stale code or an obsolete claim:
+
+| Note | Amendment |
+| --- | --- |
+| `docs/requirements/The unplaced shelf.md` | `## Where it lives` still names the pre-move renderer; its "keeps sibling order" claim is narrowed to within a type group now that grouping is always-on. |
+| `docs/requirements/Moving between horizons.md` | `## Where it lives` also names the pre-move renderer for the shelf drop target. |
+| `docs/requirements/Locale-aware sorting and formatting.md` | Its `localeCompare` inventory gains the shelf's title-sort site as a fourth, uncounted-until-now instance. |
+| `docs/issues/Smoke test the visual changes.md` | Its bucket-layout and shelf-gutter bullets describe the pre-change fixed-width/flush-edge behavior; new bullets are needed for the shelf's collapse and toolbar controls. |
 
 Two visual defects the user reported (uneven card widths, flush-edge spacing, and a
 horizontal-scrollbar overflow) are folded into the first PBI's acceptance criteria
