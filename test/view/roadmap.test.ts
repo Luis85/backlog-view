@@ -294,6 +294,25 @@ describe('the shared scroller across projections', () => {
 		expect(scroller(containerEl).scrollLeft).toBe(0);
 	});
 
+	it('jumps to today by the same clamped math the opening render uses, in a pane narrower than the lead', () => {
+		// jumpToToday used to carry its own centreOnToday, algebraically identical to
+		// the one above `TIMELINE_LEAD_PX + clientWidth` apart, EXCEPT that it never
+		// clamped the band the way the opening-render version documents doing on
+		// purpose (a pane narrower than the lead column). In a 100px pane the two
+		// formulas disagree by 60px: `max(todayLeft - 220 - max(100-220,0)/2, 0)` here
+		// vs. the duplicate's `todayLeft - (220+100)/2`. Jump-to-today has to land
+		// exactly where the view opens, in every pane width.
+		const vault = datedVault();
+		const { view, containerEl } = roadmapView(vault, { ...DATES });
+		const el = scroller(containerEl);
+		Object.defineProperty(el, 'clientWidth', { value: 100, configurable: true });
+
+		view.jumpToToday();
+
+		const todayLeft = view.roadmap?.todayLeft ?? 0;
+		expect(el.scrollLeft).toBe(Math.max(todayLeft - TIMELINE_LEAD_PX, 0));
+	});
+
 	it('resets the offset when leaving the timeline, so the horizons open at their lead', () => {
 		const vault = datedVault();
 		const { containerEl } = roadmapView(vault, { ...AXES });

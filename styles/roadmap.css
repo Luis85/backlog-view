@@ -40,18 +40,21 @@
    and nobody has to remember this paragraph to get that right. */
 .pbl-roadmap-dates .pbl-timeline {
 	flex: 1 1 auto;
-	min-height: 0;
-	/* The floor beneath which the grid stops yielding; below it the pane scrolls. */
+	/* Overrides the flex item's automatic minimum AND sets the floor beneath which the
+	   grid stops yielding; below it the pane scrolls. One declaration does both jobs,
+	   so there is only one to keep. */
 	min-height: 180px;
 }
 
-.pbl-roadmap-dates .pbl-shelf,
-.pbl-roadmap-dates .pbl-roadmap-context,
-.pbl-roadmap-dates .pbl-board-advisory {
+/* `.pbl-view` raises this to the same specificity as `.pbl-roadmap .pbl-shelf` etc.
+   below, which is otherwise later in source and would win outright: on the dated axis
+   these bands are NOT pinned, since the frame no longer scrolls sideways under them. */
+.pbl-view.pbl-roadmap-dates .pbl-shelf,
+.pbl-view.pbl-roadmap-dates .pbl-roadmap-context,
+.pbl-view.pbl-roadmap-dates .pbl-board-advisory {
 	flex: 0 1 auto;
 	max-height: 30%;
 	overflow-y: auto;
-	/* Not sticky here: the frame no longer scrolls sideways under them. */
 	position: static;
 	width: auto;
 }

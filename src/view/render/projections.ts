@@ -84,7 +84,7 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
  * than the lead itself, where the best available answer is the first visible pixel of
  * day.
  */
-function centreOnToday(todayLeft: number, viewport: number): number {
+export function centreOnToday(todayLeft: number, viewport: number): number {
 	const band = Math.max(viewport - TIMELINE_LEAD_PX, 0);
 	return Math.max(todayLeft - TIMELINE_LEAD_PX - band / 2, 0);
 }

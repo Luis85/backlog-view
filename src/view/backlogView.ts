@@ -39,10 +39,9 @@ import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi, syncShelfToggle } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
-import { captureScroll, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
+import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { syncShelfFit } from './render/roadmap';
-import { TIMELINE_LEAD_PX } from './render/timeline';
 import { uniqueElementId } from './selection';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
@@ -651,13 +650,4 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (busy) this.treeEl.setAttribute('aria-busy', 'true');
 		else this.treeEl.removeAttribute('aria-busy');
 	}
-}
-
-/**
- * The scroll offset that puts today in the middle of the band the reader can actually
- * SEE — the scroller's width minus the sticky lead column, which covers the same
- * pixels at every scroll position and is never part of the band being centred.
- */
-function centreOnToday(todayLeft: number, clientWidth: number): number {
-	return Math.max(todayLeft - (TIMELINE_LEAD_PX + clientWidth) / 2, 0);
 }
