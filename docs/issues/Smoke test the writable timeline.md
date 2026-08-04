@@ -49,6 +49,13 @@ carries which class and never that the pane actually stopped overflowing or that
 month labels held their place while the rows moved under them, so this is the two-axis
 restructure's own claim and the part most worth looking at first.
 
+**A drop over the sticky date header actually lands.** The header band sits above the
+grid the same way the sticky lead column does, and both are hit-testing questions jsdom
+cannot answer. Start a shelf-card drag, or grab a bar's body or a grip, and release with
+the pointer over the row of month/week labels rather than the grid below it: the ghost
+preview should still be legible there and the release should write the date under it,
+not nothing.
+
 **The preview reads as a contract.** Drag a shelf card over the grid, and drag a bar's
 body and each of its end grips: the ghost bar and the dates it means should be legible
 while the pointer is still moving, not only after release.

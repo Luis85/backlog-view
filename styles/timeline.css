@@ -2,14 +2,8 @@
 
 /* ----- the dated axis: the month grid, bars, and the today line */
 
-/* The scroll box, on BOTH axes — not `.pbl-timeline-content`, since full-height marks
-   resolve `top/bottom: 0` against their containing block's padding box, and making the
-   scroll box that containing block would stretch every line the full viewport height.
-   REPLACE the existing rule, don't add to it: `width: max-content` moved to the content
-   wrapper below — a scroll box as wide as its own content has nothing to scroll, and
-   `.pbl-roadmap-dates .pbl-tree` would clip instead of scrolling, leaving every date
-   past the pane's edge unreachable. `min-width: 0` counters a flex item's automatic
-   minimum, which would restore the same width another way. */
+/* The scroll box, on BOTH axes — not `.pbl-timeline-content`, since full-height marks resolve `top/bottom: 0` against their containing block's padding box, and making the scroll box that containing block would stretch every line the full viewport height.
+   REPLACE the existing rule, don't add to it: `width: max-content` moved to the content wrapper below — a scroll box as wide as its own content has nothing to scroll, and `.pbl-roadmap-dates .pbl-tree` would clip instead of scrolling, leaving every date past the pane's edge unreachable. `min-width: 0` counters a flex item's automatic minimum, which would restore the same width another way. */
 .pbl-timeline {
 	position: relative;
 	width: 100%;
@@ -82,6 +76,11 @@
 	z-index: 3;
 	background-color: var(--background-primary);
 	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Sibling of `.pbl-timeline-drop`, above it in stacking order — a drag released there wrote nothing. Passes events through while dragging (`.pbl-timeline-drop`'s own pattern); NOT raised instead, or the ghost preview would paint over the date labels it is read against. */
+.pbl-dragging .pbl-timeline-header {
+	pointer-events: none;
 }
 
 .pbl-timeline-lead {
