@@ -17,7 +17,7 @@ recognised correctly the first time and I never have to remember the property na
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | The **New template** command/button, or **Save as template** on an existing item's context menu |
-| **Preconditions** | None — if `templatesFolder` isn't set yet, running either trigger asks for it first (1c) |
+| **Preconditions** | For **New template**: exactly one Product Backlog view is active (1d). For **Save as template**: none — it runs from a row already inside one. If `templatesFolder` isn't set yet, running either trigger asks for it first (1c) |
 | **Guarantee** | A template note created either way carries a valid `templateForKey` and nothing that would make it a work item — no `type`, no `parent`, no `order`. |
 
 **Main flow**
@@ -64,6 +64,13 @@ recognised correctly the first time and I never have to remember the property na
 - **3a — the folder does not exist.** It is created, the same as any other creation path.
 - **3b — the write fails.** A notice says so and points at the console, the same as
   every other creation path.
+- **1d — **New template** is run with no single Product Backlog view active** — none
+  open, or a leaf embedding more than one, both of which `activeBacklogView` answers
+  with `null`. The command withholds itself, the same `checkCallback` pattern
+  **Write backlog readme** already uses: `templatesFolder` and `templateForKey` are one
+  view's own configuration, and with no unambiguous view there is no settings to read a
+  template into or write a folder onto. **Save as template** never reaches this
+  extension — its menu only exists on a row already rendered inside one specific view.
 
 ## Acceptance criteria
 
@@ -82,11 +89,16 @@ recognised correctly the first time and I never have to remember the property na
 - The first-use folder prompt refuses an empty submission, so this flow can never end
   with `templatesFolder` still `''` — the value that means the feature is off — while a
   template note it just created sits undiscoverable.
+- **New template** is withheld from the palette unless exactly one Product Backlog view
+  is active, so it never has to guess whose `templatesFolder` to read or write.
 
 ## Where it lives
 
 Nothing yet — this note is design. `src/commands/` (a new `New template` command, beside
-`scaffold.ts`) · `src/view/interactions/menu.ts` (**Save as template** on the row/card
-menu) · `src/ui/prompts.ts` (the type-and-name modal) · `src/storage/frontmatter.ts`
-(the template-note write, sharing `createBacklogItem`'s atomicity and collision handling
+`scaffold.ts`, gated with `checkCallback` on `activeBacklogView` the way
+`WRITE_README_COMMAND_ID` already is) · `src/view/registry.ts` (`activeBacklogView` —
+the single-active-view lookup this command reuses rather than duplicating) ·
+`src/view/interactions/menu.ts` (**Save as template** on the row/card menu) ·
+`src/ui/prompts.ts` (the type-and-name modal) · `src/storage/frontmatter.ts` (the
+template-note write, sharing `createBacklogItem`'s atomicity and collision handling
 rather than a second copy of it).

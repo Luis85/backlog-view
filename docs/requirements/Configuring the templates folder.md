@@ -54,12 +54,17 @@ which of my item types each one is for without me maintaining a second list anyw
   the folder, not on the frontmatter, so nothing inside it links into the tree no matter
   what it carries. Anyone who wants a real item there has to move it out first — the same
   way nothing inside `templatesFolder` is a Base result either.
-- **1d — `templatesFolder` is configured to sit inside, or equal, `homeFolder` or any
-  `typeFolder.<type>`.** Every note under that overlap is excluded from the tree too,
-  real items included — the same self-inflicted-misconfiguration category as
-  `templateForKey` colliding with another key, though checking folder containment is a
-  different shape of validation than the key-equality check `configProblems` already
-  does, so nothing here mechanically catches it yet.
+- **1d — `templatesFolder` is an ancestor of, or equal to, `homeFolder` or any
+  `typeFolder.<type>`** (`templatesFolder: docs` with `homeFolder: docs/backlog`, say).
+  Every note under that item folder is excluded from the tree too, real items included —
+  the whole item folder sits inside the one being excluded. The reverse nesting
+  (`templatesFolder` a subfolder *of* an item folder, e.g. `docs/backlog/templates` under
+  `docs/backlog`) is not the same risk: only notes inside that narrower templates
+  subfolder are ever excluded, and ordinary item creation never lands there. This is the
+  same self-inflicted-misconfiguration category as `templateForKey` colliding with
+  another key, though checking folder containment is a different shape of validation than
+  the key-equality check `configProblems` already does, so nothing here mechanically
+  catches it yet.
 - **1b — `templateForKey` is set to the same key as `parentKey`, `typeKey`, or any other
   configured property, while `templatesFolder` is also set.** A template would then
   necessarily carry `type` or `parent` the moment it carries `templateForKey`, breaking
@@ -73,13 +78,23 @@ which of my item types each one is for without me maintaining a second list anyw
   key** (its default, `templateFor`, or a hand-typed value). Nothing is reported: the
   feature is off, so that key is not read as a template marker by anything, and an
   unrelated existing use of the same name is not a collision to warn about.
+- **2c — the `templateForKey` picker is cleared, with `templatesFolder` still set.**
+  It falls back to `templateFor`, the same way clearing `parentKey`/`orderKey`/`typeKey`
+  falls back to `parent`/`order`/`type` rather than going blank. Unlike `stateKey` and
+  `tagsKey`, whose own emptiness is what turns each of *those* features off,
+  `templateForKey` is not independently clearable to `''`: this feature's off-switch is
+  `templatesFolder` alone, and a marker key that could go blank while the folder stays
+  set would leave recognition (step 2) and **New template**'s own write with no key to
+  use, breaking a feature that still reads as configured.
 
 ## Acceptance criteria
 
 - `templatesFolder` is a single folder, configured once, independent of `homeFolder` and
   every `typeFolder.<type>`.
-- `templateForKey` is a configurable frontmatter key, defaulting to `templateFor`, the
-  same way `stateKey` and `tagsKey` are configurable rather than fixed.
+- `templateForKey` is a configurable frontmatter key that always resolves to a real
+  value, defaulting to `templateFor` — never independently clearable to `''`, the same
+  way `parentKey`/`orderKey`/`typeKey` never are. Its own on/off switch is
+  `templatesFolder`, not itself.
 - A note is a template if and only if it carries `templateForKey` with a value from the
   configured type vocabulary — presence and a valid value, not merely living in the
   folder.
@@ -100,7 +115,9 @@ which of my item types each one is for without me maintaining a second list anyw
 ## Where it lives
 
 Nothing yet — this note is design. `src/domain/settings.ts` (`templatesFolder`,
-`templateForKey`, alongside `homeFolder`/`typeFolders`; `ownedProperties` gains an entry
+`templateForKey` resolved the same way as `parentKey`/`orderKey`/`typeKey` — always a
+real value, never independently cleared — alongside `homeFolder`/`typeFolders`;
+`ownedProperties` gains an entry
 for `templateForKey`, included only while `templatesFolder` is non-empty, so
 `configProblems` covers the new key exactly while the feature it guards is on) ·
 `src/domain/viewOptions.ts` (the two new options) · `src/domain/model.ts`
