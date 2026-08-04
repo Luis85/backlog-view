@@ -1373,12 +1373,23 @@ and the two helpers:
 
 ```ts
 /** The pair the note currently states, read the same tolerant way the model reads it. */
-function axisSpan(fm: Record<string, unknown>, settings: BacklogSettings): DateSpan {
-	const read = (field: PlacementEnd): CivilDate | null => {
+function axisReadings(fm: Record<string, unknown>, settings: BacklogSettings): StatedEnds {
+	const read = (field: PlacementEnd): FieldReading<CivilDate> => {
 		const key = optionalKeyFor(settings, field);
-		return key === '' ? null : readDate(ownValue(fm, key)).value;
+		return key === '' ? absentReading() : readDate(ownValue(fm, key));
 	};
 	return { start: read('start'), target: read('target') };
+}
+
+/**
+ * The values alone, for the questions that only care about them. Kept as a second step
+ * off the readings rather than a second read, because the two answers must not be able
+ * to disagree — and because the tri-state IS the answer to one of the questions here:
+ * `staleBase` needs absent and unreadable told apart, which a span cannot do.
+ */
+function axisSpan(fm: Record<string, unknown>, settings: BacklogSettings): DateSpan {
+	const readings = axisReadings(fm, settings);
+	return { start: readings.start.value, target: readings.target.value };
 }
 
 /** The same span with the ends this placement does not answer for dropped. */
@@ -1415,9 +1426,10 @@ function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, wri
 	const axis = write.axis;
 	if (!axis || axis.ends === undefined) return false;
 	if (live.length !== axis.ends.length || live.some((end) => !axis.ends?.includes(end))) return true;
-	const current = axisSpan(fm, settings);
-	if (axis.from && staleBase(axis.from, current)) return true;
+	const readings = axisReadings(fm, settings);
+	if (axis.from && staleBase(axis.from, readings)) return true;
 	if (live.length < 2) return false;
+	const current: DateSpan = { start: readings.start.value, target: readings.target.value };
 	const requested = (field: PlacementEnd): CivilDate | null => {
 		const value = axis[field];
 		if (value === undefined) return current[field];
@@ -1433,15 +1445,21 @@ function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, wri
  * for a reason nobody could see. `null` means the gesture measured against an ABSENT end
  * — an open-end grip's own end, which it is there to fill — so absence is the expectation
  * and a value appearing there is exactly the conflict this catches.
+ *
+ * Asked of the READINGS, not of a span. Absent and unreadable are the distinction this
+ * whole codebase reads dates through, and collapsing them here would let `soon`, typed
+ * into an empty end while the drag was live, satisfy an expectation of nothing and be
+ * overwritten by a gesture that was never shown it. An end that cannot be read has not
+ * stayed empty; it has become something the reader refuses, which is a change.
  */
-function staleBase(from: Partial<Record<PlacementEnd, string | null>>, current: DateSpan): boolean {
+function staleBase(from: Partial<Record<PlacementEnd, string | null>>, live: StatedEnds): boolean {
 	return (['start', 'target'] as const).some((end) => {
 		const expected = from[end];
 		if (expected === undefined) return false;
-		const live = current[end];
-		if (expected === null) return live !== null;
+		const reading = live[end];
+		if (expected === null) return reading.invalid || reading.value !== null;
 		const parsed = readDate(expected).value;
-		return live === null || parsed === null || daysBetween(parsed, live) !== 0;
+		return reading.value === null || parsed === null || daysBetween(parsed, reading.value) !== 0;
 	});
 }
 ```
@@ -1492,7 +1510,11 @@ function sameCivil(a: CivilDate, b: CivilDate | null): boolean {
   `undoLast` is untouched — a replay reports restores, not dates.
 - `src/view/host.ts`: `applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null>`.
 - `src/view/backlogView.ts`: `applyMove` becomes
-  `const applied = await this.applySafely(writes); if (applied === null) row?.classList.remove('pbl-pending'); return applied;`
+  `const applied = await this.applySafely(writes); if (applied === null || !applied.changed) row?.classList.remove('pbl-pending'); return applied;`
+  — cleared on *unchanged* as well as refused, because only a real change brings the
+  refresh that would replace the row: a stale Unschedule of dates another editor already
+  removed, or a batch the shape or baseline check refuses, would otherwise leave the card
+  looking permanently in flight
   and returns `Promise<WriteOutcome | null>`; `applyCardMove` keeps
   `Promise<boolean>` and gates on `outcome !== null && outcome.changed`.
 - `src/view/interactions/structure.ts:134`: `const applied = writes.length > 0 && (await host.applySafely(writes)) !== null;`
