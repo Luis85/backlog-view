@@ -26,7 +26,8 @@ which of my item types each one is for without me maintaining a second list anyw
    `homeFolder` — in the view options.
 2. A note in that folder is recognised as a template for a type when it carries the
    configured `templateForKey` (default `templateFor`) naming one of the vocabulary's
-   type names.
+   type names, matched case-insensitively — the same tolerance every other type
+   comparison in this plugin already gives a note's own spelling.
 3. Everything else about the note — its body, any other frontmatter — is the template's
    content: the body becomes what a new item starts with, and the other frontmatter is
    what rides along with it ([[Creating an item from a template]]).
@@ -106,10 +107,10 @@ which of my item types each one is for without me maintaining a second list anyw
   way `parentKey`/`orderKey`/`typeKey` never are. Its own on/off switch is
   `templatesFolder`, not itself.
 - A note is a template if and only if it lives under `templatesFolder` **and** carries
-  `templateForKey` with a value from the configured type vocabulary — both conditions,
-  not either alone: living in the folder without the key is an ordinary note (2a), and
-  the key alone without the folder is not a template no matter where in the vault it
-  sits.
+  `templateForKey` with a value from the configured type vocabulary, compared
+  case-insensitively — both conditions, not either alone: living in the folder without
+  the key is an ordinary note (2a), and the key alone without the folder is not a
+  template no matter where in the vault it sits.
 - Nothing under `templatesFolder` is ever linked into the tree as a work item — not
   affected by "Ignore notes outside the hierarchy", "Infer parents from folder notes", or
   a hand-added `type`/`parent` on a note inside it. The exclusion is the folder, checked

@@ -57,15 +57,21 @@ recognised correctly the first time and I never have to remember the property na
   [[Configuring the templates folder]] defines as the whole feature being off, and
   accepting it would set the folder to "off" in the same breath as creating a template
   inside it — leaving that template immediately undiscoverable. The prompt stays open
-  until a non-empty folder is given, then sets `templatesFolder`. Setting it can turn a
-  `templateForKey` that collided harmlessly with another owned key while templates were
-  off (PBI1's 1c) into a live collision the moment the folder is non-empty (PBI1's 1b) —
-  so the flow re-runs `configProblems` on the just-updated settings before doing anything
-  else, the same way `runInit` gates itself before touching either the `.base` or a note.
-  Only once that comes back clean does it proceed to create the template; otherwise it
-  stops with the same config-warning notice every other blocked write shows, leaving
-  `templatesFolder` set (so the next attempt doesn't repeat the folder prompt) but
-  creating nothing. This is what makes **New template** and **Save as template** the way
+  until a non-empty folder is given, then sets `templatesFolder`. **If persisting that
+  setting itself fails**, the flow stops there and reports it — the same failure
+  `createFromPrompt`'s `host.config.set('homeFolder', …)` already guards, and the reason
+  is the same one that made an empty submission worth refusing: proceeding to create a
+  template while the setting never actually took hold would leave `templatesFolder`
+  effectively `''` and the template it just wrote undiscoverable, exactly the outcome
+  this whole extension exists to prevent. Setting it can also turn a `templateForKey`
+  that collided harmlessly with another owned key while templates were off (PBI1's 1c)
+  into a live collision the moment the folder is non-empty (PBI1's 1b) — so the flow
+  re-runs `configProblems` on the just-updated settings before doing anything else, the
+  same way `runInit` gates itself before touching either the `.base` or a note. Only once
+  that comes back clean does it proceed to create the template; otherwise it stops with
+  the same config-warning notice every other blocked write shows, leaving `templatesFolder`
+  set (so the next attempt doesn't repeat the folder prompt) but creating nothing. This is
+  what makes **New template** and **Save as template** the way
   someone with no templates yet gets their first one, and why neither is gated behind
   [[Configuring the templates folder]] being done already.
 - **3a — the folder does not exist.** It is created, the same as any other creation path.
@@ -103,6 +109,14 @@ recognised correctly the first time and I never have to remember the property na
   (`templateForKey` aliasing another owned key, only reachable once the folder is
   non-empty) stops the flow with the config warning instead of writing a note into a
   configuration `configProblems` would refuse every other write against.
+- If persisting `templatesFolder` itself fails, the flow stops and reports it rather than
+  creating a template against a setting that never actually took effect.
+- **Save as template** writes `templateForKey` with the source item's own `type` spelling
+  verbatim (`epic` stays `epic`) — the plugin never rewrites a note's existing frontmatter
+  to canonicalize it, the same restraint the autoType cascade already shows a differently-
+  cased or custom type. What makes the template still reachable from a canonically-spelled
+  chosen type is [[Configuring the templates folder]]'s matching being case-insensitive,
+  not a rewrite here.
 
 ## Where it lives
 
