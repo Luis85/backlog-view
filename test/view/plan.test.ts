@@ -330,18 +330,38 @@ describe('scheduling from the row', () => {
 		expect('start' in vault.fm('Stubbed.md')).toBe(true);
 	});
 
-	it('still clears a date the note does state when its field is emptied', async () => {
+	it('leaves an unreadable value alone when its blank field is confirmed untouched', async () => {
 		const vault = planVault();
 		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 40, start: 'someday' } });
 		const { containerEl } = makeView(vault, AXES);
 
-		// An unreadable value arrives blank; confirming replaces it rather than
-		// writing it back — the entry asks for a date and that was not one.
+		// An unreadable value arrives blank, exactly as an absent one does — so a reader
+		// pressing Save cannot have MEANT to delete it, having never been shown it. The
+		// entry decides from the form, and a field returned as it arrived states nothing.
+		// Typing a date replaces it; Unschedule removes it.
 		menuFor(containerEl, 'Garbled').item('Schedule')?.click();
 		submitSchedule(['', '']);
 		await flush();
 
-		expect('start' in vault.fm('Garbled.md')).toBe(false);
+		expect(vault.fm('Garbled.md')['start']).toBe('someday');
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('does not revert an end corrected while the entry sat open', async () => {
+		const vault = planVault();
+		vault.addFile('Both.md', { frontmatter: { type: 'Epic', order: 50, start: 'someday', due: '2026-09-01' } });
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Both').item('Schedule')?.click();
+		// Another editor repairs the unreadable start while the prompt is open. The
+		// reader never sees it: their start field is still the blank it opened with.
+		vault.setFrontmatter('Both.md', { type: 'Epic', order: 50, start: '2026-08-20', due: '2026-09-01' });
+		// They edit only the target and save.
+		submitSchedule(['', '2026-09-15']);
+		await flush();
+
+		expect(vault.fm('Both.md')['start']).toBe('2026-08-20');
+		expect(vault.fm('Both.md')['due']).toBe('2026-09-15');
 	});
 
 	it('asks with native date fields, which cannot hand back anything but a date', async () => {
@@ -567,9 +587,9 @@ describe('placement actions answer for the milestone type', () => {
 		// `validateSchedule` and `planFrom` both have to answer a field that is simply
 		// ABSENT rather than blank, which an ordinary work item's entry (both fields
 		// always present) never exercises. The stray unreadable start proves the
-		// difference: a blank SUBMITTED field clears a value the reader refuses (see
-		// "still clears a date the note does state" above), but a field the entry
-		// never offered must leave one alone, unreadable or not.
+		// difference: `values` carries no `start` key at all here, which is not the same
+		// question as a start field returned unchanged (see "leaves an unreadable value
+		// alone" above) even though both must leave the note's own value alone.
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, start: 'not a real date' } });
 		const { containerEl } = makeView(vault, AXES);

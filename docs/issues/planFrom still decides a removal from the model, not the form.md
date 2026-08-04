@@ -2,10 +2,11 @@
 type: Issue
 order: 10
 parent: "[[Horizon and dates from the row]]"
-status: Open
+status: Done
 priority: P2
 area: defect
 created: 2026-08-04
+closed: 2026-08-04
 source: final whole-branch review, 2026-08-04
 files:
   - src/view/interactions/plan.ts
@@ -115,3 +116,31 @@ the unreadable-arrives-blank case 4d already carves out.
 None; this note records a review finding for a decision, not a scheduled fix. Resolving
 it needs: picking (a) or (b) above, updating `test/view/plan.test.ts`'s assertion to
 match whichever is chosen, and narrowing whichever of 4d/4e loses the reading.
+
+## Outcome
+
+**Fix (a) was taken**: `planFrom` decides from the FORM. It compares each submitted value
+against the prefill `scheduleFields` put in that input, and a field returned as it
+arrived states nothing — filled, edited or emptied is the only thing that plans a write.
+The `item` argument is gone, and with it the last model-time decision on any date path.
+
+That collapses the two rules into one sentence. The mirror rule for readable values and
+the blank rule were separate tests that agreed on a stated date and disagreed on an
+unreadable one; asked of the form, they are the same question.
+
+`4d` is the extension that narrowed, as the note anticipated: it now covers the case that
+is still true — an unreadable value arrives blank, and **typing** a date replaces it —
+and hands the untouched-blank case to `4e` explicitly, since the reader is shown the same
+blank an absent value gives and cannot mean "delete what I was never shown".
+
+The accepted cost, stated where the code makes it: an unreadable value can no longer be
+cleared by the entry alone. **Unschedule** removes it, taking the other end with it. What
+is gone is not a capability anyone could exercise — the deletion fired on every Save
+whether or not the reader meant it.
+
+`test/view/plan.test.ts`'s "still clears a date the note does state when its field is
+emptied" became "leaves an unreadable value alone when its blank field is confirmed
+untouched", and a second test drives the concurrency case the finding named: an end
+corrected while the entry sat open survives a Save that touched only the other field.
+Both were watched failing against the committed code first.
+
