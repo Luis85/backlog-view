@@ -72,6 +72,18 @@ function organizeShelf(
 ): ShelfGroup[];            // ShelfGroup = { type: string; cards: ShelfCard[] }
 ```
 
+**The group key is `displayType(item)` (`domain/itemTypes.ts:139`), never raw
+`item.typeName`.** `displayType` already exists precisely because the two disagree: an
+untyped child infers a `levelIndex` from its parent and is badged Feature/PBI/Task on
+every card it already renders on, while `typeName` alone would read `null` for it — and
+a declared type's casing (`"task"` in frontmatter) is not the casing `ALL_TYPES` spells
+it with. Grouping on `typeName` would put both under `Other` despite the card's own
+badge visibly disagreeing. `organizeShelf` resolves each card's key by comparing
+`displayType(item)` case-insensitively against `ALL_TYPES` (the same fold
+`isExtraType`/`isMarkerType` already use) and keys the group by `ALL_TYPES`'s own
+canonically-cased entry when one matches, so the group label is never a copy of
+whatever casing one note happened to use.
+
 Group order is fixed — `ALL_TYPES` from `settings.ts` (Epic, Feature, PBI, Task, Issue,
 Bug, Milestone), then a trailing `Other` group for any type `ALL_TYPES` doesn't name —
 never the input order. A group is omitted entirely when it is empty or its type is in
@@ -105,17 +117,51 @@ Three accessor pairs on `CollapseState` alongside the existing `mode`/`axis` one
 backed by the same debounced `scheduleSave`. That much is the exact extension point
 `docs/requirements/Lanes on the roadmap.md` and `docs/requirements/Swimlanes by parent.md`
 already named for lane collapse, applied here to the shelf instead — but the accessors
-alone are not the whole feature. `setProjection`/`setAxisPick` in `backlogView.ts` show
-why: both write through `this.collapse` and then explicitly call `this.render()`, with
-the comment stating exactly why — *"No config was set, so no Bases refresh is coming:
-this render is the switch."* A renderer that only calls a `CollapseState` setter
-persists the value but leaves the current frame stale until an unrelated refresh
-happens to occur. So `BacklogViewHost` (`host.ts`) gains three matching methods —
-`setShelfCollapsed`, `setShelfSort`, `setShelfHiddenTypes` — each following the identical
-two-line shape: write the field, then `this.render()`. The shelf's rendered controls
-(below) call these host methods, never the `CollapseState` setters directly, exactly as
-the mode toggle and axis picker call `host.setProjection`/`host.setAxisPick` rather than
-reaching into `collapse` themselves.
+alone are not the whole feature, and how the rest of it hooks into `backlogView.ts`
+needs more care than `setProjection`/`setAxisPick` alone suggest, for two separate
+reasons below.
+
+**Reason one — the toolbar renders before the shelf's own data exists.**
+`ProductBacklogView.render()` (`backlogView.ts:385-391`) calls `renderToolbar(this,
+this.toolbarEl)` and only afterwards calls `this.renderTreeContent()`, which is the
+call that assigns `this.roadmap` from the frame it just built
+(`backlogView.ts:394-421`). A `renderShelfControls` gated on "the shelf has a card" —
+the way `renderAxisPicker` gates on the configured axis count — would read `host.roadmap`
+before that render pass has set it, seeing the *previous* pass's value (`null` on the
+very first roadmap render). Filtering makes the same gap wider: `setFilter`
+(`backlogView.ts:228-232`) recomputes the filter and calls only
+`this.renderTreeContent()`, never the toolbar, because the toolbar holds the filter
+*input* and a full rebuild would drop its focus — but that also means a filter that
+empties the shelf never gets a chance to hide toolbar-rendered shelf controls, because
+nothing tells the toolbar to look again.
+
+The fix already exists in this file as a pattern, not as something to invent:
+`syncCountLabel` and `syncFilterUi` are exactly this — toolbar elements built once,
+whose *values* are synchronized separately, after content renders, from data the toolbar
+pass itself couldn't see yet. So: `renderShelfControls` builds the collapse toggle, the
+sort `<select>` and the type-filter checkboxes unconditionally whenever
+`host.projection === 'roadmap'` — structure only, no gate on shelf population, the same
+way the filter input always exists regardless of whether anything currently matches. A
+new `syncShelfControls(host, toolbarEl)`, called at the end of `renderTreeContent()`
+beside `syncCountLabel` (where `host.roadmap` is finally current), does the rest: shows
+or hides the whole cluster based on the shelf's total card count — *not* narrowed by the
+type filter, since hiding every group must never also hide the only control that can
+un-hide one — updates the count text, and sets each control's checked/selected state
+from the persisted `CollapseState` values. Calling it from `renderTreeContent()` means it
+runs after `setFilter` too, with no separate wiring for that path.
+
+**Reason two — a setter must not cost the control its own focus.** Calling a full
+`this.render()` from a shelf setter would tear down and rebuild the whole toolbar,
+including whichever `<select>` or checkbox the user just activated — a keyboard user
+changing the sort or clearing several type filters in a row would lose focus back to the
+document after each one. `setFilter`'s own doc comment states the rule this needs:
+*"Re-render only the content pane — used by the filter so the toolbar input keeps
+focus."* So `BacklogViewHost` (`host.ts`) gains three methods — `setShelfCollapsed`,
+`setShelfSort`, `setShelfHiddenTypes` — each shaped exactly like `setFilter`, not like
+`setProjection`: write the field on `this.collapse`, then call `this.renderTreeContent()`
+alone. The content pane rebuilds (the newly (in)visible groups, the possibly-changed
+pane role — see §4), `syncShelfControls` updates the existing controls' attributes in
+place, and none of it recreates the element the user's focus is sitting on.
 
 ### 4. Rendering — toolbar chrome plus a shelf content module
 
@@ -133,32 +179,53 @@ linear card walk to attach to.
 
 The existing precedent for exactly this shape of control is `renderAxisPicker` in
 `toolbar.ts` (327-340): rendered in the toolbar bar (`barEl`), a sibling of `treeEl`
-rather than a descendant, gated on `host.projection === 'roadmap'`, using ordinary
-`iconButton`s wired straight to a `BacklogViewHost` setter. A new `renderShelfControls`
-follows the same shape — gated on roadmap mode AND the shelf holding at least one card
-(mirroring the axis picker's own "nothing to choose, don't render" rule for a single
-configured axis) — holding the collapse toggle, the sort `<select>`, and the type-filter
-checkboxes as ordinary Tab-reachable controls, each wired to the new host methods from
-§3. The collapse toggle carries the shelf's name and count as its own label ("Unplaced
-(12)"), the same way each mode-toggle button already carries an icon and a label, so
-that information exists once rather than being repeated inside `treeEl` as well. **Only**
-the shelf's card content — the grouped, sorted, filtered `.pbl-card`s themselves — keeps
-rendering inside `treeEl`'s listbox, exactly as `renderShelf` does today, since those
-already participate in the roadmap's card walk as they always have.
+rather than a descendant, using ordinary `iconButton`s wired straight to a
+`BacklogViewHost` setter. `renderShelfControls` and `syncShelfControls` (§3) follow the
+same shape but do not fit in `toolbar.ts` itself — that file is at 387 of its 400-line
+budget, tight enough that two more render functions plus a sync function would clear it
+— so both go in a new `src/view/render/shelfControls.ts`, called from `renderToolbar`
+and `renderTreeContent` respectively exactly the way `renderAxisPicker` and
+`syncCountLabel` already are. The collapse toggle carries the shelf's name and count as
+its own label ("Unplaced (12)"), the same way each mode-toggle button already carries an
+icon and a label, so that information exists once rather than being repeated inside
+`treeEl` as well. **Only** the shelf's card content — the grouped, sorted, filtered
+`.pbl-card`s themselves — keeps rendering inside `treeEl`'s listbox, exactly as
+`renderShelf` does today, since those already participate in the roadmap's card walk as
+they always have.
 
 `view/render/roadmap.ts` currently owns `renderShelf` (154-196) and `renderContextStrip`
-(204-218); with the interactive header moved to `toolbar.ts`, what is left to grow is
-the grouped-card rendering itself (`organizeShelf`'s output turned into DOM), which is
-still enough new markup to justify a new `src/view/render/shelf.ts` rather than pushing
-`roadmap.ts` further past its budget — `renderContextStrip` moves there too, since it
-shares the card-layout CSS and the same file already owns both today.
+(204-218); with the interactive header moved out to `shelfControls.ts`, what is left to
+grow is the grouped-card rendering itself (`organizeShelf`'s output turned into DOM),
+which is still enough new markup to justify a new `src/view/render/shelf.ts` rather than
+pushing `roadmap.ts` further past its own budget — `renderContextStrip` moves there too,
+since it shares the card-layout CSS and the same file already owns both today.
 
-**Invariant that must survive this change, and gets its own test:** the shelf remains a
-valid drop target for un-placing a card while collapsed. Collapsing is a view
-convenience; it must never gate the write path `performHorizonMove(item, null)` already
-uses. This is exactly the kind of claim `CLAUDE.md` asks to be a test, not a comment —
-modeled on `test/view/contextRowWrites.test.ts`'s own pattern of driving the rule rather
-than the implementation.
+**Collapsing must remove shelf cards from keyboard navigation, not merely hide them.**
+`renderRoadmap` (`roadmap.ts:27-63`) accumulates every card it draws — buckets or
+timeline, then the shelf, then the context strip — into one flat `cards` array that
+becomes `RoadmapSnapshot.cards`, and `handleRoadmapNavigationKey`
+(`interactions/keyboard.ts:349-363`) walks exactly that array with no visibility check
+of its own: whatever is IN the array is reachable by Arrow/End, full stop. A CSS-only
+collapse (hide the groups, still return their cards from `shelf.ts`'s render function)
+would leave collapsed cards fully keyboard-reachable — `aria-activedescendant` could
+point at something invisible, and a pane that is entirely shelved-and-collapsed would
+keep `role="listbox"` with no reachable option in it. The fix costs nothing new to build:
+an empty shelf already contributes zero cards to this array (today's `renderShelf`
+returns `[]` when there is nothing to place), so collapsing the shelf is specified to do
+exactly the same thing regardless of how many cards it actually holds — `shelf.ts`'s
+render function returns `[]` for `cards` whenever collapsed, full stop, independent of
+population. `render/projections.ts:118`'s existing
+`role: roadmap.cards.length > 0 ? 'listbox' : 'region'` then recomputes correctly with
+no new logic: an all-shelved, collapsed roadmap already becomes `role="region"` the
+moment its `cards` count is honestly zero. **The shelf remains a valid DROP target while
+collapsed regardless** — that is a different fact from being a keyboard-navigable card,
+proven already by the empty-shelf case, which is wired to `dnd` and reachable by drag
+while contributing zero cards to the same array. This is the invariant this design
+already called out for its own test: the shelf stays a drop target for
+`performHorizonMove(item, null)` while collapsed, even though none of its cards are in
+`RoadmapSnapshot.cards` at that moment. This is exactly the kind of claim `CLAUDE.md`
+asks to be a test, not a comment — modeled on `test/view/contextRowWrites.test.ts`'s own
+pattern of driving the rule rather than the implementation.
 
 ### 5. Styles — new `styles/shelf.css`, changes to `styles/roadmap.css`
 
@@ -201,23 +268,39 @@ position its load-order comment calls for.
   output's total card count equals the input length (grouping alone drops nothing); with
   `hiddenTypes` non-empty, it equals the input length minus the cards whose type is
   hidden (the filter is the only thing allowed to drop a card, and it must drop exactly
-  those).
+  those). Two more directly from the group-key correction: an untyped child with an
+  inferred `levelIndex` groups under that inferred level, not `Other`; a declared type
+  spelled in a different case than `ALL_TYPES` (`"task"` vs `"Task"`) groups under the
+  canonical entry, not a second, casing-distinct group.
 - **Storage** (`test/storage/collapseStore.test.ts`): round-trip for the three new
   fields, and defensive rejection of a malformed stored value for each — mirroring the
   existing `mode`/`axis` coverage exactly.
 - **View** (`test/helpers/roadmap.ts` gains group-aware accessors; tests land in
   `test/view/roadmapFrame.test.ts` or a new `test/view/shelfUx.test.ts` if the existing
-  file's budget doesn't allow): default-collapsed on first render, the sort control
-  changing display order within a group without touching group order, the filter
-  hiding a group while the count badge stays unchanged, and the collapsed-but-still-a-
-  drop-target invariant above — driven the way `contextRowWrites.test.ts` drives its own
-  invariant, so a future change to the collapse toggle fails it without anyone having to
-  predict the surface. Two more, directly from the two design corrections above: the
-  shelf controls sit outside `treeEl`'s `role="listbox"` (querying for them within the
-  listbox element finds nothing; querying the toolbar bar finds all three), and
-  activating each one re-renders the frame with the new state visible in the same pass —
-  not merely persisted for a later refresh to pick up, which is exactly the gap a test
-  that only checked `collapseStore` output would miss.
+  file's budget doesn't allow):
+  - Default-collapsed on first render; the sort control changing display order within a
+    group without touching group order; the type filter hiding a group while the total
+    count stays unchanged.
+  - The shelf controls exist in the toolbar (not inside `treeEl`'s `role="listbox"` —
+    querying within the listbox element finds nothing, querying the toolbar bar finds
+    all three) on the very FIRST roadmap render, before any content has rendered once —
+    the regression `renderShelfControls` gating on live shelf data would reintroduce.
+  - Toggling the quick filter down to an empty shelf hides the shelf-controls cluster
+    without a full toolbar rebuild, and back again when the filter clears — proving
+    `syncShelfControls` runs on the `renderTreeContent`-only path `setFilter` already
+    uses, not only on a full `render()`.
+  - Activating a shelf control (sort, filter, collapse) leaves the OTHER toolbar
+    elements' identity unchanged (e.g. the mode-toggle buttons are the same DOM nodes
+    before and after) — the test that catches a shelf setter calling `this.render()`
+    instead of `this.renderTreeContent()`, since a full rebuild would pass every
+    behavioral assertion above while still discarding focus.
+  - Collapsing the shelf removes its cards from `RoadmapSnapshot.cards`: Arrow/End from
+    the last visible axis card does not land on a shelved item, and a roadmap whose
+    every result is shelved-and-collapsed renders `role="region"`, not `role="listbox"`
+    with nothing reachable in it.
+  - The collapsed-but-still-a-drop-target invariant from §4 — driven the way
+    `contextRowWrites.test.ts` drives its own invariant, so a future change to the
+    collapse toggle fails it without anyone having to predict the surface.
 - The full-width / grid **visual** behavior itself is not something jsdom can verify —
   it has no layout engine. `npm run test-build` is the honest answer here, named
   explicitly rather than claimed as covered by the DOM tests above.
