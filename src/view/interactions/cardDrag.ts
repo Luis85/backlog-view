@@ -205,10 +205,27 @@ export function announceScheduleMove(
 	placement: Placement | null,
 	ends: PlacementEnd[],
 ): void {
-	const to = placement === null ? statedSpanWords(change.after, ends) : placementWords(placement, ends);
-	announceMove(title, statedSpanWords(change.before, ends), to);
+	announceMove(title, statedSpanWords(change.before, ends), destinationWords(change.after, placement, ends));
 }
 
+/**
+ * The destination side. Checked on `after` — the writer's own tri-state — BEFORE
+ * `placement` is asked about anything: a one-ended write (`computeScheduleWrites`
+ * permits naming only `start` or only `target`) can leave the untouched end exactly as
+ * unreadable as it found it, and `placeItem` reports that faithfully as a shelf with a
+ * reason. Deciding from `placement.reason`'s TEXT instead would make this module agree
+ * with `bars.ts` about a string neither owns a shared type for — the same mistake
+ * matching on `placementLabel`'s wording would be. The tri-state is the one fact both
+ * sides of the sentence already share.
+ */
+function destinationWords(after: StatedEnds, placement: Placement | null, ends: PlacementEnd[]): string {
+	const unreadable = unreadableEndWords(after);
+	if (unreadable) return unreadable;
+	if (placement === null) return spanWords({ start: after.start.value, target: after.target.value }, ends);
+	return placementWords(placement, ends);
+}
+
+/** A placement that answered neither `invalid` check above: a bar, or a plain shelf. */
 function placementWords(placement: Placement, ends: PlacementEnd[]): string {
 	return placement.kind === 'shelf' ? UNSCHEDULED_LABEL : spanWords(placement.bar.span, ends);
 }
@@ -218,13 +235,22 @@ function placementWords(placement: Placement, ends: PlacementEnd[]): string {
  * `placementLabel` already stopped making on the horizon axis. A `DateSpan` cannot
  * tell a value this axis REFUSES to read from a key the note never set; both flatten
  * to null, so a note holding `start: soon` cleared to nothing would announce "from
- * Unscheduled to Unscheduled" for a cleanup that plainly happened. Checked start then
- * target, the same order `placeItem` checks a stated pair.
+ * Unscheduled to Unscheduled" for a cleanup that plainly happened.
  */
 function statedSpanWords(stated: StatedEnds, ends: PlacementEnd[]): string {
+	return unreadableEndWords(stated) ?? spanWords({ start: stated.start.value, target: stated.target.value }, ends);
+}
+
+/**
+ * The one place either side of the sentence names an unreadable end — checked start
+ * then target, the same order `placeItem` checks a stated pair, so the source and the
+ * destination cannot land on different words for the same fact. Null when neither end
+ * is unreadable, so a caller can fall through to what the value or the placement says.
+ */
+function unreadableEndWords(stated: StatedEnds): string | null {
 	if (stated.start.invalid) return 'an unreadable start date';
 	if (stated.target.invalid) return 'an unreadable target date';
-	return spanWords({ start: stated.start.value, target: stated.target.value }, ends);
+	return null;
 }
 
 /**

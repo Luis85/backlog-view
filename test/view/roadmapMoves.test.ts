@@ -549,6 +549,25 @@ describe('scheduling from the row, on the one path', () => {
 		expect(await announced()).toBe('Moved "Garbled" from an unreadable start date to Unscheduled');
 	});
 
+	it('names the shelf reason on the TO side too, when the OTHER end stays unreadable', async () => {
+		// A one-ended write (`computeScheduleWrites`) can leave the end it never touched
+		// exactly as unreadable as it found it. `outcome.dates.after` now carries that
+		// genuine `invalid: true` through — round 1 only fixed the source side, and
+		// `placementWords` was still throwing the reason away on this one: the same
+		// collapse, newly reachable here because the writer no longer forces every
+		// after-reading to `invalid: false`.
+		vi.useFakeTimers();
+		const vault = new FakeVault();
+		vault.addFile('Half.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: 'soon' } });
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Half.md');
+
+		const moved = await view.performScheduleMove(item as never, { start: '2026-08-05' });
+
+		expect(moved).toBe(true);
+		expect(await announced()).toBe('Moved "Half" from an unreadable target date to an unreadable target date');
+	});
+
 	it('names a marker as the point it is drawn as, on both sides of the sentence', async () => {
 		// A marker keeps a stale start deliberately, so an unnarrowed source span would
 		// announce "from 2026-07-01 to 2026-09-30 to 2026-10-15" for a note the timeline
