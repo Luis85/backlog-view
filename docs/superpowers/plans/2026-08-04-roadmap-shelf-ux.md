@@ -1497,9 +1497,14 @@ show up broadly (e.g. `test/view/contextRowWrites.test.ts`, `test/view/roadmapMo
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/view/render/shelf.ts src/view/render/roadmap.ts test/helpers/roadmap.ts test/view/shelfUx.test.ts
+git add src/view/render/shelf.ts src/view/render/roadmap.ts test/helpers/roadmap.ts test/view/shelfUx.test.ts test/view/roadmap.test.ts test/view/roadmapFrame.test.ts
 git commit -m "Move shelf/context rendering to shelf.ts; make collapse keyboard- and advisory-safe"
 ```
+
+`roadmap.test.ts` and `roadmapFrame.test.ts` are in this list because Step 1 above already
+edited them (the local `roadmapView()` auto-expand fix, plus the two raw call sites) —
+without staging them here, the fix exists on disk but never reaches the pushed commit,
+and CI sees the two files exactly as collapse-by-default breaks them.
 
 ---
 
