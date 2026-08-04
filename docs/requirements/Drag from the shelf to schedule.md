@@ -7,8 +7,14 @@ priority: P2
 created: 2026-08-01
 due: 2026-09-10
 files:
-  - src/domain/writePlan.ts
-  - src/view/interactions/dragDrop.ts
+  - src/view/render/timeline.ts
+  - src/view/interactions/timelineDrag.ts
+  - src/view/interactions/cardDrag.ts
+  - src/domain/timeline.ts
+  - src/domain/bars.ts
+  - src/view/render/roadmap.ts
+  - src/view/interactions/plan.ts
+  - src/view/backlogView.ts
   - src/storage/frontmatter.ts
 ---
 

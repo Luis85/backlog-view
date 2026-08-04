@@ -100,7 +100,7 @@ the shelf is the target that un-places, removing the key rather than blanking it
 stays reachable while empty because a target that exists only when occupied is one
 nothing can reach; and a bucket creates in place, its value riding the same single
 creation write. The dated axis's own moves were the one write this epic still owed —
-lanes and the milestone type's own non-pointer path are still design, and named as
+lanes and the milestone type's own lift are still design, and named as
 [[Lanes on the roadmap]]'s and [[Keyboard and menu on the roadmap]]'s to deliver — but it
 already showed the tree rather than only its stated bars: a parent with no dates of its
 own spans its dated descendants, endpoint by endpoint, drawn as the inference it is and

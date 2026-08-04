@@ -43,9 +43,11 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 1. Dragging the body slides the bar by whole-day steps, previewed live: the start
    takes the calendar step and the target follows at the bar's own day count, so a
    slide never changes duration.
-2. Dragging an end moves that date alone, previewed live, landing on the day under the
-   pointer at every zoom — the same day-anchored rule the shelf drop states
-   ([[Drag from the shelf to schedule]]), zoom changing pixel density only.
+2. Dragging an end moves that date alone by whole days from the date it had, previewed
+   live, at every zoom — a delta, not the pointer's absolute position, because a
+   rendered edge is not always its date: a span shorter than the minimum drawable width
+   draws wider than it is, so the smallest twitch after grabbing the grip would
+   otherwise write a date the grip was never actually on.
 3. Release writes what the preview showed, one batch through the gate.
 4. Undo restores both prior values together.
 
@@ -103,10 +105,11 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 - Body drags slide the bar by whole-day steps — the start takes the step and the target
   follows at the bar's own day count, so a slide never changes duration; end drags move
-  one date to the day under the pointer, at every zoom — the shelf drop's own rule —
-  and release writes exactly the preview. Zoom changes pixel density and header
-  granularity only, never the write's own grid. Deltas preserve the value's own
-  precision: a datetime keeps its time of day and its shape on disk.
+  one date by whole days from the date it had, a delta rather than the pointer's
+  absolute position — a rendered edge is not always its date. Both at every zoom: zoom
+  changes pixel density and header granularity only, never the write's own grid.
+  Release writes exactly the preview. Deltas preserve the value's own precision: a
+  datetime keeps its time of day and its shape on disk.
 - A marker's diamond takes no end grip at all, and its body slide writes the target alone —
   never a start, neither one it lacks nor a stale one the type ignores
   ([[Milestones as their own type]]).
