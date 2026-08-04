@@ -85,7 +85,7 @@ interface StoredEntry {
 	axis?: string;
 	/** Absent until the user picks a timeline zoom; retained even while unused. */
 	zoom?: string;
-	/** Absent means collapsed — the default. Never stored as `true`... wait, stored as `true` only, since `false` IS the default and needs no entry. */
+	/** Absent means collapsed, the default; only ever stored as `true`, since `false` needs no entry. */
 	shelfExpanded?: boolean;
 	/** Absent means 'tree', the default. */
 	shelfSort?: string;
@@ -309,11 +309,10 @@ function readEnum<T extends string>(value: unknown, allowed: readonly T[]): T | 
 
 function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): void {
 	if (typeof record.shelfExpanded === 'boolean' && record.shelfExpanded) entry.shelfExpanded = true;
-	if (typeof record.shelfSort === 'string' && SHELF_SORT_VALUES.includes(record.shelfSort)) entry.shelfSort = record.shelfSort;
-	if (Array.isArray(record.shelfHiddenTypes)) {
-		const types = record.shelfHiddenTypes.filter((t): t is string => typeof t === 'string' && t.length > 0);
-		if (types.length > 0) entry.shelfHiddenTypes = types;
-	}
+	const sort = readEnum(record.shelfSort, SHELF_SORT_VALUES);
+	if (sort !== undefined) entry.shelfSort = sort;
+	const types = readPaths(record.shelfHiddenTypes);
+	if (types.length > 0) entry.shelfHiddenTypes = types;
 }
 
 function entryHasContent(entry: StoredEntry): boolean {
