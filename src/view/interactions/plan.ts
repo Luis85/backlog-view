@@ -199,11 +199,9 @@ function planFrom(item: BacklogItem, values: Record<string, string>): SchedulePl
 /**
  * Ask for the item's planned dates, then write the ends that actually changed.
  *
- * `ends` rides along so the writer's pair check runs at all — absent, `refusesAxis`
- * has no shape to check a reversed request against. `from` does not: it scopes to a
- * RELATIVE gesture ("one day further than this"), and a dialog entry is absolute — the
- * user typed that date meaning that date, so a live change to the base is not a reason
- * to refuse it.
+ * `from` is deliberately not passed: it scopes to a RELATIVE gesture ("one day further
+ * than this"), and a dialog entry is absolute — the user typed that date meaning that
+ * date, so a live change to the base is not a reason to refuse it.
  */
 export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 	new SchedulePromptModal(host.app, {
@@ -211,8 +209,7 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 		description: 'Pick a date for each end, or clear a field to remove that date.',
 		fields: scheduleFields(host, item),
 		validate: validateSchedule,
-		onSubmit: (values) =>
-			void host.performScheduleMove(item, planFrom(item, values), undefined, placementEnds(item.typeName)),
+		onSubmit: (values) => void host.performScheduleMove(item, planFrom(item, values)),
 	}).open();
 }
 
