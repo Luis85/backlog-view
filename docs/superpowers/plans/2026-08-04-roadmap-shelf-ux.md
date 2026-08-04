@@ -36,7 +36,7 @@ for domain/storage tests), plain CSS partials assembled by `styles-assemble.mjs`
   anywhere in this feature, stop — that is out of scope and wrong.
 - Sentence-case UI text, no special characters in any user-facing string.
 - Every module in `src/` must be specified in `docs/` (a use case's `## Where it lives`,
-  or an ADR's `## Decision`) — `docs-check.mjs` gates this, and Task 11 is where the two
+  or an ADR's `## Decision`) — `docs-check.mjs` gates this, and Task 10 is where the two
   new PBI notes get written to satisfy it.
 - The jsdom test harness has no layout engine. Any claim about actual rendered widths,
   column counts, or on-screen appearance can only be verified live — say so explicitly
@@ -1726,7 +1726,7 @@ with:
 Run: `npm run build && npx vitest run test/view`
 Expected: both succeed. No jsdom test asserts on computed widths (jsdom has no layout
 engine), so this step confirms nothing broke structurally, not that the layout looks
-right — that is Task 10.
+right — that is Task 11.
 
 - [ ] **Step 5: Commit**
 
@@ -1737,52 +1737,21 @@ git commit -m "Full-width horizon buckets with a responsive multi-column card gr
 
 ---
 
-## Task 10: Full `npm run check`, then the live-vault smoke test
-
-**Files:** none (verification only).
-
-- [ ] **Step 1: Run the full gate**
-
-Run: `npm run check`
-Expected: PASS — build, lint, coverage-thresholded tests, fallow, docs register. If
-fallow flags a complexity/duplication/dependency issue in a new file, address it before
-moving on (do not suppress it inline; see `CLAUDE.md`'s framework-invoked-members note
-for the one legitimate exception, which does not apply to anything in this plan).
-
-If the docs register check fails here, it is because Task 11 has not run yet — that is
-expected; do not treat it as a regression to chase inside this task.
-
-- [ ] **Step 2: Build for a live vault**
-
-Run: `npm run test-build`
-
-This bundles into `.obsidian/plugins/<id>/` in the repo root so a human can open the
-repo as a vault. Name it explicitly when handing this off — this plan's own honesty
-rule: the full-width bucket layout, the multi-column card grid, the shelf's spacing
-gutter, and the collapsed-shelf's compact height are all visual claims jsdom cannot
-verify, and none of them may be reported as "done" until someone has actually looked.
-
-- [ ] **Step 3: Note what still needs a human's eyes**
-
-Do not check this box until a live vault has confirmed:
-- Buckets share the pane's width on an ordinary 3-4 horizon vault, with no horizontal
-  scrollbar, and multiple card columns appear in a wide bucket.
-- The shelf's edges have a visible gutter, not flush against the pane.
-- A collapsed shelf reads as compact chrome, not an empty box taking noticeable space.
-- The shelf's toolbar controls (collapse button, sort picker, type-filter chips) are
-  legible and usable at the toolbar's normal size.
-
----
-
-## Task 11: Author the two backlog PBI notes and update the register
+## Task 10: Author the two backlog PBI notes and update the register
 
 **Files:**
 - Create: `docs/requirements/The shelf, organized.md`
 - Create: `docs/requirements/Buckets that use the room they have.md`
 - Modify: `docs/README.md`
 
-This task runs LAST, after all code exists, so `## Where it lives` states real facts
-rather than a plan for facts that might change during implementation.
+This task runs after all code exists (Tasks 1-9), so `## Where it lives` states real
+facts rather than a plan for facts that might change during implementation — and it
+runs BEFORE the full `npm run check` gate (the next task), not after: `docs-check.mjs`'s
+rule that every `src/` module be specified in a use case or ADR would otherwise fail on
+the three new modules Tasks 1-9 already added (`domain/shelf.ts`,
+`view/render/shelf.ts`, `view/render/shelfControls.ts`), with nothing yet registering
+them. Running the full gate before this task exists only to fail on a check this task
+is what satisfies.
 
 **Interfaces:** none — documentation only, gated by `docs-check.mjs` (part of
 `npm run check`).
@@ -1829,7 +1798,7 @@ alongside the same visual fixes.
 | **Actor** | Backlog owner |
 | **Trigger** | The roadmap renders with items on the shelf |
 | **Preconditions** | Roadmap mode is on and the horizon or dated axis is configured |
-| **Guarantee** | Grouping, sort and the type filter are display-only — nothing is ever written to a note because of them — and the shelf's own guarantee from [[The unplaced shelf]] holds through all three: every card the shelf holds still renders in exactly one group. |
+| **Guarantee** | Grouping, sort and the type filter are display-only — nothing is ever written to a note because of them. Grouping alone never drops a card: every card the shelf holds resolves to exactly one group before the type filter narrows what is shown. The type filter is then a deliberate, separate narrowing on top of that grouping — hiding a type hides its whole group on purpose, the same way [[The unplaced shelf]]'s own "Show completed items" and quick filter deliberately narrow the shelf elsewhere. |
 
 **Main flow**
 
@@ -2043,13 +2012,49 @@ git commit -m "Register the shelf UX and full-width bucket PBIs in the backlog"
 
 ---
 
+## Task 11: Full `npm run check`, then the live-vault smoke test
+
+**Files:** none (verification only).
+
+- [ ] **Step 1: Run the full gate**
+
+Run: `npm run check`
+Expected: PASS — build, lint, coverage-thresholded tests, fallow, docs register. The
+previous task already registered both new PBI notes, so the docs phase has what it
+needs to check them against; nothing here should fail on missing registration. If
+fallow flags a complexity/duplication/dependency issue in a new file, address it before
+moving on (do not suppress it inline; see `CLAUDE.md`'s framework-invoked-members note
+for the one legitimate exception, which does not apply to anything in this plan).
+
+- [ ] **Step 2: Build for a live vault**
+
+Run: `npm run test-build`
+
+This bundles into `.obsidian/plugins/<id>/` in the repo root so a human can open the
+repo as a vault. Name it explicitly when handing this off — this plan's own honesty
+rule: the full-width bucket layout, the multi-column card grid, the shelf's spacing
+gutter, and the collapsed-shelf's compact height are all visual claims jsdom cannot
+verify, and none of them may be reported as "done" until someone has actually looked.
+
+- [ ] **Step 3: Note what still needs a human's eyes**
+
+Do not check this box until a live vault has confirmed:
+- Buckets share the pane's width on an ordinary 3-4 horizon vault, with no horizontal
+  scrollbar, and multiple card columns appear in a wide bucket.
+- The shelf's edges have a visible gutter, not flush against the pane.
+- A collapsed shelf reads as compact chrome, not an empty box taking noticeable space.
+- The shelf's toolbar controls (collapse button, sort picker, type-filter chips) are
+  legible and usable at the toolbar's normal size.
+
+---
+
 ## Task 12: Push and open for review
 
 - [ ] **Step 1: Final full check**
 
 Run: `npm run check`
 Expected: PASS, clean, no uncommitted changes (`git status` clean aside from anything
-intentionally left for a human, e.g. the live-vault smoke-test notes from Task 10).
+intentionally left for a human, e.g. the live-vault smoke-test notes from Task 11).
 
 - [ ] **Step 2: Push**
 
@@ -2059,5 +2064,5 @@ git push -u origin <current-branch>
 
 - [ ] **Step 3: Report the live-vault items**
 
-Summarize for the human reviewer, explicitly, which of Task 10's checklist items still
+Summarize for the human reviewer, explicitly, which of Task 11's checklist items still
 need their eyes — do not claim any of them verified from the test suite alone.
