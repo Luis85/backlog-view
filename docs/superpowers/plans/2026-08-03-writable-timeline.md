@@ -2395,13 +2395,19 @@ describe('jump to today', () => {
 		view.setProjection('roadmap');
 		const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
 		if (!scroller) throw new Error('no timeline scroller');
-		Object.defineProperty(scroller, 'clientWidth', { value: 600, configurable: true });
+		// NARROWER than twice the lead column, which is the case the centring gets wrong:
+		// at 600px a bug that ignores the sticky lead still lands today in view and the
+		// test passes. The timeline note says a narrow split is the common case, so the
+		// fixture is one.
+		Object.defineProperty(scroller, 'clientWidth', { value: 320, configurable: true });
 		scroller.scrollLeft = 4000;
 
 		containerEl.querySelector<HTMLButtonElement>('.pbl-today-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
+		// Centred in the band the reader can SEE — viewport 220…320 — not in the whole
+		// scrollport, whose left 220px the lead column covers at every scroll position.
 		const todayLeft = view.roadmap?.todayLeft ?? 0;
-		expect(scroller.scrollLeft).toBe(Math.max(todayLeft - 300, 0));
+		expect(scroller.scrollLeft).toBe(Math.max(todayLeft - TIMELINE_LEAD_PX - 50, 0));
 	});
 });
 ```
@@ -2446,7 +2452,7 @@ Expected: FAIL — `view.setZoom is not a function`.
 	jumpToToday(): void {
 		const roadmap = this.roadmap;
 		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
-		roadmap.scroller.scrollLeft = Math.max(roadmap.todayLeft - roadmap.scroller.clientWidth / 2, 0);
+		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth);
 	}
 ```
 
@@ -2729,6 +2735,22 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 	return { ...anchor, offsets, leadingDate };
 }
 
+/**
+ * Where the scroller must sit for today to be centred in the part of it a reader can
+ * SEE. The lead column is `position: sticky; left: 0`, so it covers viewport 0…220 at
+ * every scroll position and the day area is the band from 220 to the right edge.
+ * Centring on `clientWidth / 2` therefore hides today behind the labels in any pane
+ * narrower than twice the lead — a 320px split puts it at viewport 160, under an opaque
+ * column — which defeats both the opening scroll and Jump to today in exactly the narrow
+ * panes the timeline note says are the common case. Clamped at zero for a pane narrower
+ * than the lead itself, where the best available answer is the first visible pixel of
+ * day.
+ */
+function centreOnToday(todayLeft: number, viewport: number): number {
+	const band = Math.max(viewport - TIMELINE_LEAD_PX, 0);
+	return Math.max(todayLeft - TIMELINE_LEAD_PX - band / 2, 0);
+}
+
 export function restoreScroll(
 	treeEl: HTMLElement,
 	anchor: ScrollAnchor,
@@ -2774,7 +2796,7 @@ function anchorScrollLeft(
 	roadmap: RoadmapSnapshot | null,
 	viewport: number,
 ): number {
-	if (!same) return todayLeft == null ? 0 : Math.max(todayLeft - viewport / 2, 0);
+	if (!same) return todayLeft == null ? 0 : centreOnToday(todayLeft, viewport);
 	if (scale !== anchor.scale && anchor.leadingDate && roadmap?.window && roadmap.scale) {
 		// The mirror of the capture, and just as free of the lead: put the same date back
 		// at the scrollport's edge under the new ruler.
