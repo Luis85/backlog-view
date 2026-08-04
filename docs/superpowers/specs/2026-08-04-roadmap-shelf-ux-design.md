@@ -99,27 +99,59 @@ shelfHiddenTypes?: string[];               // absent means none hidden
 hidden) costs nothing in storage — consistent with the sparse-by-default shape the rest
 of the entry already uses.
 
-### 3. View state — `src/view/collapseState.ts`
+### 3. View state — `src/view/collapseState.ts` and `src/view/backlogView.ts`
 
-Three accessor pairs alongside the existing `mode`/`axis` ones, backed by the same
-debounced `scheduleSave`. No new save path, no new identity handling — this is the exact
-extension point `docs/requirements/Lanes on the roadmap.md` and
-`docs/requirements/Swimlanes by parent.md` already named for lane collapse, applied here
-to the shelf instead.
+Three accessor pairs on `CollapseState` alongside the existing `mode`/`axis` ones,
+backed by the same debounced `scheduleSave`. That much is the exact extension point
+`docs/requirements/Lanes on the roadmap.md` and `docs/requirements/Swimlanes by parent.md`
+already named for lane collapse, applied here to the shelf instead — but the accessors
+alone are not the whole feature. `setProjection`/`setAxisPick` in `backlogView.ts` show
+why: both write through `this.collapse` and then explicitly call `this.render()`, with
+the comment stating exactly why — *"No config was set, so no Bases refresh is coming:
+this render is the switch."* A renderer that only calls a `CollapseState` setter
+persists the value but leaves the current frame stale until an unrelated refresh
+happens to occur. So `BacklogViewHost` (`host.ts`) gains three matching methods —
+`setShelfCollapsed`, `setShelfSort`, `setShelfHiddenTypes` — each following the identical
+two-line shape: write the field, then `this.render()`. The shelf's rendered controls
+(below) call these host methods, never the `CollapseState` setters directly, exactly as
+the mode toggle and axis picker call `host.setProjection`/`host.setAxisPick` rather than
+reaching into `collapse` themselves.
 
-### 4. Rendering — new `src/view/render/shelf.ts`
+### 4. Rendering — toolbar chrome plus a shelf content module
+
+**The interactive controls are toolbar chrome, not shelf-interior markup.** This is the
+one place the original draft of this design was wrong: `view/render/roadmap.ts`'s
+`renderShelf` builds inside `treeEl`, and `treeEl` carries `role="listbox"` whenever any
+roadmap cards render (`render/projections.ts`) — the same composite-widget contract the
+board and the tree already live under, spelled out in `view/CLAUDE.md`'s "Two tab-stop
+zones" section: the tree/roadmap pane is ONE tab stop, its own per-row controls are
+`tabindex="-1"` buttons reachable through a context menu, and nothing else is Tab-
+reachable inside it. A `<select>` and a set of checkboxes do not fit that contract
+either way — `tabindex="-1"` would make them unreachable by keyboard entirely, since
+unlike a per-card action they have no row, no context menu, and no place in the roadmap's
+linear card walk to attach to.
+
+The existing precedent for exactly this shape of control is `renderAxisPicker` in
+`toolbar.ts` (327-340): rendered in the toolbar bar (`barEl`), a sibling of `treeEl`
+rather than a descendant, gated on `host.projection === 'roadmap'`, using ordinary
+`iconButton`s wired straight to a `BacklogViewHost` setter. A new `renderShelfControls`
+follows the same shape — gated on roadmap mode AND the shelf holding at least one card
+(mirroring the axis picker's own "nothing to choose, don't render" rule for a single
+configured axis) — holding the collapse toggle, the sort `<select>`, and the type-filter
+checkboxes as ordinary Tab-reachable controls, each wired to the new host methods from
+§3. The collapse toggle carries the shelf's name and count as its own label ("Unplaced
+(12)"), the same way each mode-toggle button already carries an icon and a label, so
+that information exists once rather than being repeated inside `treeEl` as well. **Only**
+the shelf's card content — the grouped, sorted, filtered `.pbl-card`s themselves — keeps
+rendering inside `treeEl`'s listbox, exactly as `renderShelf` does today, since those
+already participate in the roadmap's card walk as they always have.
 
 `view/render/roadmap.ts` currently owns `renderShelf` (154-196) and `renderContextStrip`
-(204-218). The shelf header always carries the name, the count, and the collapse toggle
-(a real `<button>`, not a styled `div`, so keyboard and screen-reader access come for
-free). Only when expanded does it also carry the sort `<select>` and the type-filter
-checkboxes, followed by a `.pbl-shelf-group` block per surviving group from
-`organizeShelf` — nothing to sort or filter is visible while collapsed, so those
-controls stay out of the header until there is. That is enough new markup and behavior
-to justify pulling shelf rendering into its own file rather than growing `roadmap.ts`
-past its own budget — `renderContextStrip` moves too, since it shares the card-layout
-CSS and the same file already owns both. `roadmap.ts` keeps calling into `shelf.ts`
-exactly where it calls `renderShelf` today.
+(204-218); with the interactive header moved to `toolbar.ts`, what is left to grow is
+the grouped-card rendering itself (`organizeShelf`'s output turned into DOM), which is
+still enough new markup to justify a new `src/view/render/shelf.ts` rather than pushing
+`roadmap.ts` further past its budget — `renderContextStrip` moves there too, since it
+shares the card-layout CSS and the same file already owns both today.
 
 **Invariant that must survive this change, and gets its own test:** the shelf remains a
 valid drop target for un-placing a card while collapsed. Collapsing is a view
@@ -148,10 +180,17 @@ position its load-order comment calls for.
   the shrink at 280px; `flex-basis` alone is not a floor once shrinking is enabled. Only
   past that floor does the row overflow into its existing `.pbl-tree` horizontal scroll.
   `.pbl-bucket-cards` changes from
-  a flex column to `display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))` —
+  a flex column to `display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-content: start` —
   the same grid rule as the shelf, so a wide bucket shows multiple card columns and a
   narrow one (many buckets, or a narrow pane) stays single-column with no code branch
-  needed for either case.
+  needed for either case. `align-content: start` is not optional: `.pbl-roadmap-buckets`
+  is a flex row with `align-items: stretch`, so every bucket already stretches to the
+  tallest one, and `.pbl-bucket-cards`'s retained `flex: 1 1 auto` fills that surplus
+  height — as a flex column that surplus was blank space below the last card, but a
+  grid's default `align-content: normal` would stretch the grid's own rows into it,
+  rendering a sparse bucket's one or two cards abnormally tall instead of their natural
+  size. The shelf does not need the same override: `.pbl-shelf` is not a row-flex child
+  stretched by a sibling, so its groups have no surplus height to absorb.
 
 ## Testing
 
@@ -173,7 +212,12 @@ position its load-order comment calls for.
   hiding a group while the count badge stays unchanged, and the collapsed-but-still-a-
   drop-target invariant above — driven the way `contextRowWrites.test.ts` drives its own
   invariant, so a future change to the collapse toggle fails it without anyone having to
-  predict the surface.
+  predict the surface. Two more, directly from the two design corrections above: the
+  shelf controls sit outside `treeEl`'s `role="listbox"` (querying for them within the
+  listbox element finds nothing; querying the toolbar bar finds all three), and
+  activating each one re-renders the frame with the new state visible in the same pass —
+  not merely persisted for a later refresh to pick up, which is exactly the gap a test
+  that only checked `collapseStore` output would miss.
 - The full-width / grid **visual** behavior itself is not something jsdom can verify —
   it has no layout engine. `npm run test-build` is the honest answer here, named
   explicitly rather than claimed as covered by the DOM tests above.
