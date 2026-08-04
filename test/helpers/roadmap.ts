@@ -77,7 +77,7 @@ export function shelfTitles(containerEl: HTMLElement): string[] {
 }
 
 export function shelfCountOf(containerEl: HTMLElement): string {
-	return shelfOf(containerEl)?.querySelector('.pbl-shelf-count')?.textContent ?? '';
+	return containerEl.querySelector('.pbl-shelf-count')?.textContent ?? '';
 }
 
 export function timelineRows(containerEl: HTMLElement): HTMLElement[] {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { horizonVault, makeRoadmap } from '../helpers/roadmap';
+import { horizonVault, makeRoadmap, shelfCountOf } from '../helpers/roadmap';
 import { useViewHarness } from '../helpers/view';
 import { syncShelfControls } from '../../src/view/render/shelfControls';
 
@@ -29,6 +29,90 @@ describe('the shelf toolbar controls', () => {
 		const { containerEl, view } = makeRoadmap(horizonVault());
 		view.setProjection('tree');
 		expect(shelfControlsOf(containerEl)).toBeNull();
+	});
+
+	it('hides the cluster once a filter empties the shelf, without a full toolbar rebuild', () => {
+		const vault = horizonVault();
+		const { containerEl, view } = makeRoadmap(vault);
+		expect(shelfControlsOf(containerEl)).not.toBeNull();
+		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(false);
+
+		// "Untriaged" is the shelf's only card; filter it out entirely.
+		view.setFilter('nonexistent-search-term');
+		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(true);
+
+		view.setFilter('');
+		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(false);
+	});
+
+	it('shows the real shelf count once content has rendered', () => {
+		const { containerEl } = makeRoadmap(horizonVault());
+		expect(shelfCountOf(containerEl)).toBe('1');
+	});
+
+	it('marks the collapse toggle accessibly, and flips it when toggled', () => {
+		const { containerEl } = makeRoadmap(horizonVault());
+		const collapseBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn');
+		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('false');
+		expect(collapseBtn?.getAttribute('aria-label')).toContain('Expand');
+
+		// A real click, not a direct setShelfCollapsed call: this is the one test that
+		// exercises renderShelfControls' own click listener, so a dropped or miswired
+		// listener fails here rather than passing every test that bypasses it.
+		collapseBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('true');
+		expect(collapseBtn?.getAttribute('aria-label')).toContain('Collapse');
+	});
+
+	it('never rebuilds the rest of the toolbar when a shelf control changes', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+		const modeBtn = containerEl.querySelector('.pbl-mode-btn[aria-label="Show as roadmap"]');
+		expect(modeBtn).not.toBeNull();
+
+		// A full render() would tear down and rebuild the whole toolbar, replacing
+		// this element — the same DOM node before and after is the proof it didn't.
+		// Real gestures on all three controls, not direct setter calls: the same
+		// listeners exercised above and below, driven together here.
+		containerEl
+			.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const sortSelect = containerEl.querySelector<HTMLSelectElement>('.pbl-shelf-sort');
+		if (sortSelect) sortSelect.value = 'title';
+		sortSelect?.dispatchEvent(new Event('change', { bubbles: true }));
+		const taskCheckbox = containerEl.querySelector<HTMLInputElement>(
+			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
+		);
+		if (taskCheckbox) taskCheckbox.checked = false;
+		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
+
+		expect(containerEl.querySelector('.pbl-mode-btn[aria-label="Show as roadmap"]')).toBe(modeBtn);
+	});
+
+	it('keeps focus on the type-filter checkbox that was just toggled, not merely the rest of the toolbar', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+		const taskCheckbox = containerEl.querySelector<HTMLInputElement>(
+			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
+		);
+		expect(taskCheckbox).not.toBeNull();
+		taskCheckbox?.focus();
+
+		// The `change` handler calls setShelfHiddenTypes, which re-renders the content
+		// pane and rebuilds every chip from scratch — the very node holding focus
+		// right now does not survive that. What must survive is focus landing on
+		// WHATEVER checkbox now represents "Task", even though it is a new DOM node.
+		taskCheckbox!.checked = false;
+		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
+
+		const rebuiltCheckbox = containerEl.querySelector<HTMLInputElement>(
+			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
+		);
+		expect(rebuiltCheckbox).not.toBeNull();
+		expect(rebuiltCheckbox).not.toBe(taskCheckbox);
+		expect(document.activeElement).toBe(rebuiltCheckbox);
 	});
 });
 
