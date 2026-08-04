@@ -147,8 +147,13 @@ beside `syncCountLabel` (where `host.roadmap` is finally current), does the rest
 or hides the whole cluster based on the shelf's total card count — *not* narrowed by the
 type filter, since hiding every group must never also hide the only control that can
 un-hide one — updates the count text, and sets each control's checked/selected state
-from the persisted `CollapseState` values. Calling it from `renderTreeContent()` means it
-runs after `setFilter` too, with no separate wiring for that path.
+from the persisted `CollapseState` values. The collapse button's accessible state is
+part of that sync, not an afterthought: it carries `aria-expanded` (the collapsed/expanded
+fact) alongside a label that names the count, because the icon and the label text are
+both sighted-only — without the attribute, a screen-reader user at that button cannot
+tell a collapsed shelf from an expanded one. Calling `syncShelfControls` from
+`renderTreeContent()` means it runs after `setFilter` too, with no separate wiring for
+that path.
 
 **Reason two — a setter must not cost the control its own focus.** Calling a full
 `this.render()` from a shelf setter would tear down and rebuild the whole toolbar,
@@ -156,12 +161,21 @@ including whichever `<select>` or checkbox the user just activated — a keyboar
 changing the sort or clearing several type filters in a row would lose focus back to the
 document after each one. `setFilter`'s own doc comment states the rule this needs:
 *"Re-render only the content pane — used by the filter so the toolbar input keeps
-focus."* So `BacklogViewHost` (`host.ts`) gains three methods — `setShelfCollapsed`,
-`setShelfSort`, `setShelfHiddenTypes` — each shaped exactly like `setFilter`, not like
-`setProjection`: write the field on `this.collapse`, then call `this.renderTreeContent()`
-alone. The content pane rebuilds (the newly (in)visible groups, the possibly-changed
-pane role — see §4), `syncShelfControls` updates the existing controls' attributes in
-place, and none of it recreates the element the user's focus is sitting on.
+focus."* So `BacklogViewHost` (`host.ts`) gains three READ members alongside the three
+writers — `readonly shelfCollapsed: boolean`, `readonly shelfSort: ShelfSort`,
+`readonly shelfHiddenTypes: ReadonlySet<string>` — because both new render modules in
+§4 receive only `host`, never `CollapseState` itself (which stays private to
+`ProductBacklogView`, exactly like `filterText`/`isFiltering()` already read `FilterState`
+through the host rather than being handed it directly): `renderShelf` cannot choose a
+group order or omit a hidden type without reading `host.shelfSort`/`host.shelfHiddenTypes`
+live, and `syncShelfControls` cannot mark the current sort selected or the current
+collapse state accessible without reading them too. Paired with each getter, a setter —
+`setShelfCollapsed`, `setShelfSort`, `setShelfHiddenTypes` — each shaped exactly like
+`setFilter`, not like `setProjection`: write the field on `this.collapse`, then call
+`this.renderTreeContent()` alone. The content pane rebuilds (the newly (in)visible
+groups, the possibly-changed pane role — see §4), `syncShelfControls` updates the
+existing controls' attributes in place, and none of it recreates the element the user's
+focus is sitting on.
 
 ### 4. Rendering — toolbar chrome plus a shelf content module
 
