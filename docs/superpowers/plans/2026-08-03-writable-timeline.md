@@ -4902,10 +4902,18 @@ sentence rather than an addition beside it.
    [[Bars from two dates]] step 4 renders as a milestone diamond — a dropped PBI arriving
    as a deadline. `2c` and `2e` gain the one rule both halves collapse to: **`cellSpan`
    supplies a duration only where a span is written; a one-ended plan takes the drop
-   day.** Status → `Done`; `## Where it lives` names
-   `src/view/interactions/timelineDrag.ts` (the overlay, the placing read, the preview),
-   `src/domain/timeline.ts` (`dayAt`, `cellSpan`) and `src/domain/bars.ts` (`barHolds`
-   and the removal's predicted outcome).
+   day.** `## Where it lives` names `src/view/interactions/timelineDrag.ts` (the overlay,
+   the placing read, the preview), `src/domain/timeline.ts` (`dayAt`, `cellSpan`) and
+   `src/domain/bars.ts` (`barHolds` and the removal's predicted outcome).
+
+   Status → **`Active`, not `Done`.** Both gestures ship, but the note's guarantee and
+   one acceptance criterion say a drop into another lane's row carries the reparent in
+   the same batch, and this increment excludes lanes by name — so `Done` would report an
+   unmet requirement as delivered, which is the register lying about itself. The
+   criterion is not narrowed away either: the combined batch is genuinely wanted and
+   [[Lanes on the roadmap]] is the note that delivers it, so deleting it here would lose
+   a requirement to make a status look tidy. `Active` with the reason stated is exactly
+   what [[The horizon board]] already does, and for the same missing feature.
 3. **`Move and resize a bar.md`** — **delete extension `1f`** rather than leaving it as a
    rule about a case no code can reach: with day snapping there is no unit larger than a
    day to step by, so the month-end overflow the clamp guards against cannot occur, and
