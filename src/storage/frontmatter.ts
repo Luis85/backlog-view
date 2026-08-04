@@ -66,10 +66,16 @@ export interface RestoreOutcome {
 	missing: number;
 }
 
-/** The dates one axis write moved between, read off the note either side of it. */
+/**
+ * The dates one axis write moved between, read off the note either side of it —
+ * tri-state per end, the same shape `axisReadings` already produces. A plain
+ * `DateSpan` cannot tell an end the note never stated from one it stated something
+ * this axis refuses to read, and that is exactly the distinction a caller announcing
+ * the move needs: `placementLabel`'s lesson on the horizon axis, read onto this one.
+ */
 export interface DateChange {
-	before: DateSpan;
-	after: DateSpan;
+	before: StatedEnds;
+	after: StatedEnds;
 }
 
 /**
@@ -113,7 +119,7 @@ export async function applyWrites(
 			// them, because a key the projection never drew is not part of what a move
 			// changed — a marker's stale start most of all.
 			const ends = placementEnds(readString(ownValue(fm, settings.typeKey)));
-			const before = axisSpan(fm, settings);
+			const before = axisReadings(fm, settings);
 			// Asked of the LIVE note before this file is touched, so a note that no longer
 			// fits the plan is never half-written. It stops the batch where it stands
 			// rather than undoing what came before it: the check needs the live
@@ -138,7 +144,10 @@ export async function applyWrites(
 				// already narrowed, through `placeItem`; describing the two ends of one
 				// move in two different vocabularies is the mistake `placementLabel` and
 				// `targetLabel` were split to stop making.
-				outcome.dates ??= { before: narrowSpan(before, ends), after: narrowSpan(axisSpan(fm, settings), ends) };
+				outcome.dates ??= {
+					before: narrowReadings(before, ends),
+					after: narrowReadings(axisReadings(fm, settings), ends),
+				};
 			}
 		});
 		if (refused) {
@@ -429,21 +438,15 @@ function axisReadings(fm: Record<string, unknown>, settings: BacklogSettings): S
 }
 
 /**
- * The values alone, for the questions that only care about them. Kept as a second step
- * off the readings rather than a second read, because the two answers must not be able
- * to disagree — and because the tri-state IS the answer to one of the questions here:
- * `staleBase` needs absent and unreadable told apart, which a span cannot do.
+ * The same readings with the ends this placement does not answer for dropped to
+ * absence. Tri-state in, tri-state out — `DateChange` needs the invalid flag to
+ * survive this narrowing exactly as much as the values do, or a marker's ignored
+ * start would carry an unrelated refusal into an announcement that never reads it.
  */
-function axisSpan(fm: Record<string, unknown>, settings: BacklogSettings): DateSpan {
-	const readings = axisReadings(fm, settings);
-	return { start: readings.start.value, target: readings.target.value };
-}
-
-/** The same span with the ends this placement does not answer for dropped. */
-function narrowSpan(span: DateSpan, ends: PlacementEnd[]): DateSpan {
+function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds {
 	return {
-		start: ends.includes('start') ? span.start : null,
-		target: ends.includes('target') ? span.target : null,
+		start: ends.includes('start') ? readings.start : absentReading(),
+		target: ends.includes('target') ? readings.target : absentReading(),
 	};
 }
 

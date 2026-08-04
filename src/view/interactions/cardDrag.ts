@@ -5,7 +5,7 @@ import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { HorizonSource, placementLabel, RoadmapModel, targetLabel } from '../../domain/roadmap';
-import { Placement, UNSCHEDULED_LABEL } from '../../domain/bars';
+import { Placement, StatedEnds, UNSCHEDULED_LABEL } from '../../domain/bars';
 import { PlacementEnd } from '../../domain/itemTypes';
 import { DateSpan, daysBetween, formatCivil } from '../../domain/timeline';
 import { DateChange } from '../../storage/frontmatter';
@@ -205,12 +205,26 @@ export function announceScheduleMove(
 	placement: Placement | null,
 	ends: PlacementEnd[],
 ): void {
-	const to = placement === null ? spanWords(change.after, ends) : placementWords(placement, ends);
-	announceMove(title, spanWords(change.before, ends), to);
+	const to = placement === null ? statedSpanWords(change.after, ends) : placementWords(placement, ends);
+	announceMove(title, statedSpanWords(change.before, ends), to);
 }
 
 function placementWords(placement: Placement, ends: PlacementEnd[]): string {
 	return placement.kind === 'shelf' ? UNSCHEDULED_LABEL : spanWords(placement.bar.span, ends);
+}
+
+/**
+ * What the note itself stated, an end at a time — tri-state, the same collapse
+ * `placementLabel` already stopped making on the horizon axis. A `DateSpan` cannot
+ * tell a value this axis REFUSES to read from a key the note never set; both flatten
+ * to null, so a note holding `start: soon` cleared to nothing would announce "from
+ * Unscheduled to Unscheduled" for a cleanup that plainly happened. Checked start then
+ * target, the same order `placeItem` checks a stated pair.
+ */
+function statedSpanWords(stated: StatedEnds, ends: PlacementEnd[]): string {
+	if (stated.start.invalid) return 'an unreadable start date';
+	if (stated.target.invalid) return 'an unreadable target date';
+	return spanWords({ start: stated.start.value, target: stated.target.value }, ends);
 }
 
 /**

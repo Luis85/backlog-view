@@ -21,7 +21,7 @@ import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildColumnMenu, buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, placementEnds, PlacementEnd } from '../domain/itemTypes';
-import { placeItem, StatedEnds } from '../domain/bars';
+import { placeItem } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { horizonSource, RoadmapAxis } from '../domain/roadmap';
 import {
@@ -32,8 +32,8 @@ import {
 	ItemWrite,
 	SchedulePlan,
 } from '../domain/writePlan';
-import { absentReading, CivilDate, FieldReading, todayStamp } from '../domain/noteFields';
-import { DateSpan, ScaleId, scaleFor } from '../domain/timeline';
+import { todayStamp } from '../domain/noteFields';
+import { ScaleId, scaleFor } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
@@ -564,7 +564,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// therefore what is stated: the dates this write landed are the writer's, and an
 		// inherited end is as current as the last refresh.
 		const spoken = placementEnds(item.typeName);
-		announceScheduleMove(item.title, outcome.dates, placeItem(item, writtenEnds(outcome.dates.after)), spoken);
+		// `outcome.dates.after` is already the tri-state the writer read back — passing
+		// it straight through is what lets an untouched end's own invalid value survive
+		// into the placement, rather than a wrapper laundering it into absence.
+		announceScheduleMove(item.title, outcome.dates, placeItem(item, outcome.dates.after), spoken);
 		return true;
 	}
 
@@ -619,17 +622,4 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
  */
 function centreOnToday(todayLeft: number, clientWidth: number): number {
 	return Math.max(todayLeft - (TIMELINE_LEAD_PX + clientWidth) / 2, 0);
-}
-
-/**
- * The span the writer landed, as the tri-state ends `placeItem` reads. Absent, never
- * invalid: these came back from a write, so they are values this plugin just produced
- * and there is nothing unreadable to report. The distinction still has to be made
- * explicitly, because collapsing absent into invalid would shelve a cleared end with a
- * reason nobody caused.
- */
-function writtenEnds(span: DateSpan): StatedEnds {
-	const end = (date: CivilDate | null): FieldReading<CivilDate> =>
-		date === null ? absentReading() : { value: date, invalid: false };
-	return { start: end(span.start), target: end(span.target) };
 }

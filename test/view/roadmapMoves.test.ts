@@ -533,6 +533,22 @@ describe('scheduling from the row, on the one path', () => {
 		expect(await announced()).toBe('Moved "Alone" from 2026-08-01 onwards to Unscheduled');
 	});
 
+	it('reports a real cleanup of an unreadable date, not "Unscheduled" both ways', async () => {
+		// The note held something this axis refuses to read; clearing it is a real,
+		// undoable change, and "Unscheduled" was already true before the write — the
+		// exact confusion `placementLabel` stopped making on the horizon axis.
+		vi.useFakeTimers();
+		const vault = new FakeVault();
+		vault.addFile('Garbled.md', { frontmatter: { type: 'PBI', order: 10, start: 'soon' } });
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Garbled.md');
+
+		const moved = await view.performScheduleMove(item as never, { start: null, target: null });
+
+		expect(moved).toBe(true);
+		expect(await announced()).toBe('Moved "Garbled" from an unreadable start date to Unscheduled');
+	});
+
 	it('names a marker as the point it is drawn as, on both sides of the sentence', async () => {
 		// A marker keeps a stale start deliberately, so an unnarrowed source span would
 		// announce "from 2026-07-01 to 2026-09-30 to 2026-10-15" for a note the timeline

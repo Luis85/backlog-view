@@ -129,8 +129,37 @@ describe('the writer decides a date against the live note', () => {
 
 		const outcome = await applyWrites(vault.app, dateSettings(), [{ file, axis: { start: '2026-08-01', ends: ['start', 'target'] } }]);
 
-		expect(outcome.dates?.before).toEqual({ start: { year: 2026, month: 8, day: 2 }, target: { year: 2026, month: 8, day: 20 } });
-		expect(outcome.dates?.after).toEqual({ start: { year: 2026, month: 8, day: 1 }, target: { year: 2026, month: 8, day: 20 } });
+		expect(outcome.dates?.before).toEqual({
+			start: { value: { year: 2026, month: 8, day: 2 }, invalid: false },
+			target: { value: { year: 2026, month: 8, day: 20 }, invalid: false },
+		});
+		expect(outcome.dates?.after).toEqual({
+			start: { value: { year: 2026, month: 8, day: 1 }, invalid: false },
+			target: { value: { year: 2026, month: 8, day: 20 }, invalid: false },
+		});
+	});
+
+	it('tells an unreadable start from an absent one, on the BEFORE side of a real cleanup', async () => {
+		// `axisSpan` used to answer this with a bare value, so a note holding `soon` —
+		// unreadable, not absent — read identically to one with no key at all. The
+		// removal below is a real, undo-consuming write, and reporting it as "still
+		// nothing" both sides is the same collapse `placementLabel` stopped making for
+		// the horizon axis.
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { start: 'soon' } });
+
+		const outcome = await applyWrites(vault.app, dateSettings(), [
+			{ file, axis: { start: null, target: null, ends: ['start', 'target'] } },
+		]);
+
+		expect(outcome.dates?.before).toEqual({
+			start: { value: null, invalid: true },
+			target: { value: null, invalid: false },
+		});
+		expect(outcome.dates?.after).toEqual({
+			start: { value: null, invalid: false },
+			target: { value: null, invalid: false },
+		});
 	});
 
 	it('refuses the whole batch when the effective pair would be reversed', async () => {
@@ -174,8 +203,14 @@ describe('the writer decides a date against the live note', () => {
 
 		const outcome = await applyWrites(vault.app, dateSettings(), [{ file, axis: { target: '2026-10-15', ends: ['target'] } }]);
 
-		expect(outcome.dates?.before).toEqual({ start: null, target: { year: 2026, month: 9, day: 30 } });
-		expect(outcome.dates?.after).toEqual({ start: null, target: { year: 2026, month: 10, day: 15 } });
+		expect(outcome.dates?.before).toEqual({
+			start: { value: null, invalid: false },
+			target: { value: { year: 2026, month: 9, day: 30 }, invalid: false },
+		});
+		expect(outcome.dates?.after).toEqual({
+			start: { value: null, invalid: false },
+			target: { value: { year: 2026, month: 10, day: 15 }, invalid: false },
+		});
 	});
 
 	it('refuses a batch whose planned shape is not the shape the note now has', async () => {
