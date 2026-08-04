@@ -170,30 +170,49 @@ function validateSchedule(values: Record<string, string>): string | null {
  * even where the key exists holding an empty value: the backfill creates exactly that
  * stub, and opening the entry on one and pressing Save must not delete it and spend
  * the undo slot. Unschedule is the deliberate way to take a key away, and it still is.
+ *
+ * The mirror rule holds for a NON-blank field: one whose submitted value equals the
+ * value the entry was prefilled with states nothing new either, and is left out of the
+ * plan the same way. Without this, every save carried the untouched end's stale prefill
+ * back as an absolute request — the writer has no baseline to check an absolute date
+ * against (that is `from`, and a dialog entry states none), so the field a live edit
+ * changed while the prompt sat open would be silently reverted to what the user never
+ * touched. Omitting it is what lets the writer's own pair check fall back to the LIVE
+ * other end instead — see `refusesAxis` in `storage/frontmatter.ts`.
  */
 function planFrom(item: BacklogItem, values: Record<string, string>): SchedulePlan {
 	const plan: SchedulePlan = {};
 	for (const field of ['start', 'target'] as const) {
 		const value = values[field];
 		if (value === undefined) continue;
+		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
 		if (value !== '') {
+			if (reading.value !== null && value === formatCivil(reading.value)) continue;
 			plan[field] = value;
 			continue;
 		}
-		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
 		if (reading.value !== null || reading.invalid) plan[field] = null;
 	}
 	return plan;
 }
 
-/** Ask for the item's planned dates, then write the ends that actually changed. */
+/**
+ * Ask for the item's planned dates, then write the ends that actually changed.
+ *
+ * `ends` rides along so the writer's pair check runs at all — absent, `refusesAxis`
+ * has no shape to check a reversed request against. `from` does not: it scopes to a
+ * RELATIVE gesture ("one day further than this"), and a dialog entry is absolute — the
+ * user typed that date meaning that date, so a live change to the base is not a reason
+ * to refuse it.
+ */
 export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 	new SchedulePromptModal(host.app, {
 		heading: `Schedule "${item.title}"`,
 		description: 'Pick a date for each end, or clear a field to remove that date.',
 		fields: scheduleFields(host, item),
 		validate: validateSchedule,
-		onSubmit: (values) => void host.performScheduleMove(item, planFrom(item, values)),
+		onSubmit: (values) =>
+			void host.performScheduleMove(item, planFrom(item, values), undefined, placementEnds(item.typeName)),
 	}).open();
 }
 

@@ -402,6 +402,46 @@ describe('scheduling from the row', () => {
 		expect(inputs[0].value).toBe('2026-08-03');
 	});
 
+	it('leaves an end alone that another edit changed while the prompt sat open, unless the user touched it', async () => {
+		const vault = planVault();
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Planned').item('Schedule')?.click();
+		// Another editor moves the target while the prompt is open. The modal still
+		// shows what it was prefilled with — it has no way to know.
+		vault.setFrontmatter('Planned.md', { type: 'Epic', order: 30, start: '2026-08-03', due: '2026-08-20' });
+
+		// The user edits only the start; the target field is submitted exactly as it
+		// arrived, having never been touched.
+		submitSchedule(['2026-08-10', '2026-08-14']);
+		await flush();
+
+		expect(vault.fm('Planned.md')['start']).toBe('2026-08-10');
+		// A field that states what it was prefilled with states nothing new, so the
+		// concurrent edit survives — not the dialog's stale prefill for the end
+		// nobody edited.
+		expect(vault.fm('Planned.md')['due']).toBe('2026-08-20');
+	});
+
+	it('refuses the whole batch when the untouched end would leave a reversed pair against the live note', async () => {
+		const vault = planVault();
+		const { containerEl } = makeView(vault, AXES);
+
+		menuFor(containerEl, 'Planned').item('Schedule')?.click();
+		// Another editor slides the start later while the prompt is open.
+		vault.setFrontmatter('Planned.md', { type: 'Epic', order: 30, start: '2026-08-20', due: '2026-08-14' });
+
+		// The start field is submitted untouched (the stale prefill), and the user
+		// only edits the target — to a date that is fine against the prefill but
+		// reversed against the live start.
+		submitSchedule(['2026-08-03', '2026-08-05']);
+		await flush();
+
+		// Refused whole: the live start survives, and so does the original target.
+		expect(vault.fm('Planned.md')['start']).toBe('2026-08-20');
+		expect(vault.fm('Planned.md')['due']).toBe('2026-08-14');
+	});
+
 	it('unschedules by removing the keys, and offers it only where there are some', async () => {
 		const vault = planVault();
 		const { containerEl } = makeView(vault, AXES);
