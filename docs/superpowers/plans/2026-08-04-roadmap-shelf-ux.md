@@ -2257,7 +2257,7 @@ The shelf renders
 in `src/view/render/shelf.ts`, driven in `test/domain/roadmap.test.ts` and
 `test/view/shelfUx.test.ts` (accessors in `test/helpers/roadmap.ts`) — moved out of
 `src/view/render/roadmap.ts` once the shelf gained collapse, grouping, sort and a type
-filter ([[The shelf, organized]]).
+filter ("The shelf, organized").
 ```
 
 Replace `kept out of the layout by \`styles.css\`` with
@@ -2267,10 +2267,10 @@ shelf's CSS.
 One more passage DOES need a change, not just a path correction: this note's main flow
 and acceptance criteria state, unqualified, that "the shelf keeps sibling order" — true
 when it was a single flat list, false as a whole-shelf property now that
-[[The shelf, organized]] groups the shelf by type ahead of anything else. Two types
+"The shelf, organized" groups the shelf by type ahead of anything else. Two types
 interleaved in raw sibling order (a Task ranked between two Epics, say) now render with
 every Epic before every Task — sibling order survives only WITHIN a group, the same
-qualifier [[The shelf, organized]]'s own main flow step 3 already states correctly.
+qualifier that new note's own main flow step 3 already states correctly.
 Leaving the older note's unqualified claim standing would contradict a living use case
 the moment this plan ships. Replace:
 
@@ -2283,7 +2283,7 @@ with:
 
 ```
 2. The rest gather on the shelf: a labelled strip beside the axis, showing the same
-   cards the axis shows. Grouped by type ([[The shelf, organized]]); sibling order
+   cards the axis shows. Grouped by type ("The shelf, organized"); sibling order
    orders cards within a group, not across the whole strip.
 ```
 
@@ -2298,7 +2298,7 @@ with:
 
 ```
 - Within each type group, the shelf keeps sibling order — the order property's rank,
-  not arrival order ([[The shelf, organized]] specifies the grouping itself). The shelf
+  not arrival order ("The shelf, organized" specifies the grouping itself). The shelf
   names its count.
 ```
 
