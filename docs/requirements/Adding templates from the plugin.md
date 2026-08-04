@@ -17,7 +17,7 @@ recognised correctly the first time and I never have to remember the property na
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | The **New template** command/button, or **Save as template** on an existing item's context menu |
-| **Preconditions** | `templatesFolder` is configured ([[Configuring the templates folder]]) |
+| **Preconditions** | None — if `templatesFolder` isn't set yet, running either trigger asks for it first (1c) |
 | **Guarantee** | A template note created either way carries a valid `templateForKey` and nothing that would make it a work item — no `type`, no `parent`, no `order`. |
 
 **Main flow**
@@ -44,8 +44,10 @@ recognised correctly the first time and I never have to remember the property na
   is appended, the same collision handling [[New item flow]] already uses.
 - **1c — `templatesFolder` is not yet configured**, whichever trigger started the flow.
   The action asks for the folder first (reusing the folder-prompt shape
-  [[Scaffolding a backlog]] already has), then proceeds — it does not simply fail with
-  nothing to do.
+  [[Scaffolding a backlog]] already has), sets it, then proceeds — it does not simply
+  fail with nothing to do. This is what makes **New template** and **Save as template**
+  the way someone with no templates yet gets their first one, and why neither is gated
+  behind [[Configuring the templates folder]] being done already.
 - **3a — the folder does not exist.** It is created, the same as any other creation path.
 - **3b — the write fails.** A notice says so and points at the console, the same as
   every other creation path.

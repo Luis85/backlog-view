@@ -31,19 +31,32 @@ which of my item types each one is for without me maintaining a second list anyw
    content: the body becomes what a new item starts with, and the other frontmatter is
    what rides along with it ([[Creating an item from a template]]).
 4. A template note carries no `type` and no `parent`, so it never satisfies
-   [[What counts as a work item]] — it is invisible to the tree by construction, wherever
-   `templatesFolder` sits relative to a base's own filter. No second exclusion rule is
-   needed.
+   [[What counts as a work item]] — while "Ignore notes outside the hierarchy" is on (the
+   default), it is invisible to the tree wherever `templatesFolder` sits relative to a
+   base's own filter, by the same rule that already keeps an ADR out. No second exclusion
+   rule is needed.
 
 **Extensions**
 
-- **1a — `templatesFolder` is left empty.** The feature is off: no template picker
-  appears when creating an item, and no "New template" action is offered.
+- **1a — `templatesFolder` is left empty.** Creating an item never offers a template
+  picker or body field — there is nothing to offer. The **New template** action and
+  **Save as template** stay available regardless: running either asks for the folder
+  first, the same first-use path [[Adding templates from the plugin]] describes.
 - **2a — a note in the folder carries no `templateForKey`, or a value outside the
   vocabulary.** It is not a template. It renders and edits as an ordinary note; the
   plugin does not touch it.
 - **2b — two notes in the folder name the same type.** Both are offered as separate
   templates for that type — a shared folder holds a set, not a slot.
+- **4a — "Ignore notes outside the hierarchy" is off**, and `templatesFolder` sits inside
+  the base's own filter. A template note becomes a plain top-level item, exactly as any
+  other untyped, parentless note does in that mode (an ADR included) — that is the
+  existing meaning of the toggle, not a gap specific to templates. Keeping
+  `templatesFolder` outside the base's filtered folder avoids it in either mode; leaving
+  hierarchy pruning on (the default) avoids it without that.
+- **4b — a template note is hand-edited to also carry `type` or `parent`.** It becomes a
+  work item, the same as any other note anyone gives those keys to by hand. Nothing
+  about template recognition prevents this; it is the general rule in
+  [[What counts as a work item]], not a template-specific exclusion to maintain.
 
 ## Acceptance criteria
 
@@ -54,9 +67,12 @@ which of my item types each one is for without me maintaining a second list anyw
 - A note is a template if and only if it carries `templateForKey` with a value from the
   configured type vocabulary — presence and a valid value, not merely living in the
   folder.
-- A template note is never pulled into the tree as a work item, because it carries
-  neither `type` nor `parent` — an existing rule, not a new check.
-- Clearing `templatesFolder` turns the whole feature off.
+- A template note is never pulled into the tree as a work item while "Ignore notes
+  outside the hierarchy" is on (the default), because it carries neither `type` nor
+  `parent` — an existing rule, not a new check. With that option off, it is a plain item
+  like any other untyped note, which is that option's documented behaviour.
+- Clearing `templatesFolder` turns the template picker and body field off; **New
+  template** and **Save as template** stay reachable and prompt for the folder.
 
 ## Where it lives
 
