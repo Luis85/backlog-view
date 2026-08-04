@@ -1,9 +1,8 @@
 import { firstPlacedIndex } from './board';
-import { isMarkerType } from './itemTypes';
+import { deriveBars, ShelfCard, TimelineBar } from './bars';
 import { BacklogItem, BacklogModel } from './model';
-import { CivilDate, FieldReading, sameValue } from './noteFields';
+import { FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
-import { DateSpan, daysBetween, reversedSpan } from './timeline';
 
 /**
  * Deriving the roadmap from the model and the settings: which axis is configured,
@@ -75,25 +74,6 @@ export interface HorizonBucket {
 	cards: BacklogItem[];
 	/** Result cards only. */
 	count: number;
-}
-
-/** A bar of the dated axis: the span as the note states it, or fills from its subtree. */
-export interface TimelineBar {
-	item: BacklogItem;
-	span: DateSpan;
-	/**
-	 * True when that end came from the subtree rather than from the note. Display
-	 * only — an inferred date is never written anywhere, and recomputes each pass.
-	 */
-	inferredStart: boolean;
-	inferredEnd: boolean;
-}
-
-/** An unplaced result, with the reason when the axis refused a value it found. */
-export interface ShelfCard {
-	item: BacklogItem;
-	/** Why the axis could not place it; null for plain absence — work not yet triaged. */
-	reason: string | null;
 }
 
 export interface RoadmapModel {
@@ -204,7 +184,12 @@ export function buildRoadmap(
 	const rows = roadmapRows(model, visible);
 	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 };
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
-	else deriveBars(rows, roadmap);
+	else {
+		const dated = deriveBars(rows);
+		roadmap.bars = dated.bars;
+		roadmap.shelf = dated.shelf;
+		roadmap.context = dated.context;
+	}
 	const results = rows.filter((item) => !item.outsideFilter).length;
 	roadmap.placedCount = results - roadmap.shelf.length;
 	return roadmap;
@@ -283,109 +268,3 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
 	else roadmap.context.push(item);
 }
 
-/**
- * The dated axis. A stated pair places as the note states it; a reversed pair of
- * the item's own is unreadable rather than silently swapped. A dateless end fills
- * from the subtree's evidence (`inferSpan`) so a dateless parent spans its dated
- * descendants instead of shelving. A context row is never placed by its own dates,
- * and gets no inferred span either: every `outsideFilter` row routes straight to
- * `roadmap.context` before a span is ever computed for it, so it stands beside the
- * shelf exactly as it did before spans rolled up — that scoping is not built.
- *
- * A marker never reaches any of that: it is reduced to its target point first, so
- * the ordinary span rules are never asked about a type they do not describe.
- */
-function deriveBars(rows: BacklogItem[], roadmap: RoadmapModel): void {
-	for (const item of rows) {
-		if (item.outsideFilter) {
-			roadmap.context.push(item);
-			continue;
-		}
-		// A MARKER is reduced to its point before any span rule is asked about it. It has
-		// to happen here rather than in drawing: a stale start later than the target would
-		// shelve it as a reversed span and no rendering seam is ever reached. The start is
-		// ignored, never rewritten — ignoring a value and deleting it are different acts,
-		// and only the first was specified.
-		if (isMarkerType(item.typeName)) {
-			placeMarker(item, roadmap);
-			continue;
-		}
-		const start = item.plannedStart;
-		const target = item.plannedTarget;
-		if (start.invalid) roadmap.shelf.push({ item, reason: 'Unreadable start date' });
-		else if (target.invalid) roadmap.shelf.push({ item, reason: 'Unreadable target date' });
-		else if (reversedSpan(start.value, target.value)) {
-			// A reversed pair of the item's own is a typo to fix, never a span to
-			// infer around: unreadable shelves, and no inference stands in for a
-			// value that needs correcting. The rollup walk refuses the same pair as
-			// evidence, so a broken child cannot draw its ancestor's bar either.
-			roadmap.shelf.push({ item, reason: 'Target date precedes the start date' });
-		} else {
-			const bar = inferSpan(item, start.value, target.value);
-			if (bar === null) roadmap.shelf.push({ item, reason: null });
-			else roadmap.bars.push(bar);
-		}
-	}
-}
-
-/**
- * A marker states one date, in the same key a bar's end is read from and read the same
- * tolerant civil way. Absent is unplaced and unreadable shelves with its reason, exactly
- * as a span end does — and nothing is ever inferred for it, because an inference standing
- * in for a deadline is a commitment nobody made.
- */
-function placeMarker(item: BacklogItem, roadmap: RoadmapModel): void {
-	const target = item.plannedTarget;
-	if (target.invalid) {
-		roadmap.shelf.push({ item, reason: 'Unreadable target date' });
-		return;
-	}
-	if (target.value === null) {
-		roadmap.shelf.push({ item, reason: null });
-		return;
-	}
-	// Equal ends are what `barGeometry` already reports as a milestone, so the diamond the
-	// timeline draws for a stated pair is the same diamond, reached by the type.
-	roadmap.bars.push({
-		item,
-		span: { start: target.value, target: target.value },
-		inferredStart: false,
-		inferredEnd: false,
-	});
-}
-
-/** True when `a` does not fall after `b`. A missing end bounds nothing. */
-function keepsOrder(a: CivilDate | null, b: CivilDate | null): boolean {
-	return a === null || b === null || daysBetween(a, b) >= 0;
-}
-
-/**
- * Stated dates win endpoint by endpoint; an empty end fills from the subtree's
- * evidence of its OWN kind — starts only ever stand for starts. An inference may
- * extend a statement and never contradict it, so evidence falling on the wrong
- * side of a stated end is dropped and that end stays open. Null when neither the
- * note nor its results supply anything: the shelf's case, unchanged.
- */
-function inferSpan(
-	item: BacklogItem,
-	statedStart: CivilDate | null,
-	statedTarget: CivilDate | null,
-): TimelineBar | null {
-	const evidenceStart = statedStart === null ? item.descendantStart : null;
-	const evidenceTarget = statedTarget === null ? item.descendantTarget : null;
-	// Both ends inferred and crossing, from single-ended children: neither bounds
-	// the other. Cover what is known with both ends open rather than draw a
-	// reversed span — evidence bracketing activity without claiming to bound it.
-	if (evidenceStart !== null && evidenceTarget !== null && daysBetween(evidenceStart, evidenceTarget) < 0) {
-		return { item, span: { start: evidenceTarget, target: evidenceStart }, inferredStart: true, inferredEnd: true };
-	}
-	const start = statedStart ?? (keepsOrder(evidenceStart, statedTarget) ? evidenceStart : null);
-	const target = statedTarget ?? (keepsOrder(statedStart, evidenceTarget) ? evidenceTarget : null);
-	if (start === null && target === null) return null;
-	return {
-		item,
-		span: { start, target },
-		inferredStart: statedStart === null && start !== null,
-		inferredEnd: statedTarget === null && target !== null,
-	};
-}

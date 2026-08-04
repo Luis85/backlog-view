@@ -1,7 +1,7 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { isMarkerType } from '../../domain/itemTypes';
+import { placementEnds } from '../../domain/itemTypes';
 import { sameValue } from '../../domain/noteFields';
 import { BacklogSettings, horizonMenuValues, optionalKeyFor } from '../../domain/settings';
 import { formatCivil } from '../../domain/timeline';
@@ -20,29 +20,6 @@ import { SchedulePromptModal } from '../../ui/prompts';
  * a context row unwritable by construction rather than by remembering.
  */
 
-/** The two ends a placement can act on, in the order the entry asks for them. */
-const BOTH_ENDS = ['start', 'target'] as const;
-
-/**
- * Which ends a placement acts on for THIS item. A milestone answers for its target alone
- * — the type is the stronger statement, and a start it merely ignores is not a date any
- * hand may write or delete.
- *
- * Stated per **type** rather than per control on purpose: the row's Schedule and
- * Unschedule are simply the paths that exist first, and the roadmap's gestures — a shelf
- * card dropped on the grid, a bar dropped back on the shelf, a bar slide, each keyboard
- * equivalent — are specified in siblings still unbuilt. A rule written per control is one
- * control out of date the moment a fourth path is added; a rule written per type is one
- * every new path inherits by asking.
- *
- * Module-private for now: nothing outside this file needs it yet — its outside callers
- * are the roadmap gestures above (specified, not yet built). Export it when the first
- * of those lands, the way `placeMarker` (`domain/roadmap.ts`) waits for its own.
- */
-function placementEnds(item: BacklogItem): ('start' | 'target')[] {
-	return isMarkerType(item.typeName) ? ['target'] : [...BOTH_ENDS];
-}
-
 /**
  * Whether a placement entry has any field to ask for at all — the narrowed ends, against
  * the configured keys. Withheld rather than opened empty: a control that opens onto
@@ -54,12 +31,12 @@ function placementEnds(item: BacklogItem): ('start' | 'target')[] {
  * a key this type may not touch — so the entry is absent.
  */
 export function canSchedule(settings: BacklogSettings, item: BacklogItem): boolean {
-	return placementEnds(item).some((end) => optionalKeyFor(settings, end) !== '');
+	return placementEnds(item.typeName).some((end) => optionalKeyFor(settings, end) !== '');
 }
 
 /** True when the note carries a date key this item's placement may take away. */
 export function carriesDates(item: BacklogItem): boolean {
-	return placementEnds(item).some((end) => item.ownKeys[end]);
+	return placementEnds(item.typeName).some((end) => item.ownKeys[end]);
 }
 
 /**
@@ -143,7 +120,7 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
  */
 function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: string; name: string; value: string }[] {
 	const fields = [];
-	for (const field of placementEnds(item)) {
+	for (const field of placementEnds(item.typeName)) {
 		const key = optionalKeyFor(host.settings, field);
 		if (key === '') continue;
 		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
@@ -216,6 +193,6 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 /** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
 export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
 	const plan: SchedulePlan = {};
-	for (const field of placementEnds(item)) plan[field] = null;
+	for (const field of placementEnds(item.typeName)) plan[field] = null;
 	return host.applySafely(computeScheduleWrites(item, plan));
 }

@@ -3,7 +3,7 @@ import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderTitleText } from './rows';
 import { BacklogItem } from '../../domain/model';
-import { TimelineBar } from '../../domain/roadmap';
+import { TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
 import {
 	BarGeometry,

@@ -7,7 +7,8 @@ import { RoadmapSnapshot } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { BacklogItem } from '../../domain/model';
-import { buildRoadmap, HorizonBucket, RoadmapAxis, SHELF_LABEL, ShelfCard } from '../../domain/roadmap';
+import { ShelfCard } from '../../domain/bars';
+import { buildRoadmap, HorizonBucket, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { scaleFor } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 

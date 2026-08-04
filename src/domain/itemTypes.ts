@@ -140,3 +140,24 @@ export function displayType(item: { levelIndex: number; typeName: string | null 
 	if (item.levelIndex >= 0) return LEVELS[item.levelIndex];
 	return item.typeName ?? '';
 }
+
+/** The two ends a dated placement can act on, in the order every entry asks for them. */
+export type PlacementEnd = 'start' | 'target';
+
+const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
+
+/**
+ * Which ends a placement acts on for this TYPE. A milestone answers for its target
+ * alone — the type states *point* as strongly as a missing key does, and a start it
+ * merely ignores is not a date any hand may write or delete.
+ *
+ * Stated per type rather than per control, so every path inherits the narrowing by
+ * asking rather than by restating it: the row's Schedule and Unschedule, the shelf
+ * drop, the body slide, both grips, and — since this takes a type name and not an item
+ * — the WRITER, which has to decide against what the note currently says. It lives
+ * here rather than in `view/` for exactly that last reason: `storage/` may not reach
+ * upward, and a second copy is the one that would drift.
+ */
+export function placementEnds(typeName: string | null): PlacementEnd[] {
+	return isMarkerType(typeName) ? ['target'] : [...BOTH_ENDS];
+}

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, isExtraType, isMarkerType } from '../../src/domain/itemTypes';
+import {
+	childTypeChoices,
+	EXTRA_TYPE_RANK,
+	folderForType,
+	isExtraType,
+	isMarkerType,
+	placementEnds,
+	PlacementEnd,
+} from '../../src/domain/itemTypes';
 import {
 	ALL_TYPES,
 	defaultSettings,
@@ -242,5 +250,25 @@ describe('isMarkerType', () => {
 		expect(isMarkerType('Spike')).toBe(false);
 		expect(isMarkerType(null)).toBe(false);
 		expect(MARKER_TYPES.some((m) => isExtraType(m))).toBe(false);
+	});
+});
+
+describe('placementEnds', () => {
+	it('gives a work item both ends and a marker its target alone', () => {
+		expect(placementEnds('PBI')).toEqual(['start', 'target']);
+		expect(placementEnds('Bug')).toEqual(['start', 'target']);
+		expect(placementEnds(null)).toEqual(['start', 'target']);
+		// The type is the stronger statement: a start a milestone merely ignores is not
+		// a date any hand may write or delete.
+		expect(placementEnds('Milestone')).toEqual(['target']);
+		expect(placementEnds('milestone')).toEqual(['target']);
+	});
+
+	it('answers about a TYPE, not an item, so the writer can ask it of the live note', () => {
+		// The writer decides against what the note currently says — including what type
+		// it currently is — so this predicate may not take a BacklogItem. A signature
+		// test rather than a behaviour one, because the signature is the invariant.
+		const ends: PlacementEnd[] = placementEnds('Milestone');
+		expect(ends).toHaveLength(1);
 	});
 });
