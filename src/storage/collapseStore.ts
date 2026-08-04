@@ -40,6 +40,8 @@ const AXIS_VALUES = ['horizons', 'dates'];
  * defensively, not trusted as a type.
  */
 const ZOOM_VALUES = ['week', 'month', 'quarter'];
+/** The values the `shelfSort` field may hold. Mirrors `ShelfSort` in `domain/shelf.ts`. */
+const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 
 /** One view's working position: the rows it has settled, and its projection. */
 export interface CollapseSnapshot {
@@ -51,6 +53,12 @@ export interface CollapseSnapshot {
 	axis?: string | null;
 	/** The retained timeline zoom; null or absent means the user never picked. */
 	zoom?: string | null;
+	/** True only once the user has explicitly expanded the shelf; absent means collapsed, the default. */
+	shelfExpanded?: boolean;
+	/** Absent or null means 'tree' (sibling order), the default. */
+	shelfSort?: string | null;
+	/** Types currently hidden by the shelf's own type filter; absent or empty means none. */
+	shelfHiddenTypes?: string[] | null;
 }
 
 /** Which base view an entry belongs to. */
@@ -77,6 +85,12 @@ interface StoredEntry {
 	axis?: string;
 	/** Absent until the user picks a timeline zoom; retained even while unused. */
 	zoom?: string;
+	/** Absent means collapsed — the default. Never stored as `true`... wait, stored as `true` only, since `false` IS the default and needs no entry. */
+	shelfExpanded?: boolean;
+	/** Absent means 'tree', the default. */
+	shelfSort?: string;
+	/** Absent or empty means nothing hidden. */
+	shelfHiddenTypes?: string[];
 }
 
 type StoredMap = Record<string, StoredEntry>;
@@ -169,6 +183,24 @@ function viewNameOf(key: string): string | null {
 	}
 }
 
+function defaultShelf(entry: StoredEntry | undefined): Pick<CollapseSnapshot, 'shelfExpanded' | 'shelfSort' | 'shelfHiddenTypes'> {
+	return {
+		shelfExpanded: entry?.shelfExpanded ?? false,
+		shelfSort: entry?.shelfSort ?? null,
+		shelfHiddenTypes: entry?.shelfHiddenTypes ?? [],
+	};
+}
+
+function shelfIsDefault(expanded: boolean, sort: string | null, types: string[]): boolean {
+	return !expanded && sort === null && types.length === 0;
+}
+
+function writeShelf(entry: StoredEntry, expanded: boolean, sort: string | null, types: string[]): void {
+	if (expanded) entry.shelfExpanded = true;
+	if (sort !== null) entry.shelfSort = sort;
+	if (types.length > 0) entry.shelfHiddenTypes = types;
+}
+
 export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot {
 	const entry = readMap(app)[mapKey(id)];
 	return {
@@ -177,6 +209,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 		mode: entry?.mode ?? null,
 		axis: entry?.axis ?? null,
 		zoom: entry?.zoom ?? null,
+		...defaultShelf(entry),
 	};
 }
 
@@ -193,13 +226,26 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	const mode = snapshot.mode ?? null;
 	const axis = snapshot.axis ?? null;
 	const zoom = snapshot.zoom ?? null;
-	// A view at its defaults — nothing settled, the tree, no pick — needs no entry.
-	if (collapsed.length === 0 && expanded.length === 0 && mode === null && axis === null && zoom === null) delete map[key];
-	else {
+	const shelfExpanded = snapshot.shelfExpanded ?? false;
+	const shelfSort = snapshot.shelfSort ?? null;
+	const shelfHiddenTypes = snapshot.shelfHiddenTypes ?? [];
+	// A view at its defaults — nothing settled, the tree, no pick, shelf untouched —
+	// needs no entry.
+	if (
+		collapsed.length === 0 &&
+		expanded.length === 0 &&
+		mode === null &&
+		axis === null &&
+		zoom === null &&
+		shelfIsDefault(shelfExpanded, shelfSort, shelfHiddenTypes)
+	) {
+		delete map[key];
+	} else {
 		map[key] = { base: id.base, collapsed, expanded };
 		if (mode !== null) map[key].mode = mode;
 		if (axis !== null) map[key].axis = axis;
 		if (zoom !== null) map[key].zoom = zoom;
+		writeShelf(map[key], shelfExpanded, shelfSort, shelfHiddenTypes);
 	}
 	pruneMissingBases(app, map, key);
 	writeMap(app, map);
@@ -261,6 +307,28 @@ function readEnum<T extends string>(value: unknown, allowed: readonly T[]): T | 
 	return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
 }
 
+function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): void {
+	if (typeof record.shelfExpanded === 'boolean' && record.shelfExpanded) entry.shelfExpanded = true;
+	if (typeof record.shelfSort === 'string' && SHELF_SORT_VALUES.includes(record.shelfSort)) entry.shelfSort = record.shelfSort;
+	if (Array.isArray(record.shelfHiddenTypes)) {
+		const types = record.shelfHiddenTypes.filter((t): t is string => typeof t === 'string' && t.length > 0);
+		if (types.length > 0) entry.shelfHiddenTypes = types;
+	}
+}
+
+function entryHasContent(entry: StoredEntry): boolean {
+	return (
+		entry.collapsed.length > 0 ||
+		entry.expanded.length > 0 ||
+		entry.mode !== undefined ||
+		entry.axis !== undefined ||
+		entry.zoom !== undefined ||
+		entry.shelfExpanded !== undefined ||
+		entry.shelfSort !== undefined ||
+		entry.shelfHiddenTypes !== undefined
+	);
+}
+
 function readEntry(value: unknown): StoredEntry | null {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
 	const record = value as Record<string, unknown>;
@@ -275,13 +343,8 @@ function readEntry(value: unknown): StoredEntry | null {
 	if (axis !== undefined) entry.axis = axis;
 	const zoom = readEnum(record.zoom, ZOOM_VALUES);
 	if (zoom !== undefined) entry.zoom = zoom;
-	return entry.collapsed.length > 0 ||
-		entry.expanded.length > 0 ||
-		entry.mode !== undefined ||
-		entry.axis !== undefined ||
-		entry.zoom !== undefined
-		? entry
-		: null;
+	readShelfFields(record, entry);
+	return entryHasContent(entry) ? entry : null;
 }
 
 function readPaths(value: unknown): string[] {
