@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfOf, shelfTitles } from '../helpers/roadmap';
-import { key, useViewHarness } from '../helpers/view';
+import { flush, key, useViewHarness } from '../helpers/view';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { syncShelfControls } from '../../src/view/render/shelfControls';
 import { ProductBacklogView } from '../../src/view/backlogView';
+import { cardDrag } from '../helpers/dnd';
+import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
 
@@ -340,5 +342,20 @@ describe('the shelf, collapsed by default', () => {
 		view.setProjection('roadmap');
 
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+	});
+});
+
+describe('the shelf as a drop target while collapsed', () => {
+	it('still un-places a card dropped on it', async () => {
+		const vault = horizonVault();
+		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 5, horizon: 'Now' } });
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		// Default collapsed — confirm the premise before testing the drop.
+		expect(shelfOf(containerEl)?.hasClass('pbl-shelf-collapsed')).toBe(true);
+
+		cardDrag(cardByTitle(containerEl, 'Placed'), shelfOf(containerEl) as HTMLElement);
+		await flush();
+
+		expect('horizon' in vault.fm('Placed.md')).toBe(false);
 	});
 });
