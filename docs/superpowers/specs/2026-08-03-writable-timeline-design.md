@@ -311,16 +311,30 @@ what was there.
 
 **Almost nothing new.** `computeScheduleWrites` is already the batch shape these gestures
 want: both ends on one `ItemWrite`, so a span is one undo rather than two halves that can
-be taken back separately, and `null` removing a key only where the note carries it. The
-gestures build a `SchedulePlan` of civil-date strings and hand it over.
+be taken back separately. The gestures build a `SchedulePlan` of civil-date strings and
+hand it over.
 
-The one change is that it **stops dropping ends that look unchanged**. That comparison
-runs against `plannedStart` / `plannedTarget`, which the model may hold a refresh behind,
-so it can discard a request the note actually needs — the case the writer section below
-sets out in full. The planner carries every requested valid end, and whether an end is an
-effective change is the writer's question, asked of the live value. Nothing here reads a
-date to decide whether to write it; `writePlan.ts` touches nothing and now claims nothing
-about what a note currently holds.
+The one change is that it **stops deciding anything from the model**, in both directions.
+
+It stops dropping ends that *look unchanged*: that comparison runs against
+`plannedStart` / `plannedTarget`, which the model may hold a refresh behind, so it can
+discard a request the note actually needs — the case the writer section below sets out in
+full.
+
+And it stops dropping removals for keys the note *looks* not to carry. `ownKeys` is a
+model-time reading too, so an unschedule planned while a bar had one end would omit the
+other end's `null`, and an editor who added that date mid-drag would find the item still
+scheduled after an action that said it would clear it — a removal that half-happened,
+which is the shape this codebase already refuses elsewhere. Every end the placement shape
+allows carries its `null`, and whether the key is there to remove is the writer's
+question. The menu's own rule is untouched, because it answers a different one: a removal
+action still *appears* only while the note carries the key, so no offered action can write
+nothing, and that judgement is made when the menu is built because that is when it has to
+be made.
+
+So `writePlan.ts` touches nothing and now claims nothing about what a note currently
+holds; it states what was asked for, and the only module that can see the note decides
+what that means.
 
 It stays type-agnostic, deliberately: **which** ends a plan may name is `placementEnds`
 in `interactions/plan.ts`, where the type rules already live and where `unschedule`
