@@ -2721,8 +2721,19 @@ in a stylesheet whose ordering is documented as load-bearing.
 ```css
 /* The scroll box, on BOTH axes. Not `.pbl-timeline-content`: full-height marks resolve
    `top: 0; bottom: 0` against their containing block's padding box, so making the
-   scroll box the containing block would make every line viewport-tall and scroll away. */
+   scroll box the containing block would make every line viewport-tall and scroll away.
+
+   REPLACE the existing rule rather than adding to it: `width: max-content` moves to the
+   content wrapper below. A scroll box as wide as its own content has nothing to scroll —
+   the overflow would happen outside it, where `.pbl-roadmap-dates .pbl-tree` now clips
+   instead of scrolling, so every date past the pane's edge would be unreachable and the
+   registered scroller would have nothing to pan. `min-width: 0` because a flex item's
+   automatic minimum is its content size, which would restore the same width by another
+   route. */
 .pbl-timeline {
+	position: relative;
+	width: 100%;
+	min-width: 0;
 	overflow: auto;
 }
 
@@ -3742,15 +3753,17 @@ function preview(
 	// write cannot disagree about what a position means.
 	const plan = planFor(host, parts, source, clientX, originX);
 	if (!plan) return;
-	const span = previewSpan(source.item, plan);
-	if (span.start === null && span.target === null) return;
-	const geometry = barGeometry(parts.window, span);
+	const placement = placeItem(source.item, plannedEnds(source.item, plan));
+	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so.
+	if (placement.kind !== 'bar') return;
+	const bar = placement.bar;
+	const geometry = barGeometry(parts.window, bar.span);
 	const ghost = parts.overlay.createDiv({ cls: 'pbl-drop-ghost' });
 	ghost.setCssProps({
 		'--pbl-ghost-left': `${geometry.startDay * parts.scale.dayPx}px`,
 		'--pbl-ghost-width': `${Math.max(geometry.spanDays * parts.scale.dayPx, MIN_BAR_PX)}px`,
 	});
-	const dates = parts.overlay.createDiv({ cls: 'pbl-drop-ghost-dates', text: spanText({ span }) });
+	const dates = parts.overlay.createDiv({ cls: 'pbl-drop-ghost-dates', text: spanText(bar) });
 	dates.setCssProps({ '--pbl-ghost-left': `${geometry.startDay * parts.scale.dayPx}px` });
 }
 
@@ -3759,28 +3772,34 @@ function clearPreview(parts: TimelineParts): void {
 }
 
 /**
- * The span a plan WOULD leave on this item: the ends it names, over the ends the note
- * already states. Built from the plan rather than from the pointer, so the ghost and
- * the write cannot disagree about what a position means — which is the same reason the
- * removal indicator asks `placeItem` rather than comparing values beside it.
+ * The ends a plan WOULD leave stated on this item: the ones it names, over the ones the
+ * note already states. This is only half of a placement, which is why nothing draws from
+ * it directly — `preview` hands it to `placeItem`, the same call `deriveBars` and the
+ * removal indicator make. A ghost built from these ends alone would show what the NOTE
+ * would say and not what the AXIS would draw: move a parent's stated start while its
+ * children supply the other end, and the note states one date while the grid draws the
+ * inferred span to August 20. The preview would promise a one-day bar and the refresh
+ * would deliver a three-week one. Every rule that turns ends into a placement — the
+ * marker reduction, the unreadable and reversed refusals, the rollup inference — is
+ * behind that one call precisely so no second answer gets written beside it.
  */
-function previewSpan(item: BacklogItem, plan: SchedulePlan): DateSpan {
-	const stated = statedSpan(item);
-	const end = (field: PlacementEnd): CivilDate | null => {
+function plannedEnds(item: BacklogItem, plan: SchedulePlan): StatedEnds {
+	const stated = statedEnds(item);
+	const end = (field: PlacementEnd): FieldReading<CivilDate> => {
 		const requested = plan[field];
 		if (requested === undefined) return stated[field];
-		return requested === null ? null : readDate(requested).value;
+		return requested === null ? absentReading() : readDate(requested);
 	};
 	return { start: end('start'), target: end('target') };
 }
 ```
 
-`spanText` is `src/view/render/timeline.ts`'s, and it is exported for this. Its
-parameter widens from a whole `TimelineBar` to
-`{ span: DateSpan; inferredStart?: boolean; inferredEnd?: boolean }`, so a preview —
-which has a span and no bar — can ask it, and a real bar still satisfies it. One
-sentence describing a span, said the same way on the grid, in the ghost and in the
-shelf's outcome line. `statedSpan` is `timelineDrag.ts`'s own, defined in Task 12.
+`spanText` is `src/view/render/timeline.ts`'s, and it is exported for this. Its parameter
+needs no widening: `placeItem` hands back a whole `TimelineBar`, so the ghost describes
+its span the way the grid describes a real one — inferred ends included, which is the
+point. One sentence about a span, said identically on the grid, in the ghost and in the
+shelf's outcome line. `statedSpan` is `timelineDrag.ts`'s own, defined in Task 12, and is
+used by the hold baselines rather than by the preview.
 
 - [ ] **Step 6: Wire it from the roadmap, and make the dated axis draggable**
 
