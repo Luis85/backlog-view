@@ -1974,10 +1974,72 @@ Expected: both succeed. No jsdom test asserts on computed widths (jsdom has no l
 engine), so this step confirms nothing broke structurally, not that the layout looks
 right — that is Task 11.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Update `docs/issues/Smoke test the visual changes.md`**
+
+Task 11's own live-vault checklist (Step 3 there) is a one-off list scoped to this plan
+— it is not the repository's actual re-run-before-every-release checklist, which is this
+note. Left untouched, it would keep instructing maintainers to verify buckets as fixed
+`flex: 0 0 260px` columns (now false) and would carry no check at all for the new grid,
+gutter, or shelf controls — the temporary plan checklist would be the only record of
+what changed, and it disappears once this plan is done.
+
+Replace this bullet under "## The roadmap":
+
+```
+**Bucket layout in a narrow pane** — buckets are `flex: 0 0 260px` and the frame is
+`min-width: max-content`, so a narrow pane should scroll sideways rather than squeeze
+them. Check the buckets keep their width and the pane scrolls.
+```
+
+with:
+
+```
+**Bucket layout at different widths** — buckets share the row's width equally down to a
+280px floor (`flex: 1 1 280px; min-width: 280px`), reflowing cards into multiple grid
+columns as a bucket's own width allows. Check an ordinary 3-4 horizon vault shows no
+horizontal scrollbar and a wide bucket's cards form more than one column; check a pane
+narrow enough to hit the 280px floor falls back to the pane's existing horizontal
+scroll, same as before.
+```
+
+Replace this bullet (same section):
+
+```
+**The shelf pinned to the scrollport** — `position: sticky` with `width: 100cqw` inside a
+`max-content` frame. Pan the timeline sideways: the shelf, the context strip and the
+advisory must stay put and stay full-width, not slide off or collapse.
+```
+
+with:
+
+```
+**The shelf pinned to the scrollport, with a real gutter** — `position: sticky` with a
+width reduced to leave a visible gutter from the pane's edges (matching the shelf's own
+internal padding), inside a `max-content` frame. Pan the timeline sideways: the shelf,
+the context strip and the advisory must stay put, stay off the pane's edges, and force
+no scrollbar of their own.
+```
+
+Add two new bullets after "The drop-over highlight" (same section), for surface this
+plan adds rather than changes:
+
+```
+**The shelf, collapsed by default** — a fresh view opens with the shelf's cards hidden
+and only its toolbar chrome (collapse button, sort picker, type filter) visible. Check
+the collapsed strip reads as compact chrome, not an empty box taking noticeable space,
+and that expanding it reveals cards grouped under type sub-headers in a uniform-width
+grid.
+
+**The shelf's toolbar controls** — the collapse button, sort picker and type-filter
+chips live in the toolbar, not inside the roadmap pane. Check they are legible and
+usable at the toolbar's normal size, and that toggling any one of them never visibly
+rebuilds the rest of the toolbar.
+```
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add styles/roadmap.css
+git add styles/roadmap.css "docs/issues/Smoke test the visual changes.md"
 git commit -m "Full-width horizon buckets with a responsive multi-column card grid"
 ```
 
@@ -2306,7 +2368,79 @@ Everything else in the note (its status, the rest of the use case, the open
 dated-axis-drag criterion) stays untouched — these two passages are the only ones a
 living use case's own contract requires, not a broader rewrite.
 
-- [ ] **Step 4: Update `docs/README.md`'s use-case count only**
+- [ ] **Step 4: Update `docs/requirements/Moving between horizons.md`'s `## Where it lives`**
+
+This ACTIVE note's own write-path specification goes stale the same way, for the same
+reason: it says "the buckets and the shelf that receive it are
+`src/view/render/roadmap.ts`", true before Task 6, false after — the shelf half of that
+sentence moves to `src/view/render/shelf.ts`. Replace:
+
+```
+The gesture is `src/view/interactions/cardDrag.ts`, the drag layer both card projections
+now share ([[Share the card drag between projections]]); the buckets and the shelf that
+receive it are `src/view/render/roadmap.ts`; `bucketLabelFor` in `src/domain/roadmap.ts`
+is what names a placement out loud, so an announcement can only say what is on screen.
+```
+
+with:
+
+```
+The gesture is `src/view/interactions/cardDrag.ts`, the drag layer both card projections
+now share ([[Share the card drag between projections]]); the buckets that receive it are
+`src/view/render/roadmap.ts`, the shelf `src/view/render/shelf.ts` ("The shelf,
+organized" moved it there); `bucketLabelFor` in `src/domain/roadmap.ts` is what names a
+placement out loud, so an announcement can only say what is on screen.
+```
+
+Nothing else in the note changes — its status, use case and open criteria are unaffected
+by where the shelf's rendering lives.
+
+- [ ] **Step 5: Add the shelf's title sort to `docs/requirements/Locale-aware sorting and
+  formatting.md`'s inventory**
+
+Task 1's `compareCards` (`src/domain/shelf.ts`) calls `a.item.title.localeCompare(b.item.title)`
+with no locale argument for the `'title'` sort — the same bare-`localeCompare` shape this
+open design note exists to inventory and eventually fix, and its own acceptance criteria
+already treats a new bare call as the mistake a future lint rule catches. That note is
+"Nothing yet — this note is design": no locale-resolution mechanism exists anywhere in
+`src/` yet ([[Locale resolution and fallback]] is equally unbuilt), so actually wiring
+locale-aware collation here would mean building an entire separate, unbuilt feature as a
+side effect of the shelf's sort control — out of scope for this plan. Track the new site
+instead of leaving it uncounted.
+
+In `docs/requirements/Locale-aware sorting and formatting.md`, change:
+
+```
+Three `localeCompare` calls, all currently locale-less:
+
+| Site | Sorts |
+| --- | --- |
+| `ui/prompts.ts:58` | Folder paths in the folder suggest |
+| `domain/model.ts:495` | `observedStates` — the state vocabulary offered in the menu |
+| `domain/model.ts:512` | The tag vocabulary |
+```
+
+to:
+
+```
+Four `localeCompare` calls, all currently locale-less:
+
+| Site | Sorts |
+| --- | --- |
+| `ui/prompts.ts:58` | Folder paths in the folder suggest |
+| `domain/model.ts:495` | `observedStates` — the state vocabulary offered in the menu |
+| `domain/model.ts:512` | The tag vocabulary |
+| `domain/shelf.ts` (`compareCards`) | Shelf cards within a type group, by title |
+```
+
+(Fill in the exact line number once `src/domain/shelf.ts` exists, matching the other
+three rows' precision.)
+
+In the same note's `## Where it lives`, add `src/domain/shelf.ts` beside
+`src/domain/model.ts` in the file list, and `test/domain/shelf.test.ts` beside
+`test/domain/model.test.ts` in the tests list.
+
+- [ ] **Step 6: Update `docs/README.md`'s use-case count only**
 
 The two new PBI notes exist as of this step regardless of their status, so the
 register's own count of them is a structural fact, not a claim about whether the
@@ -2330,17 +2464,18 @@ built and verified" claim, and at this point in the plan neither note has been
 confirmed against a live vault yet. It belongs beside the point where the notes
 actually become `Done` (Task 11's last step), not here.
 
-- [ ] **Step 5: Run the full gate**
+- [ ] **Step 7: Run the full gate**
 
 Run: `npm run check`
 Expected: PASS — this is the point where the docs register gate actually checks the two
 new notes' frontmatter, wikilinks, hierarchy and `## Where it lives` shape, and the
-corrected `The unplaced shelf.md` no longer names a module that moved.
+corrected `The unplaced shelf.md`/`Moving between horizons.md` no longer name a module
+that moved.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md" "docs/requirements/The unplaced shelf.md" docs/README.md
+git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md" "docs/requirements/The unplaced shelf.md" "docs/requirements/Moving between horizons.md" "docs/requirements/Locale-aware sorting and formatting.md" docs/README.md
 git commit -m "Register the shelf UX and full-width bucket PBIs in the backlog"
 ```
 
@@ -2416,10 +2551,19 @@ multiple columns as the space allows. The dated axis is still read-only — sche
 milestone type are design — ...
 ```
 
-Commit both changes together:
+Also add a row to `docs/issues/Smoke test the visual changes.md`'s `## Runs` table —
+that note is the actual re-run-before-every-release checklist (Task 9 updated its
+bullets to match this plan's new behavior); recording the run there is what closes the
+loop Task 9 opened, rather than leaving the confirmation stranded in this plan alone:
+
+```
+| 2026-08-04 | the shelf's collapse/grouping/sort/filter and the full-width bucket grid | Confirmed against `npm run test-build`; see PR #65. |
+```
+
+Commit all three changes together:
 
 ```bash
-git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md" docs/README.md
+git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md" docs/README.md "docs/issues/Smoke test the visual changes.md"
 git commit -m "Confirm the shelf UX and full-width bucket PBIs against a live vault"
 ```
 
