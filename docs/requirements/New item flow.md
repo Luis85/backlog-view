@@ -59,13 +59,16 @@ instead of being spent on which folder, which type and which order number.
   create-then-update pair that could fail in between — but a folder created for it at
   step 6a is left behind. See [[Failed creation leaves its folder behind]].
 - **7a — the new note does not match the Base's own filter.** It is created correctly and
-  the tree does not show it, because the Base does not return it. The view writes `type`,
+  the tree does not show it, because the Base does not return it. This flow writes `type`,
   `parent` and `order` and nothing else, so a base requiring a tag or a status will omit
   it — and so will a folder-filtered base if the type's folder sits outside that folder.
   Expanding the parent cannot reveal a row the query did not return. The **Create backlog**
   command exists partly to avoid this by construction ([[Scaffolding a backlog]]): it
   points the home folder at the folder it filters on, so every type folder defaults inside
-  it.
+  it. Once [[Item Templates]] lands, this is specifically about *this* flow — a blank
+  creation with no template involved: [[Creating an item from a template]] merges a
+  template's own extra frontmatter in addition to these three, so a base filtering on a
+  tag or a state can be satisfied by picking a template that carries one.
 
 ## Acceptance criteria
 
