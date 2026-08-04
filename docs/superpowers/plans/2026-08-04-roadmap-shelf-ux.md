@@ -1516,10 +1516,15 @@ git commit -m "Add the collapsed-shelf-still-a-drop-target invariant test"
 
 /* A grid, not a wrapping flex row: the previous layout shrank trailing-row cards
    unevenly. Matches the bucket card grid in roadmap.css, so every card in the
-   roadmap is sized the same way. */
+   roadmap is sized the same way. `min(240px, 100%)`, not a bare 240px: the shelf's
+   own gutter (roadmap.css) and internal padding both eat into its content box, so a
+   narrow enough pane can leave less than 240px for the grid to work with — a bare
+   240px floor would then force the track wider than its container and reintroduce
+   the very horizontal scrollbar this rewrite exists to remove. Capping the minimum
+   at the available width degrades to a single narrower column instead. */
 .pbl-shelf-cards {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 	gap: var(--size-4-2);
 }
 
@@ -1672,10 +1677,14 @@ with:
 /* align-content: start is not optional: .pbl-roadmap-buckets is a flex row with
    align-items: stretch, so every bucket already stretches to the tallest one, and a
    grid's default alignment would otherwise stretch a sparse bucket's own cards into
-   that surplus height instead of leaving them their natural size. */
+   that surplus height instead of leaving them their natural size. `min(240px, 100%)`
+   for the same reason as the shelf's own grid: a bucket's floor width minus its own
+   padding can still fall under 240px with enough buckets on a narrow pane, and a bare
+   floor would force the track past its container rather than degrading to one
+   narrower column. */
 .pbl-bucket-cards {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 	align-content: start;
 	gap: var(--size-4-2);
 	padding: var(--size-4-2);
@@ -1742,6 +1751,8 @@ git commit -m "Full-width horizon buckets with a responsive multi-column card gr
 **Files:**
 - Create: `docs/requirements/The shelf, organized.md`
 - Create: `docs/requirements/Buckets that use the room they have.md`
+- Modify: `docs/requirements/The unplaced shelf.md` (its own `## Where it lives` goes
+  stale the moment Task 6 moves `renderShelf` out of `roadmap.ts`)
 - Modify: `docs/README.md`
 
 This task runs after all code exists (Tasks 1-9), so `## Where it lives` states real
@@ -1753,8 +1764,22 @@ the three new modules Tasks 1-9 already added (`domain/shelf.ts`,
 them. Running the full gate before this task exists only to fail on a check this task
 is what satisfies.
 
+It is not only new notes that need writing here: `docs/requirements/The unplaced
+shelf.md` already exists and already has a `## Where it lives` section naming
+`src/view/render/roadmap.ts` as where the shelf renders — a claim Task 6 makes false by
+moving that code to `src/view/render/shelf.ts`. Leaving it unchanged would mean the
+register's oldest note about the shelf points at a module that no longer contains what
+it says, exactly the kind of drift `CLAUDE.md` asks the register to stay honest against.
+
 **Interfaces:** none — documentation only, gated by `docs-check.mjs` (part of
 `npm run check`).
+
+Both new notes are authored `status: Active`, not `Done` — every acceptance criterion
+about actual on-screen appearance (uniform card widths, the full-width bucket layout,
+the multi-column grid, the spacing gutter) is exactly what Task 11 says jsdom cannot
+verify and a human has to actually look at. Marking either `Done` here would advertise
+an unverified visual claim as settled. Task 11 is where they become `Done`, and only
+after that live-vault check has actually happened.
 
 - [ ] **Step 1: Create the first PBI note**
 
@@ -1763,7 +1788,7 @@ is what satisfies.
 type: PBI
 parent: "[[A third projection]]"
 order: 50
-status: Done
+status: Active
 priority: P2
 created: 2026-08-04
 files:
@@ -1891,7 +1916,7 @@ live-vault check — jsdom has no layout engine — recorded verified only after
 type: PBI
 parent: "[[The horizon board]]"
 order: 30
-status: Done
+status: Active
 priority: P2
 created: 2026-08-04
 files:
@@ -1957,8 +1982,8 @@ stated minimum instead of the row falling back to the `.pbl-tree` scroller's exi
 `overflow-x: auto`.
 
 `.pbl-bucket-cards` changes from a flex column to a CSS grid
-(`repeat(auto-fill, minmax(240px, 1fr))`), with `align-content: start` — necessary
-because `.pbl-roadmap-buckets` is itself a flex row with `align-items: stretch`, so
+(`repeat(auto-fill, minmax(min(240px, 100%), 1fr))`), with `align-content: start` —
+necessary because `.pbl-roadmap-buckets` is itself a flex row with `align-items: stretch`, so
 every bucket already stretches to the tallest one, and a grid's default alignment would
 otherwise stretch a sparse bucket's own cards into that surplus height instead of
 leaving them their natural size.
@@ -1969,7 +1994,42 @@ layout engine, so `npm run test-build` is what this note relies on rather than a
 assertion.
 ```
 
-- [ ] **Step 3: Update `docs/README.md`**
+- [ ] **Step 3: Update `docs/requirements/The unplaced shelf.md`'s `## Where it lives`**
+
+That note's `## Where it lives` section currently reads (in part):
+
+```
+The shelf renders
+in `src/view/render/roadmap.ts`, driven in `test/domain/roadmap.test.ts` and
+`test/view/roadmapFrame.test.ts` (accessors in `test/helpers/roadmap.ts`).
+```
+
+and later:
+
+```
+Step 4 and 2a arrived with [[Moving between horizons]], on the horizon axis: a shelf
+card is a drag source, the shelf itself is the target that un-places, and an empty
+shelf renders as `pbl-shelf-empty` — in the DOM so a drop has somewhere to land,
+kept out of the layout by `styles.css` until a drag is live.
+```
+
+Replace the first passage with:
+
+```
+The shelf renders
+in `src/view/render/shelf.ts`, driven in `test/domain/roadmap.test.ts` and
+`test/view/shelfUx.test.ts` (accessors in `test/helpers/roadmap.ts`) — moved out of
+`src/view/render/roadmap.ts` once the shelf gained collapse, grouping, sort and a type
+filter ([[The shelf, organized]]).
+```
+
+Replace `kept out of the layout by \`styles.css\`` with
+`kept out of the layout by \`styles/shelf.css\`` — the rule moved with the rest of the
+shelf's CSS. Leave everything else in the note (its status, its use case, the open
+dated-axis-drag criterion) untouched: this is a "where it lives" correction, not a
+change to what the note claims is built or still open.
+
+- [ ] **Step 4: Update `docs/README.md`**
 
 In the `**Product Roadmap**` paragraph, find this sentence (currently ending the
 description of the second built feature):
@@ -1997,16 +2057,17 @@ multiple columns as the space allows. The dated axis is still read-only — sche
 milestone type are design — ...
 ```
 
-- [ ] **Step 4: Run the full gate**
+- [ ] **Step 5: Run the full gate**
 
 Run: `npm run check`
 Expected: PASS — this is the point where the docs register gate actually checks the two
-new notes' frontmatter, wikilinks, hierarchy and `## Where it lives` shape.
+new notes' frontmatter, wikilinks, hierarchy and `## Where it lives` shape, and the
+corrected `The unplaced shelf.md` no longer names a module that moved.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md" docs/README.md
+git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md" "docs/requirements/The unplaced shelf.md" docs/README.md
 git commit -m "Register the shelf UX and full-width bucket PBIs in the backlog"
 ```
 
@@ -2045,6 +2106,23 @@ Do not check this box until a live vault has confirmed:
 - A collapsed shelf reads as compact chrome, not an empty box taking noticeable space.
 - The shelf's toolbar controls (collapse button, sort picker, type-filter chips) are
   legible and usable at the toolbar's normal size.
+
+- [ ] **Step 4: Only now, mark both PBIs `Done`**
+
+If — and only if — a human has actually confirmed every item in Step 3 against a live
+vault: change `status: Active` to `status: Done` in both
+`docs/requirements/The shelf, organized.md` and
+`docs/requirements/Buckets that use the room they have.md`, and commit that alone.
+
+```bash
+git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md"
+git commit -m "Confirm the shelf UX and full-width bucket PBIs against a live vault"
+```
+
+If nobody has performed that check yet — including if you, the implementer, have no
+way to open a live Obsidian vault — leave both notes `Active` and say so explicitly
+when handing this off. An unverified visual claim marked `Done` is a worse outcome than
+an honestly incomplete PBI.
 
 ---
 
