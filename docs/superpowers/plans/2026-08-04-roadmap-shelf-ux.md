@@ -886,35 +886,28 @@ import { renderShelfControls } from './shelfControls';
 
 (Insert `renderShelfControls(host, barEl);` right after the existing `renderAxisPicker` call.)
 
-- [ ] **Step 4: Repoint `shelfCountOf` at the toolbar**
+The count moving out of `.pbl-shelf` (it now lives on the toolbar's collapse button,
+`.pbl-shelf-count`, above) means `test/helpers/roadmap.ts`'s `shelfCountOf` — currently
+searching inside `shelfOf(containerEl)` — will eventually need to widen to the whole
+container. That change is deliberately NOT made here: at this point in the plan,
+`renderShelfControls` has built an EMPTY `.pbl-shelf-count` span (its text is filled in
+only by `syncShelfControls`, whose call site is Task 5's job), while the OLD in-tree
+shelf still renders its own populated one — the toolbar comes first in DOM order, so a
+widened `querySelector` here would silently return the empty span and break
+`test/view/roadmapFrame.test.ts:354`'s existing `shelfCountOf` assertion. Task 5 is where
+this widening actually belongs, once `syncShelfControls` is wired and the toolbar's span
+carries the real count too. Leave `test/helpers/roadmap.ts` untouched by this task.
 
-The count moved out of `.pbl-shelf` entirely — it now lives on the toolbar's collapse
-button (`.pbl-shelf-count`, above), never repeated inside the tree. The existing
-`test/helpers/roadmap.ts` helper (already used by `test/view/roadmapFrame.test.ts:354`,
-which must keep passing unchanged) searches inside `shelfOf(containerEl)`, which would
-now find nothing. Widen its search to the whole container — the function's contract
-("the shelf's displayed count, as a string") does not change, only where that text lives:
-
-```ts
-// test/helpers/roadmap.ts — replace the existing shelfCountOf:
-export function shelfCountOf(containerEl: HTMLElement): string {
-	return containerEl.querySelector('.pbl-shelf-count')?.textContent ?? '';
-}
-```
-
-Run: `npx vitest run test/view/roadmapFrame.test.ts`
-Expected: PASS — this existing test must not regress from the DOM move.
-
-- [ ] **Step 5: Run the shelf UX test to verify it passes**
+- [ ] **Step 4: Run the shelf UX test to verify it passes**
 
 Run: `npx vitest run test/view/shelfUx.test.ts`
 Expected: PASS (both tests). The controls exist but show nothing useful yet (no shelf
 data synced) — that is the next task.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/view/render/shelfControls.ts src/view/render/toolbar.ts test/helpers/roadmap.ts test/view/shelfUx.test.ts
+git add src/view/render/shelfControls.ts src/view/render/toolbar.ts test/view/shelfUx.test.ts
 git commit -m "Add the shelf's toolbar controls: collapse toggle, sort, type filter"
 ```
 
@@ -924,6 +917,7 @@ git commit -m "Add the shelf's toolbar controls: collapse toggle, sort, type fil
 
 **Files:**
 - Modify: `src/view/backlogView.ts`
+- Modify: `test/helpers/roadmap.ts` (repoint `shelfCountOf` at the toolbar)
 - Test: `test/view/shelfUx.test.ts` (extend)
 
 **Interfaces:**
@@ -1011,8 +1005,21 @@ Actually, add these test cases inside the existing `describe` block:
 	});
 ```
 
-`shelfCountOf` comes from `test/helpers/roadmap.ts` (Task 4 already repointed it at the
-toolbar) — add it to this file's import from that module if it is not already imported.
+`shelfCountOf` comes from `test/helpers/roadmap.ts`, but still searches inside
+`shelfOf(containerEl)` at this point — Task 4 deliberately left it there (see its own
+Step 4). Widen it now, alongside these tests, so the "shows the real shelf count" test
+below fails for the right reason at Step 2 (an empty toolbar span, not a stale read of
+the old in-tree shelf that still has a real one until Task 6 removes it):
+
+```ts
+// test/helpers/roadmap.ts — replace the existing shelfCountOf:
+export function shelfCountOf(containerEl: HTMLElement): string {
+	return containerEl.querySelector('.pbl-shelf-count')?.textContent ?? '';
+}
+```
+
+Add `shelfCountOf` to this file's import from `../helpers/roadmap` if it is not already
+imported.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -1048,7 +1055,7 @@ Expected: PASS (all seven tests so far).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/view/backlogView.ts test/view/shelfUx.test.ts
+git add src/view/backlogView.ts test/view/shelfUx.test.ts test/helpers/roadmap.ts
 git commit -m "Sync the shelf toolbar controls after every content render"
 ```
 
@@ -1268,8 +1275,33 @@ describe('the shelf, collapsed by default', () => {
 		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
 	});
+
+	it('renders no advisory when the only visible card is a context row already placed in a bucket', () => {
+		// Mirrors test/domain/roadmap.test.ts's "an excluded focus-level item sits in a
+		// bucket that already exists, uncounted": placedCount, shelf and context are ALL
+		// zero here, yet a card IS on screen (the Epic, as a context row inside 'Now') —
+		// exactly the case the axisCardCount term exists to catch, since none of
+		// placedCount/shelf.length/context.length would count it.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'now' } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon', focusLevel: 'Epic' });
+		// The Base returns only the feature; the Epic surfaces purely as context, the
+		// same shape the domain fixture's own vault.entries().filter(...) sets up.
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
+		view.onDataUpdated();
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+	});
 });
 ```
+
+Add to the imports at the top of the file: `ProductBacklogView` from `'../../src/view/backlogView'`, `FakeViewConfig` from `'../helpers/vault'` (alongside the existing `FakeVault` import).
 
 Add `FakeVault` to the imports at the top of the file if not already present:
 `import { FakeVault } from '../helpers/vault';`
@@ -1281,15 +1313,21 @@ Expected: FAIL on the first three tests — `setShelfCollapsed` exists (Task 3) 
 `renderRoadmap` doesn't consult it yet, so the shelf still renders its cards
 regardless.
 
-The "renders no advisory" test ALREADY PASSES at this point, and for a reason that has
-nothing to do with the fix: the old, not-yet-collapse-aware `renderShelf` still
-includes `Untriaged` in `cards` unconditionally, so `cards.length` is already `1` and
-the old `renderRoadmapAdvisory` gate (`renderedCards > 0`) already suppresses the
-advisory — the same shape as `1b` for "not really at 0". That is fine, not a gap to
-chase: it stands as a regression guard for the state Step 4 produces (a collapsed shelf
-contributing zero to `cards`, which WOULD trip the old gate if the advisory fix were
-ever reverted on its own), the same way the toolbar-identity test in an earlier task
-was already true before its own fix landed.
+Both "renders no advisory" tests ALREADY PASS at this point, each for a reason that has
+nothing to do with the fix. The shelved-and-collapsed one: the old, not-yet-collapse-aware
+`renderShelf` still includes `Untriaged` in `cards` unconditionally, so `cards.length` is
+already `1` and the old `renderRoadmapAdvisory` gate (`renderedCards > 0`) already
+suppresses the advisory — the same shape as `1b` for "not really at 0". The context-in-a-
+bucket one: the Epic's bucket card is pushed onto `cards` before the shelf/context ever
+render, so `cards.length` is already `1` regardless of which formula gates the advisory —
+this one stays true even after Step 4 lands, which is exactly why Step 5.5 below reverts
+to `cards.length` for the OTHER test rather than this one; a formula bug this test is
+meant to catch (summing `placedCount`/`shelf.length`/`context.length` instead of
+capturing the axis's own rendered count) would need its OWN revert to demonstrate, not
+one this task performs — see the spec's own note on why the axis count is captured
+before the shelf renders. Neither test passing early is a gap to chase here: each stands
+as a regression guard for the state Step 4 produces, the same way the toolbar-identity
+test in an earlier task was already true before its own fix landed.
 
 - [ ] **Step 4: Implement `shelf.ts`, then update `roadmap.ts`**
 
@@ -1487,6 +1525,27 @@ function renderRoadmapAdvisory(ctx: RowContext, frameEl: HTMLElement, population
 Run: `npx vitest run test/view/shelfUx.test.ts test/view/roadmapFrame.test.ts test/domain/roadmap.test.ts`
 Expected: PASS. `roadmapFrame.test.ts` and `roadmap.test.ts` must still pass unchanged —
 this task moves code, it does not change the shelf's placement/reason/count behavior.
+
+- [ ] **Step 5.5: Watch the "renders no advisory" test fail — it never went red on its
+  own, so CLAUDE.md's watched-failing rule applies here exactly as it does in Task 7**
+
+Step 3 already noted this test passes before the fix for an unrelated reason (the old
+`renderShelf` still counted the shelf's card). It has never been observed failing for
+the RIGHT reason — that the new population formula, not `cards.length`, is what keeps it
+correct. In `src/view/render/roadmap.ts`, temporarily revert the advisory call to the old
+argument:
+
+```ts
+renderRoadmapAdvisory(ctx, frameEl, cards.length);
+```
+
+Run: `npx vitest run test/view/shelfUx.test.ts`
+Expected: FAIL — with the shelf collapsed and holding the only item, `cards.length` is
+now `0` (the collapsed shelf contributes nothing to `cards`), so the advisory renders
+where the test expects none. Seeing this red is the proof the fix (and the test) are
+doing real work. Restore the corrected line
+(`renderRoadmapAdvisory(ctx, frameEl, axisCardCount + roadmap.shelf.length + roadmap.context.length);`)
+and re-run to confirm PASS before moving on.
 
 - [ ] **Step 6: Run the full suite once**
 
