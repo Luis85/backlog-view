@@ -12,6 +12,7 @@ import {
 	bucketNames,
 	bucketsOf,
 	cellLabels,
+	gripNames,
 	labelTexts,
 	rowFor,
 	shelfCountOf,
@@ -263,6 +264,28 @@ describe('a marker on the dated axis', () => {
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
+	});
+});
+
+describe('the grab-cursor class', () => {
+	it('marks pbl-bar-holdable exactly where barHolds offers the body hold, asked of every bar rather than one', () => {
+		const vault = new FakeVault();
+		// Stated (both ends its own) holds; the half-inferred parent below — one end
+		// borrowed from its child — withholds the body even though its stated end
+		// still offers its own grip.
+		vault.addFile('Stated.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('Parent.md', { frontmatter: { type: 'Epic', order: 20, start: '2026-08-01' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: 10, due: '2026-09-30' }, parentLink: 'Parent' });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		// Asked of the RULE, not a hardcoded true/false per fixture: the class must
+		// agree with `barHolds`' own answer for every bar this vault draws.
+		const titles = timelineRows(containerEl).map((row) => row.querySelector('.pbl-card-title')?.textContent ?? '');
+		const expected = titles.map((title) => gripNames(containerEl, title).includes('body'));
+		const actual = titles.map((title) => barFor(containerEl, title).hasClass('pbl-bar-holdable'));
+		expect(actual).toEqual(expected);
+		// And the rule distinguishes something here — not a class glued to every `.pbl-bar`.
+		expect(new Set(actual)).toEqual(new Set([true, false]));
 	});
 });
 

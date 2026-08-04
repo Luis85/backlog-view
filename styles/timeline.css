@@ -151,8 +151,8 @@
 	/* One color for solid/open bars: states override the variable, never the background. */
 	--pbl-bar-color: var(--interactive-accent);
 	background-color: var(--pbl-bar-color);
-	cursor: grab; /* the body IS a hold — see barHolds */
 }
+.pbl-bar-holdable { cursor: grab; } /* only where barHolds registers the body hold — barClasses, timeline.ts */
 
 .pbl-timeline-row.pbl-done .pbl-bar {
 	--pbl-bar-color: var(--color-green);

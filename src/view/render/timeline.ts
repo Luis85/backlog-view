@@ -203,7 +203,11 @@ function renderBarRow(
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	const geometry = barGeometry(window, bar.span);
-	const el = track.createDiv({ cls: barClasses(bar, geometry) });
+	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
+	// the loop that actually wires one — so what the cursor promises and what a drop
+	// registers cannot disagree. The body hold IS the bar; the grips are its two edges.
+	const holds = barHolds(bar.item, ctx.host.settings, bar);
+	const el = track.createDiv({ cls: barClasses(bar, geometry, holds.includes('body')) });
 	el.setCssProps({
 		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
 		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
@@ -211,10 +215,7 @@ function renderBarRow(
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
-	// Asked ONCE, of `barHolds`, by the renderer that draws these and the drag that
-	// honours them — so what looks grabbable and what can actually be written cannot
-	// disagree. The body hold IS the bar; the grips are its two edges.
-	for (const hold of barHolds(bar.item, ctx.host.settings, bar)) {
+	for (const hold of holds) {
 		const grip = hold === 'body' ? el : el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
 		grip.dataset.pblHold = hold;
 		// The scroller's offset at drag start rides the payload, for the delta a hold
@@ -246,8 +247,16 @@ function renderBarRow(
  * ponytail: one class covers "inferred" and "inferred, some children undated" —
  * an inferred end is uncertain by construction. Split them when someone can
  * describe the two pixels apart.
+ *
+ * `hasBodyHold` is asked of `barHolds`, never re-derived here: a fully inferred bar,
+ * a half-inferred one, and a marker with no writable target all withhold the body
+ * hold, and a class computed independently from geometry alone would drift from
+ * that list the moment a fourth case joined it. The class is what lets the
+ * stylesheet scope the grab cursor to a bar that actually registers a drag —
+ * `pbl-bar` alone would advertise a hold on every one of those.
  */
-function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
+function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolean): string {
+	const holdable = hasBodyHold ? ' pbl-bar-holdable' : '';
 	// Nothing of it is in view. Drawing the clamp would put a diamond at a date the item
 	// does not have, and a diamond IS the claim that this is the date — so the row carries
 	// only the direction it lies past, in the same open-end vocabulary a clipped bar uses.
@@ -257,14 +266,14 @@ function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
 		// past the edge is still inferred, not a date the note stated, so the class
 		// that says so travels with it into this branch too.
 		const inferred = bar.inferredStart || bar.inferredEnd ? ' pbl-bar-inferred' : '';
-		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}${inferred}`;
+		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}${inferred}${holdable}`;
 	}
 	let cls = 'pbl-bar';
 	if (geometry.milestone) cls += ' pbl-bar-milestone';
 	if (bar.span.start === null || geometry.clippedStart) cls += ' pbl-bar-open-start';
 	if (bar.span.target === null || geometry.clippedEnd) cls += ' pbl-bar-open-end';
 	if (bar.inferredStart || bar.inferredEnd) cls += ' pbl-bar-inferred';
-	return cls;
+	return cls + holdable;
 }
 
 /** One sentence about a span, said identically on the grid and in the drop ghost. */
