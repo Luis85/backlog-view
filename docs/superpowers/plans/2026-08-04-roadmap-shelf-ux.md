@@ -1074,14 +1074,14 @@ pass by moving the code.
 - [ ] **Step 1: Add helpers to `test/helpers/roadmap.ts`**
 
 This step is also what keeps every EARLIER roadmap test passing once this task makes
-`renderShelf` collapse-aware: `test/view/roadmapMoves.test.ts`, `test/view/roadmap.test.ts`
-and `test/view/roadmapFrame.test.ts` all pre-date the collapsed-by-default shelf and
-assert on shelf cards (`shelfTitles`, `cardByTitle(..., 'Untriaged' | 'Garbled' | 'Bare')`)
-being visible immediately — none of them expand the shelf first, because there was
-nothing to expand when they were written. Rather than editing each of those files,
-`makeRoadmap` itself auto-expands the shelf by default, mirroring the same precedent
-`makeView` already sets for the tree (`{ collapsed: true }` to assert on the collapsed
-state itself instead of the harness's auto-expand):
+`renderShelf` collapse-aware: `test/view/roadmapMoves.test.ts`, `test/view/roadmap.test.ts`,
+`test/view/roadmapFrame.test.ts` and `test/view/cardDrag.test.ts` all pre-date the
+collapsed-by-default shelf and assert on shelf cards (`shelfTitles`,
+`cardByTitle(..., 'Untriaged' | 'Garbled' | 'Bare')`) being visible immediately — none of
+them expand the shelf first, because there was nothing to expand when they were written.
+Two of the four (`roadmapMoves.test.ts`, `cardDrag.test.ts`) go through the shared
+`makeRoadmap` helper below and need no per-file change at all; the other two do not (see
+after the helper), and get their own one-line fix instead of a rewrite:
 
 ```ts
 export function shelfGroupHeaders(containerEl: HTMLElement): string[] {
@@ -1113,10 +1113,67 @@ export function makeRoadmap(
 }
 ```
 
-Every existing call site (`roadmapMoves.test.ts`, `roadmap.test.ts`, `roadmapFrame.test.ts`,
-`cardDrag.test.ts`) needs no change — they get the auto-expanded shelf they already assumed.
-Only tests that mean to exercise the TRUE collapsed-by-default state pass `{ shelfCollapsed:
-true }` explicitly, in the new tests below and in Task 7's drop-target test.
+Every call site that goes THROUGH this helper (`roadmapMoves.test.ts`, `cardDrag.test.ts`)
+needs no change — they get the auto-expanded shelf they already assumed. Only tests that
+mean to exercise the TRUE collapsed-by-default state pass `{ shelfCollapsed: true }`
+explicitly, in the new tests below and in Task 7's drop-target test.
+
+`roadmap.test.ts` and `roadmapFrame.test.ts` do NOT go through this helper — each defines
+its own local `roadmapView()` that calls `makeView` directly and never imports
+`makeRoadmap` at all, so fixing only `test/helpers/roadmap.ts` leaves both files' shelf
+assertions (and, in `roadmap.test.ts`, one keyboard-walk test that reaches the shelf's
+card by arrow key — collapsed cards are excluded from that walk once this task lands)
+seeing a collapsed shelf. Add the identical one-line fix to both local helpers:
+
+In `test/view/roadmap.test.ts`:
+
+```ts
+function roadmapView(vault: FakeVault, cfg: Record<string, unknown> = { ...AXES }, opts: { base?: string } = {}) {
+	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
+	harness.view.setProjection('roadmap');
+	harness.view.setShelfCollapsed(false);
+	return harness;
+}
+```
+
+In `test/view/roadmapFrame.test.ts`:
+
+```ts
+function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { base?: string } = {}) {
+	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
+	harness.view.setProjection('roadmap');
+	harness.view.setShelfCollapsed(false);
+	return harness;
+}
+```
+
+Two more spots in `test/view/roadmap.test.ts` bypass EVERY helper, calling `makeView` and
+`setProjection('roadmap')` inline and asserting `shelfTitles` right after — add the same
+call to each:
+
+```ts
+it('switches on the model already in hand — same results, no re-query, no writes', () => {
+	const vault = roadmapVault();
+	const { view, containerEl } = makeView(vault, { ...AXES }, { collapsed: true });
+	const before = view.model;
+
+	view.setProjection('roadmap');
+	view.setShelfCollapsed(false);
+	expect(view.model).toBe(before);
+	// ...unchanged from here.
+```
+
+```ts
+it('carries the quick filter across the switch — session state in all three projections', () => {
+	const vault = roadmapVault();
+	const { view, containerEl } = makeView(vault, { ...AXES }, { collapsed: true });
+	view.setFilter('Untriaged');
+
+	view.setProjection('roadmap');
+	view.setShelfCollapsed(false);
+	expect(view.filterText).toBe('Untriaged');
+	// ...unchanged from here.
+```
 
 One EARLIER test needs the same treatment retroactively: Task 5's "marks the collapse
 toggle accessibly, and flips it when toggled" asserted `aria-expanded="false"` on first
