@@ -7,6 +7,7 @@
  * file needs the pieces.
  */
 import { vi } from 'vitest';
+import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 interface FakeDataTransfer {
 	setData: (type: string, value: string) => void;
@@ -81,14 +82,33 @@ export function pannedGrid(
 	if (!scroller || !overlay) throw new Error('the timeline is not rendered');
 	scroller.scrollLeft = scrollLeft;
 	Object.defineProperty(scroller, 'clientWidth', { value: 600, configurable: true });
-	// The overlay starts PAST the sticky lead column, so that exclusion is structural
-	// rather than a constant kept in step with the CSS — and the rect moves with the
-	// scroll, exactly as a real one does, which is why a placing read adds no scroll
-	// term. `rectLeft` is where the overlay's left edge sits UNSCROLLED; panning right
-	// by `scrollLeft` carries it that far left.
+	// The overlay starts PAST the sticky lead column ONLY unscrolled: it is positioned in
+	// CONTENT coordinates (`.pbl-timeline-content`'s own box), so its rect drifts left with
+	// the scroll exactly as a real one does — which is why a placing read adds no scroll
+	// term of its own. `rectLeft` is where the overlay's left edge sits UNSCROLLED; panning
+	// right by `scrollLeft` carries it that far left, potentially past zero and under the
+	// STICKY lead column, which never moves — `.pbl-timeline-lead` pins to the scroller's
+	// own edge, not the content's, the geometry mismatch `overLeadColumn` guards against.
 	const left = rectLeft - scrollLeft;
 	overlay.getBoundingClientRect = () =>
 		({ left, right: 4000, top: 0, bottom: 400, width: 4000, height: 400, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
+	// The SCROLLER's own rect, unlike the overlay's, does not move with its internal
+	// scroll — a real element's position in the page is unaffected by how far it has
+	// scrolled its own content. Constant at `rectLeft - TIMELINE_LEAD_PX`: at zero scroll
+	// the overlay starts exactly `TIMELINE_LEAD_PX` past the scroller's own left edge.
+	const scrollerLeft = rectLeft - TIMELINE_LEAD_PX;
+	scroller.getBoundingClientRect = () =>
+		({
+			left: scrollerLeft,
+			right: scrollerLeft + 600,
+			top: 0,
+			bottom: 400,
+			width: 600,
+			height: 400,
+			x: scrollerLeft,
+			y: 0,
+			toJSON: () => ({}),
+		}) as DOMRect;
 	// The viewport X of a given GRID OFFSET, computed from this helper's own inputs and
 	// never by reading the stubbed rect back. A test that asked the rect would mirror
 	// whatever the implementation does with it, including getting the sign wrong; stating

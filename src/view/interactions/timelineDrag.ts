@@ -1,6 +1,6 @@
 import { CardDragController, CardSource } from './cardDrag';
 import { RowContext } from '../render/columns';
-import { spanText } from '../render/timeline';
+import { spanText, TIMELINE_LEAD_PX } from '../render/timeline';
 import { BacklogViewHost } from '../host';
 import { BarHold, placeItem, statedEnds, StatedEnds } from '../../domain/bars';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
@@ -54,10 +54,21 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
 	// members through an explicit type, not a property access. See the root CLAUDE.md.
 	const host: BacklogViewHost = ctx.host;
 	dnd.wirePositionalTarget(parts.overlay, {
-		onDrag: (source, clientX, originX) => preview(host, parts, source, clientX, originX),
+		onDrag: (source, clientX, originX) => {
+			// A pointer over the sticky lead column previews nothing: the day under it
+			// (see `overLeadColumn`) is not what the reader is looking at.
+			if (overLeadColumn(parts, clientX)) clearPreview(parts);
+			else preview(host, parts, source, clientX, originX);
+		},
 		onLeave: () => clearPreview(parts),
 		onDrop: (source, clientX, originX) => {
 			clearPreview(parts);
+			// Refused before any date math: the overlay's own rect drifts left of the
+			// STICKY lead column once panned (see `overLeadColumn`), so it wins hit-testing
+			// there and a release physically over a row's title would otherwise resolve to
+			// whatever day that drifted geometry names — a coordinate the reader never
+			// pointed at the grid to choose.
+			if (overLeadColumn(parts, clientX)) return;
 			// A drag ending nowhere meaningful — off the grid, or a hold that wandered
 			// back to where it started — writes nothing and does not consume the undo
 			// slot: `planFor` returns null for both, which is the same refusal restated
@@ -82,8 +93,10 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
 /**
  * The day under the pointer. `dayAt` takes an offset from the window's first day while
  * the adapter reports a VIEWPORT `clientX`, so the overlay's own bounding rect is
- * subtracted — the rect starts past the sticky lead column, which is why that exclusion
- * needs no constant.
+ * subtracted — the overlay is positioned in CONTENT coordinates, so its rect scrolls
+ * with the grid and this subtraction stays correct at any pan. It is NOT past the
+ * sticky lead column at every scroll position, only unscrolled — see `overLeadColumn`,
+ * which every caller here checks first, for the column that guards instead.
  *
  * One subtraction and NO scroll term: a bounding rect already moves with the scroll, and
  * adding `scrollLeft` would double-count the pan. Untranslated, a drop over one day would
@@ -91,6 +104,23 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
  */
 function dropDay(parts: TimelineParts): (clientX: number) => CivilDate {
 	return (clientX) => dayAt(parts.window, parts.scale, clientX - parts.overlay.getBoundingClientRect().left);
+}
+
+/**
+ * True when a viewport `clientX` sits under the STICKY lead column rather than the grid.
+ * `.pbl-timeline-drop` is positioned in CONTENT coordinates (`left: var(--pbl-tl-lead)`
+ * inside the scrolling `.pbl-timeline-content`), so its own rect drifts left with the
+ * pan; `.pbl-timeline-lead` is `position: sticky; left: 0` against the SCROLLER and never
+ * moves. Past `TIMELINE_LEAD_PX` of scroll the overlay's rect has drifted under the lead
+ * column, and — later in the row's markup, same z-index — it wins hit-testing there: a
+ * release physically over a row's title would otherwise resolve through `dropDay` to
+ * whatever day the overlay's drifted geometry names, a coordinate the reader never
+ * pointed at the grid to choose. Checked against the SCROLLER's own rect, which — unlike
+ * the overlay's — does not move with its own internal scroll, exactly as a sticky
+ * sibling's position does not.
+ */
+function overLeadColumn(parts: TimelineParts, clientX: number): boolean {
+	return clientX < parts.scroller.getBoundingClientRect().left + TIMELINE_LEAD_PX;
 }
 
 /**

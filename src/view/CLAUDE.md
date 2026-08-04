@@ -316,14 +316,16 @@ free of runtime code so imports stay cycle-free.
   no meaning of its own; `renderRoadmap` wires its grid as ONE positional target
   instead (`interactions/timelineDrag.ts`, registered through `CardDragController`
   like every other target), where only the pointer's X says anything and `dayAt` turns
-  it into a date. A projection must not offer a gesture it cannot keep: what the dated
-  axis still withholds is a BAR as a drag source — sliding or resizing one already
-  placed reads a delta rather than a position, and is scheduling's own next
-  increment — so today only a shelf card, gated by `canSchedule` (a marker with no
-  writable end offers no grip at all), can be picked up there, and only onto the grid;
-  dropping back onto the shelf writes nothing yet, so an EMPTY dated-axis shelf stays
-  out of the DOM exactly as before, the same "no write, no target" rule the horizon
-  axis's occupied one never had to answer to.
+  it into a date. Two sources reach it: a shelf card, gated by `canSchedule` (a marker
+  with no writable end offers no grip at all), and a bar already placed — its body
+  slides by the gesture's delta rather than a position, its end grips resize one end —
+  both onto the grid alone. The dated axis's shelf is a drop TARGET too, the mirror of
+  the grid: a bar's BODY hold dropped there un-schedules it (`removal.plan` in
+  `render/roadmap.ts`, planning `unschedulePlan`), while a grip is refused (a resize is
+  not an unschedule) and so is a shelf card dropped back on itself (it may still carry
+  keys its shelving reason is asking to be fixed, not removed). A drop on that shelf
+  always means something now, on both axes, so an EMPTY dated-axis shelf stays in the
+  DOM exactly as the horizon axis's always has.
 - So on the horizon axis: a bucket and the shelf are drop targets, a result card is a
   drag source (a context card never is), and Alt+Left/Right steps one placement. All
   three land on `performHorizonMove`, and so does Set horizon while that axis is drawn

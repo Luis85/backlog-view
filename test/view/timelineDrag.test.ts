@@ -114,6 +114,24 @@ describe('dragging a shelf card onto the grid', () => {
 		expect(overlay.querySelector('.pbl-drop-ghost')).toBeNull();
 		finish.cancel();
 	});
+
+	it('writes nothing for a release physically over the sticky lead column, panned', async () => {
+		// `.pbl-timeline-drop` is positioned in CONTENT coordinates, so once the grid
+		// pans past `TIMELINE_LEAD_PX` its rect has drifted left of the STICKY lead
+		// column — `.pbl-timeline-lead`, pinned to the scroller's own edge — and wins
+		// hit-testing there. A fixture at the origin cannot exercise this: unscrolled,
+		// the overlay's edge and the lead's edge coincide and the bug is invisible.
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+
+		// 100 is inside the lead column's viewport footprint (0..220) at ANY scroll —
+		// the sticky element never moves — but under the current pan the overlay's own
+		// (drifted) rect would still resolve it to a real, in-window day.
+		gridDrag(cardByTitle(containerEl, 'Unplanned'), overlayOf(containerEl), { clientX: 100 });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+	});
 });
 
 describe('holding a bar', () => {
