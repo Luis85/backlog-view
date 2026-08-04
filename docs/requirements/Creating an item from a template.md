@@ -18,7 +18,7 @@ start blank every time, without losing the one-title-and-done speed of a plain i
 | **Actor** | Backlog owner, creating an item ([[New item flow]]) |
 | **Trigger** | Choosing a type in the new-item modal for which at least one template exists |
 | **Preconditions** | `templatesFolder` is configured and at least one template matches the chosen type ([[Configuring the templates folder]]) |
-| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in — and the plugin's own `type`, `parent`, `order` and axis keys always win over anything the template also happens to carry. |
+| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in. The plugin's own `type`, `parent` and `order` always win over anything the template also carries, and the roadmap's axis keys (`horizon`, `start`, `target`) and the workflow's transition stamps (`started`, `finished`) are never taken from a template at all. |
 
 **Main flow**
 
@@ -31,9 +31,13 @@ start blank every time, without losing the one-title-and-done speed of a plain i
 5. Confirming creates the note as in [[New item flow]], with the body field's contents as
    the note's body and the chosen template's extra frontmatter — everything on it besides
    `templateForKey` — merged into the note's frontmatter.
-6. Where a template's frontmatter names a key the plugin also writes (`type`, `parent`,
-   `order`, a horizon or date-stamp key), the plugin's own value wins; the template
-   cannot override its own placement.
+6. Where a template's frontmatter names `type`, `parent` or `order`, the plugin's own
+   value wins; the template cannot override its own placement. Where it names an axis key
+   or a transition stamp, that value is dropped rather than merged — the same exclusion
+   [[Adding templates from the plugin]]'s Save as template already applies, and for the
+   same reason: creation supplies no value of its own to override a copied one with for
+   any of these, so a merge would let a template's stale date read as this new note's real
+   history or a real schedule the moment it exists.
 
 **Extensions**
 
@@ -58,8 +62,10 @@ start blank every time, without losing the one-title-and-done speed of a plain i
   creation; nothing is written until the modal is confirmed.
 - Changing the type re-filters the offered templates and resets an unmatched pick.
 - The created note's body is exactly the body field's contents at confirmation.
-- A template's extra frontmatter merges onto the new note; the plugin's own hierarchy and
-  axis keys are never overridden by it.
+- A template's extra frontmatter merges onto the new note; the plugin's own hierarchy
+  keys (`type`, `parent`, `order`) are never overridden by it, and the axis keys
+  (`horizon`, `start`, `target`) and the transition stamps (`started`, `finished`) are
+  never carried over from it at all — stripped, not merely lost to precedence.
 - Creation still goes through the same config gate as every other write.
 
 ## Where it lives
