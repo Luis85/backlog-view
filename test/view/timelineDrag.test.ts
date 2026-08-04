@@ -5,12 +5,26 @@ import { Notice } from '../helpers/obsidian-mock';
 import { flush, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
 import { cardDrag, gridDrag, overlayOf, pannedGrid, startCardDrag } from '../helpers/dnd';
-import { gripNames, gripOf, shelfOf } from '../helpers/roadmap';
+import { gripNames, gripOf, rowFor, shelfOf } from '../helpers/roadmap';
 import { addDays, cellSpan, dayAt, scaleFor } from '../../src/domain/timeline';
 
 useViewHarness();
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.target' };
+
+/** The header's own day track — where a placement's preview belongs. */
+function headerTrackOf(containerEl: HTMLElement): HTMLElement {
+	const track = containerEl.querySelector<HTMLElement>('.pbl-timeline-header .pbl-timeline-track');
+	if (!track) throw new Error('no header track');
+	return track;
+}
+
+/** A drawn row's own day track — where that row's move previews. */
+function trackOfRow(containerEl: HTMLElement, title: string): HTMLElement {
+	const track = rowFor(containerEl, title)?.querySelector<HTMLElement>('.pbl-timeline-track');
+	if (!track) throw new Error(`no track for row: ${title}`);
+	return track;
+}
 
 function scheduleVault() {
 	const vault = new FakeVault();
@@ -102,17 +116,49 @@ describe('dragging a shelf card onto the grid', () => {
 		expect(vault.writeLog).toHaveLength(0);
 	});
 
-	it('previews the dates before the release, and clears them when the pointer leaves', () => {
+	it('previews a PLACEMENT on the header strip, having no row to draw it in', () => {
 		const vault = scheduleVault();
 		const { containerEl, at } = datedView(vault);
 		const overlay = overlayOf(containerEl);
+		const header = headerTrackOf(containerEl);
 
 		const finish = gridDrag.start(cardByTitle(containerEl, 'Unplanned'));
 		finish.over(overlay, { clientX: at(700) });
-		expect(overlay.querySelector('.pbl-drop-ghost')).not.toBeNull();
-		expect(overlay.querySelector('.pbl-drop-ghost-dates')?.textContent).toContain('2026-');
-		finish.leave(overlay);
+		// On the strip that means "when", because the card is still on the shelf: it has
+		// no row, and inventing one would claim a position in an order the drop does not
+		// decide. Drawn into the overlay instead, `top: 50%` of a full-grid layer put it
+		// at the middle of the WHOLE timeline — the "unrelated to anything" this fixes.
+		expect(header.querySelector('.pbl-drop-ghost')).not.toBeNull();
+		expect(header.querySelector('.pbl-drop-ghost-dates')?.textContent).toContain('2026-');
 		expect(overlay.querySelector('.pbl-drop-ghost')).toBeNull();
+		finish.leave(overlay);
+		expect(header.querySelector('.pbl-drop-ghost')).toBeNull();
+		finish.cancel();
+	});
+
+	it('previews a MOVE in the dragged row itself, beside the bar it would replace', () => {
+		// Two PLACED items, so "not in the other row" is a real assertion: a shelf card
+		// has no row to be wrongly drawn in.
+		const vault = new FakeVault();
+		vault.addFile('Planned.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' } });
+		vault.addFile('Later.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-09-04', target: '2026-09-10' } });
+		const { containerEl, at } = datedView(vault);
+		const overlay = overlayOf(containerEl);
+		const moved = trackOfRow(containerEl, 'Planned');
+		const other = trackOfRow(containerEl, 'Later');
+
+		const finish = gridDrag.start(gripOf(containerEl, 'Planned', 'body'));
+		finish.over(overlay, { clientX: at(700) });
+		// The before and the after read as one sentence: the row still shows its own
+		// bar, and the ghost proposing to move it is on the same line.
+		expect(moved.querySelector('.pbl-drop-ghost')).not.toBeNull();
+		expect(moved.querySelector('.pbl-bar')).not.toBeNull();
+		// Nowhere else — not another row, not the header, not the overlay.
+		expect(other.querySelector('.pbl-drop-ghost')).toBeNull();
+		expect(headerTrackOf(containerEl).querySelector('.pbl-drop-ghost')).toBeNull();
+		expect(overlay.querySelector('.pbl-drop-ghost')).toBeNull();
+		finish.leave(overlay);
+		expect(moved.querySelector('.pbl-drop-ghost')).toBeNull();
 		finish.cancel();
 	});
 

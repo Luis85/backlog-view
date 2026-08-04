@@ -122,8 +122,13 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
 /**
  * The ends the entry asks for: only the configured ones, each prefilled with the date
  * the note states. A value the reader refuses arrives BLANK rather than as itself —
- * the field asks for a date and that is not one — so confirming replaces it instead
- * of carrying the unreadable value back to disk.
+ * the field asks for a date and that is not one — so typing a date replaces it and the
+ * unreadable value is never carried back to disk.
+ *
+ * These prefills are also the baseline `planFrom` decides against, which is why they
+ * are read ONCE per prompt: an unreadable value and an absent one are the same blank
+ * here, so the entry cannot tell them apart afterwards and does not try
+ * ([[Horizon and dates from the row]] 4d).
  */
 function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: string; name: string; value: string }[] {
 	const fields = [];
@@ -161,37 +166,39 @@ function validateSchedule(values: Record<string, string>): string | null {
 }
 
 /**
- * The plan an entry means: a date per configured end, and a blank field meaning that
- * end goes.
+ * The plan an entry means, decided from the FORM: a field the user changed states a
+ * request, a field they left as they found it states nothing. Emptied, that request is
+ * a removal; filled or edited, it is that date.
  *
- * A blank field only removes something the note actually STATES — a date, or a value
- * the reader refuses (which confirming replaces rather than writes back). A field that
- * *arrived* blank states nothing, so confirming the prompt untouched writes nothing,
- * even where the key exists holding an empty value: the backfill creates exactly that
- * stub, and opening the entry on one and pressing Save must not delete it and spend
- * the undo slot. Unschedule is the deliberate way to take a key away, and it still is.
+ * One rule, asked of what the entry showed and what came back — never of the item.
+ * `prefill` is what `scheduleFields` put in the inputs, so "did this change?" is a
+ * question about the dialog and answerable without reading the note at all. That
+ * matters twice over:
  *
- * The mirror rule holds for a NON-blank field: one whose submitted value equals the
- * value the entry was prefilled with states nothing new either, and is left out of the
- * plan the same way. Without this, every save carried the untouched end's stale prefill
- * back as an absolute request — the writer has no baseline to check an absolute date
- * against (that is `from`, and a dialog entry states none), so the field a live edit
- * changed while the prompt sat open would be silently reverted to what the user never
- * touched. Omitting it is what lets the writer's own pair check fall back to the LIVE
- * other end instead — see `refusesAxis` in `storage/frontmatter.ts`.
+ * - the model can be a refresh behind, and this was the last place on any date path
+ *   that still decided a write from it. An unreadable value arrives blank exactly as an
+ *   absent one does, so deciding from `reading.invalid` meant every Save planned a
+ *   removal for a field nobody had touched — and an editor who corrected that value
+ *   while the prompt sat open had the correction deleted. See
+ *   [[planFrom decides a removal from the model, not the form]].
+ * - a dialog entry is absolute and so states no baseline (`from`) the writer could check
+ *   it against, which is why a stale request cannot be caught downstream. Not making one
+ *   is the whole defence.
+ *
+ * The cost, accepted: an unreadable value can no longer be cleared by the entry ALONE.
+ * Typing a date replaces it, and **Unschedule** removes it — taking the other end with
+ * it. What is gone is a deletion nobody could ask for anyway: it fired on every Save,
+ * whether or not the reader meant it, and a blank field cannot tell them whether it is
+ * blank because the note says nothing or because the note says something unreadable.
  */
-function planFrom(item: BacklogItem, values: Record<string, string>): SchedulePlan {
+function planFrom(prefill: Record<string, string>, values: Record<string, string>): SchedulePlan {
 	const plan: SchedulePlan = {};
 	for (const field of ['start', 'target'] as const) {
 		const value = values[field];
-		if (value === undefined) continue;
-		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
-		if (value !== '') {
-			if (reading.value !== null && value === formatCivil(reading.value)) continue;
-			plan[field] = value;
-			continue;
-		}
-		if (reading.value !== null || reading.invalid) plan[field] = null;
+		// Absent, not blank: a field the entry never offered (a marker has no start).
+		// Untouched is the same answer by a different route, and both state nothing.
+		if (value === undefined || value === (prefill[field] ?? '')) continue;
+		plan[field] = value === '' ? null : value;
 	}
 	return plan;
 }
@@ -204,12 +211,18 @@ function planFrom(item: BacklogItem, values: Record<string, string>): SchedulePl
  * date, so a live change to the base is not a reason to refuse it.
  */
 export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
+	const fields = scheduleFields(host, item);
+	// What the inputs were opened with, kept so the submitted values can be compared
+	// against what the reader was actually SHOWN. Built here rather than inside
+	// `planFrom` so there is one reading of the item per prompt: read it again at submit
+	// and the two could disagree, which is the defect this shape exists to remove.
+	const prefill = Object.fromEntries(fields.map((entry) => [entry.field, entry.value]));
 	new SchedulePromptModal(host.app, {
 		heading: `Schedule "${item.title}"`,
 		description: 'Pick a date for each end, or clear a field to remove that date.',
-		fields: scheduleFields(host, item),
+		fields,
 		validate: validateSchedule,
-		onSubmit: (values) => void host.performScheduleMove(item, planFrom(item, values)),
+		onSubmit: (values) => void host.performScheduleMove(item, planFrom(prefill, values)),
 	}).open();
 }
 

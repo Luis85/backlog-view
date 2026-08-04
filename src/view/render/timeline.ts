@@ -51,6 +51,10 @@ export interface TimelineRender {
 	window: TimelineWindow;
 	/** The one drop target spanning the day area — see `renderTimeline`'s own comment. */
 	overlay: HTMLElement;
+	/** The header's day track: where a placement's preview is drawn, having no row yet. */
+	headerTrack: HTMLElement;
+	/** Each drawn row's day track, by path — where a MOVE's preview is drawn, in its own row. */
+	tracks: Map<string, HTMLElement>;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -92,7 +96,8 @@ export function renderTimeline(
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
 	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
-	const mounts: BarRowMounts = { content, scroller: grid, dnd };
+	const tracks = new Map<string, HTMLElement>();
+	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks };
 	for (const bar of bars) renderBarRow(ctx, mounts, window, bar, scale);
 	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
@@ -109,7 +114,7 @@ export function renderTimeline(
 	// somewhere to land, out of the way until a drag needs it — reached by a second
 	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
 	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
-	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay };
+	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay, headerTrack, tracks };
 }
 
 /** Presentational, like the tree's column header: every row carries its own dates. */
@@ -184,6 +189,8 @@ interface BarRowMounts {
 	/** The element that actually scrolls, for a grip's own pan baseline. */
 	scroller: HTMLElement;
 	dnd: CardDragController;
+	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
+	tracks: Map<string, HTMLElement>;
 }
 
 function renderBarRow(
@@ -202,6 +209,7 @@ function renderBarRow(
 	setTooltip(lead, bar.item.title);
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
+	mounts.tracks.set(bar.item.file.path, track);
 	const geometry = barGeometry(window, bar.span);
 	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
 	// the loop that actually wires one — so what the cursor promises and what a drop

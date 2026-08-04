@@ -138,7 +138,11 @@ belong to the **item**, not to the mode, and this is where the tree got them.
   that fiddly is one nobody finds — the capability would be technically present and
   practically gone.
 - **4d — the note states a date the reader refuses.** Its field arrives blank rather than
-  holding the unreadable value, so confirming replaces it instead of writing it back.
+  holding the unreadable value — the entry asks for a date and that is not one — so
+  **typing** one replaces it, and the unreadable value is never carried back to disk.
+  Confirming the blank field untouched is 4e's case and not this one: the reader was
+  shown the same blank an absent value gives, so pressing Save cannot mean "delete what
+  I was never shown". Removing it is **Unschedule**, which takes the other end too.
 - **4e — a field arrived blank and is confirmed unchanged.** Nothing is written, even
   where the key exists holding an empty value — the stub the backfill creates
   ([[Backfill missing properties]]). A blank field removes what the note *states*, and a
