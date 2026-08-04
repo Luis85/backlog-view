@@ -82,6 +82,8 @@ export function renderRoadmap(
 			scroller: timeline.scroller,
 			window: timeline.window,
 			scale: activeScale,
+			headerTrack: timeline.headerTrack,
+			tracks: timeline.tracks,
 		});
 	}
 	const removal = shelfRemoval(host, axis);

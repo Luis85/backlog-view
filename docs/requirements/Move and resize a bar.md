@@ -48,8 +48,13 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
    rendered edge is not always its date: a span shorter than the minimum drawable width
    draws wider than it is, so the smallest twitch after grabbing the grip would
    otherwise write a date the grip was never actually on.
-3. Release writes what the preview showed, one batch through the gate.
-4. Undo restores both prior values together.
+3. Both previews draw **in the dragged item's own row**, beside the bar they propose to
+   replace, so the before and the after read as one sentence. A preview drawn anywhere
+   else is a claim about a note the reader has to work out — first reported from a live
+   vault as a ghost that looked unrelated to anything, having been drawn at the vertical
+   middle of the whole grid.
+4. Release writes what the preview showed, one batch through the gate.
+5. Undo restores both prior values together.
 
 **Extensions**
 

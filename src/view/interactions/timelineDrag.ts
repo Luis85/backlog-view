@@ -47,22 +47,34 @@ export interface TimelineParts {
 	scroller: HTMLElement;
 	window: TimelineWindow;
 	scale: TimelineScale;
+	/** Where a PLACEMENT previews — the strip that means "when", for a card with no row. */
+	headerTrack: HTMLElement;
+	/** Where a MOVE previews — the dragged item's own row. See `previewMount`. */
+	tracks: Map<string, HTMLElement>;
 }
 
 export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
 	// Annotated rather than inferred from `ctx.host` — fallow resolves interface
 	// members through an explicit type, not a property access. See the root CLAUDE.md.
 	const host: BacklogViewHost = ctx.host;
+	// What the last frame drew, held here rather than searched for: the preview now
+	// mounts into a row that is full of other elements, so clearing it is a removal of
+	// known nodes and never a query over the grid on every frame of a drag.
+	let drawn: HTMLElement[] = [];
+	const clear = (): void => {
+		clearPreview(drawn);
+		drawn = [];
+	};
 	dnd.wirePositionalTarget(parts.overlay, {
 		onDrag: (source, clientX, originX) => {
+			clear();
 			// A pointer over the sticky lead column previews nothing: the day under it
 			// (see `overLeadColumn`) is not what the reader is looking at.
-			if (overLeadColumn(parts, clientX)) clearPreview(parts);
-			else preview(host, parts, source, clientX, originX);
+			if (!overLeadColumn(parts, clientX)) drawn = preview(host, parts, source, clientX, originX);
 		},
-		onLeave: () => clearPreview(parts),
+		onLeave: () => clear(),
 		onDrop: (source, clientX, originX) => {
-			clearPreview(parts);
+			clear();
 			// Refused before any date math: the overlay's own rect drifts left of the
 			// STICKY lead column once panned (see `overLeadColumn`), so it wins hit-testing
 			// there and a release physically over a row's title would otherwise resolve to
@@ -326,26 +338,64 @@ function clampAtEqual(end: PlacementEnd, moved: CivilDate, opposite: CivilDate):
  * the rollup inference — is behind that one call precisely so no second answer gets
  * written beside it.
  */
-function preview(host: BacklogViewHost, parts: TimelineParts, source: CardSource, clientX: number, originX: number): void {
-	clearPreview(parts);
+function preview(
+	host: BacklogViewHost,
+	parts: TimelineParts,
+	source: CardSource,
+	clientX: number,
+	originX: number,
+): HTMLElement[] {
 	const plan = planFor(host, parts, source, clientX, originX);
-	if (!plan) return;
+	if (!plan) return [];
 	const placement = placeItem(source.item, plannedEnds(source.item, plan.plan));
 	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so.
-	if (placement.kind !== 'bar') return;
+	if (placement.kind !== 'bar') return [];
 	const bar = placement.bar;
 	const geometry = barGeometry(parts.window, bar.span);
-	const ghost = parts.overlay.createDiv({ cls: 'pbl-drop-ghost' });
+	const mount = previewMount(parts, source);
+	const left = `${geometry.startDay * parts.scale.dayPx}px`;
+	const ghost = mount.createDiv({ cls: 'pbl-drop-ghost' });
 	ghost.setCssProps({
-		'--pbl-ghost-left': `${geometry.startDay * parts.scale.dayPx}px`,
+		'--pbl-ghost-left': left,
 		'--pbl-ghost-width': `${Math.max(geometry.spanDays * parts.scale.dayPx, MIN_BAR_PX)}px`,
 	});
-	const dates = parts.overlay.createDiv({ cls: 'pbl-drop-ghost-dates', text: spanText(bar) });
-	dates.setCssProps({ '--pbl-ghost-left': `${geometry.startDay * parts.scale.dayPx}px` });
+	const dates = mount.createDiv({ cls: 'pbl-drop-ghost-dates', text: spanText(bar) });
+	dates.setCssProps({ '--pbl-ghost-left': left });
+	return [ghost, dates];
 }
 
-function clearPreview(parts: TimelineParts): void {
-	parts.overlay.empty();
+/**
+ * WHERE a preview is drawn, which is what makes it read as being about something.
+ *
+ * A day track — a row's or the header's — is `position: relative` and starts past the
+ * lead column, and `.pbl-bar` and `.pbl-drop-ghost` carry the same geometry, so a ghost
+ * mounted in one lands exactly where a real bar would with no arithmetic of its own.
+ * That is the whole reason the mount is the answer here rather than a computed offset:
+ * this module's coordinate rules are the thing it most often gets wrong, and a ghost
+ * that inherits a track's box has none to get wrong.
+ *
+ * - A MOVE draws in the dragged item's OWN row, beside the bar it is proposing to
+ *   replace, so the before and the after read as one sentence.
+ * - A PLACEMENT has no row — the card is still on the shelf — so it draws in the
+ *   header's track, the strip that means "when". Inventing a row for it would claim a
+ *   position in an order the drop does not decide.
+ *
+ * Drawn into the overlay instead, as it was, the ghost took that layer's full-grid box
+ * and `top: 50%` put it at the vertical middle of the WHOLE timeline: never in the
+ * dragged row, never anywhere meaningful, and reported from a live vault as a preview
+ * that looked unrelated to anything.
+ */
+function previewMount(parts: TimelineParts, source: CardSource): HTMLElement {
+	if (source.hold === null) return parts.headerTrack;
+	return parts.tracks.get(source.item.file.path) ?? parts.headerTrack;
+}
+
+/**
+ * Removes exactly what the last frame drew. It cannot empty the mount any more: a row's
+ * track holds the real bar and its grips, and the header's holds every month cell.
+ */
+function clearPreview(drawn: HTMLElement[]): void {
+	for (const el of drawn) el.remove();
 }
 
 /**

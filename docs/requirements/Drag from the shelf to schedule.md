@@ -44,7 +44,10 @@ the keys rather than blanking them.
 **Main flow**
 
 1. The user drags a shelf card over the grid; the cell under the pointer highlights and
-   shows the dates it means.
+   shows the dates it means. That preview draws on the **header's day strip** — the row
+   of month or week labels — because a card still on the shelf has no row of its own,
+   and inventing one would claim a position in an order this drop does not decide. A
+   move already on the grid previews in its own row instead ([[Move and resize a bar]]).
 2. The drop writes start as the day under the pointer and target as start plus the
    zoom's cell minus a day — the default-length rule for an item that arrives with no
    duration of its own — in one batch.
