@@ -244,9 +244,16 @@ a node test that did would be measuring the runner.
   `AxisWrite`, where **null means remove the key** (absence is the value that means
   untriaged or unscheduled) and no value is ever `''` — creating a key without placing
   anything is a different write, `ItemWrite.stubs`, and it is the only thing the
-  backfill can do here without inventing a plan. A re-pick of the value an item already
-  holds plans nothing (case-insensitive for horizons, civil-date equality for dates —
-  re-confirming `2026-8-1` must not rewrite it as `2026-08-01`).
+  backfill can do here without inventing a plan. A re-pick of the horizon an item already
+  holds plans nothing, case-insensitively. **The dated axis no longer asks that here**:
+  `computeScheduleWrites` states what was requested and claims nothing about what the note
+  holds — not whether a date is already stated, not whether a key is there to remove —
+  because both are questions about the note RIGHT NOW and the row that planned the write
+  can be a refresh behind it. Deciding from the model dropped a request the note actually
+  needed and omitted a removal for a key an editor had just added. The writer answers both,
+  against the live value, and re-confirming `2026-8-1` still must not rewrite it as
+  `2026-08-01` — that comparison moved with the decision rather than going away. The
+  horizon axis keeps its model-time check; moving it is not this increment's.
 - **Every write target beyond `parent`/`order`/`type` is one vocabulary**, declared once
   in `settings.ts`: `OptionalField` and the `PROPERTY_TABLE` behind
   `OPTIONAL_PROPERTIES`, which carries per field the option that names it, the key it

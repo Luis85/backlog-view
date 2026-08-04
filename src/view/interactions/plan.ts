@@ -186,7 +186,8 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 		description: 'Pick a date for each end, or clear a field to remove that date.',
 		fields: scheduleFields(host, item),
 		validate: validateSchedule,
-		onSubmit: (values) => void host.applySafely(computeScheduleWrites(item, planFrom(item, values))),
+		onSubmit: (values) =>
+			void host.applySafely(computeScheduleWrites(item, planFrom(item, values), placementEnds(item.typeName))),
 	}).open();
 }
 
@@ -194,5 +195,5 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<unknown> {
 	const plan: SchedulePlan = {};
 	for (const field of placementEnds(item.typeName)) plan[field] = null;
-	return host.applySafely(computeScheduleWrites(item, plan));
+	return host.applySafely(computeScheduleWrites(item, plan, placementEnds(item.typeName)));
 }
