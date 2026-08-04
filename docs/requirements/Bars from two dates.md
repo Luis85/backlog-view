@@ -55,7 +55,7 @@ date on a roadmap is indistinguishable from a decision.
   never silently swapped — swapped ends would draw a plan the note does not state.
 - **1c — a value carries a time and an offset.** The civil date it spells is what
   places it — no conversion to the viewer's zone, so the same note occupies the same
-  cell on every device, and a calendar step moves that civil date while the time,
+  cell on every device, and a whole-day step moves that civil date while the time,
   offset and shape ride along unchanged ([[Move and resize a bar]]). Only the today
   marker is the reader's own: a plan states its dates, a clock states the reader's.
 - **2a — the span is narrower than a grid cell at this zoom.** It renders at the minimum

@@ -41,7 +41,7 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 **Main flow**
 
 1. Dragging the body slides the bar by whole-day steps, previewed live: the start
-   takes the calendar step and the target follows at the bar's own day count, so a
+   takes that day delta and the target follows at the bar's own day count, so a
    slide never changes duration.
 2. Dragging an end moves that date alone by whole days from the date it had, previewed
    live, at every zoom — a delta, not the pointer's absolute position, because a
@@ -82,13 +82,13 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   reparent and dates travel as the one combined batch [[Lanes on the roadmap]]
   specifies — previewed together, applied together, undone together — so the two notes
   cannot disagree about whose write it is.
-- **1e — the value is a datetime.** The delta is whole calendar units; the time of day
-  rides along untouched, and the write keeps the shape the note had — a drag re-plans
-  a date, it does not re-format a value. Snapping decides where the bar lands on the
-  grid, never that precision the note chose to keep is erased.
+- **1e — the value is a datetime.** The delta is whole days, as at every zoom; the time
+  of day rides along untouched, and the write keeps the shape the note had — a drag
+  re-plans a date, it does not re-format a value. Which DAY a gesture lands on is the
+  only thing it decides, never that precision the note chose to keep is erased.
 - **1g — the bar is a marker's.** A diamond offers **no end grips**: a point has no
   duration to resize, and an end handle on it could only invent one. Its body slide moves
-  the **target alone** by the calendar step, and a stale start the type ignores is not
+  the **target alone** by the same whole-day delta, and a stale start the type ignores is not
   carried along — sliding a date the projection never drew would write a plan the reader
   was never shown ([[Milestones as their own type]]). This is 1a's rule reached by the
   type rather than by a missing value: what a gesture may move is what the item's own
