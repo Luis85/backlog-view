@@ -2029,33 +2029,29 @@ shelf's CSS. Leave everything else in the note (its status, its use case, the op
 dated-axis-drag criterion) untouched: this is a "where it lives" correction, not a
 change to what the note claims is built or still open.
 
-- [ ] **Step 4: Update `docs/README.md`**
+- [ ] **Step 4: Update `docs/README.md`'s use-case count only**
 
-In the `**Product Roadmap**` paragraph, find this sentence (currently ending the
-description of the second built feature):
+The two new PBI notes exist as of this step regardless of their status, so the
+register's own count of them is a structural fact, not a claim about whether the
+feature works — safe to update now, unlike the narrative sentence below (see Task 11's
+final step for that).
 
-```
-and a bucket creates in place, its value riding the same single creation write.
-```
-
-Insert immediately after it, before `The dated axis is still read-only`:
+In the `**Product Roadmap**` paragraph, change:
 
 ```
- A later PBI made the
-shelf usable at scale — collapsible, grouped by type, sortable and filterable — and
-gave the horizon buckets the width a wide pane actually has, cards reflowing into
-multiple columns as the space allows.
+specified across six features and 18 use cases
 ```
 
-So the paragraph reads (only the inserted sentence is new):
+to:
 
 ```
-...and a bucket creates in place, its value riding the same single creation write. A later PBI made the
-shelf usable at scale — collapsible, grouped by type, sortable and filterable — and
-gave the horizon buckets the width a wide pane actually has, cards reflowing into
-multiple columns as the space allows. The dated axis is still read-only — scheduling by drag, the bar moves, the lanes and the
-milestone type are design — ...
+specified across six features and 20 use cases
 ```
+
+Do not add a sentence describing what the two new PBIs DO here — that is a "this is
+built and verified" claim, and at this point in the plan neither note has been
+confirmed against a live vault yet. It belongs beside the point where the notes
+actually become `Done` (Task 11's last step), not here.
 
 - [ ] **Step 5: Run the full gate**
 
@@ -2107,22 +2103,54 @@ Do not check this box until a live vault has confirmed:
 - The shelf's toolbar controls (collapse button, sort picker, type-filter chips) are
   legible and usable at the toolbar's normal size.
 
-- [ ] **Step 4: Only now, mark both PBIs `Done`**
+- [ ] **Step 4: Only now, mark both PBIs `Done` and describe them in the README**
 
 If — and only if — a human has actually confirmed every item in Step 3 against a live
 vault: change `status: Active` to `status: Done` in both
 `docs/requirements/The shelf, organized.md` and
-`docs/requirements/Buckets that use the room they have.md`, and commit that alone.
+`docs/requirements/Buckets that use the room they have.md`, AND add the narrative
+sentence to `docs/README.md`'s `**Product Roadmap**` paragraph — the two belong
+together, since both are "this is built and verified" claims, and Task 10 deliberately
+left this sentence out for exactly that reason (it only updated the use-case count,
+which was true the moment the notes existed).
+
+In `docs/README.md`, find the sentence Task 10 already left in place:
+
+```
+and a bucket creates in place, its value riding the same single creation write.
+```
+
+Insert immediately after it, before `The dated axis is still read-only`:
+
+```
+ A later PBI made the
+shelf usable at scale — collapsible, grouped by type, sortable and filterable — and
+gave the horizon buckets the width a wide pane actually has, cards reflowing into
+multiple columns as the space allows.
+```
+
+So the paragraph reads (only the inserted sentence is new):
+
+```
+...and a bucket creates in place, its value riding the same single creation write. A later PBI made the
+shelf usable at scale — collapsible, grouped by type, sortable and filterable — and
+gave the horizon buckets the width a wide pane actually has, cards reflowing into
+multiple columns as the space allows. The dated axis is still read-only — scheduling by drag, the bar moves, the lanes and the
+milestone type are design — ...
+```
+
+Commit both changes together:
 
 ```bash
-git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md"
+git add "docs/requirements/The shelf, organized.md" "docs/requirements/Buckets that use the room they have.md" docs/README.md
 git commit -m "Confirm the shelf UX and full-width bucket PBIs against a live vault"
 ```
 
 If nobody has performed that check yet — including if you, the implementer, have no
-way to open a live Obsidian vault — leave both notes `Active` and say so explicitly
-when handing this off. An unverified visual claim marked `Done` is a worse outcome than
-an honestly incomplete PBI.
+way to open a live Obsidian vault — leave both notes `Active`, leave the README's
+narrative sentence unwritten, and say so explicitly when handing this off. An
+unverified visual claim marked `Done` (or described in the README as already delivered)
+is a worse outcome than an honestly incomplete PBI.
 
 ---
 
