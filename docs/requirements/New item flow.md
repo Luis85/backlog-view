@@ -59,13 +59,20 @@ instead of being spent on which folder, which type and which order number.
   create-then-update pair that could fail in between — but a folder created for it at
   step 6a is left behind. See [[Failed creation leaves its folder behind]].
 - **7a — the new note does not match the Base's own filter.** It is created correctly and
-  the tree does not show it, because the Base does not return it. The view writes `type`,
-  `parent` and `order` and nothing else, so a base requiring a tag or a status will omit
-  it — and so will a folder-filtered base if the type's folder sits outside that folder.
-  Expanding the parent cannot reveal a row the query did not return. The **Create backlog**
-  command exists partly to avoid this by construction ([[Scaffolding a backlog]]): it
-  points the home folder at the folder it filters on, so every type folder defaults inside
-  it.
+  the tree does not show it, because the Base does not return it. Plain creation — no
+  surface placement, no template — writes `type`, `parent` and `order` and nothing else,
+  so a base requiring a tag or a status will omit it — and so will a folder-filtered base
+  if the type's folder sits outside that folder. Expanding the parent cannot reveal a row
+  the query did not return. The **Create backlog** command exists partly to avoid this by
+  construction ([[Scaffolding a backlog]]): it points the home folder at the folder it
+  filters on, so every type folder defaults inside it. Two things already widen "nothing
+  else," both already true of the shipped flow: a bucket's **New** already rides its own
+  `horizon` into the same write ([[Buckets from a horizon property]]), and a board
+  column's preset `state` will too once [[New cards in place]] is built. A third widens
+  it once [[Item Templates]] lands: [[Creating an item from a template]] merges a chosen
+  template's own extra frontmatter in as well — so a base filtering on a tag, a state or
+  a horizon can be satisfied by the surface a note was created from, a template, or both,
+  never only by these three.
 
 ## Acceptance criteria
 
