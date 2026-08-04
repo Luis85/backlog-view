@@ -15,10 +15,15 @@ import { bucketNames, rowFor, shelfTitles } from '../helpers/roadmap';
  * else, and one file holding both was the shape a suite takes just before it
  * becomes the place tests hide.
  *
- * A board column and a horizon bucket are the same gesture over different
- * properties, so the two blocks below deliberately read alike: the same three
- * questions — the drag, the paths a keyboard and a menu can reach that a drag
- * cannot, and the structural refusal behind both — asked of each projection.
+ * Three blocks, one per projection. A board column and a horizon bucket are the same
+ * gesture over different properties, so the first two deliberately read alike: the
+ * same three questions — the drag, the paths a keyboard and a menu can reach that a
+ * drag cannot, and the structural refusal behind both — asked of each. The third
+ * asks the same three of the dated axis, but its gestures (a shelf drop, a body
+ * slide, either grip, the row's Schedule entry, the menu's Unschedule) all reach the
+ * gate through one host method, `performScheduleMove` — so its structural-refusal
+ * case drives that method directly rather than any one gesture, the shape that
+ * holds for a gesture not yet written.
  */
 useViewHarness();
 
