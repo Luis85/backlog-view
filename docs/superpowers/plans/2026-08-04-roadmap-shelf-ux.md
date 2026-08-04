@@ -1274,6 +1274,9 @@ describe('the shelf, collapsed by default', () => {
 		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+		// The design's own requirement, not just "no advisory": a pane with nothing
+		// keyboard-reachable must not keep announcing itself as a listbox with options.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
 	});
 
 	it('renders no advisory when the only visible card is a context row already placed in a bucket', () => {
@@ -2228,7 +2231,7 @@ layout engine, so `npm run test-build` is what this note relies on rather than a
 assertion.
 ```
 
-- [ ] **Step 3: Update `docs/requirements/The unplaced shelf.md`'s `## Where it lives`**
+- [ ] **Step 3: Update `docs/requirements/The unplaced shelf.md`** (its `## Where it lives`, plus the sibling-order claim this plan narrows)
 
 That note's `## Where it lives` section currently reads (in part):
 
@@ -2259,9 +2262,49 @@ filter ([[The shelf, organized]]).
 
 Replace `kept out of the layout by \`styles.css\`` with
 `kept out of the layout by \`styles/shelf.css\`` — the rule moved with the rest of the
-shelf's CSS. Leave everything else in the note (its status, its use case, the open
-dated-axis-drag criterion) untouched: this is a "where it lives" correction, not a
-change to what the note claims is built or still open.
+shelf's CSS.
+
+One more passage DOES need a change, not just a path correction: this note's main flow
+and acceptance criteria state, unqualified, that "the shelf keeps sibling order" — true
+when it was a single flat list, false as a whole-shelf property now that
+[[The shelf, organized]] groups the shelf by type ahead of anything else. Two types
+interleaved in raw sibling order (a Task ranked between two Epics, say) now render with
+every Epic before every Task — sibling order survives only WITHIN a group, the same
+qualifier [[The shelf, organized]]'s own main flow step 3 already states correctly.
+Leaving the older note's unqualified claim standing would contradict a living use case
+the moment this plan ships. Replace:
+
+```
+2. The rest gather on the shelf: a labelled strip beside the axis, in sibling order,
+   showing the same cards the axis shows.
+```
+
+with:
+
+```
+2. The rest gather on the shelf: a labelled strip beside the axis, showing the same
+   cards the axis shows. Grouped by type ([[The shelf, organized]]); sibling order
+   orders cards within a group, not across the whole strip.
+```
+
+and replace:
+
+```
+- The shelf keeps sibling order — the order property's rank, not arrival order — and
+  names its count.
+```
+
+with:
+
+```
+- Within each type group, the shelf keeps sibling order — the order property's rank,
+  not arrival order ([[The shelf, organized]] specifies the grouping itself). The shelf
+  names its count.
+```
+
+Everything else in the note (its status, the rest of the use case, the open
+dated-axis-drag criterion) stays untouched — these two passages are the only ones a
+living use case's own contract requires, not a broader rewrite.
 
 - [ ] **Step 4: Update `docs/README.md`'s use-case count only**
 
