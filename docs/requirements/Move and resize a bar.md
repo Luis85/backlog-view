@@ -2,14 +2,17 @@
 type: PBI
 parent: "[[Scheduling work]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 start: 2026-08-10
 due: 2026-09-25
 files:
-  - src/domain/writePlan.ts
-  - src/view/interactions/dragDrop.ts
+  - src/view/interactions/timelineDrag.ts
+  - src/domain/bars.ts
+  - src/storage/frontmatter.ts
+  - src/view/host.ts
+  - src/view/backlogView.ts
 ---
 
 # Move and resize a bar
@@ -18,8 +21,9 @@ files:
 that** re-planning is a gesture on the thing that shows the plan.
 
 The convention is universal — Asana, GitHub and the Obsidian Gantt prior art all agree:
-the bar's body shifts both dates together, an end moves that date alone, and everything
-snaps to the zoom's grid so a drag means whole units. What is distinctive here is what
+the bar's body shifts both dates together, an end moves that date alone, and every
+drag means a whole day, at every zoom — zoom changes pixel density and header
+granularity only, never the write's own grid. What is distinctive here is what
 the gesture does *not* do: a date write has no peers. Within its lane it renumbers no
 siblings, cascades to no children, and touches exactly one note — which is what makes
 its preview an honest contract. Crossing a lane is a different gesture with a stated
@@ -36,12 +40,14 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 **Main flow**
 
-1. Dragging the body slides the bar by whole-cell steps, previewed live: the start
+1. Dragging the body slides the bar by whole-day steps, previewed live: the start
    takes the calendar step and the target follows at the bar's own day count, so a
    slide never changes duration.
-2. Dragging an end moves that date alone, previewed live, landing on the anchor its
-   kind means in the cell it is dropped in — a start takes the cell's first day, a
-   target its last, the shelf drop's own rule ([[Drag from the shelf to schedule]]).
+2. Dragging an end moves that date alone by whole days from the date it had, previewed
+   live, at every zoom — a delta, not the pointer's absolute position, because a
+   rendered edge is not always its date: a span shorter than the minimum drawable width
+   draws wider than it is, so the smallest twitch after grabbing the grip would
+   otherwise write a date the grip was never actually on.
 3. Release writes what the preview showed, one batch through the gate.
 4. Undo restores both prior values together.
 
@@ -66,7 +72,12 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   inferred from children withholds the body hold too, not just its own grip: sliding
   a bar half-anchored to its children is a resize wearing a slide's cursor, and the
   stated end's own grip is the honest handle. A fully inferred bar takes no hold at
-  all.
+  all — and neither does a bar with no inferred end at all where the note itself
+  states NEITHER date: a start that is simply absent, with no evidence from a child
+  either, is not an inferred start, so a bar drawn wholly from a child's target still
+  offered a start grip with no baseline anywhere on the note to drag from. A grip
+  needs at least one end that is the note's own — stated, or open because the note's
+  OTHER end is stated — never a bar that is entirely someone else's evidence.
 - **1d — the drag crosses a lane as well as time.** The gesture leaves this PBI:
   reparent and dates travel as the one combined batch [[Lanes on the roadmap]]
   specifies — previewed together, applied together, undone together — so the two notes
@@ -75,12 +86,6 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   rides along untouched, and the write keeps the shape the note had — a drag re-plans
   a date, it does not re-format a value. Snapping decides where the bar lands on the
   grid, never that precision the note chose to keep is erased.
-- **1f — the step crosses a month end.** A calendar step lands on the same day of the
-  target unit, clamped to its last day when that day does not exist — January 31 moved
-  a month is the end of February, never an overflow into March — and a body drag keeps
-  the bar's duration: the start takes the step, the target follows at the bar's own
-  day count. Re-planning when is not re-planning how long; only an end drag changes
-  duration, because that is what a resize is.
 - **1g — the bar is a marker's.** A diamond offers **no end grips**: a point has no
   duration to resize, and an end handle on it could only invent one. Its body slide moves
   the **target alone** by the calendar step, and a stale start the type ignores is not
@@ -94,21 +99,22 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 - **3a — the write is refused.** Refused whole and loudly; indicators clear, the bar
   renders where the note still says, nothing half-slides.
 - **3b — the written dates take the note outside the Base's filter.** The write stands
-  and the bar leaves the view on the refresh, announced with an open path — the filter
-  speaking, not the write failing — and undo still takes it back across the boundary,
-  the epic's rule for every write ([[Moving between horizons]] states the same for the
-  horizon axis).
+  and the bar leaves the view on the refresh, undo still takes it back across the
+  boundary — but the departure is not announced: that mechanism needs a Bases pass
+  correlated with the write that caused it, which nothing here does, and building it
+  from one sentence cost eleven review findings across seven rounds without reaching a
+  correct rule. The question stays owned by
+  [[The outcome report was built from one sentence]].
 
 ## Acceptance criteria
 
-- Body drags slide the bar by whole-cell steps — the start takes the calendar step,
-  clamped at month end rather than overflowing, and the target follows at the bar's
-  own day count, so a slide never changes duration; end drags move one date, landing
-  on the anchor its kind means — the cell's first day for a start, its last for a
-  target, the shelf drop's rule; everything snaps to the zoom's grid, and release
-  writes exactly the preview. Deltas
-  preserve the value's own precision: a datetime keeps its time of day and its shape
-  on disk.
+- Body drags slide the bar by whole-day steps — the start takes the step and the target
+  follows at the bar's own day count, so a slide never changes duration; end drags move
+  one date by whole days from the date it had, a delta rather than the pointer's
+  absolute position — a rendered edge is not always its date. Both at every zoom: zoom
+  changes pixel density and header granularity only, never the write's own grid.
+  Release writes exactly the preview. Deltas preserve the value's own precision: a
+  datetime keeps its time of day and its shape on disk.
 - A marker's diamond takes no end grip at all, and its body slide writes the target alone —
   never a start, neither one it lacks nor a stale one the type ignores
   ([[Milestones as their own type]]).
@@ -120,13 +126,26 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   grip, and nothing is ever written to an unconfigured key; ends clamp at equal and
   never cross.
 - Inferred bars and inferred ends take no gesture; a dated parent's bar moves only the
-  parent.
+  parent. A bar with no end the note itself states takes no gesture either, even where
+  a child's evidence fills it and even where the flags alone would allow one — a grip
+  needs at least one end that is genuinely the note's own.
 - One batch, one undo; a refusal is whole, loud, and leaves the notes' own dates
   rendering.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The shift and resize plans are date writes
-beside the drop plans in `src/domain/writePlan.ts`; the gestures, previews and
-snapping extend `src/view/interactions/dragDrop.ts`, which already owns transient drag
-state and indicators.
+Built. The delta read that turns a body slide or an end drag into a day count, the
+clamp that stops an end crossing the other, and the open-end baseline an unconfigured
+grip borrows its date from are all `src/view/interactions/timelineDrag.ts`. Where a
+gesture may take hold at all — body, start grip, end grip, narrowed by what the bar
+actually renders — is `barHolds` in `src/domain/bars.ts`, asked once rather than
+answered twice between what is drawn as grabbable and what can be written. The
+datetime merge that keeps a note's own time, offset and shape while its civil date
+moves, the live-value decision that replaces the no-op check `writePlan.ts` used to
+make against a model that can be a refresh behind, and both refusals — a reversed pair,
+and a plan whose shape no longer matches what the note has become — live in
+`src/storage/frontmatter.ts`, the one module allowed to read and write the note.
+`performScheduleMove`, declared on `BacklogViewHost` in `src/view/host.ts` and
+implemented in `src/view/backlogView.ts`, is the single place a date batch is planned
+and announced, shared by the drag, the menu's Schedule and Unschedule, and reporting
+whether anything actually changed rather than whether the call returned.

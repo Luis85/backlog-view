@@ -1,10 +1,15 @@
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/types';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { HorizonSource, placementLabel, RoadmapModel, targetLabel } from '../../domain/roadmap';
+import { BarHold, Placement, StatedEnds, UNSCHEDULED_LABEL } from '../../domain/bars';
+import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
+import { DateSpan, daysBetween, formatCivil } from '../../domain/timeline';
+import { DateChange } from '../../storage/frontmatter';
 
 /**
  * The class every card drop target wears while a card hovers it. One name for the
@@ -56,6 +61,54 @@ export function announceHorizonMove(
 ): void {
 	if (!roadmap) return;
 	announceMove(title, placementLabel(roadmap, from), targetLabel(roadmap, to));
+}
+
+/**
+ * A resolved drag source: the card's item, which hold was taken, and where it began.
+ */
+export interface CardSource {
+	item: BacklogItem;
+	/** Null for an ordinary card — a bucket's, the shelf's, the board's. */
+	hold: BarHold | null;
+	/**
+	 * The scroller's offset when this drag STARTED, for the delta a positional gesture
+	 * measures. On the payload rather than latched by the target, because the baseline
+	 * belongs to the GESTURE: a hold that auto-scrolls, leaves the overlay over the
+	 * sticky lead column or the shelf, and comes back would re-latch on re-entry and
+	 * lose every pixel of pan accumulated before it — moving the bar by fewer days than
+	 * the pointer asked for. Minted where the token is, so it cannot outlive its drag
+	 * or be cleared at the wrong moment. Null for a card wired without a scroller.
+	 */
+	scrollLeft: number | null;
+	/**
+	 * The dates and the placement shape a hold measures against — what the note stated
+	 * when the drag began, read ONCE by `getInitialData` and never again. A relative
+	 * gesture's baseline is what the reader was looking at when they picked the bar up
+	 * and what every preview frame has been drawing against since; re-reading it from a
+	 * refreshed model mid-drag would make `staleBase` compare a value against itself and
+	 * never fire. Meaningless for an ordinary card (`hold === null`), which reads the
+	 * pointer's position instead and has no baseline to carry.
+	 */
+	span: DateSpan;
+	ends: PlacementEnd[];
+}
+
+/** The dates a hold's baseline is captured from — the note's own, never the drawn bar. */
+function statedSpan(item: BacklogItem): DateSpan {
+	return { start: item.plannedStart.value, target: item.plannedTarget.value };
+}
+
+/**
+ * What a region does beyond taking the drop. All optional: a bucket needs none of them,
+ * while the dated shelf needs both — it honours one hold and previews what its removal
+ * would leave. The hooks carry the RESOLVED source, which the highlight-only contract
+ * never had to expose and a hover preview cannot do without.
+ */
+export interface DropHooks {
+	/** Which sources this region honours. Refusing withholds the highlight too. */
+	accepts?: (source: CardSource) => boolean;
+	onEnter?: (source: CardSource) => void;
+	onLeave?: () => void;
 }
 
 /**
@@ -114,13 +167,24 @@ export class CardDragController {
 	 * A result card is a drag source. A context card never is — it is placement,
 	 * not population, and the write a drag plans is exactly what the context-row
 	 * rule forbids for it.
+	 *
+	 * `hold` and `originScroll` ride the payload rather than being read at drop time:
+	 * `getInitialData` runs at drag START, which is exactly when a hold and a scroll
+	 * baseline mean something — see `CardSource`.
 	 */
-	wireCard(cardEl: HTMLElement, item: BacklogItem): void {
+	wireCard(cardEl: HTMLElement, item: BacklogItem, hold: BarHold | null = null, originScroll?: () => number): void {
 		if (item.outsideFilter) return;
 		this.cleanups.push(
 			draggable({
 				element: cardEl,
-				getInitialData: () => ({ path: item.file.path, view: this.token }),
+				getInitialData: () => ({
+					path: item.file.path,
+					hold,
+					scrollLeft: originScroll?.() ?? null,
+					span: statedSpan(item),
+					ends: placementEnds(item.typeName),
+					view: this.token,
+				}),
 				onDragStart: () => {
 					this.viewEl.addClass('pbl-dragging');
 					cardEl.addClass('pbl-drag-source');
@@ -135,44 +199,221 @@ export class CardDragController {
 	}
 
 	/**
+	 * The item a payload names, resolved at DROP time — the dragged path outlives the
+	 * model it was taken from, because a refresh mid-drag can drop the note.
+	 *
+	 * The `typeof` is the TYPE system's, not a runtime case: pragmatic hands
+	 * `source.data` back as `Record<string, unknown>`, while `canDrop` admits only a
+	 * source carrying this controller's private token and the one place minting that
+	 * token pairs it with `item.file.path`, a string, always. Its false arm is
+	 * therefore unreachable by construction and undeletable by typing, so it is left
+	 * uncovered on purpose and the reason is written here — the same reasoning
+	 * `.fallowrc.json` uses for a member only a framework calls, though that file is
+	 * read by a tool and this paragraph by a person. Reaching the branch would take a
+	 * faked adapter payload.
+	 */
+	private resolve(data: Record<string, unknown>): CardSource | null {
+		const path = data.path;
+		const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
+		if (!item) return null;
+		return {
+			item,
+			hold: (data.hold as BarHold | null | undefined) ?? null,
+			scrollLeft: typeof data.scrollLeft === 'number' ? data.scrollLeft : null,
+			// The payload's own span and ends, minted at drag start — never recomputed from
+			// `item` here. `item` is the file the path still resolves to, which is what THIS
+			// rule is for; it says nothing about what the gesture is relative to.
+			span: (data.span as DateSpan | undefined) ?? { start: null, target: null },
+			ends: Array.isArray(data.ends) ? (data.ends as PlacementEnd[]) : [],
+		};
+	}
+
+	/**
 	 * A region a card can be dropped on, for as long as it renders — an empty column
 	 * and an empty shelf included. `plan` is what the drop MEANS, and it belongs to
 	 * the caller: this module knows how to resolve a dragged card, never what moving
-	 * it should write.
+	 * it should write. `hooks` is optional and unused by a plain region — the dated
+	 * shelf is the first caller that needs it, to preview what its removal would leave.
+	 *
+	 * `plan` takes the RESOLVED source, not just its item — the same shape `accepts`
+	 * and `onEnter` already carry. A caller that only needs the item can still ask for
+	 * one; a caller planning a relative gesture's removal (the dated shelf) needs the
+	 * shape it was captured under too, and a narrower signature would have hidden that
+	 * on the one region that turned out to need it.
 	 */
-	wireDropTarget(el: HTMLElement, plan: (item: BacklogItem) => void): void {
+	wireDropTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}): void {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
-				// Only this view's own drags: a foreign card must not even highlight,
-				// or the signal would promise a drop the write path should never make.
-				canDrop: ({ source }) => source.data.view === this.token,
-				onDragEnter: () => el.addClass(DROP_OVER),
-				onDragLeave: () => el.removeClass(DROP_OVER),
+				// Only this view's own drags, and — where the caller asks — only the
+				// sources this region actually honours. REFUSED rather than ignored, so
+				// the strip never highlights for a drag it would not act on, the same
+				// reason a foreign view's card is refused instead of dropped silently.
+				canDrop: ({ source }) => {
+					if (source.data.view !== this.token) return false;
+					const resolved = this.resolve(source.data);
+					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
+				},
+				onDragEnter: ({ source }) => {
+					el.addClass(DROP_OVER);
+					const resolved = this.resolve(source.data);
+					if (resolved) hooks.onEnter?.(resolved);
+				},
+				onDragLeave: () => {
+					el.removeClass(DROP_OVER);
+					hooks.onLeave?.();
+				},
 				onDrop: ({ source }) => {
 					el.removeClass(DROP_OVER);
-					const path = source.data.path;
-					// The dragged path outlives the model it was taken from — a refresh
-					// mid-drag can drop the note — so the item is resolved at drop time.
-					//
-					// The `typeof` is the TYPE system's, not a runtime case: pragmatic
-					// hands `source.data` back as `Record<string, unknown>`, so the
-					// narrowing cannot be deleted — while `canDrop` above admits only a
-					// source carrying this controller's private token, and the one place
-					// minting that token (`wireCard`) pairs it with `item.file.path`, a
-					// string, always. Its false arm is therefore unreachable by
-					// construction and undeletable by typing, so it is left uncovered
-					// on purpose and the reason is written here — the same reasoning
-					// `.fallowrc.json` uses for a member only a framework calls, though
-					// that file is read by a tool and this paragraph by a person.
-					// Reaching the branch would take a faked adapter payload.
-					const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
+					hooks.onLeave?.();
 					// The host owns the write AND the announcement: a drop is one of three
 					// inputs to the same move, and three callers announcing separately is
 					// how they come to say different things about the same change.
-					if (item) plan(item);
+					const resolved = this.resolve(source.data);
+					if (resolved) plan(resolved);
 				},
 			}),
 		);
 	}
+
+	/**
+	 * A region where the POSITION of the pointer is the message, not merely the region
+	 * — the timeline's grid. Registered through this controller like every other
+	 * target, so it gates on the same private token and keeps the same
+	 * resolve-at-drop-time rule: the stakes here are the RECEIVING view's date keys, so
+	 * a card crossing between two split panes would write a different property than the
+	 * gesture showed.
+	 *
+	 * What a position MEANS is the caller's, exactly as `plan` is for a region target.
+	 */
+	wirePositionalTarget(
+		el: HTMLElement,
+		handlers: {
+			onDrag: (source: CardSource, clientX: number, originX: number) => void;
+			onDrop: (source: CardSource, clientX: number, originX: number) => void;
+			onLeave: () => void;
+		},
+	): void {
+		const report = ({ source, location }: { source: { data: Record<string, unknown> }; location: DragLocationHistory }) => {
+			const resolved = this.resolve(source.data);
+			// Both coordinates, always: `initial` is where the drag STARTED, which a
+			// delta read needs and no handler should have to capture for itself.
+			if (resolved) handlers.onDrag(resolved, location.current.input.clientX, location.initial.input.clientX);
+		};
+		this.cleanups.push(
+			dropTargetForElements({
+				element: el,
+				canDrop: ({ source }) => source.data.view === this.token,
+				// `onDragEnter` fires SYNCHRONOUSLY (a hierarchy change), so the preview
+				// paints on the very first frame a drag crosses onto the overlay — the
+				// adapter's own `onDrag` is throttled to one animation frame, which would
+				// otherwise leave the pointer's first position unshown until the next one.
+				onDragEnter: report,
+				onDrag: report,
+				onDragLeave: () => handlers.onLeave(),
+				onDrop: ({ source, location }) => {
+					handlers.onLeave();
+					const resolved = this.resolve(source.data);
+					if (resolved) handlers.onDrop(resolved, location.current.input.clientX, location.initial.input.clientX);
+				},
+			}),
+		);
+	}
+}
+
+/**
+ * Say what a date move changed. Old span and new, in the same live region and the same
+ * words as a board or a horizon move — a drag, a grip, the row's entry and the menu's
+ * Unschedule are one move said once.
+ *
+ * "Unscheduled" is only true where the item actually LEAVES the axis. A parent whose
+ * descendants still carry dates keeps a bar: `inferSpan` refills an end the note no
+ * longer states, so announcing a removal as "Unscheduled" would describe something
+ * other than what renders. The placement is asked of `placeItem` — the function that
+ * decides what draws — never of a comparison written beside it.
+ *
+ * A null placement means the rebuilt model has no row for this item at all: the write
+ * took its own note out of the base. Then the dates it wrote are the whole of what can
+ * honestly be said. This does NOT announce that the card left the view — that is the
+ * outcome report, which needs a note's disappearance correlated with the write that
+ * caused it, and `docs/issues/The outcome report was built from one sentence.md`
+ * records that as unsolved here.
+ */
+export function announceScheduleMove(
+	title: string,
+	change: DateChange,
+	placement: Placement | null,
+	ends: PlacementEnd[],
+): void {
+	announceMove(title, statedSpanWords(change.before, ends), destinationWords(change.after, placement, ends));
+}
+
+/**
+ * The destination side. Checked on `after` — the writer's own tri-state — BEFORE
+ * `placement` is asked about anything: a one-ended write (`computeScheduleWrites`
+ * permits naming only `start` or only `target`) can leave the untouched end exactly as
+ * unreadable as it found it, and `placeItem` reports that faithfully as a shelf with a
+ * reason. Deciding from `placement.reason`'s TEXT instead would make this module agree
+ * with `bars.ts` about a string neither owns a shared type for — the same mistake
+ * matching on `placementLabel`'s wording would be. The tri-state is the one fact both
+ * sides of the sentence already share.
+ */
+function destinationWords(after: StatedEnds, placement: Placement | null, ends: PlacementEnd[]): string {
+	const unreadable = unreadableEndWords(after);
+	if (unreadable) return unreadable;
+	if (placement === null) return spanWords({ start: after.start.value, target: after.target.value }, ends);
+	return placementWords(placement, ends);
+}
+
+/** A placement that answered neither `invalid` check above: a bar, or a plain shelf. */
+function placementWords(placement: Placement, ends: PlacementEnd[]): string {
+	return placement.kind === 'shelf' ? UNSCHEDULED_LABEL : spanWords(placement.bar.span, ends);
+}
+
+/**
+ * What the note itself stated, an end at a time — tri-state, the same collapse
+ * `placementLabel` already stopped making on the horizon axis. A `DateSpan` cannot
+ * tell a value this axis REFUSES to read from a key the note never set; both flatten
+ * to null, so a note holding `start: soon` cleared to nothing would announce "from
+ * Unscheduled to Unscheduled" for a cleanup that plainly happened.
+ */
+function statedSpanWords(stated: StatedEnds, ends: PlacementEnd[]): string {
+	return unreadableEndWords(stated) ?? spanWords({ start: stated.start.value, target: stated.target.value }, ends);
+}
+
+/**
+ * The one place either side of the sentence names an unreadable end — checked start
+ * then target, the same order `placeItem` checks a stated pair, so the source and the
+ * destination cannot land on different words for the same fact. Null when neither end
+ * is unreadable, so a caller can fall through to what the value or the placement says.
+ */
+function unreadableEndWords(stated: StatedEnds): string | null {
+	if (stated.start.invalid) return 'an unreadable start date';
+	if (stated.target.invalid) return 'an unreadable target date';
+	return null;
+}
+
+/**
+ * A span in the register's own date format; the shelf's word when there is none.
+ *
+ * `ends` is what the placement HAS, not what the note happens to carry — the same
+ * narrowing the writer applies to the verdict. A one-ended placement is a POINT and is
+ * named by its date alone; a two-ended one with a single date stated is an OPEN bar and
+ * says which end it is open at. Both sides of the announcement go through here, so the
+ * source and the destination cannot be described in different vocabularies — the
+ * mistake `placementLabel` and `targetLabel` were split to stop making.
+ */
+function spanWords(span: DateSpan, ends: PlacementEnd[]): string {
+	if (span.start !== null && span.target !== null) {
+		return daysBetween(span.start, span.target) === 0
+			? formatCivil(span.start)
+			: `${formatCivil(span.start)} to ${formatCivil(span.target)}`;
+	}
+	const only = span.start ?? span.target;
+	if (only === null) return UNSCHEDULED_LABEL;
+	if (ends.length < 2) return formatCivil(only);
+	// Neither phrase may begin with `from` or `to`: `announceMove` already wraps both
+	// sides in "from … to …", and an open end that spelled itself that way would say
+	// "from from 2026-08-01 to Unscheduled".
+	return span.start !== null ? `${formatCivil(only)} onwards` : `up to ${formatCivil(only)}`;
 }

@@ -8,6 +8,7 @@ import { displayType, focusTarget } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
+import { ScaleId } from '../../domain/timeline';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -38,6 +39,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderFocusPicker(host, barEl, model);
 	renderModeToggle(host, barEl);
 	renderAxisPicker(host, barEl);
+	renderTimelineControls(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	// The one command that routinely writes hundreds of notes: it carries the
@@ -337,6 +339,65 @@ function renderAxisPicker(host: BacklogViewHost, barEl: HTMLElement): void {
 	};
 	position('horizons', 'columns-3', 'Show horizons');
 	position('dates', 'calendar-range', 'Show timeline');
+}
+
+/**
+ * The zoom picker, jump-to-today and the shelf toggle, on the dated axis alone — the
+ * horizon axis has no density to choose, no today to return to, and (its shelf never
+ * compacts) nothing to reopen. Segmented buttons like the axis picker, because the
+ * zoom choice is one of three and a menu would hide two of them.
+ */
+function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void {
+	if (host.projection !== 'roadmap' || activeAxis(host.settings, host.axisPick) !== 'dates') return;
+	const wrap = barEl.createDiv({ cls: 'pbl-zoom-picker', attr: { role: 'group', 'aria-label': 'Timeline zoom' } });
+	const position = (id: ScaleId, icon: string, label: string) => {
+		const btn = iconButton(wrap, icon, label);
+		btn.addClass('pbl-zoom-btn');
+		btn.toggleClass('is-active', host.zoom === id);
+		btn.setAttribute('aria-pressed', String(host.zoom === id));
+		btn.addEventListener('click', () => host.setZoom(id));
+	};
+	position('week', 'calendar-days', 'Zoom to weeks');
+	position('month', 'calendar', 'Zoom to months');
+	position('quarter', 'calendar-range', 'Zoom to quarters');
+	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
+	today.addClass('pbl-today-btn');
+	today.addEventListener('click', () => host.jumpToToday());
+	// A real button in the TOOLBAR, not on the shelf's own header: the pane wears
+	// `role="listbox"` whenever cards render, and a focusable non-option child inside
+	// it would be a second tab stop in a composite that has exactly one. Built once,
+	// synced by `syncShelfToggle` — outside the composite is the only way back once a
+	// narrow pane hides the shelf's cards.
+	const shelfBtn = iconButton(barEl, 'inbox', 'Collapse unplaced items');
+	shelfBtn.addClass('pbl-shelf-toggle');
+	shelfBtn.addEventListener('click', () => host.setShelfOpen(host.roadmap?.shelfEl?.hasClass('pbl-shelf-compact') ?? true));
+}
+
+/**
+ * Point the shelf toggle at the shelf as it currently stands. Synced rather than
+ * conditionally rendered, for the reason `syncBusy`, `syncFilterUi` and
+ * `syncCountLabel` are: a content-only render (the quick filter's) rebuilds the pane
+ * and leaves the toolbar standing, so "render it only where the shelf does" cannot be
+ * honoured — a filter that empties the shelf would leave the button standing, and one
+ * that brings shelf cards back would leave it missing. Built once, updated here, so it
+ * also keeps focus across a filter keystroke.
+ */
+export function syncShelfToggle(host: BacklogViewHost, barEl: HTMLElement): void {
+	const btn = barEl.querySelector<HTMLButtonElement>('.pbl-shelf-toggle');
+	if (!btn) return;
+	const snapshot = host.roadmap ?? null;
+	// The CARDS decide, not the element. An empty shelf still renders — `pbl-shelf-empty`
+	// exists so a drag has somewhere to land, kept out of the layout until one is live —
+	// so `shelfEl !== null` is true with nothing on it, and the toggle would offer to
+	// collapse a region that is empty and invisible.
+	const shelf = snapshot && snapshot.shelfPaths.size > 0 ? snapshot.shelfEl : null;
+	btn.toggleClass('pbl-hidden-ctl', shelf === null);
+	if (shelf === null) return;
+	const open = !shelf.hasClass('pbl-shelf-compact');
+	btn.setAttribute('aria-expanded', String(open));
+	btn.setAttribute('aria-controls', host.shelfId);
+	btn.setAttribute('aria-label', open ? 'Collapse unplaced items' : 'Expand unplaced items');
+	btn.toggleClass('is-active', !open);
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */

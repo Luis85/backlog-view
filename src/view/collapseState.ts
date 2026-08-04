@@ -35,6 +35,8 @@ export class CollapseState {
 	private mode: string | null = null;
 	/** The retained roadmap-axis pick; null until the user first picks. */
 	private axis: string | null = null;
+	/** The retained timeline zoom; null until the user first picks one. */
+	private zoom: string | null = null;
 	private id: ViewIdentity | null = null;
 	private restored = false;
 	/** Kept so the identity can be re-resolved when the base is renamed under us. */
@@ -72,6 +74,16 @@ export class CollapseState {
 
 	setAxisPick(axis: string): void {
 		this.axis = axis;
+		this.scheduleSave();
+	}
+
+	/** The retained timeline zoom for this saved view — null before the user picks. */
+	zoomPick(): string | null {
+		return this.zoom;
+	}
+
+	setZoom(id: string): void {
+		this.zoom = id;
 		this.scheduleSave();
 	}
 
@@ -141,6 +153,7 @@ export class CollapseState {
 		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
+		this.zoom = snapshot.zoom ?? null;
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -204,6 +217,12 @@ export class CollapseState {
 			this.collapsed.delete(path);
 		}
 		const expanded = new Set([...this.settled].filter((path) => !this.collapsed.has(path)));
-		saveCollapseState(this.host.app, id, { collapsed: this.collapsed, expanded, mode: this.mode, axis: this.axis });
+		saveCollapseState(this.host.app, id, {
+			collapsed: this.collapsed,
+			expanded,
+			mode: this.mode,
+			axis: this.axis,
+			zoom: this.zoom,
+		});
 	}
 }

@@ -1,11 +1,72 @@
-/* The dated axis: the month grid, the bars, the today line and the shelf —
-   `src/view/render/timeline.ts`. */
+/* The dated axis: the month grid, the bars, the today line and the shelf — `src/view/render/timeline.ts`. */
 
 /* ----- the dated axis: the month grid, bars, and the today line */
 
+/* The scroll box, on BOTH axes — not `.pbl-timeline-content`, since full-height marks resolve `top/bottom: 0` against their containing block's padding box, and making the scroll box that containing block would stretch every line the full viewport height.
+   REPLACE the existing rule, don't add to it: `width: max-content` moved to the content wrapper below — a scroll box as wide as its own content has nothing to scroll, and `.pbl-roadmap-dates .pbl-tree` would clip instead of scrolling, leaving every date past the pane's edge unreachable. `min-width: 0` counters a flex item's automatic minimum, which would restore the same width another way. */
 .pbl-timeline {
 	position: relative;
+	width: 100%;
+	min-width: 0;
+	overflow: auto;
+}
+
+.pbl-timeline-content {
+	position: relative;
+	/* Over a minimum of the scrollport, because `max-content` alone is the height of
+	   the rows that exist: a timeline with few bars — or none, which is the state every
+	   fresh backlog starts in — would leave the blank grid below the last row outside
+	   the drop overlay and refusing drops, while [[Roadmap empty states]] requires
+	   every region of the frame to be a drop target. */
 	width: max-content;
+	min-width: 100%;
+	height: max-content;
+	min-height: 100%;
+}
+
+/* The one drop target over the day area — never "the track", which is redrawn per row
+   and per header and covers none of the gaps or the blank space below the last row.
+   Positioned past the sticky lead column, which is what makes that exclusion structural
+   rather than a constant the pointer conversion has to keep in step with. Pointer events
+   only while a drag is live, the empty shelf's own trick, so it never sits between the
+   reader and a bar's grips the rest of the time. */
+.pbl-timeline-drop {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-tl-lead);
+	right: 0;
+	z-index: 2;
+	pointer-events: none;
+}
+
+.pbl-dragging .pbl-timeline-drop {
+	pointer-events: auto;
+}
+
+/* The preview: a ghost bar and the dates it means, so the drop states its contract
+   before it commits it. */
+.pbl-drop-ghost {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: var(--pbl-ghost-left);
+	width: var(--pbl-ghost-width);
+	height: 14px;
+	border-radius: var(--radius-s);
+	border: 1px dashed var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-drop-ghost-dates {
+	position: absolute;
+	top: calc(50% + 14px);
+	left: var(--pbl-ghost-left);
+	padding: var(--size-2-1) var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	white-space: nowrap;
 }
 
 .pbl-timeline-header {
@@ -15,6 +76,11 @@
 	z-index: 3;
 	background-color: var(--background-primary);
 	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Sibling of `.pbl-timeline-drop`, above it in stacking order — a drag released there wrote nothing. Passes events through while dragging (`.pbl-timeline-drop`'s own pattern); NOT raised instead, or the ghost preview would paint over the date labels it is read against. */
+.pbl-dragging .pbl-timeline-header {
+	pointer-events: none;
 }
 
 .pbl-timeline-lead {
@@ -45,9 +111,9 @@
 	display: flex;
 }
 
-.pbl-timeline-month {
-	flex: 0 0 var(--pbl-month-w);
-	width: var(--pbl-month-w);
+.pbl-timeline-cell {
+	flex: 0 0 var(--pbl-cell-w);
+	width: var(--pbl-cell-w);
 	padding: var(--size-4-1) var(--size-4-2);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
@@ -81,16 +147,27 @@
 	width: var(--pbl-bar-width);
 	height: 14px;
 	border-radius: var(--radius-s);
-	/* One color for solid and open bars alike: states override the variable,
-	   never the background, so an open end can never reveal a solid backing. */
+	/* One color for solid/open bars: states override the variable, never the background. */
 	--pbl-bar-color: var(--interactive-accent);
 	background-color: var(--pbl-bar-color);
 }
+.pbl-bar-holdable { cursor: grab; } /* only where barHolds registers the body hold — barClasses, timeline.ts */
 
 .pbl-timeline-row.pbl-done .pbl-bar {
 	--pbl-bar-color: var(--color-green);
 	opacity: 0.7;
 }
+
+/* Wide enough to hit at 4px/day (a vault check, not a jsdom one); children of the positioned `.pbl-bar`, so `left`/`right` resolve against its own edges. */
+.pbl-bar-grip {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 6px;
+	cursor: ew-resize;
+}
+.pbl-bar-grip-start { left: -3px; }
+.pbl-bar-grip-end { right: -3px; }
 
 /* A dateless or clipped end is styled open: the plan's gap stays visible
    instead of being filled in, and the exact dates ride on the tooltip. */
@@ -168,7 +245,10 @@
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-today-left);
-	width: 2px;
+	/* The scale's, not a constant: `dayPx >= 2 * lineWidth` is what lets this line and a
+	   milestone dated today both draw inside one day instead of one erasing the other.
+	   See SCALES in `src/domain/timeline.ts`. */
+	width: var(--pbl-tl-line);
 	z-index: 1;
 	background-color: var(--color-red);
 	opacity: 0.55;
@@ -183,7 +263,7 @@
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-milestone-left);
-	width: 2px;
+	width: var(--pbl-tl-line);
 	z-index: 0;
 	background-color: var(--color-cyan);
 	opacity: 0.55;
@@ -197,11 +277,9 @@
 }
 
 /* In the header band, so the name reads where the months do. Backed, because it sits
-   over the month labels; truncating, because horizontal space is what a pane runs out
-   of first and the full name is one hover away — which needs the label to actually
-   receive the hover: the month cells underneath are presentational (the header is
-   aria-hidden, no click handler anywhere in it) and the bars live in a different row
-   entirely, so nothing below this label ever needed the pointer to pass through it. */
+   over the month labels; truncating, because the full name is one hover away — which
+   needs the label itself to receive the hover, so the presentational month cells and
+   the bars (a different row entirely) never needed the pointer to pass through it. */
 .pbl-milestone-label {
 	position: absolute;
 	top: 0;
@@ -262,6 +340,13 @@
 	color: var(--text-muted);
 }
 
+/* What this drop would LEAVE, said before the release — only the dated axis draws one. */
+.pbl-shelf-outcome {
+	margin-inline-start: auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
 .pbl-shelf-icon .svg-icon {
 	width: 14px;
 	height: 14px;
@@ -295,4 +380,19 @@
 .pbl-shelf-reason-icon .svg-icon {
 	width: 12px;
 	height: 12px;
+}
+
+/* Compacted to its labelled count: an unplaced result may lose its card, never its
+   existence — and the way back is the toolbar's toggle, which is a real focusable
+   control outside the pane's composite. This is the ONLY compaction in the frame,
+   because it is the only band with a control that reopens it: every other band shrinks
+   toward its minimum and keeps scrolling, and hiding cards with no way back is the
+   unreachable region the band rule exists to forbid. */
+.pbl-shelf-compact .pbl-shelf-cards {
+	display: none;
+}
+
+/* A control for a region that is not on screen is a defect in the other direction. */
+.pbl-hidden-ctl {
+	display: none;
 }

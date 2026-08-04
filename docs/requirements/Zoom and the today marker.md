@@ -2,12 +2,16 @@
 type: PBI
 parent: "[[The timeline]]"
 order: 30
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
-  - src/storage/collapseStore.ts
+  - src/domain/timeline.ts
   - src/view/render/toolbar.ts
+  - src/storage/collapseStore.ts
+  - src/view/collapseState.ts
+  - src/view/render/projections.ts
+  - styles/roadmap.css
 ---
 
 # Zoom and the today marker
@@ -36,11 +40,13 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 **Main flow**
 
 1. The timeline opens scrolled so today is in view, marked by a line.
-2. The toolbar offers week, month and quarter zoom — discrete scales, each with the
-   grid cell drags will snap to. A week cell runs Monday through Sunday, ISO 8601's
-   week — the standard the register's own date format already follows — one boundary
-   on every device, never a locale guess that would let the same drop write different
-   plans.
+2. The toolbar offers week, month and quarter zoom — discrete scales that change pixel
+   density and header granularity only. A drop writes the day under the pointer at
+   every zoom; the day is the finest unit a date property can hold, and no scale writes
+   a coarser one. The ISO week governs header cell boundaries and the shelf drop's
+   default length ([[Drag from the shelf to schedule]]), never the write's own
+   granularity — one boundary on every device, never a locale guess that would let the
+   same drop write different plans.
 3. Panning scrolls the timeline horizontally inside the view; the pane itself never
    scrolls sideways.
 4. Jump-to-today returns in one action, and the zoom choice is remembered per device —
@@ -64,8 +70,10 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 
 - The timeline opens with today visible and marked; jump-to-today is one action and
   works from any scroll position.
-- Zoom offers exactly the discrete scales, and each declares the grid cell that drags
-  snap to; a week cell runs Monday through Sunday (ISO 8601) on every device.
+- Zoom offers exactly the discrete scales, and changes pixel density and header
+  granularity only: a drop writes the day under the pointer at every zoom, and the ISO
+  week (Monday through Sunday, ISO 8601) governs header cell boundaries and the shelf
+  drop's default length, on every device, never the write's granularity.
 - Horizontal scrolling is contained inside the view; the pane never scrolls sideways,
   and a narrow or embedded pane degrades by yielding decoration, not by clipping — the
   shelf compacts to its labelled count, one action from open, and never disappears.
@@ -75,11 +83,18 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 
 ## Where it lives
 
-**Mostly design still.** The first increment ships the fixed month scale, the today
-line and the opening scroll to it (`src/domain/timeline.ts`,
-`src/view/render/timeline.ts`); the discrete zooms and their snapping cells, the
-jump-to-today control, the per-device zoom memory and the narrow-pane shelf compaction
-remain this note's work — the zoom control joining `src/view/render/toolbar.ts` beside
-the focus level, the memory joining the per-screen state
-`src/storage/collapseStore.ts` already keeps, under the same identity and pruning
-rules.
+Built. The scale table and the day budget — the three discrete `dayPx` densities, the
+unit-aligned window, and the backstop expressed as a day count rather than a cell count
+so the same dates reach at every zoom — are `src/domain/timeline.ts`. The zoom picker,
+jump-to-today and the shelf toggle, plus the `syncShelfToggle` that keeps the toggle in
+step with a render that rebuilt the pane without touching the toolbar, are
+`src/view/render/toolbar.ts`, beside the focus level. The per-device zoom memory is
+kept in both halves of the same store, under the collapse state's own identity and
+pruning rules and its own session-only exception for an embedded base:
+`src/storage/collapseStore.ts` validates the persisted value, and
+`src/view/collapseState.ts` is what actually holds it as a private field, reads it on
+restore and writes it into the snapshot that gets saved. The date anchor carried across
+a scale change — the civil date at the viewport's leading edge, not the pixel offset a
+zoom redefines — and the per-band scroll offsets keyed by identity rather than position
+are `src/view/render/projections.ts`. The band rule (the timeline takes what is left;
+every other band declares a maximum and scrolls itself) is `styles/roadmap.css`.

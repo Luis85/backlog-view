@@ -310,11 +310,22 @@ free of runtime code so imports stay cycle-free.
   is focusable or written, so the milestone's own row carries the name and the exact
   dates together in its accessible name, which is where a fact the line shows must also
   be reachable without it.
-- On top of that, the HORIZON axis is directly manipulable and the dated axis is not,
-  and the difference is structural rather than a flag: `renderRoadmap` passes the drag
-  controller on only where a drop has a write behind it, so nothing on the timeline is
-  draggable and the shelf there is not a target. A projection must not offer a gesture
-  it cannot keep — moving a *bar* is scheduling's own feature, arriving with its plans.
+- Both axes are directly manipulable now, but not the same way. The horizon axis's
+  buckets and shelf are ordinary drop TARGETS — the board's rule, a region highlights
+  and the highlight is the whole signal. The dated axis has no lanes, so a row carries
+  no meaning of its own; `renderRoadmap` wires its grid as ONE positional target
+  instead (`interactions/timelineDrag.ts`, registered through `CardDragController`
+  like every other target), where only the pointer's X says anything and `dayAt` turns
+  it into a date. Two sources reach it: a shelf card, gated by `canSchedule` (a marker
+  with no writable end offers no grip at all), and a bar already placed — its body
+  slides by the gesture's delta rather than a position, its end grips resize one end —
+  both onto the grid alone. The dated axis's shelf is a drop TARGET too, the mirror of
+  the grid: a bar's BODY hold dropped there un-schedules it (`removal.plan` in
+  `render/roadmap.ts`, planning `unschedulePlan`), while a grip is refused (a resize is
+  not an unschedule) and so is a shelf card dropped back on itself (it may still carry
+  keys its shelving reason is asking to be fixed, not removed). A drop on that shelf
+  always means something now, on both axes, so an EMPTY dated-axis shelf stays in the
+  DOM exactly as the horizon axis's always has.
 - So on the horizon axis: a bucket and the shelf are drop targets, a result card is a
   drag source (a context card never is), and Alt+Left/Right steps one placement. All
   three land on `performHorizonMove`, and so does Set horizon while that axis is drawn
@@ -361,8 +372,11 @@ free of runtime code so imports stay cycle-free.
   with the scheduling feature.
 - `todayCivil()` is computed in the view and INJECTED into the domain: nothing under
   `domain/` reads a clock, which is what keeps every window and geometry test able to
-  say which day today is. The timeline scrolls to today only while `scrollLeft` is 0 —
-  a data update mid-session must not yank the view back to now.
+  say which day today is. The timeline centres on today only when the drawn content
+  CHANGES — `anchorScrollLeft`'s `same` test, comparing `drawnContent` against the
+  previous `ScrollAnchor.content` — never on a same-content refresh, whatever
+  `scrollLeft` happens to be: a data update mid-session must not yank the view back to
+  now.
 - The board- and roadmap-mode CSS guards both clear the tree's stale `pbl-hide-*`
   verdicts; the fit ladder is the tree's alone.
 

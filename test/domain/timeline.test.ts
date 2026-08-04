@@ -1,16 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { CivilDate } from '../../src/domain/noteFields';
 import {
+	addDays,
 	barGeometry,
+	cellSpan,
+	dayAt,
 	daysBetween,
+	DEFAULT_SCALE_ID,
 	earliest,
 	formatCivil,
 	latest,
-	MAX_TIMELINE_MONTHS,
+	MAX_TIMELINE_DAYS,
+	SCALES,
+	scaleFor,
+	timelineCells,
 	timelineWindow,
 } from '../../src/domain/timeline';
 
 const d = (year: number, month: number, day: number): CivilDate => ({ year, month, day });
+const TODAY = { year: 2026, month: 8, day: 4 };
 
 describe('civil-date arithmetic', () => {
 	it('counts days between civil dates, sign included, with no zone in sight', () => {
@@ -32,7 +40,7 @@ describe('the timeline window', () => {
 		const window = timelineWindow([], d(2026, 8, 15));
 
 		expect(window.start).toEqual(d(2026, 7, 1));
-		expect(window.months.map((m) => m.label)).toEqual(['Jul 2026', 'Aug 2026', 'Sep 2026']);
+		expect(timelineCells(window, scaleFor('month')).map((c) => c.label)).toEqual(['Jul 2026', 'Aug 2026', 'Sep 2026']);
 		expect(window.days).toBe(31 + 31 + 30);
 	});
 
@@ -42,14 +50,15 @@ describe('the timeline window', () => {
 			{ start: null, target: d(2026, 11, 30) },
 		];
 		const window = timelineWindow(spans, d(2026, 8, 15));
+		const cells = timelineCells(window, scaleFor('month'));
 
-		expect(window.months[0].label).toBe('Apr 2026');
-		expect(window.months[window.months.length - 1].label).toBe('Dec 2026');
+		expect(cells[0].label).toBe('Apr 2026');
+		expect(cells[cells.length - 1].label).toBe('Dec 2026');
 	});
 
 	it('knows a leap February from a plain one', () => {
 		const window = timelineWindow([], d(2028, 2, 10));
-		const february = window.months.find((m) => m.label === 'Feb 2028');
+		const february = timelineCells(window, scaleFor('month')).find((c) => c.label === 'Feb 2028');
 		expect(february?.days).toBe(29);
 	});
 
@@ -57,8 +66,8 @@ describe('the timeline window', () => {
 		const spans = [{ start: d(2026, 8, 1), target: d(9999, 1, 1) }];
 		const window = timelineWindow(spans, d(2026, 8, 15));
 
-		expect(window.months.length).toBe(MAX_TIMELINE_MONTHS);
-		const labels = window.months.map((m) => m.label);
+		expect(window.days).toBe(MAX_TIMELINE_DAYS);
+		const labels = timelineCells(window, scaleFor('month')).map((c) => c.label);
 		expect(labels).toContain('Aug 2026');
 	});
 });
@@ -101,7 +110,7 @@ describe('bar geometry', () => {
 	});
 
 	it('says a span is wholly outside the window rather than reporting a clamped one', () => {
-		// The window clamps at MAX_TIMELINE_MONTHS around today, so a typo'd year lands
+		// The window clamps at MAX_TIMELINE_DAYS around today, so a typo'd year lands
 		// past the edge. Clamping a POINT onto that edge draws a diamond at a date the
 		// milestone does not have — and a diamond is exactly the claim that this is the
 		// date, where a clipped end only claims a direction.
@@ -149,5 +158,109 @@ describe('earliest and latest', () => {
 	it('keeps the first argument when the two are the same day', () => {
 		expect(earliest(march, { ...march })).toBe(march);
 		expect(latest(march, { ...march })).toBe(march);
+	});
+});
+
+describe('the scale table', () => {
+	it('is strictly denser at each step, and every scale can hold two marks in a day', () => {
+		// Stated as a RELATION over the table rather than as three numbers, because this
+		// is the third revision of the same constraint — first the nudge, then the bar
+		// floor, now the line widths — and each earlier one fixed the instance while
+		// leaving the rule unwritten. [[A milestone line across the plan]] extension 1d
+		// requires today's line and a milestone dated today to both draw and not merge,
+		// so a day must be at least as wide as both marks side by side.
+		for (const scale of SCALES) {
+			expect(scale.dayPx, `${scale.id} must fit two marks`).toBeGreaterThanOrEqual(2 * scale.lineWidth);
+		}
+		const widths = SCALES.map((s) => s.dayPx);
+		expect(widths).toEqual([...widths].sort((a, b) => b - a));
+		expect(new Set(widths).size).toBe(widths.length);
+	});
+
+	it('keeps month as the shipped density, so the default view does not move', () => {
+		expect(scaleFor('month').dayPx).toBe(4);
+		expect(scaleFor(null).id).toBe(DEFAULT_SCALE_ID);
+		expect(scaleFor('fortnight').id).toBe(DEFAULT_SCALE_ID);
+	});
+});
+
+describe('day arithmetic', () => {
+	it('steps whole days across a month end and a leap day', () => {
+		expect(addDays({ year: 2026, month: 1, day: 31 }, 1)).toEqual({ year: 2026, month: 2, day: 1 });
+		expect(addDays({ year: 2028, month: 2, day: 28 }, 1)).toEqual({ year: 2028, month: 2, day: 29 });
+		expect(addDays({ year: 2026, month: 3, day: 1 }, -1)).toEqual({ year: 2026, month: 2, day: 28 });
+		expect(addDays({ year: 2026, month: 8, day: 4 }, 0)).toEqual({ year: 2026, month: 8, day: 4 });
+	});
+
+	it('reads a pixel offset back as the day barGeometry drew there — at every scale', () => {
+		// dayAt is the exact inverse of the daysBetween(window.start, date) that
+		// barGeometry already computes, so px↔date is one rule stated in two
+		// directions rather than two rules that can drift apart. Tested as the round
+		// trip rather than against hand-computed pixels, because the round trip is the
+		// property the gestures rest on.
+		const window = timelineWindow([{ start: { year: 2026, month: 8, day: 1 }, target: null }], TODAY);
+		// Offsets stay inside the window this span produces (Jul–Sep 2026, 92 days): an
+		// offset past `window.days - 1` names a date the window itself doesn't cover, so
+		// barGeometry legitimately clamps it and the round trip can only be asked of a
+		// day the window actually has.
+		for (const scale of SCALES) {
+			for (const offset of [0, 17, 60, window.days - 1]) {
+				const date = addDays(window.start, offset);
+				const geometry = barGeometry(window, { start: date, target: date });
+				expect(dayAt(window, scale, geometry.startDay * scale.dayPx)).toEqual(date);
+			}
+		}
+	});
+
+	it('clamps a pointer outside the window to its edges rather than inventing a date', () => {
+		const window = timelineWindow([], TODAY);
+		expect(dayAt(window, scaleFor('month'), -500)).toEqual(window.start);
+		expect(dayAt(window, scaleFor('month'), 10_000_000)).toEqual(addDays(window.start, window.days - 1));
+	});
+
+	it('gives the shelf drop a duration per zoom: a week, the month, the quarter', () => {
+		// cellSpan is a DURATION, not a snapping unit — decision 1 made the snap a day
+		// at every zoom, and this is only what a drop with no duration of its own
+		// defaults to.
+		const august = { year: 2026, month: 8, day: 13 };
+		expect(cellSpan(scaleFor('week'), august)).toBe(7);
+		expect(cellSpan(scaleFor('month'), august)).toBe(31);
+		expect(cellSpan(scaleFor('month'), { year: 2026, month: 2, day: 3 })).toBe(28);
+		// Q3 2026: July 31 + August 31 + September 30.
+		expect(cellSpan(scaleFor('quarter'), august)).toBe(92);
+	});
+});
+
+describe('the window and its header cells', () => {
+	it('covers the same dates at every zoom', () => {
+		// The backstop is a TIME budget, not a cell count. Tested as the guarantee
+		// [[Zoom and the today marker]] states — at every zoom the same results place
+		// and only the granularity changes — rather than as a number, which a test
+		// naming sixty of anything would not catch being re-expressed per cell.
+		const spans = [
+			{ start: { year: 2024, month: 1, day: 5 }, target: { year: 2027, month: 11, day: 30 } },
+		];
+		const window = timelineWindow(spans, TODAY);
+		for (const scale of SCALES) {
+			const cells = timelineCells(window, scale);
+			expect(cells.reduce((sum, cell) => sum + cell.days, 0)).toBe(window.days);
+			expect(barGeometry(window, spans[0]).outside).toBe(false);
+		}
+	});
+
+	it('clips the first and last cell at the window rather than growing the window', () => {
+		const window = timelineWindow([], TODAY);
+		for (const scale of SCALES) {
+			const cells = timelineCells(window, scale);
+			expect(cells.every((cell) => cell.days > 0)).toBe(true);
+			expect(cells.reduce((sum, cell) => sum + cell.days, 0)).toBe(window.days);
+		}
+	});
+
+	it('bounds a typo’d year to the day budget around today', () => {
+		const window = timelineWindow([{ start: { year: 20260, month: 8, day: 1 }, target: null }], TODAY);
+		expect(window.days).toBeLessThanOrEqual(MAX_TIMELINE_DAYS);
+		expect(daysBetween(window.start, TODAY)).toBeGreaterThanOrEqual(0);
+		expect(daysBetween(TODAY, addDays(window.start, window.days - 1))).toBeGreaterThanOrEqual(0);
 	});
 });

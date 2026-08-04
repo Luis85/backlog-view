@@ -15,6 +15,20 @@ export function horizonVault(): FakeVault {
 }
 
 /**
+ * One long-spanning item (so the dated axis's window has enough days to pan across)
+ * beside several undated epics (so the shelf renders a band with real content) — the
+ * fixture the frame's scroll-box and zoom-anchor tests share.
+ */
+export function shelfHeavyVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Anchor.md', { frontmatter: { type: 'Epic', order: 5, start: '2026-08-01', due: '2027-08-01' } });
+	for (let i = 1; i <= 6; i++) {
+		vault.addFile(`Undated ${i}.md`, { frontmatter: { type: 'Epic', order: i * 10 } });
+	}
+	return vault;
+}
+
+/**
  * A view already showing the roadmap. The mode is UI state, not a base setting, so
  * it is flipped through the host exactly as the toolbar does — never the config.
  */
@@ -88,7 +102,25 @@ export function barFor(containerEl: HTMLElement, title: string): HTMLElement {
 	return barOf(row);
 }
 
+/** One of a bar's grips, by which hold it is. */
+export function gripOf(containerEl: HTMLElement, title: string, hold: 'body' | 'start' | 'end'): HTMLElement {
+	const el = barFor(containerEl, title).parentElement?.querySelector<HTMLElement>(`[data-pbl-hold="${hold}"]`);
+	if (!el) throw new Error(`no ${hold} grip on ${title}`);
+	return el;
+}
+
+/** Which holds a bar actually offers, in drawn order. */
+export function gripNames(containerEl: HTMLElement, title: string): string[] {
+	const row = rowFor(containerEl, title);
+	return Array.from(row?.querySelectorAll<HTMLElement>('[data-pbl-hold]') ?? []).map((el) => el.dataset.pblHold ?? '');
+}
+
 /** Every milestone line's label text, in the order the header draws them. */
 export function labelTexts(containerEl: HTMLElement): string[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label')).map((l) => l.textContent ?? '');
+}
+
+/** Every header cell's text, in drawn order — months, weeks or quarters by zoom. */
+export function cellLabels(containerEl: HTMLElement): string[] {
+	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-cell')).map((c) => c.textContent ?? '');
 }

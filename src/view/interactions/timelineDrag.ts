@@ -1,0 +1,365 @@
+import { CardDragController, CardSource } from './cardDrag';
+import { RowContext } from '../render/columns';
+import { spanText, TIMELINE_LEAD_PX } from '../render/timeline';
+import { BacklogViewHost } from '../host';
+import { BarHold, placeItem, statedEnds, StatedEnds } from '../../domain/bars';
+import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
+import { BacklogItem } from '../../domain/model';
+import { absentReading, CivilDate, FieldReading, readDate } from '../../domain/noteFields';
+import { BacklogSettings, optionalKeyFor } from '../../domain/settings';
+import {
+	addDays,
+	barGeometry,
+	cellSpan,
+	dayAt,
+	DateSpan,
+	daysBetween,
+	formatCivil,
+	MIN_BAR_PX,
+	TimelineScale,
+	TimelineWindow,
+} from '../../domain/timeline';
+import { SchedulePlan } from '../../domain/writePlan';
+
+/**
+ * What a pointer position on the dated grid MEANS. The geometry, the grips and the
+ * preview are their own module: `cardDrag.ts` is explicitly *the whole region is the
+ * target and the highlight is the only drop signal*, and a positional drag is a second
+ * concern that would push it past its stated job as well as its budget.
+ *
+ * Nothing here registers with the adapter directly — every source and target goes
+ * through `CardDragController`, which mints the token that keeps a drag on the view it
+ * started from. This module decides what a position means and hands the plan to
+ * `host.performScheduleMove`, which is the only place a date batch is planned and the
+ * only place it is announced.
+ *
+ * Two gestures, two rules: a shelf card has no origin to move from, so `shelfPlan`
+ * reads the pointer's POSITION. A hold on a bar already placed reads a DELTA instead —
+ * `holdPlan` — because a rendered edge is not always its date (a span shorter than
+ * `MIN_BAR_PX` draws wider than it is), so reading the pointer absolutely would mean
+ * the smallest twitch after grabbing a grip already writes a date the grip was never
+ * actually on. `planFor` is the one dispatch between them, on `CardSource.hold`.
+ */
+
+/** Everything a gesture on the grid measures against. */
+export interface TimelineParts {
+	overlay: HTMLElement;
+	scroller: HTMLElement;
+	window: TimelineWindow;
+	scale: TimelineScale;
+}
+
+export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
+	// Annotated rather than inferred from `ctx.host` — fallow resolves interface
+	// members through an explicit type, not a property access. See the root CLAUDE.md.
+	const host: BacklogViewHost = ctx.host;
+	dnd.wirePositionalTarget(parts.overlay, {
+		onDrag: (source, clientX, originX) => {
+			// A pointer over the sticky lead column previews nothing: the day under it
+			// (see `overLeadColumn`) is not what the reader is looking at.
+			if (overLeadColumn(parts, clientX)) clearPreview(parts);
+			else preview(host, parts, source, clientX, originX);
+		},
+		onLeave: () => clearPreview(parts),
+		onDrop: (source, clientX, originX) => {
+			clearPreview(parts);
+			// Refused before any date math: the overlay's own rect drifts left of the
+			// STICKY lead column once panned (see `overLeadColumn`), so it wins hit-testing
+			// there and a release physically over a row's title would otherwise resolve to
+			// whatever day that drifted geometry names — a coordinate the reader never
+			// pointed at the grid to choose.
+			if (overLeadColumn(parts, clientX)) return;
+			// A drag ending nowhere meaningful — off the grid, or a hold that wandered
+			// back to where it started — writes nothing and does not consume the undo
+			// slot: `planFor` returns null for both, which is the same refusal restated
+			// for any entry point that reaches the overlay some other way.
+			const plan = planFor(host, parts, source, clientX, originX);
+			// `ends` rides along only for a RELATIVE gesture (`plan.from` set): the shape
+			// the hold was planned under, which may disagree with the item's CURRENT type
+			// by the time the writer sees it. A shelf drop is absolute and states no
+			// baseline, so it states no shape either — the writer falls back to the
+			// item's own, which is exactly right for a plan made against it a moment ago.
+			if (plan) void host.performScheduleMove(source.item, plan.plan, plan.from, plan.from ? source.ends : undefined);
+		},
+	});
+	// Auto-scroll is opt-in per element, and the element to register is the one that
+	// actually scrolls: here the timeline's own scroller, because
+	// [[Zoom and the today marker]] requires the scrolling to stay inside the view and
+	// the pane never to scroll sideways. Without this a drag could reach no date that
+	// is not already on screen, and the grid is thousands of pixels wide by design.
+	dnd.wireScroller(parts.scroller);
+}
+
+/**
+ * The day under the pointer. `dayAt` takes an offset from the window's first day while
+ * the adapter reports a VIEWPORT `clientX`, so the overlay's own bounding rect is
+ * subtracted — the overlay is positioned in CONTENT coordinates, so its rect scrolls
+ * with the grid and this subtraction stays correct at any pan. It is NOT past the
+ * sticky lead column at every scroll position, only unscrolled — see `overLeadColumn`,
+ * which every caller here checks first, for the column that guards instead.
+ *
+ * One subtraction and NO scroll term: a bounding rect already moves with the scroll, and
+ * adding `scrollLeft` would double-count the pan. Untranslated, a drop over one day would
+ * schedule another.
+ */
+function dropDay(parts: TimelineParts): (clientX: number) => CivilDate {
+	return (clientX) => dayAt(parts.window, parts.scale, clientX - parts.overlay.getBoundingClientRect().left);
+}
+
+/**
+ * True when a viewport `clientX` sits under the STICKY lead column rather than the grid.
+ * `.pbl-timeline-drop` is positioned in CONTENT coordinates (`left: var(--pbl-tl-lead)`
+ * inside the scrolling `.pbl-timeline-content`), so its own rect drifts left with the
+ * pan; `.pbl-timeline-lead` is `position: sticky; left: 0` against the SCROLLER and never
+ * moves. Past `TIMELINE_LEAD_PX` of scroll the overlay's rect has drifted under the lead
+ * column, and — later in the row's markup, same z-index — it wins hit-testing there: a
+ * release physically over a row's title would otherwise resolve through `dropDay` to
+ * whatever day the overlay's drifted geometry names, a coordinate the reader never
+ * pointed at the grid to choose. Checked against the SCROLLER's own rect, which — unlike
+ * the overlay's — does not move with its own internal scroll, exactly as a sticky
+ * sibling's position does not.
+ */
+function overLeadColumn(parts: TimelineParts, clientX: number): boolean {
+	return clientX < parts.scroller.getBoundingClientRect().left + TIMELINE_LEAD_PX;
+}
+
+/**
+ * What a plan asks for, plus the baseline a RELATIVE gesture measured against — a
+ * hold's, set by `holdPlan`. Absent on a shelf drop, which is absolute and states no
+ * baseline because it measured against nothing.
+ */
+interface GesturePlan {
+	plan: SchedulePlan;
+	from?: Partial<Record<PlacementEnd, string | null>>;
+}
+
+/**
+ * What a SHELF drop means: the day under the pointer, and — only where a span is being
+ * written — the zoom's cell as its duration.
+ *
+ * `cellSpan` supplies a duration ONLY where a span is written; a one-ended plan takes
+ * the drop day. Both ways of arriving at one end obey that — a marker, which takes a
+ * target and no span whatever is configured (extension 2e), and an ordinary item on an
+ * axis where only one date property is named (2c). Neither has a duration to default,
+ * so neither is offset from the day the pointer named: computing the span and then
+ * narrowing it would put a target-only drop on 3 August at week zoom onto 9 August,
+ * which is the silent coarsening decision 1 exists to refuse.
+ *
+ * Null where the item has no writable end at all — a marker whose target key is
+ * unconfigured — so a gesture whose only possible batch is empty never reaches the
+ * writer; `renderShelf` keeps the same item from becoming a drag source in the first
+ * place, through the same `canSchedule` this narrows.
+ */
+function shelfPlan(host: BacklogViewHost, parts: TimelineParts, item: BacklogItem, clientX: number): GesturePlan | null {
+	// Read here, not captured: a shelf drop is ABSOLUTE. It means "this date", so it
+	// answers to the item as it now is, and it states no baseline for the writer to
+	// check because it measured against nothing.
+	const ends = writableEnds(host.settings, item);
+	if (ends.length === 0) return null;
+	const day = dropDay(parts)(clientX);
+	if (ends.length === 1) {
+		const plan: SchedulePlan = {};
+		plan[ends[0]] = formatCivil(day);
+		return { plan };
+	}
+	return {
+		plan: { start: formatCivil(day), target: formatCivil(addDays(day, cellSpan(parts.scale, day) - 1)) },
+	};
+}
+
+/** The ends this item's TYPE answers for, narrowed to the keys the view options name. */
+function writableEnds(settings: BacklogSettings, item: BacklogItem): PlacementEnd[] {
+	return placementEnds(item.typeName).filter((end) => optionalKeyFor(settings, end) !== '');
+}
+
+/**
+ * What a gesture on the grid asks for, dispatched on `CardSource.hold` — a shelf card
+ * has no origin to move from and reads the pointer's position, a hold on a bar already
+ * placed reads the delta of the gesture instead. One function so no third caller has to
+ * make this choice a second time.
+ */
+function planFor(
+	host: BacklogViewHost,
+	parts: TimelineParts,
+	source: CardSource,
+	clientX: number,
+	originX: number,
+): GesturePlan | null {
+	if (source.hold === null) return shelfPlan(host, parts, source.item, clientX);
+	return holdPlan(parts, source, source.hold, clientX, originX);
+}
+
+/**
+ * The plan a hold means, or null where the gesture expressed no change.
+ *
+ * **A zero final delta plans nothing, on every hold.** A drag that wanders and comes
+ * back to where it started has expressed no change, so it produces no batch at all —
+ * not a batch the writer then decides about. If it submitted the model's own endpoints,
+ * a note another editor had changed meanwhile would look like a real request and the
+ * writer would quietly revert their work.
+ */
+function holdPlan(parts: TimelineParts, source: CardSource, hold: BarHold, clientX: number, originX: number): GesturePlan | null {
+	const span = source.span;
+	const ends = source.ends;
+	// Viewport-relative, so the pan is INCLUDED: while auto-scroll moves the grid under
+	// a held pointer, `clientX - originX` alone stays zero while later dates slide
+	// beneath it. The placing read (`dropDay`) subtracts a bounding rect, which already
+	// moves with the scroll, and adds no such term — the two rules are opposites for the
+	// same reason and must not be unified. `originX` is the adapter's own
+	// `location.initial.input.clientX`, carried on every frame rather than latched from
+	// one: a baseline read off the first frame the overlay sees discards every pixel of
+	// movement before it, and in a synthetic gesture it equals the drop coordinate,
+	// which would make this whole expression zero.
+	const days = Math.round(
+		(clientX - originX + (parts.scroller.scrollLeft - (source.scrollLeft ?? parts.scroller.scrollLeft))) / parts.scale.dayPx,
+	);
+	if (days === 0) return null;
+	if (hold === 'body') return bodySlide(span, ends, days);
+	const end: PlacementEnd = hold === 'start' ? 'start' : 'target';
+	if (!ends.includes(end)) return null;
+	return gripMove(parts, source, end, days);
+}
+
+/**
+ * Moves only the ends the note actually STATES — both, so a two-ended slide never
+ * changes duration; the stated one alone where the bar has one, its open end staying
+ * open. The bar's rendered width is not a duration to preserve when half of it is an
+ * absence: filling it in would close a one-ended plan by a gesture that promised to
+ * move it.
+ */
+function bodySlide(span: DateSpan, ends: PlacementEnd[], days: number): GesturePlan | null {
+	const plan: SchedulePlan = {};
+	// The base each end was displaced FROM travels with the plan, so the writer can see
+	// that the note moved under the gesture and refuse rather than walk a concurrent
+	// edit backwards. A slide means "one day further than THIS", and this is the only
+	// place that still knows what "this" was.
+	const from: Partial<Record<PlacementEnd, string | null>> = {};
+	for (const end of ends) {
+		const date = span[end];
+		if (date !== null) {
+			plan[end] = formatCivil(addDays(date, days));
+			from[end] = formatCivil(date);
+		} else {
+			// An end this gesture does NOT move still states an expectation: it was open
+			// when the bar was picked up, and the slide's whole promise is that it stays
+			// open. Leaving it out of `from` lets an editor who fills it mid-drag keep that
+			// value while the stated end moves under it, so a previewed open-bar slide
+			// commits as a closed two-ended span — which is the write the preview said it
+			// would not make.
+			from[end] = null;
+		}
+	}
+	return Object.keys(plan).length > 0 ? { plan, from } : null;
+}
+
+/**
+ * One end, dragged by a grip. The date it moves is what the NOTE stated — from the span
+ * captured at drag start, never read again — and an open end borrows the other stated
+ * end as its baseline: a missing target counts days from the start, a missing start
+ * counts back from the target, the same reason a one-dated bar renders one cell wide at
+ * the date it has.
+ */
+function gripMove(parts: TimelineParts, source: CardSource, end: PlacementEnd, days: number): GesturePlan {
+	const span = source.span;
+	const held = heldDate(span, end, parts);
+	const moved = addDays(held, days);
+	const opposite = end === 'start' ? span.target : span.start;
+	// Clamped at equal rather than crossing — but ONLY against an end the note itself
+	// states. A reversed span is a property of a note's OWN pair, which is the only pair
+	// `reversedSpan` is ever asked about; where the opposite end is null it is either
+	// genuinely absent or inferred — `source.span` is the note's OWN readings, never the
+	// subtree's — and either way there is no stated span to reverse, so clamping against
+	// it would write a bound this gesture has no evidence for. Extension 1c forbids
+	// writing an inferred bound; an absent one has nothing to clamp against either.
+	// Dragged past it the gesture writes the day the pointer names, and `inferSpan`
+	// places the result.
+	const clamped = opposite === null ? moved : clampAtEqual(end, moved, opposite);
+	// The grip is relative too, so it states its base for the same reason the body does —
+	// but it states the base it ACTUALLY had. An open end borrowed its baseline from the
+	// stated opposite end, so recording that borrowed date under the missing end would
+	// expect a value the note does not have, and every attempt to fill an open end would
+	// be refused. What the gesture assumed is two things and both are recorded: this end
+	// was absent, and the end it borrowed from was where it was.
+	const own = span[end];
+	const from: Partial<Record<PlacementEnd, string | null>> =
+		own === null
+			? { [end]: null, [other(end)]: opposite === null ? null : formatCivil(opposite) }
+			: { [end]: formatCivil(own) };
+	return { plan: { [end]: formatCivil(clamped) }, from };
+}
+
+/**
+ * The date a grip moves — what the note states for that end, drawn at drag start. An
+ * open end has no date of its own, so it borrows the stated one: a one-dated bar
+ * renders one cell wide at the date it has, and the open end's grip sits there too.
+ *
+ * The `?? parts.window.start` arm is unreachable through `barHolds`, which withholds
+ * every grip unless at least one end is the note's OWN stated value (`domain/bars.ts`):
+ * a grip on the stated end always finds its own date, and a grip on the open end always
+ * finds the *other* end stated instead — the precondition that makes it "open" rather
+ * than "nothing to hold" guarantees the opposite end it borrows from is never itself
+ * null. It stands only as a defensive fallback for a `CardSource` built some other way.
+ */
+function heldDate(span: DateSpan, end: PlacementEnd, parts: TimelineParts): CivilDate {
+	const date = end === 'target' ? (span.target ?? span.start) : (span.start ?? span.target);
+	return date ?? parts.window.start;
+}
+
+/** The other end of a pair — one name for a flip that reads wrong as a ternary. */
+function other(end: PlacementEnd): PlacementEnd {
+	return end === 'start' ? 'target' : 'start';
+}
+
+function clampAtEqual(end: PlacementEnd, moved: CivilDate, opposite: CivilDate): CivilDate {
+	const crosses = end === 'start' ? daysBetween(moved, opposite) < 0 : daysBetween(opposite, moved) < 0;
+	return crosses ? opposite : moved;
+}
+
+/**
+ * The ghost is drawn from the SAME plan the drop will submit, so the preview and the
+ * write cannot disagree about what a gesture means — a hold's live-updating grip
+ * included, through the one dispatch (`planFor`) both the drag and the drop resolve.
+ * Built from `placeItem`, not from the ends a plan would leave stated — those are half a
+ * placement: move a parent's stated start while its children supply the other end, and
+ * the note states one date while the axis draws the inferred span. Every rule that turns
+ * ends into a placement — the marker reduction, the unreadable and reversed refusals,
+ * the rollup inference — is behind that one call precisely so no second answer gets
+ * written beside it.
+ */
+function preview(host: BacklogViewHost, parts: TimelineParts, source: CardSource, clientX: number, originX: number): void {
+	clearPreview(parts);
+	const plan = planFor(host, parts, source, clientX, originX);
+	if (!plan) return;
+	const placement = placeItem(source.item, plannedEnds(source.item, plan.plan));
+	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so.
+	if (placement.kind !== 'bar') return;
+	const bar = placement.bar;
+	const geometry = barGeometry(parts.window, bar.span);
+	const ghost = parts.overlay.createDiv({ cls: 'pbl-drop-ghost' });
+	ghost.setCssProps({
+		'--pbl-ghost-left': `${geometry.startDay * parts.scale.dayPx}px`,
+		'--pbl-ghost-width': `${Math.max(geometry.spanDays * parts.scale.dayPx, MIN_BAR_PX)}px`,
+	});
+	const dates = parts.overlay.createDiv({ cls: 'pbl-drop-ghost-dates', text: spanText(bar) });
+	dates.setCssProps({ '--pbl-ghost-left': `${geometry.startDay * parts.scale.dayPx}px` });
+}
+
+function clearPreview(parts: TimelineParts): void {
+	parts.overlay.empty();
+}
+
+/**
+ * The ends a plan WOULD leave stated on this item: the ones it names, over the ones the
+ * note already states. This is only half of a placement, which is why nothing draws
+ * from it directly — `preview` hands it straight to `placeItem`, the same call
+ * `deriveBars` makes.
+ */
+function plannedEnds(item: BacklogItem, plan: SchedulePlan): StatedEnds {
+	const stated = statedEnds(item);
+	const end = (field: PlacementEnd): FieldReading<CivilDate> => {
+		const requested = plan[field];
+		if (requested === undefined) return stated[field];
+		return requested === null ? absentReading() : readDate(requested);
+	};
+	return { start: end('start'), target: end('target') };
+}

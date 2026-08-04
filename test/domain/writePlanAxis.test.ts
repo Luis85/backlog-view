@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeHorizonWrites, computeInitWrites, computeScheduleWrites } from '../../src/domain/writePlan';
+import { PlacementEnd } from '../../src/domain/itemTypes';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -74,61 +75,81 @@ describe('computeHorizonWrites', () => {
 });
 
 describe('computeScheduleWrites', () => {
+	const BOTH: PlacementEnd[] = ['start', 'target'];
+
 	it('writes both ends in ONE write, so a span is one undo', () => {
 		const { get } = build({ 'A.md': { type: 'Epic', order: 10 } });
 
-		const writes = computeScheduleWrites(get('A'), { start: '2026-08-03', target: '2026-08-14' });
+		const writes = computeScheduleWrites(get('A'), { start: '2026-08-03', target: '2026-08-14' }, BOTH);
 
 		expect(writes).toHaveLength(1);
-		expect(writes[0].axis).toEqual({ start: '2026-08-03', target: '2026-08-14' });
+		expect(writes[0].axis).toEqual({ start: '2026-08-03', target: '2026-08-14', ends: BOTH });
 	});
 
-	it('names only the end that changed', () => {
-		const { get } = build({ 'A.md': { type: 'Epic', order: 10, start: '2026-08-03', due: '2026-08-14' } });
-
-		const writes = computeScheduleWrites(get('A'), { start: '2026-08-03', target: '2026-08-20' });
-
-		expect(writes[0].axis).toEqual({ target: '2026-08-20' });
-	});
-
-	it('leaves the note alone when neither end changes', () => {
-		const { get } = build({ 'A.md': { type: 'Epic', order: 10, start: '2026-08-03' } });
-
-		expect(computeScheduleWrites(get('A'), { start: '2026-08-03' })).toEqual([]);
-	});
-
-	it('keeps the note\'s own spelling of a date it already states', () => {
+	it('states what was asked for, and claims nothing about what the note holds', () => {
+		// The planner sees a model that can be a refresh behind the note, so it is no
+		// longer allowed an opinion about whether a write is needed — not for a date the
+		// note appears to state, and not for the spelling it states it in. It proposes;
+		// the writer, the only module that can see the note, decides.
 		const { get } = build({ 'A.md': { type: 'Epic', order: 10, start: '2026-8-3' } });
 
-		// Same civil date, differently spelled: tidying it would be a write nobody asked
-		// for, on a value that is the user's to spell.
-		expect(computeScheduleWrites(get('A'), { start: '2026-08-03' })).toEqual([]);
+		const writes = computeScheduleWrites(get('A'), { start: '2026-08-03' }, BOTH);
+
+		expect(writes[0].axis).toEqual({ start: '2026-08-03', ends: BOTH });
+	});
+
+	it('carries a null for every end the placement allows, key present or not', () => {
+		// `ownKeys` is a model-time reading too. An unschedule planned while a bar had
+		// one end would omit the other end's null, and an editor who added that date
+		// mid-drag would find the item still scheduled after an action that said it
+		// would clear it — a removal that half-happened.
+		const { get } = build({ 'Half.md': { type: 'Epic', order: 20, start: '2026-08-03' } });
+
+		const writes = computeScheduleWrites(get('Half'), { start: null, target: null }, BOTH);
+
+		expect(writes[0].axis).toEqual({ start: null, target: null, ends: BOTH });
+	});
+
+	it('names only the ends its placement allows', () => {
+		// The type narrowing is the caller's — a marker answers for its target alone —
+		// and the planner honours it rather than restating it.
+		const { get } = build({ 'A.md': { type: 'Epic', order: 10 } });
+
+		const writes = computeScheduleWrites(get('A'), { start: '2026-08-03', target: '2026-08-14' }, ['target']);
+
+		expect(writes[0].axis).toEqual({ target: '2026-08-14', ends: ['target'] });
+	});
+
+	it('carries the baseline a relative gesture measured against', () => {
+		const { get } = build({ 'A.md': { type: 'Epic', order: 10, start: '2026-08-03' } });
+
+		const writes = computeScheduleWrites(get('A'), { start: '2026-08-04' }, BOTH, { start: '2026-08-03' });
+
+		expect(writes[0].axis).toEqual({ start: '2026-08-04', ends: BOTH, from: { start: '2026-08-03' } });
+	});
+
+	it('plans nothing when the plan names no end at all', () => {
+		const { get } = build({ 'A.md': { type: 'Epic', order: 10, start: '2026-08-03' } });
+
+		expect(computeScheduleWrites(get('A'), {}, BOTH)).toEqual([]);
 	});
 
 	it('never guesses at a date it cannot read', () => {
+		// The entry refuses an unreadable date before it gets here; this is the backstop
+		// that keeps the rule true of the planner too. A question about the REQUEST,
+		// which is the one thing here that is not about the note.
 		const { get } = build({ 'A.md': { type: 'Epic', order: 10 } });
 
-		expect(computeScheduleWrites(get('A'), { start: 'next tuesday' })).toEqual([]);
-	});
-
-	it('removes the keys it has on an unschedule, and plans nothing without them', () => {
-		const { get } = build({
-			'Planned.md': { type: 'Epic', order: 10, start: '2026-08-03', due: '2026-08-14' },
-			'Half.md': { type: 'Epic', order: 20, start: '2026-08-03' },
-			'Bare.md': { type: 'Epic', order: 30 },
-		});
-		const unschedule = { start: null, target: null };
-
-		expect(computeScheduleWrites(get('Planned'), unschedule)[0].axis).toEqual({ start: null, target: null });
-		// Only the key it has: a removal for a key that was never there writes nothing.
-		expect(computeScheduleWrites(get('Half'), unschedule)[0].axis).toEqual({ start: null });
-		expect(computeScheduleWrites(get('Bare'), unschedule)).toEqual([]);
+		expect(computeScheduleWrites(get('A'), { start: 'next tuesday' }, BOTH)).toEqual([]);
 	});
 
 	it('writes an end whose value on disk is unreadable', () => {
 		const { get } = build({ 'A.md': { type: 'Epic', order: 10, start: 'someday' } });
 
-		expect(computeScheduleWrites(get('A'), { start: '2026-08-03' })[0].axis).toEqual({ start: '2026-08-03' });
+		expect(computeScheduleWrites(get('A'), { start: '2026-08-03' }, BOTH)[0].axis).toEqual({
+			start: '2026-08-03',
+			ends: BOTH,
+		});
 	});
 });
 

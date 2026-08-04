@@ -3,8 +3,11 @@ import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
-import { ItemWrite } from '../domain/writePlan';
+import { PlacementEnd } from '../domain/itemTypes';
+import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
+import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings, OptionalProperty } from '../domain/settings';
+import { WriteOutcome } from '../storage/frontmatter';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
@@ -44,6 +47,12 @@ export interface BoardSnapshot {
 	colEls: HTMLElement[];
 }
 
+/** One scroll box the frame owns, keyed by WHICH BAND IT IS rather than by position. */
+export interface ScrollBox {
+	key: string;
+	el: HTMLElement;
+}
+
 /**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
@@ -51,9 +60,43 @@ export interface BoardSnapshot {
  */
 export interface RoadmapSnapshot {
 	roadmap: RoadmapModel;
+	/**
+	 * The NAVIGABLE cards, in reading order — axis first, then the shelf, then
+	 * context. `syncShelfFit` narrows this to exclude a compacted shelf's cards, so
+	 * the keyboard walk and `aria-activedescendant` never reach past what is on
+	 * screen. Read this, never `allCards`, for anything that selects or counts.
+	 */
 	cards: BacklogItem[];
+	/**
+	 * The unnarrowed reading order, axis first then shelf then context. What
+	 * `syncShelfFit` filters FROM on every pass — filtering `cards` instead would
+	 * make each resize narrower than the last, and a widening resize could never
+	 * restore what an earlier one removed.
+	 */
+	allCards: BacklogItem[];
+	/** Every shelved item's path, the vocabulary `syncShelfFit` and the toggle both key on. */
+	shelfPaths: Set<string>;
+	/** The shelf's own element, or null where nothing renders one (the empty dated-axis case). */
+	shelfEl: HTMLElement | null;
 	/** Pixel offset of the today line inside the grid, or null on the horizon axis. */
 	todayLeft: number | null;
+	/**
+	 * The element that scrolls the timeline — both axes on the dated one. Null off it,
+	 * where the pane is still the scroll box, which is every other projection.
+	 */
+	scroller: HTMLElement | null;
+	/**
+	 * Every scroll box in the frame, the pane excluded (the view adds that). Bounding
+	 * the bands turned each of them into a scroll box of its own, and a rebuild empties
+	 * the whole pane: the shelf is the one that bites, because scheduling a card IS a
+	 * rebuild, so a reader working down a long shelf would be thrown back to its top on
+	 * every drop.
+	 */
+	boxes: ScrollBox[];
+	/** The window the grid drew, for the drag's px↔date and for the zoom anchor. */
+	window: TimelineWindow | null;
+	/** The density the grid drew at; null on the horizon axis. */
+	scale: TimelineScale | null;
 }
 
 /**
@@ -135,6 +178,32 @@ export interface BacklogViewHost {
 	/** Pick which axis this saved view shows; the collapse store persists it. */
 	setAxisPick(axis: RoadmapAxis): void;
 	/**
+	 * Which density the dated axis draws at. UI state like the mode and the axis pick:
+	 * per saved view, per device, in the collapse store — never in the `.base`, because
+	 * pane width is a property of the screen in front of you and not of the base.
+	 */
+	readonly zoom: ScaleId;
+	/** Pick a density and re-render; the collapse store persists it. */
+	setZoom(id: ScaleId): void;
+	/** Put today back in the middle of the timeline's scroller, from any position. */
+	jumpToToday(): void;
+	/**
+	 * Whether the roadmap's shelf is expanded: true or false once the reader has
+	 * pressed the toggle, null while the pane's width is still deciding. View state
+	 * that survives a render — a rebuild must not re-collapse a strip the reader just
+	 * opened — and deliberately NOT collapse-store state, which keys on paths and has
+	 * nothing to key this on.
+	 */
+	readonly shelfOpen: boolean | null;
+	/** Press the toggle: overrides the width's default and re-measures immediately. */
+	setShelfOpen(open: boolean): void;
+	/**
+	 * The id the shelf element carries, fixed for the life of this VIEW. Per view
+	 * rather than a constant: two saved views can sit in split panes, and duplicate
+	 * ids would make one toolbar's toggle address the other's shelf.
+	 */
+	readonly shelfId: string;
+	/**
 	 * The column the board selection rests on when no card is selected — an empty
 	 * column is still a keyboard stop, or an empty board could not be driven at all.
 	 * Null whenever a card (or nothing) is selected instead.
@@ -158,6 +227,27 @@ export interface BacklogViewHost {
 	 * resolves false, leaving the undo slot untouched.
 	 */
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean>;
+
+	/**
+	 * Plan and apply the date batch a schedule move means — the ends the item's own
+	 * type answers for, or their removal. The board's and the horizon axis's rule on
+	 * the dated one: one path for every input (a drag, a grip, the row's entry, the
+	 * menu's Unschedule), so no input can reach a date another cannot, and every move
+	 * that lands announces itself once. A batch the WRITER decides changed nothing
+	 * resolves false, leaving the undo slot untouched and saying nothing.
+	 *
+	 * `from` is the base a RELATIVE gesture measured against and `ends` the placement
+	 * shape it was planned under. Both ride through to the writer, which is the only
+	 * place they can be checked against the live note; both are absent from the modal
+	 * and the menu, which state a date rather than a displacement and were planned
+	 * against the item in hand.
+	 */
+	performScheduleMove(
+		item: BacklogItem,
+		plan: SchedulePlan,
+		from?: Partial<Record<PlacementEnd, string | null>>,
+		ends?: PlacementEnd[],
+	): Promise<boolean>;
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;
@@ -197,9 +287,10 @@ export interface BacklogViewHost {
 	refreshSubtree(item: BacklogItem): void;
 	/**
 	 * Serialized, validated frontmatter writes — the only mutation path.
-	 * Resolves true only when every write in the batch was applied.
+	 * Resolves null when the batch was refused or failed; otherwise the outcome the
+	 * writer itself observed, which a truthy check treats exactly as the old boolean.
 	 */
-	applySafely(writes: ItemWrite[]): Promise<boolean>;
+	applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null>;
 	performDrop(dragged: BacklogItem, target: DropTarget): Promise<void>;
 	/** True when a batch has landed this session and its inverses are held. */
 	canUndo(): boolean;

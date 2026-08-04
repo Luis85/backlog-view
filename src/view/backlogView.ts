@@ -10,24 +10,41 @@ import {
 	RoadmapSnapshot,
 } from './host';
 import { WriteGate } from './writeGate';
-import { announceBoardMove, announceHorizonMove, CardDragController } from './interactions/cardDrag';
+import {
+	announceBoardMove,
+	announceHorizonMove,
+	announceScheduleMove,
+	CardDragController,
+} from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildColumnMenu, buildItemMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
-import { childTypeChoices } from '../domain/itemTypes';
+import { childTypeChoices, placementEnds, PlacementEnd } from '../domain/itemTypes';
+import { placeItem } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
-import { horizonSource, RoadmapAxis } from '../domain/roadmap';
-import { computeDropWrites, computeHorizonWrites, computeStateWrites, ItemWrite } from '../domain/writePlan';
+import { activeAxis, horizonSource, RoadmapAxis } from '../domain/roadmap';
+import {
+	computeDropWrites,
+	computeHorizonWrites,
+	computeScheduleWrites,
+	computeStateWrites,
+	ItemWrite,
+	SchedulePlan,
+} from '../domain/writePlan';
 import { todayStamp } from '../domain/noteFields';
+import { ScaleId, scaleFor } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
-import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
+import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi, syncShelfToggle } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
-import { renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
+import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
+import { syncShelfFit } from './render/roadmap';
+import { uniqueElementId } from './selection';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
+import { WriteOutcome } from '../storage/frontmatter';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 
@@ -56,7 +73,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
 	/** What the scroller last drew and where today sat — see `restoreScroll`. */
-	private scroll: ScrollAnchor = { content: '', todayLeft: null };
+	private scroll: ScrollAnchor = { content: '', todayLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -79,6 +96,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	/** Guards the one re-render a changed fit may ask for, so it cannot recurse. */
 	private refitting = false;
+	/** Null until the reader presses: the pane's width decides until then. */
+	private shelfOpenFlag: boolean | null = null;
+	/** Fixed for the life of this view — see `BacklogViewHost.shelfId`. */
+	readonly shelfId = uniqueElementId('pbl-shelf');
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -163,10 +184,47 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.render();
 	}
 
+	get zoom(): ScaleId {
+		return scaleFor(this.collapse.zoomPick()).id;
+	}
+
+	setZoom(id: ScaleId): void {
+		if (id === this.zoom) return;
+		this.collapse.setZoom(id);
+		// UI state like the mode and the axis pick: no config was set, so no Bases
+		// refresh is coming and this render is the change.
+		this.render();
+	}
+
+	jumpToToday(): void {
+		const roadmap = this.roadmap;
+		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
+		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth);
+	}
+
+	get shelfOpen(): boolean | null {
+		return this.shelfOpenFlag;
+	}
+
+	setShelfOpen(open: boolean): void {
+		this.shelfOpenFlag = open;
+		// No render: the cards are already in the DOM and a class decides whether they
+		// show, which is the whole reason this measure needs no second pass.
+		syncShelfFit(this, this.treeEl);
+		syncShelfToggle(this, this.toolbarEl);
+	}
+
 	/** Re-measure after a resize, and rebuild only if a column came or went. */
 	private onResize(): void {
-		// Board columns and the timeline scroll horizontally instead of dropping
-		// columns; the fit ladder is the tree's.
+		// The COLUMN ladder is the tree's — board columns and the timeline scroll
+		// rather than dropping columns — and that reason stays true. What is new is
+		// that the roadmap has a measured question of its own: the shelf's fit, which
+		// needs no second render pass because its cards are already in the DOM.
+		if (this.projection === 'roadmap') {
+			syncShelfFit(this, this.treeEl);
+			syncShelfToggle(this, this.toolbarEl);
+			return;
+		}
 		if (this.projection !== 'tree') return;
 		if (this.refit()) this.renderTreeContent();
 	}
@@ -398,6 +456,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const projection = this.projection;
 		this.viewEl.toggleClass('pbl-board-mode', projection === 'board');
 		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
+		this.viewEl.toggleClass(
+			'pbl-roadmap-dates',
+			projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates',
+		);
 		// The keyboard instructions belong to the board and are rebuilt with it below;
 		// dropped here so the attribute never outlives the element it points at — a
 		// dangling `aria-describedby` is read as no description at all.
@@ -408,8 +470,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Collapse controls and drag grips are inert while a filter is active.
 		this.viewEl.toggleClass('pbl-filtering', this.isFiltering());
 
-		const scrollTop = this.treeEl.scrollTop;
-		const scrollLeft = this.treeEl.scrollLeft;
+		// Captured from the OLD frame, before its DOM goes: on the dated axis the pane
+		// is not the scroll box, and reading it here would capture zeros.
+		this.scroll = captureScroll(this.treeEl, this.roadmap, this.scroll);
 		this.treeEl.empty();
 		this.rowEls.clear();
 		if (projection !== 'tree') {
@@ -431,7 +494,15 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Both offsets belong to the content that made them — restored, corrected,
 		// reset or replaced by the anchor policy `restoreScroll` states beside the
 		// fork that decides what was drawn.
-		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection, { top: scrollTop, left: scrollLeft });
+		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
+		// The roadmap's own measured question, gated inside `syncShelfFit` to the dated
+		// axis with a live shelf — harmless to call for the tree and the board, which
+		// carry no roadmap snapshot for it to act on. Run before the resync below: a
+		// compaction that just clamped the selection must land before the selection is
+		// re-applied to the DOM, or a released path would still point `aria-activedescendant`
+		// at a card the class-only collapse just hid.
+		syncShelfFit(this, this.treeEl);
+		syncShelfToggle(this, this.toolbarEl);
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
 		if (projection !== 'tree') return;
@@ -467,7 +538,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	private async applyCardMove(item: BacklogItem, writes: ItemWrite[], say: () => void): Promise<boolean> {
 		if (writes.length === 0) return false;
-		if (!(await this.applyMove(item, writes))) return false;
+		const outcome = await this.applyMove(item, writes);
+		if (outcome === null || !outcome.changed) return false;
 		say();
 		return true;
 	}
@@ -490,6 +562,52 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		);
 	}
 
+	async performScheduleMove(
+		item: BacklogItem,
+		plan: SchedulePlan,
+		from?: Partial<Record<PlacementEnd, string | null>>,
+		ends?: PlacementEnd[],
+	): Promise<boolean> {
+		// Both expectations ride through untouched: what a relative gesture measured
+		// against, and the placement shape it was planned under. Neither can be recomputed
+		// here — deriving `ends` from the item this method was handed asks the CURRENT
+		// type, which is the very thing the writer is meant to catch having changed. A
+		// PBI that became a Milestone mid-hold would narrow a two-ended slide to a
+		// target-only write and apply it; the reverse would make a marker's slide arrive
+		// looking like an ordinary end-grip write. The caller that has no captured shape —
+		// the modal, the menu — passes none and gets the item's own, which is right for a
+		// gesture that was planned against it a moment ago.
+		const writes = computeScheduleWrites(item, plan, ends ?? placementEnds(item.typeName), from);
+		if (writes.length === 0) return false;
+		const outcome = await this.applyMove(item, writes);
+		// Not "did the call return" but "did the note change": the planner now hands the
+		// gate a non-empty batch for a re-confirmed date, and `runExclusively` reports
+		// success for anything that completed. Announcing on that would tell a
+		// screen-reader user about a move that did not happen.
+		if (outcome === null || !outcome.changed || outcome.dates === null) return false;
+		// The placement is asked of `placeItem` — the function that decides what draws —
+		// with the ends the WRITER saw rather than the ones the model holds. Reading a
+		// rebuilt model here would be a race: the refresh is Obsidian re-running the
+		// query, not something this await orders, so the row could be either side of the
+		// write depending on timing.
+		//
+		// What that buys is exact for the note's OWN ends, and only those. A span
+		// `inferSpan` fills from descendants still rests on `item.descendantStart` /
+		// `descendantTarget`, which are model-time: a child whose dates another editor
+		// changed since this model was built would be announced at its old span while the
+		// next render draws the new one. That is not fixable here — re-resolving from the
+		// model is the race above, and the writer opens only the files in its own batch,
+		// so no fresher descendant evidence exists at this point. The narrow claim is
+		// therefore what is stated: the dates this write landed are the writer's, and an
+		// inherited end is as current as the last refresh.
+		const spoken = placementEnds(item.typeName);
+		// `outcome.dates.after` is already the tri-state the writer read back — passing
+		// it straight through is what lets an untouched end's own invalid value survive
+		// into the placement, rather than a wrapper laundering it into absence.
+		announceScheduleMove(item.title, outcome.dates, placeItem(item, outcome.dates.after), spoken);
+		return true;
+	}
+
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
 		// Dropping into a collapsed parent reveals where the item landed.
 		if (target.parent) this.setCollapsed(target.parent.file.path, false);
@@ -499,17 +617,20 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/**
 	 * Apply a move and mark its row pending until the Bases refresh re-renders it in
 	 * place. Both projections move items, so both need the same holding signal —
-	 * cleared only on failure, because success is followed by the row's replacement.
+	 * cleared on refusal AND on a batch that changed nothing, because only a real
+	 * change brings the refresh that would replace the row: a stale Unschedule of
+	 * dates another editor already removed, or a batch the shape or baseline check
+	 * refuses, would otherwise leave the card looking permanently in flight.
 	 */
-	private async applyMove(item: BacklogItem, writes: ItemWrite[]): Promise<boolean> {
+	private async applyMove(item: BacklogItem, writes: ItemWrite[]): Promise<WriteOutcome | null> {
 		const row = this.rowElFor(item);
 		row?.classList.add('pbl-pending');
 		const applied = await this.applySafely(writes);
-		if (!applied) row?.classList.remove('pbl-pending');
+		if (applied === null || !applied.changed) row?.classList.remove('pbl-pending');
 		return applied;
 	}
 
-	applySafely(writes: ItemWrite[]): Promise<boolean> {
+	applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null> {
 		return this.gate.applySafely(writes);
 	}
 

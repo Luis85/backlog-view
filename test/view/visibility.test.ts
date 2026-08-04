@@ -175,4 +175,14 @@ describe('hierarchy scope', () => {
 		const { containerEl } = makeView(new FakeVault());
 		expect(containerEl.querySelector('.pbl-empty-hint')?.textContent).toContain("Point this base's filter");
 	});
+
+	it('pluralizes the scope hint for more than one ignored note', () => {
+		const vault = new FakeVault();
+		vault.addFile('Backlog/Sprint notes.md');
+		vault.addFile('Backlog/Retro notes.md');
+		const { containerEl } = makeView(vault);
+
+		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(hint).toContain('2 notes in this base have no supported type and no parent, so they are not treated as backlog items');
+	});
 });

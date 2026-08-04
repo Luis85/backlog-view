@@ -131,7 +131,7 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	const writes = computeInitWrites(model, host.settings);
 	// applySafely reports its own notices when blocked or failing — only claim
 	// success for the writes when the whole batch actually went through.
-	const applied = writes.length > 0 && (await host.applySafely(writes));
+	const applied = writes.length > 0 && (await host.applySafely(writes)) !== null;
 	const done: string[] = [];
 	if (adopted.length > 0) done.push(`set up ${adopted.map((property) => property.suggested).join(', ')}`);
 	if (applied) done.push(`updated ${writes.length} item${writes.length === 1 ? '' : 's'}`);

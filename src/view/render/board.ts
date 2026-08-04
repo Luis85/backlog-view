@@ -120,7 +120,7 @@ function renderColumn(
 	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd, carded);
 	// What a drop on this column MEANS is the board's; the controller only resolves
 	// the card that was dragged and hands it here.
-	dnd.wireDropTarget(colEl, (item) => void ctx.host.performBoardMove(item, col.state));
+	dnd.wireDropTarget(colEl, (source) => void ctx.host.performBoardMove(source.item, col.state));
 	dnd.wireScroller(cardsEl);
 	return colEl;
 }

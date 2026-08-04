@@ -2,76 +2,127 @@ import { setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderTitleText } from './rows';
+import { CardDragController } from '../interactions/cardDrag';
 import { BacklogItem } from '../../domain/model';
-import { TimelineBar } from '../../domain/roadmap';
+import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
 import {
 	BarGeometry,
 	barGeometry,
-	DAY_PX,
 	daysBetween,
 	formatCivil,
+	MIN_BAR_PX,
+	timelineCells,
 	timelineWindow,
+	TimelineScale,
 	TimelineWindow,
 } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
 /**
- * The dated axis: a month grid at its true day lengths, one row per placed
- * result, a bar per row stating exactly the dates the note states, and the today
- * line — the one thing on the grid that is the reader's own. Fixed month scale
- * for now; the discrete zooms and jump-to-today are the timeline feature's work.
+ * The dated axis: a grid of the active scale's cells at their true day lengths, one row
+ * per placed result, a bar per row stating exactly the dates the note states, and the
+ * today line — the one thing on the grid that is the reader's own.
+ *
+ * Everything positional is a length in DAYS multiplied by `scale.dayPx`; the two lengths
+ * that are pixels — the bar floor and the sub-day nudge — do not scale, and keeping those
+ * apart is the whole of what a zoom control gets wrong. The picker that chooses the scale
+ * and the control that returns to today are the toolbar's.
  */
 
-/** Width of the sticky lead column naming each row. Published to CSS below. */
-const TIMELINE_LEAD_PX = 220;
+/**
+ * Width of the sticky lead column naming each row. Published to CSS below, and
+ * exported for `jumpToToday`'s centring math — the visible band it centres today in
+ * is the scroller's width minus this column, which covers the same pixels at every
+ * scroll position.
+ */
+export const TIMELINE_LEAD_PX = 220;
 
-/** What the timeline pass hands back: the rows in reading order, and where today sits. */
+/** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {
 	cards: BacklogItem[];
 	/** Pixel offset of the today line from the grid's left edge. */
 	todayLeft: number;
+	/** The element that scrolls — both axes, on this projection. */
+	scroller: HTMLElement;
+	/** The positioned layer inside it; full-height marks and the overlay live here. */
+	content: HTMLElement;
+	/** The window the grid drew, for the drag's px↔date and for the zoom anchor. */
+	window: TimelineWindow;
+	/** The one drop target spanning the day area — see `renderTimeline`'s own comment. */
+	overlay: HTMLElement;
+}
+
+/** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
+export interface TimelineDrawing {
+	today: CivilDate;
+	scale: TimelineScale;
+	/** The controller every bar's grips are wired through — the same one the shelf uses. */
+	dnd: CardDragController;
 }
 
 export function renderTimeline(
 	ctx: RowContext,
 	containerEl: HTMLElement,
 	bars: TimelineBar[],
-	today: CivilDate,
+	drawing: TimelineDrawing,
 ): TimelineRender {
+	const { today, scale, dnd } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
+	// TWO elements, not one. The scroll box is the outer one; the positioned layer is
+	// the inner. Full-height marks — the today line, the milestone lines, and the drop
+	// overlay that joins them — resolve `top: 0; bottom: 0` against their containing
+	// block's PADDING box, which for a scroll container is its visible height rather
+	// than its content height. Making the scroll box the containing block would make
+	// every one of them viewport-tall and scroll away, leaving the lower rows crossed by
+	// nothing. A line that stops partway down is worse than no line: it says the plan
+	// divides there.
 	const grid = containerEl.createDiv({ cls: 'pbl-timeline' });
-	grid.setCssProps({
+	const content = grid.createDiv({ cls: 'pbl-timeline-content' });
+	content.setCssProps({
 		'--pbl-tl-lead': `${TIMELINE_LEAD_PX}px`,
-		'--pbl-tl-days': `${window.days * DAY_PX}px`,
+		'--pbl-tl-days': `${window.days * scale.dayPx}px`,
+		// The stylesheet stops hard-coding 2px: the width is the scale's, because
+		// `dayPx >= 2 * lineWidth` is what lets today's line and a coincident
+		// milestone's both draw inside one day instead of one erasing the other.
+		'--pbl-tl-line': `${scale.lineWidth}px`,
 	});
-	const headerTrack = renderMonthHeader(grid, window);
+	const headerTrack = renderCellHeader(content, window, scale);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
-	renderMilestoneLines(grid, headerTrack, window, bars, today);
-	for (const bar of bars) renderBarRow(ctx, grid, window, bar);
-	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today);
-	const line = grid.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
+	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
+	const mounts: BarRowMounts = { content, scroller: grid, dnd };
+	for (const bar of bars) renderBarRow(ctx, mounts, window, bar, scale);
+	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
+	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
-	return { cards: bars.map((bar) => bar.item), todayLeft };
+	// One overlay over the day area, spanning the full height of the CONTENT (which is
+	// at least the scrollport, so the blank grid below the last row — the state every
+	// fresh backlog starts in — is a drop target too). Positioned past the sticky lead
+	// column in CSS, so the exclusion the pointer conversion depends on is structural
+	// rather than a constant kept in step with the stylesheet.
+	//
+	// It takes pointer events only while a drag is LIVE, so it never sits between the
+	// reader and a bar's grips: the empty shelf's own trick — in the DOM so a drop has
+	// somewhere to land, out of the way until a drag needs it — reached by a second
+	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
+	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
+	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay };
 }
 
 /** Presentational, like the tree's column header: every row carries its own dates. */
-function renderMonthHeader(grid: HTMLElement, window: TimelineWindow): HTMLElement {
+function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
 	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-timeline-lead' });
 	const track = header.createDiv({ cls: 'pbl-timeline-track' });
-	for (const month of window.months) {
-		const cell = track.createDiv({ cls: 'pbl-timeline-month', text: month.label });
-		cell.setCssProps({ '--pbl-month-w': `${month.days * DAY_PX}px` });
+	for (const cell of timelineCells(window, scale)) {
+		const cellEl = track.createDiv({ cls: 'pbl-timeline-cell', text: cell.label });
+		cellEl.setCssProps({ '--pbl-cell-w': `${cell.days * scale.dayPx}px` });
 	}
 	return track;
 }
-
-/** How far a milestone's line steps aside for today's, inside the same day cell. */
-const TODAY_NUDGE_PX = 2;
 
 /**
  * A line down the whole plan per milestone DATE, behind the bars — a diamond says *when*,
@@ -86,12 +137,13 @@ const TODAY_NUDGE_PX = 2;
  * decoration of a row, and every fact it shows is in that row's accessible name.
  */
 function renderMilestoneLines(
-	grid: HTMLElement,
-	headerTrack: HTMLElement,
+	mounts: { grid: HTMLElement; headerTrack: HTMLElement },
 	window: TimelineWindow,
 	bars: TimelineBar[],
 	today: CivilDate,
+	scale: TimelineScale,
 ): void {
+	const { grid, headerTrack } = mounts;
 	// Insertion order is bar order, which is row order — so a shared line names its
 	// milestones the way the rows read.
 	const byDay = new Map<number, string[]>();
@@ -107,9 +159,13 @@ function renderMilestoneLines(
 		// that is the reader's own, and no plan may hide *now*. The milestone's line is
 		// what gives way, drawn beside it inside the same day cell — room the grid has,
 		// since a day is wider than either mark.
-		const nudge = day === todayDay ? TODAY_NUDGE_PX : 0;
+		// A sub-day offset, so it is the SCALE's line width and never a constant: two
+		// fixed pixels at two pixels per day is a whole day's displacement, putting the
+		// line and its label in the day after the one they belong to. `dayPx >= 2 *
+		// lineWidth` is what guarantees the step still fits inside the day it steps in.
+		const nudge = day === todayDay ? scale.lineWidth : 0;
 		const line = grid.createDiv({ cls: 'pbl-milestone-line', attr: { 'aria-hidden': 'true' } });
-		line.setCssProps({ '--pbl-milestone-left': `${TIMELINE_LEAD_PX + day * DAY_PX + nudge}px` });
+		line.setCssProps({ '--pbl-milestone-left': `${TIMELINE_LEAD_PX + day * scale.dayPx + nudge}px` });
 		// The label sits in the header band, where the month header already is, and the
 		// full name stays in the tooltip: horizontal space is the scarce resource in an
 		// Obsidian pane, so the line survives the narrowing and the text is what gives way.
@@ -117,13 +173,27 @@ function renderMilestoneLines(
 		// includes the sticky lead column, and the label inside the track, which does not.
 		const label = names.join(' · ');
 		const labelEl = headerTrack.createDiv({ cls: 'pbl-milestone-label', text: label });
-		labelEl.setCssProps({ '--pbl-milestone-left': `${day * DAY_PX + nudge}px` });
+		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
 	}
 }
 
-function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow, bar: TimelineBar): void {
-	const row = createCard(ctx, grid, bar.item);
+/** Where a bar's grips land and how they are wired — grouped to stay under max-params. */
+interface BarRowMounts {
+	content: HTMLElement;
+	/** The element that actually scrolls, for a grip's own pan baseline. */
+	scroller: HTMLElement;
+	dnd: CardDragController;
+}
+
+function renderBarRow(
+	ctx: RowContext,
+	mounts: BarRowMounts,
+	window: TimelineWindow,
+	bar: TimelineBar,
+	scale: TimelineScale,
+): void {
+	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderBadge(ctx.host, lead, bar.item);
@@ -133,14 +203,25 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	const geometry = barGeometry(window, bar.span);
-	const el = track.createDiv({ cls: barClasses(bar, geometry) });
+	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
+	// the loop that actually wires one — so what the cursor promises and what a drop
+	// registers cannot disagree. The body hold IS the bar; the grips are its two edges.
+	const holds = barHolds(bar.item, ctx.host.settings, bar);
+	const el = track.createDiv({ cls: barClasses(bar, geometry, holds.includes('body')) });
 	el.setCssProps({
-		'--pbl-bar-left': `${geometry.startDay * DAY_PX}px`,
-		'--pbl-bar-width': `${Math.max(geometry.spanDays * DAY_PX, DAY_PX)}px`,
+		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
+		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
 	});
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
+	for (const hold of holds) {
+		const grip = hold === 'body' ? el : el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
+		grip.dataset.pblHold = hold;
+		// The scroller's offset at drag start rides the payload, for the delta a hold
+		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
+		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
+	}
 	// The row is the timeline's one selection stop, so a MARKER'S row is where the
 	// line and the diamond's facts have to be readable (criterion 4a: neither is
 	// focusable, so nothing about a milestone may exist only under a hover). An
@@ -166,8 +247,16 @@ function renderBarRow(ctx: RowContext, grid: HTMLElement, window: TimelineWindow
  * ponytail: one class covers "inferred" and "inferred, some children undated" —
  * an inferred end is uncertain by construction. Split them when someone can
  * describe the two pixels apart.
+ *
+ * `hasBodyHold` is asked of `barHolds`, never re-derived here: a fully inferred bar,
+ * a half-inferred one, and a marker with no writable target all withhold the body
+ * hold, and a class computed independently from geometry alone would drift from
+ * that list the moment a fourth case joined it. The class is what lets the
+ * stylesheet scope the grab cursor to a bar that actually registers a drag —
+ * `pbl-bar` alone would advertise a hold on every one of those.
  */
-function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
+function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolean): string {
+	const holdable = hasBodyHold ? ' pbl-bar-holdable' : '';
 	// Nothing of it is in view. Drawing the clamp would put a diamond at a date the item
 	// does not have, and a diamond IS the claim that this is the date — so the row carries
 	// only the direction it lies past, in the same open-end vocabulary a clipped bar uses.
@@ -177,17 +266,18 @@ function barClasses(bar: TimelineBar, geometry: BarGeometry): string {
 		// past the edge is still inferred, not a date the note stated, so the class
 		// that says so travels with it into this branch too.
 		const inferred = bar.inferredStart || bar.inferredEnd ? ' pbl-bar-inferred' : '';
-		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}${inferred}`;
+		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}${inferred}${holdable}`;
 	}
 	let cls = 'pbl-bar';
 	if (geometry.milestone) cls += ' pbl-bar-milestone';
 	if (bar.span.start === null || geometry.clippedStart) cls += ' pbl-bar-open-start';
 	if (bar.span.target === null || geometry.clippedEnd) cls += ' pbl-bar-open-end';
 	if (bar.inferredStart || bar.inferredEnd) cls += ' pbl-bar-inferred';
-	return cls;
+	return cls + holdable;
 }
 
-function spanText(bar: TimelineBar): string {
+/** One sentence about a span, said identically on the grid and in the drop ghost. */
+export function spanText(bar: TimelineBar): string {
 	const span = bar.span;
 	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
 	if (span.start !== null && span.target !== null) {
@@ -199,7 +289,7 @@ function spanText(bar: TimelineBar): string {
 	return `Target ${formatCivil(span.target as CivilDate)}, start not set${inferred}`;
 }
 
-function todayOffset(window: TimelineWindow, today: CivilDate): number {
+function todayOffset(window: TimelineWindow, today: CivilDate, scale: TimelineScale): number {
 	const days = Math.min(Math.max(daysBetween(window.start, today), 0), window.days - 1);
-	return days * DAY_PX;
+	return days * scale.dayPx;
 }

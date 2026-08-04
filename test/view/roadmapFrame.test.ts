@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
+import { makeView, refresh, useViewHarness } from '../helpers/view';
 import {
 	barFor,
 	barOf,
@@ -11,14 +11,16 @@ import {
 	bucketCountOf,
 	bucketNames,
 	bucketsOf,
-	labelTexts,
+	cellLabels,
 	rowFor,
 	shelfCountOf,
+	shelfHeavyVault,
 	shelfIsEmptyStrip,
 	shelfOf,
 	shelfTitles,
 	timelineRows,
 } from '../helpers/roadmap';
+import { daysBetween, scaleFor } from '../../src/domain/timeline';
 
 useViewHarness();
 
@@ -30,6 +32,24 @@ const TODAY_ISO = todayStamp();
 function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { base?: string } = {}) {
 	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
 	harness.view.setProjection('roadmap');
+	return harness;
+}
+
+/** The dated axis alone, at its default zoom — the fixture the density tests share. */
+function datedRoadmap(vault: FakeVault) {
+	return roadmapView(vault, { ...DATES });
+}
+
+/**
+ * Both axes configured, opened on dates explicitly — the fixture for a genuine axis
+ * switch. `datedRoadmap` alone cannot exercise one: with only the dated axis
+ * configured, picking 'horizons' resolves back to 'dates' (`activeAxis`'s "a
+ * configured axis always beats guidance"), so nothing about the drawn content
+ * actually changes.
+ */
+function datedAndHorizonRoadmap(vault: FakeVault) {
+	const harness = roadmapView(vault, { ...DATES, horizonProperty: 'note.horizon' });
+	harness.view.setAxisPick('dates');
 	return harness;
 }
 
@@ -78,7 +98,7 @@ describe('the dated frame', () => {
 		expect(barOf(rows[1]).getAttribute('aria-label')).toBe('Starts 2026-08-05, target not set');
 		expect(barOf(rows[2]).hasClass('pbl-bar-milestone')).toBe(true);
 		expect(containerEl.querySelector('.pbl-today')).not.toBeNull();
-		expect(containerEl.querySelectorAll('.pbl-timeline-month').length).toBeGreaterThan(0);
+		expect(containerEl.querySelectorAll('.pbl-timeline-cell').length).toBeGreaterThan(0);
 	});
 
 	it('leaves an ordinary row’s accessible name to its content — badge and title, not overridden', () => {
@@ -221,128 +241,6 @@ describe('the dated frame', () => {
 	});
 });
 
-describe('a marker on the dated axis', () => {
-	it('draws no diamond for a milestone past the window edge, only the direction it lies past', () => {
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2200-01-01' } });
-		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-09-01' } });
-		const { containerEl } = roadmapView(vault, { ...DATES });
-
-		const bar = barFor(containerEl, 'Ship 1.0');
-		expect(bar.classList.contains('pbl-bar-milestone')).toBe(false);
-		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
-		expect(bar.classList.contains('pbl-bar-open-end')).toBe(true);
-		// The exact date is never lost — it stays where the row's accessible name puts it.
-		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toContain('2200-01-01');
-	});
-
-	it('puts the milestone’s name and exact date in its row’s accessible name', () => {
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
-		const { containerEl } = roadmapView(vault, { ...DATES });
-
-		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
-	});
-});
-
-describe('milestone lines', () => {
-	it('draws one line per readable milestone inside the window, each with a row of its own', () => {
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
-		vault.addFile('A story.md', {
-			frontmatter: { type: 'PBI', order: 20, start: '2026-09-01', due: '2026-10-01' },
-		});
-		const { containerEl } = roadmapView(vault, { ...DATES });
-
-		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(1);
-		// Every line has a row: no milestone is visible only as a line.
-		expect(rowFor(containerEl, 'Ship 1.0')).not.toBeNull();
-		expect(labelTexts(containerEl)).toEqual(['Ship 1.0']);
-	});
-
-	it('carries the full name in the label’s tooltip — the truncated label can be hovered', () => {
-		// The label is CSS-truncated (`max-width: 140px`) and the full name is promised
-		// "one hover away", which only means something if the label can actually receive
-		// a hover — `pointer-events: none` would make it a dead spot no pointer ever
-		// reaches. jsdom does not run layout or hit-testing, so this checks the one thing
-		// it can: the tooltip data the hover is meant to surface is really there.
-		const vault = new FakeVault();
-		vault.addFile('Ship a very long milestone title that will not fit.md', {
-			frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' },
-		});
-		const { containerEl } = roadmapView(vault, { ...DATES });
-
-		const label = containerEl.querySelector<HTMLElement>('.pbl-milestone-label');
-		expect(label?.dataset.tooltip).toBe('Ship a very long milestone title that will not fit');
-	});
-
-	it('draws one line naming both when two milestones share a date', () => {
-		// Two lines a pixel apart read as one and quietly misreport the count.
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
-		vault.addFile('Contract ends.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-12-01' } });
-		const { containerEl } = roadmapView(vault, { ...DATES });
-
-		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(1);
-		expect(labelTexts(containerEl)).toEqual(['Ship 1.0 · Contract ends']);
-	});
-
-	it('draws no line for a milestone outside the window, and none for a context row', () => {
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2200-01-01' } });
-		vault.addFile('Excluded.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-12-01' } });
-		vault.addFile('Result.md', {
-			frontmatter: { type: 'Epic', order: 30, due: '2026-09-01' },
-			parentLink: 'Excluded',
-		});
-		const { view, containerEl } = roadmapView(vault, { ...DATES });
-
-		// A line across every result is derived FROM the results, and a context row is
-		// never a source of one: exclude 'Excluded' from the base's own results — its
-		// explicit parent link on Result pulls it back in as context, not a result.
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries().filter((e) => e.file.path !== 'Excluded.md'),
-		};
-		view.onDataUpdated();
-
-		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
-	});
-
-	it('draws a milestone dated today beside the today line, with today keeping its pixel', () => {
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: TODAY_ISO } });
-		const { containerEl } = roadmapView(vault, { ...DATES });
-
-		const px = (sel: string, prop: string) =>
-			Number.parseFloat(containerEl.querySelector<HTMLElement>(sel)?.style.getPropertyValue(prop) ?? '');
-		expect(px('.pbl-milestone-line', '--pbl-milestone-left')).toBe(px('.pbl-today', '--pbl-today-left') + 2);
-		expect(containerEl.querySelectorAll('.pbl-today')).toHaveLength(1);
-	});
-
-	it('hides a line exactly when its row hides', () => {
-		// The visibility rule travels with the item, not with the projection.
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', {
-			frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01', status: 'Done' },
-		});
-		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', showCompleted: false });
-
-		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
-		expect(rowFor(containerEl, 'Ship 1.0')).toBeNull();
-	});
-
-	it('makes neither the line nor its label a second selection stop', () => {
-		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
-		const { containerEl } = roadmapView(vault, { ...DATES });
-
-		const line = containerEl.querySelector<HTMLElement>('.pbl-milestone-line');
-		expect(line?.getAttribute('aria-hidden')).toBe('true');
-		expect(line?.hasAttribute('tabindex')).toBe(false);
-		expect(containerEl.querySelector('.pbl-milestone-label')?.closest('[role="option"]')).toBeNull();
-	});
-});
-
 describe('the unplaced shelf', () => {
 	it('keeps sibling order and names its count', () => {
 		const vault = new FakeVault();
@@ -366,14 +264,15 @@ describe('the unplaced shelf', () => {
 		expect(shelfIsEmptyStrip(containerEl)).toBe(true);
 	});
 
-	it('is absent on the dated axis until something shelves — no write means no target', () => {
+	it('stays in the DOM on the dated axis too, empty or not — a held bar can un-place onto it', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		// Scheduling by drag is its own feature; an empty strip promising a drop the
-		// timeline cannot write would be the projection making an offer it cannot keep.
-		expect(shelfOf(containerEl)).toBeNull();
+		// Nothing is shelved, but the strip is still the target a held bar's body drop
+		// reaches to un-place its dates — out of the layout until a drag is live, the
+		// same rule the horizon axis's empty shelf already followed.
+		expect(shelfIsEmptyStrip(containerEl)).toBe(true);
 	});
 
 	it('narrows with "Show completed items" exactly as the rest of the view does', () => {
@@ -456,6 +355,128 @@ describe('context rows on the roadmap', () => {
 
 		expect(timelineRows(containerEl)).toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-roadmap-context .pbl-card-title')?.textContent).toBe('Epic');
-		expect(shelfOf(containerEl)).toBeNull();
+		// Nothing else on this row set is a result, so the shelf renders empty rather
+		// than absent — the dated axis's shelf is a real target regardless.
+		expect(shelfIsEmptyStrip(containerEl)).toBe(true);
+	});
+});
+
+describe('the grid at each density', () => {
+	it('draws a stated plan at least MIN_BAR_PX wide, even at the sparsest zoom', () => {
+		// A one-day bar at quarter zoom is one pixel: a stated plan rendered as an
+		// invisible one. The floor is its own constant precisely because it is a length
+		// in PIXELS and must not scale with the zoom.
+		const vault = new FakeVault();
+		vault.addFile('One day.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-04' } });
+		const { view, containerEl } = datedRoadmap(vault);
+		view.setZoom('quarter');
+
+		const bar = barFor(containerEl, 'One day');
+		expect(parseFloat(bar.style.getPropertyValue('--pbl-bar-width'))).toBeGreaterThanOrEqual(4);
+	});
+
+	it('keeps a milestone’s line inside its own day at every zoom', () => {
+		// The nudge is a sub-day offset. At quarter zoom a fixed two pixels is a two-day
+		// displacement, putting the line and its label in the wrong day — and the day
+		// is exactly wide enough for both marks because `dayPx >= 2 * lineWidth`.
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, due: TODAY_ISO } });
+		const { view, containerEl } = datedRoadmap(vault);
+
+		for (const zoom of ['week', 'month', 'quarter'] as const) {
+			view.setZoom(zoom);
+			const line = containerEl.querySelector<HTMLElement>('.pbl-milestone-line');
+			const today = containerEl.querySelector<HTMLElement>('.pbl-today');
+			const nudged = parseFloat(line?.style.getPropertyValue('--pbl-milestone-left') ?? '0');
+			const todayLeft = parseFloat(today?.style.getPropertyValue('--pbl-today-left') ?? '0');
+			const dayPx = scaleFor(zoom).dayPx;
+			expect(nudged - todayLeft, `${zoom} nudge`).toBeGreaterThan(0);
+			expect(nudged - todayLeft, `${zoom} nudge`).toBeLessThan(dayPx);
+		}
+	});
+
+	it('names its header cells by the active scale’s unit', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-20' } });
+		const { view, containerEl } = datedRoadmap(vault);
+
+		view.setZoom('quarter');
+		expect(cellLabels(containerEl).some((label) => /^Q[1-4] \d{4}$/.test(label))).toBe(true);
+		view.setZoom('month');
+		expect(cellLabels(containerEl)).toContain('Aug 2026');
+	});
+});
+
+describe('the dated frame’s scroll boxes', () => {
+	it('keeps each band’s place by WHICH BAND IT IS, never by its position', () => {
+		// The bands are conditional — the context strip renders only with context rows,
+		// the advisory only when no cards do — so a filter can change which bands exist
+		// between two renders, and a positional pairing would restore the context
+		// strip's offset onto the advisory and open it scrolled past its own heading.
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedRoadmap(vault);
+		const shelfEl = shelfOf(containerEl);
+		if (!shelfEl) throw new Error('no shelf');
+		shelfEl.scrollTop = 120;
+
+		refresh(view, vault);
+
+		expect(shelfOf(containerEl)?.scrollTop).toBe(120);
+	});
+
+	it('starts a band that has just appeared at the top', () => {
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedAndHorizonRoadmap(vault);
+		shelfOf(containerEl)!.scrollTop = 120;
+		view.setAxisPick('horizons');
+		view.setAxisPick('dates');
+		// Different drawn content — the roadmap's two axes are different content on one
+		// frame — so every band starts at the top rather than inheriting the other
+		// axis's shelf offset.
+		expect(shelfOf(containerEl)?.scrollTop).toBe(0);
+	});
+
+	it('captures the offsets from the OLD scroller, before the DOM goes', () => {
+		// `renderTreeContent` reads `treeEl.scrollTop/scrollLeft` just before
+		// `treeEl.empty()` — the PANE, which on this axis no longer scrolls. Restoring
+		// those would silently discard the reader's pan and jump back to today on every
+		// refresh. Capture and restore are one decision about which element the scroll
+		// box is, and they have to name the same one.
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedRoadmap(vault);
+		const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
+		scroller!.scrollLeft = 900;
+
+		refresh(view, vault);
+
+		expect(containerEl.querySelector<HTMLElement>('.pbl-timeline')?.scrollLeft).toBe(900);
+	});
+});
+
+describe('preserving a place across a zoom change', () => {
+	it('reopens at the same DATE, not the same pixel count', () => {
+		// A zoom redefines what a pixel is worth: a day a hundred days out sits 400px
+		// away at month zoom and 200px at quarter. `restoreScroll`'s existing
+		// `saved + (newTodayLeft - oldTodayLeft)` correction cannot see it — it corrects
+		// for the window moving, not for the ruler changing. Driven while PANNED AWAY
+		// from today, since at today the two rules agree and the bug is invisible.
+		const vault = shelfHeavyVault();
+		const { view, containerEl } = datedRoadmap(vault);
+		const scroller = () => containerEl.querySelector<HTMLElement>('.pbl-timeline')!;
+		const window = view.roadmap?.window;
+		if (!window) throw new Error('no window');
+		const monthPx = scaleFor('month').dayPx;
+		// Day 100 of the window at the scrollport's edge. `scrollLeft` is the day-track
+		// offset of the first VISIBLE day: the lead is sticky, so it covers the track
+		// rather than displacing it. Asserted against a pixel offset computed here from
+		// first principles rather than by calling the production conversion on both
+		// sides — a test that reuses the instrument passes whatever the instrument does.
+		scroller().scrollLeft = 100 * monthPx;
+
+		view.setZoom('quarter');
+
+		const after = view.roadmap?.window;
+		const day = daysBetween(after!.start, window.start) + 100;
+		expect(scroller().scrollLeft).toBe(day * scaleFor('quarter').dayPx);
 	});
 });

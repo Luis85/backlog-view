@@ -1718,9 +1718,18 @@ method.
 covers **vocabulary**: a bucket label the batch's own refresh may destroy is read up
 front, because the rebuilt roadmap cannot name a bucket that has gone with its last
 card. Dates are not vocabulary — they come back with the writer's verdict, from the
-live values it saw — and the resulting PLACEMENT comes from the rebuilt model, because
-by the time the write resolves the refresh has already run and what the row now is, is
-a fact rather than a forecast.
+live values it saw.
+
+**The PLACEMENT comes from that verdict too, not from the rebuilt model.** An earlier
+draft of this task read `this.model` after the await, on the reasoning that the batch's
+own refresh had already run. It has not, reliably: the refresh is Obsidian re-running
+the query, which this await does not order, so the row could be either side of the write
+depending on timing — and in the jsdom harness, where nothing re-runs a query at all, it
+is always the stale side. That is a race in the app and a broken test in the harness,
+from one assumption. So the ends handed to `placeItem` are the ones the writer saw, and
+the only thing it needs beyond them — the descendants a parent's inferred span is built
+from — is untouched by a write to this note's own keys. The null-placement case goes
+with it: there is no model lookup left to come back empty.
 
 - [ ] **Step 1: Write the failing tests**
 

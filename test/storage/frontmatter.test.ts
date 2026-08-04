@@ -142,6 +142,50 @@ describe('applyWrites', () => {
 		expect(vault.fm('Item.md')).toEqual({ order: 5, horizon: 'Next' });
 	});
 
+	it('writes a date-shaped horizon as the label it is, not as a date', async () => {
+		const vault = new FakeVault();
+		const planned = { ...settings, horizonKey: 'horizon' };
+		// A horizon is a user-typed label and `readDate` accepts a trailing group, so
+		// `2026-08-01 Planning` parses as a civil date with a suffix. Treated as one, the
+		// re-pick check below compares equal and skips the write, and the shape merge
+		// carries ` Planning` onto whatever replaces it. The axis fields share a writer,
+		// not a meaning.
+		const item = vault.addFile('Item.md', { frontmatter: { horizon: '2026-08-01 Planning' } });
+
+		await applyWrites(vault.app, planned, [{ file: item, axis: { horizon: '2026-08-01 Review' } }]);
+
+		expect(vault.fm('Item.md')).toEqual({ horizon: '2026-08-01 Review' });
+	});
+
+	it('reports what landed when a later write in the batch is refused', async () => {
+		const vault = new FakeVault();
+		const dated = { ...settings, startKey: 'start' };
+		const first = vault.addFile('First.md', { frontmatter: { start: '2026-08-01' } });
+		// The second write states a baseline the note does not hold, so the writer refuses
+		// it — but the first has already landed and emitted its inverse. Reporting
+		// `changed: false` there would tell the caller, and the announcement, that a
+		// change nobody can undo away did not happen.
+		const second = vault.addFile('Second.md', { frontmatter: { start: '2026-08-05' } });
+		const inverses: RestoreWrite[] = [];
+
+		const outcome = await applyWrites(
+			vault.app,
+			dated,
+			[
+				{ file: first, axis: { start: '2026-08-02', ends: ['start', 'target'] } },
+				{ file: second, axis: { start: '2026-08-09', ends: ['start', 'target'], from: { start: '2026-08-04' } } },
+			],
+			undefined,
+			(inv) => inverses.push(inv),
+		);
+
+		expect(outcome.changed).toBe(true);
+		expect(vault.fm('First.md')).toEqual({ start: '2026-08-02' });
+		expect(vault.fm('Second.md')).toEqual({ start: '2026-08-05' });
+		// And what landed is undoable, which is the whole reason it must be reported.
+		expect(inverses).toHaveLength(1);
+	});
+
 	it('carries a state and a horizon change in one write, each on its own key', async () => {
 		const vault = new FakeVault();
 		const both = { ...settings, stateKey: 'status', horizonKey: 'horizon' };

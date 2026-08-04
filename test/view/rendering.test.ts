@@ -156,6 +156,23 @@ describe('rendering', () => {
 		);
 	});
 
+	it('beats the pinned-band rule on specificity, so the dated axis really unpins them', () => {
+		// `.pbl-roadmap .pbl-shelf` etc. (specificity (0,2,0)) pin the shelf, context strip
+		// and advisory to the scrollport. On the dated axis that pin must NOT apply — the
+		// frame no longer scrolls sideways under them — but `.pbl-roadmap-dates .pbl-shelf`
+		// was ALSO (0,2,0), and equal specificity is decided by source order, where the
+		// pinning block comes later and wins outright: `position: sticky` and `width:
+		// 100cqw` shipped on the dated axis despite the comment beside them claiming
+		// otherwise. `.pbl-view` raises the dated block to a three-selector compound —
+		// (0,3,0) — which is what actually outranks the pin, by construction rather than
+		// by position in the file (jsdom does not compute a cascade winner, so that
+		// construction is the only thing decidable here).
+		for (const bit of ['.pbl-shelf', '.pbl-roadmap-context', '.pbl-board-advisory']) {
+			const unpinned = ruleAt(`.pbl-view.pbl-roadmap-dates ${bit}`, 'position: static;');
+			expect(unpinned, `${bit} needs a higher-specificity rule to unpin it on the dated axis`).toBeGreaterThan(-1);
+		}
+	});
+
 	it('lets pointer events through the milestone line, not through its label', () => {
 		// A timeline row sets no `position`, so it paints in the non-positioned layers
 		// while .pbl-milestone-line — absolute, with a z-index — paints above them.

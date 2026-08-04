@@ -386,6 +386,10 @@ for (const [name, note] of notes) {
 const historical = [];
 for (const file of files) {
 	const text = texts.get(file);
+	// Known limitation: `[^\]|#]` admits `\n`, so a `[[link]]` that Markdown hard-wraps
+	// across two lines is captured whole (with the newline inside it) and fails the stem
+	// lookup below. The workaround is to reword so the link never wraps; there is no
+	// detection for it, so a contributor who hits this sees only "unresolved wikilink".
 	for (const [, target] of withoutCode(text).matchAll(/\[\[([^\]|#]+)/g)) {
 		if (!stems.has(target.trim())) fail(file, `unresolved wikilink [[${target.trim()}]]`);
 	}

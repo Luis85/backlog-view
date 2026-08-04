@@ -114,7 +114,7 @@ dates contribute nothing, while the walk still traverses through it to the resul
 below — one walk, one statement of the invariant, and the span inherits it for free.
 `earliest`/`latest` live in `src/domain/timeline.ts` beside the rest of the civil-date
 arithmetic, as the pickers where a null end is never a bound. The endpoint-by-endpoint
-merge is `inferSpan` in `src/domain/roadmap.ts`, beside the shelving it shares a
+merge is `inferSpan` in `src/domain/bars.ts`, beside the shelving it shares a
 decision with: a stated date always wins, an empty end fills from evidence of its own
 kind, an inference may extend a statement but never contradict it (evidence on the
 wrong side of a stated end is dropped and that end stays open), crossed evidence covers
@@ -126,8 +126,9 @@ from children" in the bar's aria-label and tooltip.
 Driven in `test/domain/timeline.test.ts` (the date pickers),
 `test/domain/modelDateEvidence.test.ts` (the walk gathering `descendantStart`/
 `descendantTarget` by kind, never from the item itself), `test/domain/modelContextRows.test.ts`
-(the context-row exclusion), `test/domain/roadmap.test.ts` (`inferSpan`'s merge rules,
-including the crossed and reversed cases), and `test/view/roadmapFrame.test.ts` and
+(the context-row exclusion), `test/domain/roadmap.test.ts` (`inferSpan`'s merge rules via
+`buildRoadmap`, including the crossed and reversed cases) and `test/domain/bars.test.ts`
+(the same rules asked directly of `placeItem`), and `test/view/roadmapFrame.test.ts` and
 `test/view/rendering.test.ts` (the inferred class and label reaching the DOM), with
 `test/helpers/vault.ts` carrying the fixture support the new cases share.
 
@@ -149,7 +150,7 @@ uncertain by construction, so a second visual state needs a boolean nobody can s
 difference of.
 
 **Not yet built either: the acceptance criterion that a context parent's inferred span
-describes its visible results only.** `deriveBars` in `src/domain/roadmap.ts` still routes
+describes its visible results only.** `deriveBars` in `src/domain/bars.ts` still routes
 every `outsideFilter` row to `roadmap.context` before a span is ever computed for it, so a
 context parent gets no bar at all, inferred or otherwise — it just stands beside the
 shelf, same as before spans rolled up.

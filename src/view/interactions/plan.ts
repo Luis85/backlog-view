@@ -1,11 +1,11 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { isMarkerType } from '../../domain/itemTypes';
+import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { sameValue } from '../../domain/noteFields';
 import { BacklogSettings, horizonMenuValues, optionalKeyFor } from '../../domain/settings';
 import { formatCivil } from '../../domain/timeline';
-import { computeHorizonWrites, computeScheduleWrites, SchedulePlan } from '../../domain/writePlan';
+import { computeHorizonWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 
 /**
@@ -16,32 +16,16 @@ import { SchedulePromptModal } from '../../ui/prompts';
  * item rather than from the mode: the projections share one model, one gate and one
  * undo history, so a property that could only be set inside roadmap mode would be a
  * projection disagreeing about what the backlog can do. Everything here plans in
- * `domain/writePlan.ts` and applies through `host.applySafely`, which is what makes
- * a context row unwritable by construction rather than by remembering.
- */
-
-/** The two ends a placement can act on, in the order the entry asks for them. */
-const BOTH_ENDS = ['start', 'target'] as const;
-
-/**
- * Which ends a placement acts on for THIS item. A milestone answers for its target alone
- * — the type is the stronger statement, and a start it merely ignores is not a date any
- * hand may write or delete.
+ * `domain/writePlan.ts` and reaches the vault through the gate, which is what makes a
+ * context row unwritable by construction rather than by remembering.
  *
- * Stated per **type** rather than per control on purpose: the row's Schedule and
- * Unschedule are simply the paths that exist first, and the roadmap's gestures — a shelf
- * card dropped on the grid, a bar dropped back on the shelf, a bar slide, each keyboard
- * equivalent — are specified in siblings still unbuilt. A rule written per control is one
- * control out of date the moment a fourth path is added; a rule written per type is one
- * every new path inherits by asking.
- *
- * Module-private for now: nothing outside this file needs it yet — its outside callers
- * are the roadmap gestures above (specified, not yet built). Export it when the first
- * of those lands, the way `placeMarker` (`domain/roadmap.ts`) waits for its own.
+ * The DATE entries go the last step through `host.performScheduleMove` rather than
+ * calling the gate themselves: it is the one place a date batch is planned and the one
+ * place it is announced, so the drag, the grips, this prompt and the menu's Unschedule
+ * are one move said once. Left on `applySafely`, the row's entry would be a second idea
+ * of what scheduling is — which is the drift the rule exists to prevent, and it would
+ * show up first as a gesture that announces and a menu action that does not.
  */
-function placementEnds(item: BacklogItem): ('start' | 'target')[] {
-	return isMarkerType(item.typeName) ? ['target'] : [...BOTH_ENDS];
-}
 
 /**
  * Whether a placement entry has any field to ask for at all — the narrowed ends, against
@@ -54,12 +38,12 @@ function placementEnds(item: BacklogItem): ('start' | 'target')[] {
  * a key this type may not touch — so the entry is absent.
  */
 export function canSchedule(settings: BacklogSettings, item: BacklogItem): boolean {
-	return placementEnds(item).some((end) => optionalKeyFor(settings, end) !== '');
+	return placementEnds(item.typeName).some((end) => optionalKeyFor(settings, end) !== '');
 }
 
 /** True when the note carries a date key this item's placement may take away. */
 export function carriesDates(item: BacklogItem): boolean {
-	return placementEnds(item).some((end) => item.ownKeys[end]);
+	return placementEnds(item.typeName).some((end) => item.ownKeys[end]);
 }
 
 /**
@@ -97,7 +81,7 @@ function includesValue(values: string[], value: string): boolean {
  * the planned write goes straight through the gate. `chooseState` splits on the
  * board for the same reason.
  */
-function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<boolean> {
+function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<unknown> {
 	if (host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'horizons') {
 		return host.performHorizonMove(item, value);
 	}
@@ -143,7 +127,7 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
  */
 function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: string; name: string; value: string }[] {
 	const fields = [];
-	for (const field of placementEnds(item)) {
+	for (const field of placementEnds(item.typeName)) {
 		const key = optionalKeyFor(host.settings, field);
 		if (key === '') continue;
 		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
@@ -186,36 +170,64 @@ function validateSchedule(values: Record<string, string>): string | null {
  * even where the key exists holding an empty value: the backfill creates exactly that
  * stub, and opening the entry on one and pressing Save must not delete it and spend
  * the undo slot. Unschedule is the deliberate way to take a key away, and it still is.
+ *
+ * The mirror rule holds for a NON-blank field: one whose submitted value equals the
+ * value the entry was prefilled with states nothing new either, and is left out of the
+ * plan the same way. Without this, every save carried the untouched end's stale prefill
+ * back as an absolute request — the writer has no baseline to check an absolute date
+ * against (that is `from`, and a dialog entry states none), so the field a live edit
+ * changed while the prompt sat open would be silently reverted to what the user never
+ * touched. Omitting it is what lets the writer's own pair check fall back to the LIVE
+ * other end instead — see `refusesAxis` in `storage/frontmatter.ts`.
  */
 function planFrom(item: BacklogItem, values: Record<string, string>): SchedulePlan {
 	const plan: SchedulePlan = {};
 	for (const field of ['start', 'target'] as const) {
 		const value = values[field];
 		if (value === undefined) continue;
+		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
 		if (value !== '') {
+			if (reading.value !== null && value === formatCivil(reading.value)) continue;
 			plan[field] = value;
 			continue;
 		}
-		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
 		if (reading.value !== null || reading.invalid) plan[field] = null;
 	}
 	return plan;
 }
 
-/** Ask for the item's planned dates, then write the ends that actually changed. */
+/**
+ * Ask for the item's planned dates, then write the ends that actually changed.
+ *
+ * `from` is deliberately not passed: it scopes to a RELATIVE gesture ("one day further
+ * than this"), and a dialog entry is absolute — the user typed that date meaning that
+ * date, so a live change to the base is not a reason to refuse it.
+ */
 export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 	new SchedulePromptModal(host.app, {
 		heading: `Schedule "${item.title}"`,
 		description: 'Pick a date for each end, or clear a field to remove that date.',
 		fields: scheduleFields(host, item),
 		validate: validateSchedule,
-		onSubmit: (values) => void host.applySafely(computeScheduleWrites(item, planFrom(item, values))),
+		onSubmit: (values) => void host.performScheduleMove(item, planFrom(item, values)),
 	}).open();
+}
+
+/**
+ * Every date key a placement answers for, as a plan that removes them. Ends default
+ * to the item's own CURRENT type — right for the menu's Unschedule and the row entry,
+ * which have no captured shape to disagree with. A caller holding one from earlier in
+ * a gesture — the dated axis's shelf drop, mid-hold — passes it explicitly, so the
+ * plan removes what the gesture actually promised rather than whatever the item now
+ * answers for; the writer is what catches the two having drifted apart.
+ */
+export function unschedulePlan(item: BacklogItem, ends: PlacementEnd[] = placementEnds(item.typeName)): SchedulePlan {
+	const plan: SchedulePlan = {};
+	for (const field of ends) plan[field] = null;
+	return plan;
 }
 
 /** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
 export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
-	const plan: SchedulePlan = {};
-	for (const field of placementEnds(item)) plan[field] = null;
-	return host.applySafely(computeScheduleWrites(item, plan));
+	return host.performScheduleMove(item, unschedulePlan(item));
 }

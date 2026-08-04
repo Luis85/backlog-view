@@ -1,6 +1,27 @@
-import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
-import { hasTag, normalizeTag, ownValue, readString, readTags } from '../domain/noteFields';
-import { AXIS_FIELDS, BacklogSettings, isDoneValue, OptionalField, optionalKeyFor, vaultFolder } from '../domain/settings';
+import { App, normalizePath, Notice, stringifyYaml, TFile } from 'obsidian';
+import { StatedEnds } from '../domain/bars';
+import { placementEnds, PlacementEnd } from '../domain/itemTypes';
+import {
+	absentReading,
+	CivilDate,
+	FieldReading,
+	hasTag,
+	normalizeTag,
+	ownValue,
+	readDate,
+	readString,
+	readTags,
+} from '../domain/noteFields';
+import {
+	AXIS_FIELDS,
+	AxisField,
+	BacklogSettings,
+	isDoneValue,
+	OptionalField,
+	optionalKeyFor,
+	vaultFolder,
+} from '../domain/settings';
+import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
 
 /**
@@ -46,6 +67,30 @@ export interface RestoreOutcome {
 }
 
 /**
+ * The dates one axis write moved between, read off the note either side of it —
+ * tri-state per end, the same shape `axisReadings` already produces. A plain
+ * `DateSpan` cannot tell an end the note never stated from one it stated something
+ * this axis refuses to read, and that is exactly the distinction a caller announcing
+ * the move needs: `placementLabel`'s lesson on the horizon axis, read onto this one.
+ */
+export interface DateChange {
+	before: StatedEnds;
+	after: StatedEnds;
+}
+
+/**
+ * What a batch actually did. `changed` is what the announcement asks — a batch that
+ * completed is not the same as a batch that changed something, and a screen-reader
+ * user hearing about a move that did not happen is the failure this exists to prevent.
+ * `dates` is the first axis write's before/after, from the values the writer itself
+ * saw: the model may be a refresh behind, so the caller cannot name them.
+ */
+export interface WriteOutcome {
+	changed: boolean;
+	dates: DateChange | null;
+}
+
+/**
  * Apply writes sequentially so concurrent edits of the same file cannot race.
  * `onProgress` reports after each file so a long batch — a backfill over a whole
  * backlog is hundreds of notes — can show how far along it is. Each await yields
@@ -63,19 +108,68 @@ export async function applyWrites(
 	writes: ItemWrite[],
 	onProgress?: (done: number, total: number) => void,
 	onInverse?: (inverse: RestoreWrite) => void,
-): Promise<void> {
+): Promise<WriteOutcome> {
+	const outcome: WriteOutcome = { changed: false, dates: null };
 	let done = 0;
 	for (const write of writes) {
 		let inverse: RestoreWrite | null = null;
+		let refused = false;
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
+			// The ends this note's LIVE type answers for. Everything below is narrowed by
+			// them, because a key the projection never drew is not part of what a move
+			// changed — a marker's stale start most of all.
+			const ends = placementEnds(readString(ownValue(fm, settings.typeKey)));
+			const before = axisReadings(fm, settings);
+			// Asked of the LIVE note before this file is touched, so a note that no longer
+			// fits the plan is never half-written. It stops the batch where it stands
+			// rather than undoing what came before it: the check needs the live
+			// frontmatter, which is only readable inside this callback, so there is no
+			// pass that could refuse every file up front without opening each of them
+			// twice. Every date batch today is ONE write, so the two are the same thing —
+			// and the outcome below reports what actually landed rather than claiming
+			// nothing did, which is what makes the difference visible if that changes.
+			if (refusesAxis(fm, settings, write, ends)) {
+				refused = true;
+				return;
+			}
 			const keys = touchedKeys(settings, write);
-			const before = keys.map((key) => rawValueOf(fm, key));
+			const prior = keys.map((key) => rawValueOf(fm, key));
 			const tags = applyInto(app, fm, settings, write);
-			inverse = captureInverse(write.file, keys, before, fm, tags);
+			inverse = captureInverse(write.file, keys, prior, fm, tags);
+			if (write.axis && (write.axis.start !== undefined || write.axis.target !== undefined)) {
+				// Narrowed to the ends the placement HAS, on both sides. A marker keeps a
+				// stale start deliberately, so an unnarrowed `before` would announce a
+				// target slide as a range — "2026-07-01 to 2026-09-30" for a note the
+				// timeline draws and edits as one September point. The destination is
+				// already narrowed, through `placeItem`; describing the two ends of one
+				// move in two different vocabularies is the mistake `placementLabel` and
+				// `targetLabel` were split to stop making.
+				outcome.dates ??= {
+					before: narrowReadings(before, ends),
+					after: narrowReadings(axisReadings(fm, settings), ends),
+				};
+			}
 		});
-		if (inverse) onInverse?.(inverse);
+		if (refused) {
+			console.error('Product Backlog: refused a date batch the note no longer fits', write);
+			new Notice(
+				outcome.changed
+					? 'That note changed while the move was in flight, so the rest of the move was not written.'
+					: 'That note changed while the move was in flight, so nothing was written.',
+			);
+			// The accumulated outcome, not a fresh `changed: false`: writes before this
+			// one landed and emitted their inverses, and reporting otherwise would tell
+			// the caller — and the announcement — that a change nobody can see did not
+			// happen.
+			return outcome;
+		}
+		if (inverse) {
+			outcome.changed = true;
+			onInverse?.(inverse);
+		}
 		onProgress?.(++done, writes.length);
 	}
+	return outcome;
 }
 
 /**
@@ -102,13 +196,7 @@ function applyInto(
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
 	applyStamps(fm, settings, write, leaving);
-	// The roadmap's placement keys, by the same two rules: never an unconfigured key,
-	// and a null REMOVES rather than blanks — unscheduled is a state a note returns
-	// to, not a pair of empty strings.
-	for (const { key, value } of axisEntries(settings, write.axis)) {
-		if (value === null) delete fm[key];
-		else setOwn(fm, key, value);
-	}
+	applyAxis(fm, settings, write);
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
 	// here rather than trusted from the plan for the reason the tag delta and the start
 	// stamp are: the row that planned this can be a refresh behind the note, and a value
@@ -136,6 +224,39 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 	}
 	if (write.order !== undefined) setOwn(fm, settings.orderKey, write.order);
 	if (write.typeName !== undefined) setOwn(fm, settings.typeKey, write.typeName);
+}
+
+/**
+ * The roadmap's placement keys, by the same two rules the hierarchy and state writes
+ * follow: never an unconfigured key, and a null REMOVES rather than blanks —
+ * unscheduled is a state a note returns to, not a pair of empty strings.
+ */
+function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	for (const { field, key, value } of axisEntries(settings, write.axis)) {
+		if (value === null) {
+			// A removal for a key that is not there changes nothing, and `captureInverse`
+			// already reports that by capturing no inverse — but deleting a missing key
+			// is also not a write, so this is the same statement made once.
+			delete fm[key];
+			continue;
+		}
+		// A HORIZON is a label, not a date, and the two rules below would both misread
+		// one. `readDate` accepts a trailing group, so `2026-08-01 Planning` parses as a
+		// date: picking `2026-08-01 Review` over it would compare equal and be skipped as
+		// a re-pick, and a merge would carry ` Planning` onto whatever replaced it. The
+		// axis fields share a writer, not a meaning.
+		if (field === 'horizon') {
+			setOwn(fm, key, value);
+			continue;
+		}
+		const live = readDate(ownValue(fm, key));
+		// Civil-date equality, not text equality: re-confirming `2026-8-1` must not
+		// rewrite it as `2026-08-01`. The spelling on disk is the user's, and tidying it
+		// is a write nobody asked for. This is the question the planner used to answer
+		// from the model, where the value could be a refresh behind.
+		if (!live.invalid && live.value !== null && sameCivil(live.value, readDate(value).value)) continue;
+		setOwn(fm, key, mergeDate(ownValue(fm, key), value));
+	}
 }
 
 /** The frontmatter keys this write will touch, in the order they are written. */
@@ -249,19 +370,147 @@ function isBlank(value: unknown): boolean {
 }
 
 /**
+ * The requested CIVIL date, wearing whatever time and offset the note currently holds.
+ *
+ * The merge happens here rather than in the plan because the live value is the only
+ * one that can be trusted: the row that planned this can be a refresh behind the note,
+ * and a suffix taken from the model would overwrite a time somebody changed in
+ * between. [[Move and resize a bar]] extension 1e is the requirement — a drag re-plans
+ * a date, it does not re-format a value.
+ *
+ * A value the reader REFUSES contributes no shape: `soon` is not a date with a time
+ * attached, and carrying its text forward would write `2026-08-05soon`. Only the
+ * suffix of a value that actually parses as a date rides along, which is exactly the
+ * `readDate` regex's own trailing group.
+ */
+function mergeDate(live: unknown, requested: string): unknown {
+	// The CONTAINER is part of the shape. `readDate` reads the first entry of ANY
+	// non-empty list, so `[2026-08-10T09:00+02:00, …]` is an accepted datetime — and a
+	// merge that only understood strings would answer it with a bare scalar, dropping
+	// the time, the list and every entry after the first in one move. Unwrap the way the
+	// reader unwraps: replace the entry it read, leave the rest exactly as they are.
+	if (Array.isArray(live) && live.length > 0) {
+		const rest = live.slice(1) as unknown[];
+		return [mergeDate(live[0] as unknown, requested), ...rest];
+	}
+	// ASKED OF `readDate`, not of the pattern alone. A regex matching the shape is not
+	// the same question as the model's reader accepting the value: `2026-02-30T09:00+02:00`
+	// is datetime-shaped and refused (February has no thirtieth), so a pattern-only test
+	// would carry its suffix onto the correction while this paragraph claimed refused
+	// values contribute no shape. Borrowing the model's own reader is this codebase's
+	// rule for every live read anyway — a stricter or looser second reader is how one
+	// question came to have two answers.
+	if (typeof live !== 'string' || readDate(live).value === null) return requested;
+	const match = /^\d{4}-\d{1,2}-\d{1,2}([Tt\s].*)$/.exec(live.trim());
+	return match ? `${requested}${match[1]}` : requested;
+}
+
+function sameCivil(a: CivilDate, b: CivilDate | null): boolean {
+	return b !== null && a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+/**
  * The configured keys one axis write touches, each with the value it will write.
  * Applying and capturing read the SAME list: a key written but not captured would
  * be a change no undo could reach, which is exactly how a hole gets in.
  */
-function axisEntries(settings: BacklogSettings, axis?: AxisWrite): { key: string; value: string | null }[] {
+function axisEntries(
+	settings: BacklogSettings,
+	axis?: AxisWrite,
+): { field: AxisField; key: string; value: string | null }[] {
 	if (!axis) return [];
-	const entries: { key: string; value: string | null }[] = [];
+	const entries: { field: AxisField; key: string; value: string | null }[] = [];
 	for (const field of AXIS_FIELDS) {
 		const key = optionalKeyFor(settings, field);
 		const value = axis[field];
-		if (key !== '' && value !== undefined) entries.push({ key, value });
+		if (key !== '' && value !== undefined) entries.push({ field, key, value });
 	}
 	return entries;
+}
+
+/** The pair the note currently states, read the same tolerant way the model reads it. */
+function axisReadings(fm: Record<string, unknown>, settings: BacklogSettings): StatedEnds {
+	const read = (field: PlacementEnd): FieldReading<CivilDate> => {
+		const key = optionalKeyFor(settings, field);
+		return key === '' ? absentReading() : readDate(ownValue(fm, key));
+	};
+	return { start: read('start'), target: read('target') };
+}
+
+/**
+ * The same readings with the ends this placement does not answer for dropped to
+ * absence. Tri-state in, tri-state out — `DateChange` needs the invalid flag to
+ * survive this narrowing exactly as much as the values do, or a marker's ignored
+ * start would carry an unrelated refusal into an announcement that never reads it.
+ */
+function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds {
+	return {
+		start: ends.includes('start') ? readings.start : absentReading(),
+		target: ends.includes('target') ? readings.target : absentReading(),
+	};
+}
+
+/**
+ * Why a date batch may not land on this note, asked of the LIVE frontmatter.
+ *
+ * Two questions, both about the note having moved under the plan:
+ *
+ * - the SHAPE. `axisEntries` applies every field the batch carries, so an external
+ *   edit that turned an ordinary item into a marker would let a stale two-ended plan
+ *   write the start that type may not touch — the narrowing kept everywhere else and
+ *   lost at the last step.
+ * - the PAIR. "No gesture may write a reversed span" is a guarantee about what lands
+ *   on disk, so the effective pair is the requested end plus the live other one. Asked
+ *   only where the placement HAS a pair: a marker's start is ignored and preserved, so
+ *   a stale one later than the target is not a conflict, it is a value the projection
+ *   never drew.
+ * - the BASE, for a relative gesture. A slide means "one day further than this", and
+ *   the plan already turned that into an absolute date using what the render showed. If
+ *   the note moved meanwhile, that absolute date walks the other edit backwards, so
+ *   every baseline the batch states is compared against the live value and any
+ *   disagreement refuses the whole batch. Refused rather than rebased: the preview is
+ *   the contract and release writes the dates it showed, so a rebased date is one the
+ *   user was never shown.
+ */
+function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite, live: PlacementEnd[]): boolean {
+	const axis = write.axis;
+	if (!axis || axis.ends === undefined) return false;
+	if (live.length !== axis.ends.length || live.some((end) => !axis.ends?.includes(end))) return true;
+	const readings = axisReadings(fm, settings);
+	if (axis.from && staleBase(axis.from, readings)) return true;
+	if (live.length < 2) return false;
+	const current: DateSpan = { start: readings.start.value, target: readings.target.value };
+	const requested = (field: PlacementEnd): CivilDate | null => {
+		const value = axis[field];
+		if (value === undefined) return current[field];
+		return value === null ? null : readDate(value).value;
+	};
+	return reversedSpan(requested('start'), requested('target'));
+}
+
+/**
+ * True where any baseline the gesture stated is not what the note now holds. Compared as
+ * civil DATES, like every other comparison here: a note respelled `2026-8-1` while a drag
+ * was live has not moved, and refusing over a spelling would make a legal gesture fail
+ * for a reason nobody could see. `null` means the gesture measured against an ABSENT end
+ * — an open-end grip's own end, which it is there to fill — so absence is the expectation
+ * and a value appearing there is exactly the conflict this catches.
+ *
+ * Asked of the READINGS, not of a span. Absent and unreadable are the distinction this
+ * whole codebase reads dates through, and collapsing them here would let `soon`, typed
+ * into an empty end while the drag was live, satisfy an expectation of nothing and be
+ * overwritten by a gesture that was never shown it. An end that cannot be read has not
+ * stayed empty; it has become something the reader refuses, which is a change.
+ */
+function staleBase(from: Partial<Record<PlacementEnd, string | null>>, live: StatedEnds): boolean {
+	return (['start', 'target'] as const).some((end) => {
+		const expected = from[end];
+		if (expected === undefined) return false;
+		const reading = live[end];
+		if (expected === null) return reading.invalid || reading.value !== null;
+		const parsed = readDate(expected).value;
+		return reading.value === null || parsed === null || daysBetween(parsed, reading.value) !== 0;
+	});
 }
 
 /**

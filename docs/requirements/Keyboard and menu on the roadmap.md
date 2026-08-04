@@ -154,6 +154,8 @@ lane-plus-axis move. The **date entry** is a prompt beside the new-item prompts 
 `src/ui/prompts.ts`, and schedule, unschedule and clear horizon are menu actions in
 `src/view/interactions/menu.ts` — the removal pair gated on the note carrying the key
 (4a), which the current Set horizon expresses only as its shelf entry. Move to lane
-waits on [[Lanes on the roadmap]]. Until the lift lands, the roadmap's dated axis has
-no non-pointer moves *and no pointer ones either*, which is the honest state: nothing
-there is reachable only by pointer, because nothing there writes at all.
+waits on [[Lanes on the roadmap]]. `Schedule` and `Unschedule` already give the dated
+axis's single-dimension writes a non-pointer path, and the drags shipped by
+[[Move and resize a bar]] and [[Drag from the shelf to schedule]] give it pointer ones
+too — so WCAG 2.2 SC 2.5.7 is satisfied the day the drags land, and what the lift still
+owes is the combined lane-plus-axis move and the ergonomic path, not compliance.

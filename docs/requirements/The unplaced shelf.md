@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[A third projection]]"
 order: 30
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 files:
@@ -78,20 +78,28 @@ evidence that undated ordering is a real need.
 
 ## Where it lives
 
-Built, except the dated half of the drag. Whether a result places is a domain
-question answered in `src/domain/roadmap.ts` (`buildRoadmap`), from fields read the way
-every field is read — `readPlacement` and `readDate` in `src/domain/noteFields.ts`,
-whose absent-versus-invalid distinction is what lets a card say why. The shelf renders
-in `src/view/render/roadmap.ts`, driven in `test/domain/roadmap.test.ts` and
-`test/view/roadmapFrame.test.ts` (accessors in `test/helpers/roadmap.ts`).
+Built. Whether a result places is a domain question answered in `src/domain/roadmap.ts`
+(`buildRoadmap`), from fields read the way every field is read — `readPlacement` and
+`readDate` in `src/domain/noteFields.ts`, whose absent-versus-invalid distinction is
+what lets a card say why. The shelf renders in `src/view/render/roadmap.ts`, driven in
+`test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts` (accessors in
+`test/helpers/roadmap.ts`).
 
-Step 4 and 2a arrived with [[Moving between horizons]], on the horizon axis: a shelf
-card is a drag source, the shelf itself is the target that un-places, and an empty
-shelf renders as `pbl-shelf-empty` — in the DOM so a drop has somewhere to land,
-kept out of the layout by `styles.css` until a drag is live. On the dated axis neither
-exists, deliberately: `renderRoadmap` passes the drag controller on only where a drop
-has a write behind it, so the timeline offers nothing it cannot keep until
-[[Drag from the shelf to schedule]] lands. That is why this note stays open, and it is
-the one line of it a live vault has to confirm — jsdom paints nothing, so whether the
-empty strip actually appears under a dragged card is [[Smoke test the visual changes]]'s
-to check.
+Step 4 and 2a arrived first with [[Moving between horizons]], on the horizon axis: a
+shelf card is a drag source, the shelf itself is the target that un-places, and an empty
+shelf renders as `pbl-shelf-empty` — in the DOM so a drop has somewhere to land, kept
+out of the layout by `styles.css` until a drag is live.
+[[Drag from the shelf to schedule]] gave the dated axis both, and `renderShelf` no
+longer reads `dnd` as "the horizon axis": it takes what a drop on that axis means and
+the words to promise it in from the axis itself, rather than hardcoding the horizon's
+own removal and wording against a controller that is `null` only by the withholding
+this closes. Whether the empty strip actually appears under a dragged card — jsdom
+paints nothing, so a test can assert the class and never the layout — is
+[[Smoke test the visual changes]]'s to check.
+
+**2a's narrow-pane compaction** ([[Zoom and the today marker]] extension 2a) is built
+too: the shelf compacts to its labelled count in a narrow pane, one action from open,
+carried by a real toolbar control — synced rather than conditionally rendered, so a
+render that rebuilds the pane without touching the toolbar still leaves the toggle
+naming a shelf that exists — never vanishing outright, because an unplaced result may
+lose its card but never its existence.

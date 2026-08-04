@@ -14,6 +14,7 @@ files:
   - test/domain/milestones.test.ts
   - src/domain/viewOptions.ts
   - src/domain/roadmap.ts
+  - src/domain/bars.ts
   - src/domain/writePlan.ts
   - src/view/interactions/menu.ts
   - src/view/interactions/plan.ts
@@ -295,25 +296,28 @@ second exclusion at any of their call sites. [[Rollups and hiding finished work]
 [[Spans roll up the tree]] both name it as the second exception to "a rollup counts every
 descendant the Base returned," the first being the context row.
 
-The point reduction lives in `src/domain/roadmap.ts`: `placeMarker(item, roadmap)` reads
+The point reduction lives in `src/domain/bars.ts`: `placeMarker(item, target)` reads
 the same target property a bar's end is read from, the same tolerant civil way, shelves an
-absent or unreadable target exactly as a span end does, and otherwise pushes a bar whose
+absent or unreadable target exactly as a span end does, and otherwise answers a bar whose
 `span` is `{ start: target, target }` — the equal pair `barGeometry` already draws as a
-diamond, reached by the type rather than by a coincidence of two dates agreeing. `deriveBars`
+diamond, reached by the type rather than by a coincidence of two dates agreeing. `placeItem`
 calls it **before** the ordinary span rules (unreadable / reversed / inferred) ever run
 against a milestone, which is what lets a stale start later than the target still draw as
 the point it is instead of shelving as a reversed span — the rendering seam that reduction
-was written to avoid needing.
+was written to avoid needing. `deriveBars` (also `src/domain/bars.ts`) is the walk that
+calls `placeItem` for every row.
 
-`src/view/interactions/plan.ts` narrows per **type**, not per control, exactly as specified:
-`placementEnds(item)` returns `['target']` for a marker and both ends otherwise, and
-`scheduleFields`, `validateSchedule`, `carriesDates` and `unschedule` all read it rather than
-each re-deciding which ends exist. `canSchedule(settings, item)` answers whether any of
-`placementEnds`' fields has a configured key at all — the entry is **withheld**, not opened
-empty, on a milestone in a start-only vault, because there is no legal batch left for it to
-write. `src/view/interactions/menu.ts` gates `addScheduleItems` on `canSchedule` rather than
-`hasDateAxis` for exactly that reason: the two agree for ordinary work and diverge for a
-milestone whose only writable end is the target.
+`src/domain/itemTypes.ts` narrows per **type**, not per control, exactly as specified:
+`placementEnds(typeName)` returns `['target']` for a marker and both ends otherwise, taking
+the type name rather than an item so `storage/` can ask it of a live note without reaching
+into `view/`. `src/view/interactions/plan.ts` and `src/domain/bars.ts`'s `barHolds` both call
+it with `item.typeName`: `scheduleFields`, `validateSchedule`, `carriesDates` and `unschedule`
+all read it rather than each re-deciding which ends exist. `canSchedule(settings, item)`
+answers whether any of `placementEnds`' fields has a configured key at all — the entry is
+**withheld**, not opened empty, on a milestone in a start-only vault, because there is no
+legal batch left for it to write. `src/view/interactions/menu.ts` gates `addScheduleItems` on
+`canSchedule` rather than `hasDateAxis` for exactly that reason: the two agree for ordinary
+work and diverge for a milestone whose only writable end is the target.
 
 `src/view/render/rows.ts` carries the badge table as `NON_RUNG_STYLE` (the brief predicted
 `EXTRA_TYPE_STYLE`; it ships as the more accurate name, since a marker is not an extra

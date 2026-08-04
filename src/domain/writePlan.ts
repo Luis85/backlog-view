@@ -1,8 +1,8 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex } from './itemTypes';
-import { CivilDate, readDate, sameValue } from './noteFields';
+import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex, PlacementEnd } from './itemTypes';
+import { readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import {
 	BacklogSettings,
@@ -105,6 +105,36 @@ export interface AxisWrite {
 	horizon?: string | null;
 	start?: string | null;
 	target?: string | null;
+
+	/**
+	 * The placement shape this plan was made under — which ends the item HAD when the
+	 * plan was made. The writer compares it against the live one and refuses the batch
+	 * where they disagree, because dates alone cannot say: a marker that became an
+	 * ordinary item leaves a target-only request arriving at an ordinary item, which is
+	 * exactly what a legitimate end-grip write looks like. A write states its
+	 * expectation and the writer is where the expectation is checked — the same
+	 * discipline as the restore's compare-and-swap. Absent on a horizon write, which
+	 * has no shape to disagree about.
+	 */
+	ends?: PlacementEnd[];
+
+	/**
+	 * The dates this plan was computed FROM, for a gesture that is relative. A slide and
+	 * an end drag mean "one day further than where this was", and the plan turns that
+	 * into an absolute date using the span the render showed — so if another editor moved
+	 * that end from the 10th to the 12th mid-drag, submitting the 11th walks their change
+	 * backwards. The writer compares each stated expectation against the live value and
+	 * refuses the batch whole where they differ, exactly as it does for `ends`.
+	 *
+	 * Refused rather than rebased onto the new value: "the preview is the contract, and
+	 * release writes exactly the dates it showed" — rebasing would write the 13th, which
+	 * is a date the preview never named. Nothing is written, the bar redraws where the
+	 * note now says, and the next gesture is made against that.
+	 *
+	 * Absent where the gesture is absolute — a shelf drop, the date prompt — because
+	 * those mean a date rather than a displacement and have no base to be stale.
+	 */
+	from?: Partial<Record<PlacementEnd, string | null>>;
 }
 
 /**
@@ -321,41 +351,40 @@ export interface SchedulePlan {
 }
 
 /**
- * The batch a schedule (or unschedule) means: one write naming only the ends that
- * actually change. Both ends ride the SAME `ItemWrite`, so a span is one undo rather
- * than two halves of one that can be taken back separately.
+ * The batch a schedule (or unschedule) means: one write naming the ends the plan
+ * names. Both ends ride the SAME `ItemWrite`, so a span is one undo rather than two
+ * halves of one that can be taken back separately.
+ *
+ * It decides nothing from the model, in either direction — not whether a date is
+ * already stated, not whether a key is there to remove. Both are questions about what
+ * the note holds RIGHT NOW, and the row that planned this can be a refresh behind it,
+ * so both are the writer's (`storage/frontmatter.ts`). What this function does is
+ * state what was asked for, plus the expectations it was asked under — the placement
+ * shape, and for a relative gesture the dates it was measured from — so the writer can
+ * check them against what the note actually holds.
+ *
+ * It stays type-agnostic deliberately: WHICH ends a plan may name is `placementEnds`
+ * in `domain/itemTypes.ts`, asked by the caller. Pushing the narrowing in here would
+ * put one type rule in two places.
  */
-export function computeScheduleWrites(item: BacklogItem, plan: SchedulePlan): ItemWrite[] {
-	const axis: AxisWrite = {};
+export function computeScheduleWrites(
+	item: BacklogItem,
+	plan: SchedulePlan,
+	ends: PlacementEnd[],
+	from?: Partial<Record<PlacementEnd, string | null>>,
+): ItemWrite[] {
+	const axis: AxisWrite = { ends, ...(from ? { from } : {}) };
 	let planned = false;
-	for (const field of ['start', 'target'] as const) {
+	for (const field of ends) {
 		const requested = plan[field];
 		if (requested === undefined) continue;
-		const value = planDate(item, field, requested);
-		if (value === undefined) continue;
-		axis[field] = value;
+		// The one backstop that stays: no date is ever guessed at, wherever the value
+		// arrived from. It is a question about the REQUEST, not about the note.
+		if (requested !== null && readDate(requested).value === null) continue;
+		axis[field] = requested;
 		planned = true;
 	}
 	return planned ? [{ file: item.file, axis }] : [];
-}
-
-/** One end of a schedule, or undefined when writing it would change nothing. */
-function planDate(item: BacklogItem, field: 'start' | 'target', value: string | null): string | null | undefined {
-	if (value === null) return item.ownKeys[field] ? null : undefined;
-	const parsed = readDate(value);
-	// The entry refuses an unreadable date before it gets here; this is the backstop
-	// that keeps the rule true of the planner too — no date is ever guessed at.
-	if (parsed.value === null) return undefined;
-	const carried = field === 'start' ? item.plannedStart : item.plannedTarget;
-	// Compared as civil DATES, not as text: re-confirming a date the note already
-	// states must not rewrite `2026-8-1` into `2026-08-01`. The spelling on disk is
-	// the user's, and tidying it is a write nobody asked for.
-	if (!carried.invalid && carried.value !== null && sameCivil(carried.value, parsed.value)) return undefined;
-	return value;
-}
-
-function sameCivil(a: CivilDate, b: CivilDate): boolean {
-	return a.year === b.year && a.month === b.month && a.day === b.day;
 }
 
 /** The order value for the insertion slot, or null when the group needs renumbering. */

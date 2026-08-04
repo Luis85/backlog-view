@@ -144,7 +144,7 @@ describe('context rows are read-only', () => {
 
 		const applied = await view.applySafely([{ file: epic?.file as never, state: 'Done' }]);
 
-		expect(applied).toBe(false);
+		expect(applied).toBeNull();
 		expect(vault.writeLog).toEqual([]);
 	});
 
@@ -154,7 +154,7 @@ describe('context rows are read-only', () => {
 
 		const applied = await view.applySafely([{ file: pbi?.file as never, state: 'Done' }]);
 
-		expect(applied).toBe(true);
+		expect(applied).not.toBeNull();
 		expect(vault.fm('PBI.md').status).toBe('Done');
 	});
 });

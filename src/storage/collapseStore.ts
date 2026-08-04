@@ -34,6 +34,12 @@ export const ROADMAP_MODE = 'roadmap';
  * here as strings because stored state is read defensively, not trusted as a type.
  */
 const AXIS_VALUES = ['horizons', 'dates'];
+/**
+ * The values the `zoom` field may hold. Mirrors `ScaleId` in `domain/timeline.ts`;
+ * spelled here as strings for the same reason `AXIS_VALUES` is — stored state is read
+ * defensively, not trusted as a type.
+ */
+const ZOOM_VALUES = ['week', 'month', 'quarter'];
 
 /** One view's working position: the rows it has settled, and its projection. */
 export interface CollapseSnapshot {
@@ -43,6 +49,8 @@ export interface CollapseSnapshot {
 	mode?: string | null;
 	/** The retained roadmap-axis pick; null or absent means the user never picked. */
 	axis?: string | null;
+	/** The retained timeline zoom; null or absent means the user never picked. */
+	zoom?: string | null;
 }
 
 /** Which base view an entry belongs to. */
@@ -67,6 +75,8 @@ interface StoredEntry {
 	mode?: string;
 	/** Absent until the user picks a roadmap axis; retained even while unused. */
 	axis?: string;
+	/** Absent until the user picks a timeline zoom; retained even while unused. */
+	zoom?: string;
 }
 
 type StoredMap = Record<string, StoredEntry>;
@@ -166,6 +176,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 		expanded: new Set(entry?.expanded ?? []),
 		mode: entry?.mode ?? null,
 		axis: entry?.axis ?? null,
+		zoom: entry?.zoom ?? null,
 	};
 }
 
@@ -181,12 +192,14 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	const expanded = [...snapshot.expanded].slice(0, MAX_PATHS - collapsed.length);
 	const mode = snapshot.mode ?? null;
 	const axis = snapshot.axis ?? null;
+	const zoom = snapshot.zoom ?? null;
 	// A view at its defaults — nothing settled, the tree, no pick — needs no entry.
-	if (collapsed.length === 0 && expanded.length === 0 && mode === null && axis === null) delete map[key];
+	if (collapsed.length === 0 && expanded.length === 0 && mode === null && axis === null && zoom === null) delete map[key];
 	else {
 		map[key] = { base: id.base, collapsed, expanded };
 		if (mode !== null) map[key].mode = mode;
 		if (axis !== null) map[key].axis = axis;
+		if (zoom !== null) map[key].zoom = zoom;
 	}
 	pruneMissingBases(app, map, key);
 	writeMap(app, map);
@@ -239,6 +252,15 @@ function readMap(app: App): StoredMap {
 	return map;
 }
 
+/**
+ * An optional field's stored value, kept only when it is one this plugin has ever
+ * written. Stored state is user-writable data another version may have written, so
+ * anything else is dropped rather than trusted — never guessed at as the tree default.
+ */
+function readEnum<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
+	return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
 function readEntry(value: unknown): StoredEntry | null {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
 	const record = value as Record<string, unknown>;
@@ -247,12 +269,17 @@ function readEntry(value: unknown): StoredEntry | null {
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
 	const entry: StoredEntry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
-	// The modes this plugin has ever written; anything else is not trusted, and an
-	// unrecognized value simply means the tree — the stored choice is user state,
-	// dropped rather than guessed at.
-	if (record.mode === BOARD_MODE || record.mode === ROADMAP_MODE) entry.mode = record.mode;
-	if (typeof record.axis === 'string' && AXIS_VALUES.includes(record.axis)) entry.axis = record.axis;
-	return entry.collapsed.length > 0 || entry.expanded.length > 0 || entry.mode !== undefined || entry.axis !== undefined
+	const mode = readEnum(record.mode, [BOARD_MODE, ROADMAP_MODE]);
+	if (mode !== undefined) entry.mode = mode;
+	const axis = readEnum(record.axis, AXIS_VALUES);
+	if (axis !== undefined) entry.axis = axis;
+	const zoom = readEnum(record.zoom, ZOOM_VALUES);
+	if (zoom !== undefined) entry.zoom = zoom;
+	return entry.collapsed.length > 0 ||
+		entry.expanded.length > 0 ||
+		entry.mode !== undefined ||
+		entry.axis !== undefined ||
+		entry.zoom !== undefined
 		? entry
 		: null;
 }
