@@ -35,12 +35,20 @@ export function renderRoadmap(
 ): RoadmapSnapshot {
 	const host = ctx.host;
 	const model = host.model;
-	if (!model) return { roadmap: { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 }, cards: [], todayLeft: null };
+	if (!model) {
+		return {
+			roadmap: { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 },
+			cards: [],
+			todayLeft: null,
+			scroller: null,
+		};
+	}
 	const roadmap = buildRoadmap(model, host.settings, (item) => !host.isRowHidden(item), axis);
 
 	const frameEl = treeEl.createDiv({ cls: 'pbl-roadmap' });
 	const cards: BacklogItem[] = [];
 	let todayLeft: number | null = null;
+	let scroller: HTMLElement | null = null;
 	// Null on the dated axis, and that null is the whole withholding: no draggables and
 	// no drop targets — one condition rather than a flag per affordance. It is the
 	// TARGETING that goes, not the strip: an occupied shelf still renders there, because
@@ -54,14 +62,15 @@ export function renderRoadmap(
 		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
 		placing.wireScroller(treeEl);
 	} else {
-		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, today, scaleFor(null));
+		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, today, scaleFor(host.zoom));
 		cards.push(...timeline.cards);
 		todayLeft = timeline.todayLeft;
+		scroller = timeline.scroller;
 	}
 	cards.push(...renderShelf(ctx, frameEl, roadmap.shelf, placing));
 	cards.push(...renderContextStrip(ctx, frameEl, roadmap.context));
 	renderRoadmapAdvisory(ctx, frameEl, cards.length);
-	return { roadmap, cards, todayLeft };
+	return { roadmap, cards, todayLeft, scroller };
 }
 
 /**

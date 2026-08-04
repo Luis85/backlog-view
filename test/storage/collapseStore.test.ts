@@ -204,4 +204,22 @@ describe('the persisted view mode', () => {
 		});
 		expect(loadCollapseState(vault.app, id).axis).toBeNull();
 	});
+
+	it('round-trips the zoom, and drops a scale this plugin never wrote', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { collapsed: new Set(), expanded: new Set(), mode: 'roadmap', axis: 'dates', zoom: 'quarter' });
+		expect(loadCollapseState(app, id).zoom).toBe('quarter');
+
+		saveCollapseState(app, id, { collapsed: new Set(), expanded: new Set(), mode: 'roadmap', axis: 'dates', zoom: 'fortnight' });
+		// Stored state is user-writable data another version may have written: anything
+		// unrecognizable is dropped rather than trusted, exactly as `axis` is.
+		expect(loadCollapseState(app, id).zoom).toBeNull();
+	});
+
+	it('needs no entry for a view at its defaults, zoom included', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { collapsed: new Set(), expanded: new Set(), mode: null, axis: null, zoom: null });
+		expect(loadCollapseState(app, id).zoom).toBeNull();
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
 });

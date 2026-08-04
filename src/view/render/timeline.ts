@@ -29,8 +29,13 @@ import { CivilDate } from '../../domain/noteFields';
  * and the control that returns to today are the toolbar's.
  */
 
-/** Width of the sticky lead column naming each row. Published to CSS below. */
-const TIMELINE_LEAD_PX = 220;
+/**
+ * Width of the sticky lead column naming each row. Published to CSS below, and
+ * exported for `jumpToToday`'s centring math — the visible band it centres today in
+ * is the scroller's width minus this column, which covers the same pixels at every
+ * scroll position.
+ */
+export const TIMELINE_LEAD_PX = 220;
 
 /** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {

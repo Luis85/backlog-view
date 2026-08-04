@@ -11,6 +11,7 @@ import {
 	bucketCountOf,
 	bucketNames,
 	bucketsOf,
+	cellLabels,
 	labelTexts,
 	rowFor,
 	shelfCountOf,
@@ -19,6 +20,7 @@ import {
 	shelfTitles,
 	timelineRows,
 } from '../helpers/roadmap';
+import { scaleFor } from '../../src/domain/timeline';
 
 useViewHarness();
 
@@ -31,6 +33,11 @@ function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { bas
 	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
 	harness.view.setProjection('roadmap');
 	return harness;
+}
+
+/** The dated axis alone, at its default zoom — the fixture the density tests share. */
+function datedRoadmap(vault: FakeVault) {
+	return roadmapView(vault, { ...DATES });
 }
 
 describe('the horizon frame', () => {
@@ -457,5 +464,51 @@ describe('context rows on the roadmap', () => {
 		expect(timelineRows(containerEl)).toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-roadmap-context .pbl-card-title')?.textContent).toBe('Epic');
 		expect(shelfOf(containerEl)).toBeNull();
+	});
+});
+
+describe('the grid at each density', () => {
+	it('draws a stated plan at least MIN_BAR_PX wide, even at the sparsest zoom', () => {
+		// A one-day bar at quarter zoom is one pixel: a stated plan rendered as an
+		// invisible one. The floor is its own constant precisely because it is a length
+		// in PIXELS and must not scale with the zoom.
+		const vault = new FakeVault();
+		vault.addFile('One day.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-04' } });
+		const { view, containerEl } = datedRoadmap(vault);
+		view.setZoom('quarter');
+
+		const bar = barFor(containerEl, 'One day');
+		expect(parseFloat(bar.style.getPropertyValue('--pbl-bar-width'))).toBeGreaterThanOrEqual(4);
+	});
+
+	it('keeps a milestone’s line inside its own day at every zoom', () => {
+		// The nudge is a sub-day offset. At quarter zoom a fixed two pixels is a two-day
+		// displacement, putting the line and its label in the wrong day — and the day
+		// is exactly wide enough for both marks because `dayPx >= 2 * lineWidth`.
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, due: TODAY_ISO } });
+		const { view, containerEl } = datedRoadmap(vault);
+
+		for (const zoom of ['week', 'month', 'quarter'] as const) {
+			view.setZoom(zoom);
+			const line = containerEl.querySelector<HTMLElement>('.pbl-milestone-line');
+			const today = containerEl.querySelector<HTMLElement>('.pbl-today');
+			const nudged = parseFloat(line?.style.getPropertyValue('--pbl-milestone-left') ?? '0');
+			const todayLeft = parseFloat(today?.style.getPropertyValue('--pbl-today-left') ?? '0');
+			const dayPx = scaleFor(zoom).dayPx;
+			expect(nudged - todayLeft, `${zoom} nudge`).toBeGreaterThan(0);
+			expect(nudged - todayLeft, `${zoom} nudge`).toBeLessThan(dayPx);
+		}
+	});
+
+	it('names its header cells by the active scale’s unit', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-20' } });
+		const { view, containerEl } = datedRoadmap(vault);
+
+		view.setZoom('quarter');
+		expect(cellLabels(containerEl).some((label) => /^Q[1-4] \d{4}$/.test(label))).toBe(true);
+		view.setZoom('month');
+		expect(cellLabels(containerEl)).toContain('Aug 2026');
 	});
 });

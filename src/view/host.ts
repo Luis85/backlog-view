@@ -4,6 +4,7 @@ import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { PlacementEnd } from '../domain/itemTypes';
+import { ScaleId } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings, OptionalProperty } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
@@ -56,6 +57,8 @@ export interface RoadmapSnapshot {
 	cards: BacklogItem[];
 	/** Pixel offset of the today line inside the grid, or null on the horizon axis. */
 	todayLeft: number | null;
+	/** The dated axis's own scroller, for `jumpToToday`; null on the horizon axis. */
+	scroller: HTMLElement | null;
 }
 
 /**
@@ -136,6 +139,16 @@ export interface BacklogViewHost {
 	readonly axisPick: string | null;
 	/** Pick which axis this saved view shows; the collapse store persists it. */
 	setAxisPick(axis: RoadmapAxis): void;
+	/**
+	 * Which density the dated axis draws at. UI state like the mode and the axis pick:
+	 * per saved view, per device, in the collapse store — never in the `.base`, because
+	 * pane width is a property of the screen in front of you and not of the base.
+	 */
+	readonly zoom: ScaleId;
+	/** Pick a density and re-render; the collapse store persists it. */
+	setZoom(id: ScaleId): void;
+	/** Put today back in the middle of the timeline's scroller, from any position. */
+	jumpToToday(): void;
 	/**
 	 * The column the board selection rests on when no card is selected — an empty
 	 * column is still a keyboard stop, or an empty board could not be driven at all.

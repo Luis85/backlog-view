@@ -8,6 +8,7 @@ import { displayType, focusTarget } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
+import { ScaleId } from '../../domain/timeline';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -38,6 +39,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderFocusPicker(host, barEl, model);
 	renderModeToggle(host, barEl);
 	renderAxisPicker(host, barEl);
+	renderTimelineControls(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	// The one command that routinely writes hundreds of notes: it carries the
@@ -337,6 +339,29 @@ function renderAxisPicker(host: BacklogViewHost, barEl: HTMLElement): void {
 	};
 	position('horizons', 'columns-3', 'Show horizons');
 	position('dates', 'calendar-range', 'Show timeline');
+}
+
+/**
+ * The zoom picker and jump-to-today, on the dated axis alone — the horizon axis has no
+ * density to choose and no today to return to. Segmented buttons like the axis picker,
+ * because the choice is one of three and a menu would hide two of them.
+ */
+function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void {
+	if (host.projection !== 'roadmap' || activeAxis(host.settings, host.axisPick) !== 'dates') return;
+	const wrap = barEl.createDiv({ cls: 'pbl-zoom-picker', attr: { role: 'group', 'aria-label': 'Timeline zoom' } });
+	const position = (id: ScaleId, icon: string, label: string) => {
+		const btn = iconButton(wrap, icon, label);
+		btn.addClass('pbl-zoom-btn');
+		btn.toggleClass('is-active', host.zoom === id);
+		btn.setAttribute('aria-pressed', String(host.zoom === id));
+		btn.addEventListener('click', () => host.setZoom(id));
+	};
+	position('week', 'calendar-days', 'Zoom to weeks');
+	position('month', 'calendar', 'Zoom to months');
+	position('quarter', 'calendar-range', 'Zoom to quarters');
+	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
+	today.addClass('pbl-today-btn');
+	today.addEventListener('click', () => host.jumpToToday());
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */

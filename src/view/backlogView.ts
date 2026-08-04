@@ -33,7 +33,7 @@ import {
 	SchedulePlan,
 } from '../domain/writePlan';
 import { absentReading, CivilDate, FieldReading, todayStamp } from '../domain/noteFields';
-import { DateSpan } from '../domain/timeline';
+import { DateSpan, ScaleId, scaleFor } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
@@ -41,6 +41,7 @@ import { chipProps, rowContext, RowContext, syncColumnFit } from './render/colum
 import { renderLoadingState } from './render/emptyStates';
 import { renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
+import { TIMELINE_LEAD_PX } from './render/timeline';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
 
@@ -176,6 +177,24 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.collapse.setAxisPick(axis);
 		// The pick is UI state like the mode: no Bases refresh is coming.
 		this.render();
+	}
+
+	get zoom(): ScaleId {
+		return scaleFor(this.collapse.zoomPick()).id;
+	}
+
+	setZoom(id: ScaleId): void {
+		if (id === this.zoom) return;
+		this.collapse.setZoom(id);
+		// UI state like the mode and the axis pick: no config was set, so no Bases
+		// refresh is coming and this render is the change.
+		this.render();
+	}
+
+	jumpToToday(): void {
+		const roadmap = this.roadmap;
+		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
+		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth);
 	}
 
 	/** Re-measure after a resize, and rebuild only if a column came or went. */
@@ -591,6 +610,15 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (busy) this.treeEl.setAttribute('aria-busy', 'true');
 		else this.treeEl.removeAttribute('aria-busy');
 	}
+}
+
+/**
+ * The scroll offset that puts today in the middle of the band the reader can actually
+ * SEE — the scroller's width minus the sticky lead column, which covers the same
+ * pixels at every scroll position and is never part of the band being centred.
+ */
+function centreOnToday(todayLeft: number, clientWidth: number): number {
+	return Math.max(todayLeft - (TIMELINE_LEAD_PX + clientWidth) / 2, 0);
 }
 
 /**

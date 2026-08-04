@@ -39,9 +39,11 @@
 	box-sizing: border-box;
 }
 
-/* The projection toggle and the axis picker are segmented button groups. */
+/* The projection toggle, the axis picker and the zoom picker are segmented button
+   groups — the timeline's own, beside the jump-to-today button it sits next to. */
 .pbl-mode-toggle,
-.pbl-axis-picker {
+.pbl-axis-picker,
+.pbl-zoom-picker {
 	display: flex;
 	align-items: center;
 	gap: var(--size-2-1);

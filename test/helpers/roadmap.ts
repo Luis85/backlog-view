@@ -92,3 +92,8 @@ export function barFor(containerEl: HTMLElement, title: string): HTMLElement {
 export function labelTexts(containerEl: HTMLElement): string[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label')).map((l) => l.textContent ?? '');
 }
+
+/** Every header cell's text, in drawn order — months, weeks or quarters by zoom. */
+export function cellLabels(containerEl: HTMLElement): string[] {
+	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-cell')).map((c) => c.textContent ?? '');
+}
