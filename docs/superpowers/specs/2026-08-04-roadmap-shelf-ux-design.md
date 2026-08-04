@@ -227,6 +227,24 @@ already called out for its own test: the shelf stays a drop target for
 asks to be a test, not a comment — modeled on `test/view/contextRowWrites.test.ts`'s own
 pattern of driving the rule rather than the implementation.
 
+**A collapsed-but-populated shelf must not read as an empty roadmap.**
+`renderRoadmapAdvisory` (`roadmap.ts:220-234`) decides whether to show the "nothing to
+see" guidance — empty backlog, no filter matches, or everything done — from exactly the
+same `cards.length` this design just made collapse-sensitive, and its OWN doc comment
+already states the invariant that decision rests on: *"Gated on rendered cards, shelf and
+context included: an all-shelved roadmap is not empty, it is a backlog not yet
+planned."* Once a fully-populated, collapsed shelf legitimately contributes zero to
+`cards`, that gate fires on a backlog that is not empty at all — a fresh vault with
+everything on the shelf and the shelf collapsed by default (this design's own default)
+would show "All N items are done and hidden" for work that is simply untriaged. This is
+the comment's own claim breaking, not a new one: the fix keeps it true by gating on the
+roadmap's actual population instead of the keyboard-walk array — `renderRoadmapAdvisory`
+takes `roadmap.placedCount + roadmap.shelf.length + roadmap.context.length` (all three
+already computed by `buildRoadmap`, none of them affected by collapse) in place of
+`cards.length`, so the advisory answers "does this roadmap have any rows" rather than
+"how many are keyboard-reachable right now" — two questions this change is exactly what
+makes different.
+
 ### 5. Styles — new `styles/shelf.css`, changes to `styles/roadmap.css`
 
 The shelf's CSS lives in `styles/timeline.css` today, which its own doc comment already
@@ -301,6 +319,11 @@ position its load-order comment calls for.
   - The collapsed-but-still-a-drop-target invariant from §4 — driven the way
     `contextRowWrites.test.ts` drives its own invariant, so a future change to the
     collapse toggle fails it without anyone having to predict the surface.
+  - A roadmap whose every result is shelved AND the shelf is collapsed (the default)
+    renders no advisory at all — not the empty state, not the filtered-empty state, not
+    "all done" — because the backlog is not empty, it is untriaged. This is the direct
+    regression test for `renderRoadmapAdvisory`'s gate moving from `cards.length` to the
+    roadmap's own population count.
 - The full-width / grid **visual** behavior itself is not something jsdom can verify —
   it has no layout engine. `npm run test-build` is the honest answer here, named
   explicitly rather than claimed as covered by the DOM tests above.
