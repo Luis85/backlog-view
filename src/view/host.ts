@@ -5,6 +5,7 @@ import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ItemWrite } from '../domain/writePlan';
 import { BacklogSettings, OptionalProperty } from '../domain/settings';
+import { WriteOutcome } from '../storage/frontmatter';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
@@ -197,9 +198,10 @@ export interface BacklogViewHost {
 	refreshSubtree(item: BacklogItem): void;
 	/**
 	 * Serialized, validated frontmatter writes — the only mutation path.
-	 * Resolves true only when every write in the batch was applied.
+	 * Resolves null when the batch was refused or failed; otherwise the outcome the
+	 * writer itself observed, which a truthy check treats exactly as the old boolean.
 	 */
-	applySafely(writes: ItemWrite[]): Promise<boolean>;
+	applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null>;
 	performDrop(dragged: BacklogItem, target: DropTarget): Promise<void>;
 	/** True when a batch has landed this session and its inverses are held. */
 	canUndo(): boolean;

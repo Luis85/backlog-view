@@ -2,7 +2,7 @@ import { Notice } from 'obsidian';
 import { BacklogViewHost, BusyState } from './host';
 import { ItemWrite } from '../domain/writePlan';
 import { configProblems } from '../domain/settings';
-import { applyWrites, RestoreWrite } from '../storage/frontmatter';
+import { applyWrites, RestoreWrite, WriteOutcome } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 
 /**
@@ -57,8 +57,8 @@ export class WriteGate {
 		return true;
 	}
 
-	async applySafely(writes: ItemWrite[]): Promise<boolean> {
-		if (writes.length === 0) return false;
+	async applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null> {
+		if (writes.length === 0) return null;
 		// Notes the Base excluded are context, and nothing may write to them: the
 		// controls that could are withheld and the auto-type cascade stops at them.
 		// If one still arrives, the batch is refused whole — dropping just that write
@@ -66,7 +66,7 @@ export class WriteGate {
 		if (writes.some((w) => this.host.model?.byPath.get(w.file.path)?.outsideFilter === true)) {
 			console.error('Product Backlog: refused a batch writing to a note outside the filter', writes);
 			new Notice('That change would edit a note outside this base’s filter, so nothing was written.');
-			return false;
+			return null;
 		}
 		return this.runExclusively(writes.length, (onProgress, onInverse) =>
 			applyWrites(this.host.app, this.host.settings, writes, onProgress, onInverse),
@@ -90,7 +90,7 @@ export class WriteGate {
 		// model's verdict on those files answers a different question.
 		const batch = [...restores].reverse();
 		const tracker: ReplayTracker = { finished: 0 };
-		const ok = await this.runExclusively(batch.length, replayRun(this.host.app, batch, tracker), restores);
+		const ok = (await this.runExclusively(batch.length, replayRun(this.host.app, batch, tracker), restores)) !== null;
 		// What the slot becomes is the recovery's question, not the gate's: a
 		// completed replay rejoins any redo stranded by the failure it recovered
 		// from, and one that failed partway holds its place with the unfinished
@@ -110,23 +110,23 @@ export class WriteGate {
 	 * batch that fails partway has already installed the applied prefix, which is
 	 * exactly the part that still needs to be undoable.
 	 */
-	private async runExclusively(
+	private async runExclusively<T>(
 		total: number,
 		run: (
 			onProgress: (done: number, total: number) => void,
 			onInverse: (inverse: RestoreWrite) => void,
-		) => Promise<void>,
+		) => Promise<T>,
 		replaying?: RestoreWrite[],
-	): Promise<boolean> {
+	): Promise<T | null> {
 		const problems = configProblems(this.host.settings);
 		if (problems.length > 0) {
 			// Writing with e.g. parent and order on the same key would corrupt notes.
 			new Notice(`Fix the view options first: ${problems[0]}`);
-			return false;
+			return null;
 		}
 		if (this.applying) {
 			new Notice('Still applying the previous change — try again in a moment.');
-			return false;
+			return null;
 		}
 		this.applying = true;
 		this.setBusy({ done: 0, total });
@@ -141,13 +141,13 @@ export class WriteGate {
 			inverses.push(inverse);
 		};
 		try {
-			await run((done, tot) => this.setBusy({ done, total: tot }), onInverse);
+			const result = await run((done, tot) => this.setBusy({ done, total: tot }), onInverse);
 			completed = true;
-			return true;
+			return result;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
 			new Notice('Failed to update backlog items. See the developer console for details.');
-			return false;
+			return null;
 		} finally {
 			// A replay that completed but restored nothing is SPENT, not retryable:
 			// its conflicts stay conflicted and its missing notes stay missing, so

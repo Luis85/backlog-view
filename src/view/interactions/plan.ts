@@ -74,7 +74,7 @@ function includesValue(values: string[], value: string): boolean {
  * the planned write goes straight through the gate. `chooseState` splits on the
  * board for the same reason.
  */
-function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<boolean> {
+function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<unknown> {
 	if (host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'horizons') {
 		return host.performHorizonMove(item, value);
 	}
@@ -191,7 +191,7 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 }
 
 /** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
-export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
+export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<unknown> {
 	const plan: SchedulePlan = {};
 	for (const field of placementEnds(item.typeName)) plan[field] = null;
 	return host.applySafely(computeScheduleWrites(item, plan));

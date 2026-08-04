@@ -299,7 +299,7 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
  * announcement — and that path is also the only one that can express the no-state
  * entry, which the tree's list never offers.
  */
-function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<boolean> {
+function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<unknown> {
 	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
 	// The tree's own Set state plans through the same function the board's moves do, so
 	// the date stamps ride it too: a history with holes in it, where which hole depends

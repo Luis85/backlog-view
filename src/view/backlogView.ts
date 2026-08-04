@@ -28,6 +28,7 @@ import { renderLoadingState } from './render/emptyStates';
 import { renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
+import { WriteOutcome } from '../storage/frontmatter';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 
@@ -467,7 +468,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	private async applyCardMove(item: BacklogItem, writes: ItemWrite[], say: () => void): Promise<boolean> {
 		if (writes.length === 0) return false;
-		if (!(await this.applyMove(item, writes))) return false;
+		const outcome = await this.applyMove(item, writes);
+		if (outcome === null || !outcome.changed) return false;
 		say();
 		return true;
 	}
@@ -499,17 +501,20 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/**
 	 * Apply a move and mark its row pending until the Bases refresh re-renders it in
 	 * place. Both projections move items, so both need the same holding signal —
-	 * cleared only on failure, because success is followed by the row's replacement.
+	 * cleared on refusal AND on a batch that changed nothing, because only a real
+	 * change brings the refresh that would replace the row: a stale Unschedule of
+	 * dates another editor already removed, or a batch the shape or baseline check
+	 * refuses, would otherwise leave the card looking permanently in flight.
 	 */
-	private async applyMove(item: BacklogItem, writes: ItemWrite[]): Promise<boolean> {
+	private async applyMove(item: BacklogItem, writes: ItemWrite[]): Promise<WriteOutcome | null> {
 		const row = this.rowElFor(item);
 		row?.classList.add('pbl-pending');
 		const applied = await this.applySafely(writes);
-		if (!applied) row?.classList.remove('pbl-pending');
+		if (applied === null || !applied.changed) row?.classList.remove('pbl-pending');
 		return applied;
 	}
 
-	applySafely(writes: ItemWrite[]): Promise<boolean> {
+	applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null> {
 		return this.gate.applySafely(writes);
 	}
 

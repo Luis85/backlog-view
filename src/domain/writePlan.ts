@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex } from './itemTypes';
+import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex, PlacementEnd } from './itemTypes';
 import { CivilDate, readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import {
@@ -105,6 +105,36 @@ export interface AxisWrite {
 	horizon?: string | null;
 	start?: string | null;
 	target?: string | null;
+
+	/**
+	 * The placement shape this plan was made under — which ends the item HAD when the
+	 * plan was made. The writer compares it against the live one and refuses the batch
+	 * where they disagree, because dates alone cannot say: a marker that became an
+	 * ordinary item leaves a target-only request arriving at an ordinary item, which is
+	 * exactly what a legitimate end-grip write looks like. A write states its
+	 * expectation and the writer is where the expectation is checked — the same
+	 * discipline as the restore's compare-and-swap. Absent on a horizon write, which
+	 * has no shape to disagree about.
+	 */
+	ends?: PlacementEnd[];
+
+	/**
+	 * The dates this plan was computed FROM, for a gesture that is relative. A slide and
+	 * an end drag mean "one day further than where this was", and the plan turns that
+	 * into an absolute date using the span the render showed — so if another editor moved
+	 * that end from the 10th to the 12th mid-drag, submitting the 11th walks their change
+	 * backwards. The writer compares each stated expectation against the live value and
+	 * refuses the batch whole where they differ, exactly as it does for `ends`.
+	 *
+	 * Refused rather than rebased onto the new value: "the preview is the contract, and
+	 * release writes exactly the dates it showed" — rebasing would write the 13th, which
+	 * is a date the preview never named. Nothing is written, the bar redraws where the
+	 * note now says, and the next gesture is made against that.
+	 *
+	 * Absent where the gesture is absolute — a shelf drop, the date prompt — because
+	 * those mean a date rather than a displacement and have no base to be stale.
+	 */
+	from?: Partial<Record<PlacementEnd, string | null>>;
 }
 
 /**
