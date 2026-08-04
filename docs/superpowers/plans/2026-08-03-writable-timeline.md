@@ -1700,10 +1700,12 @@ git commit -m "Let the planner ask for a date, and the writer decide what it mea
 - Consumes: `WriteOutcome`, `DateChange` (Task 4); `placeItem`, `statedEnds`,
   `UNSCHEDULED_LABEL` (Task 2); `computeScheduleWrites` (Task 5).
 - Produces:
-  - `BacklogViewHost.performScheduleMove(item: BacklogItem, plan: SchedulePlan, from?: Partial<Record<PlacementEnd, string | null>>): Promise<boolean>`
-    — `from` is the base a *relative* gesture measured against, passed through to
-    `AxisWrite.from` so the writer can refuse a hold the note moved under. Absent from
-    the modal and the menu, which state a date rather than a displacement.
+  - `BacklogViewHost.performScheduleMove(item, plan, from?, ends?): Promise<boolean>`
+    — `from` is the base a *relative* gesture measured against and `ends` the placement
+    shape it was planned under, passed through to `AxisWrite.from` / `AxisWrite.ends` so
+    the writer can refuse a hold the note moved under. Both absent from the modal and the
+    menu, which state a date rather than a displacement and are planned against the item
+    in hand.
   - `export function announceScheduleMove(title: string, change: DateChange, placement: Placement | null): void`
     in `cardDrag.ts`, beside `announceBoardMove` and `announceHorizonMove`
 
@@ -1851,11 +1853,18 @@ In `src/view/backlogView.ts`:
 		item: BacklogItem,
 		plan: SchedulePlan,
 		from?: Partial<Record<PlacementEnd, string | null>>,
+		ends?: PlacementEnd[],
 	): Promise<boolean> {
-		// `from` rides through untouched: the base a relative gesture measured against is
-		// an expectation for the WRITER to check, and nothing between here and there can
-		// see the live note to check it against.
-		const writes = computeScheduleWrites(item, plan, placementEnds(item.typeName), from);
+		// Both expectations ride through untouched: what a relative gesture measured
+		// against, and the placement shape it was planned under. Neither can be recomputed
+		// here — deriving `ends` from the item this method was handed asks the CURRENT
+		// type, which is the very thing the writer is meant to catch having changed. A
+		// PBI that became a Milestone mid-hold would narrow a two-ended slide to a
+		// target-only write and apply it; the reverse would make a marker's slide arrive
+		// looking like an ordinary end-grip write. The caller that has no captured shape —
+		// the modal, the menu — passes none and gets the item's own, which is right for a
+		// gesture that was planned against it a moment ago.
+		const writes = computeScheduleWrites(item, plan, ends ?? placementEnds(item.typeName), from);
 		if (writes.length === 0) return false;
 		const outcome = await this.applyMove(item, writes);
 		// Not "did the call return" but "did the note change": the planner now hands
@@ -2599,18 +2608,18 @@ describe('preserving a place across a zoom change', () => {
 		const window = view.roadmap?.window;
 		if (!window) throw new Error('no window');
 		const monthPx = scaleFor('month').dayPx;
-		// Day 100 of the window, in CONTENT coordinates — past the sticky lead column,
-		// which is what `scrollLeft` counts from. Asserted against a pixel offset
-		// computed here from first principles rather than by calling the production
-		// conversion on both sides: a test that reuses the instrument passes whatever
-		// the instrument does with the lead, which is exactly how this one hid the bug.
-		scroller().scrollLeft = TIMELINE_LEAD_PX + 100 * monthPx;
+		// Day 100 of the window at the scrollport's edge. `scrollLeft` is the day-track
+		// offset of the first VISIBLE day: the lead is sticky, so it covers the track
+		// rather than displacing it. Asserted against a pixel offset computed here from
+		// first principles rather than by calling the production conversion on both
+		// sides — a test that reuses the instrument passes whatever the instrument does.
+		scroller().scrollLeft = 100 * monthPx;
 
 		view.setZoom('quarter');
 
 		const after = view.roadmap?.window;
 		const day = daysBetween(after!.start, window.start) + 100;
-		expect(scroller().scrollLeft).toBe(TIMELINE_LEAD_PX + day * scaleFor('quarter').dayPx);
+		expect(scroller().scrollLeft).toBe(day * scaleFor('quarter').dayPx);
 	});
 });
 ```
@@ -2704,22 +2713,18 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 		offsets[box.key] = { top: box.el.scrollTop, left: box.el.scrollLeft };
 	}
 	const scroller = roadmap?.scroller ?? null;
-	// `scrollLeft` is measured from the CONTENT's left edge, and the first
-	// `TIMELINE_LEAD_PX` of that is the sticky lead column, not plan. Feeding it to
-	// `dayAt` unadjusted reads the row labels as 55 days of calendar at month zoom, so
-	// the anchor names a date nobody was looking at. Every conversion between an offset
-	// on this scroller and a date subtracts the lead going in and adds it coming out.
-	//
-	// Only where the date track HAS reached the edge, though. At or before the lead
-	// there is no leading date to preserve: `dayAt` clamps every such offset to the
-	// window's first day, so anchoring by date would collapse the whole 0–220px range
-	// onto 220 and shunt a timeline resting at 0 sideways on every zoom. Those pixels
-	// are the lead column, whose width no scale changes, so they are carried across
-	// verbatim — `null` here means "keep the offset", which the restore already does.
-	const left = scroller?.scrollLeft ?? 0;
+	// `scrollLeft` IS the day-track offset of the first visible date, and no lead-column
+	// term belongs here. The lead is `position: sticky; left: 0`, so it stays pinned at
+	// the scrollport's edge and covers the track beneath it: the first day a reader can
+	// actually see sits at viewport x = 220, which is content x = scrollLeft + 220, which
+	// is day-track offset scrollLeft. Subtracting the lead names a date hidden underneath
+	// it — at 4px/day and scrollLeft 620 that is day 100 while the reader is looking at
+	// day 155 — and it was doing so in an earlier revision of this plan, together with a
+	// guard for the negative offsets it produced near zero. Both are gone: a sticky
+	// element shifts what is painted, not where the content is.
 	const leadingDate =
-		scroller && roadmap?.window && roadmap.scale && left > TIMELINE_LEAD_PX
-			? dayAt(roadmap.window, roadmap.scale, left - TIMELINE_LEAD_PX)
+		scroller && roadmap?.window && roadmap.scale
+			? dayAt(roadmap.window, roadmap.scale, scroller.scrollLeft)
 			: null;
 	return { ...anchor, offsets, leadingDate };
 }
@@ -2771,10 +2776,10 @@ function anchorScrollLeft(
 ): number {
 	if (!same) return todayLeft == null ? 0 : Math.max(todayLeft - viewport / 2, 0);
 	if (scale !== anchor.scale && anchor.leadingDate && roadmap?.window && roadmap.scale) {
-		// The lead comes back on: these offsets are content coordinates, which is also
-		// what `todayLeft` is measured in (`renderTimeline` adds the same constant).
+		// The mirror of the capture, and just as free of the lead: put the same date back
+		// at the scrollport's edge under the new ruler.
 		const day = daysBetween(roadmap.window.start, anchor.leadingDate);
-		return Math.max(TIMELINE_LEAD_PX + day * roadmap.scale.dayPx, 0);
+		return Math.max(day * roadmap.scale.dayPx, 0);
 	}
 	const saved = anchor.offsets['timeline']?.left ?? anchor.offsets['pane']?.left ?? 0;
 	if (todayLeft != null && anchor.todayLeft != null) return Math.max(saved + (todayLeft - anchor.todayLeft), 0);
@@ -3824,7 +3829,10 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
 			// A drag ending nowhere meaningful writes nothing and does not consume the
 			// undo slot — and a hold that moved nowhere plans nothing at all, so a
 			// request the user never made never reaches the writer.
-			if (plan) void host.performScheduleMove(source.item, plan.plan, plan.from);
+			// The shape captured at drag start, not the resolved item's: the expectation is
+			// what the gesture was planned under, and a type that changed mid-hold is what
+			// the writer's refusal exists to catch.
+			if (plan) void host.performScheduleMove(source.item, plan.plan, plan.from, source.ends);
 		},
 	});
 	// Auto-scroll is opt-in per element, and the element to register is the one that
