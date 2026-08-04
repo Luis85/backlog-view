@@ -2,14 +2,15 @@ import { setIcon, setTooltip } from 'obsidian';
 import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
-import { renderTimeline } from './timeline';
+import { renderTimeline, spanText } from './timeline';
 import { BacklogViewHost, RoadmapSnapshot, ScrollBox } from '../host';
-import { CardDragController } from '../interactions/cardDrag';
+import { CardDragController, CardSource } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { canSchedule } from '../interactions/plan';
+import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { wireTimelineDrag } from '../interactions/timelineDrag';
 import { BacklogItem } from '../../domain/model';
-import { ShelfCard } from '../../domain/bars';
+import { placeItem, ShelfCard, statedEnds, UNSCHEDULED_LABEL, withoutEnds } from '../../domain/bars';
+import { placementEnds } from '../../domain/itemTypes';
 import { buildRoadmap, HorizonBucket, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
@@ -25,10 +26,11 @@ import { CivilDate } from '../../domain/noteFields';
  * rule; the dated axis's grid is one POSITIONAL target instead — there are no lanes
  * yet, so only the pointer's X says anything, and `interactions/timelineDrag.ts`
  * decides what it means. `dnd` is the same controller either way, wired differently
- * per axis by `renderBucket`/`wireTimelineDrag` below. What is still withheld on the
- * dated axis is a BAR as a drag source — moving one already placed reads a delta, not
- * a position, and is the next increment's — so today only a shelf card can be picked
- * up there.
+ * per axis by `renderBucket`/`wireTimelineDrag` below. A bar already placed is a drag
+ * source too — a hold reads a delta rather than a position — and the dated axis's own
+ * shelf is where either direction lands: a shelf card onto the grid places it, a held
+ * bar back onto the shelf un-places it (`shelfRemoval` below is what tells `renderShelf`
+ * which write that is, per axis).
  */
 export function renderRoadmap(
 	ctx: RowContext,
@@ -82,7 +84,8 @@ export function renderRoadmap(
 			scale: activeScale,
 		});
 	}
-	const shelf = renderShelf(ctx, frameEl, roadmap.shelf, dnd, axis);
+	const removal = shelfRemoval(host, axis);
+	const shelf = renderShelf(ctx, frameEl, roadmap.shelf, dnd, removal);
 	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);
@@ -232,29 +235,97 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
 	btn.addEventListener('click', () => promptCreateItem(host, [type], null, { horizon: bucket.value }));
 }
 
+/** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
+interface ShelfRemoval {
+	plan: (item: BacklogItem) => void;
+	tooltip: string;
+	/** Which sources this strip honours — the bar BODY alone on the dated axis. */
+	accepts: (source: CardSource) => boolean;
+	/** What this removal would LEAVE, said before the release; null where it says nothing. */
+	outcome: ((item: BacklogItem) => string) | null;
+	/**
+	 * Whether a SHELVED item may be picked up as a drag source at all — folded in here
+	 * rather than a sixth `renderShelf` parameter (the lint budget's own `max-params`),
+	 * and it belongs beside the axis's other decisions anyway: every shelved item can
+	 * always be re-placed by horizon, while a marker with no writable end offers no grip
+	 * on the dated axis, the same gate the row's own Schedule entry uses.
+	 */
+	canDrag: (item: BacklogItem) => boolean;
+}
+
+/**
+ * The removal this axis's shelf plans and the words it says it in — `renderShelf`
+ * stops reading `dnd` as "the horizon axis" and takes both from here instead. Handed a
+ * controller unchanged, a bar dropped on the timeline's shelf would clear its
+ * **horizon** while the tooltip promised exactly what it always has: consistent
+ * wording for the wrong write, worse than either alone on its own.
+ */
+function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRemoval {
+	if (axis === 'horizons') {
+		return {
+			plan: (item) => void host.performHorizonMove(item, null),
+			tooltip: 'Results this axis cannot place — dropping a card here removes its horizon',
+			// A shelf card dropped back on the shelf is NOT refused here, unlike the
+			// dated axis: a horizon-shelved card can still carry an unreadable value
+			// worth clearing (`computeHorizonWrites` plans that write), and refusing the
+			// drop outright would withhold exactly the cleanup the reason is asking for.
+			// A re-drop with nothing to clear already plans zero writes and no-ops.
+			accepts: (source) => source.hold === null,
+			outcome: null,
+			canDrag: () => true,
+		};
+	}
+	return {
+		plan: (item) => void host.performScheduleMove(item, unschedulePlan(item)),
+		tooltip: 'Results this axis cannot place — dropping a bar here removes its dates',
+		// The bar BODY alone: a grip released here is a resize, not an unschedule, and
+		// a shelf card's own hold is null — both refused by the same test. Refused
+		// rather than ignored, so the strip never highlights for a drag it would not
+		// honour.
+		accepts: (source) => source.hold === 'body',
+		outcome: removalOutcome,
+		canDrag: (item) => canSchedule(host.settings, item),
+	};
+}
+
+/**
+ * What this removal would LEAVE, predicted from the function that places. `deriveBars`
+ * decides bar-or-shelf over several rules that do not compose into one — a marker goes
+ * through `placeMarker`, which ignores the start entirely and shelves whenever the
+ * target is absent, so a marker keeping a stale start still shelves and never reaches
+ * `inferSpan`; an unreadable or reversed pair shelves with its reason before any
+ * inference is asked. A comparison written beside those and expected to agree with them
+ * is exactly what drifted when the second axis arrived.
+ *
+ * The preview PREDICTS and the announcement REPORTS: this is drawn from the model in
+ * hand, and a descendant's dates changed by another editor mid-drag can make the real
+ * outcome differ. That is true of every preview here and needs no machinery — the
+ * announcement names the placement from the REBUILT model instead.
+ */
+function removalOutcome(item: BacklogItem): string {
+	const left = placeItem(item, withoutEnds(statedEnds(item), placementEnds(item.typeName)));
+	return left.kind === 'shelf' ? UNSCHEDULED_LABEL : `Keeps ${spanText(left.bar)}`;
+}
+
 /**
  * Everything the axis could not place, in sibling order, counted — the roadmap
  * reports how much of the backlog is not yet planned instead of implying the
  * plan is the whole story.
  *
- * An EMPTY shelf stays in the DOM only where a drop on it means something — the
- * horizon axis, where it is the target that un-places, and a target that exists
- * only while it is occupied is one nothing can ever reach. On the dated axis a drop
- * back onto the shelf writes nothing yet (a bar is not a drag source until the hold
- * gestures ship), so an empty strip there would be the projection promising a write
- * it cannot make — [[Roadmap empty states]]'s own rule, restated for this band. A
- * NON-empty shelf always renders regardless: its cards are worth reading, and on the
- * dated axis they are now a drag source of their own, one gesture onto the grid.
+ * An EMPTY shelf stays in the DOM regardless of axis: a drop on it means something on
+ * both now — un-placing a horizon or a bar's own dates — and a target that exists only
+ * while it is occupied is one nothing can ever reach. Before a bar could be held, the
+ * dated axis's empty shelf really did promise a write it could not make and stayed out
+ * of the DOM for exactly that reason; this task is what closes that gap.
  */
 function renderShelf(
 	ctx: RowContext,
 	frameEl: HTMLElement,
 	shelf: ShelfCard[],
 	dnd: CardDragController,
-	axis: RoadmapAxis,
+	removal: ShelfRemoval,
 ): { cards: BacklogItem[]; el: HTMLElement | null } {
 	const empty = shelf.length === 0;
-	if (empty && axis !== 'horizons') return { cards: [], el: null };
 	const shelfEl = frameEl.createDiv({
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : ''),
 		attr: { role: 'group', 'aria-label': `${SHELF_LABEL}, ${shelf.length} item${shelf.length === 1 ? '' : 's'}` },
@@ -268,14 +339,12 @@ function renderShelf(
 	setIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
 	header.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
 	header.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
+	// The outcome line is only where a removal has one to say — the horizon axis's
+	// drop always un-places, so it has nothing to distinguish before the release.
+	const outcomeEl = removal.outcome ? header.createDiv({ cls: 'pbl-shelf-outcome' }) : null;
 	// The one target whose drop REMOVES rather than writes has to say so, exactly as
 	// the board's no-state column does.
-	setTooltip(
-		header,
-		axis === 'horizons'
-			? 'Results this axis cannot place — dropping a card here removes its horizon'
-			: 'Results this axis cannot place — drag one onto the grid to schedule it',
-	);
+	setTooltip(header, removal.tooltip);
 	const cardsEl = shelfEl.createDiv({ cls: 'pbl-shelf-cards' });
 	for (const entry of shelf) {
 		const card = createCard(ctx, cardsEl, entry.item);
@@ -288,16 +357,21 @@ function renderShelf(
 			reason.createSpan({ text: entry.reason });
 		}
 		wireCardActivation(ctx, card, entry.item);
-		// A gesture whose only possible batch is empty must not begin: on the dated
-		// axis that is `canSchedule`, the same gate the row's own Schedule entry uses
-		// (`interactions/plan.ts`) — a marker with no writable end offers no grip at
-		// all. On the horizon axis every shelved item can always be placed.
-		if (axis === 'horizons' || canSchedule(ctx.host.settings, entry.item)) dnd.wireCard(card, entry.item);
+		// A gesture whose only possible batch is empty must not begin: `removal.canDrag`
+		// is `canSchedule` on the dated axis, the same gate the row's own Schedule entry
+		// uses (`interactions/plan.ts`) — a marker with no writable end offers no grip at
+		// all. A shelf card is always wired with `hold: null`, which is exactly what each
+		// axis's `removal.accepts` refuses on its own strip.
+		if (removal.canDrag(entry.item)) dnd.wireCard(card, entry.item);
 	}
-	// Entering the vocabulary is the triage gesture, so the shelf is a drag SOURCE as
-	// much as a target — and dropping back on it un-places, the mirror write. Only on
-	// the horizon axis: the dated axis has no drag source that would land here yet.
-	if (axis === 'horizons') dnd.wireDropTarget(shelfEl, (item) => void ctx.host.performHorizonMove(item, null));
+	// Entering the vocabulary is the triage gesture on the horizon axis, and un-placing
+	// a bar's dates is the dated axis's mirror of the same drop — both wired here,
+	// through the removal the axis supplied.
+	dnd.wireDropTarget(shelfEl, removal.plan, {
+		accepts: removal.accepts,
+		onEnter: (source) => outcomeEl?.setText(removal.outcome?.(source.item) ?? ''),
+		onLeave: () => outcomeEl?.setText(''),
+	});
 	return { cards: shelf.map((entry) => entry.item), el: shelfEl };
 }
 

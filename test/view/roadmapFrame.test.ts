@@ -387,14 +387,15 @@ describe('the unplaced shelf', () => {
 		expect(shelfIsEmptyStrip(containerEl)).toBe(true);
 	});
 
-	it('is absent on the dated axis until something shelves — no write means no target', () => {
+	it('stays in the DOM on the dated axis too, empty or not — a held bar can un-place onto it', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		// Scheduling by drag is its own feature; an empty strip promising a drop the
-		// timeline cannot write would be the projection making an offer it cannot keep.
-		expect(shelfOf(containerEl)).toBeNull();
+		// Nothing is shelved, but the strip is still the target a held bar's body drop
+		// reaches to un-place its dates — out of the layout until a drag is live, the
+		// same rule the horizon axis's empty shelf already followed.
+		expect(shelfIsEmptyStrip(containerEl)).toBe(true);
 	});
 
 	it('narrows with "Show completed items" exactly as the rest of the view does', () => {
@@ -477,7 +478,9 @@ describe('context rows on the roadmap', () => {
 
 		expect(timelineRows(containerEl)).toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-roadmap-context .pbl-card-title')?.textContent).toBe('Epic');
-		expect(shelfOf(containerEl)).toBeNull();
+		// Nothing else on this row set is a result, so the shelf renders empty rather
+		// than absent — the dated axis's shelf is a real target regardless.
+		expect(shelfIsEmptyStrip(containerEl)).toBe(true);
 	});
 });
 

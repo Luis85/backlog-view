@@ -197,9 +197,14 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 	}).open();
 }
 
-/** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
-export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
+/** Every date key this item's own type answers for, as a plan that removes them. */
+export function unschedulePlan(item: BacklogItem): SchedulePlan {
 	const plan: SchedulePlan = {};
 	for (const field of placementEnds(item.typeName)) plan[field] = null;
-	return host.performScheduleMove(item, plan);
+	return plan;
+}
+
+/** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
+export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
+	return host.performScheduleMove(item, unschedulePlan(item));
 }

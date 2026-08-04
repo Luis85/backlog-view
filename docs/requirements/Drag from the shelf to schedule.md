@@ -114,13 +114,20 @@ the keys rather than blanking them.
 
 ## Where it lives
 
-The shelf-to-grid half is built: the pointer is turned into a date by
+Both halves are built. The shelf-to-grid half turns the pointer into a date in
 `src/view/interactions/timelineDrag.ts`, which registers the grid's one positional
 target through `src/view/interactions/cardDrag.ts` — never a target per row, since
-without lanes only the X says anything — and hands the resulting plan to
-`host.performScheduleMove` in `src/view/backlogView.ts`, the single place a date batch
-is planned, applied through `src/storage/frontmatter.ts`, and announced. The drop
-overlay itself is `src/view/render/timeline.ts`'s, spanning the day area past the
-sticky lead column. What is still open: the grid-to-shelf removal (extension 4) and a
-lane's reparent (extension 2d) are later increments' — see [[Lanes on the roadmap]] —
-and neither is built here.
+without lanes only the X says anything. The grid-to-shelf half (extension 4) is the
+dated axis's `shelfRemoval` in `src/view/render/roadmap.ts`: the shelf's drop target
+accepts the bar BODY hold alone (a grip is a resize, not an unschedule) and refuses a
+shelf card dropped back on itself (it may still carry keys its shelving reason is
+asking the user to fix), planning `unschedulePlan` from
+`src/view/interactions/plan.ts` — the same narrowing to `placementEnds` the row's own
+Unschedule entry uses. Both hand their plan to `host.performScheduleMove` in
+`src/view/backlogView.ts`, the single place a date batch is planned, applied through
+`src/storage/frontmatter.ts`, and announced. The drop overlay is
+`src/view/render/timeline.ts`'s, spanning the day area past the sticky lead column;
+the pre-release indicator that says which placement a removal would leave asks
+`placeItem`/`withoutEnds` in `src/domain/bars.ts` rather than a second opinion beside
+them. What is still open: a lane's reparent (extension 2d) is a later increment's —
+see [[Lanes on the roadmap]].

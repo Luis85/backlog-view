@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { flush, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
-import { gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
+import { cardDrag, gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
 import { gripNames, gripOf, shelfOf } from '../helpers/roadmap';
 import { addDays, cellSpan, dayAt, scaleFor } from '../../src/domain/timeline';
 
@@ -309,6 +309,99 @@ describe('holding a bar', () => {
 		gridDrag(cardByTitle(first.containerEl, 'Unplanned'), overlayOf(second.containerEl), { clientX: 500 });
 
 		expect(vault.writeLog).toHaveLength(0);
+	});
+});
+
+describe('dropping a bar back on the shelf', () => {
+	it('removes the date keys rather than blanking them, and undo restores them', async () => {
+		const vault = scheduleVault();
+		const { view, containerEl } = datedView(vault);
+
+		cardDrag(gripOf(containerEl, 'Planned', 'body'), shelfOf(containerEl)!);
+		await flush();
+
+		expect('start' in vault.fm('Planned.md')).toBe(false);
+		expect('target' in vault.fm('Planned.md')).toBe(false);
+		await view.undoLast();
+		expect(vault.fm('Planned.md').start).toBe('2026-08-04');
+	});
+
+	it('narrows a marker to its target and leaves a stale start alone', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' } });
+		const { containerEl } = datedView(vault);
+
+		cardDrag(gripOf(containerEl, 'Ship', 'body'), shelfOf(containerEl)!);
+		await flush();
+
+		expect('target' in vault.fm('Ship.md')).toBe(false);
+		expect(vault.fm('Ship.md').start).toBe('2026-07-01');
+	});
+
+	it('refuses a GRIP released over the shelf — a resize is not an unschedule', async () => {
+		// `wireDropTarget` admits any source carrying the view's token and hands its
+		// callback the resolved item alone, so with the bar holds wired as sources it
+		// cannot tell a resize from a body drag: a start grip released over the shelf
+		// would fire the full unschedule and delete BOTH keys instead of moving one end.
+		// Refused rather than ignored, so the strip never highlights for a drag it
+		// would not honour.
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+
+		cardDrag(gripOf(containerEl, 'Planned', 'start'), shelfOf(containerEl)!);
+		await flush();
+
+		expect(vault.fm('Planned.md').start).toBe('2026-08-04');
+		expect(vault.writeLog).toHaveLength(0);
+		expect(shelfOf(containerEl)?.hasClass('pbl-drop-over')).toBe(false);
+	});
+
+	it('refuses a SHELF card dropped back on the shelf, which is not merely tidiness', async () => {
+		// A card shelved as unreadable or reversed still carries its date keys —
+		// `deriveBars` shelves it with a reason rather than for want of dates — so the
+		// removal would delete the very values the reason is telling the user to correct.
+		const vault = new FakeVault();
+		vault.addFile('Backwards.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-31', target: '2026-08-01' } });
+		const { containerEl } = datedView(vault);
+
+		cardDrag(cardByTitle(containerEl, 'Backwards'), shelfOf(containerEl)!);
+		await flush();
+
+		expect(vault.fm('Backwards.md').start).toBe('2026-08-31');
+		expect(vault.writeLog).toHaveLength(0);
+	});
+
+	it('previews the inferred span a parent KEEPS, not the shelf', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, start: '2026-08-01', target: '2026-08-31' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-10', target: '2026-08-20' }, parentLink: 'Parent' });
+		const { containerEl } = datedView(vault);
+		const shelf = shelfOf(containerEl)!;
+
+		const gesture = gridDrag.start(gripOf(containerEl, 'Parent', 'body'));
+		gesture.over(shelf, { clientX: 10 });
+
+		expect(shelf.querySelector('.pbl-shelf-outcome')?.textContent).toContain('2026-08-10');
+		// A hover-only gesture has to end with `cancel`, or pragmatic keeps it "active"
+		// globally and the next test's dragstart bleeds into a drag that never ended —
+		// see `gridDrag.start`'s own comment in `test/helpers/dnd.ts`.
+		gesture.cancel();
+	});
+
+	it('previews the shelf for a wholly dateless subtree, and for a marker with a stale start', () => {
+		const vault = new FakeVault();
+		vault.addFile('Alone.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01' } });
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, start: '2026-07-01', target: '2026-09-30' } });
+		const { containerEl } = datedView(vault);
+		const shelf = shelfOf(containerEl)!;
+
+		for (const title of ['Alone', 'Ship']) {
+			const gesture = gridDrag.start(gripOf(containerEl, title, 'body'));
+			gesture.over(shelf, { clientX: 10 });
+			expect(shelf.querySelector('.pbl-shelf-outcome')?.textContent, title).toContain('Unscheduled');
+			gesture.leave(shelf);
+			gesture.cancel();
+		}
 	});
 });
 

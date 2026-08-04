@@ -1,19 +1,15 @@
-/* The dated axis: the month grid, the bars, the today line and the shelf —
-   `src/view/render/timeline.ts`. */
+/* The dated axis: the month grid, the bars, the today line and the shelf — `src/view/render/timeline.ts`. */
 
 /* ----- the dated axis: the month grid, bars, and the today line */
 
-/* The scroll box, on BOTH axes. Not `.pbl-timeline-content`: full-height marks resolve
-   `top: 0; bottom: 0` against their containing block's padding box, so making the
-   scroll box the containing block would make every line viewport-tall and scroll away.
-
-   REPLACE the existing rule rather than adding to it: `width: max-content` moves to the
-   content wrapper below. A scroll box as wide as its own content has nothing to scroll —
-   the overflow would happen outside it, where `.pbl-roadmap-dates .pbl-tree` now clips
-   instead of scrolling, so every date past the pane's edge would be unreachable and the
-   registered scroller would have nothing to pan. `min-width: 0` because a flex item's
-   automatic minimum is its content size, which would restore the same width by another
-   route. */
+/* The scroll box, on BOTH axes — not `.pbl-timeline-content`, since full-height marks
+   resolve `top/bottom: 0` against their containing block's padding box, and making the
+   scroll box that containing block would stretch every line the full viewport height.
+   REPLACE the existing rule, don't add to it: `width: max-content` moved to the content
+   wrapper below — a scroll box as wide as its own content has nothing to scroll, and
+   `.pbl-roadmap-dates .pbl-tree` would clip instead of scrolling, leaving every date
+   past the pane's edge unreachable. `min-width: 0` counters a flex item's automatic
+   minimum, which would restore the same width another way. */
 .pbl-timeline {
 	position: relative;
 	width: 100%;
@@ -152,8 +148,7 @@
 	width: var(--pbl-bar-width);
 	height: 14px;
 	border-radius: var(--radius-s);
-	/* One color for solid and open bars alike: states override the variable,
-	   never the background, so an open end can never reveal a solid backing. */
+	/* One color for solid/open bars: states override the variable, never the background. */
 	--pbl-bar-color: var(--interactive-accent);
 	background-color: var(--pbl-bar-color);
 	cursor: grab; /* the body IS a hold — see barHolds */
@@ -283,11 +278,9 @@
 }
 
 /* In the header band, so the name reads where the months do. Backed, because it sits
-   over the month labels; truncating, because horizontal space is what a pane runs out
-   of first and the full name is one hover away — which needs the label to actually
-   receive the hover: the month cells underneath are presentational (the header is
-   aria-hidden, no click handler anywhere in it) and the bars live in a different row
-   entirely, so nothing below this label ever needed the pointer to pass through it. */
+   over the month labels; truncating, because the full name is one hover away — which
+   needs the label itself to receive the hover, so the presentational month cells and
+   the bars (a different row entirely) never needed the pointer to pass through it. */
 .pbl-milestone-label {
 	position: absolute;
 	top: 0;
@@ -345,6 +338,13 @@
 .pbl-shelf-icon {
 	display: flex;
 	align-items: center;
+	color: var(--text-muted);
+}
+
+/* What this drop would LEAVE, said before the release — only the dated axis draws one. */
+.pbl-shelf-outcome {
+	margin-inline-start: auto;
+	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
