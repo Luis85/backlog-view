@@ -1252,6 +1252,24 @@ In `src/domain/writePlan.ts`, add to `AxisWrite`:
 	 * has no shape to disagree about.
 	 */
 	ends?: PlacementEnd[];
+
+	/**
+	 * The dates this plan was computed FROM, for a gesture that is relative. A slide and
+	 * an end drag mean "one day further than where this was", and the plan turns that
+	 * into an absolute date using the span the render showed — so if another editor moved
+	 * that end from the 10th to the 12th mid-drag, submitting the 11th walks their change
+	 * backwards. The writer compares each stated expectation against the live value and
+	 * refuses the batch whole where they differ, exactly as it does for `ends`.
+	 *
+	 * Refused rather than rebased onto the new value: "the preview is the contract, and
+	 * release writes exactly the dates it showed" — rebasing would write the 13th, which
+	 * is a date the preview never named. Nothing is written, the bar redraws where the
+	 * note now says, and the next gesture is made against that.
+	 *
+	 * Absent where the gesture is absolute — a shelf drop, the date prompt — because
+	 * those mean a date rather than a displacement and have no base to be stale.
+	 */
+	from?: Partial<Record<PlacementEnd, string | null>>;
 ```
 
 with `import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex, PlacementEnd } from './itemTypes';`.
@@ -1536,15 +1554,21 @@ write is dropped as unchanged.
  * already stated, not whether a key is there to remove. Both are questions about what
  * the note holds RIGHT NOW, and the row that planned this can be a refresh behind it,
  * so both are the writer's (`storage/frontmatter.ts`). What this function does is
- * state what was asked for, plus the placement shape it was asked under, so the writer
- * can check its expectation.
+ * state what was asked for, plus the expectations it was asked under — the placement
+ * shape, and for a relative gesture the dates it was measured from — so the writer can
+ * check them against what the note actually holds.
  *
  * It stays type-agnostic deliberately: WHICH ends a plan may name is `placementEnds`
  * in `domain/itemTypes.ts`, asked by the caller. Pushing the narrowing in here would
  * put one type rule in two places.
  */
-export function computeScheduleWrites(item: BacklogItem, plan: SchedulePlan, ends: PlacementEnd[]): ItemWrite[] {
-	const axis: AxisWrite = { ends };
+export function computeScheduleWrites(
+	item: BacklogItem,
+	plan: SchedulePlan,
+	ends: PlacementEnd[],
+	from?: Partial<Record<PlacementEnd, string | null>>,
+): ItemWrite[] {
+	const axis: AxisWrite = { ends, ...(from ? { from } : {}) };
 	let planned = false;
 	for (const field of ends) {
 		const requested = plan[field];
@@ -1613,7 +1637,10 @@ git commit -m "Let the planner ask for a date, and the writer decide what it mea
 - Consumes: `WriteOutcome`, `DateChange` (Task 4); `placeItem`, `statedEnds`,
   `UNSCHEDULED_LABEL` (Task 2); `computeScheduleWrites` (Task 5).
 - Produces:
-  - `BacklogViewHost.performScheduleMove(item: BacklogItem, plan: SchedulePlan): Promise<boolean>`
+  - `BacklogViewHost.performScheduleMove(item: BacklogItem, plan: SchedulePlan, from?: Partial<Record<PlacementEnd, string | null>>): Promise<boolean>`
+    — `from` is the base a *relative* gesture measured against, passed through to
+    `AxisWrite.from` so the writer can refuse a hold the note moved under. Absent from
+    the modal and the menu, which state a date rather than a displacement.
   - `export function announceScheduleMove(title: string, change: DateChange, placement: Placement | null): void`
     in `cardDrag.ts`, beside `announceBoardMove` and `announceHorizonMove`
 
@@ -2603,9 +2630,17 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 	// `dayAt` unadjusted reads the row labels as 55 days of calendar at month zoom, so
 	// the anchor names a date nobody was looking at. Every conversion between an offset
 	// on this scroller and a date subtracts the lead going in and adds it coming out.
+	//
+	// Only where the date track HAS reached the edge, though. At or before the lead
+	// there is no leading date to preserve: `dayAt` clamps every such offset to the
+	// window's first day, so anchoring by date would collapse the whole 0–220px range
+	// onto 220 and shunt a timeline resting at 0 sideways on every zoom. Those pixels
+	// are the lead column, whose width no scale changes, so they are carried across
+	// verbatim — `null` here means "keep the offset", which the restore already does.
+	const left = scroller?.scrollLeft ?? 0;
 	const leadingDate =
-		scroller && roadmap?.window && roadmap.scale
-			? dayAt(roadmap.window, roadmap.scale, scroller.scrollLeft - TIMELINE_LEAD_PX)
+		scroller && roadmap?.window && roadmap.scale && left > TIMELINE_LEAD_PX
+			? dayAt(roadmap.window, roadmap.scale, left - TIMELINE_LEAD_PX)
 			: null;
 	return { ...anchor, offsets, leadingDate };
 }
@@ -3707,7 +3742,7 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
 			// A drag ending nowhere meaningful writes nothing and does not consume the
 			// undo slot — and a hold that moved nowhere plans nothing at all, so a
 			// request the user never made never reaches the writer.
-			if (plan) void host.performScheduleMove(source.item, plan);
+			if (plan) void host.performScheduleMove(source.item, plan.plan, plan.from);
 		},
 	});
 	// Auto-scroll is opt-in per element, and the element to register is the one that
@@ -3746,7 +3781,7 @@ function dropDay(parts: TimelineParts): (clientX: number) => CivilDate {
  * narrowing it would put a target-only drop on 3 August at week zoom onto 9 August,
  * which is the silent coarsening decision 1 exists to refuse.
  */
-function shelfPlan(host: BacklogViewHost, parts: TimelineParts, item: BacklogItem, clientX: number): SchedulePlan | null {
+function shelfPlan(host: BacklogViewHost, parts: TimelineParts, item: BacklogItem, clientX: number): GesturePlan | null {
 	const ends = writableEnds(host.settings, item);
 	if (ends.length === 0) return null;
 	const day = dropDay(parts)(clientX);
@@ -3777,7 +3812,7 @@ function preview(
 	// write cannot disagree about what a position means.
 	const plan = planFor(host, parts, source, clientX, originX);
 	if (!plan) return;
-	const placement = placeItem(source.item, plannedEnds(source.item, plan));
+	const placement = placeItem(source.item, plannedEnds(source.item, plan.plan));
 	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so.
 	if (placement.kind !== 'bar') return;
 	const bar = placement.bar;
@@ -4220,7 +4255,7 @@ function holdPlan(
 	hold: BarHold,
 	clientX: number,
 	originX: number,
-): SchedulePlan | null {
+): GesturePlan | null {
 	const item = source.item;
 	// Viewport-relative, so the pan is INCLUDED: while auto-scroll moves the grid under
 	// a held pointer, `clientX - originX` stays zero while later dates slide beneath it.
@@ -4246,15 +4281,24 @@ function holdPlan(
 		// preserve when half of it is an absence: filling it in would close a one-ended
 		// plan by a gesture that promised to move it.
 		const plan: SchedulePlan = {};
+		// The base each end was displaced FROM travels with the plan, so the writer can
+		// see that the note moved under the gesture and refuse rather than walk a
+		// concurrent edit backwards. A slide means "one day further than THIS", and this
+		// is the only place that still knows what "this" was.
+		const from: Partial<Record<PlacementEnd, string | null>> = {};
 		for (const end of ends) {
 			const date = span[end];
-			if (date !== null) plan[end] = formatCivil(addDays(date, days));
+			if (date !== null) {
+				plan[end] = formatCivil(addDays(date, days));
+				from[end] = formatCivil(date);
+			}
 		}
-		return Object.keys(plan).length > 0 ? plan : null;
+		return Object.keys(plan).length > 0 ? { plan, from } : null;
 	}
 	const end: PlacementEnd = hold === 'start' ? 'start' : 'target';
 	if (!ends.includes(end)) return null;
-	const moved = addDays(heldDate(item, hold, parts), days);
+	const held = heldDate(item, hold, parts);
+	const moved = addDays(held, days);
 	const opposite = end === 'start' ? span.target : span.start;
 	// Clamped at equal rather than crossing — but ONLY against an end the note itself
 	// states. A reversed span is a property of a note's OWN pair, which is the only pair
@@ -4264,7 +4308,10 @@ function holdPlan(
 	// writes the day the pointer names, and `inferSpan` places the result: `keepsOrder`
 	// already drops evidence falling on the wrong side of a stated end.
 	const clamped = opposite === null ? moved : clampAtEqual(end, moved, opposite);
-	return { [end]: formatCivil(clamped) };
+	// The grip is relative too, so it states its base for the same reason the body does.
+	// An open end borrowed its baseline from the stated opposite one, which is a date the
+	// note does state, so the expectation is real there as well.
+	return { plan: { [end]: formatCivil(clamped) }, from: { [end]: formatCivil(held) } };
 }
 
 function clampAtEqual(end: PlacementEnd, moved: CivilDate, opposite: CivilDate): CivilDate {
@@ -4283,16 +4330,27 @@ first frame of a hold, which is sound for the scroller and would not be for the 
 (Step 4):
 
 ```ts
+/**
+ * What a gesture asks for: the dates, and — for a relative gesture — the dates it
+ * measured them from. The base rides along so the writer can tell a live edit from a
+ * stale hold; an absolute gesture states no base because it has none.
+ */
+interface GesturePlan {
+	plan: SchedulePlan;
+	from?: Partial<Record<PlacementEnd, string | null>>;
+}
+
 function planFor(
 	host: BacklogViewHost,
 	parts: TimelineParts,
 	source: CardSource,
 	clientX: number,
 	originX: number,
-): SchedulePlan | null {
+): GesturePlan | null {
 	// A shelf card has no origin to move from, so it reads the pointer's position; a
 	// hold reads the delta. Two gestures, two rules, and conflating them is a bug at the
-	// sparse scales.
+	// sparse scales — and it is the same split again for staleness: a position means a
+	// date, a displacement means a date RELATIVE to one, and only the second can go stale.
 	if (source.hold === null) return shelfPlan(host, parts, source.item, clientX);
 	return holdPlan(host, parts, source, source.hold, clientX, originX);
 }
