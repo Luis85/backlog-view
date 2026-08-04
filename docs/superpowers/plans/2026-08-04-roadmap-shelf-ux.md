@@ -2149,7 +2149,7 @@ live-vault check — jsdom has no layout engine — recorded verified only after
 ---
 type: PBI
 parent: "[[The horizon board]]"
-order: 30
+order: 40
 status: Active
 priority: P2
 created: 2026-08-04
