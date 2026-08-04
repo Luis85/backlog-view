@@ -24,6 +24,7 @@ import { childTypeChoices, placementEnds, PlacementEnd } from '../domain/itemTyp
 import { placeItem } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { activeAxis, horizonSource, RoadmapAxis } from '../domain/roadmap';
+import { ShelfSort } from '../domain/shelf';
 import {
 	computeDropWrites,
 	computeHorizonWrites,
@@ -182,6 +183,37 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.collapse.setAxisPick(axis);
 		// The pick is UI state like the mode: no Bases refresh is coming.
 		this.render();
+	}
+
+	get shelfCollapsed(): boolean {
+		return this.collapse.shelfCollapsed();
+	}
+
+	setShelfCollapsed(collapsed: boolean): void {
+		if (collapsed === this.shelfCollapsed) return;
+		this.collapse.setShelfCollapsed(collapsed);
+		// Content only, like setFilter — a full render() would tear down and rebuild
+		// the very toolbar control the user just activated, taking their focus with it.
+		this.renderTreeContent();
+	}
+
+	get shelfSort(): ShelfSort {
+		return this.collapse.shelfSort();
+	}
+
+	setShelfSort(sort: ShelfSort): void {
+		if (sort === this.shelfSort) return;
+		this.collapse.setShelfSort(sort);
+		this.renderTreeContent();
+	}
+
+	get shelfHiddenTypes(): ReadonlySet<string> {
+		return this.collapse.shelfHiddenTypes();
+	}
+
+	setShelfHiddenTypes(types: ReadonlySet<string>): void {
+		this.collapse.setShelfHiddenTypes(types);
+		this.renderTreeContent();
 	}
 
 	get zoom(): ScaleId {
