@@ -317,29 +317,24 @@ describe('holding a bar', () => {
 		expect(vault.fm('Parent.md').start).toBe('2026-08-31');
 	});
 
-	it('counts a start grip from the window edge when the note states neither end — target inferred from a child alone', async () => {
-		// `heldDate`'s own docstring calls the `?? parts.window.start` arm unreachable
-		// "through `barHolds` (a grip exists only where at least one end is genuinely
-		// the note's own)". That claim does not hold: `barHolds` withholds a START grip
-		// only for an INFERRED start, and a start that is simply absent — no evidence
-		// from children either — is not inferred (`inferredStart` is false whenever the
-		// derived start stays null, whether or not anything was ever stated). A parent
-		// whose only child supplies a TARGET still offers a start grip on a bar whose
-		// own start and target are both null, and this drags exactly that grip.
+	it('offers no grip at all when the note states neither end — target inferred from a child alone', () => {
+		// `barHolds` used to withhold a START grip only for an INFERRED start, and a start
+		// that is simply absent — no evidence from children either — is not inferred
+		// (`inferredStart` is false whenever the derived start stays null, whether or not
+		// anything was ever stated). A parent stating no dates, with a single child
+		// supplying only a TARGET, drew a bar with `inferredStart: false` for exactly that
+		// reason and still offered a start grip with no baseline anywhere on the note to
+		// drag from — dragging it wrote a date anchored to the visible window's own edge,
+		// wherever the reader happened to have scrolled. `barHolds` now asks what the note
+		// ITSELF states before offering anything: neither end is the note's own here, so
+		// the bar still renders (the child's target still fills the axis) but offers
+		// NOTHING to grip.
 		const vault = new FakeVault();
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-09-01' }, parentLink: 'Parent' });
 		const { containerEl } = datedView(vault);
-		const scale = scaleFor('month');
 
-		expect(gripNames(containerEl, 'Parent')).toEqual(['start']);
-
-		gridDrag(gripOf(containerEl, 'Parent', 'start'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 3 * scale.dayPx });
-		await flush();
-
-		// Three days from the window's own left edge (2026-07-01) — the only baseline
-		// left once neither end is the note's own.
-		expect(vault.fm('Parent.md').start).toBe('2026-07-04');
+		expect(gripNames(containerEl, 'Parent')).toEqual([]);
 	});
 
 	it('clamps a start grip at equal rather than crossing a stated target', async () => {

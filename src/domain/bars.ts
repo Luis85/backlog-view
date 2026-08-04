@@ -164,21 +164,31 @@ export type BarHold = 'body' | 'start' | 'end';
  * by the drag that honours them, so what looks grabbable and what can actually be
  * written cannot disagree.
  *
- * Three rules, each from [[Move and resize a bar]]:
+ * Four rules, each from [[Move and resize a bar]]:
  * - a marker offers no end grips (1g): a point has no duration to resize, and its body
  *   slide moves the target alone;
  * - an INFERRED end withholds the body hold too, not only its own grip (1c) — sliding a
  *   bar half-anchored to its children is a resize wearing a slide's cursor;
  * - an unconfigured key offers no grip at all (1a), because nothing is ever written to
- *   one.
+ *   one;
+ * - **neither end genuinely the note's own withholds every grip**, even one whose
+ *   `inferredStart`/`inferredEnd` flag reads false. That flag is set only where
+ *   inference actually PRODUCED a date — an end that is simply absent, with no
+ *   descendant evidence either, reads as "not inferred" by the same test a stated end
+ *   does, so the flags alone cannot tell "open" from "nothing to hold at all". A bar
+ *   whose whole span is display — inferred from below, or empty — has no baseline
+ *   anywhere on it for a gesture to move from.
  *
  * An OPEN end is not an inferred end: it is absent, its property is configured, and its
- * grip is exactly how the missing date gets written.
+ * grip is exactly how the missing date gets written — but only where the OTHER end is
+ * the note's own, which is the baseline the open end's grip borrows (`heldDate`).
  */
 export function barHolds(item: BacklogItem, settings: BacklogSettings, bar: TimelineBar): BarHold[] {
 	const ends = placementEnds(item.typeName);
 	const writable = (end: PlacementEnd): boolean => ends.includes(end) && optionalKeyFor(settings, end) !== '';
 	if (isMarkerType(item.typeName)) return writable('target') ? ['body'] : [];
+	const stated = statedEnds(item);
+	if (stated.start.value === null && stated.target.value === null) return [];
 	const holds: BarHold[] = [];
 	if (!bar.inferredStart && writable('start')) holds.push('start');
 	if (!bar.inferredEnd && writable('target')) holds.push('end');

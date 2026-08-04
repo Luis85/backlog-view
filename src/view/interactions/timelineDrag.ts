@@ -291,10 +291,14 @@ function gripMove(parts: TimelineParts, source: CardSource, end: PlacementEnd, d
 /**
  * The date a grip moves — what the note states for that end, drawn at drag start. An
  * open end has no date of its own, so it borrows the stated one: a one-dated bar
- * renders one cell wide at the date it has, and the open end's grip sits there too. The
- * `?? parts.window.start` arm is unreachable through `barHolds` (a grip exists only
- * where at least one end is genuinely the note's own) and stands only as a defensive
- * fallback for a `CardSource` built some other way.
+ * renders one cell wide at the date it has, and the open end's grip sits there too.
+ *
+ * The `?? parts.window.start` arm is unreachable through `barHolds`, which withholds
+ * every grip unless at least one end is the note's OWN stated value (`domain/bars.ts`):
+ * a grip on the stated end always finds its own date, and a grip on the open end always
+ * finds the *other* end stated instead — the precondition that makes it "open" rather
+ * than "nothing to hold" guarantees the opposite end it borrows from is never itself
+ * null. It stands only as a defensive fallback for a `CardSource` built some other way.
  */
 function heldDate(span: DateSpan, end: PlacementEnd, parts: TimelineParts): CivilDate {
 	const date = end === 'target' ? (span.target ?? span.start) : (span.start ?? span.target);

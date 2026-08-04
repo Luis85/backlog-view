@@ -123,6 +123,24 @@ describe('barHolds', () => {
 		expect(barHolds(item, settings, { item, span: { start: null, target: null }, inferredStart: false, inferredEnd: false })).toEqual([]);
 	});
 
+	it('withholds every grip when the note states NEITHER end, even where a child’s date fills the bar', () => {
+		// The bug this guards: a start that is simply ABSENT (no evidence from children
+		// either) reads `inferredStart: false`, the same as a genuinely stated start —
+		// the flag alone cannot tell "open" from "nothing to hold". Only the note's own
+		// stated ends (`statedEnds`) may ground a grip; a bar drawn entirely from a
+		// child's evidence has no baseline anywhere on the note to drag from.
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-09-01' }, parentLink: 'Parent' });
+		const { item, settings } = itemFor(vault, 'Parent.md');
+		const placement = placeItem(item, statedEnds(item));
+		if (placement.kind !== 'bar') throw new Error('expected a bar');
+
+		expect(placement.bar.inferredStart).toBe(false);
+		expect(placement.bar.span.start).toBeNull();
+		expect(barHolds(item, settings, placement.bar)).toEqual([]);
+	});
+
 	it('an inferred END withholds the body hold too, not only its own grip', () => {
 		// Extension 1c: sliding a bar half-anchored to its children is a resize wearing
 		// a slide's cursor. Watch this one fail with `holds.push('body')` unguarded.

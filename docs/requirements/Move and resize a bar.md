@@ -72,7 +72,12 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   inferred from children withholds the body hold too, not just its own grip: sliding
   a bar half-anchored to its children is a resize wearing a slide's cursor, and the
   stated end's own grip is the honest handle. A fully inferred bar takes no hold at
-  all.
+  all — and neither does a bar with no inferred end at all where the note itself
+  states NEITHER date: a start that is simply absent, with no evidence from a child
+  either, is not an inferred start, so a bar drawn wholly from a child's target still
+  offered a start grip with no baseline anywhere on the note to drag from. A grip
+  needs at least one end that is the note's own — stated, or open because the note's
+  OTHER end is stated — never a bar that is entirely someone else's evidence.
 - **1d — the drag crosses a lane as well as time.** The gesture leaves this PBI:
   reparent and dates travel as the one combined batch [[Lanes on the roadmap]]
   specifies — previewed together, applied together, undone together — so the two notes
@@ -121,7 +126,9 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   grip, and nothing is ever written to an unconfigured key; ends clamp at equal and
   never cross.
 - Inferred bars and inferred ends take no gesture; a dated parent's bar moves only the
-  parent.
+  parent. A bar with no end the note itself states takes no gesture either, even where
+  a child's evidence fills it and even where the flags alone would allow one — a grip
+  needs at least one end that is genuinely the note's own.
 - One batch, one undo; a refusal is whole, loud, and leaves the notes' own dates
   rendering.
 
