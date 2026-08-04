@@ -7,8 +7,12 @@ priority: P1
 created: 2026-08-01
 files:
   - src/domain/roadmap.ts
+  - src/domain/shelf.ts
   - src/domain/noteFields.ts
   - src/view/render/roadmap.ts
+  - test/domain/shelf.test.ts
+  - test/helpers/obsidian-mock.ts
+  - test/helpers/vault.ts
 ---
 
 # The unplaced shelf
@@ -81,9 +85,10 @@ evidence that undated ordering is a real need.
 Built. Whether a result places is a domain question answered in `src/domain/roadmap.ts`
 (`buildRoadmap`), from fields read the way every field is read — `readPlacement` and
 `readDate` in `src/domain/noteFields.ts`, whose absent-versus-invalid distinction is
-what lets a card say why. The shelf renders in `src/view/render/roadmap.ts`, driven in
-`test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts` (accessors in
-`test/helpers/roadmap.ts`).
+what lets a card say why. The shelf's grouping, sorting, and filtering logic lives in
+`src/domain/shelf.ts` (`organizeShelf`). The shelf renders in `src/view/render/roadmap.ts`,
+driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts` (accessors
+in `test/helpers/roadmap.ts`).
 
 Step 4 and 2a arrived first with [[Moving between horizons]], on the horizon axis: a
 shelf card is a drag source, the shelf itself is the target that un-places, and an empty

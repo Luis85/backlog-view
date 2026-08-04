@@ -15,6 +15,8 @@ export interface AddFileOptions {
 	frontmatter?: Record<string, unknown>;
 	/** Values of the `parent` key rendered as parsed frontmatter links. */
 	parentLink?: string;
+	/** `file.stat.mtime`, for tests exercising "last modified" ordering. Defaults to 0. */
+	mtime?: number;
 }
 
 /**
@@ -197,7 +199,7 @@ export class FakeVault {
 	}
 
 	addFile(path: string, options: AddFileOptions = {}): TFile {
-		const file = new TFile(path);
+		const file = new TFile(path, options.mtime ?? 0);
 		this.files.set(path, file);
 		const cache: FakeCache = {};
 		const fm = { ...(options.frontmatter ?? {}) };
