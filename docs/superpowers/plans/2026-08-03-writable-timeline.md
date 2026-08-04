@@ -3433,7 +3433,12 @@ describe('dragging a shelf card onto the grid', () => {
 		// granularity ever changing. `start === target` would render as a MILESTONE
 		// diamond, so a dropped PBI would arrive looking like a deadline.
 		expect(vault.fm('Unplanned.md').start).toBe(iso(day));
-		expect(vault.fm('Unplanned.md').target).toBe(iso(addDays(day, 30)));
+		// The cell of the month the drop LANDED in, not a hardcoded 30: `dayAt` clamps
+		// into the window, so a pointer past its end lands on the last day it draws and
+		// the month that day belongs to decides the length. A literal here asserts the
+		// fixture's calendar rather than the rule, and fails a correct implementation by
+		// one day whenever those disagree.
+		expect(vault.fm('Unplanned.md').target).toBe(iso(addDays(day, cellSpan(scaleFor('month'), day) - 1)));
 	});
 
 	it('writes a marker’s target alone, at the drop day, with no span offset', async () => {
@@ -4402,6 +4407,14 @@ function holdPlan(
 			if (date !== null) {
 				plan[end] = formatCivil(addDays(date, days));
 				from[end] = formatCivil(date);
+			} else {
+				// An end this gesture does NOT move still states an expectation: it was
+				// open when the bar was picked up, and the slide's whole promise is that
+				// it stays open. Leaving it out of `from` lets an editor who fills it
+				// mid-drag keep that value while the stated end moves under it, so a
+				// previewed open-bar slide commits as a closed two-ended span — which is
+				// the write the preview said it would not make.
+				from[end] = null;
 			}
 		}
 		return Object.keys(plan).length > 0 ? { plan, from } : null;
