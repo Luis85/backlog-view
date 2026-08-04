@@ -202,6 +202,22 @@ describe('holding a bar', () => {
 		expect(vault.fm('Planned.md').start).toBe('2026-08-04');
 	});
 
+	it('moves an end grip from its OWN end, not the opposite one, when neither is open', async () => {
+		// Both ends are stated here, so a grip that borrowed the wrong one would still
+		// produce A date — the clamp-at-equal case above can't tell the two apart because
+		// crossing forces the same clamped answer either way. This drag stays clear of the
+		// opposite end, so only the correct baseline lands on 2026-08-15.
+		const vault = scheduleVault();
+		const { containerEl } = datedView(vault);
+		const scale = scaleFor('month');
+
+		gridDrag(gripOf(containerEl, 'Planned', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 5 * scale.dayPx });
+		await flush();
+
+		expect(vault.fm('Planned.md').target).toBe('2026-08-15');
+		expect(vault.fm('Planned.md').start).toBe('2026-08-04');
+	});
+
 	it('leaves a one-ended bar’s open end open on a body slide', async () => {
 		// 1a: shifting an absence would invent a date the note never stated, and equal
 		// ends would draw a milestone the note never claimed.
