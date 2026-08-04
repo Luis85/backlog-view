@@ -151,10 +151,6 @@ function inferSpan(
 /** What a gesture may take hold of on a drawn bar. */
 export type BarHold = 'body' | 'start' | 'end';
 
-/** What a placement is called out loud once every end it may touch is gone. */
-// fallow-ignore-next-line unused-export
-export const UNSCHEDULED_LABEL = 'Unscheduled'; // awaits the dated axis's move naming, a later task in this plan
-
 /**
  * Where a gesture may take hold — asked ONCE, by the renderer that draws the grips and
  * by the drag that honours them, so what looks grabbable and what can actually be

@@ -14,6 +14,7 @@ files:
   - test/domain/milestones.test.ts
   - src/domain/viewOptions.ts
   - src/domain/roadmap.ts
+  - src/domain/bars.ts
   - src/domain/writePlan.ts
   - src/view/interactions/menu.ts
   - src/view/interactions/plan.ts
