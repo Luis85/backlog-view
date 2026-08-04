@@ -432,11 +432,18 @@ the identity; `timelineDrag.ts` decides what a position means.
   from the start, a missing start counts back from the target. Each is clamped at equal
   with the end it borrowed from, the same refusal to write a reversed span.
 
-  Its zero case is the one that differs, and it is a write rule rather than a
-  geometric one: an open-end hold released where it began **writes nothing**. Zero days
-  from the baseline would be a date equal to the stated end — a milestone diamond — and
-  a plan that stated no end still states none. Absent is a value here, and a gesture
-  that did not move must not be what turns it into one.
+  **A zero final delta plans nothing, on every hold.** A drag that wanders and comes back
+  to where it started has expressed no change, so it produces no batch at all — not a
+  batch the writer then decides about. That distinction matters now that the writer owns
+  the no-op question: its job is to judge a *requested* date against the live one, and a
+  request the user never made must not reach it. If one did, a hold that moved nowhere
+  would submit the model's own endpoints, and where another editor had changed that date
+  meanwhile the writer would see a real change and quietly revert their work.
+
+  The open-end hold has the same rule for its own reason, and the reason is worth keeping:
+  zero days from the borrowed baseline would be a date equal to the stated end — a
+  milestone diamond — and a plan that stated no end still states none. Absent is a value
+  here, and a gesture that did not move must not be what turns it into one.
 
   Both are driven against a **panned grid at a nonzero viewport offset** — a fixture at
   the origin with no scroll cannot fail the conversion — and the grips additionally
