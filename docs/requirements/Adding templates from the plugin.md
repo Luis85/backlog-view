@@ -37,9 +37,17 @@ recognised correctly the first time and I never have to remember the property na
   type is not asked: it is fixed to that item's own `type`. A modal asks only for the
   new template's name (defaulting from the source item's title). The created note's body
   and frontmatter start as a copy of the source item's own — minus the plugin's hierarchy
-  keys (`type`, `parent`, `order`) and any horizon or date-stamp keys, which are facts
-  about that item's own history and place, not defaults for a future one. It is then
-  opened, same as step 4.
+  keys (`type`, `parent`, `order`), the roadmap's axis keys (`horizon`, `start`,
+  `target`) and the workflow's transition stamps (`started`, `finished`). All five are
+  facts about that item's own place and history, not defaults for a future one, and both
+  sets go — copying one class while leaving the other would still leak an old date into
+  every item made from it. It is then opened, same as step 4.
+- **1b — the source item's own `type` is empty, or outside the configured vocabulary.**
+  [[What counts as a work item]] lets a note belong by parent alone, with no `type` at
+  all, so this is reachable on an ordinary row. **Save as template** is not offered on
+  that row or card's menu: fixing the template's marker to a type that does not exist
+  would break the "always a valid `templateForKey`" guarantee above. **New template**
+  still creates a template for any type, chosen explicitly, from nothing.
 - **2a — the name matches a template that already exists in `templatesFolder`.** A number
   is appended, the same collision handling [[New item flow]] already uses.
 - **1c — `templatesFolder` is not yet configured**, whichever trigger started the flow.
@@ -56,8 +64,12 @@ recognised correctly the first time and I never have to remember the property na
 
 - **New template** creates a note in `templatesFolder` carrying only `templateForKey`,
   never `type`/`parent`/`order`.
-- **Save as template** carries over the source item's body and non-hierarchy frontmatter,
-  strips the hierarchy and axis keys, and fixes the type to the source's own.
+- **Save as template** carries over the source item's body and remaining frontmatter, and
+  strips all three sets — the hierarchy keys, the roadmap's axis keys and the workflow's
+  transition stamps — never leaving one class behind while the other goes.
+- **Save as template** is not offered on an item with no usable `type` (missing, or
+  outside the configured vocabulary); **New template** is the path for a template of any
+  type there.
 - Both paths open the created note; neither is a silent batch action.
 - Both go through the same config gate as every other write.
 - A name collision in `templatesFolder` is handled the same way a title collision is

@@ -57,6 +57,13 @@ which of my item types each one is for without me maintaining a second list anyw
   work item, the same as any other note anyone gives those keys to by hand. Nothing
   about template recognition prevents this; it is the general rule in
   [[What counts as a work item]], not a template-specific exclusion to maintain.
+- **1b — `templateForKey` is set to the same key as `parentKey`, `typeKey`, or any other
+  configured property.** A template would then necessarily carry `type` or `parent` the
+  moment it carries `templateForKey`, breaking the invisibility this note promises. This
+  is not a new failure mode to design for: `templateForKey` joins the same list
+  `configProblems` already checks every other configurable key against, so the collision
+  is refused — every write blocked, same message shape — exactly like a hand-configured
+  `parentKey`/`orderKey` collision today.
 
 ## Acceptance criteria
 
@@ -73,10 +80,14 @@ which of my item types each one is for without me maintaining a second list anyw
   like any other untyped note, which is that option's documented behaviour.
 - Clearing `templatesFolder` turns the template picker and body field off; **New
   template** and **Save as template** stay reachable and prompt for the folder.
+- `templateForKey` is one of `configProblems`' checked keys, so configuring it to match
+  `parentKey`, `orderKey`, `typeKey`, or any other owned key is refused the same way two
+  hierarchy properties sharing a key already is — never silently permitted.
 
 ## Where it lives
 
 Nothing yet — this note is design. `src/domain/settings.ts` (`templatesFolder`,
-`templateForKey`, alongside `homeFolder`/`typeFolders`) ·
+`templateForKey`, alongside `homeFolder`/`typeFolders`; `ownedProperties` gains an entry
+so `configProblems` covers the new key the same way it covers every other one) ·
 `src/domain/viewOptions.ts` (the two new options) · `src/domain/itemTypes.ts` or a new
 `domain/templates.ts` (matching template notes to a type from the vault).
