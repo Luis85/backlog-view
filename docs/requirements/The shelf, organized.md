@@ -1,0 +1,130 @@
+---
+type: PBI
+parent: "[[A third projection]]"
+order: 50
+status: Active
+priority: P2
+created: 2026-08-04
+files:
+  - src/domain/shelf.ts
+  - src/storage/collapseStore.ts
+  - src/view/collapseState.ts
+  - src/view/host.ts
+  - src/view/backlogView.ts
+  - src/view/render/shelf.ts
+  - src/view/render/shelfControls.ts
+  - src/view/render/toolbar.ts
+  - src/view/render/roadmap.ts
+  - styles/shelf.css
+  - styles/roadmap.css
+---
+
+# The shelf, organized
+
+**As** someone whose shelf fills up before the first triage pass, **I want** it
+collapsible, grouped by type, sortable and filterable, **so that** a shelf holding
+dozens of untriaged items is something I can actually work through instead of a wall of
+cards I have to scroll past to see the plan.
+
+[[The unplaced shelf]] specified the shelf's existence and its counting guarantee; it
+said nothing about comfort once the shelf holds more than a handful of items — a live
+vault surfaced uneven card widths, a shelf flush against the pane's edges, and a
+horizontal scrollbar the shelf itself was forcing. This PBI is that comfort pass,
+alongside the same visual fixes.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | The roadmap renders with items on the shelf |
+| **Preconditions** | Roadmap mode is on and the horizon or dated axis is configured |
+| **Guarantee** | Grouping, sort and the type filter are display-only — nothing is ever written to a note because of them. Grouping alone never drops a card: every card the shelf holds resolves to exactly one group before the type filter narrows what is shown. The type filter is then a deliberate, separate narrowing on top of that grouping — hiding a type hides its whole group on purpose, the same way [[The unplaced shelf]]'s own "Show completed items" and quick filter deliberately narrow the shelf elsewhere. |
+
+**Main flow**
+
+1. The shelf opens collapsed by default, remembered per view like the projection and
+   the roadmap axis — a working position, never a `.base` setting.
+2. Expanded, its cards group under always-on type sub-headers, in the same order as
+   the type ladder plus the extra types and markers, with a trailing group for anything
+   else — fixed order, empty groups omitted.
+3. Within a group, a sort picker orders cards by sibling order (the default), title, or
+   last modified — display only, never written.
+4. A type filter hides whole groups; the shelf's own count keeps reporting the true
+   total regardless of what is currently hidden.
+5. The shelf and the context strip render with uniform card widths, proper spacing from
+   the pane's edges, and no shelf-caused horizontal scrollbar.
+
+**Extensions**
+
+- **1a — collapsed, still a target.** Collapsing removes the shelf's cards from
+  keyboard navigation (they were never Tab-reachable to begin with; they leave the
+  Arrow/End walk too) but never from being a drop target: dropping a card onto a
+  collapsed shelf still un-places it.
+- **1b — everything is shelved and collapsed.** The roadmap's advisory (empty backlog,
+  filtered-empty, all done) does not fire for this: an all-shelved, collapsed backlog
+  is not empty, it is untriaged, and the advisory is gated on the roadmap's actual
+  population rather than on how many cards are currently keyboard-reachable.
+- **4a — a hidden group's last item is un-shelved.** The stored hidden-type preference
+  is simply unused until a card of that type reappears; nothing is lost or reset.
+
+## Acceptance criteria
+
+- The shelf's collapse state, sort pick and type-filter selections persist per saved
+  view, per device — the same store `mode` and the roadmap axis pick already use.
+- Collapsed by default on a view nobody has touched; toggling it is a real `<button>`
+  reachable from the toolbar, not a per-row control inside the roadmap's one-tab-stop
+  listbox.
+- Type groups render in a fixed order (the declared type vocabulary, plus a trailing
+  group for anything outside it); a group with nothing in it renders nothing.
+- Sort and the type filter never write to a note; the shelf's count is the true total,
+  unaffected by which groups are currently hidden.
+- Shelf and context-strip cards render at a uniform width; the shelf sits with a
+  visible gutter from the pane's edges and forces no scrollbar of its own.
+
+## Where it lives
+
+The grouping, sort and filter logic is `organizeShelf` in `src/domain/shelf.ts` — pure,
+keyed by `displayType(item)` (never raw `typeName`, which would misgroup an untyped
+child carrying an inferred level and any differently-cased declared type), driven in
+`test/domain/shelf.test.ts`.
+
+Persistence is three fields on the collapse store's existing per-view entry
+(`src/storage/collapseStore.ts`), read as defensively as `mode`/`axis` already are, with
+matching accessors on `src/view/collapseState.ts`.
+
+The interactive controls — the collapse toggle, the sort picker, the type filter — are
+toolbar chrome in `src/view/render/shelfControls.ts`, built in `renderToolbar`
+(`src/view/render/toolbar.ts`) and synced after every content render
+(`ProductBacklogView.renderTreeContent`, `src/view/backlogView.ts`) the same way the
+item count already is — never inside `treeEl`'s `role="listbox"`, which has no room for
+a `<select>` or checkboxes without breaking its one-tab-stop contract. Three new host
+methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
+`CollapseState` and re-render the content pane alone — never the whole toolbar — so a
+keyboard user's focus survives the control they just used, the same reason `setFilter`
+does not call a full `render()` either.
+
+The shelf's card content — grouped, sorted, filtered — renders in
+`src/view/render/shelf.ts`, which also carries the context strip (unchanged: never
+grouped, sorted or filtered, per the context-row rule). Collapsing removes the shelf's
+cards from the keyboard-navigable array `RoadmapSnapshot.cards` builds, exactly as an
+empty shelf already does, so `render/projections.ts`'s existing
+`role: roadmap.cards.length > 0 ? 'listbox' : 'region'` recomputes correctly with no new
+logic — and `renderRoadmapAdvisory` (`src/view/render/roadmap.ts`) is gated on the
+roadmap's actual population instead (the axis's own rendered count, captured before the
+shelf renders, plus the shelf's real count plus the context strip's count), so a
+collapsed, all-shelved backlog is never reported as empty or done, and neither is a
+focused view whose only visible row is a context card already placed inside a bucket.
+Driven in `test/view/shelfUx.test.ts` (accessors added to `test/helpers/roadmap.ts`),
+including the invariant that the shelf stays a drop target while collapsed.
+
+Card sizing — the uniform-width grid, the collapsed footprint — lives in the new
+`styles/shelf.css`, moved out of `styles/timeline.css` (which carried it only because
+the shelf and the timeline shipped together, not because it belongs there). The
+flush-edge gutter and overflow fix is NOT in `shelf.css`: it is the pinned-strip rule
+(`.pbl-roadmap .pbl-shelf, .pbl-roadmap .pbl-roadmap-context, .pbl-roadmap
+.pbl-board-advisory`) in `styles/roadmap.css`, changed by the same task that gives the
+buckets their own full-width layout — the rule governs the shelf's POSITION within the
+roadmap's scrollport, which is a roadmap-layout concern `roadmap.css` already owns,
+not shelf-internal appearance. The full-width/grid layout itself is a live-vault check
+— jsdom has no layout engine — recorded verified only after `npm run test-build`.

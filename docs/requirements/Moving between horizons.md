@@ -107,9 +107,10 @@ extraction, [[Split the view dispatch hub]]) — the one
 method every input on the roadmap lands on, so a drop cannot plan a different write than
 the key or the menu that mean the same thing, and the one place a move announces itself.
 The gesture is `src/view/interactions/cardDrag.ts`, the drag layer both card projections
-now share ([[Share the card drag between projections]]); the buckets and the shelf that
-receive it are `src/view/render/roadmap.ts`; `bucketLabelFor` in `src/domain/roadmap.ts`
-is what names a placement out loud, so an announcement can only say what is on screen.
+now share ([[Share the card drag between projections]]); the buckets that receive it are
+`src/view/render/roadmap.ts`, the shelf `src/view/render/shelf.ts` ("The shelf,
+organized" moved it there); `bucketLabelFor` in `src/domain/roadmap.ts` is what names a
+placement out loud, so an announcement can only say what is on screen.
 
 The two non-pointer paths: Alt+Left/Right in `src/view/interactions/keyboard.ts` steps
 one placement along a ladder that leads with the shelf — the roadmap's no-state column,

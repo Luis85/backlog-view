@@ -45,8 +45,9 @@ evidence that undated ordering is a real need.
 **Main flow**
 
 1. The roadmap places every result whose frontmatter its axis can read.
-2. The rest gather on the shelf: a labelled strip beside the axis, in sibling order,
-   showing the same cards the axis shows.
+2. The rest gather on the shelf: a labelled strip beside the axis, showing the same
+   cards the axis shows. Grouped by type ("The shelf, organized"); sibling order
+   orders cards within a group, not across the whole strip.
 3. The shelf names its count, so the roadmap reports how much of the backlog is not yet
    planned instead of implying the plan is the whole story.
 4. Dragging an item off the shelf onto the axis places it — the write
@@ -76,7 +77,8 @@ evidence that undated ordering is a real need.
   set, that level's rows, everything beneath surfacing through their rollups — and no
   result is ever silently omitted: the stated contrast with the prior art that drops
   them.
-- The shelf keeps sibling order — the order property's rank, not arrival order — and
+- Within each type group, the shelf keeps sibling order — the order property's rank,
+  not arrival order ("The shelf, organized" specifies the grouping itself). The shelf
   names its count.
 - An empty shelf takes no space except as a live drop target during a drag.
 - Unreadable placements shelve with their reason visible on the card.
@@ -106,7 +108,9 @@ filtered by type, all three display-only. The advisory gate on the roadmap's own
 state was fixed in the same change: it sums the axis's own rendered count (captured
 before the shelf renders, so collapsing the shelf cannot make it lie), the shelf's real
 count and the context strip's count, rather than counting what is currently on screen —
-an all-shelved, collapsed backlog is not empty, it is a backlog not yet planned.
+an all-shelved, collapsed backlog is not empty, it is a backlog not yet planned. This
+whole paragraph is [[The shelf, organized]]'s own ground: that PBI specifies the
+grouping, sort, filter and collapse UX summarized here.
 
 The shelf's interactive chrome — a collapse toggle, a sort picker, a type filter —
 cannot live inside the roadmap pane itself: it wears `role="listbox"` while any cards
@@ -120,7 +124,7 @@ after every content render, alongside `syncCountLabel`.
 Step 4 and 2a arrived first with [[Moving between horizons]], on the horizon axis: a
 shelf card is a drag source, the shelf itself is the target that un-places, and an empty
 shelf renders as `pbl-shelf-empty` — in the DOM so a drop has somewhere to land, kept
-out of the layout by `styles.css` until a drag is live.
+out of the layout by `styles/shelf.css` until a drag is live.
 [[Drag from the shelf to schedule]] gave the dated axis both, and `renderShelf` no
 longer reads `dnd` as "the horizon axis": it takes what a drop on that axis means and
 the words to promise it in from the axis itself, rather than hardcoding the horizon's
