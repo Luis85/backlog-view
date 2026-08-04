@@ -90,32 +90,34 @@ paragraph of prose before the shape asked the question.
 specified across six features and 18 use cases — the projection toggle grown to three
 positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
 parents span their children, scheduling as gated date writes, milestones as a type of
-their own, and lanes, focus and rollups carried over. Two features are built. The first
-was the projection: the toggle's roadmap position, the declared axis with its collision
-checks, both frames read-only — buckets and stated bars — the unplaced shelf, and the
-roadmap's empty states. The second gave the horizon axis its writes: a card moves between
-buckets by drag, by Alt+arrow or from its own menu, all three planning one value into the
-note's own horizon property through the one gate, undoable as one batch; the shelf is the
-target that un-places, removing the key rather than blanking it, and it stays reachable
-while empty because a target that exists only when occupied is one nothing can reach;
-and a bucket creates in place, its value riding the same single creation write. The
-dated axis is still read-only — scheduling by drag, the bar moves, the lanes and the
-milestone type are design — but it now shows the tree rather than only its stated bars:
-a parent with no dates of its own spans its dated descendants, endpoint by endpoint,
-drawn as the inference it is and written nowhere. Two decisions organize the epic: the
-axis is declared in the
+their own, and lanes, focus and rollups carried over. Three features are built. The
+first was the projection: the toggle's roadmap position, the declared axis with its
+collision checks, both frames read-only — buckets and stated bars — the unplaced shelf,
+and the roadmap's empty states. The second gave the horizon axis its writes: a card
+moves between buckets by drag, by Alt+arrow or from its own menu, all three planning one
+value into the note's own horizon property through the one gate, undoable as one batch;
+the shelf is the target that un-places, removing the key rather than blanking it, and it
+stays reachable while empty because a target that exists only when occupied is one
+nothing can reach; and a bucket creates in place, its value riding the same single
+creation write. The dated axis's own moves were the one write this epic still owed —
+lanes and the milestone type's own non-pointer path are still design, and named as
+[[Lanes on the roadmap]]'s and [[Keyboard and menu on the roadmap]]'s to deliver — but it
+already showed the tree rather than only its stated bars: a parent with no dates of its
+own spans its dated descendants, endpoint by endpoint, drawn as the inference it is and
+written nowhere. Two decisions organize the epic: the axis is declared in the
 view options, never guessed from property names and never derived from dates; and planned
 dates are different keys from the board's transition stamps, so a plan can never overwrite
 a record. Every note states the precedent it rests on, from a survey of the roadmap
 literature, the major trackers and the Obsidian ecosystem run on 2026-08-01.
 
-The third increment made the dated axis writable: a shelf card schedules at the day
-under the pointer, with the zoom's own cell as its default duration; a bar slides and
-resizes by whole days; and a bar dropped back on the shelf removes its keys, exactly as
-the horizon axis's shelf already does. It ships alongside three discrete densities and a
-jump-to-today, a frame that scrolls inside itself rather than the pane, and the date
-decision moved into the writer — the layer that can see a note's live value — so a note's
-own time, offset and spelling survive a gesture that moves its date.
+The third made the dated axis writable: a shelf card schedules at the day under the
+pointer, with the zoom's own cell as its default duration; a bar slides and resizes by
+whole days, at every zoom — zoom is a pixel density, never a snapping unit; and a bar
+dropped back on the shelf removes its keys, exactly as the horizon axis's shelf already
+does. It ships alongside three discrete densities and a jump-to-today, a frame that
+scrolls inside itself rather than the pane, and the date decision moved into the writer
+— the layer that can see a note's live value — so a note's own time, offset and spelling
+survive a gesture that moves its date.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a

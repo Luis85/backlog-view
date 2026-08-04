@@ -93,7 +93,9 @@ out of the layout by `styles.css` until a drag is live.
 longer reads `dnd` as "the horizon axis": it takes what a drop on that axis means and
 the words to promise it in from the axis itself, rather than hardcoding the horizon's
 own removal and wording against a controller that is `null` only by the withholding
-this closes.
+this closes. Whether the empty strip actually appears under a dragged card — jsdom
+paints nothing, so a test can assert the class and never the layout — is
+[[Smoke test the visual changes]]'s to check.
 
 **2a's narrow-pane compaction** ([[Zoom and the today marker]] extension 2a) is built
 too: the shelf compacts to its labelled count in a narrow pane, one action from open,

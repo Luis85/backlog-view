@@ -118,12 +118,14 @@ the keys rather than blanking them.
 
 ## Where it lives
 
-Both halves are built. The shelf-to-grid half turns the pointer into a date in
-`src/view/interactions/timelineDrag.ts` — the drop overlay spanning the day area past
-the sticky lead column, the placing read that converts a pointer position into the
-day it names, and the preview that shows the dates before the drop commits them — which
-registers the grid's one positional target through `src/view/interactions/cardDrag.ts`
-— never a target per row, since without lanes only the X says anything. `dayAt` and
+Both halves are built. The drop overlay itself — the one element spanning the day area
+past the sticky lead column, past which every position resolves — is created in
+`src/view/render/timeline.ts`; `src/view/interactions/timelineDrag.ts` is what wires it
+as the grid's one positional target, registered through
+`src/view/interactions/cardDrag.ts` — never a target per row, since without lanes only
+the X says anything — and turns the pointer into a date: the placing read that converts
+a pointer position into the day it names, and the preview that draws into the overlay
+the dates before the drop commits them. `dayAt` and
 `cellSpan` in `src/domain/timeline.ts` are the day the pointer names and the zoom's
 default duration for a one-ended plan. The grid-to-shelf half (extension 4) is the
 dated axis's `shelfRemoval` in `src/view/render/roadmap.ts`: the shelf's drop target

@@ -105,6 +105,7 @@ the board's answers; the frame-beside-advisory rule is `renderRoadmapAdvisory` i
 creation target" arrived across three increments — [[Moving between horizons]] on the
 horizon axis, the bucket's New flow ([[Buckets from a horizon property]]), and now
 [[Drag from the shelf to schedule]] and [[Move and resize a bar]] on the timeline, whose
-drop overlay in `src/view/interactions/timelineDrag.ts` spans the whole grid past the
+drop overlay — created in `src/view/render/timeline.ts`, wired as the one positional
+target by `src/view/interactions/timelineDrag.ts` — spans the whole grid past the
 sticky lead column so the empty space below the last row is a drop target too — which
 is why this note now closes.

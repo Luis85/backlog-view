@@ -8,8 +8,11 @@ created: 2026-08-01
 start: 2026-08-10
 due: 2026-09-25
 files:
-  - src/domain/writePlan.ts
-  - src/view/interactions/dragDrop.ts
+  - src/view/interactions/timelineDrag.ts
+  - src/domain/bars.ts
+  - src/storage/frontmatter.ts
+  - src/view/host.ts
+  - src/view/backlogView.ts
 ---
 
 # Move and resize a bar
@@ -18,8 +21,9 @@ files:
 that** re-planning is a gesture on the thing that shows the plan.
 
 The convention is universal — Asana, GitHub and the Obsidian Gantt prior art all agree:
-the bar's body shifts both dates together, an end moves that date alone, and everything
-snaps to the zoom's grid so a drag means whole units. What is distinctive here is what
+the bar's body shifts both dates together, an end moves that date alone, and every
+drag means a whole day, at every zoom — zoom changes pixel density and header
+granularity only, never the write's own grid. What is distinctive here is what
 the gesture does *not* do: a date write has no peers. Within its lane it renumbers no
 siblings, cascades to no children, and touches exactly one note — which is what makes
 its preview an honest contract. Crossing a lane is a different gesture with a stated
@@ -36,12 +40,12 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 **Main flow**
 
-1. Dragging the body slides the bar by whole-cell steps, previewed live: the start
+1. Dragging the body slides the bar by whole-day steps, previewed live: the start
    takes the calendar step and the target follows at the bar's own day count, so a
    slide never changes duration.
-2. Dragging an end moves that date alone, previewed live, landing on the anchor its
-   kind means in the cell it is dropped in — a start takes the cell's first day, a
-   target its last, the shelf drop's own rule ([[Drag from the shelf to schedule]]).
+2. Dragging an end moves that date alone, previewed live, landing on the day under the
+   pointer at every zoom — the same day-anchored rule the shelf drop states
+   ([[Drag from the shelf to schedule]]), zoom changing pixel density only.
 3. Release writes what the preview showed, one batch through the gate.
 4. Undo restores both prior values together.
 
@@ -99,12 +103,10 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 - Body drags slide the bar by whole-day steps — the start takes the step and the target
   follows at the bar's own day count, so a slide never changes duration; end drags move
-  one date, landing
-  on the anchor its kind means — the cell's first day for a start, its last for a
-  target, the shelf drop's rule; everything snaps to the zoom's grid, and release
-  writes exactly the preview. Deltas
-  preserve the value's own precision: a datetime keeps its time of day and its shape
-  on disk.
+  one date to the day under the pointer, at every zoom — the shelf drop's own rule —
+  and release writes exactly the preview. Zoom changes pixel density and header
+  granularity only, never the write's own grid. Deltas preserve the value's own
+  precision: a datetime keeps its time of day and its shape on disk.
 - A marker's diamond takes no end grip at all, and its body slide writes the target alone —
   never a start, neither one it lacks nor a stale one the type ignores
   ([[Milestones as their own type]]).
@@ -133,6 +135,7 @@ moves, the live-value decision that replaces the no-op check `writePlan.ts` used
 make against a model that can be a refresh behind, and both refusals — a reversed pair,
 and a plan whose shape no longer matches what the note has become — live in
 `src/storage/frontmatter.ts`, the one module allowed to read and write the note.
-`performScheduleMove` in `src/view/host.ts` is the single place a date batch is planned
+`performScheduleMove`, declared on `BacklogViewHost` in `src/view/host.ts` and
+implemented in `src/view/backlogView.ts`, is the single place a date batch is planned
 and announced, shared by the drag, the menu's Schedule and Unschedule, and reporting
 whether anything actually changed rather than whether the call returned.

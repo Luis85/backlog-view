@@ -6,8 +6,12 @@ status: Done
 priority: P2
 created: 2026-08-01
 files:
-  - src/storage/collapseStore.ts
+  - src/domain/timeline.ts
   - src/view/render/toolbar.ts
+  - src/storage/collapseStore.ts
+  - src/view/collapseState.ts
+  - src/view/render/projections.ts
+  - styles/roadmap.css
 ---
 
 # Zoom and the today marker
