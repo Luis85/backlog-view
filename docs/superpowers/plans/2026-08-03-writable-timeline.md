@@ -3341,7 +3341,10 @@ git commit -m "Compact the shelf where the pane is narrow, and give it a way bac
 - Consumes: `dayAt`, `addDays`, `cellSpan` (Task 1); `barHolds`, `BarHold` (Task 2);
   `performScheduleMove` (Task 6); `RoadmapSnapshot.window` / `.scale` / `.scroller` (Task 9).
 - Produces:
-  - `export interface CardSource { item: BacklogItem; hold: BarHold | null; scrollLeft: number | null }` (cardDrag.ts)
+  - `export interface CardSource { item: BacklogItem; hold: BarHold | null; scrollLeft: number | null; span: DateSpan; ends: PlacementEnd[] }` (cardDrag.ts)
+    — `span` and `ends` are read ONCE at drag start: a relative gesture's baseline is what
+    the reader picked up, not what the note says now, and re-reading it would make the
+    staleness check compare a value against itself
   - `CardDragController.wireCard(el, item, hold?: BarHold, originScroll?: () => number)` —
     the hold AND the scroller's offset at drag start ride the payload
   - `CardDragController.wireDropTarget(el, plan, hooks?: DropHooks)` where
@@ -3861,11 +3864,16 @@ function dropDay(parts: TimelineParts): (clientX: number) => CivilDate {
  * which is the silent coarsening decision 1 exists to refuse.
  */
 function shelfPlan(host: BacklogViewHost, parts: TimelineParts, item: BacklogItem, clientX: number): GesturePlan | null {
+	// Read here, not captured: a shelf drop is ABSOLUTE. It means "this date", so it
+	// answers to the item as it now is, and it states no baseline for the writer to
+	// check because it measured against nothing.
 	const ends = writableEnds(host.settings, item);
 	if (ends.length === 0) return null;
 	const day = dropDay(parts)(clientX);
-	if (ends.length === 1) return { [ends[0]]: formatCivil(day) };
-	return { start: formatCivil(day), target: formatCivil(addDays(day, cellSpan(parts.scale, day) - 1)) };
+	if (ends.length === 1) return { plan: { [ends[0]]: formatCivil(day) } };
+	return {
+		plan: { start: formatCivil(day), target: formatCivil(addDays(day, cellSpan(parts.scale, day) - 1)) },
+	};
 }
 
 /** The ends this item's TYPE answers for, narrowed to the keys the view options name. */
@@ -4274,21 +4282,35 @@ So `wirePositionalTarget`'s handlers take both:
 
 and the same on `onDrop`. Nothing about the pointer needs remembering.
 
-**The DATE a hold grips needs no capture either**: it is a function of the item and the
-hold, and both are on the payload. Reading it from the model each frame is not a
-staleness risk — a mid-drag refresh replaces the model, and the endpoint the gesture is
-moving should follow the note, which is the same rule `wireDropTarget` states about
-resolving the path at drop time.
+**The DATES a hold grips ARE captured**, at drag start, onto the payload — and this is
+the one place the resolve-at-drop-time rule does not reach. That rule is about the
+*file*: a path outlives the model it was taken from, so the item is looked up again at
+drop. A relative gesture's baseline is a different thing. It is what the reader was
+looking at when they picked the bar up, it is what the preview has been drawing against
+every frame, and it is the expectation `AxisWrite.from` states so the writer can refuse
+a batch the note moved under.
+
+Re-reading it from a refreshed model each frame would quietly undo all of that: the
+"expected" value would track the live one, `staleBase` would compare a value against
+itself and never fire, and the drop would rebase onto a date the previews never showed —
+the rebasing this design explicitly refuses, arrived at by never noticing. It would also
+make the frame after a mid-drag refresh jump, since the delta would suddenly count from
+somewhere else.
+
+So `CardSource` carries `span: DateSpan` and `ends: PlacementEnd[]` read once in
+`getInitialData`, and `holdPlan` uses those rather than the item it resolved. The item is
+still resolved at drop, for what that rule is for: the file may be gone.
 
 ```ts
 /**
- * The date this hold moves, which is where it is DRAWN. An open end has no date of its
- * own, so it borrows the stated one — a missing target counts days from the start, a
- * missing start counts back from the target — because a one-dated bar renders one cell
- * wide at the date it has, and the open end is drawn against the stated one.
+ * The date this hold moves, which is where it was DRAWN when it was picked up — from the
+ * span captured at drag start, never from the current model. An open end has no date of
+ * its own, so it borrows the stated one: a missing target counts days from the start, a
+ * missing start counts back from the target, because a one-dated bar renders one cell
+ * wide at the date it has and the open end is drawn against the stated one.
  */
-function heldDate(item: BacklogItem, hold: BarHold, parts: TimelineParts): CivilDate {
-	const span = statedSpan(item);
+function heldDate(source: CardSource, hold: BarHold, parts: TimelineParts): CivilDate {
+	const span = source.span;
 	const date = hold === 'end' ? (span.target ?? span.start) : (span.start ?? span.target);
 	return date ?? parts.window.start;
 }
@@ -4335,7 +4357,11 @@ function holdPlan(
 	clientX: number,
 	originX: number,
 ): GesturePlan | null {
-	const item = source.item;
+	// Everything the gesture measures against was captured when it began — the span it
+	// gripped and the ends it was planned under. The resolved item says the file is still
+	// there; it does not say what the plan is relative to.
+	const span = source.span;
+	const ends = source.ends;
 	// Viewport-relative, so the pan is INCLUDED: while auto-scroll moves the grid under
 	// a held pointer, `clientX - originX` stays zero while later dates slide beneath it.
 	// The placing read subtracts a bounding rect, which already moves with the scroll,
@@ -4351,8 +4377,6 @@ function holdPlan(
 			parts.scale.dayPx,
 	);
 	if (days === 0) return null;
-	const ends = writableEnds(host.settings, item);
-	const span = statedSpan(item);
 	if (hold === 'body') {
 		// Moves only the ends the note actually STATES (and may touch) — both, so a
 		// two-ended slide never changes duration; the stated one alone where the bar has
@@ -4376,7 +4400,7 @@ function holdPlan(
 	}
 	const end: PlacementEnd = hold === 'start' ? 'start' : 'target';
 	if (!ends.includes(end)) return null;
-	const held = heldDate(item, hold, parts);
+	const held = heldDate(source, hold, parts);
 	const moved = addDays(held, days);
 	const opposite = end === 'start' ? span.target : span.start;
 	// Clamped at equal rather than crossing — but ONLY against an end the note itself
@@ -4411,7 +4435,12 @@ function clampAtEqual(end: PlacementEnd, moved: CivilDate, opposite: CivilDate):
 	return crosses ? opposite : moved;
 }
 
-/** What the NOTE states, never what the bar renders: an inferred end is not a date to move. */
+/**
+ * What the NOTE states, never what the bar renders: an inferred end is not a date to
+ * move. Called once, in `getInitialData`, to put the gripped span on the payload — every
+ * later frame reads it from there, so the gesture keeps measuring against what was picked
+ * up rather than against whatever the model has become.
+ */
 function statedSpan(item: BacklogItem): DateSpan {
 	return { start: item.plannedStart.value, target: item.plannedTarget.value };
 }
