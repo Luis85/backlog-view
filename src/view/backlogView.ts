@@ -533,9 +533,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// with the ends the WRITER saw rather than the ones the model holds. Reading a
 		// rebuilt model here would be a race: the refresh is Obsidian re-running the
 		// query, not something this await orders, so the row could be either side of the
-		// write depending on timing. The writer's verdict has no such ambiguity, and the
-		// only thing `placeItem` needs beyond it — the descendants a parent's span is
-		// inferred from — is untouched by a write to this note's own keys.
+		// write depending on timing.
+		//
+		// What that buys is exact for the note's OWN ends, and only those. A span
+		// `inferSpan` fills from descendants still rests on `item.descendantStart` /
+		// `descendantTarget`, which are model-time: a child whose dates another editor
+		// changed since this model was built would be announced at its old span while the
+		// next render draws the new one. That is not fixable here — re-resolving from the
+		// model is the race above, and the writer opens only the files in its own batch,
+		// so no fresher descendant evidence exists at this point. The narrow claim is
+		// therefore what is stated: the dates this write landed are the writer's, and an
+		// inherited end is as current as the last refresh.
 		const spoken = placementEnds(item.typeName);
 		announceScheduleMove(item.title, outcome.dates, placeItem(item, writtenEnds(outcome.dates.after)), spoken);
 		return true;
