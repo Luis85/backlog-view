@@ -91,10 +91,14 @@ never the input order. A group is omitted entirely when it is empty or its type 
 (reachable when `hierarchyOnly` is off) still gets a home instead of vanishing from the
 shelf, which is what a `LEVELS`-only ladder would have done to it, and to every Issue,
 Bug and Milestone card besides. Within a surviving group, `'tree'` keeps the input order (the
-shelf's existing sibling-order guarantee), `'title'` compares item titles, and
-`'modified'` reads `item.file.stat.mtime` — already on every `BacklogItem` via its
-`TFile`, so no new field or vault read is needed, only a comparator. Pure, so it is a
-node test, no jsdom required — matching why this layer has none today.
+shelf's existing sibling-order guarantee), `'title'` compares item titles A→Z, and
+`'modified'` orders MOST RECENT FIRST — the direction every file explorer and every
+"recently changed" list already uses, so a picker labeled "Last modified" is not read
+backwards. It reads `item.file.stat.mtime` — already on every `BacklogItem` via its
+`TFile`, so no new field or vault read is needed, only a comparator, and the test for it
+asserts the direction explicitly (an older item does not sort before a newer one), not
+only that the two inputs land in *some* order. Pure, so it is a node test, no jsdom
+required — matching why this layer has none today.
 
 ### 2. Storage — `src/storage/collapseStore.ts`
 
@@ -201,11 +205,24 @@ budget, tight enough that two more render functions plus a sync function would c
 and `renderTreeContent` respectively exactly the way `renderAxisPicker` and
 `syncCountLabel` already are. The collapse toggle carries the shelf's name and count as
 its own label ("Unplaced (12)"), the same way each mode-toggle button already carries an
-icon and a label, so that information exists once rather than being repeated inside
-`treeEl` as well. **Only** the shelf's card content — the grouped, sorted, filtered
-`.pbl-card`s themselves — keeps rendering inside `treeEl`'s listbox, exactly as
-`renderShelf` does today, since those already participate in the roadmap's card walk as
-they always have.
+icon and a label — that is where the INTERACTIVE controls' single source of truth lives.
+
+**The shelf keeps one static label inside `treeEl`, in both states, and that is not the
+same "repeating information" this design otherwise avoids.** Today's `renderShelf`
+already draws a small header (an inbox icon, "Unplaced") even while empty and only a
+live drag away from being reachable — because a drop target with nothing identifying it
+is unusable the moment a user's attention and cursor are actually over it, which is
+exactly where the toolbar's own label is NOT: a user mid-drag is looking at the shelf,
+not at chrome elsewhere on the toolbar bar. Removing that label when collapsed (as an
+earlier draft of this section did) would regress exactly that case — a collapsed,
+populated shelf is a perfectly normal drop target during a drag, and it would render as
+an unlabeled empty strip. So the static icon-plus-name header stays, unconditionally,
+whether the shelf is collapsed or not; only the interactive controls (sort, filter, the
+expand/collapse affordance itself) and the per-group headers move out or appear only
+when expanded. **Only** the shelf's grouped card content — the `.pbl-card`s themselves
+— stops rendering inside `treeEl`'s listbox while collapsed, exactly as `renderShelf`
+does for an empty shelf today, since those are what participate in the roadmap's card
+walk.
 
 `view/render/roadmap.ts` currently owns `renderShelf` (154-196) and `renderContextStrip`
 (204-218); with the interactive header moved out to `shelfControls.ts`, what is left to
@@ -284,8 +301,20 @@ position its load-order comment calls for.
   row, the direct cause of uneven card widths) become
   `grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))` — matching the bucket
   card grid below, so every card in the roadmap is sized the same way.
-- Spacing and the horizontal-overflow bug get a pass alongside the rewrite — both were
-  living in code being rewritten anyway.
+- **The flush-edge and overflow bug, diagnosed and fixed, not merely "passed over".**
+  `styles/roadmap.css` pins the shelf, the context strip and the advisory to the
+  scrollport with `position: sticky; left: 0; width: 100cqw`, while
+  `.pbl-roadmap-mode .pbl-tree` sets `padding-inline: 0` on the very same scroller —
+  deliberately, so the axis's own content can show flush to the edge behind the pinned
+  strips. The strips inherit that same flushness with nothing to give them their own
+  gutter, which is the reported bug: `.pbl-shelf`'s internal padding sits inside its
+  border, not between the border and the pane's edge. The fix changes that one rule to
+  `width: calc(100cqw - 2 * var(--size-4-3))` with `margin-inline: var(--size-4-3)` —
+  the same token `.pbl-shelf`'s own internal padding already uses, so the gutter reads
+  as a continuation of it rather than a second, different margin. The width reduction
+  is load-bearing, not cosmetic: adding a margin to a bare `100cqw` without shrinking it
+  to match would push the margin box `2 × var(--size-4-3)` past the scrollport and
+  reintroduce the very horizontal scrollbar this is fixing.
 - `styles/roadmap.css`: `.pbl-bucket` changes from `flex: 0 0 260px` (with today's
   `min-width: 0`, which lets a flex-shrink basis be ignored entirely) to
   `flex: 1 1 280px; min-width: 280px` — the explicit `min-width` is what actually stops
