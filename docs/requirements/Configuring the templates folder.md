@@ -95,9 +95,11 @@ which of my item types each one is for without me maintaining a second list anyw
   value, defaulting to `templateFor` — never independently clearable to `''`, the same
   way `parentKey`/`orderKey`/`typeKey` never are. Its own on/off switch is
   `templatesFolder`, not itself.
-- A note is a template if and only if it carries `templateForKey` with a value from the
-  configured type vocabulary — presence and a valid value, not merely living in the
-  folder.
+- A note is a template if and only if it lives under `templatesFolder` **and** carries
+  `templateForKey` with a value from the configured type vocabulary — both conditions,
+  not either alone: living in the folder without the key is an ordinary note (2a), and
+  the key alone without the folder is not a template no matter where in the vault it
+  sits.
 - Nothing under `templatesFolder` is ever linked into the tree as a work item — not
   affected by "Ignore notes outside the hierarchy", "Infer parents from folder notes", or
   a hand-added `type`/`parent` on a note inside it. The exclusion is the folder, checked

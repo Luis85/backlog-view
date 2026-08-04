@@ -18,7 +18,7 @@ start blank every time, without losing the one-title-and-done speed of a plain i
 | **Actor** | Backlog owner, creating an item ([[New item flow]]) |
 | **Trigger** | Choosing a type in the new-item modal for which at least one template exists |
 | **Preconditions** | `templatesFolder` is configured and at least one template matches the chosen type ([[Configuring the templates folder]]) |
-| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in. The plugin's own `type`, `parent` and `order` always win over anything the template also carries, and the roadmap's axis keys (`horizon`, `start`, `target`) and the workflow's transition stamps (`started`, `finished`) are never taken from a template at all. |
+| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in. The plugin's own hierarchy keys (`type`, `parent`, `order`), the roadmap's axis keys (`horizon`, `start`, `target`) and the workflow's transition stamps (`started`, `finished`) are never taken from a template at all — stripped before anything is written, not merely overridden, since creation does not always supply its own value for every one of them to win with. |
 
 **Main flow**
 
@@ -31,13 +31,16 @@ start blank every time, without losing the one-title-and-done speed of a plain i
 5. Confirming creates the note as in [[New item flow]], with the body field's contents as
    the note's body and the chosen template's extra frontmatter — everything on it besides
    `templateForKey` — merged into the note's frontmatter.
-6. Where a template's frontmatter names `type`, `parent` or `order`, the plugin's own
-   value wins; the template cannot override its own placement. Where it names an axis key
-   or a transition stamp, that value is dropped rather than merged — the same exclusion
-   [[Adding templates from the plugin]]'s Save as template already applies, and for the
-   same reason: creation supplies no value of its own to override a copied one with for
-   any of these, so a merge would let a template's stale date read as this new note's real
-   history or a real schedule the moment it exists.
+6. Before anything is merged, the hierarchy keys (`type`, `parent`, `order`), the axis
+   keys and the transition stamps are stripped from the template's frontmatter entirely —
+   the same exclusion [[Adding templates from the plugin]]'s Save as template already
+   applies. This is not "the plugin's value wins": `createBacklogItem` writes `parent`
+   only when there is one and folder mode is off, so a top-level creation with folder
+   mode off supplies no parent value at all — a template's own copied `parent` would
+   otherwise pass straight through unchallenged, silently nesting a note meant to be
+   top-level. Stripping first means the plugin's own creation logic runs against clean
+   frontmatter every time, whether or not it happens to write a value for a given key
+   this time.
 
 **Extensions**
 
@@ -62,16 +65,18 @@ start blank every time, without losing the one-title-and-done speed of a plain i
   creation; nothing is written until the modal is confirmed.
 - Changing the type re-filters the offered templates and resets an unmatched pick.
 - The created note's body is exactly the body field's contents at confirmation.
-- A template's extra frontmatter merges onto the new note; the plugin's own hierarchy
-  keys (`type`, `parent`, `order`) are never overridden by it, and the axis keys
-  (`horizon`, `start`, `target`) and the transition stamps (`started`, `finished`) are
-  never carried over from it at all — stripped, not merely lost to precedence.
+- A template's extra frontmatter merges onto the new note; the hierarchy keys (`type`,
+  `parent`, `order`), the axis keys (`horizon`, `start`, `target`) and the transition
+  stamps (`started`, `finished`) are stripped from it before the merge, unconditionally —
+  never relying on the plugin supplying its own value to override one with, since a
+  top-level creation with folder mode off writes no `parent` value at all.
 - Creation still goes through the same config gate as every other write.
 
 ## Where it lives
 
 Nothing yet — this note is design. `src/ui/prompts.ts` (`TitlePromptModal` — the template
 picker and body field) · `src/view/interactions/create.ts` (`promptCreateItem`,
-`createFromPrompt` — resolving templates for the chosen type, passing the body and merged
-frontmatter through) · `src/storage/frontmatter.ts` (`createBacklogItem`, `NewItemSpec` —
-accepting a body and extra frontmatter, plugin-owned keys still applied last).
+`createFromPrompt` — resolving templates for the chosen type, stripping the plugin-owned
+keys from a template's frontmatter before passing the body and what remains through) ·
+`src/storage/frontmatter.ts` (`createBacklogItem`, `NewItemSpec` — accepting a body and
+already-stripped extra frontmatter).

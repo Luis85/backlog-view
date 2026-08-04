@@ -57,9 +57,16 @@ recognised correctly the first time and I never have to remember the property na
   [[Configuring the templates folder]] defines as the whole feature being off, and
   accepting it would set the folder to "off" in the same breath as creating a template
   inside it — leaving that template immediately undiscoverable. The prompt stays open
-  until a non-empty folder is given, then sets `templatesFolder` and proceeds. This is
-  what makes **New template** and **Save as template** the way someone with no templates
-  yet gets their first one, and why neither is gated behind
+  until a non-empty folder is given, then sets `templatesFolder`. Setting it can turn a
+  `templateForKey` that collided harmlessly with another owned key while templates were
+  off (PBI1's 1c) into a live collision the moment the folder is non-empty (PBI1's 1b) —
+  so the flow re-runs `configProblems` on the just-updated settings before doing anything
+  else, the same way `runInit` gates itself before touching either the `.base` or a note.
+  Only once that comes back clean does it proceed to create the template; otherwise it
+  stops with the same config-warning notice every other blocked write shows, leaving
+  `templatesFolder` set (so the next attempt doesn't repeat the folder prompt) but
+  creating nothing. This is what makes **New template** and **Save as template** the way
+  someone with no templates yet gets their first one, and why neither is gated behind
   [[Configuring the templates folder]] being done already.
 - **3a — the folder does not exist.** It is created, the same as any other creation path.
 - **3b — the write fails.** A notice says so and points at the console, the same as
@@ -91,6 +98,11 @@ recognised correctly the first time and I never have to remember the property na
   template note it just created sits undiscoverable.
 - **New template** is withheld from the palette unless exactly one Product Backlog view
   is active, so it never has to guess whose `templatesFolder` to read or write.
+- The first-use flow re-checks `configProblems` immediately after setting
+  `templatesFolder`, before writing a template note. A newly-created collision
+  (`templateForKey` aliasing another owned key, only reachable once the folder is
+  non-empty) stops the flow with the config warning instead of writing a note into a
+  configuration `configProblems` would refuse every other write against.
 
 ## Where it lives
 
@@ -101,4 +113,5 @@ the single-active-view lookup this command reuses rather than duplicating) ·
 `src/view/interactions/menu.ts` (**Save as template** on the row/card menu) ·
 `src/ui/prompts.ts` (the type-and-name modal) · `src/storage/frontmatter.ts` (the
 template-note write, sharing `createBacklogItem`'s atomicity and collision handling
-rather than a second copy of it).
+rather than a second copy of it) · `src/domain/settings.ts` (`configProblems`, re-run
+against the settings the first-use folder prompt just produced, before the write).
