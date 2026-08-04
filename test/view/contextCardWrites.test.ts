@@ -5,7 +5,8 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { flush, key, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
-import { bucketNames } from '../helpers/roadmap';
+import { cardByTitle } from '../helpers/board';
+import { bucketNames, rowFor, shelfTitles } from '../helpers/roadmap';
 
 /**
  * The context-row rule, driven against every entry point the CARD projections have.
@@ -200,5 +201,99 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
 		const offered = Menu.lastShown?.item('Set horizon')?.submenu?.items.map((i) => i.titleText);
 		expect(offered).toEqual(['Now', 'Next', 'Later', 'Clear horizon']);
+	});
+});
+
+describe('write safety with context rows, across the timeline’s entry points', () => {
+	/**
+	 * The stress fixture projected onto the DATED axis, focused where its context row
+	 * sits — a context row only reaches `roadmap.context` at all through a focus level
+	 * (`roadmapRows` reads `model.results`, which drops every `outsideFilter` row,
+	 * unless focused), so Mid has to sit on the same PBI rung PBI.md does. Same shape
+	 * as the roadmap block above, aimed at the schedule gestures instead: Mid carries
+	 * dates of its own, which would place it on the grid as an ordinary bar were the
+	 * context-row rule not holding.
+	 */
+	function timelineStressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', {
+			frontmatter: { type: 'PBI', order: 5, start: '2026-08-05', target: '2026-08-15' },
+			parentLink: 'Feature B',
+		});
+		// Context, between results: its parent (Feature B) and its child (Task) are both
+		// results, and its own dates would otherwise place it on the grid as a bar.
+		vault.addFile('Mid.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-31' },
+			parentLink: 'Feature B',
+		});
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({
+			startProperty: 'note.start',
+			targetProperty: 'note.target',
+			focusLevel: 'PBI',
+		});
+		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
+		view.onDataUpdated();
+		view.setProjection('roadmap');
+		return { view, containerEl, vault };
+	}
+
+	it('never draws a context row as a bar, and never wires it as a source', () => {
+		const { view, containerEl } = timelineStressView();
+		expect(view.model?.byPath.get('Mid.md')?.outsideFilter).toBe(true);
+
+		// Not on the grid at all — `deriveBars` routes it to `context` before a span is
+		// ever computed — and, where it DOES render (the context strip beside the
+		// shelf), never wired as a drag source: no shelf-card drop, no body slide, no
+		// end grip, because none of `CardDragController.wireCard`'s three call sites
+		// ever reach an `outsideFilter` item.
+		expect(rowFor(containerEl, 'Mid')).toBeNull();
+		const card = cardByTitle(containerEl, 'Mid');
+		expect(card.getAttribute('draggable')).not.toBe('true');
+		expect(card.querySelector('[data-pbl-hold]')).toBeNull();
+	});
+
+	it('refuses the whole batch if a date write names one anyway', async () => {
+		// No UI produces this — that is the point: the last line of defence is
+		// structural, so a future entry point (a fifth gesture nobody has written yet)
+		// cannot reopen the hole by omission. `applySafely` refuses the WHOLE batch
+		// rather than filtering, because dropping the offending write alone would apply
+		// the rest and leave the hierarchy half-updated.
+		const { view, vault } = timelineStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+
+		const moved = await view.performScheduleMove(mid as never, { start: '2026-09-01' });
+
+		expect(moved).toBe(false);
+		expect(vault.fm('Mid.md').start).toBe('2026-08-01');
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages.some((m) => m.includes('outside this base’s filter'))).toBe(true);
+	});
+
+	it('keeps a context row out of every derived number the dated axis reports', () => {
+		const { view, containerEl } = timelineStressView();
+
+		// Never counted, never shelved: the shelf is a statement about the RESULTS, and
+		// the placed count plus the shelved count is the visible result rows (PBI.md
+		// alone — Task.md sits below the focus level and is not itself a roadmap row).
+		expect(shelfTitles(containerEl)).not.toContain('Mid');
+		expect(view.roadmap?.roadmap.placedCount).toBe(1);
+		expect(view.roadmap?.roadmap.context.map((i) => i.title)).toEqual(['Mid']);
+	});
+
+	it('offers no Schedule or Unschedule on a context row’s menu', () => {
+		const { view } = timelineStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+
+		view.showContextMenuFor(mid as never);
+
+		expect(Menu.lastShown?.item('Schedule')).toBeUndefined();
+		expect(Menu.lastShown?.item('Unschedule')).toBeUndefined();
 	});
 });
