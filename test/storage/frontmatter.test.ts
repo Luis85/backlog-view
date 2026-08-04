@@ -624,4 +624,20 @@ describe('the axis write keeps the value’s own shape', () => {
 
 		expect(vault.fm('Item.md').target).toBe('2026-08-05');
 	});
+
+	it('keeps the list a datetime arrived in, replacing only the entry it read', async () => {
+		// The container is part of the shape: `readDate` unwraps ANY non-empty list by
+		// reading its first entry, so a merge that only understood strings would answer
+		// with a bare scalar — dropping the time, the list, and every entry after the
+		// first in one move. Both halves of that claim are asserted below.
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', {
+			frontmatter: { start: ['2026-08-01T09:00+02:00', 'note'] },
+		});
+		const settings = resolveSettings(new FakeViewConfig({ startProperty: 'note.start' }));
+
+		await applyWrites(vault.app, settings, [{ file, axis: { start: '2026-08-05' } }]);
+
+		expect(vault.fm('Item.md').start).toEqual(['2026-08-05T09:00+02:00', 'note']);
+	});
 });
