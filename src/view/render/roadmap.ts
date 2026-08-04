@@ -197,7 +197,7 @@ function renderBucket(
 	// the Base's own sort, so there is no between-cards edge to indicate. A minted
 	// bucket is a target like any other — its value is observed vocabulary, and
 	// observed vocabulary is writable.
-	dnd.wireDropTarget(colEl, (item) => void ctx.host.performHorizonMove(item, bucket.value));
+	dnd.wireDropTarget(colEl, (source) => void ctx.host.performHorizonMove(source.item, bucket.value));
 	dnd.wireScroller(cardsEl);
 	return bucket.cards;
 }
@@ -237,7 +237,7 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
 interface ShelfRemoval {
-	plan: (item: BacklogItem) => void;
+	plan: (source: CardSource) => void;
 	tooltip: string;
 	/** Which sources this strip honours — the bar BODY alone on the dated axis. */
 	accepts: (source: CardSource) => boolean;
@@ -263,7 +263,7 @@ interface ShelfRemoval {
 function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRemoval {
 	if (axis === 'horizons') {
 		return {
-			plan: (item) => void host.performHorizonMove(item, null),
+			plan: (source) => void host.performHorizonMove(source.item, null),
 			tooltip: 'Results this axis cannot place — dropping a card here removes its horizon',
 			// A shelf card dropped back on the shelf is NOT refused here, unlike the
 			// dated axis: a horizon-shelved card can still carry an unreadable value
@@ -276,7 +276,14 @@ function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRemoval {
 		};
 	}
 	return {
-		plan: (item) => void host.performScheduleMove(item, unschedulePlan(item)),
+		// The captured shape rides along, not the item's own: `source.ends` is what the
+		// hold was picked up under, from `CardSource`, and it may disagree with the
+		// item's CURRENT type by release if the model refreshed mid-hold. Both the plan
+		// AND the write's expected shape are built from it — `unschedulePlan` too — so a
+		// PBI that became a Milestone mid-drag gets refused whole by the writer's own
+		// shape check rather than quietly narrowed to a target-only removal. See
+		// `performScheduleMove`'s own comment on why neither may be recomputed here.
+		plan: (source) => void host.performScheduleMove(source.item, unschedulePlan(source.item, source.ends), undefined, source.ends),
 		tooltip: 'Results this axis cannot place — dropping a bar here removes its dates',
 		// The bar BODY alone: a grip released here is a resize, not an unschedule, and
 		// a shelf card's own hold is null — both refused by the same test. Refused

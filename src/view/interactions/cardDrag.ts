@@ -234,8 +234,14 @@ export class CardDragController {
 	 * the caller: this module knows how to resolve a dragged card, never what moving
 	 * it should write. `hooks` is optional and unused by a plain region — the dated
 	 * shelf is the first caller that needs it, to preview what its removal would leave.
+	 *
+	 * `plan` takes the RESOLVED source, not just its item — the same shape `accepts`
+	 * and `onEnter` already carry. A caller that only needs the item can still ask for
+	 * one; a caller planning a relative gesture's removal (the dated shelf) needs the
+	 * shape it was captured under too, and a narrower signature would have hidden that
+	 * on the one region that turned out to need it.
 	 */
-	wireDropTarget(el: HTMLElement, plan: (item: BacklogItem) => void, hooks: DropHooks = {}): void {
+	wireDropTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}): void {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
@@ -264,7 +270,7 @@ export class CardDragController {
 					// inputs to the same move, and three callers announcing separately is
 					// how they come to say different things about the same change.
 					const resolved = this.resolve(source.data);
-					if (resolved) plan(resolved.item);
+					if (resolved) plan(resolved);
 				},
 			}),
 		);

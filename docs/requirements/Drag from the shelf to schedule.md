@@ -137,13 +137,20 @@ default duration for a one-ended plan. The grid-to-shelf half (extension 4) is t
 dated axis's `shelfRemoval` in `src/view/render/roadmap.ts`: the shelf's drop target
 accepts the bar BODY hold alone (a grip is a resize, not an unschedule) and refuses a
 shelf card dropped back on itself (it may still carry keys its shelving reason is
-asking the user to fix), planning `unschedulePlan` from
-`src/view/interactions/plan.ts` — the same narrowing to `placementEnds` the row's own
-Unschedule entry uses. Both hand their plan to `host.performScheduleMove` in
-`src/view/backlogView.ts`, the single place a date batch is planned, applied through
-`src/storage/frontmatter.ts`, and announced. The pre-release indicator that says which
-placement a removal would leave, and `barHolds`, which says where a gesture may take
-hold in the first place, are both `src/domain/bars.ts`, asking `placeItem`/`withoutEnds`
+asking the user to fix), planning `unschedulePlan` from `src/view/interactions/plan.ts`
+against the ends the DRAG captured at its start (`CardSource.ends`, threaded through
+`CardDragController.wireDropTarget`'s resolved source) rather than the item's type as
+read at release — the same narrowing to `placementEnds` the row's own Unschedule entry
+uses, resolved once for the gesture instead of reread after it, since a Bases refresh
+mid-hold can leave the item a different type than the one the hold was taken on. The
+writer's own shape check (`refusesAxis` in `src/storage/frontmatter.ts`) is what catches
+the two having drifted apart: it refuses the whole batch rather than silently narrowing
+it to whatever the note currently answers for. Both hand their plan to
+`host.performScheduleMove` in `src/view/backlogView.ts`, the single place a date batch is
+planned, applied through `src/storage/frontmatter.ts`, and announced. The pre-release
+indicator that says which placement a removal would leave, and `barHolds`, which says
+where a gesture may take hold in the first place, are both `src/domain/bars.ts`, asking
+`placeItem`/`withoutEnds`
 rather than a second opinion beside them.
 
 **Status stays `Active`, not `Done`.** Both gestures ship, but the note's guarantee and

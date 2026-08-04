@@ -1,7 +1,7 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { placementEnds } from '../../domain/itemTypes';
+import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { sameValue } from '../../domain/noteFields';
 import { BacklogSettings, horizonMenuValues, optionalKeyFor } from '../../domain/settings';
 import { formatCivil } from '../../domain/timeline';
@@ -213,10 +213,17 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 	}).open();
 }
 
-/** Every date key this item's own type answers for, as a plan that removes them. */
-export function unschedulePlan(item: BacklogItem): SchedulePlan {
+/**
+ * Every date key a placement answers for, as a plan that removes them. Ends default
+ * to the item's own CURRENT type — right for the menu's Unschedule and the row entry,
+ * which have no captured shape to disagree with. A caller holding one from earlier in
+ * a gesture — the dated axis's shelf drop, mid-hold — passes it explicitly, so the
+ * plan removes what the gesture actually promised rather than whatever the item now
+ * answers for; the writer is what catches the two having drifted apart.
+ */
+export function unschedulePlan(item: BacklogItem, ends: PlacementEnd[] = placementEnds(item.typeName)): SchedulePlan {
 	const plan: SchedulePlan = {};
-	for (const field of placementEnds(item.typeName)) plan[field] = null;
+	for (const field of ends) plan[field] = null;
 	return plan;
 }
 

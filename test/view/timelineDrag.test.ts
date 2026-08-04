@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { flush, makeView, treeOf, useViewHarness } from '../helpers/view';
+import { Notice } from '../helpers/obsidian-mock';
+import { flush, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
-import { cardDrag, gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
+import { cardDrag, gridDrag, overlayOf, pannedGrid, startCardDrag } from '../helpers/dnd';
 import { gripNames, gripOf, shelfOf } from '../helpers/roadmap';
 import { addDays, cellSpan, dayAt, scaleFor } from '../../src/domain/timeline';
 
@@ -420,6 +421,32 @@ describe('dropping a bar back on the shelf', () => {
 			gesture.leave(shelf);
 			gesture.cancel();
 		}
+	});
+
+	it('refuses a body hold whose note became a Milestone mid-drag, rather than narrowing to a target-only removal', async () => {
+		// The gesture picks up a two-ended PBI's body — a captured shape of
+		// `['start', 'target']` — and the note becomes a Milestone (`['target']`
+		// alone) before release, the way a Bases refresh mid-hold would land it.
+		// `unschedulePlan` and `performScheduleMove` must both still see the
+		// CAPTURED shape, or the plan silently narrows to removing `target` alone
+		// and applies it — exactly what `performScheduleMove`'s own comment says a
+		// recomputed `ends` would do.
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' } });
+		const { view, containerEl } = datedView(vault);
+
+		const drop = startCardDrag(gripOf(containerEl, 'Item', 'body'));
+		vault.setFrontmatter('Item.md', { type: 'Milestone', order: 10, start: '2026-08-04', target: '2026-08-10' });
+		refresh(view, vault);
+		drop(shelfOf(containerEl)!);
+		await flush();
+
+		// Refused whole: neither the captured two-ended write nor a quietly narrowed
+		// target-only one lands — both keys are exactly what they were, and the writer
+		// says so rather than applying a batch nobody asked for.
+		expect(vault.fm('Item.md').start).toBe('2026-08-04');
+		expect(vault.fm('Item.md').target).toBe('2026-08-10');
+		expect(Notice.messages).toContain('That note changed while the move was in flight, so nothing was written.');
 	});
 });
 
