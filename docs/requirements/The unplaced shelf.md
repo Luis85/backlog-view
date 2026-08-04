@@ -10,9 +10,11 @@ files:
   - src/domain/shelf.ts
   - src/domain/noteFields.ts
   - src/view/render/roadmap.ts
+  - src/view/render/shelfControls.ts
   - test/domain/shelf.test.ts
   - test/helpers/obsidian-mock.ts
   - test/helpers/vault.ts
+  - test/view/shelfUx.test.ts
 ---
 
 # The unplaced shelf
@@ -89,6 +91,15 @@ what lets a card say why. The shelf's grouping, sorting, and filtering logic liv
 `src/domain/shelf.ts` (`organizeShelf`). The shelf renders in `src/view/render/roadmap.ts`,
 driven in `test/domain/roadmap.test.ts` and `test/view/roadmapFrame.test.ts` (accessors
 in `test/helpers/roadmap.ts`).
+
+The shelf's interactive chrome — a collapse toggle, a sort picker, a type filter —
+cannot live inside the roadmap pane itself: it wears `role="listbox"` while any cards
+render, a one-tab-stop composite widget with no room for a `<select>` or checkboxes. It
+is built instead as toolbar chrome, a sibling of the pane rather than a descendant, in
+`src/view/render/shelfControls.ts` (`renderShelfControls`, called from `renderToolbar`),
+driven in `test/view/shelfUx.test.ts`. `syncShelfControls`, beside it, is what will fill
+the built structure with the shelf's live population, current picks, and per-type
+counts once the render loop calls it.
 
 Step 4 and 2a arrived first with [[Moving between horizons]], on the horizon axis: a
 shelf card is a drag source, the shelf itself is the target that un-places, and an empty

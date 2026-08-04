@@ -9,6 +9,7 @@ import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 import { ScaleId } from '../../domain/timeline';
+import { renderShelfControls } from './shelfControls';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -39,6 +40,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderFocusPicker(host, barEl, model);
 	renderModeToggle(host, barEl);
 	renderAxisPicker(host, barEl);
+	renderShelfControls(host, barEl);
 	renderTimelineControls(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
