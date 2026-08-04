@@ -505,15 +505,22 @@ git commit -m "Persist shelf collapse, sort and type filter in the collapse stor
 - Modify: `src/view/collapseState.ts`
 - Modify: `src/view/host.ts`
 - Modify: `src/view/backlogView.ts`
+- Test: `test/view/persistence.test.ts` (extend)
 
 **Interfaces:**
 - Consumes: `ShelfSort` from `src/domain/shelf.ts` (Task 1); `CollapseSnapshot`/`saveCollapseState` fields from Task 2.
 - Produces: `CollapseState.shelfCollapsed(): boolean`, `.setShelfCollapsed(boolean): void`, `.shelfSort(): ShelfSort`, `.setShelfSort(ShelfSort): void`, `.shelfHiddenTypes(): ReadonlySet<string>`, `.setShelfHiddenTypes(ReadonlySet<string>): void`. `BacklogViewHost` gains matching `readonly shelfCollapsed: boolean` / `setShelfCollapsed` / `readonly shelfSort: ShelfSort` / `setShelfSort` / `readonly shelfHiddenTypes: ReadonlySet<string>` / `setShelfHiddenTypes`, implemented on `ProductBacklogView`. Tasks 4 and 6 both consume these host members.
 
-This task has no dedicated test file of its own — it is exercised end-to-end by Task 4's
-and Task 6's view tests, the same way `setProjection`/`setAxisPick` have no standalone
-unit test but are driven through `test/view/*.test.ts`. Do the change, then confirm the
-existing suite is undisturbed.
+Tasks 4 and 6 exercise the setters and getters in memory — they mutate state and check
+the same session's render, never closing the view — so neither would notice a wrong
+field name inside `restore()` or a field silently dropped from `flush()`'s
+`saveCollapseState` call (both fields are optional, so a typo compiles and every other
+planned test still passes). Task 2 tests the storage functions directly, underneath
+`CollapseState`. The one path nothing drives is `CollapseState` round-tripping through
+an actual close and reopen, the same way `test/view/persistence.test.ts` already proves
+for `collapsed`/`expanded`/`mode`/`axis` — so this task adds that case for the shelf
+fields rather than leaving the gap between Task 2's unit tests and Task 4/6's in-memory
+ones unclosed.
 
 - [ ] **Step 1: Extend `CollapseState`**
 
@@ -653,16 +660,46 @@ setShelfHiddenTypes(types: ReadonlySet<string>): void {
 `renderTreeContent` is `private` on the class; these new methods are members of the same
 class, so calling it is legal.
 
-- [ ] **Step 4: Type-check**
+- [ ] **Step 4: Write and run the end-to-end persistence test**
+
+Append to `test/view/persistence.test.ts`, inside the existing `describe('collapse state
+persistence', ...)` block:
+
+```ts
+it('persists the shelf collapse, sort and type filter across a reopen', () => {
+	const vault = fixture();
+	const first = makeView(vault, {}, { base: 'Backlog.base' });
+	first.view.setShelfCollapsed(false);
+	first.view.setShelfSort('title');
+	first.view.setShelfHiddenTypes(new Set(['Task']));
+	first.view.onunload();
+
+	const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+	expect(second.view.shelfCollapsed).toBe(false);
+	expect(second.view.shelfSort).toBe('title');
+	expect(second.view.shelfHiddenTypes).toEqual(new Set(['Task']));
+});
+```
+
+This reads the getters directly rather than the DOM — the shelf has no rendering yet
+(that is Task 6), and these three fields are `ProductBacklogView` state regardless of
+projection, the same way `mode`/`axis` already are.
+
+Run: `npx vitest run test/view/persistence.test.ts`
+Expected: PASS. If it fails, the mismatch is between what `flush()` saves and what
+`restore()` reads back for one of the three fields — check both against Task 2's
+`CollapseSnapshot` field names before assuming the test is wrong.
+
+- [ ] **Step 5: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no new errors. (`shelf.ts` from Task 1 must already exist for this to resolve
 `ShelfSort`.)
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/view/collapseState.ts src/view/host.ts src/view/backlogView.ts
+git add src/view/collapseState.ts src/view/host.ts src/view/backlogView.ts test/view/persistence.test.ts
 git commit -m "Wire shelf collapse/sort/filter through CollapseState and BacklogViewHost"
 ```
 
@@ -1459,15 +1496,32 @@ describe('the shelf as a drop target while collapsed', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails or passes for the wrong reason**
+- [ ] **Step 2: Run the test — it should already pass**
 
 Run: `npx vitest run test/view/shelfUx.test.ts`
-Expected: This SHOULD already pass after Task 6, since `renderShelf` wires the drop
-target before the collapsed check. If it fails, the bug is in Task 6's ordering — fix
-`shelf.ts` there rather than adding new code here (the drop-target wiring line must run
-before the `if (empty || collapsed) return [];` line).
+Expected: PASS, since `renderShelf` wires the drop target before the collapsed check.
+If it fails instead, the bug is in Task 6's ordering — fix `shelf.ts` there rather than
+adding new code here (the drop-target wiring line must run before the
+`if (empty || collapsed) return [];` line).
 
-- [ ] **Step 3: Confirm and commit**
+- [ ] **Step 3: Watch it fail — this is CLAUDE.md's rule for an invariant asserted only
+  in a comment, not a genuine red-phase test**
+
+`shelf.ts`'s doc comment states the invariant in prose ("Collapsing is a view
+convenience and never gates the drop target: it is wired before the collapsed check
+below, not after") — exactly the shape `CLAUDE.md` requires a watched-failing test for,
+since a passing test here proves nothing about what it would catch. In `src/view/render/shelf.ts`,
+temporarily move the `dnd?.wireDropTarget(...)` line to AFTER the
+`if (empty || collapsed) return [];` line (reversing the real order). Run:
+
+`npx vitest run test/view/shelfUx.test.ts`
+
+Expected: FAIL — with the shelf collapsed, `wireDropTarget` is now skipped by the early
+return, the drop never lands, and `'horizon' in vault.fm('Placed.md')` stays `true`.
+Seeing this red is the proof the test would catch a regression in the ordering. Revert
+`shelf.ts` back to the real order and re-run to confirm PASS before moving on.
+
+- [ ] **Step 4: Confirm and commit**
 
 ```bash
 git add test/view/shelfUx.test.ts
