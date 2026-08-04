@@ -17,9 +17,17 @@ export default defineConfig({
 			// Registration glue that needs the real Obsidian Plugin runtime.
 			exclude: ['src/main.ts'],
 			reporter: ['text-summary', 'json', 'lcov'],
-			// Measured 97.82/93.56/99.08/99.12 — thresholds sit just below to catch
+			// Measured 97.91/93.68/99.27/99.18 — thresholds sit just below to catch
 			// regressions without being brittle, each keeping the margin it had when the
 			// figure above it last moved. Raise them as coverage grows, never lower:
+			// all four moved with the writable-timeline increment, so all four thresholds
+			// moved by the same delta the figure above them did. Branches is the one worth
+			// knowing about: mid-increment it measured 93.29, BELOW the 93.56 the previous
+			// increment had earned, and the drop was treated as a finding rather than a
+			// number to accommodate. Driving the undriven branches took it to 93.81 and
+			// found a real bug on the way (a grip offered on a note stating no date, whose
+			// gesture anchored to the window edge); withholding that grip removed the
+			// branch again, which is why the figure settles at 93.68 rather than 93.81.
 			// statements and branches moved with the card-drag increment and their
 			// thresholds moved with them, while lines did not move, so its threshold
 			// stayed rather than being re-cut to a margin no work had earned.
@@ -36,10 +44,10 @@ export default defineConfig({
 			// old figure was flattering. Statements has the least room of the four, so
 			// that is the one a thin change will trip first.
 			thresholds: {
-				statements: 97.55,
-				branches: 93.1,
-				functions: 98,
-				lines: 97,
+				statements: 97.64,
+				branches: 93.22,
+				functions: 98.19,
+				lines: 97.06,
 			},
 		},
 	},

@@ -963,6 +963,14 @@ Named honestly rather than claimed, and filed as a smoke note under `Feature Tes
   zoom, where each is one pixel at 0.55 opacity. `dayPx ≥ 2 × lineWidth` is satisfiable
   there only by narrowing the lines, so this is the check on that trade: if a one-pixel
   line cannot be seen, the answer is a denser `quarter`, not a thinner mark.
+- Whether a drop released over the sticky date header lands. Added after the list was
+  first written, because the defect it guards was found in review rather than here: the
+  header paints above the drop overlay and is its sibling, so it won hit-testing and a
+  release there did nothing, silently, across the grid's whole width. The fix is a
+  stylesheet rule; that it WORKS is a hit-testing question, and jsdom does none. The
+  same is true of the lead column's mirror defect — but that one is checkable, because
+  the fix compares a pointer against the scroller's own rect rather than relying on
+  paint order, and a test can ask that arithmetic directly.
 - The narrow-pane shelf compaction, and whether anything clips under the header in an
   embedded base.
 - The today line and jump-to-today from a scrolled position.
