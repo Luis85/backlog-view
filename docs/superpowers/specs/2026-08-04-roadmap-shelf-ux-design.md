@@ -237,13 +237,26 @@ planned."* Once a fully-populated, collapsed shelf legitimately contributes zero
 `cards`, that gate fires on a backlog that is not empty at all — a fresh vault with
 everything on the shelf and the shelf collapsed by default (this design's own default)
 would show "All N items are done and hidden" for work that is simply untriaged. This is
-the comment's own claim breaking, not a new one: the fix keeps it true by gating on the
-roadmap's actual population instead of the keyboard-walk array — `renderRoadmapAdvisory`
-takes `roadmap.placedCount + roadmap.shelf.length + roadmap.context.length` (all three
-already computed by `buildRoadmap`, none of them affected by collapse) in place of
-`cards.length`, so the advisory answers "does this roadmap have any rows" rather than
-"how many are keyboard-reachable right now" — two questions this change is exactly what
-makes different.
+the comment's own claim breaking, not a new one, and it needs a narrower fix than "sum
+the model's own counters": `roadmap.placedCount` counts RESULTS only, and a context row
+that lands inside a bucket it matches (`placeContext` in `domain/roadmap.ts`) is neither
+a result nor in `roadmap.context` — it is sitting in that bucket's `cards`, rendered and
+visible, and counted by none of `placedCount`/`shelf.length`/`context.length`.
+`test/domain/roadmap.test.ts`'s own focused-context fixture already exhibits exactly this
+shape (a context Epic inside a bucket, every model counter at zero), so summing those
+three counters would still fire the advisory beside a visible card.
+
+The fix stays in the view, where the real count already gets built: `renderRoadmap`
+captures `cards.length` right after the axis (buckets or timeline) finishes rendering —
+call it `axisCardCount` — BEFORE the shelf and the context strip push onto the same
+array. `axisCardCount` already includes every bucket-placed context card exactly as
+`cards.length` always did, because collapse never touches the axis rendering path at
+all — only the shelf's own contribution to `cards` changes. `renderRoadmapAdvisory` then
+takes `axisCardCount + roadmap.shelf.length + roadmap.context.length` — the true axis
+population plus the shelf's real count (regardless of collapse) plus the standalone
+context strip's count — so the advisory answers "does this roadmap have any rows
+anywhere" rather than "how many are keyboard-reachable right now", without asking the
+domain model a question its own counters were never built to answer.
 
 ### 5. Styles — new `styles/shelf.css`, changes to `styles/roadmap.css`
 
@@ -322,8 +335,13 @@ position its load-order comment calls for.
   - A roadmap whose every result is shelved AND the shelf is collapsed (the default)
     renders no advisory at all — not the empty state, not the filtered-empty state, not
     "all done" — because the backlog is not empty, it is untriaged. This is the direct
-    regression test for `renderRoadmapAdvisory`'s gate moving from `cards.length` to the
-    roadmap's own population count.
+    regression test for `renderRoadmapAdvisory`'s gate moving from `cards.length` to
+    `axisCardCount + roadmap.shelf.length + roadmap.context.length`.
+  - The focused-context fixture `test/domain/roadmap.test.ts` already has (a context
+    item placed inside a bucket it matches, every model counter at zero) renders NO
+    advisory either, with the shelf collapsed — the case that would have broken had the
+    gate summed `placedCount`/`shelf.length`/`context.length` instead of capturing the
+    axis's own rendered count.
 - The full-width / grid **visual** behavior itself is not something jsdom can verify —
   it has no layout engine. `npm run test-build` is the honest answer here, named
   explicitly rather than claimed as covered by the DOM tests above.
