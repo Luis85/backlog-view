@@ -1133,10 +1133,19 @@ Add `FakeVault` to the imports at the top of the file if not already present:
 - [ ] **Step 3: Run the tests to verify they fail**
 
 Run: `npx vitest run test/view/shelfUx.test.ts`
-Expected: FAIL — `setShelfCollapsed` exists (Task 3) but `renderRoadmap` doesn't consult
-it yet, so the shelf still renders its cards regardless, and the "no advisory" test
-fails because `renderRoadmapAdvisory` still gates on `cards.length` (which is currently
-non-zero from the shelf itself).
+Expected: FAIL on the first three tests — `setShelfCollapsed` exists (Task 3) but
+`renderRoadmap` doesn't consult it yet, so the shelf still renders its cards
+regardless.
+
+The "renders no advisory" test ALREADY PASSES at this point, and for a reason that has
+nothing to do with the fix: the old, not-yet-collapse-aware `renderShelf` still
+includes `Untriaged` in `cards` unconditionally, so `cards.length` is already `1` and
+the old `renderRoadmapAdvisory` gate (`renderedCards > 0`) already suppresses the
+advisory — the same shape as `1b` for "not really at 0". That is fine, not a gap to
+chase: it stands as a regression guard for the state Step 4 produces (a collapsed shelf
+contributing zero to `cards`, which WOULD trip the old gate if the advisory fix were
+ever reverted on its own), the same way the toolbar-identity test in an earlier task
+was already true before its own fix landed.
 
 - [ ] **Step 4: Implement `shelf.ts`, then update `roadmap.ts`**
 
