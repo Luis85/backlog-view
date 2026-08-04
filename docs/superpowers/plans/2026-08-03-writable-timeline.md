@@ -1179,6 +1179,21 @@ describe('the writer decides a date against the live note', () => {
 		expect(outcome.changed).toBe(true);
 	});
 
+	it('reports only the ends the live placement answers for', async () => {
+		// The same stale start, in the REPORT rather than the check. The timeline draws
+		// and edits a marker as one point, so a target slide that reported the pair
+		// would be announced as a range — the source described in a vocabulary the
+		// destination is not, which is the split `placementLabel` and `targetLabel`
+		// already exist to prevent.
+		const vault = new FakeVault();
+		const file = vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', start: '2026-07-01', target: '2026-09-30' } });
+
+		const outcome = await applyWrites(vault.app, dateSettings(), [{ file, axis: { target: '2026-10-15', ends: ['target'] } }]);
+
+		expect(outcome.dates?.before).toEqual({ start: null, target: { year: 2026, month: 9, day: 30 } });
+		expect(outcome.dates?.after).toEqual({ start: null, target: { year: 2026, month: 10, day: 15 } });
+	});
+
 	it('refuses a batch whose planned shape is not the shape the note now has', async () => {
 		// An external edit turned an ordinary item into a marker while a modal was
 		// open. Applying the half that still fits would commit a plan the user made
@@ -1263,12 +1278,16 @@ export async function applyWrites(
 		let inverse: RestoreWrite | null = null;
 		let refused = false;
 		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
+			// The ends this note's LIVE type answers for. Everything below is narrowed by
+			// them, because a key the projection never drew is not part of what a move
+			// changed — a marker's stale start most of all.
+			const ends = placementEnds(readString(ownValue(fm, settings.typeKey)));
 			const before = axisSpan(fm, settings);
 			// Refusals are asked of the LIVE note before anything is touched, and they
 			// refuse the batch WHOLE: a partly-applied batch leaves the note in a state
 			// nobody asked for, which is `applySafely`'s own rule reaching the one
 			// decision it cannot make from outside the file.
-			if (refusesAxis(fm, settings, write)) {
+			if (refusesAxis(fm, settings, write, ends)) {
 				refused = true;
 				return;
 			}
@@ -1277,7 +1296,14 @@ export async function applyWrites(
 			const tags = applyInto(app, fm, settings, write);
 			inverse = captureInverse(write.file, keys, prior, fm, tags);
 			if (write.axis && (write.axis.start !== undefined || write.axis.target !== undefined)) {
-				outcome.dates ??= { before, after: axisSpan(fm, settings) };
+				// Narrowed to the ends the placement HAS, on both sides. A marker keeps a
+				// stale start deliberately, so an unnarrowed `before` would announce a
+				// target slide as a range — "2026-07-01 to 2026-09-30" for a note the
+				// timeline draws and edits as one September point. The destination is
+				// already narrowed, through `placeItem`; describing the two ends of one
+				// move in two different vocabularies is the mistake `placementLabel` and
+				// `targetLabel` were split to stop making.
+				outcome.dates ??= { before: narrowSpan(before, ends), after: narrowSpan(axisSpan(fm, settings), ends) };
 			}
 		});
 		if (refused) {
@@ -1307,6 +1333,14 @@ function axisSpan(fm: Record<string, unknown>, settings: BacklogSettings): DateS
 	return { start: read('start'), target: read('target') };
 }
 
+/** The same span with the ends this placement does not answer for dropped. */
+function narrowSpan(span: DateSpan, ends: PlacementEnd[]): DateSpan {
+	return {
+		start: ends.includes('start') ? span.start : null,
+		target: ends.includes('target') ? span.target : null,
+	};
+}
+
 /**
  * Why a date batch may not land on this note, asked of the LIVE frontmatter.
  *
@@ -1322,10 +1356,9 @@ function axisSpan(fm: Record<string, unknown>, settings: BacklogSettings): DateS
  *   a stale one later than the target is not a conflict, it is a value the projection
  *   never drew.
  */
-function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): boolean {
+function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite, live: PlacementEnd[]): boolean {
 	const axis = write.axis;
 	if (!axis || axis.ends === undefined) return false;
-	const live = placementEnds(readString(ownValue(fm, settings.typeKey)));
 	if (live.length !== axis.ends.length || live.some((end) => !axis.ends?.includes(end))) return true;
 	if (live.length < 2) return false;
 	const current = axisSpan(fm, settings);
@@ -1643,7 +1676,21 @@ describe('scheduling from the row, on the one path', () => {
 
 		await view.performScheduleMove(item as never, { start: null, target: null });
 
-		expect(await announced()).toBe('Moved "Alone" from 2026-08-01 to Unscheduled');
+		expect(await announced()).toBe('Moved "Alone" from 2026-08-01 onwards to Unscheduled');
+	});
+
+	it('names a marker as the point it is drawn as, on both sides of the sentence', async () => {
+		// A marker keeps a stale start deliberately, so an unnarrowed source span would
+		// announce "from 2026-07-01 to 2026-09-30 to 2026-10-15" for a note the timeline
+		// draws and edits as one September point.
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' } });
+		const { view } = datedView(vault);
+		const item = view.model?.byPath.get('Ship.md');
+
+		await view.performScheduleMove(item as never, { target: '2026-10-15' });
+
+		expect(await announced()).toBe('Moved "Ship" from 2026-09-30 to 2026-10-15');
 	});
 
 	it('routes the menu’s Unschedule through the same method', async () => {
@@ -1707,7 +1754,10 @@ In `src/view/backlogView.ts`:
 		// dereference: the announcement names the dates and stops there rather than
 		// guessing that the card left the view.
 		const live = this.model?.byPath.get(item.file.path) ?? null;
-		announceScheduleMove(item.title, outcome.dates, live ? placeItem(live, statedEnds(live)) : null);
+		// The ends of the LIVE placement where there is one, so the announcement names a
+		// marker as the point it is drawn as rather than as the pair its note holds.
+		const ends = placementEnds(live?.typeName ?? item.typeName);
+		announceScheduleMove(item.title, outcome.dates, live ? placeItem(live, statedEnds(live)) : null, ends);
 		return true;
 	}
 ```
@@ -1740,25 +1790,43 @@ Append to `src/view/interactions/cardDrag.ts`:
  * caused it, and `docs/issues/The outcome report was built from one sentence.md`
  * records that as unsolved here.
  */
-export function announceScheduleMove(title: string, change: DateChange, placement: Placement | null): void {
-	const to = placement === null ? spanWords(change.after) : placementWords(placement);
-	announceMove(title, spanWords(change.before), to);
+export function announceScheduleMove(
+	title: string,
+	change: DateChange,
+	placement: Placement | null,
+	ends: PlacementEnd[],
+): void {
+	const to = placement === null ? spanWords(change.after, ends) : placementWords(placement, ends);
+	announceMove(title, spanWords(change.before, ends), to);
 }
 
-function placementWords(placement: Placement): string {
-	return placement.kind === 'shelf' ? UNSCHEDULED_LABEL : spanWords(placement.bar.span);
+function placementWords(placement: Placement, ends: PlacementEnd[]): string {
+	return placement.kind === 'shelf' ? UNSCHEDULED_LABEL : spanWords(placement.bar.span, ends);
 }
 
-/** A span in the register's own date format; the shelf's word when there is none. */
-function spanWords(span: DateSpan): string {
+/**
+ * A span in the register's own date format; the shelf's word when there is none.
+ *
+ * `ends` is what the placement HAS, not what the note happens to carry — the same
+ * narrowing the writer applies to the verdict. A one-ended placement is a POINT and is
+ * named by its date alone; a two-ended one with a single date stated is an OPEN bar and
+ * says which end it is open at. Both sides of the announcement go through here, so the
+ * source and the destination cannot be described in different vocabularies — the
+ * mistake `placementLabel` and `targetLabel` were split to stop making.
+ */
+function spanWords(span: DateSpan, ends: PlacementEnd[]): string {
 	if (span.start !== null && span.target !== null) {
 		return daysBetween(span.start, span.target) === 0
 			? formatCivil(span.start)
 			: `${formatCivil(span.start)} to ${formatCivil(span.target)}`;
 	}
-	if (span.start !== null) return `from ${formatCivil(span.start)}`;
-	if (span.target !== null) return `to ${formatCivil(span.target)}`;
-	return UNSCHEDULED_LABEL;
+	const only = span.start ?? span.target;
+	if (only === null) return UNSCHEDULED_LABEL;
+	if (ends.length < 2) return formatCivil(only);
+	// Neither phrase may begin with `from` or `to`: `announceMove` already wraps both
+	// sides in "from … to …", and an open end that spelled itself that way would say
+	// "from from 2026-08-01 to Unscheduled".
+	return span.start !== null ? `${formatCivil(only)} onwards` : `up to ${formatCivil(only)}`;
 }
 ```
 
@@ -3090,7 +3158,9 @@ git commit -m "Compact the shelf where the pane is narrow, and give it a way bac
   - `CardDragController.wireCard(el, item, hold?: BarHold)` — the hold rides the payload
   - `CardDragController.wireDropTarget(el, plan, accepts?: (source: CardSource) => boolean)`
   - `CardDragController.wirePositionalTarget(el, handlers)` where handlers are
-    `{ onDrag(source, clientX): void; onDrop(source, clientX): void; onLeave(): void }`
+    `{ onDrag(source, clientX, originX): void; onDrop(source, clientX, originX): void; onLeave(): void }`
+    — `originX` is the adapter's `location.initial.input.clientX`, the coordinate the
+    drag STARTED at, carried on every frame so no gesture has to capture it
   - `export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void`
     (timelineDrag.ts), `TimelineParts { overlay; content; window; scale; today }`
 
@@ -3258,16 +3328,26 @@ export function overlayOf(containerEl: HTMLElement): HTMLElement {
 	return overlay;
 }
 
-/** A positional drag: start, move over the target at a viewport X, drop there. */
-export function gridDrag(source: HTMLElement, target: HTMLElement, at: { clientX: number }): void {
-	const gesture = gridDrag.start(source);
+/**
+ * A positional drag: start at `from`, move over the target at `clientX`, drop there.
+ *
+ * `from` is the coordinate the DRAG STARTED at, which the adapter reports as
+ * `location.initial.input.clientX` and a delta read is measured against. It defaults to
+ * the drop point — a gesture that expressed no movement — so a PLACING test, which reads
+ * the pointer absolutely and has no origin, can leave it out. A MOVING test must set it,
+ * or it is asserting against a zero delta whatever the implementation does.
+ */
+export function gridDrag(source: HTMLElement, target: HTMLElement, at: { clientX: number; from?: number }): void {
+	const gesture = gridDrag.start(source, { clientX: at.from ?? at.clientX });
 	gesture.over(target, at);
 	gesture.drop(target, at);
 }
 
-gridDrag.start = (source: HTMLElement) => {
+gridDrag.start = (source: HTMLElement, origin: { clientX: number } = { clientX: 0 }) => {
 	const dt = fakeDataTransfer();
-	source.dispatchEvent(dragEvent('dragstart', dt));
+	// The origin rides the dragstart, which is where the real adapter takes
+	// `location.initial` from.
+	source.dispatchEvent(dragEvent('dragstart', dt, origin));
 	return {
 		over: (target: HTMLElement, at: { clientX: number }) => {
 			target.dispatchEvent(dragEvent('dragenter', dt, { ...at, clientY: 20 }));
@@ -3353,8 +3433,8 @@ And the positional sibling:
 	wirePositionalTarget(
 		el: HTMLElement,
 		handlers: {
-			onDrag: (source: CardSource, clientX: number) => void;
-			onDrop: (source: CardSource, clientX: number) => void;
+			onDrag: (source: CardSource, clientX: number, originX: number) => void;
+			onDrop: (source: CardSource, clientX: number, originX: number) => void;
 			onLeave: () => void;
 		},
 	): void {
@@ -3364,13 +3444,15 @@ And the positional sibling:
 				canDrop: ({ source }) => source.data.view === this.token,
 				onDrag: ({ source, location }) => {
 					const resolved = this.resolve(source.data);
-					if (resolved) handlers.onDrag(resolved, location.current.input.clientX);
+					// Both coordinates, always: `initial` is where the drag STARTED, which a
+					// delta read needs and no handler should have to capture for itself.
+					if (resolved) handlers.onDrag(resolved, location.current.input.clientX, location.initial.input.clientX);
 				},
 				onDragLeave: () => handlers.onLeave(),
 				onDrop: ({ source, location }) => {
 					handlers.onLeave();
 					const resolved = this.resolve(source.data);
-					if (resolved) handlers.onDrop(resolved, location.current.input.clientX);
+					if (resolved) handlers.onDrop(resolved, location.current.input.clientX, location.initial.input.clientX);
 				},
 			}),
 		);
@@ -3469,12 +3551,19 @@ export interface TimelineParts {
 
 export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
 	const host = ctx.host;
+	// The one thing a gesture here has to remember; see Task 12 Step 4 for why it is the
+	// scroller and not the pointer.
+	const scroll: { origin: number | null } = { origin: null };
 	dnd.wirePositionalTarget(parts.overlay, {
-		onDrag: (source, clientX) => preview(host, parts, source, clientX),
-		onLeave: () => clearPreview(parts),
-		onDrop: (source, clientX) => {
+		onDrag: (source, clientX, originX) => preview(host, parts, source, clientX, originX, scroll),
+		onLeave: () => {
 			clearPreview(parts);
-			const plan = planFor(host, parts, source, clientX);
+			scroll.origin = null;
+		},
+		onDrop: (source, clientX, originX) => {
+			clearPreview(parts);
+			const plan = planFor(host, parts, source, clientX, originX, scroll);
+			scroll.origin = null;
 			// A drag ending nowhere meaningful writes nothing and does not consume the
 			// undo slot — and a hold that moved nowhere plans nothing at all, so a
 			// request the user never made never reaches the writer.
@@ -3536,9 +3625,18 @@ three bar holds. `preview` draws the ghost from the same plan, so the preview an
 write cannot disagree about what a position means:
 
 ```ts
-function preview(host: BacklogViewHost, parts: TimelineParts, source: CardSource, clientX: number): void {
+function preview(
+	host: BacklogViewHost,
+	parts: TimelineParts,
+	source: CardSource,
+	clientX: number,
+	originX: number,
+	scroll: { origin: number | null },
+): void {
 	clearPreview(parts);
-	const plan = planFor(host, parts, source, clientX);
+	// The ghost is drawn from the SAME plan the drop will submit, so the preview and the
+	// write cannot disagree about what a position means.
+	const plan = planFor(host, parts, source, clientX, originX, scroll);
 	if (!plan) return;
 	const span = previewSpan(source.item, plan);
 	if (span.start === null && span.target === null) return;
@@ -3664,7 +3762,7 @@ describe('holding a bar', () => {
 		const { containerEl } = datedView(vault);
 		const scale = scaleFor('month');
 
-		gridDrag(gripOf(containerEl, 'Planned', 'body'), overlayOf(containerEl), { clientX: 1000 + 3 * scale.dayPx });
+		gridDrag(gripOf(containerEl, 'Planned', 'body'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 3 * scale.dayPx });
 		await flush();
 
 		expect(vault.fm('Planned.md').start).toBe('2026-08-07');
@@ -3682,7 +3780,7 @@ describe('holding a bar', () => {
 		view.setZoom('quarter');
 		pannedGrid(containerEl, { rectLeft: 220, scrollLeft: 640 });
 
-		gridDrag(gripOf(containerEl, 'Day', 'end'), overlayOf(containerEl), { clientX: 1000 });
+		gridDrag(gripOf(containerEl, 'Day', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 });
 		await flush();
 
 		expect(vault.writeLog).toHaveLength(0);
@@ -3696,7 +3794,7 @@ describe('holding a bar', () => {
 		// work quietly reverted.
 		const vault = scheduleVault();
 		const { containerEl } = datedView(vault);
-		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'body'));
+		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'body'), { clientX: 1000 });
 		gesture.over(overlayOf(containerEl), { clientX: 1400 });
 		gesture.drop(overlayOf(containerEl), { clientX: 1000 });
 		await flush();
@@ -3709,7 +3807,7 @@ describe('holding a bar', () => {
 		const { containerEl } = datedView(vault);
 		const scale = scaleFor('month');
 
-		gridDrag(gripOf(containerEl, 'Planned', 'end'), overlayOf(containerEl), { clientX: 1000 - 30 * scale.dayPx });
+		gridDrag(gripOf(containerEl, 'Planned', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 - 30 * scale.dayPx });
 		await flush();
 
 		// 2a: a reversed span is unreadable, so no gesture may write one — and it
@@ -3726,7 +3824,7 @@ describe('holding a bar', () => {
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04' } });
 		const { containerEl } = datedView(vault);
 
-		gridDrag(gripOf(containerEl, 'Open', 'body'), overlayOf(containerEl), { clientX: 1000 + 3 * scaleFor('month').dayPx });
+		gridDrag(gripOf(containerEl, 'Open', 'body'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 3 * scaleFor('month').dayPx });
 		await flush();
 
 		expect(vault.fm('Open.md').start).toBe('2026-08-07');
@@ -3738,7 +3836,7 @@ describe('holding a bar', () => {
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04' } });
 		const { containerEl } = datedView(vault);
 
-		gridDrag(gripOf(containerEl, 'Open', 'end'), overlayOf(containerEl), { clientX: 1000 + 5 * scaleFor('month').dayPx });
+		gridDrag(gripOf(containerEl, 'Open', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 5 * scaleFor('month').dayPx });
 		await flush();
 
 		expect(vault.fm('Open.md').target).toBe('2026-08-09');
@@ -3752,7 +3850,7 @@ describe('holding a bar', () => {
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-08-20' } });
 		const { containerEl } = datedView(vault);
 
-		gridDrag(gripOf(containerEl, 'Open', 'start'), overlayOf(containerEl), { clientX: 1000 });
+		gridDrag(gripOf(containerEl, 'Open', 'start'), overlayOf(containerEl), { from: 1000, clientX: 1000 });
 		await flush();
 
 		expect(vault.writeLog).toHaveLength(0);
@@ -3765,7 +3863,7 @@ describe('holding a bar', () => {
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' } });
 		const { containerEl } = datedView(vault);
 
-		gridDrag(gripOf(containerEl, 'Ship', 'body'), overlayOf(containerEl), { clientX: 1000 + 2 * scaleFor('month').dayPx });
+		gridDrag(gripOf(containerEl, 'Ship', 'body'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 2 * scaleFor('month').dayPx });
 		await flush();
 
 		expect(vault.fm('Ship.md').target).toBe('2026-10-02');
@@ -3861,32 +3959,61 @@ In `renderBarRow`, after the bar element:
 }
 ```
 
-- [ ] **Step 4: Capture the baseline on drag start**
+- [ ] **Step 4: Take the origin from the drag, never from the first frame**
 
-`wireCard`'s `onDragStart` already exists; the hold's baseline is captured in
-`timelineDrag.ts` by the positional target's first `onDrag`, which is the first frame
-after the pick-up:
+**The origin is `location.initial.input.clientX`, which the adapter carries on every
+frame — it is not captured at all.** Capturing it on the first `onDrag` the overlay
+receives is wrong in two ways at once. In the app, any pointer movement before that
+frame is silently discarded, so a short slide lands on the wrong day — worst at quarter
+zoom, where a day is two pixels and most of a small gesture happens before the first
+frame. In the harness, the first frame and the drop are the same coordinate, so every
+delta computes as zero: the six cases expecting a write fail loudly, and the three
+`writes nothing` cases **pass for the wrong reason**, which is the half that would
+survive review. A baseline read off a frame is a baseline that agrees with whichever
+frame it was read from.
+
+So `wirePositionalTarget`'s handlers take both:
 
 ```ts
-/** What a hold captured when it began: the date it grips, and where the pointer was. */
-interface HeldGrip {
-	date: CivilDate;
-	clientX: number;
-	scrollLeft: number;
-}
-
-let held: HeldGrip | null = null;
+			onDrag: ({ source, location }) => {
+				const resolved = this.resolve(source.data);
+				if (resolved) handlers.onDrag(resolved, location.current.input.clientX, location.initial.input.clientX);
+			},
 ```
 
-Module-level mutable state is what this file exists to hold — one drag is live at a
-time, and the adapter guarantees it — but it must be cleared on `onLeave` AND on
-`onDrop`, or a stale baseline outlives its gesture. Prefer a closure over
-`wireTimelineDrag`'s scope to a module-level `let`, so two views in split panes cannot
-share it:
+and the same on `onDrop`. Nothing about the pointer needs remembering.
+
+**The DATE a hold grips needs no capture either**: it is a function of the item and the
+hold, and both are on the payload. Reading it from the model each frame is not a
+staleness risk — a mid-drag refresh replaces the model, and the endpoint the gesture is
+moving should follow the note, which is the same rule `wireDropTarget` states about
+resolving the path at drop time.
+
+```ts
+/**
+ * The date this hold moves, which is where it is DRAWN. An open end has no date of its
+ * own, so it borrows the stated one — a missing target counts days from the start, a
+ * missing start counts back from the target — because a one-dated bar renders one cell
+ * wide at the date it has, and the open end is drawn against the stated one.
+ */
+function heldDate(item: BacklogItem, hold: BarHold, parts: TimelineParts): CivilDate {
+	const span = statedSpan(item);
+	const date = hold === 'end' ? (span.target ?? span.start) : (span.start ?? span.target);
+	return date ?? parts.window.start;
+}
+```
+
+**The one thing that IS captured is the scroll origin**, and only because
+`location.initial` cannot know about it:
 
 ```ts
 export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
-	let held: HeldGrip | null = null;
+	// Auto-scroll is driven by the drag frames themselves, so the scroller cannot have
+	// panned before the first frame this target sees — which is what makes reading it
+	// on that frame sound, where reading the POINTER there is not. Cleared on both
+	// `onLeave` and `onDrop`, or a stale origin outlives its gesture. A closure rather
+	// than a module-level `let`, so two views in split panes cannot share it.
+	let scrollOrigin: number | null = null;
 	…
 ```
 
@@ -3907,18 +4034,24 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
 function holdPlan(
 	host: BacklogViewHost,
 	parts: TimelineParts,
-	baseline: HeldGrip,
+	scrollOrigin: number,
 	item: BacklogItem,
 	hold: BarHold,
 	clientX: number,
+	originX: number,
 ): SchedulePlan | null {
 	// Viewport-relative, so the pan is INCLUDED: while auto-scroll moves the grid under
-	// a held pointer, `clientX - baseline.clientX` stays zero while later dates slide
-	// beneath it. The placing read subtracts a bounding rect, which already moves with
-	// the scroll, and adds no such term — the two rules are opposites for the same
-	// reason and must not be unified.
+	// a held pointer, `clientX - originX` stays zero while later dates slide beneath it.
+	// The placing read subtracts a bounding rect, which already moves with the scroll,
+	// and adds no such term — the two rules are opposites for the same reason and must
+	// not be unified.
+	//
+	// `originX` is the adapter's own `location.initial.input.clientX`, carried on every
+	// frame rather than captured from one: a baseline read off the first frame the
+	// overlay sees discards every pixel of movement before it, and in a synthetic
+	// gesture it equals the drop coordinate, which makes this whole expression zero.
 	const days = Math.round(
-		(clientX - baseline.clientX + (parts.scroller.scrollLeft - baseline.scrollLeft)) / parts.scale.dayPx,
+		(clientX - originX + (parts.scroller.scrollLeft - scrollOrigin)) / parts.scale.dayPx,
 	);
 	if (days === 0) return null;
 	const ends = writableEnds(host.settings, item);
@@ -3938,10 +4071,7 @@ function holdPlan(
 	}
 	const end: PlacementEnd = hold === 'start' ? 'start' : 'target';
 	if (!ends.includes(end)) return null;
-	// An open end has no date to capture, so it BORROWS the stated one: a one-dated bar
-	// renders one cell wide at the date it has, so the open end is drawn against the
-	// stated one and counts from there.
-	const moved = addDays(baseline.date, days);
+	const moved = addDays(heldDate(item, hold, parts), days);
 	const opposite = end === 'start' ? span.target : span.start;
 	// Clamped at equal rather than crossing — but ONLY against an end the note itself
 	// states. A reversed span is a property of a note's OWN pair, which is the only pair
@@ -3965,47 +4095,58 @@ function statedSpan(item: BacklogItem): DateSpan {
 }
 ```
 
-The baseline's `date` is the endpoint the hold grips, captured on the first `onDrag`
-frame:
+`planFor` becomes the dispatch, and it is where the scroll origin is latched — on the
+first frame of a hold, which is sound for the scroller and would not be for the pointer
+(Step 4):
 
 ```ts
-function baselineFor(item: BacklogItem, hold: BarHold, clientX: number, parts: TimelineParts): HeldGrip {
-	const span = statedSpan(item);
-	// An open end borrows the stated one — a missing target counts days from the start,
-	// a missing start counts back from the target — which is exactly where it is DRAWN.
-	const date =
-		hold === 'start' ? (span.start ?? span.target) : hold === 'end' ? (span.target ?? span.start) : (span.start ?? span.target);
-	return { date: date ?? parts.window.start, clientX, scrollLeft: parts.scroller.scrollLeft };
-}
-```
-
-`planFor` becomes the dispatch:
-
-```ts
-function planFor(host, parts, source, clientX, held): SchedulePlan | null {
+function planFor(
+	host: BacklogViewHost,
+	parts: TimelineParts,
+	source: CardSource,
+	clientX: number,
+	originX: number,
+	scroll: { origin: number | null },
+): SchedulePlan | null {
+	// A shelf card has no origin to move from, so it reads the pointer's position; a
+	// hold reads the delta. Two gestures, two rules, and conflating them is a bug at the
+	// sparse scales.
 	if (source.hold === null) return shelfPlan(host, parts, source.item, clientX);
-	return held ? holdPlan(host, parts, held, source.item, source.hold, clientX) : null;
+	scroll.origin ??= parts.scroller.scrollLeft;
+	return holdPlan(host, parts, scroll.origin, source.item, source.hold, clientX, originX);
 }
 ```
+
+`wireTimelineDrag`'s handlers pass `{ origin: scrollOrigin }` and reset it to null in
+both `onLeave` and `onDrop`, after the plan is built.
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `npx vitest run test/view/timelineDrag.test.ts`
 Expected: PASS.
 
-- [ ] **Step 7: Watch the delta read fail**
+- [ ] **Step 7: Watch the origin fail, in the direction that would survive review**
+
+Replace `originX` with a value latched on the first `onDrag` frame. Six cases fail
+loudly — which is not the point. Then check the three `writes nothing` cases: they
+still pass, because a zero delta is exactly what a broken origin produces. A test that
+asserts "nothing happened" cannot tell "correctly refused" from "did not run", so each
+of those three is only as good as a sibling case proving the same gesture DOES write.
+That pairing is why the six exist. Restore.
+
+- [ ] **Step 8: Watch the delta read fail**
 
 Replace the delta with an absolute read (`dayAt(parts.window, parts.scale, clientX - rect.left)`),
 run "reads the DELTA, so grabbing a one-day bar at quarter zoom previews nothing", and
 see a write land from a gesture that never moved. Restore.
 
-- [ ] **Step 8: Watch the clamp’s narrowing fail**
+- [ ] **Step 9: Watch the clamp’s narrowing fail**
 
 Remove the `opposite === null ? moved :` arm — clamping against the INFERRED end — run
 the inferred-parent case, and see a bound taken from the children's dates written onto
 the parent. Restore.
 
-- [ ] **Step 9: Run the full gate and commit**
+- [ ] **Step 10: Run the full gate and commit**
 
 Run: `npm run check`
 
