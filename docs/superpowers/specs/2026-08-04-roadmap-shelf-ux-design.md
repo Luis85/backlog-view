@@ -106,10 +106,17 @@ Three new optional fields on the existing per-view `StoredEntry`, read exactly a
 defensively as `mode`/`axis` already are (unrecognized values dropped, never trusted):
 
 ```ts
-shelfCollapsed?: boolean;                 // absent means collapsed (the default)
+shelfExpanded?: boolean;                  // true only once the user has explicitly
+                                           // expanded the shelf; absent means collapsed
 shelfSort?: 'tree' | 'title' | 'modified'; // absent means 'tree'
 shelfHiddenTypes?: string[];               // absent means none hidden
 ```
+
+Named for the deviation it stores, not the default: collapsed is the default and needs
+no entry, so the field only ever holds `true` (once the user expands), never `false` —
+the same sparse-by-default shape `shelfHiddenTypes` above already uses. A field named
+`shelfCollapsed` would need to store an explicit `false` to record that same deviation,
+which is the shape this entry deliberately avoids everywhere else.
 
 `shelfHiddenTypes` stores what is hidden, not what is shown, so the common case (nothing
 hidden) costs nothing in storage — consistent with the sparse-by-default shape the rest
