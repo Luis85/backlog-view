@@ -3195,7 +3195,10 @@ git commit -m "Compact the shelf where the pane is narrow, and give it a way bac
   - `export interface CardSource { item: BacklogItem; hold: BarHold | null; scrollLeft: number | null }` (cardDrag.ts)
   - `CardDragController.wireCard(el, item, hold?: BarHold, originScroll?: () => number)` —
     the hold AND the scroller's offset at drag start ride the payload
-  - `CardDragController.wireDropTarget(el, plan, accepts?: (source: CardSource) => boolean)`
+  - `CardDragController.wireDropTarget(el, plan, hooks?: DropHooks)` where
+    `DropHooks { accepts?(source): boolean; onEnter?(source): void; onLeave?(): void }`
+    — the hooks carry the RESOLVED source, which is what a hover preview needs and the
+    highlight-only contract never had
   - `CardDragController.wirePositionalTarget(el, handlers)` where handlers are
     `{ onDrag(source, clientX, originX): void; onDrop(source, clientX, originX): void; onLeave(): void }`
     — `originX` is the adapter's `location.initial.input.clientX`, the coordinate the
@@ -3249,21 +3252,23 @@ function datedView(vault: FakeVault, values: Record<string, unknown> = DATE_AXIS
 	harness.view.setProjection('roadmap');
 	// EVERY pointer case is driven against a panned grid at a nonzero viewport offset:
 	// a fixture at the origin with no scroll passes whether or not the pointer is
-	// converted at all.
-	pannedGrid(harness.containerEl, { rectLeft: 220, scrollLeft: 640 });
-	return { ...harness, vault };
+	// converted at all. `at(offset)` is the viewport X of a grid offset under that
+	// geometry — the two are NOT the same number, and writing the event coordinate as
+	// the offset is how a placing test silently asserts against the wrong day.
+	const at = pannedGrid(harness.containerEl, { rectLeft: 220, scrollLeft: 640 });
+	return { ...harness, vault, at };
 }
 
 describe('dragging a shelf card onto the grid', () => {
 	it('writes the day under the pointer, spanning the zoom’s cell', async () => {
 		const vault = scheduleVault();
-		const { view, containerEl } = datedView(vault);
+		const { view, containerEl, at } = datedView(vault);
 		const window = view.roadmap?.window;
 		if (!window) throw new Error('no window');
 		const scale = scaleFor('month');
-		const day = dayAt(window, scale, 300);
+		const day = dayAt(window, scale, 700);
 
-		gridDrag(cardByTitle(containerEl, 'Unplanned'), overlayOf(containerEl), { clientX: 220 + 300 - 640 + 640 });
+		gridDrag(cardByTitle(containerEl, 'Unplanned'), overlayOf(containerEl), { clientX: at(700) });
 		await flush();
 
 		// Start is the day under the pointer; target is start plus the cell, minus a
@@ -3281,10 +3286,10 @@ describe('dragging a shelf card onto the grid', () => {
 		// refuses — and on a deadline it moves the one date a gesture must never move.
 		const vault = new FakeVault();
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10 } });
-		const { view, containerEl } = datedView(vault);
-		const day = dayAt(view.roadmap!.window!, scaleFor('month'), 300);
+		const { view, containerEl, at } = datedView(vault);
+		const day = dayAt(view.roadmap!.window!, scaleFor('month'), 700);
 
-		gridDrag(cardByTitle(containerEl, 'Ship'), overlayOf(containerEl), { clientX: 220 + 300 });
+		gridDrag(cardByTitle(containerEl, 'Ship'), overlayOf(containerEl), { clientX: at(700) });
 		await flush();
 
 		expect(vault.fm('Ship.md').target).toBe(iso(day));
@@ -3294,9 +3299,9 @@ describe('dragging a shelf card onto the grid', () => {
 	it('takes the drop day with no offset where only ONE date property is configured', async () => {
 		const vault = scheduleVault();
 		const { view, containerEl } = datedView(vault, { targetProperty: 'note.target' });
-		const day = dayAt(view.roadmap!.window!, scaleFor('month'), 300);
+		const day = dayAt(view.roadmap!.window!, scaleFor('month'), 700);
 
-		gridDrag(cardByTitle(containerEl, 'Unplanned'), overlayOf(containerEl), { clientX: 220 + 300 });
+		gridDrag(cardByTitle(containerEl, 'Unplanned'), overlayOf(containerEl), { clientX: at(700) });
 		await flush();
 
 		expect(vault.fm('Unplanned.md').target).toBe(iso(day));
@@ -3322,11 +3327,11 @@ describe('dragging a shelf card onto the grid', () => {
 
 	it('previews the dates before the release, and clears them when the pointer leaves', () => {
 		const vault = scheduleVault();
-		const { containerEl } = datedView(vault);
+		const { containerEl, at } = datedView(vault);
 		const overlay = overlayOf(containerEl);
 
 		const finish = gridDrag.start(cardByTitle(containerEl, 'Unplanned'));
-		finish.over(overlay, { clientX: 220 + 300 });
+		finish.over(overlay, { clientX: at(700) });
 		expect(overlay.querySelector('.pbl-drop-ghost')).not.toBeNull();
 		expect(overlay.querySelector('.pbl-drop-ghost-dates')?.textContent).toContain('2026-');
 		finish.leave(overlay);
@@ -3348,17 +3353,28 @@ Add to `test/helpers/dnd.ts`:
  * no layout, so both have to be stubbed — and both have to be nonzero, because a
  * fixture at the origin passes whether or not the pointer is converted at all.
  */
-export function pannedGrid(containerEl: HTMLElement, { rectLeft, scrollLeft }: { rectLeft: number; scrollLeft: number }): void {
+export function pannedGrid(
+	containerEl: HTMLElement,
+	{ rectLeft, scrollLeft }: { rectLeft: number; scrollLeft: number },
+): (gridOffset: number) => number {
 	const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
 	const overlay = containerEl.querySelector<HTMLElement>('.pbl-timeline-drop');
 	if (!scroller || !overlay) throw new Error('the timeline is not rendered');
 	scroller.scrollLeft = scrollLeft;
 	Object.defineProperty(scroller, 'clientWidth', { value: 600, configurable: true });
 	// The overlay starts PAST the sticky lead column, so that exclusion is structural
-	// rather than a constant kept in step with the CSS — and a bounding rect already
-	// moves with the scroll, which is why a placing read adds no scroll term.
+	// rather than a constant kept in step with the CSS — and the rect moves with the
+	// scroll, exactly as a real one does, which is why a placing read adds no scroll
+	// term. `rectLeft` is where the overlay's left edge sits UNSCROLLED; panning right
+	// by `scrollLeft` carries it that far left.
+	const left = rectLeft - scrollLeft;
 	overlay.getBoundingClientRect = () =>
-		({ left: rectLeft - scrollLeft, right: 4000, top: 0, bottom: 400, width: 4000, height: 400, x: rectLeft - scrollLeft, y: 0, toJSON: () => ({}) }) as DOMRect;
+		({ left, right: 4000, top: 0, bottom: 400, width: 4000, height: 400, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
+	// The viewport X of a given GRID OFFSET, computed from this helper's own inputs and
+	// never by reading the stubbed rect back. A test that asked the rect would mirror
+	// whatever the implementation does with it, including getting the sign wrong; stating
+	// the geometry from first principles is what makes the conversion falsifiable.
+	return (gridOffset) => left + gridOffset;
 }
 
 export function overlayOf(containerEl: HTMLElement): HTMLElement {
@@ -3442,7 +3458,22 @@ that offset means something:
 `wireDropTarget` gains an optional `accepts`:
 
 ```ts
-	wireDropTarget(el: HTMLElement, plan: (item: BacklogItem) => void, accepts?: (source: CardSource) => boolean): void {
+/**
+ * What a region does beyond taking the drop. All optional: a bucket needs none of them,
+ * while the dated shelf needs both — it honours one hold and previews what its removal
+ * would leave. The hooks carry the RESOLVED source, which the highlight-only contract
+ * never had to expose and a hover preview cannot do without.
+ */
+export interface DropHooks {
+	/** Which sources this region honours. Refusing withholds the highlight too. */
+	accepts?: (source: CardSource) => boolean;
+	onEnter?: (source: CardSource) => void;
+	onLeave?: () => void;
+}
+```
+
+```ts
+	wireDropTarget(el: HTMLElement, plan: (item: BacklogItem) => void, hooks: DropHooks = {}): void {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
@@ -3450,7 +3481,20 @@ that offset means something:
 				// sources this region actually honours. REFUSED rather than ignored, so
 				// the strip never highlights for a drag it would not act on, the same
 				// reason a foreign view's card is refused instead of dropped silently.
-				canDrop: ({ source }) => source.data.view === this.token && (!accepts || accepts(this.resolve(source.data))),
+				canDrop: ({ source }) => {
+					if (source.data.view !== this.token) return false;
+					const resolved = this.resolve(source.data);
+					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
+				},
+				onDragEnter: ({ source }) => {
+					el.addClass(DROP_OVER);
+					const resolved = this.resolve(source.data);
+					if (resolved) hooks.onEnter?.(resolved);
+				},
+				onDragLeave: () => {
+					el.removeClass(DROP_OVER);
+					hooks.onLeave?.();
+				},
 				…
 ```
 
@@ -3478,7 +3522,9 @@ with the resolution factored out, since three call sites now need it:
 	}
 ```
 
-`canDrop`'s `accepts` arm takes `this.resolve(source.data)` and treats null as refused.
+`onDrop` calls `hooks.onLeave?.()` alongside its own `removeClass`, so a preview drawn
+on enter is cleared however the gesture ends. The bucket and horizon-shelf call sites
+pass no hooks and behave exactly as they do today.
 
 And the positional sibling:
 
@@ -3757,9 +3803,12 @@ Expected: PASS.
 - [ ] **Step 8: Watch the pointer conversion fail**
 
 Delete the `- parts.overlay.getBoundingClientRect().left` term, run the first case, and
-see the write land on a day 220px away from the drop. Then set the fixture's `rectLeft`
-and `scrollLeft` to 0 and watch the same broken code PASS — that is why every pointer
-case is driven against a panned grid.
+see the write land 420px — 105 days at month zoom — from the drop, which is exactly the
+overlay's own left edge under this fixture. Then set `rectLeft` and `scrollLeft` to 0
+and watch the same broken code PASS: at the origin the offset and the viewport
+coordinate are the same number, which is why every pointer case is driven against a
+panned grid and why the fixture hands back `at()` rather than letting a test spell the
+conversion itself.
 
 - [ ] **Step 9: Run the full gate and commit**
 
@@ -4370,19 +4419,26 @@ Expected: FAIL — the drop clears the item's HORIZON, so the date keys survive.
 `renderShelf` takes a `removal` and stops naming a property:
 
 ```ts
-/** What dropping a card on the shelf MEANS, and the words that promise it. */
+/** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
 interface ShelfRemoval {
 	plan: (item: BacklogItem) => void;
 	tooltip: string;
 	/** Which sources this strip honours — the bar BODY alone on the dated axis. */
 	accepts: (source: CardSource) => boolean;
+	/** What this removal would LEAVE, said before the release; null where it says nothing. */
+	outcome: ((item: BacklogItem) => string) | null;
 }
 ```
+
+`renderShelf` turns that last one into the `DropHooks` pair `wireDropTarget` takes
+(Task 11) — a `.pbl-shelf-outcome` line written into the header on enter and emptied on
+leave. The horizon axis passes `outcome: null` and gets exactly today's behaviour: its
+drop always un-places, so there is nothing to distinguish before the release.
 
 The horizon axis passes
 `{ plan: (item) => void host.performHorizonMove(item, null), tooltip: 'Results this axis cannot place — dropping a card here removes its horizon', accepts: (s) => s.hold === null && !shelfPaths.has(s.item.file.path) }`
 and the dated axis
-`{ plan: (item) => void host.performScheduleMove(item, unschedulePlan(item)), tooltip: 'Results this axis cannot place — dropping a bar here removes its dates', accepts: (s) => s.hold === 'body' }`.
+`{ plan: (item) => void host.performScheduleMove(item, unschedulePlan(item)), tooltip: 'Results this axis cannot place — dropping a bar here removes its dates', accepts: (s) => s.hold === 'body', outcome: removalOutcome }`.
 
 `unschedulePlan(item)` is `unschedule`'s own body without the apply — export it from
 `interactions/plan.ts` so the drag inherits the narrowing by asking rather than
@@ -4401,9 +4457,29 @@ export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<bo
 }
 ```
 
-`renderShelf`'s drop registration becomes
-`dnd?.wireDropTarget(shelfEl, removal.plan, removal.accepts)` and the tooltip reads
-`removal.tooltip`.
+`renderShelf`'s drop registration becomes:
+
+```ts
+	const outcomeEl = removal.outcome ? header.createDiv({ cls: 'pbl-shelf-outcome' }) : null;
+	dnd?.wireDropTarget(shelfEl, removal.plan, {
+		accepts: removal.accepts,
+		onEnter: (source) => outcomeEl?.setText(removal.outcome?.(source.item) ?? ''),
+		onLeave: () => outcomeEl?.setText(''),
+	});
+```
+
+and the tooltip reads `removal.tooltip`. `styles/timeline.css` gains the line itself:
+
+```css
+/* What this drop would LEAVE, said in the header before the release. Only the dated
+   axis draws one: the horizon shelf's drop always un-places, so it has nothing to
+   distinguish. */
+.pbl-shelf-outcome {
+	margin-inline-start: auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+```
 
 - [ ] **Step 4: Preview the outcome, asked of the placement rule**
 
