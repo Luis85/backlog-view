@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The timeline]]"
 order: 10
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
@@ -82,11 +82,17 @@ date on a roadmap is indistinguishable from a decision.
 
 ## Where it lives
 
-The stated-dates half shipped with [[A third projection]]: the tolerant civil-date read
-is `readDate` in `src/domain/noteFields.ts` beside the tolerant number the orders use;
-spans, the bounded month window and the bar geometry are `src/domain/timeline.ts`,
-drawn — milestones, open ends, the exact-dates tooltips — by
+Built. The tolerant civil-date read is `readDate` in `src/domain/noteFields.ts` beside
+the tolerant number the orders use; the bounded window and the bar geometry are
+`src/domain/timeline.ts`, drawn — milestones, open ends, the exact-dates tooltips — by
 `src/view/render/timeline.ts`. Driven in `test/domain/timeline.test.ts`,
-`test/domain/noteFields.test.ts` and `test/view/roadmapFrame.test.ts`. The inferred
-parent spans wait for [[Spans roll up the tree]] — until they exist a dateless parent
-shelves like any other dateless result — which is why this note stays open.
+`test/domain/noteFields.test.ts` and `test/view/roadmapFrame.test.ts`.
+
+Whether an item is a bar or belongs on the shelf — the derivation this note is
+about — moved from `src/domain/roadmap.ts` to `src/domain/bars.ts`, where `placeItem`
+is now the one answer to bar-or-shelf, asked by both what renders (`deriveBars`) and
+what a shelf drop's own indicator predicts before release, rather than a second opinion
+kept beside it. The reason this note stayed open — inferred parent spans waiting on
+[[Spans roll up the tree]] — no longer holds: that PBI is Done and `deriveBars` sets
+`inferredStart` / `inferredEnd` from a subtree's own dated descendants today, so a
+dateless parent with dated children renders the span it infers rather than shelving.

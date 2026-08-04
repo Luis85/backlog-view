@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Scheduling work]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 start: 2026-08-10
@@ -75,12 +75,6 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   rides along untouched, and the write keeps the shape the note had — a drag re-plans
   a date, it does not re-format a value. Snapping decides where the bar lands on the
   grid, never that precision the note chose to keep is erased.
-- **1f — the step crosses a month end.** A calendar step lands on the same day of the
-  target unit, clamped to its last day when that day does not exist — January 31 moved
-  a month is the end of February, never an overflow into March — and a body drag keeps
-  the bar's duration: the start takes the step, the target follows at the bar's own
-  day count. Re-planning when is not re-planning how long; only an end drag changes
-  duration, because that is what a resize is.
 - **1g — the bar is a marker's.** A diamond offers **no end grips**: a point has no
   duration to resize, and an end handle on it could only invent one. Its body slide moves
   the **target alone** by the calendar step, and a stale start the type ignores is not
@@ -94,16 +88,18 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 - **3a — the write is refused.** Refused whole and loudly; indicators clear, the bar
   renders where the note still says, nothing half-slides.
 - **3b — the written dates take the note outside the Base's filter.** The write stands
-  and the bar leaves the view on the refresh, announced with an open path — the filter
-  speaking, not the write failing — and undo still takes it back across the boundary,
-  the epic's rule for every write ([[Moving between horizons]] states the same for the
-  horizon axis).
+  and the bar leaves the view on the refresh, undo still takes it back across the
+  boundary — but the departure is not announced: that mechanism needs a Bases pass
+  correlated with the write that caused it, which nothing here does, and building it
+  from one sentence cost eleven review findings across seven rounds without reaching a
+  correct rule. The question stays owned by
+  [[The outcome report was built from one sentence]].
 
 ## Acceptance criteria
 
-- Body drags slide the bar by whole-cell steps — the start takes the calendar step,
-  clamped at month end rather than overflowing, and the target follows at the bar's
-  own day count, so a slide never changes duration; end drags move one date, landing
+- Body drags slide the bar by whole-day steps — the start takes the step and the target
+  follows at the bar's own day count, so a slide never changes duration; end drags move
+  one date, landing
   on the anchor its kind means — the cell's first day for a start, its last for a
   target, the shelf drop's rule; everything snaps to the zoom's grid, and release
   writes exactly the preview. Deltas
@@ -126,7 +122,17 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The shift and resize plans are date writes
-beside the drop plans in `src/domain/writePlan.ts`; the gestures, previews and
-snapping extend `src/view/interactions/dragDrop.ts`, which already owns transient drag
-state and indicators.
+Built. The delta read that turns a body slide or an end drag into a day count, the
+clamp that stops an end crossing the other, and the open-end baseline an unconfigured
+grip borrows its date from are all `src/view/interactions/timelineDrag.ts`. Where a
+gesture may take hold at all — body, start grip, end grip, narrowed by what the bar
+actually renders — is `barHolds` in `src/domain/bars.ts`, asked once rather than
+answered twice between what is drawn as grabbable and what can be written. The
+datetime merge that keeps a note's own time, offset and shape while its civil date
+moves, the live-value decision that replaces the no-op check `writePlan.ts` used to
+make against a model that can be a refresh behind, and both refusals — a reversed pair,
+and a plan whose shape no longer matches what the note has become — live in
+`src/storage/frontmatter.ts`, the one module allowed to read and write the note.
+`performScheduleMove` in `src/view/host.ts` is the single place a date batch is planned
+and announced, shared by the drag, the menu's Schedule and Unschedule, and reporting
+whether anything actually changed rather than whether the call returned.

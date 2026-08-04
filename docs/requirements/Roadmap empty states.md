@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[A third projection]]"
 order: 40
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
@@ -67,10 +67,14 @@ names the option or the action it points at.
   the note lands on the shelf until it is scheduled. A grid cell is a pair of dates
   picked by pointer position, and a creation that routes through the naming prompt no
   longer means them; create-then-schedule keeps both acts specified, and the shelf is
-  one drag from the plan ([[Drag from the shelf to schedule]]). Where the filter
-  itself excludes a dateless note — a base admitting only dated items — the creation
-  is announced with an open path rather than claimed on the shelf, the answer
-  [[New cards in place]] gives a card created into a state the base excludes.
+  one drag from the plan ([[Drag from the shelf to schedule]]). Where the filter itself
+  excludes a dateless note — a base admitting only dated items — the note is still
+  created and still leaves the shelf's count: `createFromPrompt` emits the generic
+  `Created` notice and nothing else, not the open-path announcement
+  [[New cards in place]] describes for the board and horizon axes. That mechanism is
+  the outcome report this increment does not build — see
+  [[The outcome report was built from one sentence]] — so the guarantee here narrows to
+  what ships rather than claiming what a comment once promised.
 - **3a — the base returned notes that are not work items.** They are counted in the
   advisory rather than shown, the same report the tree and board make — and it renders
   beside the frame, never instead of it. An empty roadmap is an empty frame, never no
@@ -85,19 +89,22 @@ names the option or the action it points at.
   target, every bucket a creation target — beside the shelf and the ignored-notes
   advisory, never replaced by them; a note created while the timeline shows lands on
   the shelf until it is scheduled — or, where the filter excludes it dateless, is
-  announced with an open path instead of claimed on the shelf.
+  still created, with the generic `Created` notice and no open-path announcement.
 - A declared bucket with nothing in it still renders its column.
 - The all-shelved state renders the empty frame beside the full shelf and lets the
   count speak; the view suggests no placement the user has not made.
 
 ## Where it lives
 
-Built with the first increment, except the targets. The no-axis guidance —
-missing-half wording included, and the setup press (`renderSetupCta`, which runs
-`runInit` in `src/view/interactions/structure.ts`) — is `renderRoadmapNoAxisState` in
-`src/view/render/emptyStates.ts`, beside the tree's and the board's answers; the
-frame-beside-advisory rule is `renderRoadmapAdvisory` in `src/view/render/roadmap.ts`.
-Driven in `test/view/roadmap.test.ts` and `test/view/roadmapFrame.test.ts`. "Every
-region a drop target and every bucket a creation target" waits for the writes —
-[[Moving between horizons]], [[Drag from the shelf to schedule]] and the bucket's New
-flow ([[Buckets from a horizon property]]) — which is why this note stays open.
+Built. The no-axis guidance — missing-half wording included, and the setup press
+(`renderSetupCta`, which runs `runInit` in `src/view/interactions/structure.ts`) — is
+`renderRoadmapNoAxisState` in `src/view/render/emptyStates.ts`, beside the tree's and
+the board's answers; the frame-beside-advisory rule is `renderRoadmapAdvisory` in
+`src/view/render/roadmap.ts`. Driven in `test/view/roadmap.test.ts` and
+`test/view/roadmapFrame.test.ts`. "Every region a drop target and every bucket a
+creation target" arrived across three increments — [[Moving between horizons]] on the
+horizon axis, the bucket's New flow ([[Buckets from a horizon property]]), and now
+[[Drag from the shelf to schedule]] and [[Move and resize a bar]] on the timeline, whose
+drop overlay in `src/view/interactions/timelineDrag.ts` spans the whole grid past the
+sticky lead column so the empty space below the last row is a drop target too — which
+is why this note now closes.

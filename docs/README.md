@@ -109,6 +109,14 @@ dates are different keys from the board's transition stamps, so a plan can never
 a record. Every note states the precedent it rests on, from a survey of the roadmap
 literature, the major trackers and the Obsidian ecosystem run on 2026-08-01.
 
+The third increment made the dated axis writable: a shelf card schedules at the day
+under the pointer, with the zoom's own cell as its default duration; a bar slides and
+resizes by whole days; and a bar dropped back on the shelf removes its keys, exactly as
+the horizon axis's shelf already does. It ships alongside three discrete densities and a
+jump-to-today, a frame that scrolls inside itself rather than the pane, and the date
+decision moved into the writer — the layer that can see a note's live value — so a note's
+own time, offset and spelling survive a gesture that moves its date.
+
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a
 per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's design
