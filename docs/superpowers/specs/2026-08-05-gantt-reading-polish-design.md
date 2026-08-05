@@ -152,8 +152,9 @@ pass before committing.
 
 ## Register edits
 
-- One new PBI, **Reading the grid**, under [[The timeline]] (which returns to Active),
-  in the use-case shape, its `## Where it lives` naming `src/domain/timeline.ts`,
+- One new PBI, **Reading the grid**, under [[The timeline]] — landing as Done within
+  the increment, so the feature stays Done; the one open remainder is the smoke-test
+  line below. In the use-case shape, its `## Where it lives` naming `src/domain/timeline.ts`,
   `src/view/render/timeline.ts`, `src/view/render/toolbar.ts`,
   `src/storage/collapseStore.ts` and `styles/timeline.css`. The density pick is
   documented there beside the zoom pick it copies.
