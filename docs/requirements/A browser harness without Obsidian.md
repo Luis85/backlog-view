@@ -40,9 +40,18 @@ the actions behind them are the view's, the toolbar is the toolbar.
 
 **Not:** colour. The Obsidian variables `styles/` reads are supplied by a stub of
 approximations, because Obsidian's theme is Obsidian's. A colour seen in the harness is
-not a colour a user sees; icons render as their own names because the module mock draws
-no SVG; and the menu and dialog **widgets** are the harness's own, since the mock records
-them and renders nothing. A menu that appeared here is a menu the view opened with the
+not a colour a user sees; and the menu and dialog **widgets** are the harness's own,
+since the mock records them and renders nothing.
+
+Icons moved from the second list to the first. They rendered as their own NAMES while
+the mock drew no SVG, and that was not a neutral stand-in: `chevron-down` is several
+times the width of the 14px glyph it stood for, so every control carrying an icon
+measured wider here than in a vault — a layout tool whose placeholders change the layout.
+The real lucide glyph is drawn instead (`test/harness/icons.ts`), as an
+`<svg class="svg-icon">` child, because that is the class the partials size icons
+through. The SHAPES are the library Obsidian itself renders; the stroke and colour still
+come from the stub, so an icon's appearance is no more a claim than any other colour
+here. A menu that appeared here is a menu the view opened with the
 entries it built — it is no evidence about how Obsidian would draw it.
 
 Every live-vault verification in `docs/issues/` stands unchanged; none of them is answered
@@ -53,8 +62,14 @@ by a screenshot from here.
 - The page mounts the real view — not a copy of it, and not a fixture of its markup — so
   a change to `src/view/` is visible without any harness edit.
 - All three projections are reachable, through the view's own toolbar.
-- The harness costs `npm run check` no sixth step, and costs `package.json` no new
-  dependency.
+- The harness costs `npm run check` no sixth step, and costs the PLUGIN no dependency:
+  nothing it needs is shipped, and nothing it needs drives a browser. It carries one
+  devDependency, `lucide-static` — static icon data, no binary to download and no version
+  to pin against a browser's. This criterion read "no new dependency" flat until icons
+  were drawn for real, which is worth stating rather than quietly widening: what
+  [ADR 0020](../adrs/0020-the-browser-harness-draws-it-does-not-assert.md) refuses is a
+  browser-automation dependency and the download-and-pin treadmill behind it, and that
+  refusal is untouched — a session still supplies whatever opens the URL.
 - Nothing in it asserts appearance. The checks it does carry are that it still mounts and
   that its theme stub still covers the stylesheet.
 - What it cannot be trusted for is stated where someone would rely on it — here, in
@@ -63,5 +78,14 @@ by a screenshot from here.
 ## Where it lives
 
 `harness.mjs` · `test/harness/mount.ts` · `test/harness/page.ts` ·
-`test/harness/theme.css` · `test/helpers/fixtures.ts` · `test/harness/harness.test.ts` ·
-`test/CLAUDE.md`
+`test/harness/icons.ts` · `test/harness/theme.css` · `test/helpers/fixtures.ts` ·
+`test/harness/harness.test.ts` · `test/CLAUDE.md`
+
+`icons.ts` installs its renderer through the one hook the shared mock exposes for it
+(`setIconRenderer`), for the reason `chrome.ts` patches rather than edits: the suite
+asserts on `data-icon` and empties the body between tests, so the mock still only records
+by default. A name lucide does not carry is MARKED (`data-icon-missing`) rather than
+skipped, the stub prints it, and `harness.test.ts` sweeps all three projections and both
+axes asserting the set is empty — driving the view rather than grepping `src/`, since
+four of the names are set from a table or a branch and no grep for a literal beside a
+`setIcon` call finds them.

@@ -71,7 +71,46 @@
 	/* Icons and pointer */
 	--icon-xs: 14px;
 	--icon-s: 16px;
+	--icon-size: 18px;
+	--icon-stroke: 1.75px;
+	--icon-color: var(--text-muted);
 	--cursor: default;
+}
+
+/*
+ * Obsidian's own baselines for the two things `setIcon` and the plugin's markup lean on
+ * and neither defines. The partials size icons only where they want a size that is NOT
+ * the default (`.pbl-shelf-icon .svg-icon` and its two dozen neighbours), and they say
+ * `clickable-icon` on a button expecting the app to make it look like one — so without
+ * these an icon-only control renders at whatever the SVG's intrinsic size is, which is
+ * nothing, and the more specific plugin rules have no baseline to override.
+ *
+ * Approximations, like every value in this file: the shapes are lucide's real ones, the
+ * sizes are Obsidian's documented defaults, and neither is a claim about what a themed
+ * vault draws.
+ */
+.svg-icon {
+	width: var(--icon-size);
+	height: var(--icon-size);
+	stroke-width: var(--icon-stroke);
+	flex-shrink: 0;
+}
+
+.clickable-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-4-1);
+	border: none;
+	border-radius: var(--radius-s);
+	background-color: transparent;
+	color: var(--icon-color);
+	cursor: var(--cursor);
+}
+
+.clickable-icon:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
 }
 
 /*
@@ -103,13 +142,16 @@ body {
 }
 
 /*
- * Obsidian's `setIcon` draws an SVG; the module mock records the icon's NAME on the
- * element and draws nothing, which leaves every icon-only control — the projection
- * toggle, the collapse controls, the zoom buttons — an invisible zero-width box. A
- * harness whose controls cannot be seen is not one you can look at, so the name is
- * rendered as text. Deliberately in the theme stub rather than in the shared mock: the
- * suite asserts on `data-icon`, and text inside those spans would join the textContent
- * that column and card assertions read.
+ * Obsidian's `setIcon` draws an SVG and the module mock only records the name, so the
+ * harness draws the real lucide glyph itself (`test/harness/icons.ts`). This rule is
+ * what is left of the older stand-in, and it now fires only where that drawing FAILED:
+ * an icon name lucide does not carry would otherwise be an invisible gap, in the one
+ * tool built for looking. Printing the name there keeps a typo loud.
+ *
+ * Still in the theme stub rather than the shared mock, for the reason it always was:
+ * the suite asserts on `data-icon`, and text inside those spans would join the
+ * textContent that column and card assertions read. A pseudo-element joins nothing, and
+ * neither does the SVG the harness appends.
  */
 /*
  * The menu and the dialog the harness draws for itself (`test/harness/chrome.ts`),
@@ -172,8 +214,8 @@ body {
 	background-color: var(--background-primary);
 }
 
-[data-icon]::after {
-	content: attr(data-icon);
+[data-icon-missing]::after {
+	content: attr(data-icon-missing);
 	font-family: ui-monospace, monospace;
 	font-size: 9px;
 	line-height: 1;

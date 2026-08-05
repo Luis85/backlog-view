@@ -22,10 +22,10 @@ installObsidianDom();
 
 /**
  * The harness is not a test — it draws, and nothing asserts what it draws (ADR 0020).
- * These two are what stop it from rotting anyway, and neither costs a new gate step:
- * one mounts it so a harness that no longer builds fails here rather than the next time
- * someone tries to look at something, and one holds the theme stub to the stylesheet it
- * stands in for.
+ * These are what stop it from rotting anyway, and none costs a new gate step: one mounts
+ * it so a harness that no longer builds fails here rather than the next time someone
+ * tries to look at something, one holds the theme stub to the stylesheet it stands in
+ * for, and one holds the icon set to the names the view actually asks for.
  */
 describe('the browser harness mounts', () => {
 	function mount() {
@@ -156,6 +156,56 @@ describe('the chrome the mock only records', () => {
  * reads, and the rule is stated at the missing variable rather than as a list someone
  * maintains.
  */
+describe('the harness draws every icon the view asks for', () => {
+	/**
+	 * Walk all three projections and both roadmap axes, collecting what `setIcon` was
+	 * asked for. Driving the view rather than grepping `src/` on purpose: several icon
+	 * names never appear as a literal beside a `setIcon` call — the type badges come
+	 * from a table, the spinner and the filter's two states from branches — and a grep
+	 * written to find them missed exactly those four. The instrument has to be able to
+	 * see the whole set before its verdict is worth anything.
+	 */
+	function sweepIcons(): { asked: Set<string>; missing: Set<string> } {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		const { view, containerEl } = mountHarness(root);
+		const asked = new Set<string>();
+		const missing = new Set<string>();
+		const collect = () => {
+			for (const el of containerEl.querySelectorAll<HTMLElement>('[data-icon]')) asked.add(el.dataset.icon ?? '');
+			for (const el of containerEl.querySelectorAll<HTMLElement>('[data-icon-missing]')) {
+				missing.add(el.dataset.iconMissing ?? '');
+			}
+		};
+		for (const projection of ['tree', 'board', 'roadmap'] as const) {
+			view.setProjection(projection);
+			collect();
+		}
+		for (const axis of ['horizons', 'dates'] as const) {
+			view.setAxisPick(axis);
+			view.setShelfCollapsed(false);
+			collect();
+		}
+		return { asked, missing };
+	}
+
+	it('resolves every name, aliases included', () => {
+		// `data-icon-missing` is set by the harness renderer for a name lucide does not
+		// carry. Obsidian bundles an older lucide, so some of its names are that
+		// release's and are mapped in `icons.ts`; a rename lucide makes later lands
+		// here rather than as a silently blank control on the page.
+		expect([...sweepIcons().missing]).toEqual([]);
+	});
+
+	it('measures something — the instrument is checked before its verdict is trusted', () => {
+		// A sweep that drove nothing, or a selector that matched nothing, would satisfy
+		// the test above forever.
+		const { asked } = sweepIcons();
+		expect(asked.size).toBeGreaterThan(20);
+		expect(asked).toContain('inbox');
+	});
+});
+
 describe('the theme stub covers the stylesheet', () => {
 	/** Every `var(--x)` in a directory of CSS, minus the plugin's own, which code sets. */
 	function variablesUsed(dir: string): Set<string> {
