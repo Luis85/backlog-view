@@ -28,6 +28,17 @@ import { describe, expect, it } from 'vitest';
 const WORKFLOW = '.github/workflows/release.yml';
 
 /**
+ * Read with the line endings normalised, because a Windows checkout hands this file back
+ * with CRLF and every pattern below anchors on `\n`. Caught by CI rather than by review:
+ * the first version of this file matched `^permissions:\n`, which found the block on
+ * Linux, found NOTHING on Windows, and reported zero declared scopes — a check that
+ * fails on half the matrix for a reason unrelated to what it checks.
+ */
+function readWorkflow(): string {
+	return readFileSync(WORKFLOW, 'utf8').replace(/\r\n/g, '\n');
+}
+
+/**
  * Every `gh` invocation the workflow makes, keyed by enough of it to be unambiguous, and
  * the scope it needs. `/commits/…/check-runs` is keyed whole rather than by its
  * `/commits/` prefix: that prefix reads as `contents`, and the scope that actually
@@ -36,6 +47,7 @@ const WORKFLOW = '.github/workflows/release.yml';
 const SCOPES: Record<string, string> = {
 	'gh api "repos/$GITHUB_REPOSITORY/compare/': 'contents',
 	'gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs"': 'checks',
+	'gh api "repos/$GITHUB_REPOSITORY/commits/$TAG"': 'contents',
 	'gh release view': 'contents',
 	'gh release create': 'contents',
 };
@@ -64,7 +76,7 @@ function declaredScopes(yaml: string): Set<string> {
 }
 
 describe('the release workflow declares a scope for every call it makes', () => {
-	const yaml = readFileSync(WORKFLOW, 'utf8');
+	const yaml = readWorkflow();
 	const calls = ghCalls(yaml);
 	const scopes = declaredScopes(yaml);
 

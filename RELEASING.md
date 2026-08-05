@@ -18,7 +18,11 @@ a message naming the reason, when:
   flight rather than refusing it, because `git push --follow-tags` pushes the branch and
   the tag together and this workflow starts while CI is still starting;
 - the tag disagrees with `manifest.json`;
-- that version already has a release.
+- that version already has a release;
+- that version's tag already exists on a *different* commit — what a failed attempt
+  leaves behind, since the tag is pushed before the workflow runs. `gh release create`
+  would publish the tag's commit while attaching assets built from this one, so the two
+  have to be the same commit or nothing else here applies to what gets published.
 
 Nothing below asks you to check those first. That is the point: they were preconditions
 a person had to remember and an agent had no way to discover, and they are now the

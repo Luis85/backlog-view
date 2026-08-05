@@ -106,13 +106,37 @@ jobs:
             esac
           done
 
-      - name: Verify the release does not already exist
+      - name: Verify the tag and the release are free
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
+          set -euo pipefail
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release '$TAG' already exists. Bump the version in manifest.json, package.json and versions.json first." >&2
+            exit 1
+          fi
+
+          # A tag with no release is what a FAILED attempt leaves behind — and the CI
+          # gate above makes that more likely rather than less, since it can refuse
+          # after `git push --follow-tags` has already sent the tag.
+          #
+          # It matters because `--target` below only points a tag that `gh release
+          # create` itself creates; on a tag that already exists the release names THAT
+          # tag's commit, while the assets are built from the commit this job checked
+          # out. Every guard above gates $GITHUB_SHA, so a release naming a different
+          # commit is one none of them examined.
+          #
+          # Resolving by tag name rather than by ref: this endpoint dereferences an
+          # annotated tag (which is what `npm version` creates) in one call. The gap it
+          # leaves is a BRANCH sharing the version's exact name, which would resolve
+          # first — not worth a second call for, and not silently ignored either.
+          tagged="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)"
+          if [ -n "$tagged" ] && [ "$tagged" != "$GITHUB_SHA" ]; then
+            echo "Tag '$TAG' already exists on $tagged, but this job is releasing $GITHUB_SHA." >&2
+            echo "The release would name that commit while shipping assets built from this one." >&2
+            echo "Delete the stale tag, or dispatch on the commit it already names." >&2
             exit 1
           fi
 
@@ -139,8 +163,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
-          # --target is what lets a manual run create the tag; it is ignored when the
-          # tag already exists, so tag pushes keep releasing exactly their own commit.
+          # --target is what lets a manual run create the tag. It is ignored when the tag
+          # already exists, which is why the step above refuses an existing tag that
+          # names any commit other than this one: by here, "the tag's commit" and
+          # "$GITHUB_SHA" are the same commit whichever way the tag came to be.
           gh release create "$TAG" \
             --title "$TAG" \
             --target "$GITHUB_SHA" \
