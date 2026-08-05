@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The horizon board]]"
 order: 40
-status: Active
+status: Done
 priority: P2
 created: 2026-08-04
 files:

@@ -99,7 +99,10 @@ value into the note's own horizon property through the one gate, undoable as one
 the shelf is the target that un-places, removing the key rather than blanking it, and it
 stays reachable while empty because a target that exists only when occupied is one
 nothing can reach; and a bucket creates in place, its value riding the same single
-creation write. The dated axis's own moves were the one write this epic still owed —
+creation write. A later PBI made the shelf usable at scale — collapsible, grouped by
+type, sortable and filterable, its controls in its own header — and gave the horizon
+buckets the width a wide pane actually has, cards reflowing into multiple columns as the
+space allows. The dated axis's own moves were the one write this epic still owed —
 lanes and the milestone type's own lift are still design, and named as
 [[Lanes on the roadmap]]'s and [[Keyboard and menu on the roadmap]]'s to deliver — but it
 already showed the tree rather than only its stated bars: a parent with no dates of its
