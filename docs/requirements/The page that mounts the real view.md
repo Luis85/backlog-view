@@ -10,7 +10,9 @@ files:
   - harness.mjs
   - test/harness/mount.ts
   - test/harness/page.ts
+  - test/harness/chrome.ts
   - test/harness/harness.test.ts
+  - test/helpers/vault.ts
   - eslint.config.mjs
   - .fallowrc.json
   - package.json
@@ -62,6 +64,20 @@ suite.
   would rebuild the model mid-batch.
 - **4c — the page is treated as a test.** That is [ADR 0020](../adrs/0020-the-browser-harness-draws-it-does-not-assert.md),
   which refuses it in advance: no baselines, no diffing, no gate step.
+- **4d — a right-click produces nothing, and `New Epic` opens nothing.** They would,
+  without this: the module mock RECORDS a `Menu` and a `Modal` — `lastShown`,
+  `lastOpened` — and draws neither, which is everything a test needs and nothing a person
+  can see. So the harness draws them itself, patching the mock from its own side rather
+  than teaching the mock to append nodes, since 68 test files assert through those two
+  statics and empty `document.body` between tests. The entries and the actions are the
+  view's; the widget is a stand-in, and worth even less than the rest of the harness's
+  appearance.
+- **4e — a note is CREATED and the screen does not change.** `createBacklogItem` goes
+  through `vault.create`, and the fake vault only notified from `processFrontMatter` — so
+  "after a write" quietly meant "after a frontmatter write", and the one change that adds
+  a row was the one nothing was told about. The notification moved to the mutation
+  instead of to the caller: creation notifies like every other vault change, which is a
+  fix for anything watching rather than for this page.
 
 ## Acceptance criteria
 
@@ -69,6 +85,10 @@ suite.
 - The bundle resolves `obsidian` to the existing mock rather than to a second one.
 - Output lands in a gitignored directory and never appears in a diff — lint, fallow and
   the docs gate all leave it alone.
+- Every interaction the page advertises actually happens on it: a menu appears where the
+  pointer is and runs what is clicked, a dialog appears and its note lands, and the view
+  re-renders once the writes stop — each driven by a test through the events a person
+  would send.
 - The entry file is two statements over `mountHarness`, so everything real is reachable
   from a test that never touches `document.body`.
 - `test/harness/harness.test.ts` mounts it and asserts each projection draws content, so
@@ -79,4 +99,4 @@ suite.
 ## Where it lives
 
 `harness.mjs` · `test/harness/page.ts` · `test/harness/mount.ts` ·
-`test/harness/harness.test.ts`
+`test/harness/chrome.ts` · `test/harness/harness.test.ts`

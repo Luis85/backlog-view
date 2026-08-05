@@ -35,14 +35,18 @@ limit of what looking proves is written down instead of assumed.
 ## What it is faithful about, and what it is not
 
 **Faithful:** the markup, the layout, the real stylesheet assembled from the real
-partials, and every interaction — the drags are the drag library's, the menus are the
-view's, the toolbar is the toolbar.
+partials, and every interaction — the drags are the drag library's, the menu entries and
+the actions behind them are the view's, the toolbar is the toolbar.
 
 **Not:** colour. The Obsidian variables `styles/` reads are supplied by a stub of
 approximations, because Obsidian's theme is Obsidian's. A colour seen in the harness is
-not a colour a user sees, and icons render as their own names because the module mock
-draws no SVG. Every live-vault verification in `docs/issues/` stands unchanged; none of
-them is answered by a screenshot from here.
+not a colour a user sees; icons render as their own names because the module mock draws
+no SVG; and the menu and dialog **widgets** are the harness's own, since the mock records
+them and renders nothing. A menu that appeared here is a menu the view opened with the
+entries it built — it is no evidence about how Obsidian would draw it.
+
+Every live-vault verification in `docs/issues/` stands unchanged; none of them is answered
+by a screenshot from here.
 
 ## Acceptance criteria
 

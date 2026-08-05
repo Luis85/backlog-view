@@ -18,8 +18,9 @@ visual-regression path exists that does not need the app".
 `npm run harness` is now a path that does not need the app. It bundles the real
 `ProductBacklogView` against the module mock and the fake vault the suite already uses,
 writes the stylesheet through the same assembler the plugin build uses, and produces a
-static page any browser can open. Everything on it is real except Obsidian: the markup,
-the CSS, the drag library, the menus, the toolbar.
+static page any browser can open. The markup, the CSS, the drag library and the toolbar
+are the plugin's own; the menu and dialog widgets are stand-ins the harness draws, since
+the mock records those two and renders nothing.
 
 That makes the question live rather than hypothetical. A page that renders the view is
 one dependency and one baseline directory away from a screenshot suite, and the next
@@ -70,6 +71,11 @@ which jsdom cannot do at all, since it returns zeros from `getBoundingClientRect
   no SVG. Ugly and legible, which is the right trade for a control that would otherwise be
   an invisible zero-width box — but it means the harness cannot answer any question about
   iconography.
+- The mock records a `Menu` and a `Modal` rather than drawing them, so the harness draws
+  both itself. That is a second place where what is on screen is the harness's rather than
+  Obsidian's, and it is the reason the guarantee is written as *the entries and the actions
+  are the view's* rather than *the menus are real*. A review found the page advertising
+  menus it could never show; the honest sentence is narrower than the one it replaced.
 - A page that is not a test can rot. Two checks cost nothing extra to run and stop the two
   ways it rots that anyone can see: it stops building, or its theme stub stops covering
   the stylesheet. Neither notices that it stopped being *useful*.

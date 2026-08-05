@@ -43,7 +43,7 @@ export class FakeVault {
 	localStorage = new Map<string, unknown>();
 	/** Paths whose processFrontMatter throws — how tests make a batch fail partway. */
 	failWrites = new Set<string>();
-	/** Called as each write lands — how tests interleave a Bases update with a batch. */
+	/** Called as each write or creation lands — how tests interleave a Bases update with a batch. */
 	afterWrite: ((path: string) => void) | null = null;
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
@@ -106,6 +106,11 @@ export class FakeVault {
 				this.frontmatter.set(path, fm);
 				this.caches.set(path, Object.keys(fm).length > 0 ? { frontmatter: fm } : {});
 				this.contents.set(path, content);
+				// A creation is a vault change like any other, so it notifies like one.
+				// Only firing from processFrontMatter made "after a write" mean "after a
+				// frontmatter write", and a caller watching for the vault to change saw
+				// nothing at all when the change was a new note.
+				this.afterWrite?.(path);
 				return file;
 			},
 			createFolder: async (path: string) => {

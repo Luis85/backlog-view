@@ -45,8 +45,11 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 `npm run harness` bundles the REAL view into a static page — no Obsidian, no server, no
 browser-automation dependency — and prints a `file://` URL. `?view=board` and
 `?view=roadmap` open straight into a projection, so a headless screenshot of a URL needs
-nothing to click. The toolbar switches projections, and the drags, menus and keyboard
-moves on the page are the real ones.
+nothing to click. The toolbar switches projections, and the drags, menu entries and
+keyboard moves are the view's own — but the menu and dialog WIDGETS are drawn by
+`test/harness/chrome.ts`, because the module mock records a `Menu`/`Modal` and renders
+nothing. What they contain and what they do is the view's; what they look like is not
+Obsidian's.
 
 - `test/harness/mount.ts` — mounts `ProductBacklogView` against `demoVault()`, re-rendering
   once a batch of writes stops. `test/harness/page.ts` is the bundle entry and is two
@@ -54,6 +57,9 @@ moves on the page are the real ones.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
   three projections at once. A fourth fixture, not a replacement: the per-suite ones stay
   four notes each on purpose.
+- `test/harness/chrome.ts` — patches the mock's `Menu` and `Modal` to appear, from the
+  harness rather than in the mock, so the 68 files asserting through `lastShown` /
+  `lastOpened` measure exactly what they did before.
 - Its own checks live in `test/harness/harness.test.ts` — it still mounts, and the theme
   stub still covers every `var(--x)` the partials read.
 
