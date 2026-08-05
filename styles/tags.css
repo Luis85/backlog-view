@@ -65,8 +65,12 @@
 	transition: opacity 120ms ease-in-out;
 }
 
+/* Focus can only arrive programmatically (tabindex -1), but a control that is
+   focused and invisible is worse than one that is merely always shown — the same
+   reveal `.pbl-add` (columns.css) and `.pbl-bucket-add` (roadmap.css) carry. */
 .pbl-row:hover .pbl-tag-remove,
-.pbl-card:hover .pbl-tag-remove {
+.pbl-card:hover .pbl-tag-remove,
+.pbl-tag-remove:focus-visible {
 	opacity: 1;
 }
 
@@ -100,7 +104,8 @@
 }
 
 .pbl-row:hover .pbl-tag-add,
-.pbl-card:hover .pbl-tag-add {
+.pbl-card:hover .pbl-tag-add,
+.pbl-tag-add:focus-visible {
 	opacity: 1;
 }
 

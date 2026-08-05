@@ -135,12 +135,22 @@ describe('rendering', () => {
 		// the bucket button shipped unreachable on touch. The tag buttons switched from
 		// display: none (which drops out of flow, growing the auto-width card cell around
 		// it on reveal) to this same opacity trade for the same reason.
+		//
+		// The same four also need a `:focus-visible` reveal, checked here rather than
+		// by cascade order: focus can only arrive programmatically (every one is
+		// `tabindex="-1"`), and a control that is focused and invisible is worse than
+		// one merely always shown. `:focus-visible` outranks the plain-class hide on
+		// SPECIFICITY (an extra pseudo-class), so unlike the hover: none reveal it wins
+		// regardless of where in the file it is written — the check is only that the
+		// rule exists, which is exactly the gap the tag buttons shipped with.
 		for (const selector of ['.pbl-add', '.pbl-bucket-add', '.pbl-tag-remove', '.pbl-tag-add']) {
 			const hides = ruleAt(selector, 'opacity: 0;');
 			const reveals = ruleAt(selector, 'opacity: 1;', '(hover: none)');
+			const focusReveals = ruleAt(`${selector}:focus-visible`, 'opacity: 1;');
 			expect(hides, `${selector} is expected to be hover-revealed`).toBeGreaterThan(-1);
 			expect(reveals, `${selector} needs a hover: none reveal`).toBeGreaterThan(-1);
 			expect(reveals, `${selector}'s reveal must come after the rule it overrides`).toBeGreaterThan(hides);
+			expect(focusReveals, `${selector} needs a :focus-visible reveal`).toBeGreaterThan(-1);
 		}
 	});
 
