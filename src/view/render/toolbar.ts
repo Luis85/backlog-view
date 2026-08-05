@@ -9,6 +9,7 @@ import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 import { ScaleId } from '../../domain/timeline';
+import { renderShelfControls } from './shelfControls';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -39,6 +40,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderFocusPicker(host, barEl, model);
 	renderModeToggle(host, barEl);
 	renderAxisPicker(host, barEl);
+	renderShelfControls(host, barEl);
 	renderTimelineControls(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
@@ -390,7 +392,7 @@ export function syncShelfToggle(host: BacklogViewHost, barEl: HTMLElement): void
 	// exists so a drag has somewhere to land, kept out of the layout until one is live —
 	// so `shelfEl !== null` is true with nothing on it, and the toggle would offer to
 	// collapse a region that is empty and invisible.
-	const shelf = snapshot && snapshot.shelfPaths.size > 0 ? snapshot.shelfEl : null;
+	const shelf = snapshot && snapshot.shelfPaths.size > 0 && !host.shelfCollapsed ? snapshot.shelfEl : null;
 	btn.toggleClass('pbl-hidden-ctl', shelf === null);
 	if (shelf === null) return;
 	const open = !shelf.hasClass('pbl-shelf-compact');

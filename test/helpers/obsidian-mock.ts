@@ -50,8 +50,9 @@ export class TFile {
 	basename: string;
 	extension: string;
 	parent: { path: string } | null;
+	stat: { mtime: number; ctime: number; size: number };
 
-	constructor(path: string) {
+	constructor(path: string, mtime = 0) {
 		this.path = path;
 		const slash = path.lastIndexOf('/');
 		const name = slash === -1 ? path : path.substring(slash + 1);
@@ -59,6 +60,7 @@ export class TFile {
 		this.basename = dot === -1 ? name : name.substring(0, dot);
 		this.extension = dot === -1 ? '' : name.substring(dot + 1);
 		this.parent = { path: slash === -1 ? '/' : path.substring(0, slash) };
+		this.stat = { mtime, ctime: mtime, size: 0 };
 	}
 }
 

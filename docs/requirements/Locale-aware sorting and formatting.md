@@ -47,13 +47,14 @@ alphabet and the filter finds what is plainly on screen.
 
 ## Where they are
 
-Three `localeCompare` calls, all currently locale-less:
+Four `localeCompare` calls, all currently locale-less:
 
 | Site | Sorts |
 | --- | --- |
 | `ui/prompts.ts:58` | Folder paths in the folder suggest |
 | `domain/model.ts:495` | `observedStates` — the state vocabulary offered in the menu |
 | `domain/model.ts:512` | The tag vocabulary |
+| `domain/shelf.ts:30` (`compareCards`) | Shelf cards within a type group, by title |
 
 Called with no locale argument, `localeCompare` uses the *host's* default, which is the
 operating system's language rather than Obsidian's. So a user running Obsidian in one
@@ -232,12 +233,12 @@ or the guard has to be remembered eleven times.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** `src/domain/model.ts` sorts the state and tag
-vocabularies · `src/ui/prompts.ts` sorts and
+**Nothing yet — this note is design.** `src/domain/model.ts` and `src/domain/shelf.ts`
+sort the state and tag vocabularies and the shelf's cards · `src/ui/prompts.ts` sorts and
 filters the folder and tag suggests · `src/view/backlogView.ts` holds the quick filter's
 match · `src/view/render/rows.ts` holds `renderTitleText`, the fold-then-index highlight ·
 `src/view/render/columns.ts` renders the counts · `src/domain/settings.ts`,
 `src/domain/itemTypes.ts`, `src/domain/noteFields.ts` and `src/domain/writePlan.ts` hold
 the identity folds that must not change.
 Tests: `test/view/filter.test.ts`, `test/domain/model.test.ts`,
-`test/domain/noteFields.test.ts`.
+`test/domain/shelf.test.ts`, `test/domain/noteFields.test.ts`.

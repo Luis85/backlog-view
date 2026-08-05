@@ -87,7 +87,7 @@ a card created into a state the base excludes — and every one of those was a
 paragraph of prose before the shape asked the question.
 
 **Product Roadmap** is the third projection: the same backlog on a time axis,
-specified across six features and 18 use cases — the projection toggle grown to three
+specified across six features and 20 use cases — the projection toggle grown to three
 positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
 parents span their children, scheduling as gated date writes, milestones as a type of
 their own, and lanes, focus and rollups carried over. Three features are built. The

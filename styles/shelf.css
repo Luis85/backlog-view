@@ -1,0 +1,149 @@
+/* The unplaced shelf, its type groups, its toolbar controls, and the context strip —
+   `src/view/render/shelf.ts` and `src/view/render/shelfControls.ts`. */
+
+.pbl-shelf,
+.pbl-roadmap-context {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+/* Context stands beside the shelf, visibly not part of its count. */
+.pbl-roadmap-context {
+	border-style: dashed;
+	background-color: transparent;
+}
+
+/* An empty shelf takes no space — and is still the target that un-places, which a
+   strip appearing only while a drag is live can be and an absent element cannot.
+   The DOM keeps it so a drop has somewhere to land; this keeps it out of the way. */
+.pbl-shelf-empty {
+	display: none;
+}
+
+.pbl-dragging .pbl-shelf-empty {
+	display: flex;
+	border-style: dashed;
+}
+
+/* Collapsed keeps its footprint minimal — the toolbar carries the name, the count
+   and the toggle, so there is nothing left to show here until it is expanded. */
+.pbl-shelf-collapsed {
+	padding-block: var(--size-4-1);
+	min-height: 0;
+}
+
+.pbl-shelf-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-shelf-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+/* What this drop would LEAVE, said before the release — only the dated axis draws one. */
+.pbl-shelf-outcome {
+	margin-inline-start: auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pbl-shelf-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-shelf-group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+}
+
+.pbl-shelf-group-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+	text-transform: uppercase;
+}
+
+.pbl-shelf-group-count {
+	color: var(--text-faint);
+}
+
+/* A grid, not a wrapping flex row: the previous layout shrank trailing-row cards
+   unevenly. The bucket grid in roadmap.css gets the same treatment next, so every
+   card in the roadmap ends up sized the same way. `min(240px, 100%)`, not a bare
+   240px: the shelf's own gutter (roadmap.css) and internal padding both eat into
+   its content box, so a narrow enough pane can leave less than 240px for the grid
+   to work with — a bare 240px floor would then force the track wider than its
+   container and reintroduce the very horizontal scrollbar this rewrite exists to
+   remove. Capping the minimum at the available width degrades to a single
+   narrower column instead. */
+.pbl-shelf-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+	gap: var(--size-4-2);
+}
+
+/* Why a value could not be read: the reason travels on the card it shelved. */
+.pbl-shelf-reason {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-warning);
+}
+
+.pbl-shelf-reason-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-shelf-reason-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* The shelf's toolbar chrome — a sibling of `.pbl-tree`, never inside it. */
+.pbl-shelf-controls {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.pbl-shelf-controls-empty {
+	display: none;
+}
+
+.pbl-shelf-sort {
+	font-size: var(--font-ui-smaller);
+}
+
+.pbl-shelf-type-filter {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex-wrap: wrap;
+}
+
+.pbl-shelf-type-chip {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}

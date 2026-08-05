@@ -22,6 +22,7 @@ const AXES = {
 function roadmapView(vault: FakeVault, cfg: Record<string, unknown> = { ...AXES }, opts: { base?: string } = {}) {
 	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
 	harness.view.setProjection('roadmap');
+	harness.view.setShelfCollapsed(false);
 	return harness;
 }
 
@@ -64,6 +65,7 @@ describe('the three-position projection toggle', () => {
 		const before = view.model;
 
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		expect(view.model).toBe(before);
 		expect(vault.writeLog).toHaveLength(0);
 		// Every result renders exactly once: one placed, one on the shelf.
@@ -77,6 +79,7 @@ describe('the three-position projection toggle', () => {
 		view.setFilter('Untriaged');
 
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		expect(view.filterText).toBe('Untriaged');
 		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
 		// The placed result does not match, so the axis narrows with the shelf.

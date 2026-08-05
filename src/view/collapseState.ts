@@ -1,4 +1,5 @@
 import { BacklogItem } from '../domain/model';
+import { ShelfSort } from '../domain/shelf';
 import {
 	BOARD_MODE,
 	ROADMAP_MODE,
@@ -37,6 +38,10 @@ export class CollapseState {
 	private axis: string | null = null;
 	/** The retained timeline zoom; null until the user first picks one. */
 	private zoom: string | null = null;
+	private shelfExpanded = false;
+	/** null means 'tree' (sibling order), the default. */
+	private shelfSortValue: string | null = null;
+	private hiddenShelfTypes = new Set<string>();
 	private id: ViewIdentity | null = null;
 	private restored = false;
 	/** Kept so the identity can be re-resolved when the base is renamed under us. */
@@ -84,6 +89,33 @@ export class CollapseState {
 
 	setZoom(id: string): void {
 		this.zoom = id;
+		this.scheduleSave();
+	}
+
+	shelfCollapsed(): boolean {
+		return !this.shelfExpanded;
+	}
+
+	setShelfCollapsed(collapsed: boolean): void {
+		this.shelfExpanded = !collapsed;
+		this.scheduleSave();
+	}
+
+	shelfSort(): ShelfSort {
+		return (this.shelfSortValue as ShelfSort | null) ?? 'tree';
+	}
+
+	setShelfSort(sort: ShelfSort): void {
+		this.shelfSortValue = sort === 'tree' ? null : sort;
+		this.scheduleSave();
+	}
+
+	shelfHiddenTypes(): ReadonlySet<string> {
+		return this.hiddenShelfTypes;
+	}
+
+	setShelfHiddenTypes(types: ReadonlySet<string>): void {
+		this.hiddenShelfTypes = new Set(types);
 		this.scheduleSave();
 	}
 
@@ -154,6 +186,9 @@ export class CollapseState {
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
 		this.zoom = snapshot.zoom ?? null;
+		this.shelfExpanded = snapshot.shelfExpanded ?? false;
+		this.shelfSortValue = snapshot.shelfSort ?? null;
+		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -223,6 +258,9 @@ export class CollapseState {
 			mode: this.mode,
 			axis: this.axis,
 			zoom: this.zoom,
+			shelfExpanded: this.shelfExpanded,
+			shelfSort: this.shelfSortValue,
+			shelfHiddenTypes: [...this.hiddenShelfTypes],
 		});
 	}
 }

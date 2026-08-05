@@ -8,6 +8,10 @@ interface CreateOptions {
 	cls?: string | string[];
 	text?: string;
 	attr?: Record<string, string>;
+	/** Mirrors Obsidian's `DomElementInfo.value` — an `<option>`'s or `<input>`'s value. */
+	value?: string;
+	/** Mirrors Obsidian's `DomElementInfo.type` — an `<input>`'s type. */
+	type?: string;
 }
 
 function applyOptions(el: HTMLElement, options?: CreateOptions | string): void {
@@ -20,6 +24,11 @@ function applyOptions(el: HTMLElement, options?: CreateOptions | string): void {
 	if (opts.attr) {
 		for (const [key, value] of Object.entries(opts.attr)) el.setAttribute(key, value);
 	}
+	// Set as attributes, not IDL properties: an <option>'s `value` IDL property exists
+	// only once it does, but the attribute is what a <select> reads to resolve its own
+	// `.value` regardless of element type, and it is what `setAttribute` always accepts.
+	if (opts.value !== undefined) el.setAttribute('value', opts.value);
+	if (opts.type !== undefined) el.setAttribute('type', opts.type);
 }
 
 export function installObsidianDom(): void {

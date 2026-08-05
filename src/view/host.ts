@@ -3,6 +3,7 @@ import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
+import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
@@ -177,6 +178,16 @@ export interface BacklogViewHost {
 	readonly axisPick: string | null;
 	/** Pick which axis this saved view shows; the collapse store persists it. */
 	setAxisPick(axis: RoadmapAxis): void;
+	/** Whether the shelf is collapsed for this saved view; collapsed is the default. */
+	readonly shelfCollapsed: boolean;
+	/** Toggle the shelf's collapse state and re-render the content pane. */
+	setShelfCollapsed(collapsed: boolean): void;
+	/** The shelf's display-only sort pick; 'tree' (sibling order) is the default. */
+	readonly shelfSort: ShelfSort;
+	setShelfSort(sort: ShelfSort): void;
+	/** Types currently hidden from the shelf by its own type filter. */
+	readonly shelfHiddenTypes: ReadonlySet<string>;
+	setShelfHiddenTypes(types: ReadonlySet<string>): void;
 	/**
 	 * Which density the dated axis draws at. UI state like the mode and the axis pick:
 	 * per saved view, per device, in the collapse store — never in the `.base`, because

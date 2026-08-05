@@ -11,6 +11,7 @@ files:
   - src/view/interactions/cardDrag.ts
   - src/view/render/board.ts
   - src/view/backlogView.ts
+  - src/view/cardMoves.ts
   - src/view/selection.ts
 ---
 
@@ -108,9 +109,11 @@ the menu keys, over the selection state in `src/view/selection.ts`. Beside it,
 `handleBoardMoveKey` turns Alt+Left and Alt+Right into a card move, and nothing into
 Alt+Up/Down.
 
-All three inputs land on **one** method — `performBoardMove` in
-`src/view/backlogView.ts` — so a key, a menu pick and a drop cannot plan different
-writes, and a fourth input cannot arrive with its own idea of what a move is. It is
+All three inputs land on **one** method — `performBoardMove`, implemented in
+`src/view/cardMoves.ts` (`CardMoveController`; `src/view/backlogView.ts` keeps a
+one-line delegate so `BacklogViewHost` still resolves to one class —
+[[Split the view dispatch hub]]) — so a key, a menu pick and a drop cannot plan
+different writes, and a fourth input cannot arrive with its own idea of what a move is. It is
 also where the move is announced, through `announceBoardMove` in
 `src/view/interactions/cardDrag.ts`: the announcement lives with the drag because
 that module owns the live region, but nothing about it is the drag's. The message

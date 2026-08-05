@@ -84,13 +84,18 @@ active position reads as active without the group looking like three separate bu
 and that the axis picker beside it appears only with both a horizon property and a date
 property configured.
 
-**Bucket layout in a narrow pane** — buckets are `flex: 0 0 260px` and the frame is
-`min-width: max-content`, so a narrow pane should scroll sideways rather than squeeze
-them. Check the buckets keep their width and the pane scrolls.
+**Bucket layout at different widths** — buckets share the row's width equally down to a
+280px floor (`flex: 1 1 280px; min-width: 280px`), reflowing cards into multiple grid
+columns as a bucket's own width allows. Check an ordinary 3-4 horizon vault shows no
+horizontal scrollbar and a wide bucket's cards form more than one column; check a pane
+narrow enough to hit the 280px floor falls back to the pane's existing horizontal
+scroll, same as before.
 
-**The shelf pinned to the scrollport** — `position: sticky` with `width: 100cqw` inside a
-`max-content` frame. Pan the timeline sideways: the shelf, the context strip and the
-advisory must stay put and stay full-width, not slide off or collapse.
+**The shelf pinned to the scrollport, with a real gutter** — `position: sticky` with a
+width reduced to leave a visible gutter from the pane's edges (matching the shelf's own
+internal padding), inside a `max-content` frame. Pan the timeline sideways: the shelf,
+the context strip and the advisory must stay put, stay off the pane's edges, and force
+no scrollbar of their own.
 
 **The timeline's sticky lead column and the today scroll** — entering the dated axis
 should land centred on today; the row labels should stay put as the grid pans.
@@ -107,6 +112,17 @@ width, and be a real drop target. This is the one item on this whole list that i
 **The drop-over highlight** — one class (`pbl-drop-over`) now serves board columns,
 buckets and the shelf. Check all three highlight identically, and that the board's
 highlight is unchanged from 0.3.0.
+
+**The shelf, collapsed by default** — a fresh view opens with the shelf's cards hidden
+and only its toolbar chrome (collapse button, sort picker, type filter) visible. Check
+the collapsed strip reads as compact chrome, not an empty box taking noticeable space,
+and that expanding it reveals cards grouped under type sub-headers in a uniform-width
+grid.
+
+**The shelf's toolbar controls** — the collapse button, sort picker and type-filter
+chips live in the toolbar, not inside the roadmap pane. Check they are legible and
+usable at the toolbar's normal size, and that toggling any one of them never visibly
+rebuilds the rest of the toolbar.
 
 **The bucket's New button** — a `+` in the bucket header, appearing on hover like the
 row's. Check it does not crowd the count badge and does not appear in the `Tab` order.

@@ -32,6 +32,7 @@ const TODAY_ISO = todayStamp();
 function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { base?: string } = {}) {
 	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
 	harness.view.setProjection('roadmap');
+	harness.view.setShelfCollapsed(false);
 	return harness;
 }
 

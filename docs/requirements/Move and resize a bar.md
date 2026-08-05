@@ -13,6 +13,7 @@ files:
   - src/storage/frontmatter.ts
   - src/view/host.ts
   - src/view/backlogView.ts
+  - src/view/cardMoves.ts
 ---
 
 # Move and resize a bar
@@ -151,6 +152,9 @@ make against a model that can be a refresh behind, and both refusals — a rever
 and a plan whose shape no longer matches what the note has become — live in
 `src/storage/frontmatter.ts`, the one module allowed to read and write the note.
 `performScheduleMove`, declared on `BacklogViewHost` in `src/view/host.ts` and
-implemented in `src/view/backlogView.ts`, is the single place a date batch is planned
+implemented in `src/view/cardMoves.ts` (`CardMoveController`; `src/view/backlogView.ts`
+keeps a one-line delegate, the same shape `applySafely`/`canUndo`/`undoLast` already use
+for the write gate — [[Split the view dispatch hub]]), is the single place a date batch
+is planned
 and announced, shared by the drag, the menu's Schedule and Unschedule, and reporting
 whether anything actually changed rather than whether the call returned.

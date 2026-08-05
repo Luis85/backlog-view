@@ -223,3 +223,48 @@ describe('the persisted view mode', () => {
 		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
 	});
 });
+
+describe('the shelf working position', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+
+	it('defaults to collapsed, tree sort, nothing hidden — and needs no entry at all', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none });
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.shelfExpanded).toBe(false);
+		expect(snapshot.shelfSort).toBeNull();
+		expect(snapshot.shelfHiddenTypes).toEqual([]);
+	});
+
+	it('round-trips an explicit expand', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, shelfExpanded: true });
+		expect(loadCollapseState(vault.app, id).shelfExpanded).toBe(true);
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ shelfExpanded: true });
+	});
+
+	it('round-trips a non-default sort and the hidden-type list', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, shelfSort: 'title', shelfHiddenTypes: ['Task', 'Bug'] });
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.shelfSort).toBe('title');
+		expect(snapshot.shelfHiddenTypes).toEqual(['Task', 'Bug']);
+	});
+
+	it('drops a stored sort it does not recognize', () => {
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], shelfSort: 'sideways' },
+		});
+		expect(loadCollapseState(vault.app, id).shelfSort).toBeNull();
+	});
+
+	it('drops a stored hidden-types entry that is not an array of strings', () => {
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], shelfHiddenTypes: 'Task' },
+		});
+		expect(loadCollapseState(vault.app, id).shelfHiddenTypes).toEqual([]);
+	});
+});
