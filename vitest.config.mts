@@ -43,9 +43,18 @@ export default defineConfig({
 			// now reports as partial instead of whole. The suite did not get worse; the
 			// old figure was flattering. Statements has the least room of the four, so
 			// that is the one a thin change will trip first.
+			//
+			// The browser harness increment measured 97.97/93.66/99.30/99.21 with its own
+			// suite, against 97.95/93.63/99.30/99.21 without it — so statements and branches
+			// moved by 0.02 and 0.03 and their thresholds move by the same, and the other two
+			// stay. The 97.91/93.68 recorded above is a PRE-MERGE figure: re-measuring the
+			// same tree with the harness tests excluded gives 97.95/93.63, which is where the
+			// deltas here are taken from. Nothing regressed; the older pair was simply taken
+			// at a different commit, and quoting it as this increment's baseline would have
+			// invented a branches drop that never happened.
 			thresholds: {
-				statements: 97.64,
-				branches: 93.22,
+				statements: 97.66,
+				branches: 93.25,
 				functions: 98.19,
 				lines: 97.06,
 			},

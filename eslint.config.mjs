@@ -149,7 +149,8 @@ export default defineConfig([
 	{
 		// Everything that is not this plugin's source. The build scripts are Node, not
 		// plugin code, so the Obsidian ruleset does not apply to them; `.obsidian/` is a
-		// test-build vault (vendored plugin bundles), `.claude/` is agent tooling. They
+		// test-build vault (vendored plugin bundles), `.harness/` is the browser page
+		// `npm run harness` bundles, `.claude/` is agent tooling. They
 		// were only invisible while `lint` named `src test` — an editor lints the whole
 		// tree, and a type-aware rule on a file outside tsconfig crashes the run.
 		ignores: [
@@ -158,10 +159,12 @@ export default defineConfig([
 			'coverage/**',
 			'dist/**',
 			'.obsidian/**',
+			'.harness/**',
 			'.claude/**',
 			'docs-check.mjs',
 			'eslint.config.mjs',
 			'esbuild.config.mjs',
+			'harness.mjs',
 			'styles-assemble.mjs',
 			'test-build.mjs',
 			'version-bump.mjs',
