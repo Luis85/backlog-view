@@ -175,6 +175,7 @@ picker icon that a text input does not.
 | --- | --- | --- |
 | 2026-08-01 | the PR #14 changes | Everything as intended; `styles.css` needed no adjustment. |
 | 2026-08-01 | **0.3.0** — extra-type badges, done rows without the strike-through | Confirmed by the maintainer: looks and feels fine. No change needed. |
+| 2026-08-05 | **0.5.0** — the shelf's collapse, grouping, sort and filter in its own header, and the full-width bucket grid | Confirmed by the maintainer against a live vault. The layout half was measured first through `npm run harness` (bucket widths and gutters, the dated-axis shelf at 1376px of 1400px, the collapsed footprint); this run is what the harness does not replace. |
 | — | the roadmap, both axes and the horizon writes | **Not run.** Reopened for it. |
 | — | the one-press setup: the options it writes, and the button in both empty frames | **Not run.** |
 | — | the horizon chip's column, and the native date fields in the schedule entry | **Not run.** |

@@ -215,7 +215,13 @@ free of runtime code so imports stay cycle-free.
   collapse store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
   `setProjection` re-renders itself, because no config was set and no Bases refresh is
-  coming; the roadmap-axis pick (`setAxisPick`) follows the same rule.
+  coming; the roadmap-axis pick (`setAxisPick`) follows the same rule. **The focus
+  level is that rule with one extra consequence**: it is stored the same way
+  (`setFocusLevel`), but it re-roots the MODEL rather than only the render, so it
+  rebuilds through `refreshFromData` and the restore has to run BEFORE that build —
+  which is why `refreshFromData` restores first and reads `focusLevel` off the store
+  onto the settings it just resolved. Everything downstream still reads it as
+  `settings.focusLevel`; the `.base` is simply no longer where it comes from.
 - `CardDragController` (in `interactions/cardDrag.ts`) is ONE controller for both card
   projections. It collects every adapter registration's cleanup and runs them at the top
   of each render pass: the projection is rebuilt wholesale, and pragmatic listeners left

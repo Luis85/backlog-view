@@ -222,6 +222,25 @@ describe('the persisted view mode', () => {
 		expect(loadCollapseState(app, id).zoom).toBeNull();
 		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
 	});
+
+	it('round-trips the focus as written, and drops anything that is not a name', () => {
+		const app = vault.app;
+		// No vocabulary check here on purpose: the type list lives in `domain/`, and a
+		// name matching no configured type already reads as no focus. Only shape.
+		saveCollapseState(app, id, { collapsed: new Set(), expanded: new Set(), focus: 'Bugfix' });
+		expect(loadCollapseState(app, id).focus).toBe('Bugfix');
+
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], focus: 7 },
+		});
+		expect(loadCollapseState(app, id).focus).toBeNull();
+	});
+
+	it('needs no entry for a view showing every type', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { collapsed: new Set(), expanded: new Set(), focus: null });
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
 });
 
 describe('the shelf working position', () => {

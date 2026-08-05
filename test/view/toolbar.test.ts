@@ -233,7 +233,7 @@ describe('toolbar controls are reachable without a mouse', () => {
 	it('renders every activatable toolbar control as a real button', () => {
 		const vault = fixture();
 		vault.addFile('Done.md', { frontmatter: { type: 'Epic', order: 30, status: 'Done' } });
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status', focusLevel: 'Feature' });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { focus: 'Feature' });
 		const controls = controlsByLabel(containerEl);
 
 		// The full set a keyboard user has to be able to reach. Anything that only

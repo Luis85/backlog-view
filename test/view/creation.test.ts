@@ -178,7 +178,7 @@ describe('creation flows', () => {
 		vault.addFile('Epic 1.md', { frontmatter: { type: 'Epic', order: 100 } });
 		vault.addFile('Epic 2.md', { frontmatter: { type: 'Epic', order: 200 } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic 1' });
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature', ...NO_TYPE_FOLDERS });
+		const { containerEl } = makeView(vault, NO_TYPE_FOLDERS, { focus: 'Feature' });
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		submitPrompt({ title: 'Fresh Feature' });
@@ -192,7 +192,7 @@ describe('creation flows', () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		// Focused on Feature, nothing matches — but the full tree knows the folder
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature', ...NO_TYPE_FOLDERS });
+		const { containerEl } = makeView(vault, NO_TYPE_FOLDERS, { focus: 'Feature' });
 		expect(containerEl.querySelector('.pbl-empty')).not.toBeNull();
 
 		containerEl.querySelector<HTMLElement>('.pbl-empty button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

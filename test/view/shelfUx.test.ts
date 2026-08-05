@@ -386,11 +386,13 @@ describe('the shelf, collapsed by default', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon', focusLevel: 'Epic' });
+		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon' });
 		// The Base returns only the feature; the Epic surfaces purely as context, the
 		// same shape the domain fixture's own vault.entries().filter(...) sets up.
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		// Focus is working position, not a base setting: set through the view.
+		view.setFocusLevel('Epic');
 		view.setProjection('roadmap');
 
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();

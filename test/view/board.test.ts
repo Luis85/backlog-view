@@ -292,7 +292,7 @@ describe('the projection toggle', () => {
 
 describe('focus on the board', () => {
 	/** The Base returns only the features; their epic lives outside the filter. */
-	function focusedView(configValues: Record<string, unknown>) {
+	function focusedView(configValues: Record<string, unknown>, focus: string) {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Someday' } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, status: 'Active' }, parentLink: 'Epic' });
@@ -305,12 +305,14 @@ describe('focus on the board', () => {
 		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		// Not a config value: focus is working position, set through the view.
+		view.setFocusLevel(focus);
 		view.setProjection('board');
 		return { view, config, containerEl, vault };
 	}
 
 	it('makes the focused level the cards', () => {
-		const { containerEl } = focusedView({ ...WORKFLOW, focusLevel: 'Feature' });
+		const { containerEl } = focusedView(WORKFLOW, 'Feature');
 
 		expect(cardTitles(columnByName(containerEl, 'New'))).toEqual(['F2']);
 		expect(cardTitles(columnByName(containerEl, 'Active'))).toEqual(['F1']);
@@ -318,7 +320,7 @@ describe('focus on the board', () => {
 	});
 
 	it('renders an excluded focus-level item as an inert context card that places its results', async () => {
-		const { containerEl, vault } = focusedView({ ...WORKFLOW, focusLevel: 'Epic' });
+		const { containerEl, vault } = focusedView(WORKFLOW, 'Epic');
 
 		// The Epic is outside the filter, but the results beneath it still need a board.
 		const card = cardByTitle(containerEl, 'Epic');

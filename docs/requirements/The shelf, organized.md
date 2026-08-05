@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[A third projection]]"
 order: 50
-status: Active
+status: Done
 priority: P2
 created: 2026-08-04
 files:

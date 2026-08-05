@@ -106,8 +106,9 @@ can be checked by reading one directory.
 - The rule that decides where anything persists: **base settings are saved on the view
   (the `.base` options); UI state is saved in vault-scoped localStorage.** The collapse
   sets, the projection (`mode` on the same per-view entry — `board` or `roadmap`,
-  absent for the tree) and the retained roadmap-axis pick (`axis` — kept even while its
-  axis is unconfigured, so restoring the configuration restores the choice) are UI
+  absent for the tree), the retained roadmap-axis pick (`axis` — kept even while its
+  axis is unconfigured, so restoring the configuration restores the choice) and the
+  focused type (`focus`, absent for the whole tree) are UI
   state — one person's working position on one device — and are NEVER written to the
   `.base`: a path per collapsed row is exactly the growth that shared file should not
   take, and a projection choice forced on everyone the base syncs to would be the same
@@ -161,4 +162,10 @@ can be checked by reading one directory.
   since closing the view is when it matters most.
 - Stored state is read defensively at every level: it is user-writable data on disk that
   another version of this plugin may have written, so anything unrecognizable is dropped
-  rather than trusted.
+  rather than trusted. `focus` is checked for SHAPE only, not against the vocabulary: the
+  type list lives in `domain/settings.ts` and `focusTarget` already answers a name no
+  configured type matches with "no focus" — the same tolerance it had while this value
+  lived in the `.base`.
+- The focus level is the one piece of this that is also an input to the MODEL, not just to
+  a render, which is why the view restores before it builds (`refreshFromData`) rather
+  than after. Restoring later draws the whole tree until something else refreshes it.

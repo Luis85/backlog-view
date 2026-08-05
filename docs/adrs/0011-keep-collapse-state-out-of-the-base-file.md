@@ -56,6 +56,11 @@ leaf drawing it has one.
   it is read defensively at every level.
 - The cost: it does not sync. Open a vault on another machine and the tree starts
   collapsed. That is the right trade for state this personal, but it is a real one.
+- The entry has since taken every other piece of working position — the projection, the
+  roadmap axis and zoom, the shelf's own controls, and the **focus level**, which moved
+  out of the `.base` under exactly this decision. Focus is the one that also feeds the
+  MODEL rather than only the render, so the view restores before it builds; a `.base`
+  written before the move keeps a `focusLevel` key that nothing reads.
 
 ## Alternatives
 

@@ -6,6 +6,14 @@ Either path below ends in the **Release** workflow building the plugin and creat
 GitHub release with `main.js`, `manifest.json` and `styles.css` attached as individual
 assets. Both refuse to publish over a version that already has a release.
 
+**The release workflow builds; it does not gate.** Its only npm steps are `npm ci` and
+`npm run build`, so lint, the tests, fallow and the docs register are not re-run at
+publish time — CI runs all five on every push to `main`, and that run is the evidence.
+Publishing from a red commit is therefore possible and nothing will stop it: check `main`
+is green before triggering, whichever path below you take. The two things the workflow
+DOES refuse are a tag that disagrees with `manifest.json` and a version that already has
+a release.
+
 The two built assets are minified: `npm run build` minifies the bundle into `main.js`
 and writes a minified `styles.css` to `dist/`, which is what the release uploads. Both
 stylesheets are assembled from `styles/` by `styles-assemble.mjs`, so the file to edit
@@ -102,6 +110,29 @@ for any later release where the bump landed on `main` but the tag did not. Do **
   tag="$(node -p "require('./manifest.json').version")"
   git tag "$tag" && git push origin "$tag"
   ```
+
+- Or from anything that can reach the API — `gh`, curl, or an agent session with the
+  GitHub tools. This is the same manual trigger the browser offers, so it needs neither a
+  checkout nor a browser, and it takes no inputs: the workflow reads the version from
+  `manifest.json` itself and tags the ref you name.
+
+  ```bash
+  gh workflow run release.yml --ref main
+  ```
+
+  ```http
+  POST /repos/Luis85/backlog-view/actions/workflows/release.yml/dispatches
+  {"ref": "main"}
+  ```
+
+  A dispatch returns no run id, so find the run rather than assuming it: list the
+  workflow's runs and take the newest, then read its jobs or logs while it goes. What
+  proves it worked is the release, not a green run — check the tag exactly matches the
+  manifest version and that all three assets are attached, which is the same verification
+  the last paragraph of this section asks for whichever way you triggered it.
+
+  Publishing is public and a release cannot be un-published without deleting it, so an
+  agent session should have been told to release, not infer it from a merged PR.
 
 ### When you still need to bump the version
 

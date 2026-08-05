@@ -14,10 +14,11 @@ import { BacklogViewHost, Projection } from './host';
 
 /**
  * The view's working position, remembered across sessions: which rows are shut,
- * which projection — tree, board or roadmap — the view is showing, and which
- * roadmap axis it shows when both are configured. All of it is UI state, so it
- * goes to the collapse store's vault-scoped localStorage and never to the
- * `.base`: base settings are saved on the view, working position on the device.
+ * which projection — tree, board or roadmap — the view is showing, which roadmap
+ * axis it shows when both are configured, and which type the tree is focused on.
+ * All of it is UI state, so it goes to the collapse store's vault-scoped
+ * localStorage and never to the `.base`: base settings are saved on the view,
+ * working position on the device.
  *
  * Two sets, not one: `collapsed` is what is shut right now, and `settled` is every
  * path the user has ruled on either way. A parent that is in neither has never been
@@ -38,6 +39,8 @@ export class CollapseState {
 	private axis: string | null = null;
 	/** The retained timeline zoom; null until the user first picks one. */
 	private zoom: string | null = null;
+	/** The focused type name; null means the whole tree, the default. */
+	private focus: string | null = null;
 	private shelfExpanded = false;
 	/** null means 'tree' (sibling order), the default. */
 	private shelfSortValue: string | null = null;
@@ -89,6 +92,19 @@ export class CollapseState {
 
 	setZoom(id: string): void {
 		this.zoom = id;
+		this.scheduleSave();
+	}
+
+	/** The type the tree is focused on, or '' for the whole tree. */
+	focusLevel(): string {
+		return this.focus ?? '';
+	}
+
+	setFocusLevel(level: string): void {
+		// The whole tree is the default and needs no stored value — the same rule the
+		// projection follows, and what makes "show all types" clear the entry rather
+		// than store an empty name.
+		this.focus = level || null;
 		this.scheduleSave();
 	}
 
@@ -186,6 +202,7 @@ export class CollapseState {
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
 		this.zoom = snapshot.zoom ?? null;
+		this.focus = snapshot.focus ?? null;
 		this.shelfExpanded = snapshot.shelfExpanded ?? false;
 		this.shelfSortValue = snapshot.shelfSort ?? null;
 		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
@@ -258,6 +275,7 @@ export class CollapseState {
 			mode: this.mode,
 			axis: this.axis,
 			zoom: this.zoom,
+			focus: this.focus,
 			shelfExpanded: this.shelfExpanded,
 			shelfSort: this.shelfSortValue,
 			shelfHiddenTypes: [...this.hiddenShelfTypes],

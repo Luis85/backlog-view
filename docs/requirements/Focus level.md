@@ -18,7 +18,7 @@ gives each level its own board — without the levels above them taking up the s
 | **Actor** | Backlog owner |
 | **Trigger** | Picking a type from the toolbar's focus control |
 | **Preconditions** | The tree has rows |
-| **Guarantee** | **Only the rendering is re-rooted.** No item's real parent changes, and nothing is written. Clearing the focus restores the full tree. |
+| **Guarantee** | **Only the rendering is re-rooted.** No item's real parent changes, and nothing is written — not the notes, and not the `.base` either: the pick is working position, stored beside the collapse state ([[Collapse persistence]]). Clearing the focus restores the full tree. |
 
 **Main flow**
 
@@ -39,6 +39,12 @@ gives each level its own board — without the levels above them taking up the s
   Refused. Those rows are *not* a real sibling group — they are items from all over the
   tree that share a level — and treating them as siblings would write ranks that mean
   nothing when the focus clears.
+- **4a — the view is closed and reopened before the focus is cleared.** It comes back
+  focused on the same type, from **vault-scoped local storage** rather than the `.base` —
+  per saved view, per device. Focus is one person's altitude for the afternoon, not
+  configuration the base publishes to everyone it syncs to. The price is the one
+  [[Collapse persistence]] already pays: it does not sync, and a `.base` written by an
+  older version carries a `focusLevel` key that is now ignored.
 
 **Guarantees**
 
@@ -49,6 +55,8 @@ gives each level its own board — without the levels above them taking up the s
 ## Acceptance criteria
 
 - Items keep their real parents; only the rendering is re-rooted.
+- The pick is never written to the `.base`: it is working position, and it survives a
+  reopen from local storage instead.
 - Ranking, indent and outdent are disabled across the synthetic top row, which is not a
   real sibling group.
 - Types that rank with the focused level appear beside it rather than vanishing.
@@ -57,6 +65,8 @@ gives each level its own board — without the levels above them taking up the s
 ## Where it lives
 
 `src/domain/model.ts` (`collectFocusRoots`) · `src/domain/itemTypes.ts` (`focusTarget`) ·
-`src/view/render/toolbar.ts` (the control).
+`src/view/render/toolbar.ts` (the control) · `src/view/collapseState.ts` (the stored
+pick, beside the collapse sets) · `src/view/backlogView.ts` (`setFocusLevel`, and the
+restore that has to precede the model build).
 Tests: `test/domain/model.test.ts`, `test/view/toolbar.test.ts`,
-`test/domain/itemTypes.test.ts`.
+`test/domain/itemTypes.test.ts`, `test/view/persistence.test.ts`.
