@@ -10,20 +10,14 @@
 		display: none;
 	}
 
-	/* The two hover-revealed create buttons are NOT here. A media query adds no
-	   specificity, so their reveal has to come after the `opacity: 0` it undoes; each
-	   therefore carries its own `hover: none` block beside itself — `.pbl-add` in
-	   `columns.css`, `.pbl-bucket-add` in `roadmap.css` — where no later rule for the
-	   same selector can get between the pair. `test/view/rendering.test.ts` checks that
-	   ordering rather than trusting this paragraph. */
-
-	/* Revealed by row hover on a pointer device, which a touch user cannot produce —
-	   without this the inline tag editing has no reachable control at all. */
-	.pbl-tag-remove,
-	.pbl-tag-add {
-		display: inline-flex;
-	}
-
+	/* The opacity-revealed controls are NOT here. A media query adds no specificity, so
+	   their reveal has to come after the `opacity: 0` it undoes; each therefore carries
+	   its own `hover: none` block beside itself — `.pbl-add` in `columns.css`,
+	   `.pbl-bucket-add` in `roadmap.css`, `.pbl-tag-remove`/`.pbl-tag-add` in `tags.css`
+	   — where no later rule for the same selector can get between the pair.
+	   `test/view/rendering.test.ts` checks that ordering rather than trusting this
+	   paragraph. Touch still needs its own block below, sized rather than revealed: the
+	   opacity reveal already makes these reachable, but the touch target is too small. */
 	.pbl-tag-remove {
 		width: 16px;
 		height: 16px;

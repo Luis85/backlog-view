@@ -127,13 +127,15 @@ describe('rendering', () => {
 	});
 
 	it('reveals every hover-hidden control on a hoverless device, in cascade order', () => {
-		// Both create buttons are hidden until hover and carry `tabindex="-1"`, so on a
+		// Every one of these is hidden until hover and carries `tabindex="-1"`, so on a
 		// device with neither hover nor a tab stop the `hover: none` reveal is the ONLY
 		// thing that makes them reachable. A media query adds no specificity, so that
 		// reveal has to come after the `opacity: 0` it undoes — written above it, it
 		// loses to a same-specificity rule and silently reveals nothing, which is how
-		// the bucket button shipped unreachable on touch.
-		for (const selector of ['.pbl-add', '.pbl-bucket-add']) {
+		// the bucket button shipped unreachable on touch. The tag buttons switched from
+		// display: none (which drops out of flow, growing the auto-width card cell around
+		// it on reveal) to this same opacity trade for the same reason.
+		for (const selector of ['.pbl-add', '.pbl-bucket-add', '.pbl-tag-remove', '.pbl-tag-add']) {
 			const hides = ruleAt(selector, 'opacity: 0;');
 			const reveals = ruleAt(selector, 'opacity: 1;', '(hover: none)');
 			expect(hides, `${selector} is expected to be hover-revealed`).toBeGreaterThan(-1);

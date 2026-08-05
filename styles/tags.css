@@ -40,9 +40,14 @@
 	opacity: 0.7;
 }
 
-/* The remove affordance stays out of the way until the row is under the pointer */
+/* The remove affordance stays out of the way until the row is under the pointer.
+   Opacity, not display: none — the tag cell is auto-width in card mode (`.pbl-card
+   .pbl-prop`), so a button that ENTERS the box model on reveal grows the cell and
+   reflows the card around it; reserving its space always is what makes it stay put,
+   the same trade `.pbl-add` (columns.css) and `.pbl-bucket-add` (roadmap.css) already
+   make for the same reason. */
 .pbl-tag-remove {
-	display: none;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	appearance: none;
@@ -56,11 +61,13 @@
 	height: 12px;
 	color: var(--text-muted);
 	cursor: pointer;
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
 }
 
 .pbl-row:hover .pbl-tag-remove,
 .pbl-card:hover .pbl-tag-remove {
-	display: inline-flex;
+	opacity: 1;
 }
 
 .pbl-tag-remove:hover {
@@ -74,7 +81,7 @@
 }
 
 .pbl-tag-add {
-	display: none;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	appearance: none;
@@ -88,11 +95,13 @@
 	flex: 0 0 auto;
 	color: var(--text-faint);
 	cursor: pointer;
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
 }
 
 .pbl-row:hover .pbl-tag-add,
 .pbl-card:hover .pbl-tag-add {
-	display: inline-flex;
+	opacity: 1;
 }
 
 .pbl-tag-add:hover {
@@ -103,4 +112,16 @@
 .pbl-tag-add .svg-icon {
 	width: 11px;
 	height: 11px;
+}
+
+/* A touch user can produce neither the hover above nor a tab stop (tabindex="-1"), so
+   without this the button is invisible and unreachable — sitting here, beside the rule
+   it overrides, is what `.pbl-add`'s own block does and why: a media query adds no
+   specificity, so a reveal written above the `opacity: 0` it undoes loses the cascade
+   and reveals nothing. */
+@media (hover: none) {
+	.pbl-tag-remove,
+	.pbl-tag-add {
+		opacity: 1;
+	}
 }
