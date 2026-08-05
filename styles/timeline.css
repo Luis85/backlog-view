@@ -293,25 +293,3 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
-
-/* Compacted to its labelled count: an unplaced result may lose its card, never its
-   existence — and the way back is the toolbar's toggle, which is a real focusable
-   control outside the pane's composite. This is the ONLY compaction in the frame,
-   because it is the only band with a control that reopens it: every other band shrinks
-   toward its minimum and keeps scrolling, and hiding cards with no way back is the
-   unreachable region the band rule exists to forbid. */
-.pbl-shelf-compact .pbl-shelf-cards {
-	display: none;
-}
-
-/* Cards nest one level deeper than this rule was written for (`.pbl-shelf-group` wraps
-   the header and its `.pbl-shelf-cards`), so the group wrapper needs its own rule or
-   the type-group headers survive compaction with no cards left under them. */
-.pbl-shelf-compact .pbl-shelf-group {
-	display: none;
-}
-
-/* A control for a region that is not on screen is a defect in the other direction. */
-.pbl-hidden-ctl {
-	display: none;
-}

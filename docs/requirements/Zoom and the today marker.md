@@ -59,9 +59,10 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
   anchor on today: the roadmap orients on the reader's now, not the plan's bounds, and
   jump-to-today plus one pan reaches everything else.
 - **2a — the pane is narrower than the frame is useful.** Labels yield before the grid
-  does, and the shelf compacts, never vanishes: in a narrow pane it collapses to its
-  labelled count, one action from open, because an unplaced result may lose its card
-  but never its existence. Nothing clips under a header — the tree's rule of dropping
+  does, and the shelf shows its labelled count rather than vanishing: it opens shut on
+  both axes and is one action from open in its own header ("The shelf, organized"), so
+  an unplaced result may lose its card but never its existence. No width threshold
+  decides this — a stored pick does. Nothing clips under a header — the tree's rule of dropping
   whole regions applies to decoration, not to results — embedded bases included.
 - **4a — a second device.** Its own zoom. Per-screen working positions never travel
   through the vault — the collapse store's rule, which this state joins.
@@ -76,7 +77,8 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
   drop's default length, on every device, never the write's granularity.
 - Horizontal scrolling is contained inside the view; the pane never scrolls sideways,
   and a narrow or embedded pane degrades by yielding decoration, not by clipping — the
-  shelf compacts to its labelled count, one action from open, and never disappears.
+  shelf shows its labelled count, one action from open in its own header, and never
+  disappears.
 - The zoom choice persists per device in the collapse store — never in the `.base` —
   and zooming, panning and opening write nothing to any note or to the `.base`: the
   one thing written is that per-device memory, where collapse state already lives.
@@ -85,10 +87,10 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
 
 Built. The scale table and the day budget — the three discrete `dayPx` densities, the
 unit-aligned window, and the backstop expressed as a day count rather than a cell count
-so the same dates reach at every zoom — are `src/domain/timeline.ts`. The zoom picker,
-jump-to-today and the shelf toggle, plus the `syncShelfToggle` that keeps the toggle in
-step with a render that rebuilt the pane without touching the toolbar, are
-`src/view/render/toolbar.ts`, beside the focus level. The per-device zoom memory is
+so the same dates reach at every zoom — are `src/domain/timeline.ts`. The zoom picker and
+jump-to-today are `src/view/render/toolbar.ts`, beside the focus level; the shelf's own
+disclosure is its header's (`src/view/render/shelfControls.ts`), the toolbar toggle and
+its `syncShelfToggle` having been retired with the width-measured compaction they served. The per-device zoom memory is
 kept in both halves of the same store, under the collapse state's own identity and
 pruning rules and its own session-only exception for an embedded base:
 `src/storage/collapseStore.ts` validates the persisted value, and

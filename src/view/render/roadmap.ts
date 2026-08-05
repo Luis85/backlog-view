@@ -4,7 +4,7 @@ import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
 import { renderTimeline } from './timeline';
-import { BacklogViewHost, RoadmapSnapshot, ScrollBox } from '../host';
+import { RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { wireTimelineDrag } from '../interactions/timelineDrag';
@@ -43,9 +43,6 @@ export function renderRoadmap(
 		return {
 			roadmap: { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 },
 			cards: [],
-			allCards: [],
-			shelfPaths: new Set(),
-			shelfEl: null,
 			todayLeft: null,
 			scroller: null,
 			boxes: [],
@@ -105,62 +102,7 @@ export function renderRoadmap(
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
-	// `cards` and `allCards` are the same reading order at render time — `syncShelfFit`
-	// is what may later narrow `cards` on the dated axis, and it filters FROM this
-	// unnarrowed list rather than from itself, so a widening resize can restore what an
-	// earlier narrowing removed.
-	const shelfPaths = new Set(roadmap.shelf.map((entry) => entry.item.file.path));
-	return { roadmap, cards, allCards: cards, shelfPaths, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale };
-}
-
-/** Below this the shelf's cards cost more than they are worth beside the grid. */
-const SHELF_COMPACT_PX = 560;
-
-/**
- * Resolve the shelf's compaction and apply it — the ONE decider. The width sets the
- * default and a press overrides it, and `aria-expanded` states whatever that resolved
- * to, because CSS cannot write an ARIA attribute and a container query plus a flag are
- * two deciders that desynchronise.
- *
- * It runs after render and on resize, gated to the dated axis, and it needs no second
- * render pass — unlike the column ladder, whose verdict can only be shown by rebuilding
- * the rows. So there is no `refitting` guard here, because there is no re-entry.
- *
- * Three things follow from the verdict and are done here, together, because separately
- * they were three defects: the class, the NAVIGABLE set (a hidden card an arrow can
- * still reach is a keyboard user with no visible position), and the pane's role (a
- * composite promising options it no longer has).
- */
-export function syncShelfFit(host: BacklogViewHost, treeEl: HTMLElement): void {
-	const snapshot = host.roadmap;
-	if (!snapshot || snapshot.roadmap.axis !== 'dates' || !snapshot.shelfEl) return;
-	// Same rule as the toggle's: the cards decide. An empty shelf is still an element —
-	// the drop target a drag needs — and compacting THAT would put `pbl-shelf-compact` on
-	// the strip that has to be reachable while a card is in the air.
-	if (snapshot.shelfPaths.size === 0 || host.shelfCollapsed) return;
-	// Zero while detached or before the first layout — the same guard `syncColumnFit`
-	// keeps for the tree's own ladder: keep the last decision rather than reading an
-	// unmeasured pane as narrow. Only the width-decided branch can be fooled by it; a
-	// press overrides the width outright and must still take effect at zero.
-	if (host.shelfOpen === null && treeEl.clientWidth === 0) return;
-	// Two cases, not three: no press yet means the width decides, and a press means the
-	// press decides. Written as one conditional so nothing else can be read into it.
-	const compact = host.shelfOpen === null ? treeEl.clientWidth < SHELF_COMPACT_PX : !host.shelfOpen;
-	snapshot.shelfEl.toggleClass('pbl-shelf-compact', compact);
-	snapshot.cards = compact ? snapshot.allCards.filter((item) => !snapshot.shelfPaths.has(item.file.path)) : snapshot.allCards;
-	// The selection is reconciled HERE, in the one place compaction resolves, rather than
-	// beside each caller: a resize is not the only way a card leaves the navigable set —
-	// pressing the toggle does it too, and that path re-renders nothing, so a selection
-	// left behind would keep `aria-activedescendant` pointing into hidden content until
-	// some later navigation happened to move it. Same shape as a vanished board column
-	// clamping `selectedBoardColumn`, put where every caller inherits it.
-	if (host.selectedPath !== null && !snapshot.cards.some((card) => card.file.path === host.selectedPath)) {
-		host.clearSelection();
-	}
-	// Resolved AFTER compaction, never at render: on a narrow pane whose only cards are
-	// shelved, every option leaves the navigable set and the pane would stay an empty
-	// listbox — a composite promising options it no longer has.
-	treeEl.setAttribute('role', snapshot.cards.length > 0 ? 'listbox' : 'region');
+	return { roadmap, cards, todayLeft, scroller, boxes, window, scale };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
+import { renderShelfControls } from './shelfControls';
 import { spanText } from './timeline';
 import { BacklogViewHost } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';
@@ -108,11 +109,10 @@ function removalOutcome(item: BacklogItem): string {
  * collapsed/empty check below, never after: collapsing is a view convenience and must
  * never gate the one thing that un-places.
  *
- * The static header (icon, name, true total count) renders unconditionally — collapsed,
- * expanded or empty — because it is the ONE label a user sees while their attention and
- * cursor are actually over the shelf mid-drag; the toolbar's own collapse button carries
- * the interactive count and expand/collapse state, but it is not itself droppable and is
- * not where a dragging user is looking.
+ * The header renders unconditionally — collapsed, expanded or empty — because it is the
+ * ONE label a user sees while their attention and cursor are actually over the shelf
+ * mid-drag, and because it carries the disclosure that opens a shut shelf: controls for
+ * the shelf live in it (`renderShelfControls`), not in the view's toolbar.
  */
 export function renderShelf(
 	ctx: RowContext,
@@ -128,15 +128,8 @@ export function renderShelf(
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
 		attr: { role: 'group', 'aria-label': `${SHELF_LABEL}, ${shelf.length} item${shelf.length === 1 ? '' : 's'}` },
 	});
-	// Fixed for the life of the VIEW (`host.shelfId`), not minted per render: the
-	// toolbar's toggle names this id in `aria-controls`, and the toolbar survives a
-	// content-only render that rebuilds this element — a per-render id would leave
-	// the button pointing at a detached node the instant that happened.
-	shelfEl.id = ctx.host.shelfId;
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
-	setIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-	header.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
-	header.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
+	renderShelfControls(host, header, shelf);
 	// The outcome line is only where a removal has one to say — the horizon axis's
 	// drop always un-places, so it has nothing to distinguish before the release.
 	const outcomeEl = removal.outcome ? header.createDiv({ cls: 'pbl-shelf-outcome' }) : null;

@@ -63,22 +63,10 @@ export interface RoadmapSnapshot {
 	roadmap: RoadmapModel;
 	/**
 	 * The NAVIGABLE cards, in reading order — axis first, then the shelf, then
-	 * context. `syncShelfFit` narrows this to exclude a compacted shelf's cards, so
-	 * the keyboard walk and `aria-activedescendant` never reach past what is on
-	 * screen. Read this, never `allCards`, for anything that selects or counts.
+	 * context. A collapsed shelf contributes none, exactly as an empty one does, so
+	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
-	/**
-	 * The unnarrowed reading order, axis first then shelf then context. What
-	 * `syncShelfFit` filters FROM on every pass — filtering `cards` instead would
-	 * make each resize narrower than the last, and a widening resize could never
-	 * restore what an earlier one removed.
-	 */
-	allCards: BacklogItem[];
-	/** Every shelved item's path, the vocabulary `syncShelfFit` and the toggle both key on. */
-	shelfPaths: Set<string>;
-	/** The shelf's own element, or null where nothing renders one (the empty dated-axis case). */
-	shelfEl: HTMLElement | null;
 	/** Pixel offset of the today line inside the grid, or null on the horizon axis. */
 	todayLeft: number | null;
 	/**
@@ -198,22 +186,6 @@ export interface BacklogViewHost {
 	setZoom(id: ScaleId): void;
 	/** Put today back in the middle of the timeline's scroller, from any position. */
 	jumpToToday(): void;
-	/**
-	 * Whether the roadmap's shelf is expanded: true or false once the reader has
-	 * pressed the toggle, null while the pane's width is still deciding. View state
-	 * that survives a render — a rebuild must not re-collapse a strip the reader just
-	 * opened — and deliberately NOT collapse-store state, which keys on paths and has
-	 * nothing to key this on.
-	 */
-	readonly shelfOpen: boolean | null;
-	/** Press the toggle: overrides the width's default and re-measures immediately. */
-	setShelfOpen(open: boolean): void;
-	/**
-	 * The id the shelf element carries, fixed for the life of this VIEW. Per view
-	 * rather than a constant: two saved views can sit in split panes, and duplicate
-	 * ids would make one toolbar's toggle address the other's shelf.
-	 */
-	readonly shelfId: string;
 	/**
 	 * The column the board selection rests on when no card is selected — an empty
 	 * column is still a keyboard stop, or an empty board could not be driven at all.

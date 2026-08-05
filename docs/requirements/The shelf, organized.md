@@ -73,8 +73,9 @@ alongside the same visual fixes.
 - The shelf's collapse state, sort pick and type-filter selections persist per saved
   view, per device — the same store `mode` and the roadmap axis pick already use.
 - Collapsed by default on a view nobody has touched; toggling it is a real `<button>`
-  reachable from the toolbar, not a per-row control inside the roadmap's one-tab-stop
-  listbox.
+  in the shelf's own header, where a reader working through unplaced work is already
+  looking — never a form control, which the roadmap's one-tab-stop listbox has no room
+  for.
 - Type groups render in a fixed order (the declared type vocabulary, plus a trailing
   group for anything outside it); a group with nothing in it renders nothing.
 - Sort and the type filter never write to a note; the shelf's count is the true total,
@@ -93,12 +94,16 @@ Persistence is three fields on the collapse store's existing per-view entry
 (`src/storage/collapseStore.ts`), read as defensively as `mode`/`axis` already are, with
 matching accessors on `src/view/collapseState.ts`.
 
-The interactive controls — the collapse toggle, the sort picker, the type filter — are
-toolbar chrome in `src/view/render/shelfControls.ts`, built in `renderToolbar`
-(`src/view/render/toolbar.ts`) and synced after every content render
-(`ProductBacklogView.renderTreeContent`, `src/view/backlogView.ts`) the same way the
-item count already is — never inside `treeEl`'s `role="listbox"`, which has no room for
-a `<select>` or checkboxes without breaking its one-tab-stop contract. Three new host
+The interactive controls — the disclosure that names, counts and opens the shelf, plus
+the sort and type-filter pickers it carries while open — are the SHELF's own header
+chrome (`src/view/render/shelfControls.ts`, called from `renderShelf`). They shipped
+first as view-toolbar chrome and moved here: a control for the shelf, three regions away
+from it, is one nobody finds. Nothing about the constraint that put them there changed —
+`treeEl` still wears `role="listbox"` while any card renders — so what moved had to stop
+being form controls: both pickers are `tabindex="-1"` buttons opening an Obsidian `Menu`,
+the answer the tree's own per-row controls (`.pbl-add`, the state chip) already give. The
+cost is stated rather than hidden: Tab no longer reaches them, and a keyboard path
+belongs with [[Keyboard and menu on the roadmap]]'s own work. Three host
 methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
 `CollapseState` and re-render the content pane alone — never the whole toolbar — so a
 keyboard user's focus survives the control they just used, the same reason `setFilter`

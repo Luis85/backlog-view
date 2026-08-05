@@ -24,14 +24,11 @@ import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId, scaleFor } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
-import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi, syncShelfToggle } from './render/toolbar';
-import { syncShelfControls } from './render/shelfControls';
+import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
-import { syncShelfFit } from './render/roadmap';
-import { uniqueElementId } from './selection';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
 
@@ -87,10 +84,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	/** Guards the one re-render a changed fit may ask for, so it cannot recurse. */
 	private refitting = false;
-	/** Null until the reader presses: the pane's width decides until then. */
-	private shelfOpenFlag: boolean | null = null;
-	/** Fixed for the life of this view — see `BacklogViewHost.shelfId`. */
-	readonly shelfId = uniqueElementId('pbl-shelf');
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -225,29 +218,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth);
 	}
 
-	get shelfOpen(): boolean | null {
-		return this.shelfOpenFlag;
-	}
-
-	setShelfOpen(open: boolean): void {
-		this.shelfOpenFlag = open;
-		// No render: the cards are already in the DOM and a class decides whether they
-		// show, which is the whole reason this measure needs no second pass.
-		syncShelfFit(this, this.treeEl);
-		syncShelfToggle(this, this.toolbarEl);
-	}
-
 	/** Re-measure after a resize, and rebuild only if a column came or went. */
 	private onResize(): void {
-		// The COLUMN ladder is the tree's — board columns and the timeline scroll
-		// rather than dropping columns — and that reason stays true. What is new is
-		// that the roadmap has a measured question of its own: the shelf's fit, which
-		// needs no second render pass because its cards are already in the DOM.
-		if (this.projection === 'roadmap') {
-			syncShelfFit(this, this.treeEl);
-			syncShelfToggle(this, this.toolbarEl);
-			return;
-		}
+		// The COLUMN ladder is the tree's alone — board columns and the timeline scroll
+		// rather than dropping columns, and the shelf answers to a stored pick rather
+		// than to a width.
 		if (this.projection !== 'tree') return;
 		if (this.refit()) this.renderTreeContent();
 	}
@@ -518,17 +493,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// reset or replaced by the anchor policy `restoreScroll` states beside the
 		// fork that decides what was drawn.
 		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
-		// The roadmap's own measured question, gated inside `syncShelfFit` to the dated
-		// axis with a live shelf — harmless to call for the tree and the board, which
-		// carry no roadmap snapshot for it to act on. Run before the resync below: a
-		// compaction that just clamped the selection must land before the selection is
-		// re-applied to the DOM, or a released path would still point `aria-activedescendant`
-		// at a card the class-only collapse just hid.
-		syncShelfFit(this, this.treeEl);
-		syncShelfToggle(this, this.toolbarEl);
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
-		syncShelfControls(this, this.toolbarEl);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
