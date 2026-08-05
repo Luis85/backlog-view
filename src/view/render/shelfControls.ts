@@ -1,15 +1,9 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { showMenuForClick } from '../interactions/menu';
-import { organizeShelf, ShelfSort } from '../../domain/shelf';
+import { addShelfSortItems, addShelfTypeItems, showMenuForClick } from '../interactions/menu';
+import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
 import { SHELF_LABEL } from '../../domain/roadmap';
-
-const SORT_OPTIONS: { value: ShelfSort; label: string }[] = [
-	{ value: 'tree', label: 'Sibling order' },
-	{ value: 'title', label: 'Title (A to Z)' },
-	{ value: 'modified', label: 'Last modified' },
-];
 
 /**
  * The shelf's own header chrome: the disclosure that names it, counts it and opens it,
@@ -23,7 +17,9 @@ const SORT_OPTIONS: { value: ShelfSort; label: string }[] = [
  * wears `role="listbox"` while any card renders, and a focusable form control inside a
  * one-tab-stop composite is a second tab stop the widget does not have. It is the same
  * answer the tree's own per-row controls give (`.pbl-add`, the state chip) — reachable
- * by pointer and by assistive tech, invisible to Tab.
+ * by pointer and by assistive tech, invisible to Tab. Their keyboard path is the card
+ * menu's own shelf section (`interactions/menu.ts`), built from the same two item
+ * builders these buttons use, so neither surface can offer what the other does not.
  *
  * The count is the shelf's TRUE total, never what the type filter currently leaves
  * showing: hiding a type is a display choice, and a count that moved with it would stop
@@ -91,48 +87,23 @@ function renderSortPicker(host: BacklogViewHost, headerEl: HTMLElement): void {
 	const btn = headerButton(headerEl, 'pbl-shelf-sort', 'arrow-up-down', 'Sort the shelf');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
-		for (const { value, label } of SORT_OPTIONS) {
-			menu.addItem((mi) =>
-				mi
-					.setTitle(label)
-					.setChecked(host.shelfSort === value)
-					.onClick(() => host.setShelfSort(value)),
-			);
-		}
+		addShelfSortItems(host, menu);
 		showMenuForClick(menu, evt);
 	});
 }
 
-/**
- * Which type groups show. The menu is built from the UNFILTERED shelf
- * (`organizeShelf(..., new Set())`) so a hidden type is always still listed and can
- * always be turned back on — narrowing the menu by what it narrows would make the last
- * type hidden the one nobody could restore.
- */
+/** Which type groups show. */
 function renderTypeFilter(host: BacklogViewHost, headerEl: HTMLElement, shelf: ShelfCard[]): void {
-	const groups = organizeShelf(shelf, 'tree', new Set());
 	const btn = headerButton(headerEl, 'pbl-shelf-filter', 'list-filter', 'Filter the shelf by type');
 	// The filter is the one of the two picks that can HIDE work, so it says on its face
 	// that it is doing so — a shelf whose count and contents disagree, with nothing
-	// explaining why, reads as a bug.
-	btn.toggleClass('is-active', groups.some((group) => host.shelfHiddenTypes.has(group.type)));
+	// explaining why, reads as a bug. The UNFILTERED grouping decides that, the same
+	// list the menu itself is built from.
+	const hiding = organizeShelf(shelf, 'tree', new Set()).some((group) => host.shelfHiddenTypes.has(group.type));
+	btn.toggleClass('is-active', hiding);
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
-		for (const group of groups) {
-			menu.addItem((mi) =>
-				mi
-					.setTitle(`${group.type} (${group.cards.length})`)
-					.setChecked(!host.shelfHiddenTypes.has(group.type))
-					.onClick(() => toggleType(host, group.type)),
-			);
-		}
+		addShelfTypeItems(host, menu, shelf);
 		showMenuForClick(menu, evt);
 	});
-}
-
-function toggleType(host: BacklogViewHost, type: string): void {
-	const hidden = new Set(host.shelfHiddenTypes);
-	if (hidden.has(type)) hidden.delete(type);
-	else hidden.add(type);
-	host.setShelfHiddenTypes(hidden);
 }

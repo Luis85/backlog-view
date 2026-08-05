@@ -24,6 +24,10 @@ function openMenu(containerEl: HTMLElement, selector: string): Menu {
 	return Menu.lastShown;
 }
 
+function headerMenuTitles(containerEl: HTMLElement, selector: string): string[] {
+	return openMenu(containerEl, selector).items.map((i) => i.titleText);
+}
+
 function itemNamed(menu: Menu, title: string): MenuItem {
 	const item = menu.items.find((i) => i.titleText === title);
 	if (!item) throw new Error(`menu entry not found: ${title}`);
@@ -166,6 +170,46 @@ describe('the shelf\'s own header controls', () => {
 
 		itemNamed(menu, 'Task (1)').click();
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
+	});
+
+	it('puts its actions on the card menu, the keyboard path its tabindex="-1" owes', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		// A composite pane, so the header's controls are correctly out of the tab order —
+		// which is exactly the state that owes a keyboard path. Without this section the
+		// shelf would be pointer-only here, the failure `src/view/CLAUDE.md` names for
+		// the board's own hidden-match links.
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('-1');
+
+		Menu.lastShown = null;
+		cardByTitle(containerEl, 'Now item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('no card menu opened');
+
+		itemNamed(menu, 'Expand unplaced (2)').click();
+		expect(shelfTitles(containerEl)).toEqual(['Untriaged', 'A Task']);
+	});
+
+	it('offers the same sort and filter choices to the keyboard as to the pointer', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+
+		Menu.lastShown = null;
+		cardByTitle(containerEl, 'Now item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('no card menu opened');
+
+		// One builder feeds both surfaces, so the menu's entries are the header's own —
+		// a second builder is what would let the two drift apart about what is offered.
+		const sortEntries = itemNamed(menu, 'Sort unplaced').submenu?.items ?? [];
+		expect(sortEntries.map((i) => i.titleText)).toEqual(headerMenuTitles(containerEl, '.pbl-shelf-sort'));
+		const typeEntries = itemNamed(menu, 'Filter unplaced by type').submenu?.items ?? [];
+		expect(typeEntries.map((i) => i.titleText)).toEqual(headerMenuTitles(containerEl, '.pbl-shelf-filter'));
+
+		itemNamed(menu, 'Filter unplaced by type').submenu!.items[1].click();
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
 	});
 
 	it('never rebuilds the view toolbar when a shelf control changes', () => {

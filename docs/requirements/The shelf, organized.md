@@ -78,6 +78,9 @@ alongside the same visual fixes.
   for.
 - Type groups render in a fixed order (the declared type vocabulary, plus a trailing
   group for anything outside it); a group with nothing in it renders nothing.
+- Every shelf control is reachable without a pointer: the disclosure returns to the tab
+  order wherever the pane rendered no card, and the card menu carries collapse, sort and
+  the type filter wherever it did.
 - Sort and the type filter never write to a note; the shelf's count is the true total,
   unaffected by which groups are currently hidden.
 - Shelf and context-strip cards render at a uniform width; the shelf sits with a
@@ -108,9 +111,14 @@ That rule is the COMPOSITE's, so it is applied only where a composite exists:
 no card and dropped to `role="region"`, resolved from the same final count the role
 itself is. An all-shelved, collapsed roadmap is exactly that case, and it is the one
 where a `-1` would stop being a convention and start being a trap — the disclosure is
-then the only way to the cards it is holding. Where the pane IS a composite the cost is
-real and stated rather than hidden: Tab reaches neither picker, and a keyboard path to
-them belongs with [[Keyboard and menu on the roadmap]]'s own work. Three host
+then the only way to the cards it is holding. Where the pane IS a composite, the keyboard path is the card menu's own shelf section
+(`addShelfSection`, `src/view/interactions/menu.ts`): expand or collapse, and the same
+two pickers as submenus. That is not a nicety deferred to later work — this codebase's
+rule for a `tabindex="-1"` control is that its menu path ships WITH it, stated at the
+board's hidden-match links, whose absence would leave them "pointer-only and the feature
+would fail at its own purpose". The entries come from the same two item builders the
+header buttons call, so the two surfaces cannot drift about what is offered or what is
+checked, the reason the horizon chip and its menu already share one builder. Three host
 methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
 `CollapseState` and re-render the content pane alone — never the whole toolbar — so a
 keyboard user's focus survives the control they just used, the same reason `setFilter`

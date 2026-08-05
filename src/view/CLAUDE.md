@@ -350,6 +350,14 @@ free of runtime code so imports stay cycle-free.
   keeps it so a drop has somewhere to land, and the stylesheet keeps it out of the layout
   until a drag is live. A target that exists only while it is occupied is one nothing can
   ever reach. Whether it actually appears under a dragged card is a vault check.
+- The shelf's own header carries its controls — a disclosure, a sort pick, a type
+  filter — and they follow the per-row control rule exactly: `tabindex="-1"` buttons
+  opening a `Menu`, never form controls, with the card menu's shelf section as the
+  keyboard path (`addShelfSection`). One builder feeds both surfaces. The one case a
+  menu cannot cover is an all-shelved, collapsed roadmap, where no card renders and so
+  no card menu opens: there the pane is a `region` rather than a composite, and
+  `syncShelfTabStop` puts the disclosure back in the tab order, decided from the same
+  final card count the role is.
 - A roadmap card is the board's card: `createCard` / `renderCardBody` /
   `wireCardActivation` are exported from `render/board.ts` and shared, so an item
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
