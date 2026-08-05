@@ -132,11 +132,27 @@ jobs:
           # annotated tag (which is what `npm version` creates) in one call. The gap it
           # leaves is a BRANCH sharing the version's exact name, which would resolve
           # first — not worth a second call for, and not silently ignored either.
-          tagged="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)"
-          if [ -n "$tagged" ] && [ "$tagged" != "$GITHUB_SHA" ]; then
-            echo "Tag '$TAG' already exists on $tagged, but this job is releasing $GITHUB_SHA." >&2
-            echo "The release would name that commit while shipping assets built from this one." >&2
-            echo "Delete the stale tag, or dispatch on the commit it already names." >&2
+          #
+          # The NORMAL case — no tag yet — is this call FAILING (422, "No commit found
+          # for SHA"), and on failure `gh api` skips `--jq` entirely and writes the raw
+          # error body to STDOUT rather than stderr. A first version of this branched on
+          # the exit status alone, treating EVERY failure as "no tag yet" — which is
+          # exactly as wrong the other direction: an auth failure, a rate limit or a
+          # transient GitHub error would then be read as "tag is free" and this guard
+          # would silently step aside for the one case it exists to catch. Match the
+          # SPECIFIC known-absent response instead; anything else — a different message,
+          # no message at all, a network failure — falls through to the `exit 1` below,
+          # failing closed rather than assuming the tag is free.
+          if response="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>&1)"; then
+            if [ "$response" != "$GITHUB_SHA" ]; then
+              echo "Tag '$TAG' already exists on $response, but this job is releasing $GITHUB_SHA." >&2
+              echo "The release would name that commit while shipping assets built from this one." >&2
+              echo "Delete the stale tag, or dispatch on the commit it already names." >&2
+              exit 1
+            fi
+          elif [ "${response#*No commit found for SHA}" = "$response" ]; then
+            echo "Could not confirm tag '$TAG' is unclaimed: $response" >&2
+            echo "Failing closed rather than assuming the tag is free." >&2
             exit 1
           fi
 
