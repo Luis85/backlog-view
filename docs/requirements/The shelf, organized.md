@@ -101,9 +101,16 @@ first as view-toolbar chrome and moved here: a control for the shelf, three regi
 from it, is one nobody finds. Nothing about the constraint that put them there changed —
 `treeEl` still wears `role="listbox"` while any card renders — so what moved had to stop
 being form controls: both pickers are `tabindex="-1"` buttons opening an Obsidian `Menu`,
-the answer the tree's own per-row controls (`.pbl-add`, the state chip) already give. The
-cost is stated rather than hidden: Tab no longer reaches them, and a keyboard path
-belongs with [[Keyboard and menu on the roadmap]]'s own work. Three host
+the answer the tree's own per-row controls (`.pbl-add`, the state chip) already give.
+
+That rule is the COMPOSITE's, so it is applied only where a composite exists:
+`syncShelfTabStop` puts the disclosure back in the tab order whenever the pane rendered
+no card and dropped to `role="region"`, resolved from the same final count the role
+itself is. An all-shelved, collapsed roadmap is exactly that case, and it is the one
+where a `-1` would stop being a convention and start being a trap — the disclosure is
+then the only way to the cards it is holding. Where the pane IS a composite the cost is
+real and stated rather than hidden: Tab reaches neither picker, and a keyboard path to
+them belongs with [[Keyboard and menu on the roadmap]]'s own work. Three host
 methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
 `CollapseState` and re-render the content pane alone — never the whole toolbar — so a
 keyboard user's focus survives the control they just used, the same reason `setFilter`

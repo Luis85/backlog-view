@@ -59,6 +59,23 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	renderTypeFilter(host, headerEl, shelf);
 }
 
+/**
+ * Whether the shelf's disclosure may sit outside the tab order, resolved from the same
+ * card count the pane's own role is: with cards on screen the pane is a one-tab-stop
+ * composite and every control it carries is `tabindex="-1"`, the tree's per-row rule;
+ * with none it is a plain `region`, that rule has nothing to apply to, and the
+ * disclosure is the ONLY way back to the cards a shut shelf is holding. Leaving it at
+ * `-1` there strands a keyboard user on an all-shelved roadmap with no way to open it —
+ * the composite's justification gone, its cost kept.
+ *
+ * Decided after the render rather than while building the button, because that is when
+ * the count is final: two deciders reading the same question at different times is how
+ * the role and the class it pairs with came apart before.
+ */
+export function syncShelfTabStop(shelfEl: HTMLElement, paneIsComposite: boolean): void {
+	shelfEl.querySelector<HTMLElement>('.pbl-shelf-disclosure')?.setAttribute('tabindex', paneIsComposite ? '-1' : '0');
+}
+
 function headerButton(parent: HTMLElement, cls: string, icon: string, label: string): HTMLButtonElement {
 	const btn = parent.createEl('button', {
 		cls: `clickable-icon ${cls}`,

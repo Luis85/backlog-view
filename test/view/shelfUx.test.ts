@@ -63,6 +63,28 @@ describe('the shelf\'s own header controls', () => {
 		expect(containerEl.querySelector('.pbl-shelf-header input')).toBeNull();
 	});
 
+	it('stays in the tab order when the shut shelf is the only thing in the pane', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		// Nothing placed and the shelf shut: the pane renders no card, so it is a plain
+		// region rather than a one-tab-stop composite. The rule that puts the shelf's
+		// controls outside the tab order is the composite's, and with no composite there
+		// is nothing else to reach — a `-1` here would leave an all-shelved roadmap with
+		// no keyboard way to open itself at all.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
+	});
+
+	it('leaves the tab order again as soon as the pane has cards to arrow through', () => {
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+		// Two placed epics still render, so the pane IS a composite and its one stop is
+		// the pane itself — the disclosure goes back to being reachable by arrow and by
+		// assistive tech, never by Tab.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('-1');
+	});
+
 	it('marks the disclosure accessibly, and flips it when clicked', () => {
 		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		expect(disclosureOf(containerEl)?.getAttribute('aria-expanded')).toBe('false');

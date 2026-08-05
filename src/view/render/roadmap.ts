@@ -3,6 +3,7 @@ import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
+import { syncShelfTabStop } from './shelfControls';
 import { renderTimeline } from './timeline';
 import { RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
@@ -91,6 +92,10 @@ export function renderRoadmap(
 	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);
+	// `cards` is final here, and it is what the pane's `listbox`/`region` role is decided
+	// from downstream — so it is also what decides whether the shelf's disclosure may
+	// leave the tab order. See `syncShelfTabStop`.
+	syncShelfTabStop(shelf.el, cards.length > 0);
 	const advisoryEl = renderRoadmapAdvisory(ctx, frameEl, axisCardCount + roadmap.shelf.length + roadmap.context.length);
 
 	// Keyed by WHICH BAND IT IS, in the order the bands render — a band that did not
