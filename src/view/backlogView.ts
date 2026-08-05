@@ -176,8 +176,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	setShelfCollapsed(collapsed: boolean): void {
 		if (collapsed === this.shelfCollapsed) return;
 		this.collapse.setShelfCollapsed(collapsed);
-		// Content only, like setFilter — a full render() would tear down and rebuild
-		// the very toolbar control the user just activated, taking their focus with it.
+		// Content only, like setFilter: the toolbar keeps its own focus and its own DOM.
+		// This does NOT spare the control that asked for it — the shelf's disclosure
+		// lives in the content pane and is rebuilt by this very call, which is why it
+		// hands focus to its replacement itself (`renderShelfControls`).
 		this.renderTreeContent();
 	}
 

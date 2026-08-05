@@ -98,6 +98,26 @@ describe('the shelf\'s own header controls', () => {
 		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
+	it('keeps focus on the disclosure it just rebuilt, rather than dropping to the body', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		const before = disclosureOf(containerEl);
+		before?.focus();
+		expect(document.activeElement).toBe(before);
+
+		before?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// Toggling rebuilds the whole pane, so the button that was pressed is gone. What
+		// has to survive is the reader's POSITION: focus lands on whatever now plays the
+		// same part, the way the type-filter chips already handed focus across their own
+		// rebuild. Dropping to the body strands a keyboard user the instant they open the
+		// shelf — worst exactly where the disclosure is their only way in.
+		const after = disclosureOf(containerEl);
+		expect(after).not.toBe(before);
+		expect(document.activeElement).toBe(after);
+	});
+
 	it('leaves the tab order again as soon as the pane has cards to arrow through', () => {
 		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		// Two placed epics still render, so the pane IS a composite and its one stop is

@@ -44,6 +44,7 @@ export function renderRoadmap(
 		return {
 			roadmap: { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 },
 			cards: [],
+			shelfEl: null,
 			todayLeft: null,
 			scroller: null,
 			boxes: [],
@@ -107,7 +108,7 @@ export function renderRoadmap(
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
-	return { roadmap, cards, todayLeft, scroller, boxes, window, scale };
+	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale };
 }
 
 /**

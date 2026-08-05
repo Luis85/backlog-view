@@ -47,7 +47,15 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	const action = `${collapsed ? 'Expand' : 'Collapse'} ${SHELF_LABEL} (${shelf.length})`;
 	disclosure.setAttribute('aria-label', action);
 	setTooltip(disclosure, action);
-	disclosure.addEventListener('click', () => host.setShelfCollapsed(!collapsed));
+	disclosure.addEventListener('click', () => {
+		host.setShelfCollapsed(!collapsed);
+		// That call rebuilt the pane synchronously and this button went with it. Focus
+		// has to follow the PART, not the node: without this a keyboard user is dropped
+		// on the document body the instant they open the shelf, and in the no-card states
+		// where this button is their only way in, that is where they are left. The same
+		// capture-and-hand-over the type-filter chips used across their own rebuild.
+		host.roadmap?.shelfEl?.querySelector<HTMLElement>('.pbl-shelf-disclosure')?.focus();
+	});
 	// Nothing to order or narrow while the cards are shut away, and a control that
 	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
 	if (collapsed) return;

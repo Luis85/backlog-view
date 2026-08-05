@@ -67,6 +67,13 @@ export interface RoadmapSnapshot {
 	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
+	/**
+	 * The shelf's own element for THIS render. Carried so a control that rebuilt the
+	 * pane can find its own replacement afterwards — the pressed button is gone by
+	 * then, and focus has to follow the part it played rather than the node. Null only
+	 * where no frame was drawn at all, which is also where there is nothing to refocus.
+	 */
+	shelfEl: HTMLElement | null;
 	/** Pixel offset of the today line inside the grid, or null on the horizon axis. */
 	todayLeft: number | null;
 	/**
