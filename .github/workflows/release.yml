@@ -9,8 +9,16 @@ on:
   # version files are already committed and only the tag is missing.
   workflow_dispatch:
 
+# Declaring this block at all sets every permission NOT listed here to `none`, so a step
+# that calls an API nobody added a scope for fails at release time — the one moment there
+# is no cheap way to try again. Every entry below names the step that needs it; adding an
+# API call to this workflow means adding its scope here in the same edit.
 permissions:
+  # `gh release view` / `gh release create`, and the tag a dispatch creates.
   contents: write
+  # `gh api .../check-runs` — the CI gate below. Reading a commit's checks is its own
+  # scope, NOT part of `contents`.
+  checks: read
   # Artifact attestations: id-token signs the provenance, attestations stores it.
   id-token: write
   attestations: write
