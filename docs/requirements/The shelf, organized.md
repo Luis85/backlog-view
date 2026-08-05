@@ -81,6 +81,10 @@ alongside the same visual fixes.
 - Every shelf control is reachable without a pointer: the disclosure returns to the tab
   order wherever the pane rendered no card, and the card menu carries collapse, sort and
   the type filter wherever it did.
+- Using one never strands the keyboard. The press rebuilds the pane and destroys the
+  button, so focus goes to the pane where cards remain — the composite owns the arrows,
+  and its handler answers only to events targeting the pane itself — and to the control's
+  own replacement where no card does.
 - Sort and the type filter never write to a note; the shelf's count is the true total,
   unaffected by which groups are currently hidden.
 - Shelf and context-strip cards render at a uniform width; the shelf sits with a

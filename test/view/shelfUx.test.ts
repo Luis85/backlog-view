@@ -98,21 +98,39 @@ describe('the shelf\'s own header controls', () => {
 		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
-	it('keeps focus on the disclosure it just rebuilt, rather than dropping to the body', () => {
+	it('gives the pane the focus when opening the shelf leaves cards to arrow through', () => {
 		const vault = new FakeVault();
 		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
-		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		const { containerEl, view } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		const tree = containerEl.querySelector<HTMLElement>('.pbl-tree');
+		disclosureOf(containerEl)?.focus();
+
+		disclosureOf(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// The press rebuilt the pane and destroyed the button, so focus has to go
+		// SOMEWHERE — and inside a composite it cannot go to the replacement. The pane's
+		// key handler ignores any event whose target is not the pane itself, so focus on
+		// a `tabindex="-1"` control within it leaves the arrows dead while looking fine.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		expect(document.activeElement).toBe(tree);
+		// The consequence, not just the mechanism: the walk still works.
+		key(tree as HTMLElement, 'ArrowDown');
+		expect(view.selectedPath).toBe('Untriaged.md');
+	});
+
+	it('gives the control the focus when nothing is left to arrow through', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeRoadmap(vault);
 		const before = disclosureOf(containerEl);
 		before?.focus();
-		expect(document.activeElement).toBe(before);
 
 		before?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-		// Toggling rebuilds the whole pane, so the button that was pressed is gone. What
-		// has to survive is the reader's POSITION: focus lands on whatever now plays the
-		// same part, the way the type-filter chips already handed focus across their own
-		// rebuild. Dropping to the body strands a keyboard user the instant they open the
-		// shelf — worst exactly where the disclosure is their only way in.
+		// Shutting the only content leaves a plain region: no composite owns the
+		// keyboard, so the control that did this is the one thing to be on — and it is
+		// the only way back. Dropping to the body strands a keyboard user here.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
 		const after = disclosureOf(containerEl);
 		expect(after).not.toBe(before);
 		expect(document.activeElement).toBe(after);
@@ -132,11 +150,11 @@ describe('the shelf\'s own header controls', () => {
 			itemNamed(openMenu(containerEl, selector), entry).click();
 
 			// The pick rebuilds the pane, taking the button the menu was opened from with
-			// it. A menu opened from the HEADER has to give focus back to the header —
-			// unlike the card menu, which was opened from a card and leaves focus there.
-			const after = containerEl.querySelector<HTMLElement>(selector);
-			expect(after, selector).not.toBe(before);
-			expect(document.activeElement, selector).toBe(after);
+			// it. This fixture keeps cards on screen, so the pane is still a composite
+			// and the focus belongs to IT — the replacement control is `tabindex="-1"`
+			// there, and focusing it would silence the arrows.
+			expect(containerEl.querySelector<HTMLElement>(selector), selector).not.toBe(before);
+			expect(document.activeElement, selector).toBe(containerEl.querySelector('.pbl-tree'));
 		}
 	});
 

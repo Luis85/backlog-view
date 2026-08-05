@@ -43,8 +43,10 @@ partial cannot leave the page quietly drawing it as nothing.
   set, finds a variable known to be there, and excludes one known to be a `--pbl`. The
   instrument is checked before its verdict is trusted.
 - **2a — the stub is asked to be accurate rather than complete.** It is not, and cannot
-  be: these are approximations of Obsidian's values, and no check here can compare them
-  to the app. Completeness is what a check can reach, so completeness is what is claimed.
+  be: no check here can compare a value to the app. The base scale and the named palette
+  are Obsidian's own DOCUMENTED defaults for both schemes rather than invented ones,
+  which is worth having and is not the same claim — a vault with any theme installed
+  replaces exactly those values, and most vaults have one. Completeness is what a check can reach, so completeness is what is claimed.
   The gap is stated in the stub, in the Feature note and in
   [ADR 0020](../adrs/0020-the-browser-harness-draws-it-does-not-assert.md), not narrowed
   by better guesses.
@@ -55,6 +57,11 @@ partial cannot leave the page quietly drawing it as nothing.
 ## Acceptance criteria
 
 - The set is measured off `styles/` on every run, never listed.
+- Completeness is asked PER SCHEME, not of the file. The stub carries a light and a dark
+  scale now, and a variable set under one of them is missing under the other while a
+  search of the text still finds it — so each scheme is resolved as the page resolves it
+  (everything outside the two blocks, plus that block), and a name in one and not the
+  other fails naming itself.
 - The instrument has its own test, and that test would fail if the scan matched nothing.
 - Removing a definition from the stub fails the suite naming that variable — watched
   failing, not assumed.
@@ -63,4 +70,4 @@ partial cannot leave the page quietly drawing it as nothing.
 
 ## Where it lives
 
-`test/harness/theme.css` · `test/harness/harness.test.ts`
+`test/harness/theme.css` · `test/harness/theme.ts` · `test/harness/harness.test.ts`

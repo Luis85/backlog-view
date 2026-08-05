@@ -38,9 +38,12 @@ limit of what looking proves is written down instead of assumed.
 partials, and every interaction — the drags are the drag library's, the menu entries and
 the actions behind them are the view's, the toolbar is the toolbar.
 
-**Not:** colour. The Obsidian variables `styles/` reads are supplied by a stub of
-approximations, because Obsidian's theme is Obsidian's. A colour seen in the harness is
-not a colour a user sees; and the menu and dialog **widgets** are the harness's own,
+**Not:** colour, though the gap narrowed. The stub is built on Obsidian's documented base
+scale and named palette, in both a light and a dark scheme, switchable in the page
+(`?theme=light`, or the harness's own corner toggle) — so contrast, hierarchy and the
+does-this-read-at-all question can be asked both ways, which is where the plugin's own
+choices show. It is still a stub: a themed vault replaces exactly those values, and most
+vaults have a theme, so a colour seen in the harness is not a colour a user sees; and the menu and dialog **widgets** are the harness's own,
 since the mock records them and renders nothing.
 
 Icons moved from the second list to the first. They rendered as their own NAMES while
@@ -61,7 +64,8 @@ by a screenshot from here.
 
 - The page mounts the real view — not a copy of it, and not a fixture of its markup — so
   a change to `src/view/` is visible without any harness edit.
-- All three projections are reachable, through the view's own toolbar.
+- All three projections are reachable, through the view's own toolbar, in either colour
+  scheme — and each is reachable from a URL, so looking needs no click.
 - The harness costs `npm run check` no sixth step, and costs the PLUGIN no dependency:
   nothing it needs is shipped, and nothing it needs drives a browser. It carries one
   devDependency, `lucide-static` — static icon data, no binary to download and no version
@@ -78,7 +82,8 @@ by a screenshot from here.
 ## Where it lives
 
 `harness.mjs` · `test/harness/mount.ts` · `test/harness/page.ts` ·
-`test/harness/icons.ts` · `test/harness/theme.css` · `test/helpers/fixtures.ts` ·
+`test/harness/icons.ts` · `test/harness/theme.css` · `test/harness/theme.ts` ·
+`test/helpers/fixtures.ts` ·
 `test/harness/harness.test.ts` · `test/CLAUDE.md`
 
 `icons.ts` installs its renderer through the one hook the shared mock exposes for it

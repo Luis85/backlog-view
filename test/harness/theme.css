@@ -10,42 +10,11 @@
  * for `var(--x)` and fails if one is missing here. Add a variable to a partial and that
  * test tells you to add it below, instead of the page quietly drawing it as nothing.
  */
+/*
+ * Scheme-independent: geometry and type. Nothing here changes between light and dark,
+ * so nothing here is duplicated below.
+ */
 :root {
-	color-scheme: dark;
-
-	/* Surfaces */
-	--background-primary: #1e1e1e;
-	--background-secondary: #262626;
-	--background-modifier-hover: rgba(255, 255, 255, 0.075);
-	--background-modifier-active-hover: rgba(255, 255, 255, 0.15);
-	--background-modifier-border: #3a3a3a;
-	--background-modifier-border-hover: #4d4d4d;
-
-	/* Text */
-	--text-normal: #dadada;
-	--text-muted: #9c9c9c;
-	--text-faint: #6b6b6b;
-	--text-accent: #7f6df2;
-	--text-error: #e05252;
-	--text-warning: #e0a52a;
-
-	/* Accent */
-	--interactive-accent: #7f6df2;
-	--interactive-accent-hsl: 247, 82%, 69%;
-
-	/* Palette — the plain colours and the rgb triples the badges compose from */
-	--color-red: #e05252;
-	--color-green: #45b06a;
-	--color-cyan: #37b7c3;
-	--color-red-rgb: 224, 82, 82;
-	--color-orange-rgb: 224, 138, 42;
-	--color-yellow-rgb: 224, 190, 42;
-	--color-green-rgb: 69, 176, 106;
-	--color-cyan-rgb: 55, 183, 195;
-	--color-blue-rgb: 82, 137, 224;
-	--color-purple-rgb: 145, 92, 224;
-	--color-pink-rgb: 214, 92, 168;
-
 	/* Spacing — Obsidian's 2px and 4px steps */
 	--size-2-1: 2px;
 	--size-2-2: 4px;
@@ -56,11 +25,10 @@
 	--size-4-4: 16px;
 	--size-4-8: 32px;
 
-	/* Radii and shadow */
+	/* Radii */
 	--radius-s: 4px;
 	--radius-m: 8px;
 	--radius-l: 12px;
-	--shadow-s: 0 1px 2px rgba(0, 0, 0, 0.3);
 
 	/* Type */
 	--font-medium: 500;
@@ -73,8 +41,115 @@
 	--icon-s: 16px;
 	--icon-size: 18px;
 	--icon-stroke: 1.75px;
-	--icon-color: var(--text-muted);
 	--cursor: default;
+}
+
+/*
+ * Everything a colour scheme decides, derived from the BASE SCALE the way Obsidian
+ * derives it: the two blocks below set the scale and the palette, and these mappings
+ * are written once against them. Written on `body`, which is where the theme class
+ * goes (Obsidian's own placement), so `var(--color-base-00)` resolves against whichever
+ * of the two is active — the same element, so no cascade subtlety to get wrong.
+ */
+body {
+	--background-primary: var(--color-base-00);
+	--background-secondary: var(--color-base-20);
+	--background-modifier-border: var(--color-base-30);
+	--background-modifier-border-hover: var(--color-base-35);
+	--text-normal: var(--color-base-100);
+	--text-muted: var(--color-base-70);
+	--text-faint: var(--color-base-50);
+	--icon-color: var(--text-muted);
+	--text-error: var(--color-red);
+	--text-warning: var(--color-orange);
+
+	/*
+	 * The accent is HSL in Obsidian because a user picks it in settings; these are the
+	 * documented defaults, and they are the same in both schemes.
+	 */
+	--accent-h: 258;
+	--accent-s: 88%;
+	--accent-l: 66%;
+	--interactive-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+	--interactive-accent-hsl: var(--accent-h), var(--accent-s), var(--accent-l);
+	--text-accent: var(--interactive-accent);
+}
+
+/*
+ * The base scale and the named palette, per scheme. These twelve steps and eight colours
+ * are Obsidian's DOCUMENTED defaults rather than this stub's invention — which is what
+ * makes the page worth looking at for contrast and hierarchy, and still not what makes it
+ * a claim about a themed vault: a theme replaces exactly these values, and most do.
+ */
+body.theme-dark {
+	color-scheme: dark;
+
+	--color-base-00: #1c1c1c;
+	--color-base-05: #212121;
+	--color-base-10: #232323;
+	--color-base-20: #282828;
+	--color-base-25: #2e2e2e;
+	--color-base-30: #333333;
+	--color-base-35: #3f3f3f;
+	--color-base-40: #555555;
+	--color-base-50: #666666;
+	--color-base-60: #999999;
+	--color-base-70: #b3b3b3;
+	--color-base-100: #dadada;
+
+	--color-red: #fb464c;
+	--color-orange: #e9973f;
+	--color-green: #44cf6e;
+	--color-cyan: #53dfdd;
+
+	--color-red-rgb: 251, 70, 76;
+	--color-orange-rgb: 233, 151, 63;
+	--color-yellow-rgb: 224, 222, 113;
+	--color-green-rgb: 68, 207, 110;
+	--color-cyan-rgb: 83, 223, 221;
+	--color-blue-rgb: 2, 122, 255;
+	--color-purple-rgb: 168, 130, 255;
+	--color-pink-rgb: 250, 153, 205;
+
+	/* Overlays lighten on dark and darken on light — the one pair that inverts. */
+	--background-modifier-hover: rgba(255, 255, 255, 0.075);
+	--background-modifier-active-hover: rgba(255, 255, 255, 0.15);
+	--shadow-s: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-light {
+	color-scheme: light;
+
+	--color-base-00: #ffffff;
+	--color-base-05: #fcfcfc;
+	--color-base-10: #fafafa;
+	--color-base-20: #f6f6f6;
+	--color-base-25: #efefef;
+	--color-base-30: #e4e4e4;
+	--color-base-35: #dadada;
+	--color-base-40: #bdbdbd;
+	--color-base-50: #ababab;
+	--color-base-60: #707070;
+	--color-base-70: #5c5c5c;
+	--color-base-100: #222222;
+
+	--color-red: #e93147;
+	--color-orange: #ec7500;
+	--color-green: #08b94e;
+	--color-cyan: #00bfbc;
+
+	--color-red-rgb: 233, 49, 71;
+	--color-orange-rgb: 236, 117, 0;
+	--color-yellow-rgb: 224, 172, 0;
+	--color-green-rgb: 8, 185, 78;
+	--color-cyan-rgb: 0, 191, 188;
+	--color-blue-rgb: 8, 109, 221;
+	--color-purple-rgb: 120, 82, 238;
+	--color-pink-rgb: 213, 57, 132;
+
+	--background-modifier-hover: rgba(0, 0, 0, 0.05);
+	--background-modifier-active-hover: rgba(0, 0, 0, 0.1);
+	--shadow-s: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 /*
@@ -221,4 +296,29 @@ body {
 	line-height: 1;
 	color: var(--text-muted);
 	white-space: nowrap;
+}
+
+/*
+ * The harness's own scheme switch. Deliberately unlike anything the plugin draws and
+ * parked out of the way: a control in a screenshot that nobody can find in the plugin is
+ * worse than no control at all, so it says whose it is.
+ */
+.pbl-harness-scheme {
+	position: fixed;
+	right: var(--size-4-3);
+	bottom: var(--size-4-3);
+	z-index: 30;
+	padding: var(--size-2-2) var(--size-4-2);
+	border: 1px dashed var(--background-modifier-border-hover);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	color: var(--text-faint);
+	font-family: ui-monospace, monospace;
+	font-size: 11px;
+	cursor: var(--cursor, pointer);
+}
+
+.pbl-harness-scheme:hover {
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
 }

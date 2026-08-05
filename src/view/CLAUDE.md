@@ -359,7 +359,11 @@ free of runtime code so imports stay cycle-free.
   `syncShelfTabStops` puts EVERY header control back in the tab order, decided from the
   same final card count the role is. Every one, not the disclosure alone — hiding the
   last visible type empties the pane by itself, and rescuing only the disclosure leaves
-  the filter that caused it unreachable.
+  the filter that caused it unreachable. Using any of them rebuilds the pane and destroys
+  the button pressed, so `refocus` puts focus back — on the PANE where cards remain, on
+  the control's replacement where none do. Not interchangeable: the pane's key handler
+  ignores any event whose target is not the pane itself, so focusing a `tabindex="-1"`
+  control inside a composite silently kills the arrows while looking correct.
 - A roadmap card is the board's card: `createCard` / `renderCardBody` /
   `wireCardActivation` are exported from `render/board.ts` and shared, so an item
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,

@@ -85,14 +85,30 @@ export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean
 }
 
 /**
- * Hand focus to whatever now plays this control's part. Every control in this header
- * rebuilds the pane when used, which destroys the very button that was pressed — focus
- * has to follow the PART, not the node, or a keyboard user is dropped on the document
- * body the instant they act. It matters most in the no-card states, where these buttons
- * are the only way back in and there is no card menu to reach them by.
+ * Every control in this header rebuilds the pane when used, destroying the very button
+ * that was pressed, so focus has to be put somewhere or it lands on the document body
+ * and the reader is out of the view entirely. WHERE depends on what the rebuild left,
+ * and the two answers are not interchangeable:
+ *
+ * - Cards on screen: the pane is a composite and owns the keyboard. Its handler ignores
+ *   any event whose target is not the pane ITSELF (`evt.target !== evt.currentTarget`
+ *   in `interactions/keyboard.ts`), so focus on a `tabindex="-1"` control inside it
+ *   would look fine and silently kill Arrow, Home and End. Focus goes to the pane.
+ * - No cards: there is no composite to own anything, `syncShelfTabStops` has just put
+ *   these controls back in the tab order, and the one that did this is the only way
+ *   back. Focus goes to its replacement.
+ *
+ * Asked AFTER the rebuild, of the state the rebuild produced — opening a shelf turns a
+ * region into a composite and closing the last content turns it back, so the question is
+ * about what is on screen now, not about what was pressed.
  */
 function refocus(host: BacklogViewHost, selector: string): void {
-	host.roadmap?.shelfEl?.querySelector<HTMLElement>(selector)?.focus();
+	const snapshot = host.roadmap;
+	const shelfEl = snapshot?.shelfEl;
+	if (!snapshot || !shelfEl) return;
+	const composite = snapshot.cards.length > 0;
+	const target = composite ? shelfEl.closest<HTMLElement>('.pbl-tree') : shelfEl.querySelector<HTMLElement>(selector);
+	target?.focus();
 }
 
 function headerButton(parent: HTMLElement, cls: string, icon: string, label: string): HTMLButtonElement {

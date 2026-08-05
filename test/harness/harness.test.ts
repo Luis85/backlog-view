@@ -218,12 +218,40 @@ describe('the theme stub covers the stylesheet', () => {
 		return used;
 	}
 
-	it('defines every Obsidian variable the partials read', () => {
+	/**
+	 * What the page actually resolves in one scheme: everything outside the two
+	 * scheme blocks, plus that scheme's own. Asked per scheme rather than of the whole
+	 * file, because the file having a name in it somewhere is not the question — a
+	 * variable set only under `theme-dark` reads as nothing in light, and a search of
+	 * the text would call that covered.
+	 */
+	function variablesDefined(scheme: 'dark' | 'light'): Set<string> {
 		const theme = readFileSync('test/harness/theme.css', 'utf8');
+		const blockOf = (name: string) => new RegExp(`body\\.theme-${name}\\s*\\{([^}]*)\\}`).exec(theme)?.[1] ?? '';
+		const shared = theme.replace(/body\.theme-(dark|light)\s*\{[^}]*\}/g, '');
+		const defined = new Set<string>();
+		for (const source of [shared, blockOf(scheme)]) {
+			for (const match of source.matchAll(/^\s*(--[\w-]+)\s*:/gm)) defined.add(match[1]);
+		}
+		return defined;
+	}
 
-		const missing = [...variablesUsed('styles')].filter((name) => !new RegExp(`^\\s*${name}\\s*:`, 'm').test(theme));
+	it.each(['dark', 'light'] as const)('defines every Obsidian variable the partials read, in %s', (scheme) => {
+		const defined = variablesDefined(scheme);
 
-		expect(missing).toEqual([]);
+		expect([...variablesUsed('styles')].filter((name) => !defined.has(name))).toEqual([]);
+	});
+
+	it('splits the schemes rather than defining one of them', () => {
+		// The instrument again: a regex that failed to find either block would make the
+		// test above a search of the whole file, which is the thing it exists not to be.
+		const dark = variablesDefined('dark');
+		const light = variablesDefined('light');
+		expect(dark.has('--color-base-00')).toBe(true);
+		expect(light.has('--color-base-00')).toBe(true);
+		// Same set, different values — a name in one and not the other is the defect.
+		expect([...dark].filter((name) => !light.has(name))).toEqual([]);
+		expect([...light].filter((name) => !dark.has(name))).toEqual([]);
 	});
 
 	it('measures something — the instrument is checked before its verdict is trusted', () => {
