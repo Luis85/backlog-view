@@ -148,5 +148,12 @@ flush-edge gutter and overflow fix is NOT in `shelf.css`: it is the pinned-strip
 .pbl-board-advisory`) in `styles/roadmap.css`, changed by the same task that gives the
 buckets their own full-width layout — the rule governs the shelf's POSITION within the
 roadmap's scrollport, which is a roadmap-layout concern `roadmap.css` already owns,
-not shelf-internal appearance. The full-width/grid layout itself is a live-vault check
-— jsdom has no layout engine — recorded verified only after `npm run test-build`.
+not shelf-internal appearance. The layout half of that is now checkable without a vault: measured through
+`npm run harness` ([[A browser harness without Obsidian]]), the shelf takes the pane's
+width less a 12px gutter on each side (1376px of 1400px) on BOTH axes, its collapsed
+footprint is 33px rather than an empty box, and the disclosure sizes to its label
+(212x23px) rather than to `clickable-icon`'s lone-glyph square. The dated axis's own
+number is what the fix is worth: with the sticky rule's `align-self: flex-start` left
+standing, the same shelf measured 407px. Appearance rather than layout — a real theme's
+fonts, colours and icons — the harness cannot answer, and the release sweep's check
+stands for it (ADR 0020).

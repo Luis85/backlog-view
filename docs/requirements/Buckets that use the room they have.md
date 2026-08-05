@@ -77,7 +77,12 @@ every bucket already stretches to the tallest one, and a grid's default alignmen
 otherwise stretch a sparse bucket's own cards into that surplus height instead of
 leaving them their natural size.
 
-The visual result — actual column counts at a given pane width, and whether the
-fallback scroll reads well with many horizons — is a live-vault check: jsdom has no
-layout engine, so `npm run test-build` is what this note relies on rather than a DOM
-assertion.
+The visual result was a live-vault check when this was written, because jsdom has no
+layout engine. `npm run harness` ([[A browser harness without Obsidian]]) closed most of
+that gap: measured in Chromium against the real stylesheet, three buckets in a 1900px
+pane take 617px each with a symmetric 12px gutter and no horizontal scroll, their cards
+reflow to two columns, and a sparse bucket's cards keep their natural height (76/94/80px)
+inside a row stretched to 434px — which is what `align-content: start` is for. At 700px
+the buckets clamp at the 280px floor and the pane scrolls, the stated fallback. What the
+harness still cannot answer is appearance rather than layout — a real theme's spacing
+tokens, fonts and icons — so the release sweep's own check stands (ADR 0020).
