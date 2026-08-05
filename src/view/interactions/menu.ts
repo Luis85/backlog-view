@@ -383,7 +383,7 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
  * `tabindex="-1"` like every control in the one-tab-stop pane, so this menu is their
  * keyboard path — the same answer the board's hidden-match links give, and for the same
  * reason stated there: without it the shelf's collapse, sort and filter would be
- * pointer-only and the feature would fail at its own purpose. `syncShelfTabStop` covers
+ * pointer-only and the feature would fail at its own purpose. `syncShelfTabStops` covers
  * the one case this cannot, where no card renders and there is no menu to open.
  *
  * On the roadmap only, and only while the shelf holds something — an entry for a region

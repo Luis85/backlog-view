@@ -56,20 +56,29 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 }
 
 /**
- * Whether the shelf's disclosure may sit outside the tab order, resolved from the same
- * card count the pane's own role is: with cards on screen the pane is a one-tab-stop
- * composite and every control it carries is `tabindex="-1"`, the tree's per-row rule;
- * with none it is a plain `region`, that rule has nothing to apply to, and the
- * disclosure is the ONLY way back to the cards a shut shelf is holding. Leaving it at
- * `-1` there strands a keyboard user on an all-shelved roadmap with no way to open it —
- * the composite's justification gone, its cost kept.
+ * Whether the shelf's header controls may sit outside the tab order, resolved from the
+ * same card count the pane's own role is: with cards on screen the pane is a
+ * one-tab-stop composite and everything it carries is `tabindex="-1"`, the tree's
+ * per-row rule, with the card menu's shelf section as the keyboard path; with none it
+ * is a plain `region`, that rule has nothing to apply to, and no card menu can open
+ * either — so the header's own controls are all that is left and every one of them
+ * has to be reachable.
  *
- * Decided after the render rather than while building the button, because that is when
+ * ALL of them, not the disclosure alone. Hiding the last visible type on a roadmap
+ * with nothing placed empties the pane by itself, and rescuing only the disclosure
+ * leaves a keyboard user shutting and reopening an empty shelf forever with the filter
+ * that caused it out of reach. The rule is about the composite, so it lifts for
+ * everything at once or it is not that rule.
+ *
+ * Decided after the render rather than while building the buttons, because that is when
  * the count is final: two deciders reading the same question at different times is how
  * the role and the class it pairs with came apart before.
  */
-export function syncShelfTabStop(shelfEl: HTMLElement, paneIsComposite: boolean): void {
-	shelfEl.querySelector<HTMLElement>('.pbl-shelf-disclosure')?.setAttribute('tabindex', paneIsComposite ? '-1' : '0');
+export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean): void {
+	const tabindex = paneIsComposite ? '-1' : '0';
+	for (const btn of Array.from(shelfEl.querySelectorAll<HTMLElement>('.pbl-shelf-header button'))) {
+		btn.setAttribute('tabindex', tabindex);
+	}
 }
 
 function headerButton(parent: HTMLElement, cls: string, icon: string, label: string): HTMLButtonElement {

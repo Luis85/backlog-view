@@ -80,6 +80,24 @@ describe('the shelf\'s own header controls', () => {
 		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
+	it('keeps every header control tabbable when hiding the last type empties the pane', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl, view } = makeRoadmap(vault);
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+
+		view.setShelfHiddenTypes(new Set(['Epic']));
+		// Nothing renders now — no placed card, and the shelf's only group hidden — so the
+		// pane is a region and no card menu can open. The filter that produced this state
+		// is the only way out of it, which makes reaching it the whole question: rescuing
+		// the disclosure alone would leave a keyboard user able to shut and reopen an
+		// empty shelf forever and never unhide anything.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+		expect(containerEl.querySelector('.pbl-shelf-filter')?.getAttribute('tabindex')).toBe('0');
+		expect(containerEl.querySelector('.pbl-shelf-sort')?.getAttribute('tabindex')).toBe('0');
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
+	});
+
 	it('leaves the tab order again as soon as the pane has cards to arrow through', () => {
 		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		// Two placed epics still render, so the pane IS a composite and its one stop is
@@ -87,6 +105,14 @@ describe('the shelf\'s own header controls', () => {
 		// assistive tech, never by Tab.
 		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
 		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('-1');
+	});
+
+	it('takes the pickers out of the tab order too, wherever the pane is a composite', () => {
+		const { containerEl } = makeRoadmap(horizonVault());
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		for (const sel of ['.pbl-shelf-disclosure', '.pbl-shelf-sort', '.pbl-shelf-filter']) {
+			expect(containerEl.querySelector(sel)?.getAttribute('tabindex'), sel).toBe('-1');
+		}
 	});
 
 	it('marks the disclosure accessibly, and flips it when clicked', () => {

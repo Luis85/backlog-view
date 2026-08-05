@@ -107,11 +107,13 @@ being form controls: both pickers are `tabindex="-1"` buttons opening an Obsidia
 the answer the tree's own per-row controls (`.pbl-add`, the state chip) already give.
 
 That rule is the COMPOSITE's, so it is applied only where a composite exists:
-`syncShelfTabStop` puts the disclosure back in the tab order whenever the pane rendered
-no card and dropped to `role="region"`, resolved from the same final count the role
-itself is. An all-shelved, collapsed roadmap is exactly that case, and it is the one
-where a `-1` would stop being a convention and start being a trap — the disclosure is
-then the only way to the cards it is holding. Where the pane IS a composite, the keyboard path is the card menu's own shelf section
+`syncShelfTabStops` puts every header control back in the tab order whenever the pane
+rendered no card and dropped to `role="region"`, resolved from the same final count the
+role itself is. Two states reach it: an all-shelved roadmap with the shelf shut, where
+the disclosure is the only way to the cards it holds, and an all-shelved roadmap whose
+last visible type the filter just hid, where the pane empties by itself and the filter
+is the only way back. Both are where a `-1` stops being a convention and becomes a
+trap, which is why the lift is all-or-nothing rather than per control. Where the pane IS a composite, the keyboard path is the card menu's own shelf section
 (`addShelfSection`, `src/view/interactions/menu.ts`): expand or collapse, and the same
 two pickers as submenus. That is not a nicety deferred to later work — this codebase's
 rule for a `tabindex="-1"` control is that its menu path ships WITH it, stated at the

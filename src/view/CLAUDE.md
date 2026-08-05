@@ -356,8 +356,10 @@ free of runtime code so imports stay cycle-free.
   keyboard path (`addShelfSection`). One builder feeds both surfaces. The one case a
   menu cannot cover is an all-shelved, collapsed roadmap, where no card renders and so
   no card menu opens: there the pane is a `region` rather than a composite, and
-  `syncShelfTabStop` puts the disclosure back in the tab order, decided from the same
-  final card count the role is.
+  `syncShelfTabStops` puts EVERY header control back in the tab order, decided from the
+  same final card count the role is. Every one, not the disclosure alone — hiding the
+  last visible type empties the pane by itself, and rescuing only the disclosure leaves
+  the filter that caused it unreachable.
 - A roadmap card is the board's card: `createCard` / `renderCardBody` /
   `wireCardActivation` are exported from `render/board.ts` and shared, so an item
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
