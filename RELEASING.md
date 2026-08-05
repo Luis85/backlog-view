@@ -162,12 +162,22 @@ the version from `manifest.json` on the ref you name and take it from there:
 
 - Or push the tag yourself, reading it from the manifest rather than typing it, so this
   works for whatever version is committed. `main`'s branch protection does not cover
-  tags, so this succeeds even though pushing to `main` itself does not:
+  tags, so this succeeds even though pushing to `main` itself does not. Pull the merged
+  `main` first — if step 1 ran in this same clone, `npm version` already left a local tag
+  with this exact name on the **pre-merge** commit, and `git tag` refuses to reuse a name
+  without `-f`; recreate it on the commit you actually mean to release rather than
+  reusing or fighting the stale one:
 
   ```bash
+  git fetch origin main && git checkout main && git merge --ff-only origin/main
   tag="$(node -p "require('./manifest.json').version")"
-  git tag "$tag" && git push origin "$tag"
+  git tag -f "$tag" && git push origin "$tag"
   ```
+
+  `-f` only ever moves the LOCAL ref onto the commit just checked out; the push after it
+  is a plain, non-forced push of a name that does not yet exist on the remote in the
+  normal case, so it fails safely rather than silently overwriting anything there. The
+  dispatch path above sidesteps all of this — it never touches a local tag.
 
 What proves it worked is the release, not a green workflow run: check on the releases
 page that the tag name **exactly matches** the version in `manifest.json` (`x.y.z`, no
