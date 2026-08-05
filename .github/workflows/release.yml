@@ -132,8 +132,15 @@ jobs:
           # annotated tag (which is what `npm version` creates) in one call. The gap it
           # leaves is a BRANCH sharing the version's exact name, which would resolve
           # first — not worth a second call for, and not silently ignored either.
-          tagged="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)"
-          if [ -n "$tagged" ] && [ "$tagged" != "$GITHUB_SHA" ]; then
+          #
+          # The NORMAL case — no tag yet — is this call FAILING (404/422), and on
+          # failure `gh api` skips `--jq` entirely and writes the raw error body to
+          # STDOUT rather than stderr. `2>/dev/null || true` shipped on the assumption
+          # that a failure produces an empty string; it does not, so this refused every
+          # first-time release with the error body itself standing in for a commit sha.
+          # The exit status is what actually distinguishes the two cases, so branch on
+          # it (`if tagged=$(...)`) rather than on whether the captured text is empty.
+          if tagged="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null)" && [ "$tagged" != "$GITHUB_SHA" ]; then
             echo "Tag '$TAG' already exists on $tagged, but this job is releasing $GITHUB_SHA." >&2
             echo "The release would name that commit while shipping assets built from this one." >&2
             echo "Delete the stale tag, or dispatch on the commit it already names." >&2
