@@ -50,6 +50,14 @@ answer for. One of them was not merely unchecked but already false, which is the
 for the whole round: `src/view/interactions/dragDrop.ts` scans the entire tree on every
 drag end, under a guide that says no interaction scans the DOM.
 
+**Third round, opened 2026-08-05 by a user request rather than by a review.** The two
+rounds above both asked what this repository states without checking. This one names a
+different gap and does not pretend to be more: **everything appearance-shaped needs a
+person at a GUI**, so a contributor or an agent without Obsidian open cannot see the view
+they are changing at all. [[A browser harness without Obsidian]] closes the *looking*
+half of that and deliberately not the *checking* half — the live-vault verifications are
+untouched, and ADR 0020 says why adding assertions there was refused.
+
 ## Reading this as a backlog
 
 These notes carry the plugin's own frontmatter vocabulary, so the plugin can display

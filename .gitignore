@@ -6,6 +6,9 @@ styles.css
 # the test vault `npm run test-build` writes into this repository
 .obsidian/
 
+# the browser page `npm run harness` builds
+.harness/
+
 # dependencies
 node_modules/
 

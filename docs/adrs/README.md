@@ -86,3 +86,4 @@ record itself changes. Open a record for its current status, area and any
 - [0017 — Bounded undo history with an explicit redo](0017-bounded-undo-history-with-an-explicit-redo.md)
 - [0018 — Admit runtime dependencies by exception, starting with Pragmatic drag and drop](0018-admit-runtime-dependencies-by-exception.md)
 - [0019 — Notice dependency staleness on a clock, verify it with the gate](0019-notice-dependency-staleness-on-a-clock.md)
+- [0020 — The browser harness draws, it does not assert](0020-the-browser-harness-draws-it-does-not-assert.md)
