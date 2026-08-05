@@ -118,6 +118,28 @@ describe('the shelf\'s own header controls', () => {
 		expect(document.activeElement).toBe(after);
 	});
 
+	it('hands focus back to the header picker whose own menu rebuilt the pane', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+
+		for (const [selector, entry] of [
+			['.pbl-shelf-filter', 'Task (1)'],
+			['.pbl-shelf-sort', 'Title (A to Z)'],
+		] as const) {
+			const before = containerEl.querySelector<HTMLElement>(selector);
+			before?.focus();
+			itemNamed(openMenu(containerEl, selector), entry).click();
+
+			// The pick rebuilds the pane, taking the button the menu was opened from with
+			// it. A menu opened from the HEADER has to give focus back to the header —
+			// unlike the card menu, which was opened from a card and leaves focus there.
+			const after = containerEl.querySelector<HTMLElement>(selector);
+			expect(after, selector).not.toBe(before);
+			expect(document.activeElement, selector).toBe(after);
+		}
+	});
+
 	it('leaves the tab order again as soon as the pane has cards to arrow through', () => {
 		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
 		// Two placed epics still render, so the pane IS a composite and its one stop is

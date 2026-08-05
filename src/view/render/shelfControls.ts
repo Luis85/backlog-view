@@ -49,12 +49,7 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	setTooltip(disclosure, action);
 	disclosure.addEventListener('click', () => {
 		host.setShelfCollapsed(!collapsed);
-		// That call rebuilt the pane synchronously and this button went with it. Focus
-		// has to follow the PART, not the node: without this a keyboard user is dropped
-		// on the document body the instant they open the shelf, and in the no-card states
-		// where this button is their only way in, that is where they are left. The same
-		// capture-and-hand-over the type-filter chips used across their own rebuild.
-		host.roadmap?.shelfEl?.querySelector<HTMLElement>('.pbl-shelf-disclosure')?.focus();
+		refocus(host, '.pbl-shelf-disclosure');
 	});
 	// Nothing to order or narrow while the cards are shut away, and a control that
 	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
@@ -89,6 +84,17 @@ export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean
 	}
 }
 
+/**
+ * Hand focus to whatever now plays this control's part. Every control in this header
+ * rebuilds the pane when used, which destroys the very button that was pressed — focus
+ * has to follow the PART, not the node, or a keyboard user is dropped on the document
+ * body the instant they act. It matters most in the no-card states, where these buttons
+ * are the only way back in and there is no card menu to reach them by.
+ */
+function refocus(host: BacklogViewHost, selector: string): void {
+	host.roadmap?.shelfEl?.querySelector<HTMLElement>(selector)?.focus();
+}
+
 function headerButton(parent: HTMLElement, cls: string, icon: string, label: string): HTMLButtonElement {
 	const btn = parent.createEl('button', {
 		cls: `clickable-icon ${cls}`,
@@ -104,7 +110,7 @@ function renderSortPicker(host: BacklogViewHost, headerEl: HTMLElement): void {
 	const btn = headerButton(headerEl, 'pbl-shelf-sort', 'arrow-up-down', 'Sort the shelf');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
-		addShelfSortItems(host, menu);
+		addShelfSortItems(host, menu, () => refocus(host, '.pbl-shelf-sort'));
 		showMenuForClick(menu, evt);
 	});
 }
@@ -120,7 +126,7 @@ function renderTypeFilter(host: BacklogViewHost, headerEl: HTMLElement, shelf: S
 	btn.toggleClass('is-active', hiding);
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
-		addShelfTypeItems(host, menu, shelf);
+		addShelfTypeItems(host, menu, shelf, () => refocus(host, '.pbl-shelf-filter'));
 		showMenuForClick(menu, evt);
 	});
 }

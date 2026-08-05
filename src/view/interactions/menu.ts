@@ -345,14 +345,23 @@ const SHELF_SORTS: { value: ShelfSort; label: string }[] = [
  * shelf header's own pickers and the keyboard path below — for the reason the horizon
  * chip and its menu share one: two builders offering the same choices are one edit from
  * disagreeing about what is offered or which entry is checked.
+ *
+ * `after` is where the two surfaces legitimately differ, and the only place they may.
+ * A pick rebuilds the pane and destroys the button its menu was opened from; a menu
+ * opened from the shelf's HEADER has to give focus back to that header's replacement,
+ * while one opened from a CARD leaves focus where the card left it. Passing the
+ * difference in keeps a single builder rather than forking it over one line.
  */
-export function addShelfSortItems(host: BacklogViewHost, menu: Menu): void {
+export function addShelfSortItems(host: BacklogViewHost, menu: Menu, after?: () => void): void {
 	for (const { value, label } of SHELF_SORTS) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(label)
 				.setChecked(host.shelfSort === value)
-				.onClick(() => host.setShelfSort(value)),
+				.onClick(() => {
+					host.setShelfSort(value);
+					after?.();
+				}),
 		);
 	}
 }
@@ -362,7 +371,7 @@ export function addShelfSortItems(host: BacklogViewHost, menu: Menu): void {
  * never remove its own way back, so the list a hidden type is restored from cannot be
  * narrowed by the hiding.
  */
-export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: ShelfCard[]): void {
+export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: ShelfCard[], after?: () => void): void {
 	for (const group of organizeShelf(shelf, 'tree', new Set())) {
 		menu.addItem((mi) =>
 			mi
@@ -373,6 +382,7 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
 					if (hidden.has(group.type)) hidden.delete(group.type);
 					else hidden.add(group.type);
 					host.setShelfHiddenTypes(hidden);
+					after?.();
 				}),
 		);
 	}
