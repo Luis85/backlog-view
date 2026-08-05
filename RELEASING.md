@@ -6,13 +6,29 @@ Either path below ends in the **Release** workflow building the plugin and creat
 GitHub release with `main.js`, `manifest.json` and `styles.css` attached as individual
 assets. Both refuse to publish over a version that already has a release.
 
-**The release workflow builds; it does not gate.** Its only npm steps are `npm ci` and
-`npm run build`, so lint, the tests, fallow and the docs register are not re-run at
-publish time — CI runs all five on every push to `main`, and that run is the evidence.
-Publishing from a red commit is therefore possible and nothing will stop it: check `main`
-is green before triggering, whichever path below you take. The two things the workflow
-DOES refuse are a tag that disagrees with `manifest.json` and a version that already has
-a release.
+**The release workflow builds rather than gates, and REQUIRES the gate rather than
+trusting you to have run it.** Its own npm steps are `npm ci` and `npm run build`, so
+lint, the tests, fallow and the docs register are not re-run at publish time; CI is where
+those run, and before building anything the workflow demands that run. It refuses, with
+a message naming the reason, when:
+
+- the commit is not one `main` contains — which a dispatch on the wrong ref produces in
+  a single click;
+- CI did not conclude successfully on that exact commit. It **waits** for a run still in
+  flight rather than refusing it, because `git push --follow-tags` pushes the branch and
+  the tag together and this workflow starts while CI is still starting;
+- the tag disagrees with `manifest.json`;
+- that version already has a release;
+- that version's tag already exists on a *different* commit — what a failed attempt
+  leaves behind, since the tag is pushed before the workflow runs. `gh release create`
+  would publish the tag's commit while attaching assets built from this one, so the two
+  have to be the same commit or nothing else here applies to what gets published.
+
+Nothing below asks you to check those first. That is the point: they were preconditions
+a person had to remember and an agent had no way to discover, and they are now the
+workflow's own refusals. `manifest.json`, `package.json` and `versions.json` agreeing is
+checked earlier still — by the test suite, so it fails on the pull request rather than at
+publish time.
 
 The two built assets are minified: `npm run build` minifies the bundle into `main.js`
 and writes a minified `styles.css` to `dist/`, which is what the release uploads. Both

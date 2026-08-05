@@ -9,8 +9,16 @@ on:
   # version files are already committed and only the tag is missing.
   workflow_dispatch:
 
+# Declaring this block at all sets every permission NOT listed here to `none`, so a step
+# that calls an API nobody added a scope for fails at release time — the one moment there
+# is no cheap way to try again. Every entry below names the step that needs it; adding an
+# API call to this workflow means adding its scope here in the same edit.
 permissions:
+  # `gh release view` / `gh release create`, and the tag a dispatch creates.
   contents: write
+  # `gh api .../check-runs` — the CI gate below. Reading a commit's checks is its own
+  # scope, NOT part of `contents`.
+  checks: read
   # Artifact attestations: id-token signs the provenance, attestations stores it.
   id-token: write
   attestations: write
@@ -43,13 +51,92 @@ jobs:
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Verify the release does not already exist
+      # The gate this workflow does NOT re-run. Its own steps are `npm ci` and
+      # `npm run build`, so lint, the tests, fallow and the docs register are never
+      # asked again here — CI is where those ran, and this is where that run is
+      # required rather than assumed. Two commits could reach this point otherwise: one
+      # whose CI failed, and one that was never on `main` at all, which a dispatch on
+      # the wrong ref produces in a single click.
+      #
+      # It WAITS rather than merely checking, because `git push --follow-tags` pushes
+      # the branch and the tag together: this workflow starts on the tag while CI is
+      # still starting on the branch, so a check would refuse the documented path every
+      # time. Every outcome other than success is fatal, including "no verify runs
+      # found" — CI names that job `verify`, and if it is ever renamed this guard must
+      # be updated rather than silently passing everything.
+      - name: Require a green CI run on this commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          position="$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)"
+          case "$position" in
+            identical | behind) ;;
+            *)
+              echo "Refusing to publish $GITHUB_SHA: it is '$position' relative to main, so main does not contain it." >&2
+              echo "Releases are cut from main. Merge first, then dispatch on main." >&2
+              exit 1
+              ;;
+          esac
+
+          deadline=$(( SECONDS + 600 ))
+          while :; do
+            verdict="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
+              --jq '[.check_runs[] | select(.name | startswith("verify"))]
+                    | if length == 0 then "missing"
+                      elif any(.status != "completed") then "pending"
+                      elif all(.conclusion == "success") then "success"
+                      else "failed" end')"
+            case "$verdict" in
+              success) break ;;
+              failed)
+                echo "Refusing to publish $GITHUB_SHA: CI failed on it. Fix main and release the fix." >&2
+                exit 1
+                ;;
+              missing | pending)
+                if [ "$SECONDS" -ge "$deadline" ]; then
+                  echo "Gave up waiting for CI on $GITHUB_SHA (last seen: $verdict)." >&2
+                  echo "'pending' means CI was still running — re-run this workflow once it finishes." >&2
+                  echo "'missing' means no job named 'verify' reported at all; if CI's job was renamed, this guard needs the new name." >&2
+                  exit 1
+                fi
+                sleep 20
+                ;;
+            esac
+          done
+
+      - name: Verify the tag and the release are free
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
+          set -euo pipefail
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release '$TAG' already exists. Bump the version in manifest.json, package.json and versions.json first." >&2
+            exit 1
+          fi
+
+          # A tag with no release is what a FAILED attempt leaves behind — and the CI
+          # gate above makes that more likely rather than less, since it can refuse
+          # after `git push --follow-tags` has already sent the tag.
+          #
+          # It matters because `--target` below only points a tag that `gh release
+          # create` itself creates; on a tag that already exists the release names THAT
+          # tag's commit, while the assets are built from the commit this job checked
+          # out. Every guard above gates $GITHUB_SHA, so a release naming a different
+          # commit is one none of them examined.
+          #
+          # Resolving by tag name rather than by ref: this endpoint dereferences an
+          # annotated tag (which is what `npm version` creates) in one call. The gap it
+          # leaves is a BRANCH sharing the version's exact name, which would resolve
+          # first — not worth a second call for, and not silently ignored either.
+          tagged="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)"
+          if [ -n "$tagged" ] && [ "$tagged" != "$GITHUB_SHA" ]; then
+            echo "Tag '$TAG' already exists on $tagged, but this job is releasing $GITHUB_SHA." >&2
+            echo "The release would name that commit while shipping assets built from this one." >&2
+            echo "Delete the stale tag, or dispatch on the commit it already names." >&2
             exit 1
           fi
 
@@ -76,8 +163,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
-          # --target is what lets a manual run create the tag; it is ignored when the
-          # tag already exists, so tag pushes keep releasing exactly their own commit.
+          # --target is what lets a manual run create the tag. It is ignored when the tag
+          # already exists, which is why the step above refuses an existing tag that
+          # names any commit other than this one: by here, "the tag's commit" and
+          # "$GITHUB_SHA" are the same commit whichever way the tag came to be.
           gh release create "$TAG" \
             --title "$TAG" \
             --target "$GITHUB_SHA" \
