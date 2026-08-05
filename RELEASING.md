@@ -2,9 +2,10 @@
 
 ## Cutting a release
 
-Either path below ends in the **Release** workflow building the plugin and creating a
-GitHub release with `main.js`, `manifest.json` and `styles.css` attached as individual
-assets. Both refuse to publish over a version that already has a release.
+The **Release** workflow builds the plugin and creates a GitHub release with `main.js`,
+`manifest.json` and `styles.css` attached as individual assets. It runs on a tag push
+(the tag named exactly `0.5.2`, no `v` prefix) or on a manual dispatch, which reads the
+version straight out of `manifest.json` on the ref you name and creates that tag itself.
 
 **The release workflow builds rather than gates, and REQUIRES the gate rather than
 trusting you to have run it.** Its own npm steps are `npm ci` and `npm run build`, so
@@ -39,7 +40,34 @@ file directly, and `npm run dev` rewrites it whenever a partial changes. Each bu
 asset also gets a signed provenance attestation, verifiable with
 `gh attestation verify <file> --repo Luis85/backlog-view`.
 
-### Before the tag: the live-vault sweep
+### 1. Get the version bumped onto `main`
+
+Skip this step if the version files are already committed on `main` — the case for the
+**first release** (the repository was authored at `0.1.0`), or for any later release
+where the bump landed as part of some other merged change and only the tag is missing.
+
+Otherwise, bump it — this updates `package.json`, `manifest.json` and `versions.json`
+together and commits them:
+
+```bash
+npm version patch   # or minor / major
+```
+
+**`main` is a protected branch, and this is not this repository's own rule to relax:**
+`git push` (with or without `--follow-tags`) straight to `main` is refused by GitHub
+itself — confirmed by hitting the refusal directly, not assumed from documentation. Every
+change here, including a version bump, goes through a normal pull request: push the
+commit to a branch, open a PR, get CI green, merge. `npm version` also creates a local
+tag on the pre-merge commit; that is not the tag that gets published, since the merge
+commit — not this one — is what lands on `main`. Leave the local tag alone rather than
+pushing it; step 3 below creates the real one, reading the version from `manifest.json`
+on `main` once the bump has landed there.
+
+The repo's `.npmrc` sets `tag-version-prefix=""` so `npm version` names that local tag
+`0.1.1`, not `v0.1.1` — Obsidian requires the published tag to exactly match the manifest
+version, and the release workflow refuses a mismatch as a second line of defense.
+
+### 2. Before the tag: the live-vault sweep
 
 Some of this plugin's behaviour cannot be checked here at all — appearance, base identity,
 whether a long press opens a menu. Obsidian does not run in the jsdom harness, so those
@@ -110,27 +138,15 @@ itself a verification is findable, not that every verification declares itself. 
 no cadence and its own spelling of the heading is indistinguishable from a note *about* a
 check, and is simply absent from the list above.
 
-### When the version files are already committed
+### 3. Cut the tag and publish
 
-This is the case for the **first release** (the repository was authored at `0.1.0`), and
-for any later release where the bump landed on `main` but the tag did not. Do **not** run
-`npm version` here — it would bump past the version you mean to publish.
+Once the version files are on `main` — from step 1, or because they were already there —
+this is the whole remaining step. Three equivalent ways to trigger it, all of which read
+the version from `manifest.json` on the ref you name and take it from there:
 
-- From the browser: **Actions** → **Release** → **Run workflow** on `main`. The workflow
-  reads the version from `manifest.json`, creates that tag on the selected commit, and
-  publishes it.
-- Or from a clone, if you would rather push the tag yourself. Read the tag from the
-  manifest rather than typing it, so this works for whatever version is committed:
-
-  ```bash
-  tag="$(node -p "require('./manifest.json').version")"
-  git tag "$tag" && git push origin "$tag"
-  ```
-
-- Or from anything that can reach the API — `gh`, curl, or an agent session with the
-  GitHub tools. This is the same manual trigger the browser offers, so it needs neither a
-  checkout nor a browser, and it takes no inputs: the workflow reads the version from
-  `manifest.json` itself and tags the ref you name.
+- From the browser: **Actions** → **Release** → **Run workflow** on `main`.
+- From anything that can reach the API — `gh`, curl, or an agent session with the GitHub
+  tools. This needs neither a checkout nor a browser, and takes no inputs:
 
   ```bash
   gh workflow run release.yml --ref main
@@ -142,34 +158,34 @@ for any later release where the bump landed on `main` but the tag did not. Do **
   ```
 
   A dispatch returns no run id, so find the run rather than assuming it: list the
-  workflow's runs and take the newest, then read its jobs or logs while it goes. What
-  proves it worked is the release, not a green run — check the tag exactly matches the
-  manifest version and that all three assets are attached, which is the same verification
-  the last paragraph of this section asks for whichever way you triggered it.
+  workflow's runs and take the newest, then read its jobs or logs while it goes.
 
-  Publishing is public and a release cannot be un-published without deleting it, so an
-  agent session should have been told to release, not infer it from a merged PR.
+- Or push the tag yourself, reading it from the manifest rather than typing it, so this
+  works for whatever version is committed. `main`'s branch protection does not cover
+  tags, so this succeeds even though pushing to `main` itself does not. Pull the merged
+  `main` first — if step 1 ran in this same clone, `npm version` already left a local tag
+  with this exact name on the **pre-merge** commit, and `git tag` refuses to reuse a name
+  without `-f`; recreate it on the commit you actually mean to release rather than
+  reusing or fighting the stale one:
 
-### When you still need to bump the version
+  ```bash
+  git fetch origin main && git checkout main && git merge --ff-only origin/main
+  tag="$(node -p "require('./manifest.json').version")"
+  git tag -f "$tag" && git push origin "$tag"
+  ```
 
-1. Make sure `main` is green (CI runs build + tests on every push).
-2. Bump the version — this updates `package.json`, `manifest.json` and `versions.json`
-   together and commits them:
+  `-f` only ever moves the LOCAL ref onto the commit just checked out; the push after it
+  is a plain, non-forced push of a name that does not yet exist on the remote in the
+  normal case, so it fails safely rather than silently overwriting anything there. The
+  dispatch path above sidesteps all of this — it never touches a local tag.
 
-   ```bash
-   npm version patch   # or minor / major
-   git push --follow-tags origin main
-   ```
+What proves it worked is the release, not a green workflow run: check on the releases
+page that the tag name **exactly matches** the version in `manifest.json` (`x.y.z`, no
+`v` prefix) and that all three assets — `main.js`, `manifest.json`, `styles.css` — are
+attached.
 
-   The repo's `.npmrc` sets `tag-version-prefix=""` so `npm version` creates the tag as
-   `0.1.1`, not `v0.1.1` — Obsidian requires the tag to exactly match the manifest
-   version. The release workflow refuses tags that don't match, as a second line of
-   defense.
-
-3. The tag push triggers the **Release** workflow.
-
-Either way, verify on the releases page that the tag name **exactly matches** the version
-in `manifest.json` (`x.y.z`, no `v` prefix) and that all three files are attached.
+Publishing is public and a release cannot be un-published without deleting it, so an
+agent session should have been told to release, not infer it from a merged PR.
 
 ## Submitting to the community directory (one-time)
 
