@@ -1,7 +1,7 @@
 {
 	"$schema": "./node_modules/fallow/schema.json",
-	"entry": ["src/main.ts"],
-	"dynamicallyLoaded": ["styles/**/*.css"],
+	"entry": ["src/main.ts", "test/harness/page.ts"],
+	"dynamicallyLoaded": ["styles/**/*.css", "test/harness/theme.css"],
 	"usedClassMembers": [
 		{ "extends": "BasesView", "members": ["type"] },
 		{

@@ -1,0 +1,121 @@
+/*
+ * The Obsidian variables `styles/` reads and does not define.
+ *
+ * APPROXIMATIONS, not Obsidian's theme. Close enough that layout, spacing, hierarchy and
+ * interaction read the way they do in the app; NOT close enough that a colour seen here
+ * is a colour a user sees. The harness is faithful about structure and approximate about
+ * appearance — see ADR 0020, and keep the live-vault checks.
+ *
+ * The set is checked, not remembered: `test/harness/harness.test.ts` scans every partial
+ * for `var(--x)` and fails if one is missing here. Add a variable to a partial and that
+ * test tells you to add it below, instead of the page quietly drawing it as nothing.
+ */
+:root {
+	color-scheme: dark;
+
+	/* Surfaces */
+	--background-primary: #1e1e1e;
+	--background-secondary: #262626;
+	--background-modifier-hover: rgba(255, 255, 255, 0.075);
+	--background-modifier-active-hover: rgba(255, 255, 255, 0.15);
+	--background-modifier-border: #3a3a3a;
+	--background-modifier-border-hover: #4d4d4d;
+
+	/* Text */
+	--text-normal: #dadada;
+	--text-muted: #9c9c9c;
+	--text-faint: #6b6b6b;
+	--text-accent: #7f6df2;
+	--text-error: #e05252;
+	--text-warning: #e0a52a;
+
+	/* Accent */
+	--interactive-accent: #7f6df2;
+	--interactive-accent-hsl: 247, 82%, 69%;
+
+	/* Palette — the plain colours and the rgb triples the badges compose from */
+	--color-red: #e05252;
+	--color-green: #45b06a;
+	--color-cyan: #37b7c3;
+	--color-red-rgb: 224, 82, 82;
+	--color-orange-rgb: 224, 138, 42;
+	--color-yellow-rgb: 224, 190, 42;
+	--color-green-rgb: 69, 176, 106;
+	--color-cyan-rgb: 55, 183, 195;
+	--color-blue-rgb: 82, 137, 224;
+	--color-purple-rgb: 145, 92, 224;
+	--color-pink-rgb: 214, 92, 168;
+
+	/* Spacing — Obsidian's 2px and 4px steps */
+	--size-2-1: 2px;
+	--size-2-2: 4px;
+	--size-2-3: 6px;
+	--size-4-1: 4px;
+	--size-4-2: 8px;
+	--size-4-3: 12px;
+	--size-4-4: 16px;
+	--size-4-8: 32px;
+
+	/* Radii and shadow */
+	--radius-s: 4px;
+	--radius-m: 8px;
+	--radius-l: 12px;
+	--shadow-s: 0 1px 2px rgba(0, 0, 0, 0.3);
+
+	/* Type */
+	--font-medium: 500;
+	--font-ui-smaller: 12px;
+	--font-ui-small: 13px;
+	--font-ui-medium: 15px;
+
+	/* Icons and pointer */
+	--icon-xs: 14px;
+	--icon-s: 16px;
+	--cursor: default;
+}
+
+/*
+ * The plugin renders into a Bases view inside a workspace leaf, which is what gives it a
+ * page background, a font and a height to fill. Nothing above this line does that, so the
+ * harness supplies the frame the app would.
+ */
+body {
+	margin: 0;
+	height: 100vh;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	font-size: var(--font-ui-small);
+}
+
+.pbl-harness-leaf {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.pbl-harness-leaf > div {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+/*
+ * Obsidian's `setIcon` draws an SVG; the module mock records the icon's NAME on the
+ * element and draws nothing, which leaves every icon-only control — the projection
+ * toggle, the collapse controls, the zoom buttons — an invisible zero-width box. A
+ * harness whose controls cannot be seen is not one you can look at, so the name is
+ * rendered as text. Deliberately in the theme stub rather than in the shared mock: the
+ * suite asserts on `data-icon`, and text inside those spans would join the textContent
+ * that column and card assertions read.
+ */
+[data-icon]::after {
+	content: attr(data-icon);
+	font-family: ui-monospace, monospace;
+	font-size: 9px;
+	line-height: 1;
+	color: var(--text-muted);
+	white-space: nowrap;
+}

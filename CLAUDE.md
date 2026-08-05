@@ -38,6 +38,12 @@ through. Obsidian itself
 cannot run here — the jsdom test harness ([`test/CLAUDE.md`](test/CLAUDE.md)) is the
 substitute; say so honestly when a change still needs a live-vault smoke test.
 
+When the question is what a change *looks* like and no vault is at hand, `npm run harness`
+bundles the real view into a static page with the real stylesheet — no Obsidian, no
+dependency — so a browser can show it and drive it. It draws and asserts nothing: what it
+is faithful about, and the colour it is not, are in [`test/CLAUDE.md`](test/CLAUDE.md) and
+ADR 0020, and it replaces no live-vault check.
+
 `npm run test-build` is the handover for exactly those cases: it bundles into
 `.obsidian/plugins/<id>/` in the repository root (gitignored), so the human can open
 this repository as a vault and look. Name it when a change needs eyes — it is a shorter
