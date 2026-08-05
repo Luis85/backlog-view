@@ -43,6 +43,61 @@ jobs:
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      # The gate this workflow does NOT re-run. Its own steps are `npm ci` and
+      # `npm run build`, so lint, the tests, fallow and the docs register are never
+      # asked again here — CI is where those ran, and this is where that run is
+      # required rather than assumed. Two commits could reach this point otherwise: one
+      # whose CI failed, and one that was never on `main` at all, which a dispatch on
+      # the wrong ref produces in a single click.
+      #
+      # It WAITS rather than merely checking, because `git push --follow-tags` pushes
+      # the branch and the tag together: this workflow starts on the tag while CI is
+      # still starting on the branch, so a check would refuse the documented path every
+      # time. Every outcome other than success is fatal, including "no verify runs
+      # found" — CI names that job `verify`, and if it is ever renamed this guard must
+      # be updated rather than silently passing everything.
+      - name: Require a green CI run on this commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          position="$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)"
+          case "$position" in
+            identical | behind) ;;
+            *)
+              echo "Refusing to publish $GITHUB_SHA: it is '$position' relative to main, so main does not contain it." >&2
+              echo "Releases are cut from main. Merge first, then dispatch on main." >&2
+              exit 1
+              ;;
+          esac
+
+          deadline=$(( SECONDS + 600 ))
+          while :; do
+            verdict="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
+              --jq '[.check_runs[] | select(.name | startswith("verify"))]
+                    | if length == 0 then "missing"
+                      elif any(.status != "completed") then "pending"
+                      elif all(.conclusion == "success") then "success"
+                      else "failed" end')"
+            case "$verdict" in
+              success) break ;;
+              failed)
+                echo "Refusing to publish $GITHUB_SHA: CI failed on it. Fix main and release the fix." >&2
+                exit 1
+                ;;
+              missing | pending)
+                if [ "$SECONDS" -ge "$deadline" ]; then
+                  echo "Gave up waiting for CI on $GITHUB_SHA (last seen: $verdict)." >&2
+                  echo "'pending' means CI was still running — re-run this workflow once it finishes." >&2
+                  echo "'missing' means no job named 'verify' reported at all; if CI's job was renamed, this guard needs the new name." >&2
+                  exit 1
+                fi
+                sleep 20
+                ;;
+            esac
+          done
+
       - name: Verify the release does not already exist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
