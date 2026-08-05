@@ -44,11 +44,19 @@ export function useViewHarness(): void {
  * The tree opens collapsed, which would hide the rows most tests are about, so the
  * harness expands it through the real toolbar control. Pass `collapsed` to assert on
  * the opening state itself.
+ *
+ * `focus` is an option rather than a config value because the focus level is NOT one:
+ * it is working position, set through the view and stored beside the collapse state.
  */
 export function makeView(
 	vault: FakeVault,
 	configValues: Record<string, unknown> = {},
-	{ collapsed = false, base, viewName }: { collapsed?: boolean; base?: string; viewName?: string } = {},
+	{
+		collapsed = false,
+		base,
+		viewName,
+		focus,
+	}: { collapsed?: boolean; base?: string; viewName?: string; focus?: string } = {},
 ): Harness {
 	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
 	// the view identifies which base it is, so persistence tests need the real nesting.
@@ -63,6 +71,7 @@ export function makeView(
 	anyView.config = config;
 	anyView.data = { data: vault.entries() };
 	view.onDataUpdated();
+	if (focus) view.setFocusLevel(focus);
 	if (!collapsed) expandAll(containerEl);
 	return { view, config, containerEl };
 }

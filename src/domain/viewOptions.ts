@@ -49,8 +49,9 @@ function optionalPropertyOption(field: OptionalField, displayName: string): Base
 
 /**
  * Options shown in the Bases toolbar "view options" menu. The focus level is
- * deliberately absent: it lives in the view's own toolbar, next to the New button
- * whose level it changes.
+ * deliberately absent, and now doubly so: it lives in the view's own toolbar, next to
+ * the New button whose level it changes, and it is not a base setting at all — working
+ * position, stored beside the collapse state.
  */
 export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	// The type list is fixed, but each type's DEFAULT folder sits under this view's home

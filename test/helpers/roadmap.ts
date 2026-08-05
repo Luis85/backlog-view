@@ -38,9 +38,9 @@ export function shelfHeavyVault(): FakeVault {
 export function makeRoadmap(
 	vault: FakeVault,
 	extra: Record<string, unknown> = {},
-	{ shelfCollapsed = false }: { shelfCollapsed?: boolean } = {},
+	{ shelfCollapsed = false, focus }: { shelfCollapsed?: boolean; focus?: string } = {},
 ): Harness {
-	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true });
+	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus });
 	harness.view.setProjection('roadmap');
 	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
 	return harness;

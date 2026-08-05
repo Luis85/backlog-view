@@ -35,7 +35,13 @@ export interface BacklogSettings {
 	 * the parent" rule.
 	 */
 	typeFolders: Record<string, string>;
-	/** Level name to use as the top of the tree, or '' to show the full hierarchy. */
+	/**
+	 * Level name to use as the top of the tree, or '' to show the full hierarchy. The
+	 * one field here that is NOT read from the `.base`: focus is working position, so it
+	 * is stored beside the collapse state and injected by the view (`refreshFromData`).
+	 * It rides in these settings anyway because it is an input to the model build, which
+	 * is what this object is.
+	 */
 	focusLevel: string;
 	/** Frontmatter key holding the workflow state, or '' when progress tracking is off. */
 	stateKey: string;
@@ -627,7 +633,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
 		...folders,
-		focusLevel: str('focusLevel').trim(),
+		// UI state, not configuration: the view overwrites this with the stored pick.
+		focusLevel: fallback.focusLevel,
 		stateKey: propKey('stateProperty', fallback.stateKey),
 		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),

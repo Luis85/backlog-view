@@ -169,6 +169,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.render();
 	}
 
+	setFocusLevel(level: string): void {
+		if (level === this.collapse.focusLevel()) return;
+		this.collapse.setFocusLevel(level);
+		// Unlike the mode and the axis pick, a re-render is not enough: focus re-roots the
+		// MODEL, and no Bases refresh is coming now that it is not a config change.
+		this.refreshFromData();
+	}
+
 	get shelfCollapsed(): boolean {
 		return this.collapse.shelfCollapsed();
 	}
@@ -237,16 +245,19 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	private refreshFromData(): void {
 		this.watchRenames();
-		this.settings = resolveSettings(this.config);
+		// Restored FIRST, not just before the collapse defaults it must not be undone by:
+		// the focus level is stored here too, and it re-roots the model built below — a
+		// restore after the build would show the whole tree until something else refreshed.
+		this.collapse.restore(this.viewEl);
+		// Focus is working position rather than configuration, so it comes from the store
+		// and not from the `.base`; everything downstream reads it off the settings.
+		this.settings = { ...resolveSettings(this.config), focusLevel: this.collapse.focusLevel() };
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		// Which properties become columns is a config question, so it is answered once
 		// here rather than per render — and once, so the rows and the tag menu cannot
 		// disagree about what is on screen.
 		this.chips = chipProps(this);
 		this.groupingIgnored = detectIgnoredGrouping(this.data);
-		// Restore before the defaults are applied, or a restored session would be
-		// overwritten by the very pass that is meant to honor it.
-		this.collapse.restore(this.viewEl);
 		this.collapse.collapseNewParents(this.model.items);
 		this.filter.recompute(this.model);
 		this.render();

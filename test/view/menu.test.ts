@@ -203,7 +203,7 @@ describe('focused structure operations', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 100 } });
 		vault.addFile('Loose Feature.md', { frontmatter: { type: 'Feature', order: 5 } });
 		vault.addFile('Story.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Loose Feature' });
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature' });
+		const { containerEl } = makeView(vault, {}, { focus: 'Feature' });
 
 		rowByTitle(containerEl, 'Story').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Outdent')?.click();

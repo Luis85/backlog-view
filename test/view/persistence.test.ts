@@ -246,4 +246,27 @@ describe('collapse state persistence', () => {
 		expect(second.view.shelfSort).toBe('title');
 		expect(second.view.shelfHiddenTypes).toEqual(new Set(['Task']));
 	});
+
+	it('reopens focused on the type the last session picked, without writing the .base', () => {
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		first.view.setFocusLevel('Feature');
+		expect(titlesOf(first.containerEl)).toEqual(['Feature B1', 'Feature B2']);
+		first.view.onunload();
+
+		// The pick is working position: it goes here and nowhere near the shared file.
+		expect(first.config.setCalls.some((c) => c.key === 'focusLevel')).toBe(false);
+
+		// The restore has to happen BEFORE the model is built, or the reopened view
+		// draws the whole tree until something else refreshes it.
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(titlesOf(second.containerEl)).toEqual(['Feature B1', 'Feature B2']);
+
+		// And clearing it clears the stored value rather than storing an empty name.
+		second.view.setFocusLevel('');
+		second.view.onunload();
+		const third = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		// The whole tree, restored to the rows the first session left open.
+		expect(titlesOf(third.containerEl)).toEqual(expandedTitles);
+	});
 });

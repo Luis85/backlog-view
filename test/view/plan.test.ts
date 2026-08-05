@@ -122,7 +122,7 @@ describe('setting a horizon from the row', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Xray' } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Yankee' }, parentLink: 'Epic' });
 		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 20, horizon: 'Xray' }, parentLink: 'Epic' });
-		const { view, containerEl } = makeView(vault, { ...AXES, focusLevel: 'Feature' });
+		const { view, containerEl } = makeView(vault, AXES, { focus: 'Feature' });
 
 		// The tree has no buckets to follow, so it lists the vocabulary as the model
 		// met it: the hidden Epic's value first.

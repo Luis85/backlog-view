@@ -3,7 +3,8 @@ import { App, FileView } from 'obsidian';
 /**
  * Persistence for the state that is purely the user's working position: which
  * rows are open and which are shut, which projection — tree, board or roadmap —
- * the view is showing, and which roadmap axis it shows when both are configured.
+ * the view is showing, which roadmap axis it shows when both are configured, and
+ * which type the tree is focused on.
  *
  * This deliberately does NOT go in the `.base` file. The rule: base settings are
  * saved on the view (the options in the `.base`); UI state is saved here, in
@@ -53,6 +54,8 @@ export interface CollapseSnapshot {
 	axis?: string | null;
 	/** The retained timeline zoom; null or absent means the user never picked. */
 	zoom?: string | null;
+	/** The focused type name; null or absent means the whole tree, the default. */
+	focus?: string | null;
 	/** True only once the user has explicitly expanded the shelf; absent means collapsed, the default. */
 	shelfExpanded?: boolean;
 	/** Absent or null means 'tree' (sibling order), the default. */
@@ -85,6 +88,13 @@ interface StoredEntry {
 	axis?: string;
 	/** Absent until the user picks a timeline zoom; retained even while unused. */
 	zoom?: string;
+	/**
+	 * Absent means the whole tree, the default. Stored as the type name the user picked
+	 * and NOT checked against the vocabulary here: `focusTarget` already answers a name
+	 * no configured type matches with "no focus", the same way it did while this lived
+	 * in the `.base`.
+	 */
+	focus?: string;
 	/** Absent means collapsed, the default; only ever stored as `true`, since `false` needs no entry. */
 	shelfExpanded?: boolean;
 	/** Absent means 'tree', the default. */
@@ -191,14 +201,22 @@ function defaultShelf(entry: StoredEntry | undefined): Pick<CollapseSnapshot, 's
 	};
 }
 
-function shelfIsDefault(expanded: boolean, sort: string | null, types: string[]): boolean {
-	return !expanded && sort === null && types.length === 0;
-}
-
 function writeShelf(entry: StoredEntry, expanded: boolean, sort: string | null, types: string[]): void {
 	if (expanded) entry.shelfExpanded = true;
 	if (sort !== null) entry.shelfSort = sort;
 	if (types.length > 0) entry.shelfHiddenTypes = types;
+}
+
+/**
+ * The four picks whose default is simply absence — the tree, no axis pick, no zoom, the
+ * whole tree. Empty and null are the same thing here, which is what makes clearing a
+ * focus remove the field rather than store a name meaning "none".
+ */
+function writePicks(entry: StoredEntry, snapshot: CollapseSnapshot): void {
+	if (snapshot.mode) entry.mode = snapshot.mode;
+	if (snapshot.axis) entry.axis = snapshot.axis;
+	if (snapshot.zoom) entry.zoom = snapshot.zoom;
+	if (snapshot.focus) entry.focus = snapshot.focus;
 }
 
 export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot {
@@ -209,6 +227,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 		mode: entry?.mode ?? null,
 		axis: entry?.axis ?? null,
 		zoom: entry?.zoom ?? null,
+		focus: entry?.focus ?? null,
 		...defaultShelf(entry),
 	};
 }
@@ -223,30 +242,15 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	const key = mapKey(id);
 	const collapsed = [...snapshot.collapsed].slice(0, MAX_PATHS);
 	const expanded = [...snapshot.expanded].slice(0, MAX_PATHS - collapsed.length);
-	const mode = snapshot.mode ?? null;
-	const axis = snapshot.axis ?? null;
-	const zoom = snapshot.zoom ?? null;
-	const shelfExpanded = snapshot.shelfExpanded ?? false;
-	const shelfSort = snapshot.shelfSort ?? null;
-	const shelfHiddenTypes = snapshot.shelfHiddenTypes ?? [];
+	const entry: StoredEntry = { base: id.base, collapsed, expanded };
+	writePicks(entry, snapshot);
+	writeShelf(entry, snapshot.shelfExpanded ?? false, snapshot.shelfSort ?? null, snapshot.shelfHiddenTypes ?? []);
 	// A view at its defaults — nothing settled, the tree, no pick, shelf untouched —
-	// needs no entry.
-	if (
-		collapsed.length === 0 &&
-		expanded.length === 0 &&
-		mode === null &&
-		axis === null &&
-		zoom === null &&
-		shelfIsDefault(shelfExpanded, shelfSort, shelfHiddenTypes)
-	) {
-		delete map[key];
-	} else {
-		map[key] = { base: id.base, collapsed, expanded };
-		if (mode !== null) map[key].mode = mode;
-		if (axis !== null) map[key].axis = axis;
-		if (zoom !== null) map[key].zoom = zoom;
-		writeShelf(map[key], shelfExpanded, shelfSort, shelfHiddenTypes);
-	}
+	// needs no entry. That is the same question the read side asks of a stored entry, so
+	// it is asked with the same function: a field added to one and forgotten in the other
+	// is how an entry comes to be written and then dropped on the way back in.
+	if (entryHasContent(entry)) map[key] = entry;
+	else delete map[key];
 	pruneMissingBases(app, map, key);
 	writeMap(app, map);
 }
@@ -322,6 +326,7 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.mode !== undefined ||
 		entry.axis !== undefined ||
 		entry.zoom !== undefined ||
+		entry.focus !== undefined ||
 		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
 		entry.shelfHiddenTypes !== undefined
@@ -342,6 +347,9 @@ function readEntry(value: unknown): StoredEntry | null {
 	if (axis !== undefined) entry.axis = axis;
 	const zoom = readEnum(record.zoom, ZOOM_VALUES);
 	if (zoom !== undefined) entry.zoom = zoom;
+	// Not an enum: the vocabulary this is matched against lives in `domain/settings.ts`
+	// and a name outside it already reads as no focus, so the only check here is shape.
+	if (typeof record.focus === 'string' && record.focus.length > 0) entry.focus = record.focus;
 	readShelfFields(record, entry);
 	return entryHasContent(entry) ? entry : null;
 }

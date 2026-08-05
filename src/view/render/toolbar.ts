@@ -264,8 +264,9 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	const active = model.focused ? focusTarget(host.settings) : '';
 	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 	wrap.toggleClass('pbl-focus-active', active !== '');
-	// Bases persists the change and refreshes the view.
-	const setLevel = (level: string) => host.config.set('focusLevel', level);
+	// Working position, not configuration: the collapse store persists it and the view
+	// rebuilds itself, because no Bases refresh follows a change it was not told about.
+	const setLevel = (level: string) => host.setFocusLevel(level);
 
 	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');

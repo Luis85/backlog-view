@@ -48,10 +48,11 @@ describe('write safety with context rows, across the board’s entry points', ()
 		anyView.config = new FakeViewConfig({
 			stateProperty: 'note.status',
 			stateValues: 'New, Active, Done',
-			focusLevel: 'PBI',
 		});
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
+		// Focus is working position, not a base setting: set through the view.
+		view.setFocusLevel('PBI');
 		view.setProjection('board');
 		return { view, containerEl, vault };
 	}
@@ -133,9 +134,11 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon', focusLevel: 'PBI' });
+		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon' });
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
+		// Focus is working position, not a base setting: set through the view.
+		view.setFocusLevel('PBI');
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}
@@ -241,10 +244,11 @@ describe('write safety with context rows, across the timeline’s entry points',
 		anyView.config = new FakeViewConfig({
 			startProperty: 'note.start',
 			targetProperty: 'note.target',
-			focusLevel: 'PBI',
 		});
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
+		// Focus is working position, not a base setting: set through the view.
+		view.setFocusLevel('PBI');
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}

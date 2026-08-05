@@ -321,12 +321,14 @@ describe('context rows on the roadmap', () => {
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
-		const config = new FakeViewConfig({ ...cfg, focusLevel: 'Epic' });
+		const config = new FakeViewConfig(cfg);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		// Focus is working position, not a base setting: set through the view.
+		view.setFocusLevel('Epic');
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}

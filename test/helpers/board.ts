@@ -51,8 +51,12 @@ export function boardVault(): FakeVault {
  * A view already showing the board. The mode is UI state, not a base setting, so it
  * is flipped through the host exactly as the toolbar does — never through the config.
  */
-export function makeBoard(vault: FakeVault, extra: Record<string, unknown> = {}): Harness {
-	const harness = makeView(vault, { ...BOARD_WORKFLOW, ...extra }, { collapsed: true });
+export function makeBoard(
+	vault: FakeVault,
+	extra: Record<string, unknown> = {},
+	{ focus }: { focus?: string } = {},
+): Harness {
+	const harness = makeView(vault, { ...BOARD_WORKFLOW, ...extra }, { collapsed: true, focus });
 	harness.view.setProjection('board');
 	return harness;
 }

@@ -265,7 +265,7 @@ describe('rendering', () => {
 
 	it('re-roots on the focus level and labels the New button accordingly', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { focusLevel: 'Feature' });
+		const { containerEl } = makeView(vault, {}, { focus: 'Feature' });
 
 		expect(titlesOf(containerEl)).toEqual(['Feature B1', 'Feature B2']);
 		expect(rowByTitle(containerEl, 'Feature B1').style.getPropertyValue('--pbl-depth')).toBe('0');
@@ -286,11 +286,14 @@ describe('rendering', () => {
 		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', ...ALL_TYPES]);
 		expect(Menu.lastShown?.item('All types')?.checked).toBe(true);
 		Menu.lastShown?.item('Feature')?.click();
-		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === 'Feature')).toBe(true);
+		// Working position, not configuration: the pick re-roots the tree itself, since
+		// no Bases refresh follows a `.base` the view deliberately did not write to.
+		expect(titlesOf(containerEl)).toEqual(['Feature B1', 'Feature B2']);
+		expect(config.setCalls.some((c) => c.key === 'focusLevel')).toBe(false);
 	});
 
 	it('shows the active focus level with a one-click way back to all levels', () => {
-		const { containerEl, config } = makeView(fixture(), { focusLevel: 'Feature' });
+		const { containerEl, config } = makeView(fixture(), {}, { focus: 'Feature' });
 
 		const focusEl = containerEl.querySelector<HTMLElement>('.pbl-focus');
 		expect(focusEl?.classList.contains('pbl-focus-active')).toBe(true);
@@ -301,7 +304,9 @@ describe('rendering', () => {
 		containerEl
 			.querySelector<HTMLElement>('.pbl-focus-clear')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(config.setCalls.some((c) => c.key === 'focusLevel' && c.value === '')).toBe(true);
+		expect(titlesOf(containerEl)).toContain('Epic A');
+		expect(containerEl.querySelector('.pbl-focus-btn')?.textContent).toContain('All types');
+		expect(config.setCalls.some((c) => c.key === 'focusLevel')).toBe(false);
 	});
 
 	it('marks child groups with their parent depth for indent guides', () => {

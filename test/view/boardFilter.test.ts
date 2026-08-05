@@ -119,7 +119,7 @@ describe('what a filtered column header counts', () => {
 
 describe('a card kept only by a match below it', () => {
 	it('names the matches on its face, each opening its own note', () => {
-		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
+		const { containerEl, view } = board(deepVault(), {}, { focus: 'Epic' });
 
 		view.setFilter('Log');
 
@@ -132,7 +132,7 @@ describe('a card kept only by a match below it', () => {
 
 	it('opens the match rather than the card it hangs under', () => {
 		const vault = deepVault();
-		const { containerEl, view } = board(vault, { focusLevel: 'Epic' });
+		const { containerEl, view } = board(vault, {}, { focus: 'Epic' });
 		view.setFilter('Login');
 
 		const link = containerEl.querySelector<HTMLElement>('.pbl-card-match');
@@ -144,7 +144,7 @@ describe('a card kept only by a match below it', () => {
 	});
 
 	it('says nothing when nothing below it matched', () => {
-		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
+		const { containerEl, view } = board(deepVault(), {}, { focus: 'Epic' });
 
 		// The card is the only result here, so there is nothing to name.
 		view.setFilter('Epic A');
@@ -160,7 +160,7 @@ describe('a card kept only by a match below it', () => {
 		vault.addFile('Login epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Login epic' });
 		vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
-		const { containerEl, view } = board(vault, { focusLevel: 'Epic' });
+		const { containerEl, view } = board(vault, {}, { focus: 'Epic' });
 
 		view.setFilter('Login');
 
@@ -181,7 +181,7 @@ describe('a card kept only by a match below it', () => {
 	});
 
 	it('names nothing at all when no filter is running', () => {
-		const { containerEl } = board(deepVault(), { focusLevel: 'Epic' });
+		const { containerEl } = board(deepVault(), {}, { focus: 'Epic' });
 		expect(matchesOn(containerEl, 'Epic A')).toEqual([]);
 	});
 });
@@ -195,7 +195,7 @@ describe('reaching a hidden match without a pointer', () => {
 	}
 
 	it('the card menu offers every match, which is the keyboard path', () => {
-		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
+		const { containerEl, view } = board(deepVault(), {}, { focus: 'Epic' });
 		view.setFilter('Log');
 
 		// The links on the card face are tabindex="-1" like every other per-row control,
@@ -207,7 +207,7 @@ describe('reaching a hidden match without a pointer', () => {
 
 	it('opens the match, not the card it hangs under', () => {
 		const vault = deepVault();
-		const { containerEl, view } = board(vault, { focusLevel: 'Epic' });
+		const { containerEl, view } = board(vault, {}, { focus: 'Epic' });
 		view.setFilter('Login');
 
 		cardMenu(containerEl, 'Epic A').item('Open match "PBI Login"')?.click();
@@ -216,7 +216,7 @@ describe('reaching a hidden match without a pointer', () => {
 	});
 
 	it('offers nothing when no filter is running, or when the card matched itself', () => {
-		const { containerEl, view } = board(deepVault(), { focusLevel: 'Epic' });
+		const { containerEl, view } = board(deepVault(), {}, { focus: 'Epic' });
 		const matchEntries = (): string[] =>
 			cardMenu(containerEl, 'Epic A')
 				.items.map((i) => i.titleText)
@@ -229,7 +229,7 @@ describe('reaching a hidden match without a pointer', () => {
 
 	it('a middle click on a match opens the match in a new tab, not the parent', () => {
 		const vault = deepVault();
-		const { containerEl, view } = board(vault, { focusLevel: 'Epic' });
+		const { containerEl, view } = board(vault, {}, { focus: 'Epic' });
 		view.setFilter('Login');
 
 		// A middle click never fires `click`, so the card's own auxclick handler would
