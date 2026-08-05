@@ -57,6 +57,11 @@
 	overflow-y: auto;
 	position: static;
 	width: auto;
+	/* `align-self` has to be reset with the rest of the pinning, not left standing:
+	   the frame is a COLUMN flex container, so the sticky rule's `flex-start` sizes
+	   these bands to their content instead of the pane. Un-pinned they take the frame's
+	   width the ordinary way, and the inline margin above is what keeps the gutter. */
+	align-self: stretch;
 }
 
 .pbl-roadmap {
@@ -100,11 +105,18 @@
 
 /* ----- the horizon axis: buckets, styled as the board's columns are */
 
+/* The same gutter the pinned strips take as an inline MARGIN, taken here as padding:
+   the strips are sticky at `left: 0` and sized against the scrollport, while this row
+   scrolls inside the `max-content` frame, so its gutter has to be part of the scrolled
+   content or the first and last bucket sit flush against the pane. The pane's own
+   `padding-inline` cannot serve — it is deliberately 0 in roadmap mode, so the bars
+   behind the pinned strips show through. */
 .pbl-roadmap-buckets {
 	display: flex;
 	align-items: stretch;
 	gap: var(--size-4-3);
 	min-height: 220px;
+	padding-inline: var(--size-4-3);
 }
 
 /* Buckets grow to share the row's full width equally, down to a floor of 280px —

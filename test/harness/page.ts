@@ -1,7 +1,12 @@
 /** The bundle's entry point. Everything real is in `mount.ts`, which a test can drive. */
 import { mountHarness } from './mount';
+import { drawSchemeToggle } from './theme';
 
 const { view } = mountHarness(document.body);
+
+// After the mount: the toggle is the harness's own furniture and is appended to the
+// body, which `mountHarness` empties.
+drawSchemeToggle();
 
 /**
  * `?view=board` / `?view=roadmap` opens straight into a projection.

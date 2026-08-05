@@ -3,15 +3,35 @@ import { describe, expect, it } from 'vitest';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { flush, key, useViewHarness } from '../helpers/view';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { syncShelfControls } from '../../src/view/render/shelfControls';
+import { Menu, MenuItem } from 'obsidian';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
 
-function shelfControlsOf(containerEl: HTMLElement): HTMLElement | null {
-	return containerEl.querySelector<HTMLElement>('.pbl-shelf-controls');
+function disclosureOf(containerEl: HTMLElement): HTMLButtonElement | null {
+	return containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-disclosure');
+}
+
+/** Click a header picker and hand back the menu it opened. */
+function openMenu(containerEl: HTMLElement, selector: string): Menu {
+	const btn = containerEl.querySelector<HTMLButtonElement>(selector);
+	if (!btn) throw new Error(`shelf control not rendered: ${selector}`);
+	Menu.lastShown = null;
+	btn.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
+	if (!Menu.lastShown) throw new Error(`no menu opened from ${selector}`);
+	return Menu.lastShown;
+}
+
+function headerMenuTitles(containerEl: HTMLElement, selector: string): string[] {
+	return openMenu(containerEl, selector).items.map((i) => i.titleText);
+}
+
+function itemNamed(menu: Menu, title: string): MenuItem {
+	const item = menu.items.find((i) => i.titleText === title);
+	if (!item) throw new Error(`menu entry not found: ${title}`);
+	return item;
 }
 
 function toolbarOf(containerEl: HTMLElement): HTMLElement {
@@ -20,224 +40,275 @@ function toolbarOf(containerEl: HTMLElement): HTMLElement {
 	return bar;
 }
 
-describe('the shelf toolbar controls', () => {
-	it('exist in the toolbar, not inside the roadmap listbox, on the very first render', () => {
+describe('the shelf\'s own header controls', () => {
+	it('live in the shelf itself, not in the view toolbar', () => {
 		const { containerEl } = makeRoadmap(horizonVault());
-		const controls = shelfControlsOf(containerEl);
-		expect(controls).not.toBeNull();
-		expect(containerEl.querySelector('.pbl-toolbar')?.contains(controls)).toBe(true);
-		expect(containerEl.querySelector('[role="listbox"]')?.contains(controls)).toBe(false);
+		const disclosure = disclosureOf(containerEl);
+		expect(disclosure).not.toBeNull();
+		expect(shelfOf(containerEl)?.contains(disclosure)).toBe(true);
+		expect(toolbarOf(containerEl).contains(disclosure)).toBe(false);
+		// Nothing shelf-shaped is left in the toolbar at all — the cluster that used to
+		// live there is gone, not merely duplicated.
+		expect(toolbarOf(containerEl).querySelector('.pbl-shelf-controls')).toBeNull();
+		expect(toolbarOf(containerEl).querySelector('.pbl-shelf-toggle')).toBeNull();
 	});
 
-	it('renders nothing in the toolbar outside roadmap mode', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
-		view.setProjection('tree');
-		expect(shelfControlsOf(containerEl)).toBeNull();
+	it('are reachable by pointer but never a second tab stop in the listbox', () => {
+		const { containerEl } = makeRoadmap(horizonVault());
+		// The pane is one tab stop and the shelf sits inside it, so every control it
+		// carries has to be `tabindex="-1"` — a focusable form control here would be a
+		// second stop in a composite that has exactly one.
+		for (const sel of ['.pbl-shelf-disclosure', '.pbl-shelf-sort', '.pbl-shelf-filter']) {
+			const btn = containerEl.querySelector<HTMLElement>(sel);
+			expect(btn, sel).not.toBeNull();
+			expect(btn?.getAttribute('tabindex'), sel).toBe('-1');
+		}
+		expect(containerEl.querySelector('.pbl-shelf-header select')).toBeNull();
+		expect(containerEl.querySelector('.pbl-shelf-header input')).toBeNull();
 	});
 
-	it('hides the cluster once a filter empties the shelf, without a full toolbar rebuild', () => {
-		const vault = horizonVault();
+	it('stays in the tab order when the shut shelf is the only thing in the pane', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		// Nothing placed and the shelf shut: the pane renders no card, so it is a plain
+		// region rather than a one-tab-stop composite. The rule that puts the shelf's
+		// controls outside the tab order is the composite's, and with no composite there
+		// is nothing else to reach — a `-1` here would leave an all-shelved roadmap with
+		// no keyboard way to open itself at all.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
+	});
+
+	it('keeps every header control tabbable when hiding the last type empties the pane', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const { containerEl, view } = makeRoadmap(vault);
-		expect(shelfControlsOf(containerEl)).not.toBeNull();
-		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(false);
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
 
-		// "Untriaged" is the shelf's only card; filter it out entirely.
-		view.setFilter('nonexistent-search-term');
-		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(true);
-
-		view.setFilter('');
-		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(false);
+		view.setShelfHiddenTypes(new Set(['Epic']));
+		// Nothing renders now — no placed card, and the shelf's only group hidden — so the
+		// pane is a region and no card menu can open. The filter that produced this state
+		// is the only way out of it, which makes reaching it the whole question: rescuing
+		// the disclosure alone would leave a keyboard user able to shut and reopen an
+		// empty shelf forever and never unhide anything.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+		expect(containerEl.querySelector('.pbl-shelf-filter')?.getAttribute('tabindex')).toBe('0');
+		expect(containerEl.querySelector('.pbl-shelf-sort')?.getAttribute('tabindex')).toBe('0');
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
-	it('shows the real shelf count once content has rendered', () => {
+	it('gives the pane the focus when opening the shelf leaves cards to arrow through', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl, view } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		const tree = containerEl.querySelector<HTMLElement>('.pbl-tree');
+		disclosureOf(containerEl)?.focus();
+
+		disclosureOf(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// The press rebuilt the pane and destroyed the button, so focus has to go
+		// SOMEWHERE — and inside a composite it cannot go to the replacement. The pane's
+		// key handler ignores any event whose target is not the pane itself, so focus on
+		// a `tabindex="-1"` control within it leaves the arrows dead while looking fine.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		expect(document.activeElement).toBe(tree);
+		// The consequence, not just the mechanism: the walk still works.
+		key(tree as HTMLElement, 'ArrowDown');
+		expect(view.selectedPath).toBe('Untriaged.md');
+	});
+
+	it('gives the control the focus when nothing is left to arrow through', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeRoadmap(vault);
+		const before = disclosureOf(containerEl);
+		before?.focus();
+
+		before?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// Shutting the only content leaves a plain region: no composite owns the
+		// keyboard, so the control that did this is the one thing to be on — and it is
+		// the only way back. Dropping to the body strands a keyboard user here.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+		const after = disclosureOf(containerEl);
+		expect(after).not.toBe(before);
+		expect(document.activeElement).toBe(after);
+	});
+
+	it('hands focus back to the header picker whose own menu rebuilt the pane', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+
+		for (const [selector, entry] of [
+			['.pbl-shelf-filter', 'Task (1)'],
+			['.pbl-shelf-sort', 'Title (A to Z)'],
+		] as const) {
+			const before = containerEl.querySelector<HTMLElement>(selector);
+			before?.focus();
+			itemNamed(openMenu(containerEl, selector), entry).click();
+
+			// The pick rebuilds the pane, taking the button the menu was opened from with
+			// it. This fixture keeps cards on screen, so the pane is still a composite
+			// and the focus belongs to IT — the replacement control is `tabindex="-1"`
+			// there, and focusing it would silence the arrows.
+			expect(containerEl.querySelector<HTMLElement>(selector), selector).not.toBe(before);
+			expect(document.activeElement, selector).toBe(containerEl.querySelector('.pbl-tree'));
+		}
+	});
+
+	it('leaves the tab order again as soon as the pane has cards to arrow through', () => {
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+		// Two placed epics still render, so the pane IS a composite and its one stop is
+		// the pane itself — the disclosure goes back to being reachable by arrow and by
+		// assistive tech, never by Tab.
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('-1');
+	});
+
+	it('takes the pickers out of the tab order too, wherever the pane is a composite', () => {
+		const { containerEl } = makeRoadmap(horizonVault());
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		for (const sel of ['.pbl-shelf-disclosure', '.pbl-shelf-sort', '.pbl-shelf-filter']) {
+			expect(containerEl.querySelector(sel)?.getAttribute('tabindex'), sel).toBe('-1');
+		}
+	});
+
+	it('marks the disclosure accessibly, and flips it when clicked', () => {
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+		expect(disclosureOf(containerEl)?.getAttribute('aria-expanded')).toBe('false');
+		expect(disclosureOf(containerEl)?.getAttribute('aria-label')).toContain('Expand');
+
+		// A real click, not a direct setShelfCollapsed call: this is what exercises the
+		// disclosure's own listener, so a dropped or miswired one fails here rather than
+		// passing every test that bypasses it.
+		disclosureOf(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(disclosureOf(containerEl)?.getAttribute('aria-expanded')).toBe('true');
+		expect(disclosureOf(containerEl)?.getAttribute('aria-label')).toContain('Collapse');
+	});
+
+	it('shows the shelf\'s true total on the disclosure', () => {
 		const { containerEl } = makeRoadmap(horizonVault());
 		expect(shelfCountOf(containerEl)).toBe('1');
 	});
 
-	it('marks the collapse toggle accessibly, and flips it when toggled', () => {
-		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
-		const collapseBtn = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn');
-		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('false');
-		expect(collapseBtn?.getAttribute('aria-label')).toContain('Expand');
-
-		// A real click, not a direct setShelfCollapsed call: this is the one test that
-		// exercises renderShelfControls' own click listener, so a dropped or miswired
-		// listener fails here rather than passing every test that bypasses it.
-		collapseBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('true');
-		expect(collapseBtn?.getAttribute('aria-label')).toContain('Collapse');
+	it('offers a bare label and no disclosure when the shelf is empty', () => {
+		const vault = new FakeVault();
+		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		const { containerEl } = makeRoadmap(vault);
+		// The empty shelf still renders — a drag needs somewhere to land — but there is
+		// nothing to disclose, so it carries the label alone.
+		expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-name')?.textContent).toBe('Unplaced');
+		expect(disclosureOf(containerEl)).toBeNull();
 	});
 
-	it('never rebuilds the rest of the toolbar when a shelf control changes', () => {
+	it('withholds the sort and filter pickers while the shelf is shut', () => {
+		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+		expect(containerEl.querySelector('.pbl-shelf-sort')).toBeNull();
+		expect(containerEl.querySelector('.pbl-shelf-filter')).toBeNull();
+
+		view.setShelfCollapsed(false);
+		expect(containerEl.querySelector('.pbl-shelf-sort')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-shelf-filter')).not.toBeNull();
+	});
+
+	it('checks the sort pick the shelf is actually using, and reorders when another is chosen', () => {
+		const vault = new FakeVault();
+		vault.addFile('Zed Task.md', { frontmatter: { type: 'Task', order: 10 } });
+		vault.addFile('Ann Task.md', { frontmatter: { type: 'Task', order: 20 } });
+		const { containerEl } = makeRoadmap(vault);
+		expect(shelfTitles(containerEl)).toEqual(['Zed Task', 'Ann Task']);
+
+		const menu = openMenu(containerEl, '.pbl-shelf-sort');
+		expect(menu.items.map((i) => i.titleText)).toEqual(['Sibling order', 'Title (A to Z)', 'Last modified']);
+		// The checkmark is asked of the pick in force, never written beside it.
+		expect(menu.items.filter((i) => i.checked).map((i) => i.titleText)).toEqual(['Sibling order']);
+
+		itemNamed(menu, 'Title (A to Z)').click();
+		expect(shelfTitles(containerEl)).toEqual(['Ann Task', 'Zed Task']);
+	});
+
+	it('lists every type on the shelf, checked unless hidden, and toggles one on a pick', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+
+		const menu = openMenu(containerEl, '.pbl-shelf-filter');
+		expect(menu.items.map((i) => i.titleText)).toEqual(['Epic (1)', 'Task (1)']);
+		expect(menu.items.every((i) => i.checked)).toBe(true);
+
+		itemNamed(menu, 'Task (1)').click();
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
+	});
+
+	it('keeps a hidden type listed, so the last one hidden is never the one nobody can restore', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl, view } = makeRoadmap(vault);
+		view.setShelfHiddenTypes(new Set(['Task']));
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
+
+		// Built from the UNFILTERED shelf: hiding a type must not remove its own way back.
+		const menu = openMenu(containerEl, '.pbl-shelf-filter');
+		expect(menu.items.map((i) => i.titleText)).toEqual(['Epic (1)', 'Task (1)']);
+		expect(itemNamed(menu, 'Task (1)').checked).toBe(false);
+
+		itemNamed(menu, 'Task (1)').click();
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
+	});
+
+	it('puts its actions on the card menu, the keyboard path its tabindex="-1" owes', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
+		// A composite pane, so the header's controls are correctly out of the tab order —
+		// which is exactly the state that owes a keyboard path. Without this section the
+		// shelf would be pointer-only here, the failure `src/view/CLAUDE.md` names for
+		// the board's own hidden-match links.
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('-1');
+
+		Menu.lastShown = null;
+		cardByTitle(containerEl, 'Now item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('no card menu opened');
+
+		itemNamed(menu, 'Expand unplaced (2)').click();
+		expect(shelfTitles(containerEl)).toEqual(['Untriaged', 'A Task']);
+	});
+
+	it('offers the same sort and filter choices to the keyboard as to the pointer', () => {
+		const vault = horizonVault();
+		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
+		const { containerEl } = makeRoadmap(vault);
+
+		Menu.lastShown = null;
+		cardByTitle(containerEl, 'Now item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('no card menu opened');
+
+		// One builder feeds both surfaces, so the menu's entries are the header's own —
+		// a second builder is what would let the two drift apart about what is offered.
+		const sortEntries = itemNamed(menu, 'Sort unplaced').submenu?.items ?? [];
+		expect(sortEntries.map((i) => i.titleText)).toEqual(headerMenuTitles(containerEl, '.pbl-shelf-sort'));
+		const typeEntries = itemNamed(menu, 'Filter unplaced by type').submenu?.items ?? [];
+		expect(typeEntries.map((i) => i.titleText)).toEqual(headerMenuTitles(containerEl, '.pbl-shelf-filter'));
+
+		itemNamed(menu, 'Filter unplaced by type').submenu!.items[1].click();
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
+	});
+
+	it('never rebuilds the view toolbar when a shelf control changes', () => {
 		const vault = horizonVault();
 		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
 		const { containerEl } = makeRoadmap(vault);
 		const modeBtn = containerEl.querySelector('.pbl-mode-btn[aria-label="Show as roadmap"]');
 		expect(modeBtn).not.toBeNull();
 
-		// A full render() would tear down and rebuild the whole toolbar, replacing
-		// this element — the same DOM node before and after is the proof it didn't.
-		// Real gestures on all three controls, not direct setter calls: the same
-		// listeners exercised above and below, driven together here.
-		containerEl
-			.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		const sortSelect = containerEl.querySelector<HTMLSelectElement>('.pbl-shelf-sort');
-		if (sortSelect) sortSelect.value = 'title';
-		sortSelect?.dispatchEvent(new Event('change', { bubbles: true }));
-		const taskCheckbox = containerEl.querySelector<HTMLInputElement>(
-			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
-		);
-		if (taskCheckbox) taskCheckbox.checked = false;
-		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
-
+		// A full render() would tear down and rebuild the whole toolbar, replacing this
+		// element — the same DOM node before and after is the proof it did not.
+		disclosureOf(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(containerEl.querySelector('.pbl-mode-btn[aria-label="Show as roadmap"]')).toBe(modeBtn);
-	});
-
-	it('keeps focus on the type-filter checkbox that was just toggled, not merely the rest of the toolbar', () => {
-		const vault = horizonVault();
-		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
-		const { containerEl } = makeRoadmap(vault);
-		const taskCheckbox = containerEl.querySelector<HTMLInputElement>(
-			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
-		);
-		expect(taskCheckbox).not.toBeNull();
-		taskCheckbox?.focus();
-
-		// The `change` handler calls setShelfHiddenTypes, which re-renders the content
-		// pane and rebuilds every chip from scratch — the very node holding focus
-		// right now does not survive that. What must survive is focus landing on
-		// WHATEVER checkbox now represents "Task", even though it is a new DOM node.
-		taskCheckbox!.checked = false;
-		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
-
-		const rebuiltCheckbox = containerEl.querySelector<HTMLInputElement>(
-			'.pbl-shelf-type-chip[data-shelf-type="Task"] input',
-		);
-		expect(rebuiltCheckbox).not.toBeNull();
-		expect(rebuiltCheckbox).not.toBe(taskCheckbox);
-		expect(document.activeElement).toBe(rebuiltCheckbox);
-	});
-});
-
-/**
- * `syncShelfControls` is driven directly here rather than through its real call site (a
- * render-loop hook, alongside `syncCountLabel`, now wired in `renderTreeContent` — see
- * `shelfControls.ts`'s own doc comment) — the same way a domain function is unit-tested
- * ahead of the caller that invokes it in production: the point is coverage of the
- * function's own branches, not the render-lifecycle wiring, which the view's other
- * suites already exercise.
- */
-describe('syncing the shelf controls directly', () => {
-	it('fills the real shelf count and the accessible collapse-toggle name', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
-		const bar = toolbarOf(containerEl);
-		syncShelfControls(view, bar);
-
-		const collapseBtn = bar.querySelector<HTMLButtonElement>('.pbl-shelf-collapse-btn');
-		expect(collapseBtn?.querySelector('.pbl-shelf-count')?.textContent).toBe('1');
-		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('false');
-		expect(collapseBtn?.getAttribute('aria-label')).toContain('Expand');
-
-		view.setShelfCollapsed(false);
-		syncShelfControls(view, bar);
-		expect(collapseBtn?.getAttribute('aria-expanded')).toBe('true');
-		expect(collapseBtn?.getAttribute('aria-label')).toContain('Collapse');
-	});
-
-	it('marks the cluster empty once nothing is left to show, and clears the mark once something is', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
-		const bar = toolbarOf(containerEl);
-		syncShelfControls(view, bar);
-		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(false);
-
-		view.setFilter('nonexistent-search-term');
-		syncShelfControls(view, bar);
-		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(true);
-
-		view.setFilter('');
-		syncShelfControls(view, bar);
-		expect(shelfControlsOf(containerEl)?.hasClass('pbl-shelf-controls-empty')).toBe(false);
-	});
-
-	it("reflects the host's current sort pick onto the select", () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
-		const bar = toolbarOf(containerEl);
-		const sortSelect = bar.querySelector<HTMLSelectElement>('.pbl-shelf-sort');
-
-		syncShelfControls(view, bar);
-		expect(sortSelect?.value).toBe('tree');
-
-		view.setShelfSort('modified');
-		syncShelfControls(view, bar);
-		expect(sortSelect?.value).toBe('modified');
-	});
-
-	it('builds one type-filter chip per group present on the shelf, checked unless the host hides that type', () => {
-		const vault = horizonVault();
-		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
-		const { containerEl, view } = makeRoadmap(vault);
-		const bar = toolbarOf(containerEl);
-		syncShelfControls(view, bar);
-
-		const chips = Array.from(bar.querySelectorAll<HTMLElement>('.pbl-shelf-type-chip'));
-		expect(chips.map((c) => c.dataset.shelfType)).toEqual(['Epic', 'Task']);
-		const taskCheckbox = bar.querySelector<HTMLInputElement>('.pbl-shelf-type-chip[data-shelf-type="Task"] input');
-		expect(taskCheckbox?.checked).toBe(true);
-
-		// Hiding a type unchecks its own chip; the chip itself must stay put, or a
-		// hidden type could never be turned back on through this control.
-		view.setShelfHiddenTypes(new Set(['Task']));
-		syncShelfControls(view, bar);
-		const stillThere = bar.querySelector<HTMLInputElement>('.pbl-shelf-type-chip[data-shelf-type="Task"] input');
-		expect(stillThere).not.toBeNull();
-		expect(stillThere?.checked).toBe(false);
-	});
-
-	it("toggling a chip's checkbox hides that type through the host setter", () => {
-		const vault = horizonVault();
-		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
-		const { containerEl, view } = makeRoadmap(vault);
-		const bar = toolbarOf(containerEl);
-		syncShelfControls(view, bar);
-
-		const taskCheckbox = bar.querySelector<HTMLInputElement>('.pbl-shelf-type-chip[data-shelf-type="Task"] input');
-		expect(taskCheckbox).not.toBeNull();
-		taskCheckbox!.checked = false;
-		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
-		expect(view.shelfHiddenTypes.has('Task')).toBe(true);
-
-		taskCheckbox!.checked = true;
-		taskCheckbox?.dispatchEvent(new Event('change', { bubbles: true }));
-		expect(view.shelfHiddenTypes.has('Task')).toBe(false);
-	});
-
-	it('hands focus to whichever chip now represents the type that held it before the rebuild', () => {
-		const vault = horizonVault();
-		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
-		const { containerEl, view } = makeRoadmap(vault);
-		const bar = toolbarOf(containerEl);
-		syncShelfControls(view, bar);
-
-		const taskCheckbox = bar.querySelector<HTMLInputElement>('.pbl-shelf-type-chip[data-shelf-type="Task"] input');
-		taskCheckbox?.focus();
-		expect(document.activeElement).toBe(taskCheckbox);
-
-		// A second sync rebuilds every chip from scratch; the one for "Task" is a new
-		// node, and focus has to land on it rather than nowhere.
-		syncShelfControls(view, bar);
-		const rebuilt = bar.querySelector<HTMLInputElement>('.pbl-shelf-type-chip[data-shelf-type="Task"] input');
-		expect(rebuilt).not.toBeNull();
-		expect(rebuilt).not.toBe(taskCheckbox);
-		expect(document.activeElement).toBe(rebuilt);
-	});
-
-	it('does nothing when the toolbar carries no shelf-controls cluster at all', () => {
-		const { containerEl, view } = makeRoadmap(horizonVault());
-		view.setProjection('tree');
-		// Off the roadmap `renderShelfControls` built nothing; syncing must be a no-op
-		// rather than throwing on a missing `.pbl-shelf-controls`.
-		expect(() => syncShelfControls(view, toolbarOf(containerEl))).not.toThrow();
 	});
 });
 
@@ -263,25 +334,6 @@ describe('the shelf, collapsed by default', () => {
 		const { containerEl, view } = makeRoadmap(vault);
 		view.setShelfCollapsed(false);
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
-	});
-
-	it('changes display order within a group via the sort control, without touching group order', () => {
-		const vault = new FakeVault();
-		vault.addFile('Zed Task.md', { frontmatter: { type: 'Task', order: 10 } });
-		vault.addFile('Ann Task.md', { frontmatter: { type: 'Task', order: 20 } });
-		const { containerEl, view } = makeRoadmap(vault);
-		view.setShelfCollapsed(false);
-		// Tree/sibling order is the default: the order the notes were declared in.
-		expect(shelfTitles(containerEl)).toEqual(['Zed Task', 'Ann Task']);
-
-		// A real change on the actual <select>, not a direct setShelfSort call: this
-		// is what exercises the select's own change listener and proves it produces
-		// the right resulting order, not just that the render logic sorts correctly
-		// when told to.
-		const sortSelect = containerEl.querySelector<HTMLSelectElement>('.pbl-shelf-sort');
-		if (sortSelect) sortSelect.value = 'title';
-		sortSelect?.dispatchEvent(new Event('change', { bubbles: true }));
-		expect(shelfTitles(containerEl)).toEqual(['Ann Task', 'Zed Task']);
 	});
 
 	it('hides a whole type group via the type filter, while the shelf count stays the true total', () => {

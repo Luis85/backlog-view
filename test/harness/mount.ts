@@ -10,6 +10,7 @@
  */
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { drawChrome } from './chrome';
+import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
 import { demoOptions, demoResults, demoVault } from '../helpers/fixtures';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
@@ -42,6 +43,7 @@ export interface MountedHarness {
 export function mountHarness(root: HTMLElement): MountedHarness {
 	installObsidianDom();
 	drawChrome();
+	drawIcons();
 	root.empty();
 
 	const vault = demoVault();

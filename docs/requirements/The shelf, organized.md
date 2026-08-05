@@ -73,10 +73,18 @@ alongside the same visual fixes.
 - The shelf's collapse state, sort pick and type-filter selections persist per saved
   view, per device — the same store `mode` and the roadmap axis pick already use.
 - Collapsed by default on a view nobody has touched; toggling it is a real `<button>`
-  reachable from the toolbar, not a per-row control inside the roadmap's one-tab-stop
-  listbox.
+  in the shelf's own header, where a reader working through unplaced work is already
+  looking — never a form control, which the roadmap's one-tab-stop listbox has no room
+  for.
 - Type groups render in a fixed order (the declared type vocabulary, plus a trailing
   group for anything outside it); a group with nothing in it renders nothing.
+- Every shelf control is reachable without a pointer: the disclosure returns to the tab
+  order wherever the pane rendered no card, and the card menu carries collapse, sort and
+  the type filter wherever it did.
+- Using one never strands the keyboard. The press rebuilds the pane and destroys the
+  button, so focus goes to the pane where cards remain — the composite owns the arrows,
+  and its handler answers only to events targeting the pane itself — and to the control's
+  own replacement where no card does.
 - Sort and the type filter never write to a note; the shelf's count is the true total,
   unaffected by which groups are currently hidden.
 - Shelf and context-strip cards render at a uniform width; the shelf sits with a
@@ -93,12 +101,30 @@ Persistence is three fields on the collapse store's existing per-view entry
 (`src/storage/collapseStore.ts`), read as defensively as `mode`/`axis` already are, with
 matching accessors on `src/view/collapseState.ts`.
 
-The interactive controls — the collapse toggle, the sort picker, the type filter — are
-toolbar chrome in `src/view/render/shelfControls.ts`, built in `renderToolbar`
-(`src/view/render/toolbar.ts`) and synced after every content render
-(`ProductBacklogView.renderTreeContent`, `src/view/backlogView.ts`) the same way the
-item count already is — never inside `treeEl`'s `role="listbox"`, which has no room for
-a `<select>` or checkboxes without breaking its one-tab-stop contract. Three new host
+The interactive controls — the disclosure that names, counts and opens the shelf, plus
+the sort and type-filter pickers it carries while open — are the SHELF's own header
+chrome (`src/view/render/shelfControls.ts`, called from `renderShelf`). They shipped
+first as view-toolbar chrome and moved here: a control for the shelf, three regions away
+from it, is one nobody finds. Nothing about the constraint that put them there changed —
+`treeEl` still wears `role="listbox"` while any card renders — so what moved had to stop
+being form controls: both pickers are `tabindex="-1"` buttons opening an Obsidian `Menu`,
+the answer the tree's own per-row controls (`.pbl-add`, the state chip) already give.
+
+That rule is the COMPOSITE's, so it is applied only where a composite exists:
+`syncShelfTabStops` puts every header control back in the tab order whenever the pane
+rendered no card and dropped to `role="region"`, resolved from the same final count the
+role itself is. Two states reach it: an all-shelved roadmap with the shelf shut, where
+the disclosure is the only way to the cards it holds, and an all-shelved roadmap whose
+last visible type the filter just hid, where the pane empties by itself and the filter
+is the only way back. Both are where a `-1` stops being a convention and becomes a
+trap, which is why the lift is all-or-nothing rather than per control. Where the pane IS a composite, the keyboard path is the card menu's own shelf section
+(`addShelfSection`, `src/view/interactions/menu.ts`): expand or collapse, and the same
+two pickers as submenus. That is not a nicety deferred to later work — this codebase's
+rule for a `tabindex="-1"` control is that its menu path ships WITH it, stated at the
+board's hidden-match links, whose absence would leave them "pointer-only and the feature
+would fail at its own purpose". The entries come from the same two item builders the
+header buttons call, so the two surfaces cannot drift about what is offered or what is
+checked, the reason the horizon chip and its menu already share one builder. Three host
 methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
 `CollapseState` and re-render the content pane alone — never the whole toolbar — so a
 keyboard user's focus survives the control they just used, the same reason `setFilter`
@@ -126,5 +152,12 @@ flush-edge gutter and overflow fix is NOT in `shelf.css`: it is the pinned-strip
 .pbl-board-advisory`) in `styles/roadmap.css`, changed by the same task that gives the
 buckets their own full-width layout — the rule governs the shelf's POSITION within the
 roadmap's scrollport, which is a roadmap-layout concern `roadmap.css` already owns,
-not shelf-internal appearance. The full-width/grid layout itself is a live-vault check
-— jsdom has no layout engine — recorded verified only after `npm run test-build`.
+not shelf-internal appearance. The layout half of that is now checkable without a vault: measured through
+`npm run harness` ([[A browser harness without Obsidian]]), the shelf takes the pane's
+width less a 12px gutter on each side (1376px of 1400px) on BOTH axes, its collapsed
+footprint is 33px rather than an empty box, and the disclosure sizes to its label
+(212x23px) rather than to `clickable-icon`'s lone-glyph square. The dated axis's own
+number is what the fix is worth: with the sticky rule's `align-self: flex-start` left
+standing, the same shelf measured 407px. Appearance rather than layout — a real theme's
+fonts, colours and icons — the harness cannot answer, and the release sweep's check
+stands for it (ADR 0020).

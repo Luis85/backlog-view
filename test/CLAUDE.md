@@ -44,8 +44,9 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 
 `npm run harness` bundles the REAL view into a static page — no Obsidian, no server, no
 browser-automation dependency — and prints a `file://` URL. `?view=board` and
-`?view=roadmap` open straight into a projection, so a headless screenshot of a URL needs
-nothing to click. The toolbar switches projections, and the drags, menu entries and
+`?view=roadmap` open straight into a projection and `?theme=light` into the light scheme,
+so a headless screenshot of a URL needs nothing to click; a corner toggle switches the
+scheme by hand, and it is the harness's furniture rather than the view's. The toolbar switches projections, and the drags, menu entries and
 keyboard moves are the view's own — but the menu and dialog WIDGETS are drawn by
 `test/harness/chrome.ts`, because the module mock records a `Menu`/`Modal` and renders
 nothing. What they contain and what they do is the view's; what they look like is not
@@ -60,13 +61,21 @@ Obsidian's.
 - `test/harness/chrome.ts` — patches the mock's `Menu` and `Modal` to appear, from the
   harness rather than in the mock, so the 68 files asserting through `lastShown` /
   `lastOpened` measure exactly what they did before.
-- Its own checks live in `test/harness/harness.test.ts` — it still mounts, and the theme
-  stub still covers every `var(--x)` the partials read.
+- `test/harness/icons.ts` — draws the real lucide glyph for each `setIcon` name, through
+  `setIconRenderer`, the one hook the mock exposes; by default the mock still only
+  records `data-icon`, so the suite is untouched. An unresolvable name is marked rather
+  than skipped, because a blank control in the tool built for looking is the one failure
+  nobody would see.
+- Its own checks live in `test/harness/harness.test.ts` — it still mounts, the theme
+  stub still covers every `var(--x)` the partials read, and every icon name the view asks
+  for across all three projections still resolves.
 
-**What it is faithful about:** markup, layout, the real assembled stylesheet, and every
-interaction. **What it is not:** colour — `test/harness/theme.css` is a stub of
-approximations of Obsidian's variables — and icons, which render as their own names
-because the module mock draws no SVG. It therefore replaces NO live-vault verification,
+**What it is faithful about:** markup, layout, the real assembled stylesheet, every
+interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the
+partials style. **What it is not:** colour — `test/harness/theme.css` builds on Obsidian's
+documented base scale and palette in both schemes, which is close enough to judge contrast
+and hierarchy by and not close enough to read a colour off, since a themed vault replaces
+exactly those values. It therefore replaces NO live-vault verification,
 and asserting appearance from it is refused in
 [ADR 0020](../docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md): no
 baselines, no screenshot suite, no sixth step in `npm run check`.

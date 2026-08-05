@@ -98,7 +98,7 @@ into `shelf.ts` for the bands beside them — driven in `test/domain/roadmap.tes
 `test/view/roadmapFrame.test.ts` and `test/view/shelfUx.test.ts` (accessors in
 `test/helpers/roadmap.ts`).
 
-The shelf's own toolbar picks (`host.shelfCollapsed`, `shelfSort`, `shelfHiddenTypes`,
+The shelf's own header picks (`host.shelfCollapsed`, `shelfSort`, `shelfHiddenTypes`,
 persisted UI state beside the collapse store) are what `renderShelf` now consults:
 collapsed contributes zero cards to the DOM (the drop target and its outcome preview
 are wired before that check, never after, so collapsing can never disable the one thing
@@ -133,11 +133,10 @@ this closes. Whether the empty strip actually appears under a dragged card — j
 paints nothing, so a test can assert the class and never the layout — is
 [[Smoke test the visual changes]]'s to check.
 
-**2a's narrow-pane compaction** ([[Zoom and the today marker]] extension 2a) is built
-too: an already-expanded shelf compacts to its labelled count in a narrow pane, carried
-by a real toolbar control — synced rather than conditionally rendered, so a render that
-rebuilds the pane without touching the toolbar still leaves the toggle naming a shelf
-that exists — never vanishing outright, because an unplaced result may lose its card but
-never its existence. Opening a shelf collapsed in the first place is a separate control,
-[[The shelf, organized]]'s own collapse toggle; this one only governs how an already-open
-shelf behaves on a narrow pane.
+**2a's narrow-pane compaction** ([[Zoom and the today marker]] extension 2a) is met by
+the collapse itself rather than by a second mechanism: the shelf opens shut on both axes
+and stays where the reader put it, so a narrow pane already opens with the cards away
+and the labelled count showing. The width-measured compaction that once did this job
+separately — a toolbar toggle, a pixel threshold, session-only state — is gone: two ways
+to hide the same cards disagreed with each other, and the one that persists is the one a
+reader chose ("The shelf, organized").

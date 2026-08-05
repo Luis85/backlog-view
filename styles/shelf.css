@@ -30,8 +30,8 @@
 	border-style: dashed;
 }
 
-/* Collapsed keeps its footprint minimal — the toolbar carries the name, the count
-   and the toggle, so there is nothing left to show here until it is expanded. */
+/* Collapsed keeps its footprint minimal: the header carries the name, the count and
+   the disclosure, so nothing else is on screen until it is opened. */
 .pbl-shelf-collapsed {
 	padding-block: var(--size-4-1);
 	min-height: 0;
@@ -118,32 +118,48 @@
 	height: 12px;
 }
 
-/* The shelf's toolbar chrome — a sibling of `.pbl-tree`, never inside it. */
-.pbl-shelf-controls {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-2);
-}
-
-.pbl-shelf-controls-empty {
-	display: none;
-}
-
-.pbl-shelf-sort {
-	font-size: var(--font-ui-smaller);
-}
-
-.pbl-shelf-type-filter {
+/* The shelf's own controls, in its own header. The disclosure carries the icon, the
+   name and the count, so it is a text-bearing button rather than the lone glyph
+   `clickable-icon` sizes for — the padding and the auto width are what stop it
+   rendering as a square with the label spilling out of it. */
+.pbl-shelf-disclosure {
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
-	flex-wrap: wrap;
+	width: auto;
+	height: auto;
+	padding: var(--size-2-1) var(--size-4-1);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
 }
 
-.pbl-shelf-type-chip {
+.pbl-shelf-collapse-icon {
 	display: flex;
 	align-items: center;
-	gap: var(--size-2-1);
-	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
+}
+
+.pbl-shelf-collapse-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`. */
+.pbl-shelf-sort,
+.pbl-shelf-filter {
+	color: var(--text-muted);
+}
+
+.pbl-shelf-sort .svg-icon,
+.pbl-shelf-filter .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* A filter that is actively hiding a type says so on its face — the shelf's count is
+   the true total, so without this the count and the cards disagree with no reason
+   visible for it. */
+.pbl-shelf-filter.is-active {
+	color: var(--text-accent);
 }

@@ -156,8 +156,24 @@ export const Keymap = {
 	},
 };
 
+/**
+ * What an icon DRAWS, over and above being recorded. Null is the suite's own case: the
+ * name on `data-icon` is everything a jsdom assertion needs, and appending nodes for 68
+ * files that never look at them would only change what their `textContent` reads. The
+ * harness installs one (`test/harness/icons.ts`) because a page has to be seen.
+ */
+let iconRenderer: ((el: HTMLElement, icon: string) => void) | null = null;
+
+/** Draw icons from here on. The harness's; the suite leaves it null. */
+export function setIconRenderer(render: (el: HTMLElement, icon: string) => void): void {
+	iconRenderer = render;
+}
+
 export function setIcon(el: HTMLElement, icon: string): void {
+	// Recorded first and unconditionally: every existing assertion reads this, and it
+	// stays true whether or not anything draws, or the drawing resolves.
 	el.dataset.icon = icon;
+	iconRenderer?.(el, icon);
 }
 
 export function setTooltip(el: HTMLElement, tooltip: string): void {
