@@ -3275,9 +3275,11 @@ Columns and a workflow only — no WIP limits, no column policies, no started/fi
 date stamps, and "Show completed items" has no effect here: a Deliverable's
 completion state on either workflow never hides its card, and only the quick filter
 narrows what is shown. (The toolbar's **Focus** picker still applies here as it does
-everywhere else — focused on a Feature or a PBI, this board shows only the
-Deliverables nested under that focus.) Moving a card (drag, Alt+Left/Right, or the
-card menu's Set state) writes only the Deliverable state property.
+everywhere else — focused on a Feature, this board shows only the Deliverables nested
+under that focus; focused on PBI specifically, every Deliverable stays visible
+regardless of where it sits, the same way `Issue` and `Bug` already do under PBI
+focus.) Moving a card (drag, Alt+Left/Right, or the card menu's Set state) writes only
+the Deliverable state property.
 
 Everything else about a Deliverable — its parent, its rank, its tags, its place on the
 roadmap — is the same property every other type already uses; nothing about this board
