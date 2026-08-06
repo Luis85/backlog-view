@@ -59,6 +59,11 @@ a defect a deliverable does not necessarily concern anything already in the tree
   feature; wiring `docs/Product Backlog.base` to open a second, Deliverables-scoped view
   is a follow-up, not a precondition — the toggle works in any base with the type and
   the new view options configured.
+- "Show completed items" on the Deliverables board (added during review — see
+  Architecture §4). It would need its own rollup over the Deliverable workflow, the same
+  shape of cost already ruled out for WIP limits/policies/stamps; every Deliverable
+  result renders regardless of either workflow's done state, narrowed only by the quick
+  filter.
 
 ## Architecture
 
@@ -173,6 +178,42 @@ board's call site builds it from `settings.deliverableStateKey` /
 duplicated column logic — this is the reuse the scoping conversation asked for ("we
 don't need extra logic for properties we already track").
 
+**The candidate set is also a parameter now, not `boardColumns`' own
+`model.focused ? model.roots : model.results` — corrected from the first draft**, which
+left that internal and assumed it would just work for a type-filtered call too. It does
+not, for two compounding reasons traced against `model.ts`: under an active hierarchy
+focus, `model.roots` is the synthetic top row *at the focus level* (e.g. every `Feature`,
+if focus is `Feature`), so filtering it to `Deliverable` finds nothing even when
+Deliverables sit nested inside that very subtree; and `model.results` itself is already
+narrowed to the focused subtree by that point (`buildModel`'s `shown()` re-derives it
+from `assignVisualDepth(focusRoots)`), not the whole base. The fix is not "make
+Deliverables immune to focus" — that would make this board inconsistent with the tree
+and the requirements board, which are *both* already scoped by an active focus, and
+narrowing this board's own promise below is what stays honest instead of building around
+that. The requirements board's call site keeps passing
+`model.focused ? model.roots : model.results` exactly as today (unchanged); the
+Deliverables board's call site always passes `model.results` — never `model.roots`,
+which a type filter over cannot reach a nested match through — so it shows every
+Deliverable *`model.results` currently contains*, focused or not, which is what
+`boardColumns` can promise honestly.
+
+**Population also needs to stop consulting `item.subtreeDone` for this board — a gap the
+first draft's "regardless of what any other property holds" phrasing papered over.**
+`host.isRowHidden`/`isRowHiddenUnfiltered` — what the requirements board passes as
+`visible`/`population` — hide a fully-done subtree under "Show completed items", and
+"done" there is `item.subtreeDone`, a rollup built once over the *requirements*
+workflow's `stateValue`/`doneValues` (`assignAll` in `model.ts`). Reusing that predicate
+verbatim would hide a Deliverable whenever its **unrelated** requirements-board state
+happens to read as done — exactly the coupling this feature exists to avoid. Building a
+second, Deliverable-scoped `subtreeDone` rollup is real, non-trivial work (another
+descendant walk, another rollup field) for a control (`showCompleted`) this board has
+not been asked for — the same shape of cost that ruled out WIP limits, policies and
+stamps in Scope. So, added to Scope/Out below: **the Deliverables board does not honor
+"Show completed items"** in this increment; every Deliverable result renders regardless
+of either workflow's completion state, and only the quick filter narrows it. The
+population predicate is the filter check alone, not the full `hidden()` — a new, small
+variant (or a second parameter on it) rather than the two existing flags.
+
 ### 5. Writes — `src/domain/writePlan.ts`, `src/storage/frontmatter.ts`
 
 `ItemWrite` gains `deliverableState?: string` and `removeDeliverableStateKey?: boolean` —
@@ -200,7 +241,24 @@ No `settings`/`today` params, deliberately — no stamp logic to consult, per Sc
 apply/capture `state`/`removeStateKey` (`applyWrites`, `touchedKeys`,
 `captureInverses`), so undo/redo work identically with no new capture logic.
 
-### 6. View — `src/view/host.ts`, `src/storage/collapseStore.ts`, the render/interaction layer
+### 6. View — `src/view/host.ts`, `src/view/render/projections.ts`, `src/storage/collapseStore.ts`, the render/interaction layer
+
+**The content dispatcher needs its own explicit branch — missing entirely from the
+first draft, and the most severe of the three gaps this round found.**
+`renderProjectionContent` in `render/projections.ts` is the ONE place that decides what
+actually draws into the pane, and today it is a closed three-way fork: `'board'` →
+`renderBoardContent`, `'roadmap'` → `renderRoadmapContent`, **everything else** →
+`renderTree`. Adding `'deliverables'` to the `Projection` union changes nothing here by
+itself — every other file in this design could be built correctly and the toolbar's
+fourth toggle would still draw the *tree*, with a `deliverablesBoard` snapshot computed
+and never shown. `renderProjectionContent` needs a third branch,
+`renderDeliverablesBoardContent`, mirroring `renderBoardContent`'s shape exactly: gate on
+`settings.deliverableStateKey` (empty → `renderBoardNoWorkflowState`-style guidance, a
+Deliverables-flavored variant of it, not a blank pane), otherwise render the board and
+return it as the `board` snapshot with a `listbox` role. This is the one change in the
+whole design a passing test suite could not catch without a `view/`-level test actually
+asserting on the fourth toggle's rendered content, which is why that assertion is called
+out explicitly in Testing below rather than folded into "toolbar coverage."
 
 `host.projection` gains `'deliverables'`. **Persistence needs its own change, missing
 from the first draft**: `storage/collapseStore.ts` stores the projection as a `mode`
@@ -235,18 +293,23 @@ columns; the Deliverables board gates on `deliverableStateKey` the same way.
 
 - `domain/`: `itemTypes.test.ts` (rootable top-level offering, extra-type rank/children
   unchanged), `settings.test.ts` (the new `OptionalField`, list defaults),
-  `board.test.ts` (the parametrized `Workflow`, both call sites, no cross-contamination
-  between the two workflows' columns), `writePlan.test.ts`
-  (`computeDeliverableStateWrites`, no stamps emitted).
+  `board.test.ts` (the parametrized `Workflow` and candidate set, both call sites, no
+  cross-contamination between the two workflows' columns; a Deliverable nested inside a
+  focused Feature/PBI subtree still renders as a card; a Deliverable whose *requirements*
+  state is done still renders), `writePlan.test.ts` (`computeDeliverableStateWrites`, no
+  stamps emitted).
 - `storage/`: `frontmatter.test.ts` — apply/capture/undo for the new fields, including
-  the compare-and-swap restore path `applyRestores` already exercises for `state`.
-- `view/`: a `contextCardWrites.test.ts`-style block for the Deliverables board (context
-  row never a card, never a write target — the same three questions asked of the general
-  board's drag/keyboard/menu paths), plus toolbar/keyboard/menu coverage for the fourth
-  projection.
-- `storage/`: `collapseStore.test.ts` — the Deliverables mode round-trips through
-  `readEntry`'s allowlist exactly as `board`/`roadmap` already do, and a legacy stored
-  value untouched by this change still reads back unchanged.
+  the compare-and-swap restore path `applyRestores` already exercises for `state`; and
+  `collapseStore.test.ts` — the Deliverables mode round-trips through `readEntry`'s
+  allowlist exactly as `board`/`roadmap` already do, and a legacy stored value untouched
+  by this change still reads back unchanged.
+- `view/`: **an assertion that the fourth toggle actually renders the Deliverables
+  board**, not just that `host.deliverablesBoard` was computed — `renderProjectionContent`
+  is where a correct model can still draw the wrong thing, so this is the one case
+  worth a dedicated test rather than folding into toolbar coverage. Plus a
+  `contextCardWrites.test.ts`-style block for the Deliverables board (context row never
+  a card, never a write target — the same three questions asked of the general board's
+  drag/keyboard/menu paths), and keyboard/menu coverage for the fourth projection.
 
 ## Open questions carried into the plan, not blocking it
 

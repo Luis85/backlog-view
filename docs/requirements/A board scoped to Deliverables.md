@@ -22,6 +22,7 @@ files:
   - src/view/interactions/menu.ts
   - src/storage/collapseStore.ts
   - src/view/collapseState.ts
+  - src/view/render/projections.ts
 ---
 
 # A board scoped to Deliverables
@@ -51,9 +52,10 @@ narrowed to one type.
 2. Choosing it shows a board whose columns are the workflow the new "Deliverables"
    settings group defines — no-state first, then its configured states in order, then
    any observed value the configuration does not name.
-3. Its cards are every result item typed `Deliverable`, case-insensitively — the same
-   match `isExtraType` already recognises — regardless of what any other property
-   holds.
+3. Its cards are every `Deliverable`-typed item in `model.results`, case-insensitively —
+   the same match `isExtraType` already recognises — regardless of the *requirements*
+   workflow's state, and regardless of "Show completed items" (which this board does
+   not honor; see 3c).
 4. A drag, an Alt+Left/Right, or the card menu's Set state all write the Deliverable
    state property alone, through the same gate every other move goes through, and
    announce themselves the same way board moves already do.
@@ -66,6 +68,17 @@ narrowed to one type.
 - **3a — a Deliverable also carries the requirements board's own state property.** It
   is an ordinary card on the requirements board too, unaffected: the two properties are
   independent, and neither board's move touches the other's key.
+- **3b — a hierarchy focus level is active (the toolbar's focus picker, shared by every
+  projection).** Cards are drawn from `model.results` rather than `model.roots`, so a
+  Deliverable nested inside the focused subtree still renders — but `model.results`
+  itself narrows to that subtree while a focus is active, exactly as it already does for
+  the tree and the requirements board. This board makes no exception to that: a
+  Deliverable entirely outside the focused subtree is out of scope until focus clears,
+  the same rule every other projection already lives with.
+- **3c — a Deliverable's requirements-board state reads as done.** Its card still
+  renders here. This board does not implement "Show completed items" in this increment
+  (Scope, in the design spec) — building it would need its own rollup over the
+  Deliverable workflow, not the requirements one, and nothing has asked for it yet.
 - **4a — the card is a context row (`outsideFilter`).** Never a card to drag, never a
   write target, never counted — the context-row rule applies here exactly as it does on
   the requirements board.
@@ -81,13 +94,18 @@ narrowed to one type.
 - Undo takes back a Deliverables-board move through the same one slot every other move
   in the view uses.
 - No non-Deliverable item ever appears as a card here, whatever its own state.
-- No result is lost: every Deliverable result renders in exactly one column, and column
-  counts sum to the Deliverable card count — the same guarantee [[Product Kanban]]
-  states for the requirements board, including a stray column for an observed value the
-  configured workflow does not name.
+- No result is lost: every Deliverable item in `model.results` renders in exactly one
+  column, and column counts sum to the Deliverable card count — the same guarantee
+  [[Product Kanban]] states for the requirements board, including a stray column for an
+  observed value the configured workflow does not name, and including a Deliverable
+  nested inside a currently-focused subtree (never only the synthetic focus-level roots).
+- Neither the requirements workflow's completion state nor "Show completed items" hides
+  a card here; only the quick filter narrows this board's population.
 - Picking the Deliverables board survives closing and reopening the view, the same way
   Board and Roadmap already do — not merely reverting to the tree because the stored
   value went unrecognised.
+- Selecting the fourth toggle actually renders the Deliverables board's columns and
+  cards into the pane — asserted directly, not inferred from the board model existing.
 
 ## Where it lives
 
@@ -110,6 +128,10 @@ directly, so the requirements board and this one share one implementation.
 `optionalKeyFor(settings, 'deliverableState')`.
 `src/view/host.ts` — `projection` gains `'deliverables'`, and
 `performDeliverablesBoardMove` is the one path for the drop/Alt-arrow/menu trio.
+`src/view/render/projections.ts` — `renderProjectionContent` gains an explicit
+`renderDeliverablesBoardContent` branch beside `renderBoardContent`/
+`renderRoadmapContent`, gated on `settings.deliverableStateKey`; without it the fourth
+toggle falls through to `renderTree`, whatever `host.deliverablesBoard` holds.
 `src/view/backlogView.ts`, `src/view/render/board.ts`, `src/view/render/toolbar.ts` —
 the fourth toggle and its rendering, reusing the card shell `render/board.ts` already
 shares across projections.
