@@ -312,8 +312,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return this.hidden(item, false);
 	}
 
-	// No caller exists yet: syncCountLabel's own consumption is Task 17's job.
-	// fallow-ignore-next-line unused-class-member
 	isRowHiddenByFilterOnly(item: BacklogItem): boolean {
 		return this.filter.active && !this.filter.keeps(item.file.path);
 	}
@@ -543,9 +541,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return this.cardMoves.performBoardMove(item, state);
 	}
 
-	// No caller exists yet: the drop (Task 16), Alt+arrow (Task 18) and menu (Task 19)
-	// wiring lands in later tasks.
-	// fallow-ignore-next-line unused-class-member
 	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
 		return this.cardMoves.performDeliverablesBoardMove(item, state);
 	}

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
-import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import {
 	boardVault,
@@ -123,6 +123,27 @@ describe('dragging a card to a new state', () => {
 
 		expect(vault.fm('Epic A.md')['status']).toBe('New');
 		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+	});
+
+	it('dropping a card on the Deliverables board writes deliverableStatus alone', async () => {
+		const vault = boardVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'New', deliverableStatus: 'Draft' },
+		});
+		const harness = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardDrag(cardByTitle(containerEl, 'D'), columnByName(containerEl, 'Review'));
+		await flush();
+
+		expect(vault.fm('D.md')['deliverableStatus']).toBe('Review');
+		// The requirements property is a separate key: this move must not touch it.
+		expect(vault.fm('D.md')['status']).toBe('New');
 	});
 });
 

@@ -349,3 +349,164 @@ describe('focus on the board', () => {
 		expect(vault.writeLog).toHaveLength(0);
 	});
 });
+
+describe('the Deliverables board', () => {
+	it('shows guidance instead of the Deliverables board when no Deliverable state property is configured', () => {
+		const vault = boardVault();
+		const harness = makeView(vault, {});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(hint).toContain('Deliverable state property');
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+	});
+
+	it('shows "no Deliverables yet" when the workflow is configured but nothing is typed Deliverable', () => {
+		const vault = boardVault(); // Epics and Features only, no Deliverable
+		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const title = containerEl.querySelector('.pbl-empty-title')?.textContent ?? '';
+		expect(title).toContain('deliverable');
+	});
+
+	it('names the current focus, not the whole base, when a Deliverable exists outside it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		// A top-level Deliverable, outside any Feature subtree — `collectFocusRoots` never
+		// reaches it once focus narrows to "Feature", so `model.results` excludes it even
+		// though it exists in the base.
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' }, { focus: 'Feature' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const title = containerEl.querySelector('.pbl-empty-title')?.textContent ?? '';
+		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(title).toContain('focus');
+		expect(hint).toContain('All types');
+		// Must not suggest creating one "here" as an alternative to clearing focus — a
+		// Deliverable created from the toolbar while focused on Feature is parentless and
+		// would not appear on this board either, so that phrasing would be a dead end.
+		expect(hint).not.toMatch(/create one here/i);
+	});
+
+	it('offers "create one" under PBI focus, since a parentless Deliverable shows there', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// No PBI and no Deliverable exist yet — `collectFocusRoots`' `extraFocused` rule
+		// admits every extra type at the PBI rung regardless of subtree, so a Deliverable
+		// created from the toolbar while focused on PBI would appear here immediately,
+		// unlike the Feature-focus case above.
+		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' }, { focus: 'PBI' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(hint).toMatch(/create one/i);
+		expect(hint).not.toMatch(/would not appear/i);
+	});
+
+	it('draws the Deliverables board, scoped to Deliverable-typed results, once configured', () => {
+		const vault = boardVault(); // Epics and Features, none typed Deliverable
+		vault.addFile('D1.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		const harness = makeView(vault, {
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review, Published',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		expect(columnNames(containerEl)).toEqual(['No state', 'Draft', 'Review', 'Published']);
+		expect(cardTitles(columnByName(containerEl, 'Draft'))).toEqual(['D1']);
+		// Epics and Features never become cards on this board.
+		expect(cardTitles(columnByName(containerEl, 'No state'))).toEqual([]);
+	});
+
+	it('renders a card done in its own workflow as done, regardless of the requirements state', () => {
+		const vault = boardVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Done', deliverableStatus: 'Draft' },
+		});
+		const harness = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		// Done on the REQUIREMENTS board, not on this one.
+		expect(cardByTitle(containerEl, 'D').classList.contains('pbl-done')).toBe(false);
+	});
+
+	it('renders a card done in ITS OWN workflow as done, even when the requirements state is not', () => {
+		// Found by review: the negative test above alone cannot rule out an
+		// implementation that never wires deliverableDone into createCard at all, or
+		// hardcodes false — this is the case that requires the positive branch to work.
+		const vault = boardVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Open', deliverableStatus: 'Published' },
+		});
+		const harness = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableDoneValues: 'Published',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		expect(cardByTitle(containerEl, 'D').classList.contains('pbl-done')).toBe(true);
+	});
+
+	it('ignores "Show completed items": a Deliverable done in the requirements workflow still renders here', () => {
+		// The requirements board would hide a fully-done, childless item under this
+		// setting (`isRowHidden`); the Deliverables board reads `isRowHiddenByFilterOnly`
+		// instead, which has no completion concept at all (Scope) — proving this needs a
+		// note done in the REQUIREMENTS sense, not the Deliverable one, or a board that
+		// wrongly wired in `isRowHidden` would still pass.
+		const vault = boardVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Done', deliverableStatus: 'Draft' },
+		});
+		const harness = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+			showCompleted: false,
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		expect(cardTitles(containerEl)).toContain('D');
+	});
+
+	it('shows "no deliverables yet" rather than "all done and hidden" for a base with none', () => {
+		const vault = boardVault(); // Epics and Features only
+		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const title = containerEl.querySelector('.pbl-empty-title')?.textContent ?? '';
+		expect(title).not.toContain('done');
+		expect(title).toContain('deliverable');
+	});
+
+	it('names the DELIVERABLE workflow-states option in a stray column’s hint, not the requirements one', () => {
+		const vault = boardVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Blocked' },
+		});
+		const harness = makeView(vault, {
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const stray = columnByName(containerEl, 'Blocked');
+		expect(stray.dataset.tooltip).toContain('Deliverable workflow states (in order)');
+		expect(stray.dataset.tooltip).not.toContain('"Workflow states (in order)"');
+	});
+});

@@ -97,6 +97,81 @@ export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLEl
 }
 
 /**
+ * The Deliverables board without its own workflow configured — the same "no lie about
+ * a workflow that does not exist" rule `renderBoardNoWorkflowState` states, for the
+ * second workflow.
+ */
+export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const empty = guidanceShell(
+		treeEl,
+		'square-kanban',
+		'No workflow to show',
+		'The Deliverables board is a projection of its own workflow, and this view has no ' +
+			'Deliverable state property yet. Set "Deliverable state property" in the view ' +
+			'options — and optionally "Deliverable workflow states (in order)" — and the ' +
+			'board will draw one column per state.',
+	);
+	renderSetupCta(host, empty, ['deliverableState']);
+}
+
+/**
+ * A configured Deliverable workflow with no Deliverable-typed results in the currently
+ * shown population — distinct from "everything is done and hidden", which this board
+ * has no concept of (Scope): a base full of other work is never reported as complete.
+ *
+ * **Found by review: `model.results` is narrowed to the focused subtree while a focus
+ * is active (Task 16's own note on `renderDeliverablesBoard`), so an unqualified
+ * "no deliverables yet" is false the moment a Deliverable exists elsewhere in the base
+ * but not under the current focus.** This reuses the same `model.focused` distinction
+ * `renderEmptyState`/`emptyHint` (this file, existing) already draw for the identical
+ * problem on the tree — word the guidance in terms of the current focus and name the
+ * way back, rather than inventing a second "does the WHOLE base have one" query no
+ * other empty state here makes either.
+ *
+ * **A second gap, found by a later review round: the focused guidance must not offer
+ * "create one here" as an alternative to clearing focus — except where it truthfully
+ * can.** The toolbar's New button creates a Deliverable with no parent
+ * (`promptCreateItem(host, ['Deliverable'], null)`); a focus on a LEVEL like
+ * `Feature` only admits a new root when the root's own type matches that level
+ * (`collectFocusRoots`' `matches`), and a Deliverable never does — UNLESS the focus
+ * is `PBI` itself (`extraFocused`, `EXTRA_TYPE_RANK`) or the focus is `Deliverable`
+ * BY NAME (`focusExtra` matches `typeName` alone, regardless of subtree position).
+ * Both are focuses this same focus picker offers (`ALL_TYPES`-driven, Task 1). So
+ * creating from here while focused on `Feature` files a note this very board still
+ * would not show — a suggestion that looks like a fix and silently is not one — but
+ * creating while focused on `PBI` or `Deliverable` shows it immediately, and telling
+ * the user to clear focus first in THAT case is the same kind of wrong claim in the
+ * other direction. `admitsNewDeliverable` below names the two focuses that differ.
+ *
+ * **Found by a later review round still: this check must ask by focus TYPE, not by
+ * whether the toolbar's own vocabulary loop needed editing.** `host.settings.focusLevel`
+ * is read directly (`itemTypes.ts`'s own `settings.focusLevel.trim().toLowerCase()`
+ * pattern) rather than through `model.focused`, which only says THAT a focus is
+ * active, never which one.
+ */
+export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const focused = host.model?.focused ?? false;
+	const focusLevel = host.settings.focusLevel.trim().toLowerCase();
+	const admitsNewDeliverable = focusLevel === 'pbi' || focusLevel === 'deliverable';
+	guidanceShell(
+		treeEl,
+		'package',
+		focused ? 'No deliverables in this focus' : 'No deliverables yet',
+		focused
+			? admitsNewDeliverable
+				? 'Nothing typed "Deliverable" is in the current focus. Create one from the ' +
+					'toolbar\'s New menu — it will appear here — or switch the focus button back ' +
+					'to "All types" to see Deliverables elsewhere in the base.'
+				: 'Nothing typed "Deliverable" is in the current focus. Switch the focus button ' +
+					'in the toolbar back to "All types" to see Deliverables elsewhere in the base — ' +
+					'or to create a new one, since one made from here would not appear on this ' +
+					'board until you do.'
+			: 'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
+				'menu, or type an existing note as a Deliverable from its Set type menu.',
+	);
+}
+
+/**
  * Roadmap mode with no axis configured: guidance naming both ways to get one and
  * where each is set. The one roadmap case with no frame — a frame here would be
  * a lie about an axis that does not exist — and when a horizon property is set
