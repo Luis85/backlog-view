@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
@@ -173,18 +173,42 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(1);
 	});
 
+	it('never writes to a context card from the keyboard either', async () => {
+		const { view, containerEl, vault } = deliverablesStressView();
+		const ctx = view.model?.byPath.get('Ctx.md');
+		expect(ctx?.outsideFilter).toBe(true);
+		const tree = treeOf(containerEl);
+		// `applySafely`'s own structural refusal would catch a stray write regardless, so
+		// a spy on the host method is what actually proves the keyboard path never even
+		// ATTEMPTS one — confirmed by deliberately breaking both the render exclusion and
+		// `handleBoardMoveKey`'s `outsideFilter` guard and watching this spy get called.
+		const spy = vi.spyOn(view, 'performDeliverablesBoardMove');
+
+		// Selected at the MODEL level — `selectItem` sets `selectedPath` unconditionally,
+		// with no card of its own to check against. What keeps Alt+arrow from reaching it
+		// is `boardPosition` (`interactions/keyboard.ts`): it resolves a position only by
+		// finding the path among `snapshot.board.columns[*].cards`, and the test above
+		// already established Ctx is never among them — there is no fallback to the
+		// model that a keyboard-only path could exploit to reach what the drag cannot.
+		view.selectItem(ctx as never);
+		key(tree, 'ArrowRight', { altKey: true });
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+
+		expect(spy).not.toHaveBeenCalled();
+		expect(vault.writeLog).toEqual([]);
+	});
+
 	it('refuses the whole batch if a Deliverables board write ever names a context item', async () => {
 		const { view, vault } = deliverablesStressView();
 		const ctx = view.model?.byPath.get('Ctx.md');
 		expect(ctx?.outsideFilter).toBe(true);
 
-		// No UI produces this: no card exists to drag (the test above), and this
-		// projection has no keyboard or menu entry point yet at all — Alt+arrow and the
-		// card menu's Set state still route through the requirements board's own
-		// dispatch (`handleProjectionKeydown` has no 'deliverables' branch;
-		// `stateChoices`/`chooseState` in `interactions/menu.ts` still gate on
-		// `host.projection === 'board'`), which are Task 18 and Task 19's jobs
-		// respectively — not something to build or fake a passing assertion for here.
+		// No UI produces this: no card exists to drag or to land the keyboard's board
+		// position on (the two tests above), and the card menu's Set state still routes
+		// through the requirements board's own dispatch (`stateChoices`/`chooseState` in
+		// `interactions/menu.ts` still gate on `host.projection === 'board'`), which is
+		// Task 19's job — not something to build or fake a passing assertion for here.
 		// The structural backstop is what a future entry point cannot reopen by
 		// omission, so it is exercised directly, exactly as the board and roadmap
 		// blocks above exercise `performBoardMove`/`performHorizonMove`.
