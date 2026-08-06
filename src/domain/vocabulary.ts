@@ -20,6 +20,8 @@ interface VocabularySource {
 	stateValue: string | null;
 	tags: string[];
 	horizon: FieldReading<string>;
+	typeName: string | null;
+	deliverableStateValue: string | null;
 }
 
 /**
@@ -80,4 +82,20 @@ export function collectObservedTags(all: VocabularySource[]): string[] {
  */
 export function collectObservedHorizons(all: VocabularySource[]): string[] {
 	return firstSeen(all, (item) => (item.horizon.value === null ? [] : [item.horizon.value]));
+}
+
+/**
+ * First occurrence of every Deliverable workflow state value, sorted the same way
+ * `collectObservedStates` sorts its own: open states alphabetically, then done ones.
+ * Scoped to `Deliverable`-typed items BEFORE the first-seen walk — not a blind copy of
+ * `collectObservedStates`, which would mint a stray column from a non-Deliverable
+ * item's coincidental value in the same key.
+ */
+export function collectObservedDeliverableStates(all: VocabularySource[], settings: BacklogSettings): string[] {
+	const deliverables = all.filter((item) => item.typeName?.toLowerCase() === 'deliverable');
+	const done = new Set(settings.deliverableDoneValues.map((v) => v.toLowerCase()));
+	const values = firstSeen(deliverables, (item) =>
+		item.deliverableStateValue === null ? [] : [item.deliverableStateValue],
+	).sort((a, b) => a.localeCompare(b));
+	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
 }

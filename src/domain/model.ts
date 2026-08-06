@@ -16,7 +16,12 @@ import {
 } from './noteFields';
 import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
 import { earliest, latest, reversedSpan } from './timeline';
-import { collectObservedHorizons, collectObservedStates, collectObservedTags } from './vocabulary';
+import {
+	collectObservedDeliverableStates,
+	collectObservedHorizons,
+	collectObservedStates,
+	collectObservedTags,
+} from './vocabulary';
 
 /**
  * The model is built in three phases, and each has its own type. A field exists only
@@ -75,6 +80,10 @@ interface RawItem {
 	tags: string[];
 	/** True when the state value matches one of the configured done values. */
 	done: boolean;
+	/** Raw value of the Deliverable workflow's own state property, if configured. */
+	deliverableStateValue: string | null;
+	/** True when the Deliverable state matches one of ITS OWN configured done values. */
+	deliverableDone: boolean;
 	/** The roadmap horizon this note declares, if a horizon property is configured. */
 	horizon: FieldReading<string>;
 	/** The planned start date the note states, if a start property is configured. */
@@ -167,6 +176,8 @@ export interface BacklogModel {
 	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
+	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
+	observedDeliverableStates: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
 	ignoredCount: number;
 }
@@ -179,6 +190,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// them here keeps them off the tree walk below.
 	const observedStates = collectObservedStates(linked.all, settings);
 	const observedTags = collectObservedTags(linked.all);
+	const observedDeliverableStates = collectObservedDeliverableStates(linked.all, settings);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
 	// The one vocabulary that is ORDERED rather than sorted, so it is taken from the
@@ -195,7 +207,15 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
-	const rest = { realRoots: roots, byPath, observedStates, observedTags, observedHorizons, ignoredCount };
+	const rest = {
+		realRoots: roots,
+		byPath,
+		observedStates,
+		observedTags,
+		observedHorizons,
+		observedDeliverableStates,
+		ignoredCount,
+	};
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
 	if (focusIdx >= 0 || focusExtra) {
 		const focusRoots = collectFocusRoots(roots, focusIdx, focusExtra, settings);
@@ -266,6 +286,10 @@ function addItem(
 	const seed = outsideParentSeed(app, file, parentRef, settings);
 	const stateValue = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	const doneValues = settings.doneValues.map((v) => v.toLowerCase());
+	const deliverableStateValue = settings.deliverableStateKey
+		? readString(ownValue(fm, settings.deliverableStateKey))
+		: null;
+	const deliverableDoneValues = settings.deliverableDoneValues.map((v) => v.toLowerCase());
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {
@@ -283,6 +307,9 @@ function addItem(
 		stateValue,
 		tags: settings.tagsKey ? readTags(ownValue(fm, settings.tagsKey)) : [],
 		done: stateValue !== null && doneValues.includes(stateValue.toLowerCase()),
+		deliverableStateValue,
+		deliverableDone:
+			deliverableStateValue !== null && deliverableDoneValues.includes(deliverableStateValue.toLowerCase()),
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
