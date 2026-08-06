@@ -1867,10 +1867,14 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 }
 
 /**
- * The Deliverables board — every Deliverable-typed result, regardless of hierarchy
- * focus (Scope: this board is never focus-scoped, since a type filter over
- * `model.roots` under focus cannot reach a nested Deliverable), and regardless of
- * either workflow's completion state (Scope: no "Show completed items" concept here).
+ * The Deliverables board — every Deliverable-typed result `model.results` currently
+ * contains, focused or not: it reads `model.results` rather than `model.roots`
+ * because a type filter over the latter cannot reach a nested Deliverable under an
+ * active focus (a focus's roots are Features/PBIs, never a Deliverable itself). This
+ * is NOT the same as bypassing focus — `model.results` is itself narrowed to the
+ * focused subtree when a focus is active (`buildModel`'s `shown()`), so a Deliverable
+ * OUTSIDE that subtree still will not render here until focus clears. Also regardless
+ * of either workflow's completion state (Scope: no "Show completed items" concept here).
  */
 export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
 	const host: BacklogViewHost = ctx.host;
@@ -2156,6 +2160,16 @@ after the drag (Task 16) and the menu (Task 19).
 
 - [ ] **Step 1: Write the failing tests**
 
+**Found by review: `key(treeOf(containerEl), 'ArrowRight')` alone does not select the
+`D` card.** Every board draws a leading no-state column first (`boardColumns` always
+puts it at index 0), which is empty in this fixture — `nextBoardPosition`'s
+`ArrowRight`-from-nothing case is `entry(0)`, which lands on that EMPTY column's own
+stop (`{col: 0, card: -1}`), not on a card, and a further `ArrowRight` cannot recover a
+card position either (`Math.min(pos.card, ...)` carries `-1` forward once the column
+entered has fewer cards than that). Selecting the card directly through the host,
+rather than depending on arrow arithmetic that was never this test's subject, is both
+simpler and correct:
+
 ```ts
 // test/view/keyboard.test.ts — new tests
 it('routes the Deliverables board through the board keyboard handler, not the tree', async () => {
@@ -2168,12 +2182,14 @@ it('routes the Deliverables board through the board keyboard handler, not the tr
 	harness.view.setProjection('deliverables');
 	const { containerEl } = harness;
 
+	// Nothing selected yet: the TREE handler's ArrowRight is a no-op with no current
+	// row (`handleExpandCollapseKey` is only reached when `current` is non-null), while
+	// the BOARD handler always has an entry point — even an empty leading column is a
+	// valid stop. Landing on `selectedBoardColumn` is proof the board dispatcher ran;
+	// the tree handler would leave it untouched (null).
 	key(treeOf(containerEl), 'ArrowRight');
-	// A board-shaped Home/End/Arrow walk selects a card; the tree's own Alt+arrows
-	// (which this test does NOT press) would instead reorder siblings and write
-	// parent/order — the hazard this routing fix prevents.
 	await flush();
-	expect(containerEl.querySelector('.pbl-selected')).toBeTruthy();
+	expect(harness.view.selectedBoardColumn).toBe(0);
 });
 
 it('Alt+Right on a Deliverables card writes the Deliverable state alone', async () => {
@@ -2189,7 +2205,13 @@ it('Alt+Right on a Deliverables card writes the Deliverable state alone', async 
 	harness.view.setProjection('deliverables');
 	const { containerEl, vault: v } = harness;
 
-	key(treeOf(containerEl), 'ArrowRight'); // select the first card/column stop
+	// Select the card directly rather than via arrow navigation — the leading no-state
+	// column is empty in this fixture, so an ArrowRight walk lands on ITS stop, never
+	// on a card, and this test's subject is the move-key routing, not board arithmetic.
+	const card = harness.view.model?.results.find((i) => i.title === 'D');
+	if (!card) throw new Error('missing D');
+	harness.view.selectItem(card);
+
 	key(treeOf(containerEl), 'ArrowRight', { altKey: true });
 	await flush();
 
@@ -2206,8 +2228,8 @@ name of the returned `FakeVault` (`vault` per the existing convention seen in ot
 
 Run: `npx vitest run test/view/keyboard.test.ts -t "Deliverables"`
 Expected: FAIL — the first test fails because `handleTreeKeydown` runs instead of
-`handleBoardKeydown` (no card selection results from a board-shaped ArrowRight in the
-tree handler); the second fails because even once routed, `handleBoardMoveKey` calls
+`handleBoardKeydown` (`selectedBoardColumn` stays `null`, since only the board handler
+ever sets it); the second fails because even once routed, `handleBoardMoveKey` calls
 `performBoardMove`, writing `status` rather than `deliverableStatus`.
 
 - [ ] **Step 3: Implement**
@@ -2332,6 +2354,17 @@ it('keeps a filtered match under a Deliverable card reachable through the card m
 	cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 	expect(Menu.lastShown?.item('Open match "T"')).toBeDefined();
 });
+
+it('hides Set state on the tree when only the Deliverable key is configured', () => {
+	const vault = new FakeVault();
+	vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+	// deliverableStateKey configured, requirements stateKey left unset — the tree's
+	// own Set state must not appear promising a write to an empty key.
+	const { containerEl } = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+
+	rowByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+	expect(Menu.lastShown?.item('Set state')).toBeUndefined();
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -2361,12 +2394,19 @@ Import `BoardModel` into this file's existing
 `import { cardPaths, hiddenMatches } from '../../domain/board';` line, widened to
 `import { BoardModel, cardPaths, hiddenMatches } from '../../domain/board';`.
 
-The Set-state visibility gate, in `buildItemMenu`:
+The Set-state visibility gate, in `buildItemMenu`: **projection-aware, not an OR of
+both keys — found by review.** An OR would expose "Set state" on the Tree or Roadmap
+projection the moment ONLY `deliverableStateKey` is configured, but `stateChoices`/
+`chooseState` on those projections still read the (unconfigured) requirements
+`stateKey` — offering a menu whose picks write to an empty key and are silently
+dropped (`applyWrites`' "never write to an empty key" rule). The gate has to select the
+SAME key the rest of the menu will actually use for the current projection:
 
 ```ts
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
-		if (host.settings.stateKey || host.settings.deliverableStateKey) addSetStateMenu(host, menu, item);
+		const activeStateKey = host.projection === 'deliverables' ? host.settings.deliverableStateKey : host.settings.stateKey;
+		if (activeStateKey) addSetStateMenu(host, menu, item);
 ```
 
 `stateChoices`:
@@ -2653,9 +2693,12 @@ own done values, entirely independent of the board above. A Deliverable finished
 workflow does not read as finished in the other.
 
 Columns and a workflow only — no WIP limits, no column policies, no started/finished
-date stamps, and "Show completed items" has no effect here: every Deliverable in the
-base renders, narrowed only by the quick filter. Moving a card (drag, Alt+Left/Right,
-or the card menu's Set state) writes only the Deliverable state property.
+date stamps, and "Show completed items" has no effect here: a Deliverable's
+completion state on either workflow never hides its card, and only the quick filter
+narrows what is shown. (The toolbar's **Focus** picker still applies here as it does
+everywhere else — focused on a Feature or a PBI, this board shows only the
+Deliverables nested under that focus.) Moving a card (drag, Alt+Left/Right, or the
+card menu's Set state) writes only the Deliverable state property.
 
 Everything else about a Deliverable — its parent, its rank, its tags, its place on the
 roadmap — is the same property every other type already uses; nothing about this board
