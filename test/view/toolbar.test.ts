@@ -55,7 +55,8 @@ describe('toolbar backfill', () => {
 			deliverableStateProperty: 'note.deliverableStatus',
 		});
 		// Every one of them on the note, empty: the features are usable and nothing was
-		// decided for the user — no state, no horizon, no dates.
+		// decided for the user — no state, no horizon, no dates. Not deliverableStatus:
+		// that stub is scoped to Deliverable-typed items, and this note is an Epic.
 		expect(vault.fm('Epic.md')).toEqual({
 			type: 'Epic',
 			order: 10,
@@ -65,7 +66,6 @@ describe('toolbar backfill', () => {
 			horizon: '',
 			start: '',
 			due: '',
-			deliverableStatus: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
 		expect(Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due'))).toBe(
