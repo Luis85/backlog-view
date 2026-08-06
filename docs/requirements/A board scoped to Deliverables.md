@@ -24,6 +24,8 @@ files:
   - src/view/collapseState.ts
   - src/view/render/projections.ts
   - src/domain/backlogReadme.ts
+  - src/view/cardMoves.ts
+  - README.md
 ---
 
 # A board scoped to Deliverables
@@ -99,6 +101,11 @@ narrowed to one type.
 - **4a — the card is a context row (`outsideFilter`).** Never a card to drag, never a
   write target, never counted — the context-row rule applies here exactly as it does on
   the requirements board.
+- **4b — the quick filter is active and matches a non-Deliverable descendant of a
+  visible Deliverable card.** The card menu's matches section still names it and still
+  offers a way to open it, the same keyboard path the requirements board gives a hidden
+  match — this board is a second `=== 'board'`-shaped gate in the same file the Set-state
+  fix touches, not a different rule.
 
 ## Acceptance criteria
 
@@ -148,6 +155,12 @@ narrowed to one type.
   "No deliverables yet," never a message claiming items are done and hidden.
 - "Show completed items" does not appear in the toolbar while viewing the Deliverables
   board, whatever the requirements `stateKey` holds.
+- A quick-filter match hidden under a visible Deliverable card is reachable from the
+  keyboard through the card menu, the same as on the requirements board.
+- The plugin's own shipped `README.md` — not only the generated per-vault one — names
+  `Deliverable` beside `Issue`/`Bug`, describes the fourth projection and its
+  independent workflow, and lists the new "Deliverables" view-options group: a user
+  reading the plugin's manual can find this feature without reading this design.
 
 ## Where it lives
 
@@ -168,8 +181,14 @@ directly, so the requirements board and this one share one implementation.
 `computeDeliverableStateWrites`, deliberately with no stamp logic.
 `src/storage/frontmatter.ts` — applying and capturing the new fields through
 `optionalKeyFor(settings, 'deliverableState')`.
-`src/view/host.ts` — `projection` gains `'deliverables'`, and
-`performDeliverablesBoardMove` is the one path for the drop/Alt-arrow/menu trio.
+`src/view/host.ts` — `projection` gains `'deliverables'`, and `performDeliverablesBoardMove`
+is declared on `BacklogViewHost` as a one-line delegation to `CardMoveController`,
+mirroring `performBoardMove`'s own delegation exactly.
+`src/view/cardMoves.ts` — `CardMoveController` gains `performDeliverablesBoardMove` as a
+fourth sibling to `performBoardMove`/`performHorizonMove`/`performScheduleMove`,
+delegating to the same private `applyCardMove` (pending class, no-op check, announcement)
+those three already share — not a standalone write, which would either reimplement or
+silently drop that behavior.
 `src/view/render/projections.ts` — `renderProjectionContent` gains an explicit
 `renderDeliverablesBoardContent` branch beside `renderBoardContent`/
 `renderRoadmapContent`, gated on `settings.deliverableStateKey`; without it the fourth
@@ -195,20 +214,23 @@ asks whether `model.results` contains any `Deliverable` rather than whether it i
 so a base full of other work is never reported as "done and hidden" on this board.
 `src/view/interactions/cardDrag.ts` — wiring the new board's drop targets through the
 parameterized `renderColumn` above.
-`src/view/interactions/keyboard.ts` — `handleBoardMoveKey` (`:293`) takes the same
-`move` callback `renderColumn` does (or branches on `host.projection`, matching whichever
-shape the menu/drag fix settles on) instead of hardcoding `host.performBoardMove` — the
-third of the three move inputs, found independently hardcoded to the wrong write and
-fixed as its own case rather than assumed to follow from the other two.
-`src/view/interactions/menu.ts` — three changes, not one: the Set-state section's
-visibility gate (`menu.ts:70`) checks whichever key is active for `host.projection`,
-not only the requirements `stateKey`; `stateChoices` (`menu.ts:289`) sources
-`host.deliverablesBoard?.board` on that projection, mirroring how it already sources
-`host.board?.board` for `'board'`; and both `chooseState` (`menu.ts:305`, the write)
-and `addStateItems` (`menu.ts:323`, the checked entry) route to
-`performDeliverablesBoardMove` / `computeDeliverableStateWrites` rather than falling
-through to the requirements-keyed `computeStateWrites` — the gap that would otherwise
-have this board's menu write to the wrong property, not just display it wrong.
+`src/view/interactions/keyboard.ts` — `handleBoardMoveKey` (`:293`) dispatches to
+`host.performDeliverablesBoardMove` on `host.projection === 'deliverables'` instead of
+hardcoding `host.performBoardMove` — the third of the three move inputs, found
+independently hardcoded to the wrong write and fixed as its own case rather than assumed
+to follow from the other two.
+`src/view/interactions/menu.ts` — four changes, not one: a new `activeBoard(host)`
+helper (`host.board?.board` on `'board'`, `host.deliverablesBoard?.board` on
+`'deliverables'`, else `null`) replaces the repeated `host.projection === 'board' ?
+host.board?.board : null` ternary at all three of its existing call sites plus the one
+this PBI adds; the Set-state section's visibility gate (`menu.ts:70`) checks whichever
+key is active for `host.projection`, not only the requirements `stateKey`; `chooseState`
+(`menu.ts:305`, the write) and `addStateItems` (`menu.ts:323`, the checked entry) route
+to `performDeliverablesBoardMove` / `computeDeliverableStateWrites` rather than falling
+through to the requirements-keyed `computeStateWrites`; and `addMatchSection`
+(`menu.ts:248`), the keyboard path to a quick-filter match hidden under a card, now
+resolves through `activeBoard` too instead of returning early on every projection but
+`'board'`.
 `src/storage/collapseStore.ts` — a `DELIVERABLES_MODE` constant beside
 `BOARD_MODE`/`ROADMAP_MODE`, added to `readEntry`'s stored-mode allowlist, or the
 projection is silently dropped on read like any unrecognised value.
@@ -223,3 +245,9 @@ property before this one, so this PBI matches precedent rather than refactoring 
 full "declared vs. observed states" section for the Deliverable workflow is out of scope
 (design spec, Scope/Out) — only the property-table row, which an existing sentence
 elsewhere in the generated document depends on being complete.
+`README.md` — the plugin's own shipped manual, distinct from the generated per-vault one
+above: `Deliverable` joins the type list (`:30-32`) and the "Issues and bugs sit beside
+the ladder" section (`:306-354`, matching its existing depth rather than re-deriving it),
+the board section (from `:499`) gains a short paragraph naming the fourth projection and
+its independent workflow, and the view-options table (`:626-653`) gains the new
+"Deliverables" group's rows.

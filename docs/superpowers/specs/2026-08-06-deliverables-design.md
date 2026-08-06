@@ -318,10 +318,38 @@ silently revert to the tree on reopen, exactly the gap `[[Milestones as their ow
 own landmines list warns this codebase to check for on every new declared value
 threaded through a stored enum.
 
-`performDeliverablesBoardMove(item, state)` is
-the one path for the drop/Alt-arrow/menu trio, following "one move, three inputs" — a
-new method because the write target differs from `performBoardMove`'s, even though both
-ultimately call a `computeXWrites` + `applySafely` pair.
+**`performDeliverablesBoardMove` lives on `CardMoveController` (`src/view/cardMoves.ts`),
+not as a standalone `computeXWrites` + `applySafely` pair on `host.ts` — corrected from
+the first draft, which described the write without the controller that actually owns it.**
+`host.performBoardMove` is a thin delegation to `CardMoveController.performBoardMove`,
+which is itself three things, not one: it plans the write (`computeStateWrites`), it
+reads the columns and the state being left *before* the write so the announcement can
+name a column the refresh might delete (`this.host.board?.board`, `item.stateValue`), and
+it calls a private `applyCardMove` that applies the pending CSS class, checks whether the
+live write actually changed anything, and fires the announcement — the one place all
+three of that method's responsibilities are implemented, per its own class doc comment.
+Defining `performDeliverablesBoardMove` anywhere else means either reimplementing
+`applyCardMove` a second time or silently dropping the pending-class/no-op/announcement
+behavior the other two board-move-shaped methods (`performBoardMove`,
+`performHorizonMove`) both get from it. It joins them as a fourth sibling method:
+
+```ts
+async performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
+  const from = item.deliverableStateValue;
+  const columns = this.host.deliverablesBoard?.board;
+  return this.applyCardMove(item, computeDeliverableStateWrites(item, state), () =>
+    announceBoardMove(columns, item.title, from, state),
+  );
+}
+```
+
+Reusing `announceBoardMove` as-is — it is already generic over columns/title/from/to, not
+board-specific in any way the Deliverables board's columns would violate, so no new
+announce function is needed. `interactions/cardDrag.ts`, `keyboard.ts` and `menu.ts` all
+call `host.performDeliverablesBoardMove` (which `host.ts` continues to delegate to the
+controller, mirroring `performBoardMove`'s own one-line delegation), so "one move, three
+inputs" is one call to one controller method, exactly as it already is for the other two
+board-shaped moves.
 
 **`render/board.ts`'s card shell is not quite "reused as-is" — corrected from the first
 draft.** `createCard` hardcodes its `pbl-done` class from `item.done`
@@ -354,6 +382,24 @@ existing `'board'` one: the gate reads whichever key is active for
 already sources `host.board?.board`, `chooseState` routes to
 `performDeliverablesBoardMove`, and the checked-entry test calls
 `computeDeliverableStateWrites` instead of `computeStateWrites` on that branch.
+
+**A fourth spot in the same file has the same `=== 'board'` shape — found only after
+three others already had. `addMatchSection`** (`menu.ts:248-253`), the card menu's
+keyboard path to a quick-filter match hidden under a visible card
+(`const board = host.projection === 'board' ? host.board?.board : null;`), returns early
+whenever `board` is null — which it always is on `'deliverables'`, so a filtered match
+under a Deliverable card would render as a `tabindex="-1"` link (per `render/board.ts`'s
+`hiddenMatches` face) with no keyboard path to it at all, exactly the "found, counted,
+impossible to get to" failure `view/CLAUDE.md`'s own board notes name as the reason that
+link exists in the first place. Given four independent call sites in one file now
+resolving "which board is active" the same way, this design introduces one small helper
+rather than a fifth inline ternary: `activeBoard(host): BoardModel | null`, returning
+`host.board?.board` on `'board'`, `host.deliverablesBoard?.board` on `'deliverables'`,
+else `null` — `stateChoices`, `addMatchSection`, and the Set-state gate all call it, and
+`chooseState` branches on `host.projection` the same way it already does. One function
+answering "which board" is what stops a fifth spot from repeating this exact miss, which
+four independent findings in one file is reason enough to no longer treat as
+coincidence.
 
 **Four more gaps this round, all in code the first three drafts left untouched or
 under-specified.** The pattern across all four is the same one the menu round found:
@@ -421,6 +467,30 @@ The empty-state rule matches the requirements board's: `[[Columns from the workf
 already establishes that a board needs a configured state property before it draws
 columns; the Deliverables board gates on `deliverableStateKey` the same way.
 
+### 7. The shipped user manual — root `README.md`
+
+**Missed entirely until this round: every documentation fix so far was to a
+*generated*, per-vault README (`backlogReadme.ts`) — the plugin's own shipped manual,
+the root `README.md` a user reads on the plugin listing or in the repo, is a third,
+separate, hand-written document this design had not touched.** It already carries
+dedicated sections this feature makes incomplete the moment it ships: the type list
+(`README.md:30-32`) names the vocabulary as "the extra types `Issue` and `Bug`… or
+`Milestone`," with no `Deliverable`; "Issues and bugs sit beside the ladder"
+(`README.md:306-354`) is a worked explanation of the extra-type shape with no mention of
+a rootable member of it; the board's own section (from `README.md:499`) describes one
+state property and one workflow; and the view-options table (`README.md:626-653`) lists
+every configurable option by name and has no "Deliverables" group in it. Shipping the
+type, the board and the settings group without touching this file leaves the plugin's
+actual manual silent about a feature a user has no other way to discover — unlike the
+generated per-vault README's deferred "declared vs. observed states" section (§2), this
+is not additive depth on top of something already documented; it is the *only* place
+the feature is documented for someone who has not read this design. In scope: a
+`Deliverable` mention alongside `Issue`/`Bug` in the type list and the extra-types
+section (matching that section's existing depth, not exhaustively re-deriving it), a
+short addition to the board section naming the fourth projection and its independent
+workflow, and the new "Deliverables" group's rows in the view-options table, in the same
+row shape the existing options use.
+
 ## Testing
 
 - `domain/`: `itemTypes.test.ts` (rootable top-level offering, extra-type rank/children
@@ -445,7 +515,9 @@ columns; the Deliverables board gates on `deliverableStateKey` the same way.
   `deliverableStateKey` is configured (not `stateKey`), its checked entry reflects
   `deliverableStateValue`, and picking one writes `deliverableState` alone — a
   regression test standing in for the "wrong property" failure mode this round of
-  review caught before any code existed to catch it in. `rendering.test.ts` — a card's
+  review caught before any code existed to catch it in; and a filtered match hidden
+  under a Deliverable card still has a keyboard path through the card menu
+  (`addMatchSection` on `activeBoard`, not just `'board'`). `rendering.test.ts` — a card's
   `pbl-done` class follows the active board's own completion, not the other workflow's;
   `pbl-board-mode` is present on the pane in Deliverables mode, matching `'board'`.
   `cardDrag.test.ts` / a board-drag test — a drop on a Deliverables-board column writes
