@@ -114,6 +114,88 @@ describe('write safety with context rows, across the board’s entry points', ()
 	});
 });
 
+describe('write safety with context rows, across the Deliverables board’s entry points', () => {
+	/**
+	 * A context Deliverable — `outsideFilter`, and, under PBI focus, an `extraFocused`
+	 * root (`collectFocusRoots`) exactly as the context PBI above is on the requirements
+	 * board: `EXTRA_TYPE_RANK === focusIdx` at PBI admits every extra type as a focus
+	 * root regardless of subtree position. It needs a child in the filter (Task.md) to
+	 * be loaded as an ANCESTOR at all — `RawItem.outsideFilter`'s own doc says such a
+	 * row exists only "to keep the hierarchy above a match intact," so a context row
+	 * with nothing beneath it in the filter is never loaded, not merely hidden.
+	 *
+	 * `renderDeliverablesBoard` (`board.ts`) reads `model.results` UNCONDITIONALLY,
+	 * never `model.roots` — unlike the requirements board above, which switches to
+	 * `model.roots` under focus. `model.results` already drops every `outsideFilter`
+	 * item (`model.ts`'s `shown()`), so this context Deliverable cannot become a card
+	 * on this board at all, regardless of focus. D1 is a genuine, in-filter Deliverable
+	 * sibling so the board draws real columns instead of "no deliverables yet" guidance
+	 * — without it, "no card renders for Ctx" would be true for the wrong reason.
+	 */
+	function deliverablesStressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('D1.md', {
+			frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		// Context: excluded from the Base's own results, loaded only because Task.md
+		// below it is a result and needs its ancestor.
+		vault.addFile('Ctx.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Ctx' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ deliverableStateProperty: 'note.deliverableStatus' });
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Ctx.md') };
+		view.onDataUpdated();
+		// Focus is working position, not a base setting: set through the view.
+		view.setFocusLevel('PBI');
+		view.setProjection('deliverables');
+		return { view, containerEl, vault };
+	}
+
+	it('never draws a card for the context row, whatever candidates the board considers', () => {
+		const { view, containerEl } = deliverablesStressView();
+		const ctx = view.model?.byPath.get('Ctx.md');
+		expect(ctx?.outsideFilter).toBe(true);
+		// It IS a focus root here — a board that read `model.roots` (the requirements
+		// board's own shape) would draw it as a context card, exactly like the PBI
+		// context card in the block above.
+		expect(view.model?.roots.some((i) => i.file.path === 'Ctx.md')).toBe(true);
+		// This board never reads `roots`, so no card for it exists — not merely one
+		// that refuses to be dragged, but one that was never rendered to drag.
+		expect(cardByTitle(containerEl, 'D1')).not.toBeNull();
+		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(1);
+	});
+
+	it('refuses the whole batch if a Deliverables board write ever names a context item', async () => {
+		const { view, vault } = deliverablesStressView();
+		const ctx = view.model?.byPath.get('Ctx.md');
+		expect(ctx?.outsideFilter).toBe(true);
+
+		// No UI produces this: no card exists to drag (the test above), and this
+		// projection has no keyboard or menu entry point yet at all — Alt+arrow and the
+		// card menu's Set state still route through the requirements board's own
+		// dispatch (`handleProjectionKeydown` has no 'deliverables' branch;
+		// `stateChoices`/`chooseState` in `interactions/menu.ts` still gate on
+		// `host.projection === 'board'`), which are Task 18 and Task 19's jobs
+		// respectively — not something to build or fake a passing assertion for here.
+		// The structural backstop is what a future entry point cannot reopen by
+		// omission, so it is exercised directly, exactly as the board and roadmap
+		// blocks above exercise `performBoardMove`/`performHorizonMove`.
+		const applied = await view.performDeliverablesBoardMove(ctx as never, 'Review');
+
+		expect(applied).toBe(false);
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages.some((m) => m.includes('outside this base’s filter'))).toBe(true);
+	});
+});
+
 describe('write safety with context rows, across the roadmap’s entry points', () => {
 	/**
 	 * The stress fixture projected as a roadmap, focused where its context rows sit —
