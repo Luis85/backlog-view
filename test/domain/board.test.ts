@@ -42,7 +42,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -61,7 +60,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), reordered);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, reordered),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -78,7 +76,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), unconfigured);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, unconfigured),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -95,7 +92,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -114,7 +110,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), clashing);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, clashing),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -135,7 +130,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -152,7 +146,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -173,7 +166,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -191,7 +183,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -208,7 +199,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			(item) => item.title !== 'B',
@@ -228,7 +218,6 @@ describe('boardColumns', () => {
 		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
 
 		const board = boardColumns(
-			model,
 			requirementsWorkflow(model, settings),
 			model.focused ? model.roots : model.results,
 			everything,
@@ -259,7 +248,6 @@ describe('boardColumns', () => {
 			const model = buildModel(vault.app, vault.entries(), focused);
 
 			const board = boardColumns(
-				model,
 				requirementsWorkflow(model, focused),
 				model.focused ? model.roots : model.results,
 				everything,
@@ -276,7 +264,6 @@ describe('boardColumns', () => {
 			const model = buildModel(vault.app, only(vault, 'P1.md', 'P2.md'), focused);
 
 			const board = boardColumns(
-				model,
 				requirementsWorkflow(model, focused),
 				model.focused ? model.roots : model.results,
 				everything,
@@ -307,7 +294,6 @@ describe('boardColumns', () => {
 			const model = buildModel(vault.app, entries, focused);
 
 			const board = boardColumns(
-				model,
 				requirementsWorkflow(model, focused),
 				model.focused ? model.roots : model.results,
 				everything,
@@ -361,7 +347,7 @@ describe('a column carries its own agreement', () => {
 
 	function board(vault: FakeVault, s = limited) {
 		const model = buildModel(vault.app, vault.entries(), s);
-		return boardColumns(model, requirementsWorkflow(model, s), model.focused ? model.roots : model.results, everything);
+		return boardColumns(requirementsWorkflow(model, s), model.focused ? model.roots : model.results, everything);
 	}
 
 	function column(vault: FakeVault, label: string, s = limited) {
@@ -417,7 +403,6 @@ describe('a column carries its own agreement', () => {
 		const vault = vaultWith('Active', 'Active', 'Active');
 		const model = buildModel(vault.app, vault.entries(), limited);
 		const filtered = boardColumns(
-			model,
 			requirementsWorkflow(model, limited),
 			model.focused ? model.roots : model.results,
 			(item) => item.file.path === 'A0.md',
@@ -449,7 +434,6 @@ describe('boardColumns with the Deliverables workflow', () => {
 
 		const isDeliverable = (item: BacklogItem) => item.typeName?.toLowerCase() === 'deliverable';
 		const board = boardColumns(
-			model,
 			deliverablesWorkflow(model, s),
 			model.results,
 			(item) => isDeliverable(item),
@@ -467,7 +451,7 @@ describe('boardColumns with the Deliverables workflow', () => {
 		const s = { ...deliverablesSettings(), stateKey: 'status' };
 		const model = buildModel(vault.app, vault.entries(), s);
 
-		const board = boardColumns(model, deliverablesWorkflow(model, s), model.results, () => true);
+		const board = boardColumns(deliverablesWorkflow(model, s), model.results, () => true);
 
 		const col = board.columns.find((c) => c.label === 'Draft');
 		expect(col?.cards.map((c) => c.title)).toEqual(['D']);
@@ -476,10 +460,17 @@ describe('boardColumns with the Deliverables workflow', () => {
 	it('never applies WIP limits or column policies — the Deliverables board has none', () => {
 		const vault = new FakeVault();
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
-		const s = deliverablesSettings({ deliverableStates: ['Draft'] });
+		// The requirements workflow's OWN limit/policy for the same state name, so this
+		// fails if deliverablesWorkflow ever forwards settings.wipLimits/columnPolicies
+		// instead of {} — a fixture with both already empty cannot tell the two apart.
+		const s = deliverablesSettings({
+			deliverableStates: ['Draft'],
+			wipLimits: { draft: 2 },
+			columnPolicies: { draft: 'x' },
+		});
 		const model = buildModel(vault.app, vault.entries(), s);
 
-		const board = boardColumns(model, deliverablesWorkflow(model, s), model.results, () => true);
+		const board = boardColumns(deliverablesWorkflow(model, s), model.results, () => true);
 
 		const col = board.columns.find((c) => c.label === 'Draft');
 		expect(col?.limit).toBeNull();

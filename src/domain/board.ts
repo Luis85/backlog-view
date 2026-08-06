@@ -127,7 +127,6 @@ export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSetti
  * context card that still places its results ({@link BoardColumn.cards}).
  */
 export function boardColumns(
-	model: BacklogModel,
 	workflow: Workflow,
 	candidates: BacklogItem[],
 	visible: (item: BacklogItem) => boolean,

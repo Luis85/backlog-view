@@ -24,7 +24,6 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDrag
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
 	const board = boardColumns(
-		model,
 		requirementsWorkflow(model, host.settings),
 		model.focused ? model.roots : model.results,
 		(item) => !host.isRowHidden(item),
