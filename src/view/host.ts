@@ -13,11 +13,11 @@ import { WriteOutcome } from '../storage/frontmatter';
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 /**
- * The three readings of one backlog. UI state, not a base setting: the choice
+ * The four readings of one backlog. UI state, not a base setting: the choice
  * lives beside the collapse state in vault-scoped localStorage — per saved view,
  * per device — and never in the `.base`.
  */
-export type Projection = 'tree' | 'board' | 'roadmap';
+export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables';
 
 /**
  * A visible property resolved into a column: the id to read, the label the header

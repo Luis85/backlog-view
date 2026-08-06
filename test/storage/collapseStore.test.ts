@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadCollapseState, rekeyBase, saveCollapseState } from '../../src/storage/collapseStore';
+import { DELIVERABLES_MODE, loadCollapseState, rekeyBase, saveCollapseState } from '../../src/storage/collapseStore';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 
@@ -182,6 +182,28 @@ describe('the persisted view mode', () => {
 		vault.addFile('Backlog.base');
 		saveCollapseState(vault.app, id, { ...none, mode: 'roadmap' });
 		expect(loadCollapseState(vault.app, id).mode).toBe('roadmap');
+	});
+
+	it('round-trips the Deliverables mode through the stored allowlist', () => {
+		vault.addFile('B.base');
+		saveCollapseState(
+			vault.app,
+			{ base: 'B.base', view: 'Backlog' },
+			{ collapsed: new Set(), expanded: new Set(), mode: DELIVERABLES_MODE },
+		);
+
+		const restored = loadCollapseState(vault.app, { base: 'B.base', view: 'Backlog' });
+		expect(restored.mode).toBe(DELIVERABLES_MODE);
+	});
+
+	it('still drops an unrecognised mode value, defensively', () => {
+		vault.addFile('B.base');
+		vault.localStorage.set(STORE_KEY, {
+			'B.base%23Backlog': { base: 'B.base', collapsed: [], expanded: [], mode: 'something-else' },
+		});
+
+		const restored = loadCollapseState(vault.app, { base: 'B.base', view: 'Backlog' });
+		expect(restored.mode).toBeNull();
 	});
 
 	it('keeps the axis pick beside the mode, and keeps it alone', () => {

@@ -2,6 +2,7 @@ import { BacklogItem } from '../domain/model';
 import { ShelfSort } from '../domain/shelf';
 import {
 	BOARD_MODE,
+	DELIVERABLES_MODE,
 	ROADMAP_MODE,
 	collapseStoreIdentity,
 	dropCollapseState,
@@ -65,13 +66,14 @@ export class CollapseState {
 	projection(): Projection {
 		if (this.mode === BOARD_MODE) return 'board';
 		if (this.mode === ROADMAP_MODE) return 'roadmap';
+		if (this.mode === DELIVERABLES_MODE) return 'deliverables';
 		return 'tree';
 	}
 
 	setProjection(mode: Projection): void {
 		// The tree is the default and needs no stored value; a stored entry saved
 		// before a projection existed reads back as the tree the same way.
-		this.mode = mode === 'tree' ? null : mode;
+		this.mode = mode === 'tree' ? null : mode === 'board' ? BOARD_MODE : mode === 'roadmap' ? ROADMAP_MODE : DELIVERABLES_MODE;
 		this.scheduleSave();
 	}
 
