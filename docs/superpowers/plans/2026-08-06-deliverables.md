@@ -53,12 +53,26 @@ type filter differ.
 **Files:**
 - Modify: `src/domain/settings.ts`
 - Modify: `src/domain/itemTypes.ts`
-- Test: `test/domain/itemTypes.test.ts`, `test/view/toolbar.test.ts`
+- Test: `test/domain/itemTypes.test.ts`, `test/view/toolbar.test.ts`,
+  `test/view/rendering.test.ts` (existing full-vocabulary test only — see the
+  step-ordering note below)
 
 **Interfaces:**
 - Consumes: nothing new.
 - Produces: `EXTRA_TYPES` includes `'Deliverable'`; `childTypeChoices(null)` includes
   every member of `EXTRA_TYPES`. Later tasks (2, 20) read the widened `EXTRA_TYPES`.
+
+**Step-ordering note, found by review: Task 1 alone leaves `npm run check` red until
+Task 2 lands, so the two are implemented and committed together.**
+`test/view/rendering.test.ts`'s PRE-EXISTING `'styles every declared type — none falls
+through to bare text'` test iterates the whole (now-widened) `ALL_TYPES` and requires
+every member to have a badge icon, a colour class that is not `pbl-lvl-unknown`, and a
+matching stylesheet rule. Widening `EXTRA_TYPES` here without Task 2's
+`NON_RUNG_STYLE`/`badges.css` entries makes that pre-existing test fail — the exact
+"a worker follows the listed steps and commits a red `npm run check`" defect this
+plan's own Global Constraints forbid. Do Task 1's steps below, then Task 2's, then run
+and commit both together; Task 1's own Step 4/5 below say so again at the point that
+matters.
 
 **Found by review, and it simplifies this task rather than complicating it: there is
 no `ROOTABLE_EXTRA_TYPES` distinction to invent, because `Issue` and `Bug` are ALREADY
@@ -289,12 +303,16 @@ Run: `npx vitest run test/view/toolbar.test.ts`
 Expected: PASS (the whole file — the New-picker fix must not regress any of the
 file's other, unrelated tests)
 
-- [ ] **Step 5: Commit**
+Run: `npx vitest run test/view/rendering.test.ts -t "styles every declared type"`
+Expected: FAIL at this point — `Deliverable` has no `NON_RUNG_STYLE` entry yet, so its
+badge falls through to `pbl-lvl-unknown`. This is expected and is exactly why Step 5
+does not commit yet: proceed to Task 2, then return here and re-run this same command,
+which must PASS before either task is committed.
 
-```bash
-git add src/domain/settings.ts src/domain/itemTypes.ts test/domain/itemTypes.test.ts test/view/toolbar.test.ts
-git commit -m "feat: Deliverable joins the type vocabulary, rootable"
-```
+- [ ] **Step 5: Commit together with Task 2 (see Task 2 Step 5)**
+
+Do not commit here — Task 2's Step 5 is the single commit for both tasks, since Task 1
+alone leaves the pre-existing full-vocabulary rendering test red.
 
 ---
 
@@ -309,6 +327,10 @@ git commit -m "feat: Deliverable joins the type vocabulary, rootable"
 - Consumes: `NON_RUNG_STYLE` (existing table in `rows.ts`).
 - Produces: a `deliverable` badge/colour, matching the same "every declared type has an
   entry or the table's own coverage test fails" contract `Issue`/`Bug`/`Milestone` use.
+
+**Implement this task immediately after Task 1's Steps 1-4, before either task's
+commit** — see Task 1's step-ordering note: `npm run check` cannot pass on Task 1's
+own commit alone.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -355,16 +377,19 @@ In `styles/badges.css`, after the `.pbl-lvl-milestone` rule:
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npx vitest run test/view/rendering.test.ts -t "Deliverable with its own badge"`
-Expected: PASS
+Run: `npx vitest run test/view/rendering.test.ts`
+Expected: PASS — the whole file, including both this task's new test AND Task 1's
+pre-existing `'styles every declared type — none falls through to bare text'` test,
+which only turns green once this task's `NON_RUNG_STYLE`/`badges.css` entries land.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (Tasks 1 and 2 together)**
 
 ```bash
-git add src/view/render/rows.ts styles/badges.css test/view/rendering.test.ts
-git commit -m "feat: give Deliverable its own badge icon and colour"
+git add src/domain/settings.ts src/domain/itemTypes.ts src/view/render/rows.ts styles/badges.css \
+  test/domain/itemTypes.test.ts test/view/toolbar.test.ts test/view/rendering.test.ts
+git commit -m "feat: Deliverable joins the type vocabulary, with its own badge and colour"
 ```
 
 ---
