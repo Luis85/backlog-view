@@ -394,8 +394,9 @@ draft.** `createCard` hardcodes its `pbl-done` class from `item.done`
 so a Draft Deliverable that happens to read Done on the *requirements* board would render
 dimmed as finished here, and a Deliverable finished only in its own workflow would not
 render as finished at all. `BacklogItem` gains `deliverableDone: boolean`, computed in
-`assignAll` beside `item.done` the same way `deliverableStateValue` is computed beside
-`stateValue` (§3), and `createCard` takes the completion flag as a parameter instead of
+`addItem` beside `item.done` — the raw-item phase, not `assignAll` — the same way
+`deliverableStateValue` is computed beside `stateValue` (§3), and `createCard` takes the
+completion flag as a parameter instead of
 reading `item.done` itself — defaulted to `item.done` so the two existing call sites
 (requirements board, roadmap) need no change, with the Deliverables board's call site
 passing `item.deliverableDone` explicitly. `renderCardBody`/`wireCardActivation` are

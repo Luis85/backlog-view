@@ -1866,6 +1866,32 @@ undo, config-problems gate — is the requirements suite's shape repeated over t
 projection, not a new rule; add it here too if a future review finds one of those paths
 untested rather than opening a new task for it.)
 
+A fourth, back in `test/view/board.test.ts`, pinning the parametrized stray-column hint —
+the same file's existing "styles the done column as finished, and appends observed
+strays after the workflow" test covers the requirements board's stray column but never
+reads its tooltip text, so nothing already catches this text reverting to a hardcoded
+string:
+
+```ts
+// test/view/board.test.ts
+it('names the DELIVERABLE workflow-states option in a stray column’s hint, not the requirements one', () => {
+	const vault = boardVault();
+	vault.addFile('D.md', {
+		frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Blocked' },
+	});
+	const harness = makeView(vault, {
+		deliverableStateProperty: 'note.deliverableStatus',
+		deliverableStateValues: 'Draft, Review',
+	});
+	harness.view.setProjection('deliverables');
+	const { containerEl } = harness;
+
+	const stray = columnByName(containerEl, 'Blocked');
+	expect(stray.dataset.tooltip).toContain('Deliverable workflow states (in order)');
+	expect(stray.dataset.tooltip).not.toContain('"Workflow states (in order)"');
+});
+```
+
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/view/board.test.ts -t "own workflow"`
@@ -1892,6 +1918,15 @@ export interface BoardRenderOptions {
 	move: (item: BacklogItem, state: string | null) => void;
 	drawEmpty: (host: BacklogViewHost, aside: HTMLElement) => void;
 	doneOf?: (item: BacklogItem) => boolean;
+	/**
+	 * The view-options display name of THIS workflow's state list, named in the
+	 * stray-column tooltip (`renderColumnHeader`) so the hint points at the setting
+	 * that actually holds this board's states — found by review: an unparametrized
+	 * tooltip hardcoded the requirements option name, so a stray Deliverables column
+	 * told the user to edit "Workflow states (in order)", a property this board
+	 * ignores entirely.
+	 */
+	stateOptionLabel: string;
 }
 
 export function renderBoard(
@@ -1924,6 +1959,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performBoardMove(item, state),
+		stateOptionLabel: 'Workflow states (in order)',
 		drawEmpty: (h, aside) => {
 			const m = h.model;
 			if (!m) return;
@@ -1959,6 +1995,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performDeliverablesBoardMove(item, state),
 		doneOf: (item) => item.deliverableDone,
+		stateOptionLabel: 'Deliverable workflow states (in order)',
 		drawEmpty: (h, aside) => {
 			const m = h.model;
 			if (!m) return;
@@ -2007,12 +2044,37 @@ function renderColumn(
 			(strip ? ' pbl-board-strip' : ''),
 		attr: { role: 'group', 'aria-label': columnLabel(col, filtering) },
 	});
-	renderColumnHeader(colEl, col, strip, filtering);
+	renderColumnHeader(colEl, col, strip, filtering, opts.stateOptionLabel);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
 	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd, carded, opts.doneOf);
 	dnd.wireDropTarget(colEl, (source) => opts.move(source.item, col.state));
 	dnd.wireScroller(cardsEl);
 	return colEl;
+}
+```
+
+`renderColumnHeader` takes the same label, and its stray-column tooltip names it instead of
+the hardcoded requirements string — found by review, the fourth spot this file names a
+setting by a string literal instead of a parameter:
+
+```ts
+function renderColumnHeader(
+	colEl: HTMLElement,
+	col: BoardColumn,
+	strip: boolean,
+	filtering: boolean,
+	stateOptionLabel: string,
+): void {
+	// … header/count/limit rendering unchanged …
+	if (col.outsideWorkflow) {
+		const mark = header.createSpan({ cls: 'pbl-board-col-stray' });
+		setIcon(mark, 'circle-help');
+		setTooltip(
+			colEl,
+			`"${col.label}" is not one of the configured workflow states. Add it to "${stateOptionLabel}" in the view options, or move its cards.`,
+		);
+	}
+	// … strip/no-state tooltips, renderColumnPolicy call, unchanged …
 }
 ```
 
