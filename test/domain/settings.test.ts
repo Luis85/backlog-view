@@ -4,6 +4,7 @@ import {
 	ALL_TYPES,
 	byName,
 	configProblems,
+	DEFAULT_DONE_VALUES,
 	defaultSettings,
 	defaultTypeFolder,
 	EXTRA_TYPES,
@@ -338,6 +339,7 @@ describe('optionalKeyFor', () => {
 			horizonKey: 'horizon',
 			startKey: 'start',
 			targetKey: 'due',
+			deliverableStateKey: 'deliverableStatus',
 		};
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
@@ -348,9 +350,18 @@ describe('optionalKeyFor', () => {
 			'horizon',
 			'start',
 			'due',
+			'deliverableStatus',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
-		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual(['', '', '', '', '', '']);
+		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+		]);
 	});
 });
 
@@ -365,6 +376,7 @@ describe('the optional-property table', () => {
 			'horizon',
 			'start',
 			'target',
+			'deliverableState',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
 	});
@@ -381,6 +393,7 @@ describe('adoptableProperties', () => {
 			'horizon',
 			'start',
 			'due',
+			'deliverableStatus',
 		]);
 	});
 
@@ -413,6 +426,37 @@ describe('adoptableProperties', () => {
 		const settings = resolveSettings(config);
 		expect(adoptableProperties(config, settings).map((p) => p.suggested)).not.toContain('status');
 		expect(configProblems(settings)).toEqual([]);
+	});
+});
+
+describe('the Deliverable workflow', () => {
+	it('gives the Deliverable workflow its own defaults', () => {
+		const s = defaultSettings();
+		expect(s.deliverableStateKey).toBe('');
+		expect(s.deliverableStates).toEqual([]);
+		expect(s.deliverableDoneValues).toEqual(DEFAULT_DONE_VALUES);
+	});
+
+	it('resolves the Deliverable state property independently of the requirements one', () => {
+		const s = resolveSettings(
+			fakeConfig({
+				deliverableStateProperty: 'note.deliverableStatus',
+				deliverableStateValues: 'Concept, Draft, Review, Published',
+				deliverableDoneValues: 'Published',
+				stateProperty: 'note.status',
+			}),
+		);
+		expect(s.deliverableStateKey).toBe('deliverableStatus');
+		expect(s.deliverableStates).toEqual(['Concept', 'Draft', 'Review', 'Published']);
+		expect(s.deliverableDoneValues).toEqual(['Published']);
+		expect(s.stateKey).toBe('status');
+	});
+
+	it('reports a collision between the two workflows sharing one key', () => {
+		const s = resolveSettings(
+			fakeConfig({ stateProperty: 'note.status', deliverableStateProperty: 'note.status' }),
+		);
+		expect(configProblems(s).some((p) => p.includes('deliverable state'))).toBe(true);
 	});
 });
 

@@ -52,6 +52,7 @@ describe('toolbar backfill', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			deliverableStateProperty: 'note.deliverableStatus',
 		});
 		// Every one of them on the note, empty: the features are usable and nothing was
 		// decided for the user — no state, no horizon, no dates.
@@ -64,6 +65,7 @@ describe('toolbar backfill', () => {
 			horizon: '',
 			start: '',
 			due: '',
+			deliverableStatus: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
 		expect(Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due'))).toBe(

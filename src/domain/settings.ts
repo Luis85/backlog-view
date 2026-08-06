@@ -97,6 +97,12 @@ export interface BacklogSettings {
 	startKey: string;
 	/** Frontmatter key holding the planned target date, or '' when unset. */
 	targetKey: string;
+	/** Frontmatter key holding the Deliverable workflow's own state, or '' when unset. */
+	deliverableStateKey: string;
+	/** Deliverable workflow states offered by its board, in order; [] falls back to observed. */
+	deliverableStates: string[];
+	/** State values (case-insensitive) that count as done, for the Deliverable workflow. */
+	deliverableDoneValues: string[];
 }
 
 /**
@@ -265,6 +271,9 @@ export function defaultSettings(): BacklogSettings {
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
 		startKey: '',
 		targetKey: '',
+		deliverableStateKey: '',
+		deliverableStates: [],
+		deliverableDoneValues: [...DEFAULT_DONE_VALUES],
 	};
 }
 
@@ -279,14 +288,21 @@ export function defaultSettings(): BacklogSettings {
  * the model's presence test and the backfill would otherwise each spell out the same
  * switch.
  */
-export type OptionalField = 'state' | 'startedDate' | 'finishedDate' | 'horizon' | 'start' | 'target';
+export type OptionalField = 'state' | 'startedDate' | 'finishedDate' | 'horizon' | 'start' | 'target' | 'deliverableState';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
  * rather than `keyof BacklogSettings` so the table below can only name a string-valued
  * key: `keyof` would let a boolean option through and `optionalKeyFor` would return one.
  */
-type OptionalSettingsKey = 'stateKey' | 'startedDateKey' | 'finishedDateKey' | 'horizonKey' | 'startKey' | 'targetKey';
+type OptionalSettingsKey =
+	| 'stateKey'
+	| 'startedDateKey'
+	| 'finishedDateKey'
+	| 'horizonKey'
+	| 'startKey'
+	| 'targetKey'
+	| 'deliverableStateKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -324,6 +340,12 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon', settingsKey: 'horizonKey' },
 	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
 	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
+	deliverableState: {
+		option: 'deliverableStateProperty',
+		suggested: 'deliverableStatus',
+		label: 'deliverable state',
+		settingsKey: 'deliverableStateKey',
+	},
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */
@@ -606,6 +628,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// `.base` that relies on the defaults grants `Done` a limit the rest of the app
 	// says it cannot have.
 	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
+	const deliverableDoneValuesRaw = list('deliverableDoneValues');
+	const effectiveDeliverableDoneValues =
+		deliverableDoneValuesRaw.length > 0 ? deliverableDoneValuesRaw : fallback.deliverableDoneValues;
 	const states = dedupe(list('stateValues'));
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
@@ -653,5 +678,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
 		startKey: propKey('startProperty', fallback.startKey),
 		targetKey: propKey('targetProperty', fallback.targetKey),
+		deliverableStateKey: propKey('deliverableStateProperty', fallback.deliverableStateKey),
+		deliverableStates: dedupe(list('deliverableStateValues')),
+		deliverableDoneValues: effectiveDeliverableDoneValues,
 	};
 }
