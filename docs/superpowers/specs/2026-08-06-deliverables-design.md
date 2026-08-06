@@ -308,12 +308,14 @@ actually draws into the pane, and today it is a closed three-way fork: `'board'`
 `renderBoardContent`, `'roadmap'` → `renderRoadmapContent`, **everything else** →
 `renderTree`. Adding `'deliverables'` to the `Projection` union changes nothing here by
 itself — every other file in this design could be built correctly and the toolbar's
-fourth toggle would still draw the *tree*, with a `deliverablesBoard` snapshot computed
-and never shown. `renderProjectionContent` needs a third branch,
+fourth toggle would still draw the *tree*, with the board it should have shown never
+computed at all. `renderProjectionContent` needs a third branch,
 `renderDeliverablesBoardContent`, mirroring `renderBoardContent`'s shape exactly: gate on
 `settings.deliverableStateKey` (empty → `renderBoardNoWorkflowState`-style guidance, a
 Deliverables-flavored variant of it, not a blank pane), otherwise render the board and
-return it as the `board` snapshot with a `listbox` role. This is the one change in the
+return it as the **same `board` snapshot field** `renderBoardContent` already returns
+(`ProjectionContent.board`), with a `listbox` role — there is no second field for it (see
+the `host.board` reuse note under §6's write path below). This is the one change in the
 whole design a passing test suite could not catch without a `view/`-level test actually
 asserting on the fourth toggle's rendered content, which is why that assertion is called
 out explicitly in Testing below rather than folded into "toolbar coverage."
@@ -348,12 +350,24 @@ behavior the other two board-move-shaped methods (`performBoardMove`,
 ```ts
 async performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
   const from = item.deliverableStateValue;
-  const columns = this.host.deliverablesBoard?.board;
+  const columns = this.host.board?.board;
   return this.applyCardMove(item, computeDeliverableStateWrites(item, state), () =>
     announceBoardMove(columns, item.title, from, state),
   );
 }
 ```
+
+**There is one `host.board` field, not two — corrected from an earlier draft that read
+`this.host.deliverablesBoard` here.** `host.board` already holds whatever
+`ProjectionContent.board` the last render produced (`backlogView.ts:494`,
+`this.board = content.board`), and `renderProjectionContent` produces a non-null `board`
+snapshot on exactly `'board'` and `'deliverables'` — null on `'tree'` and `'roadmap'`, and
+also null on either board-shaped projection while its workflow is unconfigured. A second
+`host.deliverablesBoard` field would have to be kept in step with that same rule by hand,
+duplicating a distinction `host.board` already makes correctly by construction: whichever
+board-shaped projection is active is the one whose snapshot is sitting in `host.board` at
+read time, because nothing else writes that field. `performDeliverablesBoardMove` reads
+`this.host.board?.board` for exactly that reason, not a second snapshot.
 
 Reusing `announceBoardMove` as-is — it is already generic over columns/title/from/to, not
 board-specific in any way the Deliverables board's columns would violate, so no new
@@ -390,10 +404,10 @@ wrong property, not merely display wrong; and `addStateItems`'s checked-entry lo
 entry is checked, so it would check against `item.stateValue` rather than
 `item.deliverableStateValue`. All three need a `'deliverables'` branch mirroring the
 existing `'board'` one: the gate reads whichever key is active for
-`host.projection`, `stateChoices` sources `host.deliverablesBoard?.board` the way it
-already sources `host.board?.board`, `chooseState` routes to
-`performDeliverablesBoardMove`, and the checked-entry test calls
-`computeDeliverableStateWrites` instead of `computeStateWrites` on that branch.
+`host.projection`, `stateChoices` sources `host.board?.board` — already the right
+snapshot for whichever board-shaped projection is active, per the `host.board` reuse note
+above — `chooseState` routes to `performDeliverablesBoardMove`, and the checked-entry test
+calls `computeDeliverableStateWrites` instead of `computeStateWrites` on that branch.
 
 **A fourth spot in the same file has the same `=== 'board'` shape — found only after
 three others already had. `addMatchSection`** (`menu.ts:248-253`), the card menu's
@@ -405,13 +419,15 @@ under a Deliverable card would render as a `tabindex="-1"` link (per `render/boa
 impossible to get to" failure `view/CLAUDE.md`'s own board notes name as the reason that
 link exists in the first place. Given four independent call sites in one file now
 resolving "which board is active" the same way, this design introduces one small helper
-rather than a fifth inline ternary: `activeBoard(host): BoardModel | null`, returning
-`host.board?.board` on `'board'`, `host.deliverablesBoard?.board` on `'deliverables'`,
-else `null` — `stateChoices`, `addMatchSection`, and the Set-state gate all call it, and
-`chooseState` branches on `host.projection` the same way it already does. One function
-answering "which board" is what stops a fifth spot from repeating this exact miss, which
-four independent findings in one file is reason enough to no longer treat as
-coincidence.
+rather than a fifth inline ternary — and because `host.board` is already the one field
+holding whichever board-shaped projection's snapshot is current (never a second field to
+branch on), the helper needs no projection check either: `activeBoard(host): BoardModel |
+null` is simply `host.board?.board ?? null`. `stateChoices`, `addMatchSection`, and the
+Set-state gate all call it in place of their old `host.projection === 'board' ? … : null`
+ternary; `chooseState` still branches on `host.projection` itself, because that decision
+is "which write to plan," not "which board to read." One function answering "which board"
+is what stops a fifth spot from repeating this exact miss, which four independent
+findings in one file is reason enough to no longer treat as coincidence.
 
 **Four more gaps this round, all in code the first three drafts left untouched or
 under-specified.** The pattern across all four is the same one the menu round found:
@@ -426,7 +442,8 @@ was true, and "reuse the rest of the render path unmodified" was not.
   enough: the renderer that builds those targets is the one hardcoding which move they
   perform. `renderBoard` takes the resolved `BoardModel` and a `move` callback as
   parameters instead of deriving both from `host` internally — `boardColumns`' result and
-  `host.performBoardMove` for the requirements board, `host.deliverablesBoard` and
+  `host.performBoardMove` for the requirements board, the same `host.board` snapshot
+  (populated by `renderDeliverablesBoardContent` instead) and
   `host.performDeliverablesBoardMove` for this one — and `renderColumn` receives `move`
   from its caller rather than closing over `ctx.host.performBoardMove` directly. Left as
   first drafted, a **drag** on the Deliverables board would have written the
@@ -534,7 +551,7 @@ row shape the existing options use.
   allowlist exactly as `board`/`roadmap` already do, and a legacy stored value untouched
   by this change still reads back unchanged.
 - `view/`: **an assertion that the fourth toggle actually renders the Deliverables
-  board**, not just that `host.deliverablesBoard` was computed — `renderProjectionContent`
+  board**, not just that a `BoardModel` was computed — `renderProjectionContent`
   is where a correct model can still draw the wrong thing, so this is the one case
   worth a dedicated test rather than folding into toolbar coverage. `menu.test.ts` —
   the Set-state section appears on a Deliverables-board card when only

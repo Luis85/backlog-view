@@ -209,8 +209,10 @@ those three already share — not a standalone write, which would either reimple
 silently drop that behavior.
 `src/view/render/projections.ts` — `renderProjectionContent` gains an explicit
 `renderDeliverablesBoardContent` branch beside `renderBoardContent`/
-`renderRoadmapContent`, gated on `settings.deliverableStateKey`; without it the fourth
-toggle falls through to `renderTree`, whatever `host.deliverablesBoard` holds.
+`renderRoadmapContent`, gated on `settings.deliverableStateKey`, returning its board
+through the same `ProjectionContent.board` field `renderBoardContent` already uses —
+there is no second snapshot field; without this branch the fourth toggle falls through to
+`renderTree` and nothing computes a board at all.
 `src/view/backlogView.ts` — the fourth toggle, and `renderTreeContent`'s
 `pbl-board-mode` class condition widens to `projection === 'board' || projection ===
 'deliverables'` (`backlogView.ts:468`) — the two are shaped alike and share the class,
@@ -243,10 +245,11 @@ hardcoding `host.performBoardMove` — the third of the three move inputs, found
 independently hardcoded to the wrong write and fixed as its own case rather than assumed
 to follow from the other two.
 `src/view/interactions/menu.ts` — four changes, not one: a new `activeBoard(host)`
-helper (`host.board?.board` on `'board'`, `host.deliverablesBoard?.board` on
-`'deliverables'`, else `null`) replaces the repeated `host.projection === 'board' ?
-host.board?.board : null` ternary at all three of its existing call sites plus the one
-this PBI adds; the Set-state section's visibility gate (`menu.ts:70`) checks whichever
+helper — `host.board?.board ?? null`, no projection branch needed because `host.board` is
+already the one field holding whichever board-shaped projection's snapshot is current —
+replaces the repeated `host.projection === 'board' ? host.board?.board : null` ternary at
+all three of its existing call sites plus the one this PBI adds; the Set-state section's
+visibility gate (`menu.ts:70`) checks whichever
 key is active for `host.projection`, not only the requirements `stateKey`; `chooseState`
 (`menu.ts:305`, the write) and `addStateItems` (`menu.ts:323`, the checked entry) route
 to `performDeliverablesBoardMove` / `computeDeliverableStateWrites` rather than falling
