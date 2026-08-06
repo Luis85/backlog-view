@@ -121,14 +121,18 @@ are from the file as it stands before this task):
 
 4. **`'offers only the top level at the top level'`** (currently lines 120-125) —
    REPLACE its body and its now-stale `// CHANGED:` comment entirely; this is the
-   assertion pinning the exact value this task changes, not a new test to add beside it:
+   assertion pinning the exact value this task changes, not a new test to add beside it.
+   **This value is corrected again below, past Step 3** — the toolbar's top-level
+   creator turns out to offer every declared type, not just the extras, so write it
+   with the final expectation directly rather than a value this same task revises a
+   few paragraphs later:
 
 ```ts
-	it('offers every extra type at the top level too, matching the toolbar\'s own creator', () => {
+	it('offers every declared type at the top level, matching the toolbar\'s own creator', () => {
 		// The toolbar's top-level "pick another type" menu has always offered every
 		// ALL_TYPES entry unconditionally, with no parent — this list has to agree with
 		// that standing behavior rather than invent a narrower one.
-		expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone', 'Issue', 'Bug', 'Deliverable']);
+		expect(childTypeChoices(null)).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Deliverable', 'Milestone']);
 	});
 ```
 
@@ -195,20 +199,44 @@ In `DEFAULT_TYPE_SUBFOLDERS`, add a line:
 
 (keeping the existing `bug: 'bugs'` / `milestone: 'milestones'` entries as they are).
 
+**Found by a later review round: the fix below is not "the markers plus every extra
+type" — it is EVERY declared type, because the toolbar's "pick another type" menu
+does not stop at extras.** Re-reading `renderToolbar` (`src/view/render/toolbar.ts:32-36`)
+confirms it loops the WHOLE `ALL_TYPES` — `Feature`, `PBI` and `Task` included — calling
+`promptCreateItem(host, [type], null)` for each, so a user can already create a
+parentless `Feature` today, not only a parentless extra type. The same reasoning
+that made `childTypeChoices(null)` spread all of `EXTRA_TYPES` rather than a
+hand-picked `Deliverable`-only subset applies again, one level up: since the toolbar
+draws no line anywhere in `ALL_TYPES`, this function should not either.
+
 In `src/domain/itemTypes.ts`, `childTypeChoices`'s top-level branch:
 
 ```ts
-	// Top level is the ladder's top, the markers, and every extra type: a milestone
-	// hangs from nothing, and an extra type may equally choose to — the toolbar's own
-	// top-level creator has always offered Issue and Bug with no parent, unconditionally
-	// (renderToolbar iterates ALL_TYPES), so this list has to agree with that standing
-	// behavior rather than invent a narrower "which extra types are really rootable"
-	// question nothing else in the view asks.
-	if (!parent) return [ladderChild, ...MARKER_TYPES, ...EXTRA_TYPES];
+export function childTypeChoices(parent: LadderPosition | null): string[] {
+	// A marker holds nothing — no rung below it and no extra type beside it. The empty
+	// list is the answer, and every affordance built from it has to be ABSENT rather than
+	// empty (the add button, `New <child>`); see `renderRowTrailing`.
+	if (parent !== null && isMarkerType(parent.typeName)) return [];
+	// The toolbar's top-level creator has always offered every declared type
+	// unconditionally, with no parent (`renderToolbar`'s "pick another type" menu
+	// iterates ALL_TYPES) — this has to agree with that standing behavior rather than
+	// invent a narrower "which types make sense as roots" question nothing else in
+	// the view asks.
+	if (!parent) return ALL_TYPES;
+	const ladderChild = LEVELS[childLevelIndex(parent)];
+	const onLadder = parent.levelIndex >= 0 && parent.levelIndex < LEVELS.length - 1;
+	return onLadder ? [ladderChild, ...EXTRA_TYPES] : [ladderChild];
+}
 ```
 
-No import changes are needed in `itemTypes.ts` — `EXTRA_TYPES` is already imported
-there (it is what the under-a-parent branch already spreads).
+This drops `ladderChild`'s computation out of the `!parent` branch entirely (it is
+only needed by the two branches below it now) and no longer touches `MARKER_TYPES` in
+this function at all — `ALL_TYPES` already contains every marker. No import changes
+are needed — `ALL_TYPES` is already imported in `itemTypes.ts` (it feeds
+`pruneOutsideHierarchy`'s `supported` set elsewhere in this codebase, confirmed
+unrelated to this function). Step 1's test for the top-level branch already carries
+this exact expected value (`['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug',
+'Deliverable', 'Milestone']`) — nothing more to update there.
 
 The under-a-parent branch (`return onLadder ? [ladderChild, ...EXTRA_TYPES] : [ladderChild];`)
 needs no change — it already spreads the whole `EXTRA_TYPES` list, so `Deliverable`
@@ -2787,22 +2815,25 @@ git commit -m "feat: route the card menu's Set state and matches through activeB
 
 ---
 
-### Task 20: The generated README — the property row and the extra-types prose
+### Task 20: The generated README — the Deliverable-state property row
 
 **Files:**
 - Modify: `src/domain/backlogReadme.ts`
 - Test: `test/domain/backlogReadme.test.ts`
 
 **Interfaces:**
-- Consumes: `childTypeChoices(null)` (Task 1), `deliverableStateKey` (Task 3).
-- Produces: `fieldRows` gains a Deliverable-state row when configured; `typeSection`'s
-  opening paragraph correctly states which extra types are rootable.
+- Consumes: `deliverableStateKey` (Task 3).
+- Produces: `fieldRows` gains a Deliverable-state row when configured.
 
-Two gaps, found by review: `fieldRows` is hand-enumerated (one `if` per property)
-rather than driven by `PROPERTY_TABLE`, so a field joining `OptionalField` does not put
-a row in this table for free; and `typeSection`'s prose interpolates the whole
-`EXTRA_TYPES` list into "they hang from any rung above the deepest," which becomes
-false the moment `Deliverable` — rootable — is one of them.
+`fieldRows` is hand-enumerated (one `if` per property) rather than driven by
+`PROPERTY_TABLE`, so a field joining `OptionalField` does not put a row in this table
+for free — this task's one real gap. `typeSection`'s own prose does NOT need an edit
+(see Step 3's note): an earlier draft of this task believed it did, on the premise
+that only `Deliverable` — or, in a later draft, only the extra types — needed calling
+out as rootable, and Task 1's own fixes (across two review rounds) retracted that
+premise entirely: `childTypeChoices(null)` now equals the whole `ALL_TYPES` list, so
+`parentsOf`/the table already state every type's root capability correctly with no
+further change here.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2820,19 +2851,19 @@ it('omits the Deliverable state row when unconfigured', () => {
 	expect(content).not.toContain('deliverableStatus');
 });
 
-it('says every extra type may also stand alone, matching the toolbar\'s real behavior', () => {
+it('shows the Deliverable row and does not claim only extras can root', () => {
 	const content = backlogReadmeContent(defaultSettings(), [], 'test');
 	expect(content).toContain('Deliverable');
-	expect(content).toMatch(/stand alone/);
+	// A Feature/PBI/Task can also be created with no parent (the toolbar's top-level
+	// creator draws no line anywhere in ALL_TYPES) — the prose must not say otherwise.
+	expect(content).not.toMatch(/only.*(root|no parent)/i);
 });
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/domain/backlogReadme.test.ts -t "Deliverable"`
-Expected: FAIL — no `deliverableStatus` row appears even when configured; the prose
-test may already pass trivially (nothing mentions Deliverable at all yet) but the
-positive assertion (`toContain('Deliverable')` / `stand alone`) fails.
+Expected: FAIL — no `deliverableStatus` row appears even when configured.
 
 - [ ] **Step 3: Implement**
 
@@ -2845,15 +2876,22 @@ target rows:
 	}
 ```
 
-**Found by review: there is no per-type "which extras are rootable" question left to
-ask here, because Task 1's own fix means the answer is now "all of them, uniformly."**
-An earlier draft of this task branched `typeSection`'s prose on `childTypeChoices(null)`
-per extra type, on the assumption that `Deliverable` alone could stand alone while
-`Issue`/`Bug` could not — the same assumption Task 1's `ROOTABLE_EXTRA_TYPES` made and
-review found false (the toolbar has always let `Issue`/`Bug` be created with no
-parent). With that premise gone, the branching collapses to one case: every
-`EXTRA_TYPES` member may stand alone, so the prose says so once, unconditionally,
-rather than asking a question whose answer never varies:
+**Found by review, across two rounds: first that "only `Deliverable` is rootable" was
+false (Task 1), and then that "only the extra types are rootable" is ALSO false — Task
+1's later fix makes `childTypeChoices(null)` equal `ALL_TYPES` in full, since the
+toolbar's top-level creator draws no line anywhere in that list, not even at the
+ladder.** An earlier draft of THIS task added a sentence to `typeSection`'s prose
+saying the extra types "may also stand alone" — true on its own, but scoped to the
+wrong set now that `Feature`/`PBI`/`Task` share the exact same capability. Rather than
+widen the sentence to name every type (duplicating what the table's own
+`parentsOf`/"*(nothing — it is a root)*" marker already states correctly, per row, for
+every one of them), this task now removes the sentence: root capability is a PER-TYPE
+fact the table already gets right for the whole vocabulary, and prose repeating "these
+can all be roots" for a table where every single row already says so adds nothing —
+it is the "measure with an instrument that can see all of it" rule applied to this
+document's own two ways of saying the same thing. `typeSection`'s prose reverts to
+describing pure STRUCTURAL shape (ladder / pinned extra / no-rung marker), which is
+what it is actually for:
 
 ```ts
 function typeSection(settings: BacklogSettings): string[] {
@@ -2864,8 +2902,7 @@ function typeSection(settings: BacklogSettings): string[] {
 		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
 			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
-			'is why they are types rather than levels. They may also stand alone, with no ' +
-			'parent at all, exactly as the table below shows. ' +
+			'is why they are types rather than levels. ' +
 			`${MARKER_TYPES.join(' and ')} is neither: a ` +
 			`marker hangs from nothing and holds nothing, and states a date rather than work.`,
 		'',
@@ -2887,25 +2924,26 @@ function typeSection(settings: BacklogSettings): string[] {
 }
 ```
 
-This is a straight simplification of the existing function's opening paragraph, not a
-new per-type mechanism — `childTypeChoices`/`parentsOf` below still state each type's
-own root capability in the table itself (unchanged), which is what the reader actually
-checks per type; the paragraph above it now makes a claim that is uniformly true rather
-than one that used to need per-type qualification.
+This is textually IDENTICAL to the function as it exists before this task touches it
+at all — Task 1's `childTypeChoices(null)` fix already makes `parentsOf`/the table
+correct for `Deliverable` (and, as a side effect, for `Feature`/`PBI`/`Task` too) with
+zero changes needed in `typeSection` itself. This task's real, remaining change here
+is the `fieldRows` row above; the prose needed no edit once the false "extras only"
+premise was retracted, which is itself worth stating so a future reader does not
+wonder why a "found by review" note describes a change that nets to nothing.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run test/domain/backlogReadme.test.ts`
-Expected: PASS — including every existing test in this file; if a pre-existing test
-asserts the OLD uniform sentence (before this task touched it) verbatim, update its
-expected string to include the new "may also stand alone" clause rather than reverting
-the fix.
+Expected: PASS — including every existing test in this file; `typeSection`'s own
+prose and its existing tests are untouched by this task, so nothing there should need
+updating.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/domain/backlogReadme.ts test/domain/backlogReadme.test.ts
-git commit -m "feat: document the Deliverable property and its root capability in the generated README"
+git commit -m "feat: document the Deliverable state property in the generated README"
 ```
 
 ---
