@@ -1552,6 +1552,24 @@ it('shows "no Deliverables yet" when the workflow is configured but nothing is t
 	const title = containerEl.querySelector('.pbl-empty-title')?.textContent ?? '';
 	expect(title).toContain('deliverable');
 });
+
+it('names the current focus, not the whole base, when a Deliverable exists outside it', () => {
+	const vault = new FakeVault();
+	vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+	vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+	// A top-level Deliverable, outside any Feature subtree — `collectFocusRoots` never
+	// reaches it once focus narrows to "Feature", so `model.results` excludes it even
+	// though it exists in the base.
+	vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+	const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' }, { focus: 'Feature' });
+	harness.view.setProjection('deliverables');
+	const { containerEl } = harness;
+
+	const title = containerEl.querySelector('.pbl-empty-title')?.textContent ?? '';
+	const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+	expect(title).toContain('focus');
+	expect(hint).toContain('All types');
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1588,17 +1606,31 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 }
 
 /**
- * A configured Deliverable workflow with no Deliverable-typed results anywhere in the
- * base — distinct from "everything is done and hidden", which this board has no concept
- * of (Scope): a base full of other work is never reported as complete.
+ * A configured Deliverable workflow with no Deliverable-typed results in the currently
+ * shown population — distinct from "everything is done and hidden", which this board
+ * has no concept of (Scope): a base full of other work is never reported as complete.
+ *
+ * **Found by review: `model.results` is narrowed to the focused subtree while a focus
+ * is active (Task 16's own note on `renderDeliverablesBoard`), so an unqualified
+ * "no deliverables yet" is false the moment a Deliverable exists elsewhere in the base
+ * but not under the current focus.** This reuses the same `model.focused` distinction
+ * `renderEmptyState`/`emptyHint` (this file, existing) already draw for the identical
+ * problem on the tree — word the guidance in terms of the current focus and name the
+ * way back, rather than inventing a second "does the WHOLE base have one" query no
+ * other empty state here makes either.
  */
 export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const focused = host.model?.focused ?? false;
 	guidanceShell(
 		treeEl,
 		'package',
-		'No deliverables yet',
-		'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
-			'menu, or type an existing note as a Deliverable from its Set type menu.',
+		focused ? 'No deliverables in this focus' : 'No deliverables yet',
+		focused
+			? 'Nothing typed "Deliverable" is in the current focus. Switch the focus button ' +
+				'in the toolbar back to "All types" to see Deliverables elsewhere in the base, ' +
+				'or create one here.'
+			: 'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
+				'menu, or type an existing note as a Deliverable from its Set type menu.',
 	);
 }
 ```
@@ -2073,6 +2105,20 @@ it('counts a Deliverable done only in the requirements workflow as visible, not 
 
 	expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
 });
+
+it('counts only Deliverable-typed items on the Deliverables board, never the whole base', () => {
+	const vault = new FakeVault();
+	vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+	vault.addFile('P1.md', { frontmatter: { type: 'PBI', order: 10 } });
+	vault.addFile('P2.md', { frontmatter: { type: 'PBI', order: 20 } });
+	const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+	harness.view.setProjection('deliverables');
+	const { containerEl } = harness;
+
+	// One Deliverable card renders; the toolbar must not report the base's other 2
+	// PBIs as part of "how many items are on this board".
+	expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
+});
 ```
 
 `projectionButton` already exists in `test/helpers/view.ts` (used by the existing
@@ -2084,7 +2130,8 @@ Run: `npx vitest run test/view/toolbar.test.ts -t "Deliverables"`
 Expected: FAIL — no fourth toggle position exists;
 `renderCompletedToggle` still renders on the Deliverables board;
 `syncCountLabel` reports "0 of 1" for the third test (hidden by `isRowHidden`'s
-`hidingCompleted()` branch).
+`hidingCompleted()` branch); the fourth test reports "3 items" instead of "1 item"
+(the whole base's `model.results.length`, unscoped to Deliverable-typed items).
 
 - [ ] **Step 3: Implement**
 
@@ -2105,17 +2152,26 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	...
 ```
 
-`syncCountLabel`:
+`syncCountLabel`: **found by review, a second gap beside the hidden-predicate one this
+task already fixes.** Only the hidden predicate branched on projection in the first
+draft — `total`/`shown` still counted `model.results.length` whole, so a base with one
+Deliverable and ten PBIs would report "11 items" beside a board showing one card, and
+filtering a PBI (never a card on this board) would change the count anyway. The
+POPULATION has to be scoped the same way `renderDeliverablesBoard`'s own predicate
+already is, before either count is taken:
 
 ```ts
 export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void {
 	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
 	const model = host.model;
 	if (!label || !model) return;
+	const onDeliverables = host.projection === 'deliverables';
+	const isDeliverable = (item: BacklogItem) => item.typeName?.toLowerCase() === 'deliverable';
+	const population = onDeliverables ? model.results.filter(isDeliverable) : model.results;
 	const hidden = (item: BacklogItem): boolean =>
-		host.projection === 'deliverables' ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
-	const total = model.results.length;
-	const shown = model.results.filter((item) => !hidden(item)).length;
+		onDeliverables ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
+	const total = population.length;
+	const shown = population.filter((item) => !hidden(item)).length;
 	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
 	else label.setText(`${shown} of ${total}`);
 }
