@@ -85,9 +85,16 @@ narrowed to one type.
   projection).** Cards are drawn from `model.results` rather than `model.roots`, so a
   Deliverable nested inside the focused subtree still renders — but `model.results`
   itself narrows to that subtree while a focus is active, exactly as it already does for
-  the tree and the requirements board. This board makes no exception to that: a
-  Deliverable entirely outside the focused subtree is out of scope until focus clears,
-  the same rule every other projection already lives with.
+  the tree and the requirements board. **Two different rules apply, by focus level, and
+  both are established behavior this board inherits rather than invents:** focused on
+  `Feature` (or any level other than `PBI`), a Deliverable outside that subtree is out
+  of scope until focus clears. Focused on `PBI` specifically, EVERY Deliverable stays
+  visible regardless of subtree, parentless ones included —
+  `collectFocusRoots`' own `extraFocused` rule (`EXTRA_TYPE_RANK === focusIdx`) already
+  admits every extra type as a focus root by TYPE rather than by subtree position, the
+  same way `Issue` and `Bug` already work under PBI focus today. This board makes no
+  exception to either rule; it neither narrows PBI focus further nor widens Feature
+  focus to match it.
 - **3c — a Deliverable's requirements-board state reads as done.** Its card still
   renders here. This board does not implement "Show completed items" in this increment
   (Scope, in the design spec) — building it would need its own rollup over the

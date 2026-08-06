@@ -53,7 +53,7 @@ type filter differ.
 **Files:**
 - Modify: `src/domain/settings.ts`
 - Modify: `src/domain/itemTypes.ts`
-- Test: `test/domain/itemTypes.test.ts`
+- Test: `test/domain/itemTypes.test.ts`, `test/view/toolbar.test.ts`
 
 **Interfaces:**
 - Consumes: nothing new.
@@ -173,6 +173,40 @@ Add `defaultTypeFolder` to the file's existing `../../src/domain/settings` impor
 (`ALL_TYPES`/`defaultSettings`/`defaultTypeFolder` — new — `EXTRA_TYPES`/`LEVELS`/
 `MARKER_TYPES`/`resolveSettings`); `FakeVault`/`buildModel` are already imported.
 
+**Found by review: widening `ALL_TYPES` breaks one more pre-existing assertion, in a
+DIFFERENT file this task's earlier draft never touched — `test/view/toolbar.test.ts`.**
+`renderToolbar`'s "pick another type" menu (`src/view/render/toolbar.ts:32-36`) already
+loops the whole `ALL_TYPES` unconditionally, so `Deliverable` joining it adds a "New
+Deliverable" entry there automatically, with no code change of this task's own needed
+in `toolbar.ts` — but `'offers every type in the New picker and opens the right
+prompt'` (in `test/view/toolbar.test.ts`) pins the exact seven-entry list this produces
+today. Update it to eight, `Deliverable` inserted between `Bug` and `Milestone`
+(`ALL_TYPES`'s own order — `EXTRA_TYPES` before `MARKER_TYPES`):
+
+```ts
+// test/view/toolbar.test.ts
+	it('offers every type in the New picker and opens the right prompt', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const picker = Menu.lastShown;
+		expect(picker?.items.map((i) => i.titleText)).toEqual([
+			'New Epic',
+			'New Feature',
+			'New PBI',
+			'New Task',
+			'New Issue',
+			'New Bug',
+			'New Deliverable',
+			'New Milestone',
+		]);
+
+		picker?.item('New PBI')?.click();
+		expect(Modal.lastOpened?.titleEl.textContent).toBe('New PBI');
+	});
+```
+
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/domain/itemTypes.test.ts`
@@ -182,6 +216,10 @@ Expected: FAIL on every point above, before the Step 1 edits land — after they
 Deliverable, since `EXTRA_TYPES` has not been widened in `settings.ts` yet),
 `childTypeChoices(null)` still returns `['Epic', 'Milestone']`, and
 `defaultTypeFolder('Deliverable')` still returns `''`.
+
+Run: `npx vitest run test/view/toolbar.test.ts -t "New picker"`
+Expected: FAIL — the New picker's real menu still has only seven entries (no "New
+Deliverable"), since `ALL_TYPES` has not been widened yet.
 
 - [ ] **Step 3: Implement**
 
@@ -247,10 +285,14 @@ joining that list is already offered there for free.
 Run: `npx vitest run test/domain/itemTypes.test.ts`
 Expected: PASS
 
+Run: `npx vitest run test/view/toolbar.test.ts`
+Expected: PASS (the whole file — the New-picker fix must not regress any of the
+file's other, unrelated tests)
+
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/domain/settings.ts src/domain/itemTypes.ts test/domain/itemTypes.test.ts
+git add src/domain/settings.ts src/domain/itemTypes.ts test/domain/itemTypes.test.ts test/view/toolbar.test.ts
 git commit -m "feat: Deliverable joins the type vocabulary, rootable"
 ```
 
@@ -337,14 +379,97 @@ git commit -m "feat: give Deliverable its own badge icon and colour"
 - Consumes: `PROPERTY_TABLE`, `OptionalField`, `BacklogSettings` (existing).
 - Produces: `OptionalField` gains `'deliverableState'`; `BacklogSettings` gains
   `deliverableStateKey: string`, `deliverableStates: string[]`,
-  `deliverableDoneValues: string[]`. Consumed by Task 4 (viewOptions.ts), Task 6
-  (vocabulary.ts), Task 7 (model.ts), Task 9 (writePlan.ts / frontmatter.ts).
+  `deliverableDoneValues: string[]`. Consumed by Task 4 (viewOptions.ts), Task 5
+  (vocabulary.ts), Task 6 (model.ts), Task 7 (writePlan.ts), Task 8 (frontmatter.ts).
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write the failing tests, and update every pre-existing exact-count
+  assertion this table's new member breaks**
+
+**Found by review: widening `OPTIONAL_FIELDS`/`OPTIONAL_PROPERTIES` from six members
+to seven breaks three pre-existing, exact-array assertions in
+`test/domain/settings.test.ts` that this task's earlier draft left untouched — the
+promised full run of the file cannot pass without them.** Traced against the real
+file:
+
+1. **`describe('optionalKeyFor', ...)`'s `'maps each field to the property it is
+   stored under'`** — its settings fixture needs `deliverableStateKey: 'deliverableStatus'`
+   added, and BOTH of its `toEqual([...])` arrays need a 7th entry:
 
 ```ts
-// test/domain/settings.test.ts — new tests, following the file's existing
-// defaultSettings()/resolveSettings(fakeConfig({...})) pattern
+	it('maps each field to the property it is stored under', () => {
+		const settings = {
+			...defaultSettings(),
+			stateKey: 'status',
+			startedDateKey: 'started',
+			finishedDateKey: 'finished',
+			horizonKey: 'horizon',
+			startKey: 'start',
+			targetKey: 'due',
+			deliverableStateKey: 'deliverableStatus',
+		};
+		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(settings, field))).toEqual([
+			'status',
+			'started',
+			'finished',
+			'horizon',
+			'start',
+			'due',
+			'deliverableStatus',
+		]);
+		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+		]);
+	});
+```
+
+2. **`describe('the optional-property table', ...)`'s `'reads its fields in
+   declaration order, ...'`** — its declaration-order array needs `'deliverableState'`
+   appended (matching `PROPERTY_TABLE`'s declaration order, `deliverableState` last):
+
+```ts
+	it('reads its fields in declaration order, which is the order everything states them in', () => {
+		expect(OPTIONAL_PROPERTIES.map((property) => property.field)).toEqual([
+			'state',
+			'startedDate',
+			'finishedDate',
+			'horizon',
+			'start',
+			'target',
+			'deliverableState',
+		]);
+		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
+	});
+```
+
+3. **`describe('adoptableProperties', ...)`'s `'offers the shipped key for every
+   optional property nobody has named'`** — needs `'deliverableStatus'` appended:
+
+```ts
+	it('offers the shipped key for every optional property nobody has named', () => {
+		const config = fakeConfig({});
+		expect(adoptableProperties(config, resolveSettings(config)).map((p) => p.suggested)).toEqual([
+			'status',
+			'started',
+			'finished',
+			'horizon',
+			'start',
+			'due',
+			'deliverableStatus',
+		]);
+	});
+```
+
+Then add the new tests, following the file's existing
+`defaultSettings()`/`resolveSettings(fakeConfig({...}))` pattern:
+
+```ts
+// test/domain/settings.test.ts — new tests
 it('gives the Deliverable workflow its own defaults', () => {
 	const s = defaultSettings();
 	expect(s.deliverableStateKey).toBe('');
@@ -380,6 +505,13 @@ it('reports a collision between the two workflows sharing one key', () => {
 Run: `npx vitest run test/domain/settings.test.ts -t "Deliverable"`
 Expected: FAIL — `TypeError`/`undefined` on `s.deliverableStateKey` etc., since the
 field does not exist yet.
+
+Run: `npx vitest run test/domain/settings.test.ts` (the whole file, not just the new
+tests)
+Expected: FAIL on the three pre-existing tests updated in Step 1 too — each still
+expects a six-entry array (`OPTIONAL_FIELDS`/`OPTIONAL_PROPERTIES` are still six
+members long until Step 3 lands), so the seven-entry expected arrays this step just
+wrote fail against them, with a length mismatch.
 
 - [ ] **Step 3: Implement**
 
@@ -2188,8 +2320,13 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
  * active focus (a focus's roots are Features/PBIs, never a Deliverable itself). This
  * is NOT the same as bypassing focus — `model.results` is itself narrowed to the
  * focused subtree when a focus is active (`buildModel`'s `shown()`), so a Deliverable
- * OUTSIDE that subtree still will not render here until focus clears. Also regardless
- * of either workflow's completion state (Scope: no "Show completed items" concept here).
+ * OUTSIDE that subtree will not render here until focus clears — **except under `PBI`
+ * focus specifically**, where `collectFocusRoots`' own `extraFocused` rule
+ * (`EXTRA_TYPE_RANK === focusIdx`) already admits every extra type as a focus root by
+ * TYPE rather than by subtree position, the same established behavior `Issue`/`Bug`
+ * get under PBI focus today — a parentless Deliverable stays visible there too. Also
+ * regardless of either workflow's completion state (Scope: no "Show completed items"
+ * concept here).
  */
 export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
 	const host: BacklogViewHost = ctx.host;
