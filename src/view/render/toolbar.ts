@@ -3,7 +3,7 @@ import { BacklogViewHost, BusyState, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
-import { BacklogModel } from '../../domain/model';
+import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES } from '../../domain/settings';
@@ -99,7 +99,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		text: `${count} item${count === 1 ? '' : 's'}`,
 		attr: { 'aria-live': 'polite' },
 	});
-	setTooltip(countEl, levelBreakdown(host, model));
+	setTooltip(countEl, levelBreakdown(model.results));
 }
 
 /**
@@ -174,16 +174,28 @@ export function detectIgnoredGrouping(data: BasesQueryResult | null | undefined)
  * the count is synced imperatively per pass. The Base's own results: ancestors
  * loaded for context are not items of this base and must not inflate the number.
  * Collapsed rows still count as shown — only filtering and hiding narrow it,
- * which `isRowHidden` covers both of, in both projections.
+ * which `isRowHidden` covers both of, in both projections. The Deliverables board is
+ * scoped a third way: its population is Deliverable-typed results only (never the
+ * whole base, whatever else the query returned), hidden by the filter-only predicate
+ * that board itself renders with rather than the "Show completed items" one, since
+ * that toggle does not apply there. Also fixes the label's own tooltip, which used to
+ * be set once by `renderToolbar` at full-render time and never rescoped here — so it
+ * could disagree with the text sitting right next to it.
  */
 export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void {
 	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
 	const model = host.model;
 	if (!label || !model) return;
-	const total = model.results.length;
-	const shown = model.results.filter((item) => !host.isRowHidden(item)).length;
+	const onDeliverables = host.projection === 'deliverables';
+	const isDeliverable = (item: BacklogItem) => item.typeName?.toLowerCase() === 'deliverable';
+	const population = onDeliverables ? model.results.filter(isDeliverable) : model.results;
+	const hidden = (item: BacklogItem): boolean =>
+		onDeliverables ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
+	const total = population.length;
+	const shown = population.filter((item) => !hidden(item)).length;
 	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
 	else label.setText(`${shown} of ${total}`);
+	setTooltip(label, levelBreakdown(population));
 }
 
 /**
@@ -208,7 +220,7 @@ function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void {
  * and refreshes the view.
  */
 function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	if (!host.settings.stateKey) return;
+	if (!host.settings.stateKey || host.projection === 'deliverables') return;
 	const showing = host.settings.showCompleted;
 	const hidden = model.results.filter((item) => item.subtreeDone).length;
 	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
@@ -318,6 +330,7 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	position('tree', 'list-tree', 'Show as backlog tree');
 	position('board', 'square-kanban', 'Show as kanban board');
 	position('roadmap', 'map', 'Show as roadmap');
+	position('deliverables', 'package', 'Show Deliverables board');
 }
 
 /**
@@ -365,10 +378,10 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	today.addEventListener('click', () => host.jumpToToday());
 }
 
-/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */
-function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
+/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */
+function levelBreakdown(items: BacklogItem[]): string {
 	const byLevel = new Map<string, number>();
-	for (const item of model.results) {
+	for (const item of items) {
 		const label = displayType(item) || 'Untyped';
 		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
 	}
