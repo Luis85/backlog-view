@@ -55,7 +55,8 @@ type filter differ.
 - Modify: `src/domain/itemTypes.ts`
 - Test: `test/domain/itemTypes.test.ts`, `test/view/toolbar.test.ts`,
   `test/view/rendering.test.ts` (existing full-vocabulary test only — see the
-  step-ordering note below)
+  step-ordering note below), `test/view/creation.test.ts`,
+  `test/domain/backlogReadme.test.ts`
 
 **Interfaces:**
 - Consumes: nothing new.
@@ -221,6 +222,32 @@ today. Update it to eight, `Deliverable` inserted between `Bug` and `Milestone`
 	});
 ```
 
+**Found by review: two more pre-existing assertions, in two more files this task's
+earlier draft never touched, also break under the widened vocabulary.**
+
+`test/view/creation.test.ts:36` opens the child-type picker under an Epic and pins its
+exact option list to `['Feature', 'Issue', 'Bug']` — the same `childTypeChoices`
+under-a-parent branch Step 1's item 2 above already re-asserts for `itemTypes.test.ts`,
+reached here through the real modal instead. Append `'Deliverable'`:
+
+```ts
+// test/view/creation.test.ts
+		expect([...(typePicker?.options ?? [])].map((o) => o.value)).toEqual(['Feature', 'Issue', 'Bug', 'Deliverable']);
+```
+
+`test/domain/backlogReadme.test.ts:594` pins the generated autoType-exception sentence,
+which interpolates `EXTRA_TYPES.map(code).join(' and ')`
+(`src/domain/backlogReadme.ts:119` — unchanged by this task; only the array it reads
+grows). With three members that literal join produces `` `Issue` and `Bug` and
+`Deliverable` `` — inelegant English, but the actual, unmodified output of existing
+code this task does not touch, and pinning what the generator actually emits is this
+test's whole job:
+
+```ts
+// test/domain/backlogReadme.test.ts
+		expect(auto).toContain('`Issue` and `Bug` and `Deliverable` keep their type wherever they land');
+```
+
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/domain/itemTypes.test.ts`
@@ -302,6 +329,9 @@ Expected: PASS
 Run: `npx vitest run test/view/toolbar.test.ts`
 Expected: PASS (the whole file — the New-picker fix must not regress any of the
 file's other, unrelated tests)
+
+Run: `npx vitest run test/view/creation.test.ts test/domain/backlogReadme.test.ts`
+Expected: PASS
 
 Run: `npx vitest run test/view/rendering.test.ts -t "styles every declared type"`
 Expected: FAIL at this point — `Deliverable` has no `NON_RUNG_STYLE` entry yet, so its
@@ -388,7 +418,8 @@ which only turns green once this task's `NON_RUNG_STYLE`/`badges.css` entries la
 
 ```bash
 git add src/domain/settings.ts src/domain/itemTypes.ts src/view/render/rows.ts styles/badges.css \
-  test/domain/itemTypes.test.ts test/view/toolbar.test.ts test/view/rendering.test.ts
+  test/domain/itemTypes.test.ts test/view/toolbar.test.ts test/view/rendering.test.ts \
+  test/view/creation.test.ts test/domain/backlogReadme.test.ts
 git commit -m "feat: Deliverable joins the type vocabulary, with its own badge and colour"
 ```
 
@@ -2048,10 +2079,15 @@ all. Proceed to Task 15, then return here.
 Run (after Task 15): `npx vitest run test/view/board.test.ts -t "Deliverables board"`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Do not commit yet — proceed to Tasks 15 and 16**
 
-Commit together with Task 15 (see Task 15 Step 5) — the two do not produce an
-observable effect independently.
+**Found by review: deferring only to Task 15 is not far enough.** Task 15's own
+`renderDeliverablesBoardContent` imports and calls `renderDeliverablesBoard`, which
+Task 16 is what actually defines in `board.ts` — so a commit landing Task 14 and 15
+alone (`emptyStates.ts` + `projections.ts`) still fails `npx tsc --noEmit` on a missing
+export, exactly the "expected compile failure committed anyway" defect the Task
+11-13 fix above corrects. Task 16's Step 5 is the single combined commit for all three
+tasks' files.
 
 ---
 
@@ -2071,9 +2107,13 @@ observable effect independently.
   snapshot field.
 
 **Step-ordering note:** this task's `renderDeliverablesBoardContent` calls `renderBoard`
-with the parametrized signature Task 16 introduces. Implement Tasks 15 and 16 together
-(this task's Step 3 references Task 16's `BoardRenderOptions`); their tests are written
-and run together at the end of Task 16.
+with the parametrized signature Task 16 introduces. Implement Tasks 14, 15 and 16
+together (this task's Step 3 references Task 16's `BoardRenderOptions`); their tests
+are written and run together at the end of Task 16, and Task 16's Step 5 is the single
+commit for all three — **found by review: this task's own Step 5 below must not commit
+on its own either**, since `projections.ts` imports `renderDeliverablesBoard` from
+`board.ts`, which does not exist as an export until Task 16 implements it, and a
+commit here alone fails `npx tsc --noEmit` on that missing export.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2162,12 +2202,11 @@ Run: `npx vitest run test/view/board.test.ts`
 Expected: PASS — this also resolves Task 14's two tests; run
 `npx vitest run test/view/board.test.ts -t "Deliverables board"` to confirm those too.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Do not commit yet — proceed to Task 16**
 
-```bash
-git add src/view/render/projections.ts src/view/render/emptyStates.ts test/view/board.test.ts
-git commit -m "feat: dispatch the Deliverables projection to its own board content"
-```
+Task 16's Step 5 is the single combined commit for `src/view/render/emptyStates.ts`
+(Task 14), `src/view/render/projections.ts` (this task) and `src/view/render/board.ts`
+(Task 16), landing together once `renderDeliverablesBoard` actually exists.
 
 ---
 
@@ -2349,6 +2388,18 @@ export interface BoardRenderOptions {
 	stateOptionLabel: string;
 }
 
+/**
+ * Everything `renderColumn`/`renderCard` need beyond `ctx` and the element/model
+ * they are rendering — bundled so both stay within the repo's `max-params: 5` lint
+ * rule. Found by review: the first draft threaded `dnd`, `carded` and `opts` as three
+ * separate trailing parameters, which pushed both functions to six.
+ */
+interface ColumnRenderCtx {
+	dnd: CardDragController;
+	carded: Set<string>;
+	opts: BoardRenderOptions;
+}
+
 export function renderBoard(
 	ctx: RowContext,
 	boardEl: HTMLElement,
@@ -2358,8 +2409,8 @@ export function renderBoard(
 ): BoardSnapshot {
 	renderBoardInstructions(boardEl);
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
-	const carded = cardPaths(board);
-	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd, carded, opts));
+	const render: ColumnRenderCtx = { dnd, carded: cardPaths(board), opts };
+	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, render));
 	dnd.wireScroller(boardEl);
 	renderBoardAdvisory(ctx, boardEl, board, opts.drawEmpty);
 	return { board, colEls };
@@ -2447,17 +2498,11 @@ function renderBoardAdvisory(
 }
 ```
 
-`renderColumn` takes the same `opts` and passes `move`/`doneOf` down:
+`renderColumn` takes the bundled `render: ColumnRenderCtx` instead of three separate
+trailing parameters, and passes it straight through to `renderCard`:
 
 ```ts
-function renderColumn(
-	ctx: RowContext,
-	colsEl: HTMLElement,
-	col: BoardColumn,
-	dnd: CardDragController,
-	carded: Set<string>,
-	opts: BoardRenderOptions,
-): HTMLElement {
+function renderColumn(ctx: RowContext, colsEl: HTMLElement, col: BoardColumn, render: ColumnRenderCtx): HTMLElement {
 	const strip = col.state === null && col.cards.length === 0 && col.fullCount === 0;
 	const filtering = ctx.host.isFiltering();
 	const colEl = colsEl.createDiv({
@@ -2469,11 +2514,11 @@ function renderColumn(
 			(strip ? ' pbl-board-strip' : ''),
 		attr: { role: 'group', 'aria-label': columnLabel(col, filtering) },
 	});
-	renderColumnHeader(colEl, col, strip, filtering, opts.stateOptionLabel);
+	renderColumnHeader(colEl, col, strip, filtering, render.opts.stateOptionLabel);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
-	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd, carded, opts.doneOf);
-	dnd.wireDropTarget(colEl, (source) => opts.move(source.item, col.state));
-	dnd.wireScroller(cardsEl);
+	for (const card of col.cards) renderCard(ctx, cardsEl, card, render);
+	render.dnd.wireDropTarget(colEl, (source) => render.opts.move(source.item, col.state));
+	render.dnd.wireScroller(cardsEl);
 	return colEl;
 }
 ```
@@ -2503,22 +2548,18 @@ function renderColumnHeader(
 }
 ```
 
-`renderCard`/`createCard` take a `doneOf` reader, defaulted to `item.done`:
+`renderCard` also takes the bundled `render: ColumnRenderCtx` — `opts.doneOf` is
+optional (`BoardRenderOptions`), so it falls back to `item.done` here, the one place
+that needs the fallback rather than repeating it at every `opts` construction site:
 
 ```ts
-function renderCard(
-	ctx: RowContext,
-	cardsEl: HTMLElement,
-	item: BacklogItem,
-	dnd: CardDragController,
-	carded: Set<string>,
-	doneOf: (item: BacklogItem) => boolean = (i) => i.done,
-): void {
+function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, render: ColumnRenderCtx): void {
+	const doneOf = render.opts.doneOf ?? ((i: BacklogItem) => i.done);
 	const card = createCard(ctx, cardsEl, item, doneOf(item));
 	renderCardBody(ctx, card, item);
-	renderCardMatches(ctx, card, item, carded);
+	renderCardMatches(ctx, card, item, render.carded);
 	wireCardActivation(ctx, card, item);
-	dnd.wireCard(card, item);
+	render.dnd.wireCard(card, item);
 }
 
 export function createCard(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem, done = item.done): HTMLElement {
@@ -2547,15 +2588,20 @@ by Task 15) to call `renderRequirementsBoard` instead of the old `renderBoard`:
 	return { board: renderRequirementsBoard(ctx, treeEl, dnd), roadmap: null, role: 'listbox', label };
 ```
 
-and its import line:
+and its import line — **found by review: `renderBoard` must be DROPPED from it, not
+kept.** Task 15's own import (`renderBoard, renderDeliverablesBoard`) was correct at
+the time, since the pre-existing `renderBoardContent` still called `renderBoard`
+directly; this step is what stops that call, so `projections.ts` no longer calls
+`renderBoard` at all — only the two `render*Board` entry points — and the unused name
+fails `@typescript-eslint/no-unused-vars`:
 
 ```ts
-import { renderBoard, renderDeliverablesBoard, renderRequirementsBoard } from './board';
+import { renderDeliverablesBoard, renderRequirementsBoard } from './board';
 ```
 
-(`renderBoard` itself stays imported/exported for `renderDeliverablesBoard`'s and
-`renderRequirementsBoard`'s own use inside `board.ts`; `projections.ts` calls the two
-`render*Board` entry points, never the shared `renderBoard` directly.)
+(`renderBoard` stays `export`ed from `board.ts` itself — `renderRequirementsBoard` and
+`renderDeliverablesBoard` both call it from inside that same file — it is simply no
+longer one of `projections.ts`'s own imports.)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -2571,10 +2617,11 @@ Run: `npx vitest run test/view` (wide regression check — `createCard`'s new op
 parameter must not change the roadmap's own card rendering, which calls it too)
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (Tasks 14, 15 and 16 together)**
 
 ```bash
-git add src/view/render/board.ts src/view/render/projections.ts test/view/board.test.ts test/view/boardMoves.test.ts
+git add src/view/render/board.ts src/view/render/projections.ts src/view/render/emptyStates.ts \
+  test/view/board.test.ts test/view/boardMoves.test.ts
 git commit -m "feat: parametrize the board renderer, add the Deliverables board"
 ```
 
