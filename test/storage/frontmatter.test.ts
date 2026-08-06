@@ -119,6 +119,33 @@ describe('applyWrites', () => {
 		expect(again).toHaveLength(0);
 	});
 
+	it('writes the Deliverable state to its own configured key, never to an empty key', async () => {
+		const vault = new FakeVault();
+		const item = vault.addFile('D.md', { frontmatter: { type: 'Deliverable' } });
+		const configured = { ...settings, deliverableStateKey: 'deliverableStatus' };
+
+		await applyWrites(vault.app, configured, [{ file: item, deliverableState: 'Draft' }]);
+		expect(vault.fm('D.md')['deliverableStatus']).toBe('Draft');
+
+		await applyWrites(vault.app, settings, [{ file: item, deliverableState: 'Review' }]);
+		expect(vault.fm('D.md')['deliverableStatus']).toBe('Draft');
+	});
+
+	it('removes the Deliverable state key, and undo puts it back', async () => {
+		const vault = new FakeVault();
+		const item = vault.addFile('D.md', { frontmatter: { type: 'Deliverable', deliverableStatus: 'Draft' } });
+		const configured = { ...settings, deliverableStateKey: 'deliverableStatus' };
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, configured, [{ file: item, removeDeliverableStateKey: true }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+		expect('deliverableStatus' in vault.fm('D.md')).toBe(false);
+
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('D.md')['deliverableStatus']).toBe('Draft');
+	});
+
 	it('writes the horizon on its own key, and removes it with a restorable inverse', async () => {
 		const vault = new FakeVault();
 		const planned = { ...settings, horizonKey: 'horizon' };

@@ -195,6 +195,9 @@ function applyInto(
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
+	const deliverableStateKey = optionalKeyFor(settings, 'deliverableState');
+	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
+	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 	applyStamps(fm, settings, write, leaving);
 	applyAxis(fm, settings, write);
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
@@ -259,6 +262,11 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 	}
 }
 
+/** Whether a write carries a Deliverable-state change, set or removed. */
+function deliverableStateWritten(write: ItemWrite): boolean {
+	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
+}
+
 /** The frontmatter keys this write will touch, in the order they are written. */
 function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	const keys: string[] = [];
@@ -266,6 +274,8 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
+	const deliverableStateKeyTouched = optionalKeyFor(settings, 'deliverableState');
+	if (deliverableStateWritten(write) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
 	// Listed whenever the write CARRIES a stamp, including the started date it may
 	// decline to write: a key whose value did not change emits no inverse anyway, and
 	// listing it is what makes the dates ride the state's own undo.
