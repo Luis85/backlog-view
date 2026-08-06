@@ -183,6 +183,18 @@ fields rather than one map. This is a deliberate non-abstraction: the model alre
 precedent for "one field per optional property," and a generic loop over "state-like
 fields" would touch a tested, working phase for one caller.
 
+**"The same way" is not quite true, and the difference matters — missed until this
+round.** `collectObservedStates` (`domain/vocabulary.ts`) walks every loaded item and
+skips only `outsideFilter` rows; a naive `collectObservedDeliverableStates` built the
+same way would read `deliverableStateValue` off a PBI or a Bug too, if either happened
+to carry that key. Since this board's candidate set is always narrowed to
+`Deliverable`-typed results (§4), a stray value contributed by a non-Deliverable item
+would mint a column no card could ever land in, and offer it as a Set-state target on a
+card that could never check it. The new collector filters to `typeName?.toLowerCase()
+=== 'deliverable'` **before** the first-seen walk `firstSeen` already does — one line
+more than `collectObservedStates`, not a rewrite of it — and sorts open-before-done
+against `deliverableDoneValues`, not `doneValues`.
+
 ### 4. Columns — `src/domain/board.ts`
 
 `boardColumns` currently reads `settings.stateKey`, `stateMenuValues(settings, ...)`,
@@ -460,6 +472,20 @@ was true, and "reuse the rest of the render path unmodified" was not.
   fine as long as all three inputs share it, which the plan should verify explicitly
   rather than trust a description of "one move, three inputs" to have been applied
   uniformly by construction.
+- **`handleBoardMoveKey` is unreachable from the Deliverables board in the first
+  place — a second, upstream gap the fix above does not touch.**
+  `handleProjectionKeydown` (`interactions/keyboard.ts:24-28`) is a closed three-way
+  fork of its own, structurally identical to `renderProjectionContent`'s (§6, the
+  content dispatcher): `'board'` → `handleBoardKeydown`, `'roadmap'` →
+  `handleRoadmapKeydown`, **everything else** → `handleTreeKeydown`. Left as the rest of
+  this section describes it, `'deliverables'` falls to the TREE handler — not merely a
+  missing feature but an active hazard, since the tree handler's own Alt+arrows
+  (`handleStructureKey`) reorder, indent and outdent, writing `parent`/`order` on
+  whatever the tree considers selected. `handleProjectionKeydown` needs its own explicit
+  `'deliverables'` branch to `handleBoardKeydown`, alongside and independent of the
+  `handleBoardMoveKey` fix — the same two-dispatcher shape `renderProjectionContent` and
+  `renderDeliverablesBoardContent` already have for rendering, now needed for keyboard
+  too.
 
 The toolbar gets a fourth toggle position.
 

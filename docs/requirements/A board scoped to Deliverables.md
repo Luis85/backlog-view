@@ -106,6 +106,11 @@ narrowed to one type.
   offers a way to open it, the same keyboard path the requirements board gives a hidden
   match — this board is a second `=== 'board'`-shaped gate in the same file the Set-state
   fix touches, not a different rule.
+- **4c — a PBI, Task or Bug carries a value under the configured Deliverable state
+  property** (a coincidence, or a leftover from re-typing a note). That value never
+  mints a stray column and is never offered on that note's own Set-state menu — a
+  column no Deliverable card could ever land in is not a target this board offers,
+  whatever key happens to hold a value.
 
 ## Acceptance criteria
 
@@ -145,6 +150,15 @@ narrowed to one type.
   covered as its own case, not assumed from the drag or menu fix, since each of the
   three inputs in "one move, three inputs" was independently found hardcoded to the
   wrong write during this design's review.
+- On the Deliverables board, ordinary arrow-key navigation moves the board selection
+  between cards and columns (never falling through to the tree's keyboard handler),
+  and Alt+Left/Right never runs the tree's own reorder/indent/outdent — asserted
+  directly, since the two dispatchers involved (which projection routes to which
+  keyboard handler, and which move a routed key performs) are independent and both
+  were found wrong.
+- A stray column never appears on the Deliverables board for a value only a
+  non-Deliverable item carries under the configured Deliverable state property, and
+  that value is never offered on that other item's own Set-state menu.
 - The generated README, when `deliverableStateKey` is configured, lists it in the
   property table — the same contract every other property this view writes already
   gets, so "only the properties above are written" stays true of a vault using this
@@ -170,9 +184,13 @@ every optional property already does), plus `deliverableStates` and
 `deliverableDoneValues` beside `states`/`doneValues`.
 `src/domain/viewOptions.ts` — a new "Deliverables" group: the state property picker,
 the ordered workflow states, the done values.
-`src/domain/model.ts` — `BacklogItem.deliverableStateValue`, `deliverableDone` and
-`BacklogModel.observedDeliverableStates`, built the same way `stateValue`, `done` and
-`observedStates` already are.
+`src/domain/model.ts` — `BacklogItem.deliverableStateValue` and `deliverableDone`, built
+the same way `stateValue`/`done` already are.
+`src/domain/vocabulary.ts` — `collectObservedDeliverableStates`, filtering to
+`typeName?.toLowerCase() === 'deliverable'` **before** the first-seen walk
+`collectObservedStates` already does, and sorting against `deliverableDoneValues` rather
+than `doneValues` — not a blind copy of `collectObservedStates`, which would mint a
+stray column from a non-Deliverable item's coincidental value.
 `src/domain/board.ts` — `boardColumns` takes the workflow (state reader, states, done
 values) as a parameter instead of reading `settings.stateKey`/`states`/`doneValues`
 directly, so the requirements board and this one share one implementation.
@@ -214,7 +232,12 @@ asks whether `model.results` contains any `Deliverable` rather than whether it i
 so a base full of other work is never reported as "done and hidden" on this board.
 `src/view/interactions/cardDrag.ts` — wiring the new board's drop targets through the
 parameterized `renderColumn` above.
-`src/view/interactions/keyboard.ts` — `handleBoardMoveKey` (`:293`) dispatches to
+`src/view/interactions/keyboard.ts` — two changes, not one: `handleProjectionKeydown`
+(`:24-28`), the top-level dispatcher, gains a `'deliverables'` branch to
+`handleBoardKeydown` beside its existing `'board'` one — without it every keystroke on
+the Deliverables board reaches `handleTreeKeydown` instead, whose own Alt+arrows
+reorder/indent/outdent and write `parent`/`order`, not a hazard the move-routing fix
+below touches at all; and `handleBoardMoveKey` (`:293`) dispatches to
 `host.performDeliverablesBoardMove` on `host.projection === 'deliverables'` instead of
 hardcoding `host.performBoardMove` — the third of the three move inputs, found
 independently hardcoded to the wrong write and fixed as its own case rather than assumed
