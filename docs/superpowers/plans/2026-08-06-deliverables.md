@@ -750,25 +750,38 @@ git commit -m "feat: add the Deliverables view-options group"
 
 **Files:**
 - Modify: `src/domain/vocabulary.ts`
-- Test: `test/domain/model.test.ts`
+- Test: `test/domain/deliverableModel.test.ts` (new file — see below)
 
 **Interfaces:**
 - Consumes: `firstSeen` (existing private helper), `BacklogSettings.deliverableDoneValues`
   (Task 3).
 - Produces: `collectObservedDeliverableStates(all, settings): string[]`, exported.
-  Consumed by Task 7 (`model.ts`'s `buildModel`).
+  Consumed by Task 6 (`model.ts`'s `buildModel`).
 
 Found by review (Codex, PR #77): a naive copy of `collectObservedStates` would read
 `deliverableStateValue` off ANY item, including a PBI or a Bug that happens to carry the
 Deliverable-state key — minting a stray column no card could ever land in. This collector
 filters to `Deliverable`-typed items first.
 
+**Found by a later review round: this task's tests do not go into `test/domain/model.test.ts`.**
+That file is already 422 nonblank, noncomment lines against the `test/**` 450-line
+budget (`eslint.config.mjs`); this task's two tests plus Task 6's four would land it
+around 498 — well over. Rather than growing the file this plan's own root guide warns
+against ("split by subject before a file becomes the place tests hide"), both tasks'
+Deliverable-workflow model coverage goes into a new file, `test/domain/deliverableModel.test.ts`,
+which this task creates and Task 6 adds to. It imports the same helpers
+(`FakeVault`, `buildModel`, `defaultSettings`) `model.test.ts` already does.
+
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// test/domain/model.test.ts — new describe block, or alongside existing
-// collectObservedStates coverage if this file already has one
+// test/domain/deliverableModel.test.ts — new file (see the note above on why this
+// is not test/domain/model.test.ts)
+import { describe, expect, it } from 'vitest';
 import { collectObservedDeliverableStates } from '../../src/domain/vocabulary';
+import { buildModel } from '../../src/domain/model';
+import { defaultSettings } from '../../src/domain/settings';
+import { FakeVault } from '../helpers/vault';
 
 describe('collectObservedDeliverableStates', () => {
 	it('reads only Deliverable-typed items, never a PBI carrying the same key', () => {
@@ -799,7 +812,7 @@ describe('collectObservedDeliverableStates', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `npx vitest run test/domain/model.test.ts -t "collectObservedDeliverableStates"`
+Run: `npx vitest run test/domain/deliverableModel.test.ts`
 Expected: FAIL — `collectObservedDeliverableStates` does not exist (import error).
 
 - [ ] **Step 3: Implement**
@@ -836,22 +849,22 @@ export function collectObservedDeliverableStates(all: VocabularySource[], settin
 ```
 
 This will not compile yet — `deliverableStateValue` does not exist on `BacklogItem`
-until Task 7. That is expected; Task 7 lands next and the two land together before
+until Task 6. That is expected; Task 6 lands next and the two land together before
 either is runnable end to end. (If your TDD loop needs a green step here first, stub
-`deliverableStateValue: null` onto the RawItem type in Task 7's own step instead of
-splitting — see Task 7's note.)
+`deliverableStateValue: null` onto the RawItem type in Task 6's own step instead of
+splitting — see Task 6's note.)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-This step's tests will only go green once Task 7 lands `deliverableStateValue` on
-`BacklogItem`. Proceed directly to Task 7; return here to confirm PASS once it is done.
+This step's tests will only go green once Task 6 lands `deliverableStateValue` on
+`BacklogItem`. Proceed directly to Task 6; return here to confirm PASS once it is done.
 
-Run (after Task 7): `npx vitest run test/domain/model.test.ts -t "collectObservedDeliverableStates"`
+Run (after Task 6): `npx vitest run test/domain/deliverableModel.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-Commit together with Task 7 (see Task 7 Step 5) — the two do not compile independently.
+Commit together with Task 6 (see Task 6 Step 5) — the two do not compile independently.
 
 ---
 
@@ -859,14 +872,16 @@ Commit together with Task 7 (see Task 7 Step 5) — the two do not compile indep
 
 **Files:**
 - Modify: `src/domain/model.ts`
-- Test: `test/domain/model.test.ts`
+- Test: `test/domain/deliverableModel.test.ts` (created by Task 5 — see its note on
+  why this is not `test/domain/model.test.ts`)
 
 **Interfaces:**
 - Consumes: `BacklogSettings.deliverableStateKey`/`deliverableDoneValues` (Task 3),
   `collectObservedDeliverableStates` (Task 5).
 - Produces: `BacklogItem.deliverableStateValue: string | null`,
   `BacklogItem.deliverableDone: boolean`, `BacklogModel.observedDeliverableStates: string[]`.
-  Consumed by Task 8 (`board.ts`'s `deliverablesWorkflow`), Task 16 (`render/board.ts`'s
+  Consumed by Task 9 (`board.ts`'s `deliverablesWorkflow` — found by review, this task
+  reference was Task 8, which never touches `board.ts`), Task 16 (`render/board.ts`'s
   `createCard` completion flag).
 
 **Found by review (Codex, PR #77): these fields must be computed in `addItem` — the
@@ -881,7 +896,10 @@ computed the same place, beside them.
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-// test/domain/model.test.ts — new tests beside the existing stateValue/done coverage
+// test/domain/deliverableModel.test.ts — appended after Task 5's describe block, in
+// the same file (no new imports needed — describe/expect/it/buildModel/defaultSettings/
+// FakeVault are already imported there)
+describe('BacklogItem.deliverableStateValue / deliverableDone', () => {
 it('reads the Deliverable workflow state independently of the requirements one', () => {
 	const settings = {
 		...defaultSettings(),
@@ -949,11 +967,12 @@ it('is null when the Deliverable state property is unconfigured', () => {
 	expect(d.deliverableStateValue).toBeNull();
 	expect(d.deliverableDone).toBe(false);
 });
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `npx vitest run test/domain/model.test.ts -t "Deliverable"`
+Run: `npx vitest run test/domain/deliverableModel.test.ts -t "Deliverable"`
 Expected: FAIL — TypeScript compile error, `deliverableStateValue` does not exist on
 `BacklogItem`/`BacklogModel`.
 
@@ -1028,14 +1047,14 @@ Add `collectObservedDeliverableStates` to the existing
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npx vitest run test/domain/model.test.ts`
-Expected: PASS (this also makes Task 5's tests pass — run those too:
-`npx vitest run test/domain/model.test.ts -t "collectObservedDeliverableStates"`).
+Run: `npx vitest run test/domain/deliverableModel.test.ts`
+Expected: PASS — the whole file, including both this task's tests AND Task 5's
+`collectObservedDeliverableStates` describe block above them.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/domain/model.ts src/domain/vocabulary.ts test/domain/model.test.ts
+git add src/domain/model.ts src/domain/vocabulary.ts test/domain/deliverableModel.test.ts
 git commit -m "feat: model the Deliverable workflow's state, in the raw-item phase"
 ```
 
@@ -1257,6 +1276,13 @@ recognizes `deliverableState`/`removeDeliverableStateKey` yet).
 
 - [ ] **Step 3: Implement**
 
+**Found by review: `src/storage/frontmatter.ts` is 391 nonblank, noncomment lines
+against the `src/` 400-line budget (`eslint.config.mjs`).** A first draft of this step
+added the same shape spread across more lines than it needed — 11 net new lines,
+enough on its own to fail `npm run lint`. Both additions below are written as tightly
+as the existing `state`/`removeStateKey` pair beside them, saving six lines with no
+behavior change: 5 lines added here rather than 11.
+
 In `src/storage/frontmatter.ts`'s `applyInto`, right after the existing state
 apply/remove pair:
 
@@ -1266,22 +1292,20 @@ apply/remove pair:
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
 	const deliverableStateKey = optionalKeyFor(settings, 'deliverableState');
 	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
-	else if (write.deliverableState !== undefined && deliverableStateKey) {
-		setOwn(fm, deliverableStateKey, write.deliverableState);
-	}
+	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 ```
 
 In `touchedKeys`, right after the existing state line:
 
 ```ts
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	if (
-		(write.removeDeliverableStateKey || write.deliverableState !== undefined) &&
-		optionalKeyFor(settings, 'deliverableState')
-	) {
-		keys.push(optionalKeyFor(settings, 'deliverableState'));
-	}
+	const deliverableStateKeyTouched = optionalKeyFor(settings, 'deliverableState');
+	if ((write.removeDeliverableStateKey || write.deliverableState !== undefined) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
 ```
+
+(Named `deliverableStateKeyTouched` rather than reusing `deliverableStateKey` only
+because the two live in different functions — `applyInto` and `touchedKeys` — not
+because they mean anything different.)
 
 `optionalKeyFor` is already imported from `../domain/settings` at the top of this file.
 No change is needed to `captureInverse`, `applyRestores` or `restoreInto` — they already
@@ -1292,6 +1316,10 @@ for `state`/`removeStateKey`.
 
 Run: `npx vitest run test/storage/frontmatter.test.ts`
 Expected: PASS
+
+Run: `npx eslint src/storage/frontmatter.ts`
+Expected: PASS — confirms the file stays under the 400-line budget after this task's
+additions (391 lines before this task, +5 net from the compacted blocks above).
 
 - [ ] **Step 5: Commit**
 
