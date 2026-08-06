@@ -1436,8 +1436,8 @@ line.
 
 There is no Step 2-4 TDD cycle for this task in isolation: `performDeliverablesBoardMove`
 has no observable effect until `BacklogViewHost.performDeliverablesBoardMove` (Task 13)
-delegates to it and a caller (Task 19's drag wiring, Task 20's keyboard, Task 21's menu)
-actually invokes it. Task 17's view-level tests are what exercises this method end to
+delegates to it and a caller (Task 16's drag wiring, Task 18's keyboard, Task 19's menu)
+actually invokes it. Task 16's view-level tests are what exercises this method end to
 end, the same way `test/view/boardMoves.test.ts` is what exercises `performBoardMove`
 rather than a unit test of `CardMoveController` alone.
 
@@ -1831,14 +1831,50 @@ it('shows "no deliverables yet" rather than "all done and hidden" for a base wit
 });
 ```
 
-(`test/view/boardMoves.test.ts` gets its Deliverables-specific write-path tests in
-Task 19, once `renderColumn`'s drop wiring calls the right `move`; nothing new here.)
+A third, in `test/view/boardMoves.test.ts`: this task is where `renderColumn`'s drop
+wiring starts calling a `move` that can be `performDeliverablesBoardMove`, so the
+wrong-property regression the PBI's acceptance criteria require of the drag input
+belongs here, beside the requirements board's own `dragging a card to a new state`
+suite — not deferred to a later task that never touches this file:
+
+```ts
+// test/view/boardMoves.test.ts
+it('dropping a card on the Deliverables board writes deliverableStatus alone', async () => {
+	const vault = boardVault();
+	vault.addFile('D.md', {
+		frontmatter: { type: 'Deliverable', order: 10, status: 'New', deliverableStatus: 'Draft' },
+	});
+	const harness = makeView(vault, {
+		stateProperty: 'note.status',
+		deliverableStateProperty: 'note.deliverableStatus',
+		deliverableStateValues: 'Draft, Review',
+	});
+	harness.view.setProjection('deliverables');
+	const { containerEl } = harness;
+
+	cardDrag(cardByTitle(containerEl, 'D'), columnByName(containerEl, 'Review'));
+	await flush();
+
+	expect(vault.fm('D.md')['deliverableStatus']).toBe('Review');
+	// The requirements property is a separate key: this move must not touch it.
+	expect(vault.fm('D.md')['status']).toBe('New');
+});
+```
+
+(The rest of `test/view/boardMoves.test.ts`'s Deliverables coverage — own-column no-op,
+undo, config-problems gate — is the requirements suite's shape repeated over the new
+projection, not a new rule; add it here too if a future review finds one of those paths
+untested rather than opening a new task for it.)
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/view/board.test.ts -t "own workflow"`
 Expected: FAIL — `renderDeliverablesBoard` does not exist yet (compile error via
 Task 15's import).
+
+Run: `npx vitest run test/view/boardMoves.test.ts -t "Deliverables board"`
+Expected: FAIL — same compile error; also `performDeliverablesBoardMove` does not exist
+on the harness's host type until Task 12/13 land.
 
 - [ ] **Step 3: Implement**
 
@@ -2040,6 +2076,10 @@ Run: `npx vitest run test/view/board.test.ts`
 Expected: PASS — including every requirements-board test in this file, which must
 still pass unchanged now that they route through `renderRequirementsBoard`.
 
+Run: `npx vitest run test/view/boardMoves.test.ts`
+Expected: PASS — including the new "Deliverables board" drop test and every
+requirements-board move test in this file, unchanged.
+
 Run: `npx vitest run test/view` (wide regression check — `createCard`'s new optional
 parameter must not change the roadmap's own card rendering, which calls it too)
 Expected: PASS
@@ -2047,7 +2087,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/view/render/board.ts src/view/render/projections.ts test/view/board.test.ts
+git add src/view/render/board.ts src/view/render/projections.ts test/view/board.test.ts test/view/boardMoves.test.ts
 git commit -m "feat: parametrize the board renderer, add the Deliverables board"
 ```
 
