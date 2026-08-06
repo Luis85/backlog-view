@@ -321,7 +321,7 @@ it('renders a Deliverable with its own badge icon and colour', () => {
 
 	const badge = rowByTitle(containerEl, 'D').querySelector('.pbl-badge');
 	expect(badge?.classList.contains('pbl-lvl-deliverable')).toBe(true);
-	expect(badge?.querySelector('.pbl-badge-icon [data-icon]')?.getAttribute('data-icon')).toBe('package');
+	expect(badge?.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBe('package');
 });
 ```
 
@@ -1882,6 +1882,22 @@ it('names the current focus, not the whole base, when a Deliverable exists outsi
 	// would not appear on this board either, so that phrasing would be a dead end.
 	expect(hint).not.toMatch(/create one here/i);
 });
+
+it('offers "create one" under PBI focus, since a parentless Deliverable shows there', () => {
+	const vault = new FakeVault();
+	vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+	// No PBI and no Deliverable exist yet — `collectFocusRoots`' `extraFocused` rule
+	// admits every extra type at the PBI rung regardless of subtree, so a Deliverable
+	// created from the toolbar while focused on PBI would appear here immediately,
+	// unlike the Feature-focus case above.
+	const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' }, { focus: 'PBI' });
+	harness.view.setProjection('deliverables');
+	const { containerEl } = harness;
+
+	const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+	expect(hint).toMatch(/create one/i);
+	expect(hint).not.toMatch(/would not appear/i);
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1932,27 +1948,43 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
  * other empty state here makes either.
  *
  * **A second gap, found by a later review round: the focused guidance must not offer
- * "create one here" as an alternative to clearing focus.** The toolbar's New button
- * creates a Deliverable with no parent (`promptCreateItem(host, ['Deliverable'],
- * null)`); a focus on a LEVEL like `Feature` only admits a new root when the root's
- * own type matches that level (`collectFocusRoots`' `matches`), and a Deliverable
- * never does unless the focus happens to be `PBI` itself (`EXTRA_TYPE_RANK`). So
- * creating from here while focused on `Feature` would file a note this very board
- * still would not show — a suggestion that looks like a fix and silently is not one.
- * Clearing focus is the one action that actually works for both "see the existing
- * ones" and "create a new one that will show up", so it is the only one offered.
+ * "create one here" as an alternative to clearing focus — except where it truthfully
+ * can.** The toolbar's New button creates a Deliverable with no parent
+ * (`promptCreateItem(host, ['Deliverable'], null)`); a focus on a LEVEL like
+ * `Feature` only admits a new root when the root's own type matches that level
+ * (`collectFocusRoots`' `matches`), and a Deliverable never does — UNLESS the focus
+ * is `PBI` itself (`extraFocused`, `EXTRA_TYPE_RANK`) or the focus is `Deliverable`
+ * BY NAME (`focusExtra` matches `typeName` alone, regardless of subtree position).
+ * Both are focuses this same focus picker offers (`ALL_TYPES`-driven, Task 1). So
+ * creating from here while focused on `Feature` files a note this very board still
+ * would not show — a suggestion that looks like a fix and silently is not one — but
+ * creating while focused on `PBI` or `Deliverable` shows it immediately, and telling
+ * the user to clear focus first in THAT case is the same kind of wrong claim in the
+ * other direction. `admitsNewDeliverable` below names the two focuses that differ.
+ *
+ * **Found by a later review round still: this check must ask by focus TYPE, not by
+ * whether the toolbar's own vocabulary loop needed editing.** `host.settings.focusLevel`
+ * is read directly (`itemTypes.ts`'s own `settings.focusLevel.trim().toLowerCase()`
+ * pattern) rather than through `model.focused`, which only says THAT a focus is
+ * active, never which one.
  */
 export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const focused = host.model?.focused ?? false;
+	const focusLevel = host.settings.focusLevel.trim().toLowerCase();
+	const admitsNewDeliverable = focusLevel === 'pbi' || focusLevel === 'deliverable';
 	guidanceShell(
 		treeEl,
 		'package',
 		focused ? 'No deliverables in this focus' : 'No deliverables yet',
 		focused
-			? 'Nothing typed "Deliverable" is in the current focus. Switch the focus button ' +
-				'in the toolbar back to "All types" to see Deliverables elsewhere in the base — ' +
-				'or to create a new one, since one made from here would not appear on this ' +
-				'board until you do.'
+			? admitsNewDeliverable
+				? 'Nothing typed "Deliverable" is in the current focus. Create one from the ' +
+					'toolbar\'s New menu — it will appear here — or switch the focus button back ' +
+					'to "All types" to see Deliverables elsewhere in the base.'
+				: 'Nothing typed "Deliverable" is in the current focus. Switch the focus button ' +
+					'in the toolbar back to "All types" to see Deliverables elsewhere in the base — ' +
+					'or to create a new one, since one made from here would not appear on this ' +
+					'board until you do.'
 			: 'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
 				'menu, or type an existing note as a Deliverable from its Set type menu.',
 	);
@@ -2770,7 +2802,7 @@ it('Alt+Right on a Deliverables card writes the Deliverable state alone', async 
 		deliverableStateValues: 'Draft, Review',
 	});
 	harness.view.setProjection('deliverables');
-	const { containerEl, vault: v } = harness;
+	const { containerEl } = harness;
 
 	// Select the card directly rather than via arrow navigation — the leading no-state
 	// column is empty in this fixture, so an ArrowRight walk lands on ITS stop, never
@@ -2782,14 +2814,16 @@ it('Alt+Right on a Deliverables card writes the Deliverable state alone', async 
 	key(treeOf(containerEl), 'ArrowRight', { altKey: true });
 	await flush();
 
-	expect(v.fm('D.md')['deliverableStatus']).toBe('Review');
-	expect(v.fm('D.md')['status']).toBe('Untouched');
+	expect(vault.fm('D.md')['deliverableStatus']).toBe('Review');
+	expect(vault.fm('D.md')['status']).toBe('Untouched');
 });
 ```
 
-Check `makeView`'s harness return shape in `test/helpers/view.ts` for the exact field
-name of the returned `FakeVault` (`vault` per the existing convention seen in other
-`test/view/*.test.ts` files); adjust the destructure above to match if it differs.
+**Found by review: `Harness` (`test/helpers/view.ts`) has only `view`, `config` and
+`containerEl` — `makeView` never returns the `FakeVault`.** The `vault` local created
+above the call is the one to read frontmatter off; do not destructure a `vault` field
+off `harness`, here or in Task 19's write test below, both of which fail to compile
+otherwise.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -2897,7 +2931,7 @@ it('checks the entry against deliverableStateValue, and writing it touches only 
 		deliverableStateValues: 'Draft, Review',
 	});
 	harness.view.setProjection('deliverables');
-	const { containerEl, vault: v } = harness;
+	const { containerEl } = harness;
 
 	cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 	const submenu = Menu.lastShown?.item('Set state')?.submenu;
@@ -2905,8 +2939,8 @@ it('checks the entry against deliverableStateValue, and writing it touches only 
 
 	submenu?.item('Review')?.click();
 	await flush();
-	expect(v.fm('D.md')['deliverableStatus']).toBe('Review');
-	expect(v.fm('D.md')['status']).toBe('Untouched');
+	expect(vault.fm('D.md')['deliverableStatus']).toBe('Review');
+	expect(vault.fm('D.md')['status']).toBe('Untouched');
 });
 
 it('keeps a filtered match under a Deliverable card reachable through the card menu', () => {
