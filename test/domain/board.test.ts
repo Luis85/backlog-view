@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { boardColumns, BoardColumn, NO_STATE_COLLISION_LABEL, NO_STATE_LABEL, overBy } from '../../src/domain/board';
-import { buildModel } from '../../src/domain/model';
+import {
+	boardColumns,
+	BoardColumn,
+	deliverablesWorkflow,
+	NO_STATE_COLLISION_LABEL,
+	NO_STATE_LABEL,
+	overBy,
+	requirementsWorkflow,
+} from '../../src/domain/board';
+import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
-import { defaultSettings } from '../../src/domain/settings';
+import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 /** Progress tracking on, with a configured workflow — the board's home ground. */
@@ -33,7 +41,12 @@ describe('boardColumns', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const board = boardColumns(model, settings, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done']);
 		// A configured state's column exists cards or none.
@@ -47,7 +60,12 @@ describe('boardColumns', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
 		const model = buildModel(vault.app, vault.entries(), reordered);
 
-		const board = boardColumns(model, reordered, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, reordered),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		expect(board.columns[1]).toMatchObject({ label: 'Done', done: true });
 		expect(board.columns[2]).toMatchObject({ label: 'New', done: false });
@@ -59,7 +77,12 @@ describe('boardColumns', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });
 		const model = buildModel(vault.app, vault.entries(), unconfigured);
 
-		const board = boardColumns(model, unconfigured, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, unconfigured),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		// The same fallback the state menus use: observed values, then a done state.
 		expect(labels(board)).toEqual([NO_STATE_LABEL, 'Doing', 'Done']);
@@ -71,7 +94,12 @@ describe('boardColumns', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'done' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const board = boardColumns(model, settings, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		const doneCol = board.columns.find((c) => c.label === 'Done');
 		expect(doneCol?.cards.map((c) => c.title)).toEqual(['A']);
@@ -85,7 +113,12 @@ describe('boardColumns', () => {
 		vault.addFile('Bare.md', { frontmatter: { type: 'Epic', order: 20 } });
 		const model = buildModel(vault.app, vault.entries(), clashing);
 
-		const board = boardColumns(model, clashing, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, clashing),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		// Two columns with the same name and opposite drop semantics would make
 		// targeting a coin toss; the synthetic one yields, the user's stays.
@@ -101,7 +134,12 @@ describe('boardColumns', () => {
 		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 20, status: 'New' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const board = boardColumns(model, settings, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		expect(board.columns[0].state).toBeNull();
 		expect(board.columns[0].cards.map((c) => c.title)).toEqual(['A']);
@@ -113,7 +151,12 @@ describe('boardColumns', () => {
 		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 20, status: 'New' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const board = boardColumns(model, settings, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		// After the configured columns, visibly outside the workflow — never a dropped card.
 		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done', 'Blocked']);
@@ -129,7 +172,12 @@ describe('boardColumns', () => {
 		vault.addFile('C.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'A' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const board = boardColumns(model, settings, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		expect(board.cardCount).toBe(3);
 		expect(board.columns.reduce((n, c) => n + c.count, 0)).toBe(3);
@@ -142,7 +190,12 @@ describe('boardColumns', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const board = boardColumns(model, settings, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		const col = board.columns.find((c) => c.label === 'New');
 		expect(col?.cards.map((c) => c.title)).toEqual(['B', 'A']);
@@ -154,7 +207,12 @@ describe('boardColumns', () => {
 		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 20, status: 'New' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const board = boardColumns(model, settings, (item) => item.title !== 'B');
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			(item) => item.title !== 'B',
+		);
 
 		const col = board.columns.find((c) => c.label === 'New');
 		expect(col?.cards.map((c) => c.title)).toEqual(['A']);
@@ -169,7 +227,12 @@ describe('boardColumns', () => {
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Epic' });
 		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
 
-		const board = boardColumns(model, settings, everything);
+		const board = boardColumns(
+			model,
+			requirementsWorkflow(model, settings),
+			model.focused ? model.roots : model.results,
+			everything,
+		);
 
 		// Unfocused, a context ancestor is not a card at all — it labels its child's card.
 		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done']);
@@ -195,7 +258,12 @@ describe('boardColumns', () => {
 			const focused = { ...settings, focusLevel: 'Feature' };
 			const model = buildModel(vault.app, vault.entries(), focused);
 
-			const board = boardColumns(model, focused, everything);
+			const board = boardColumns(
+				model,
+				requirementsWorkflow(model, focused),
+				model.focused ? model.roots : model.results,
+				everything,
+			);
 
 			expect(board.cardCount).toBe(2);
 			const active = board.columns.find((c) => c.label === 'Active');
@@ -207,7 +275,12 @@ describe('boardColumns', () => {
 			const focused = { ...settings, focusLevel: 'Feature' };
 			const model = buildModel(vault.app, only(vault, 'P1.md', 'P2.md'), focused);
 
-			const board = boardColumns(model, focused, everything);
+			const board = boardColumns(
+				model,
+				requirementsWorkflow(model, focused),
+				model.focused ? model.roots : model.results,
+				everything,
+			);
 
 			// F1's state names a workflow column, so its context card sits there — placed,
 			// but in no count: the column counts describe results alone.
@@ -233,7 +306,12 @@ describe('boardColumns', () => {
 			const entries = [...only(vault, 'Task.md'), ...only(vault, 'Loud.md')];
 			const model = buildModel(vault.app, entries, focused);
 
-			const board = boardColumns(model, focused, everything);
+			const board = boardColumns(
+				model,
+				requirementsWorkflow(model, focused),
+				model.focused ? model.roots : model.results,
+				everything,
+			);
 
 			const active = board.columns.find((c) => c.label === 'Active');
 			// Quiet is context (entry: null) loaded after every result; sorted by its own
@@ -283,7 +361,7 @@ describe('a column carries its own agreement', () => {
 
 	function board(vault: FakeVault, s = limited) {
 		const model = buildModel(vault.app, vault.entries(), s);
-		return boardColumns(model, s, everything);
+		return boardColumns(model, requirementsWorkflow(model, s), model.focused ? model.roots : model.results, everything);
 	}
 
 	function column(vault: FakeVault, label: string, s = limited) {
@@ -340,7 +418,8 @@ describe('a column carries its own agreement', () => {
 		const model = buildModel(vault.app, vault.entries(), limited);
 		const filtered = boardColumns(
 			model,
-			limited,
+			requirementsWorkflow(model, limited),
+			model.focused ? model.roots : model.results,
 			(item) => item.file.path === 'A0.md',
 			() => true,
 		);
@@ -353,6 +432,58 @@ describe('a column carries its own agreement', () => {
 	it('is not over at the limit, and never over without one', () => {
 		expect(overBy(column(vaultWith('Active', 'Active'), 'Active'))).toBe(0);
 		expect(overBy(column(vaultWith('New', 'New', 'New'), 'New'))).toBe(0);
+	});
+});
+
+describe('boardColumns with the Deliverables workflow', () => {
+	function deliverablesSettings(extra: Partial<BacklogSettings> = {}): BacklogSettings {
+		return { ...settings, deliverableStateKey: 'deliverableStatus', ...extra };
+	}
+
+	it('cards only Deliverable-typed results, never a PBI sharing the candidate list', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, deliverableStatus: 'Draft' } });
+		const s = deliverablesSettings();
+		const model = buildModel(vault.app, vault.entries(), s);
+
+		const isDeliverable = (item: BacklogItem) => item.typeName?.toLowerCase() === 'deliverable';
+		const board = boardColumns(
+			model,
+			deliverablesWorkflow(model, s),
+			model.results,
+			(item) => isDeliverable(item),
+		);
+
+		expect(board.cardCount).toBe(1);
+		expect(board.columns.flatMap((c) => c.cards.map((card) => card.title))).toEqual(['D']);
+	});
+
+	it('reads state from deliverableStateValue, never the requirements stateValue', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Done', deliverableStatus: 'Draft' },
+		});
+		const s = { ...deliverablesSettings(), stateKey: 'status' };
+		const model = buildModel(vault.app, vault.entries(), s);
+
+		const board = boardColumns(model, deliverablesWorkflow(model, s), model.results, () => true);
+
+		const col = board.columns.find((c) => c.label === 'Draft');
+		expect(col?.cards.map((c) => c.title)).toEqual(['D']);
+	});
+
+	it('never applies WIP limits or column policies — the Deliverables board has none', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		const s = deliverablesSettings({ deliverableStates: ['Draft'] });
+		const model = buildModel(vault.app, vault.entries(), s);
+
+		const board = boardColumns(model, deliverablesWorkflow(model, s), model.results, () => true);
+
+		const col = board.columns.find((c) => c.label === 'Draft');
+		expect(col?.limit).toBeNull();
+		expect(col?.policy).toBe('');
 	});
 });
 

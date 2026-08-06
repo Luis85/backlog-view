@@ -6,7 +6,7 @@ import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showColumnMenu, showItemMenu } from '../interactions/menu';
-import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches, overBy } from '../../domain/board';
+import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches, overBy, requirementsWorkflow } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 
@@ -25,7 +25,8 @@ export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDrag
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
 	const board = boardColumns(
 		model,
-		host.settings,
+		requirementsWorkflow(model, host.settings),
+		model.focused ? model.roots : model.results,
 		(item) => !host.isRowHidden(item),
 		(item) => !host.isRowHiddenUnfiltered(item),
 	);

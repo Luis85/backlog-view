@@ -406,16 +406,26 @@ export function adoptableProperties(config: BasesViewConfig, settings: BacklogSe
 }
 
 /**
+ * The values a workflow's menus offer: the configured list when set, else the observed
+ * values — with a done value appended so marking something done is always one click
+ * away. The pure rule behind `stateMenuValues`, extracted so a second workflow
+ * (the Deliverables board's) can share it without reading `BacklogSettings` directly.
+ */
+export function menuValues(configured: string[], doneValues: string[], observed: string[]): string[] {
+	if (configured.length > 0) return configured;
+	const done = new Set(doneValues.map((v) => v.toLowerCase()));
+	if (observed.some((v) => done.has(v.toLowerCase()))) return observed;
+	return doneValues.length > 0 ? [...observed, doneValues[0]] : observed;
+}
+
+/**
  * The states offered by the state menus: the configured list when set, else the
  * values observed in the backlog — with a done state appended so marking an item
  * done is always one click away. Menus append the item's own unlisted value on
  * top of this, so the current state can always render checked.
  */
 export function stateMenuValues(settings: BacklogSettings, observedStates: string[]): string[] {
-	if (settings.states.length > 0) return settings.states;
-	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
-	if (observedStates.some((v) => done.has(v.toLowerCase()))) return observedStates;
-	return [...observedStates, settings.doneValues[0]];
+	return menuValues(settings.states, settings.doneValues, observedStates);
 }
 
 /**

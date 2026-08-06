@@ -1,5 +1,5 @@
 import { BacklogItem, BacklogModel } from './model';
-import { BacklogSettings, byName, stateMenuValues } from './settings';
+import { BacklogSettings, byName, menuValues, stateMenuValues } from './settings';
 
 /**
  * Deriving the board from the model and the settings: which columns exist, which
@@ -73,30 +73,75 @@ export const NO_STATE_LABEL = 'No state';
 export const NO_STATE_COLLISION_LABEL = 'Unset';
 
 /**
+ * What a board's columns are drawn from: how to read a card's state, the configured
+ * list (or its observed fallback), the raw observed values (for the stray-column pass,
+ * which needs them even once a workflow IS configured), the done values, and the
+ * per-state WIP limits/policies — `{}` for a workflow that carries neither.
+ */
+export interface Workflow {
+	stateOf(item: BacklogItem): string | null;
+	values: string[];
+	observedValues: string[];
+	doneValues: string[];
+	wipLimits: Record<string, number>;
+	columnPolicies: Record<string, string>;
+}
+
+/** The requirements board's workflow — `boardColumns`' original, only caller until now. */
+export function requirementsWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
+	return {
+		stateOf: (item) => item.stateValue,
+		values: stateMenuValues(settings, model.observedStates),
+		observedValues: model.observedStates,
+		doneValues: settings.doneValues,
+		wipLimits: settings.wipLimits,
+		columnPolicies: settings.columnPolicies,
+	};
+}
+
+/**
+ * The Deliverables board's own workflow — no WIP limits or column policies (Scope).
+ * `values`' fallback is the same rule `stateMenuValues` already states for the
+ * requirements workflow, applied to the Deliverable one's own configured/observed pair.
+ */
+export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
+	return {
+		stateOf: (item) => item.deliverableStateValue,
+		values: menuValues(settings.deliverableStates, settings.deliverableDoneValues, model.observedDeliverableStates),
+		observedValues: model.observedDeliverableStates,
+		doneValues: settings.deliverableDoneValues,
+		wipLimits: {},
+		columnPolicies: {},
+	};
+}
+
+/**
  * Project the model onto columns. `visible` is the view's own row-visibility rule
  * (quick filter, hidden completed subtrees, the context-placement test) passed in
  * whole, so the board and the tree cannot disagree about what is hidden — one
  * predicate answers for both projections.
  *
- * Which items become cards is the focus level's question: unfocused, every result
- * is a card; focused, the rendered roots are — results as live cards, and a
- * focus-level item outside the filter as an inert context card that still places
- * its results ({@link BoardColumn.cards}).
+ * `candidates` is which items become cards — the caller's question, not this
+ * function's: unfocused, every result is a card; focused, the rendered roots are —
+ * results as live cards, and a focus-level item outside the filter as an inert
+ * context card that still places its results ({@link BoardColumn.cards}).
  */
 export function boardColumns(
 	model: BacklogModel,
-	settings: BacklogSettings,
+	workflow: Workflow,
+	candidates: BacklogItem[],
 	visible: (item: BacklogItem) => boolean,
 	population: (item: BacklogItem) => boolean = visible,
 ): BoardModel {
-	const { columns, byValue, noState } = workflowColumns(model, settings);
+	const { columns, byValue, noState } = workflowColumns(workflow);
 	// State-to-column matching is case-insensitive, exactly as doneValues matching
 	// already is. A card whose state names no column gathers under no-state rather
 	// than minting one — only an OBSERVED result value mints a column, above.
-	const columnFor = (card: BacklogItem): BoardColumn =>
-		(card.stateValue !== null ? byValue.get(card.stateValue.toLowerCase()) : undefined) ?? noState;
+	const columnFor = (card: BacklogItem): BoardColumn => {
+		const state = workflow.stateOf(card);
+		return (state !== null ? byValue.get(state.toLowerCase()) : undefined) ?? noState;
+	};
 
-	const candidates = model.focused ? model.roots : model.results;
 	const cards = candidates.filter(visible);
 	const sortIndex = new Map<BacklogItem, number>();
 	for (const card of cards) {
@@ -136,13 +181,9 @@ export function overBy(col: BoardColumn): number {
  * not name. `byValue` is the case-insensitive index the placement uses.
  */
 function workflowColumns(
-	model: BacklogModel,
-	settings: BacklogSettings,
+	workflow: Workflow,
 ): { columns: BoardColumn[]; byValue: Map<string, BoardColumn>; noState: BoardColumn } {
-	// The same fallback the state menus use, so with no configured list the board
-	// still draws the observed workflow rather than nothing.
-	const workflow = stateMenuValues(settings, model.observedStates);
-	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
+	const done = new Set(workflow.doneValues.map((v) => v.toLowerCase()));
 	const column = (state: string | null, outsideWorkflow: boolean): BoardColumn => ({
 		state,
 		label: state ?? NO_STATE_LABEL,
@@ -153,11 +194,11 @@ function workflowColumns(
 		fullCount: 0,
 		// `byName`, never a bare index: a state value is user data, and a workflow may
 		// legitimately contain a state called `constructor`.
-		limit: byName(settings.wipLimits, state) ?? null,
-		policy: byName(settings.columnPolicies, state) ?? '',
+		limit: byName(workflow.wipLimits, state) ?? null,
+		policy: byName(workflow.columnPolicies, state) ?? '',
 	});
 	const noState = column(null, false);
-	const columns = [noState, ...workflow.map((s) => column(s, false))];
+	const columns = [noState, ...workflow.values.map((s) => column(s, false))];
 	const byValue = new Map<string, BoardColumn>();
 	for (const col of columns) {
 		if (col.state !== null) byValue.set(col.state.toLowerCase(), col);
@@ -165,7 +206,7 @@ function workflowColumns(
 	// A stray value still gets a column — losing a result to an unmapped status is
 	// the routine failure of every surveyed board. Minted from the observed states
 	// (results only, in their menu order), so an excluded note's value never mints one.
-	for (const value of model.observedStates) {
+	for (const value of workflow.observedValues) {
 		if (byValue.has(value.toLowerCase())) continue;
 		const col = column(value, true);
 		byValue.set(value.toLowerCase(), col);
