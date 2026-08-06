@@ -54,7 +54,11 @@ Obsidian's.
 
 - `test/harness/mount.ts` — mounts `ProductBacklogView` against `demoVault()`, re-rendering
   once a batch of writes stops. `test/harness/page.ts` is the bundle entry and is two
-  statements, so everything real is reachable from a test.
+  statements, so everything real is reachable from a test — and it is the DEFAULT entry,
+  not the only one: `npm run harness -- test/harness/mock.ts` bundles another, which is how
+  a projection that does not exist yet gets hand-drawn markup into the real stylesheet
+  before it is built. Leave such a file uncommitted; nothing imports it, so `npm run
+  analyze` reports it dead, correctly.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
   three projections at once. A fourth fixture, not a replacement: the per-suite ones stay
   four notes each on purpose.

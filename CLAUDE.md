@@ -44,6 +44,19 @@ dependency — so a browser can show it and drive it. It draws and asserts nothi
 is faithful about, and the colour it is not, are in [`test/CLAUDE.md`](test/CLAUDE.md) and
 ADR 0020, and it replaces no live-vault check.
 
+That makes it a way to mock a projection *before* building it, and the offer belongs
+before the implementation rather than after: when a change would visibly alter the view,
+**ask whether to mock it in the harness first**. The cheap version needs no new code at
+all — a type, a state vocabulary, a column set or an axis added to `demoOptions()` /
+`demoResults()` in `test/helpers/fixtures.ts` is drawn by the real view against the real
+stylesheet, so a layout can be argued about before a module exists to argue with. Markup
+that no code produces yet needs its own bundle entry —
+`npm run harness -- test/harness/mock.ts`, a file that calls `mountHarness` and then draws
+by hand — and that file stays uncommitted, since nothing imports it and `npm run analyze`
+is right to call it dead. Either way it answers layout, spacing and hierarchy only;
+colour, iconography and anything Bases hands the view stay unanswerable here, so the
+live-vault check is still owed.
+
 `npm run test-build` is the handover for exactly those cases: it bundles into
 `.obsidian/plugins/<id>/` in the repository root (gitignored), so the human can open
 this repository as a vault and look. Name it when a change needs eyes — it is a shorter
