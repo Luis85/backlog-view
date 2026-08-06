@@ -132,6 +132,14 @@ export interface BacklogViewHost {
 	 */
 	isRowHiddenUnfiltered(item: BacklogItem): boolean;
 	/**
+	 * The Deliverables board's own visibility rule: the quick filter alone, never
+	 * "Show completed items" — that toggle describes the requirements workflow's own
+	 * rollup (`item.subtreeDone`), and the Deliverables board has no completion concept
+	 * of its own (Scope). Found by review: `syncCountLabel` needs this too, or the
+	 * toolbar's count and the board's own visible cards can disagree.
+	 */
+	isRowHiddenByFilterOnly(item: BacklogItem): boolean;
+	/**
 	 * True when the quick filter matched this item ITSELF, rather than keeping it on
 	 * screen for a relative that matched. The distinction is what lets a card say
 	 * which of the things below it the search actually found.
@@ -214,6 +222,13 @@ export interface BacklogViewHost {
 	 * plans nothing and resolves false, leaving the undo slot untouched.
 	 */
 	performBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
+	/**
+	 * Plan and apply the Deliverable workflow's state write — the canonical value, or
+	 * key removal for the no-state column. The board's rule, on the Deliverable
+	 * workflow's own property: one path for all three inputs (a drop, an Alt+arrow,
+	 * the card menu), so no input can write the requirements state key by mistake.
+	 */
+	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
 	/**
 	 * Plan and apply the horizon write a roadmap move means — the target bucket's
 	 * value, or key removal for the shelf. The board's rule on the roadmap's

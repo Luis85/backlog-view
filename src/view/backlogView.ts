@@ -312,6 +312,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return this.hidden(item, false);
 	}
 
+	// No caller exists yet: syncCountLabel's own consumption is Task 17's job.
+	// fallow-ignore-next-line unused-class-member
+	isRowHiddenByFilterOnly(item: BacklogItem): boolean {
+		return this.filter.active && !this.filter.keeps(item.file.path);
+	}
+
 	isFilterMatch(item: BacklogItem): boolean {
 		return this.filter.matched(item.file.path);
 	}
@@ -465,7 +471,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const model = this.model;
 		if (!model) return;
 		const projection = this.projection;
-		this.viewEl.toggleClass('pbl-board-mode', projection === 'board');
+		this.viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
 		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
 		this.viewEl.toggleClass(
 			'pbl-roadmap-dates',
@@ -535,6 +541,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	performBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
 		return this.cardMoves.performBoardMove(item, state);
+	}
+
+	// No caller exists yet: the drop (Task 16), Alt+arrow (Task 18) and menu (Task 19)
+	// wiring lands in later tasks.
+	// fallow-ignore-next-line unused-class-member
+	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
+		return this.cardMoves.performDeliverablesBoardMove(item, state);
 	}
 
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {

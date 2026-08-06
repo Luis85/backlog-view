@@ -4,6 +4,7 @@ import { placeItem } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { horizonSource } from '../domain/roadmap';
 import {
+	computeDeliverableStateWrites,
 	computeDropWrites,
 	computeHorizonWrites,
 	computeScheduleWrites,
@@ -39,6 +40,18 @@ export class CardMoveController {
 		const from = item.stateValue;
 		const columns = this.host.board?.board;
 		return this.applyCardMove(item, computeStateWrites(item, state, this.host.settings, todayStamp()), () =>
+			announceBoardMove(columns, item.title, from, state),
+		);
+	}
+
+	async performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
+		const from = item.deliverableStateValue;
+		// `host.board` is the one snapshot field — it already holds whichever
+		// board-shaped projection's snapshot the last render produced, so reading it
+		// here needs no `host.projection` check: it is non-null on exactly this move's
+		// own board while the Deliverables projection is active.
+		const columns = this.host.board?.board;
+		return this.applyCardMove(item, computeDeliverableStateWrites(item, state), () =>
 			announceBoardMove(columns, item.title, from, state),
 		);
 	}
