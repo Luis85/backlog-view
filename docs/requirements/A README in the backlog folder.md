@@ -408,7 +408,9 @@ the creation prompt and the writes in `src/storage/` name one folder — and
 `src/domain/itemTypes.ts`; the tolerant reading rules it describes are
 `src/domain/noteFields.ts`, and the ranking step is `src/domain/writePlan.ts`.
 Tests: `test/domain/backlogReadme.test.ts` (what the document says, and that it says it
-from the configuration), `test/domain/readmeText.test.ts` (the escaping rules per place,
+from the configuration), `test/domain/readmeMarker.test.ts` (the marker's own
+escaping and round-trip, split out once the sibling file's line budget said so),
+`test/domain/readmeText.test.ts` (the escaping rules per place,
 so the document's own tests are about what it says rather than about backslashes),
 `test/domain/settings.test.ts` (the folder settings resolved to the vault's spelling, so
 the document and the writes cannot name different folders),

@@ -148,6 +148,9 @@ function fieldRows(settings: BacklogSettings): string[] {
 	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
 	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
+	if (settings.deliverableStateKey) {
+		rows.push(`| ${cell(settings.deliverableStateKey)} | Optional, on a Deliverable | The Deliverable workflow's own state — a separate workflow from the one above |`);
+	}
 	return rows;
 }
 
