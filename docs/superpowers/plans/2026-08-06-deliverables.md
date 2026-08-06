@@ -2399,7 +2399,9 @@ Expected: FAIL — no fourth toggle position exists;
 `renderCompletedToggle` still renders on the Deliverables board;
 `syncCountLabel` reports "0 of 1" for the third test (hidden by `isRowHidden`'s
 `hidingCompleted()` branch); the fourth test reports "3 items" instead of "1 item"
-(the whole base's `model.results.length`, unscoped to Deliverable-typed items).
+(the whole base's `model.results.length`, unscoped to Deliverable-typed items); the
+fifth test's tooltip still contains "PBI" (`levelBreakdown` reads the whole
+`model.results`, and nothing corrects it after `renderToolbar` sets it once).
 
 - [ ] **Step 3: Implement**
 
@@ -2426,9 +2428,35 @@ draft — `total`/`shown` still counted `model.results.length` whole, so a base 
 Deliverable and ten PBIs would report "11 items" beside a board showing one card, and
 filtering a PBI (never a card on this board) would change the count anyway. The
 POPULATION has to be scoped the same way `renderDeliverablesBoard`'s own predicate
-already is, before either count is taken:
+already is, before either count is taken.
+
+**A third gap, found by a later review round: the count label's own TOOLTIP is set by
+`renderToolbar`, never by `syncCountLabel`, and stays unscoped even after this fix.**
+`renderToolbar` creates the `.pbl-count-label` span and calls
+`setTooltip(countEl, levelBreakdown(host, model))` once, at full-render time;
+`levelBreakdown` (this file, existing) always iterates the whole `model.results`
+regardless of projection. `syncCountLabel` runs immediately after `renderToolbar` on
+every render (`ProductBacklogView.render()` calls them in that order) and overwrites
+the label's TEXT, but never touches its tooltip attribute — so on the Deliverables
+board the visible text now correctly says "1 item" while hovering it still shows the
+whole base's breakdown ("2 Epic · 4 Feature · 1 Deliverable"), a label and its own
+tooltip disagreeing about what they are counting. `levelBreakdown` also turns out to
+take an unused `host` parameter in the real code (its body never reads it, only
+`model.results`) — dropped here rather than carried forward. Moving the tooltip into
+`syncCountLabel`, over the SAME scoped `population` the label text already uses,
+fixes both at once and makes it structurally impossible for them to drift apart again:
 
 ```ts
+/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */
+function levelBreakdown(items: BacklogItem[]): string {
+	const byLevel = new Map<string, number>();
+	for (const item of items) {
+		const label = displayType(item) || 'Untyped';
+		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
+	}
+	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');
+}
+
 export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void {
 	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
 	const model = host.model;
@@ -2442,12 +2470,45 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const shown = population.filter((item) => !hidden(item)).length;
 	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
 	else label.setText(`${shown} of ${total}`);
+	setTooltip(label, levelBreakdown(population));
 }
+```
+
+`setTooltip` is already imported in this file (`import { BasesQueryResult, Menu,
+setIcon, setTooltip } from 'obsidian';`). Update `renderToolbar`'s own call site to
+match the new signature — it is immediately overwritten by `syncCountLabel` on every
+render regardless of what it passes, so it keeps passing the whole, unscoped
+population (no Deliverables-awareness needed there, since nothing ever observes its
+transient value):
+
+```ts
+	setTooltip(countEl, levelBreakdown(model.results));
 ```
 
 Import `BacklogItem` into this file if not already present (`BacklogModel` already is;
 check the existing `import { BacklogModel } from '../../domain/model';` line and widen
 it to `import { BacklogItem, BacklogModel } from '../../domain/model';`).
+
+Add one more test to this task's Step 1, beside the mixed-base count test:
+
+```ts
+it('scopes the count tooltip to Deliverables too, not just the label text', () => {
+	const vault = new FakeVault();
+	vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+	vault.addFile('P1.md', { frontmatter: { type: 'PBI', order: 10 } });
+	const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+	harness.view.setProjection('deliverables');
+	const { containerEl } = harness;
+
+	const label = containerEl.querySelector<HTMLElement>('.pbl-count-label');
+	expect(label?.getAttribute('aria-label') ?? label?.getAttribute('data-tooltip') ?? '').not.toContain('PBI');
+});
+```
+
+(Check `test/helpers/obsidian-mock.ts`'s `setTooltip` mock for which attribute it
+actually writes — `aria-label` or `data-tooltip` — and read the correct one; both are
+listed above so the assertion is correct whichever the mock uses, but only one branch
+will ever be non-empty.)
 
 - [ ] **Step 4: Run tests to verify they pass**
 

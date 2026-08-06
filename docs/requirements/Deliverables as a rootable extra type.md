@@ -85,11 +85,23 @@ under a real parent — and that is where this PBI's one real behavioural additi
 - A parentless Deliverable is never pruned by `hierarchyOnly`.
 - The generated README's hierarchy table describes `Deliverable` as able to have no
   parent (`childTypeChoices(null)` includes it) — a documentation-accuracy criterion,
-  not a functional one; nothing in the interactive UI depends on it.
-- The generated README's **prose above that table** agrees with it: it must not claim
-  every member of `EXTRA_TYPES` "hangs from any rung" once `Deliverable` is one of them
-  and does not. A generated document contradicting its own table is a defect in the
-  generator, not an acceptable inconsistency to leave for the reader to reconcile.
+  not a functional one; nothing in the interactive UI depends on it. Traced against
+  the toolbar (`renderToolbar` iterates the whole `ALL_TYPES` unconditionally, with no
+  parent, for every declared type — not extra types alone): `childTypeChoices(null)`
+  agreeing with that reality makes it equal to `ALL_TYPES` in full, so this criterion
+  is not `Deliverable`-specific — every declared type's row gets the same "*(nothing —
+  it is a root)*" marker, correctly, and `Deliverable` is simply one of them rather
+  than an exception.
+- `typeSection`'s prose above the table needs **no change**: it describes structural
+  shape (ladder rung, pinned extra type, no-rung marker), a question root capability
+  never bears on, and the table's own per-type marker already states root capability
+  correctly for the whole vocabulary once the point above lands. An earlier draft of
+  this criterion claimed the prose would contradict the table by calling `EXTRA_TYPES`
+  uniformly "hang from any rung" once `Deliverable` joined it and did not — that
+  claim rested on `Deliverable` (or, in a later draft, the extra types) being singled
+  out as rootable when nothing in the vocabulary actually is singled out: every
+  declared type shares the toolbar's root-creation capability alike, so there is no
+  "exception" for the prose to name.
 
 ## Where it lives
 
@@ -101,12 +113,16 @@ the vocabulary and need no change of their own — this is where a `Deliverable`
 root-creatable, for free.
 `src/domain/itemTypes.ts` — `childTypeChoices`' **under-a-parent** branch (`Epic`,
 `Feature`, `PBI`) offers `Deliverable` beside `Issue` and `Bug`; its top-level branch
-(`!parent`) also gains `Deliverable`, but only for `domain/backlogReadme.ts`'s
-`parentsOf` check — the generated README, not the interactive creator.
+(`!parent`) becomes `ALL_TYPES` in full (documentation-accuracy only, for
+`domain/backlogReadme.ts`'s `parentsOf` check — the generated README, not the
+interactive creator, which already offers every type root-creatable today) — not a
+`Deliverable`-only or `EXTRA_TYPES`-only addition, since the toolbar it is matching
+draws no line anywhere in the vocabulary.
 `src/view/render/rows.ts` — the badge table gains a `deliverable` entry (icon and badge
 class); `styles/badges.css` gains the colour.
-`src/domain/backlogReadme.ts` — beyond the `parentsOf`/`childTypeChoices(null)` table fix
-above, `typeSection`'s opening paragraph also names `EXTRA_TYPES` as a uniform group that
-"hangs from any rung above the deepest"; it needs to read the same per-type
-`childTypeChoices(null)` question the table already asks rather than assume every extra
-type answers alike, and say so explicitly once `Deliverable` is the exception.
+`src/domain/backlogReadme.ts` — the `parentsOf`/`childTypeChoices(null)` table fix
+above is the whole of this PBI's documentation work; `typeSection`'s opening paragraph
+needs no edit. It already describes ladder/pinned-extra/no-rung-marker structure only,
+a question root capability does not bear on, and the table beneath it already carries
+the per-type root marker correctly for the whole vocabulary the moment
+`childTypeChoices(null)` agrees with the toolbar.
