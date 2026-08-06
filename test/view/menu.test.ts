@@ -4,6 +4,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { expandAll, fixture, flush, key, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
 
@@ -257,5 +258,71 @@ describe('move commands that do not rank', () => {
 
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
 		expect(vault.fm('Feature B.md').parent).toBe('[[Feature A]]');
+	});
+});
+
+describe('the Deliverables board’s card menu', () => {
+	it('offers Set state on a Deliverables-board card when only the Deliverable key is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		const harness = makeView(vault, {
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const setState = Menu.lastShown?.item('Set state');
+		expect(setState).toBeDefined();
+		const submenu = setState?.submenu;
+		expect(submenu?.items.map((i) => i.titleText)).toContain('Review');
+	});
+
+	it('checks the entry against deliverableStateValue, and writing it touches only that key', async () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Untouched', deliverableStatus: 'Draft' },
+		});
+		const harness = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const submenu = Menu.lastShown?.item('Set state')?.submenu;
+		expect(submenu?.item('Draft')?.checked).toBe(true);
+
+		submenu?.item('Review')?.click();
+		await flush();
+		expect(vault.fm('D.md')['deliverableStatus']).toBe('Review');
+		expect(vault.fm('D.md')['status']).toBe('Untouched');
+	});
+
+	it('keeps a filtered match under a Deliverable card reachable through the card menu', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 10, deliverableStatus: 'irrelevant' }, parentLink: 'D' });
+		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+		harness.view.setFilter('T');
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Open match "T"')).toBeDefined();
+	});
+
+	it('hides Set state on the tree when only the Deliverable key is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		// deliverableStateKey configured, requirements stateKey left unset — the tree's
+		// own Set state must not appear promising a write to an empty key.
+		const { containerEl } = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+
+		rowByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
 	});
 });

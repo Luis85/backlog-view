@@ -173,7 +173,7 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(1);
 	});
 
-	it('never writes to a context card from the keyboard either', async () => {
+	it('never writes to a context card from the keyboard or the menu either', async () => {
 		const { view, containerEl, vault } = deliverablesStressView();
 		const ctx = view.model?.byPath.get('Ctx.md');
 		expect(ctx?.outsideFilter).toBe(true);
@@ -196,6 +196,16 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		await flush();
 
 		expect(spy).not.toHaveBeenCalled();
+
+		// And the menu, the one path that works everywhere: it withholds every entry
+		// that would edit this note — Set state included, which on the Deliverables
+		// board is the drag's equal and so must be withheld exactly as the drag is. Not
+		// vacuous: `deliverableStateProperty` is configured, D1 is a real result and
+		// gets a Set state entry of its own (asserted elsewhere) — the withholding here
+		// is `editable`'s (`!item.outsideFilter`), not the key being unconfigured.
+		view.showContextMenuFor(ctx as never);
+		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
+		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
 		expect(vault.writeLog).toEqual([]);
 	});
 
@@ -204,14 +214,12 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		const ctx = view.model?.byPath.get('Ctx.md');
 		expect(ctx?.outsideFilter).toBe(true);
 
-		// No UI produces this: no card exists to drag or to land the keyboard's board
-		// position on (the two tests above), and the card menu's Set state still routes
-		// through the requirements board's own dispatch (`stateChoices`/`chooseState` in
-		// `interactions/menu.ts` still gate on `host.projection === 'board'`), which is
-		// Task 19's job — not something to build or fake a passing assertion for here.
-		// The structural backstop is what a future entry point cannot reopen by
-		// omission, so it is exercised directly, exactly as the board and roadmap
-		// blocks above exercise `performBoardMove`/`performHorizonMove`.
+		// No UI produces this — that is the point: the last line of defence is
+		// structural, so a future entry point cannot reopen the hole by omission. No
+		// card exists to drag or to land the keyboard's board position on, and the menu
+		// withholds Set state outright (the two tests above); the structural backstop is
+		// exercised directly, exactly as the board and roadmap blocks above exercise
+		// `performBoardMove`/`performHorizonMove`.
 		const applied = await view.performDeliverablesBoardMove(ctx as never, 'Review');
 
 		expect(applied).toBe(false);

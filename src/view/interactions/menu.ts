@@ -4,9 +4,9 @@ import { inferFolderParent } from '../../domain/folderNotes';
 import { BacklogItem } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
-import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
-import { cardPaths, hiddenMatches } from '../../domain/board';
+import { BoardModel, cardPaths, hiddenMatches } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -14,6 +14,18 @@ import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
+
+/**
+ * Whichever board-shaped projection is active, or null off both. `host.board` is
+ * already the one snapshot field — non-null on exactly `'board'` and `'deliverables'`,
+ * whichever is current — so this needs no `host.projection` branch of its own. Four
+ * call sites below used to each re-derive that ternary (or, worse, gate on a single
+ * workflow's key with no branch for the other); one function is what keeps them
+ * agreeing about which board is on screen.
+ */
+function activeBoard(host: BacklogViewHost): BoardModel | null {
+	return host.board?.board ?? null;
+}
 
 /**
  * The column's menu. A policy is text, not an action, so its one entry is disabled:
@@ -67,7 +79,14 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	}
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
-		if (host.settings.stateKey) addSetStateMenu(host, menu, item);
+		// Which key gates visibility has to be the SAME key `stateChoices`/`chooseState`
+		// will actually use for this projection — not an OR of both keys. An OR would
+		// show Set state on the tree or roadmap the moment only `deliverableStateKey` is
+		// configured, while the rest of the menu there still reads the (unconfigured)
+		// requirements `stateKey`: a menu offering picks that write to an empty key,
+		// silently dropped by `applyWrites`' "never write to an empty key" rule.
+		const activeStateKey = host.projection === 'deliverables' ? host.settings.deliverableStateKey : host.settings.stateKey;
+		if (activeStateKey) addSetStateMenu(host, menu, item);
 		// Per axis, and absent rather than inert when one is not configured — the state
 		// chip's own rule.
 		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
@@ -246,7 +265,7 @@ export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * a matching card is a second result, and it has no card of its own to be reached by.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const board = host.projection === 'board' ? host.board?.board : null;
+	const board = activeBoard(host);
 	if (!board || !host.isFiltering()) return;
 	const carded = cardPaths(board);
 	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
@@ -276,18 +295,18 @@ interface StateChoice {
  * What Set state offers. In the tree: the configured or observed values, plus the
  * item's own when it is in neither, so the current state can always render checked.
  *
- * On the board: the board's own COLUMNS, read off the board rather than rebuilt —
- * the configured states, the observed out-of-workflow values, and the no-state
- * entry whose write removes the key. That is what makes the menu the drag's equal:
- * every target a drop can reach the menu offers, and no target the menu offers is
- * missing from the board. `stateMenuValues` alone cannot supply that list — it
- * returns only the configured states when a list is set, and knows no no-state —
- * and a second list built from the same inputs would be a second vocabulary to
- * keep in step. The labels come from the columns too, so the entry a user picks is
- * named exactly as the column they can see.
+ * On either board-shaped projection: `activeBoard`'s own COLUMNS, read off the board
+ * rather than rebuilt — the configured states, the observed out-of-workflow values,
+ * and the no-state entry whose write removes the key. That is what makes the menu
+ * the drag's equal: every target a drop can reach the menu offers, and no target the
+ * menu offers is missing from the board. `stateMenuValues` alone cannot supply that
+ * list — it returns only the configured states when a list is set, and knows no
+ * no-state — and a second list built from the same inputs would be a second
+ * vocabulary to keep in step. The labels come from the columns too, so the entry a
+ * user picks is named exactly as the column they can see.
  */
 function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
-	const board = host.projection === 'board' ? host.board?.board : null;
+	const board = activeBoard(host);
 	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
 	const current = item.stateValue;
@@ -297,12 +316,16 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 }
 
 /**
- * The write a Set state entry means. On the board the menu is the drag's equal, so
- * it takes the drag's own path — the same planned write, the same gate, the same
- * announcement — and that path is also the only one that can express the no-state
- * entry, which the tree's list never offers.
+ * The write a Set state entry means. On either board-shaped projection the menu is
+ * the drag's equal, so it takes that projection's own move method — the same planned
+ * write, the same gate, the same announcement — which is also the only path that can
+ * express the no-state entry, never offered by the tree's list. `host.projection`
+ * picks between the two boards' move methods first: a no-state pick on the
+ * Deliverables board must land on `performDeliverablesBoardMove`, not fall through
+ * to the requirements one just because both share `choice.state === null`.
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<unknown> {
+	if (host.projection === 'deliverables') return host.performDeliverablesBoardMove(item, choice.state);
 	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
 	// The tree's own Set state plans through the same function the board's moves do, so
 	// the date stamps ride it too: a history with holes in it, where which hole depends
@@ -317,14 +340,22 @@ function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoi
  * it would write nothing — rather than by a comparison written beside the plan and
  * expected to agree with it. Those two drift the moment either side learns a case
  * the other has not: an entry checked as current whose pick still writes spends the
- * undo slot on a change nobody asked for. One question, asked once. `addHorizonItems`
- * in `plan.ts` follows the same rule against its own planner.
+ * undo slot on a change nobody asked for. One question, asked once, of whichever
+ * workflow's planner this projection actually writes through — a value comparison
+ * here would have to separately learn that a horizon (or a second workflow) the
+ * reader refuses reads as no value, which is exactly the drift the rule exists to
+ * rule out. `addHorizonItems` in `plan.ts` follows the same rule against its own
+ * planner.
  */
 function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			if (computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0) si.setChecked(true);
+			const noop =
+				host.projection === 'deliverables'
+					? computeDeliverableStateWrites(item, choice.state).length === 0
+					: computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0;
+			if (noop) si.setChecked(true);
 		});
 	}
 }
