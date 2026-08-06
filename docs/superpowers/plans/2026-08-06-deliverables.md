@@ -8,9 +8,10 @@ ordered states and done values entirely separate from the requirements board's �
 every other property (`parent`/`order`/`type`, tags, the roadmap axis) is the one the
 other types already use.
 
-**Architecture:** `Deliverable` joins the fixed `EXTRA_TYPES` vocabulary (pinned rank,
-`Task` children) plus a new `ROOTABLE_EXTRA_TYPES` marker that makes it the one extra
-type `childTypeChoices(null)` offers. A second, parallel workflow — `deliverableStateKey`
+**Architecture:** `Deliverable` joins the fixed `EXTRA_TYPES` vocabulary — pinned rank,
+`Task` children, and (like every `EXTRA_TYPES` member, `Issue`/`Bug` included — the
+toolbar's top-level creator has always offered all three unconditionally) creatable
+with no parent at all. A second, parallel workflow — `deliverableStateKey`
 / `deliverableStates` / `deliverableDoneValues`, wired through the existing
 `OptionalField`/`PROPERTY_TABLE` machinery — drives a fourth `Projection` value,
 `'deliverables'`, which reuses every board building block (`boardColumns`, `renderBoard`,
@@ -56,15 +57,29 @@ type filter differ.
 
 **Interfaces:**
 - Consumes: nothing new.
-- Produces: `EXTRA_TYPES` includes `'Deliverable'`; a new exported
-  `ROOTABLE_EXTRA_TYPES: string[]` in `settings.ts`; `childTypeChoices(null)` includes
-  `'Deliverable'`. Later tasks (2, 22) read `ROOTABLE_EXTRA_TYPES` and the widened
-  `EXTRA_TYPES`.
+- Produces: `EXTRA_TYPES` includes `'Deliverable'`; `childTypeChoices(null)` includes
+  every member of `EXTRA_TYPES`. Later tasks (2, 20) read the widened `EXTRA_TYPES`.
 
-`Issue` and `Bug` need a parent (they are offered only under a real rung); `Deliverable`
-does not. `EXTRA_TYPES` alone can't express that difference, so a second, narrower list
-holds the ones that may sit at the top — the same shape `MARKER_TYPES` already is beside
-`EXTRA_TYPES`, not a hardcoded string threaded through `itemTypes.ts`.
+**Found by review, and it simplifies this task rather than complicating it: there is
+no `ROOTABLE_EXTRA_TYPES` distinction to invent, because `Issue` and `Bug` are ALREADY
+root-creatable — today, before this feature exists.** An earlier draft of this task
+assumed `Issue`/`Bug` need a real parent and gave `Deliverable` alone a new
+`ROOTABLE_EXTRA_TYPES` marker so `childTypeChoices(null)` would offer only it. But the
+toolbar's own top-level "pick another type" menu (`renderToolbar`, confirmed by
+`test/view/toolbar.test.ts`'s own description of it as "the place where any type can be
+made") iterates `ALL_TYPES` UNCONDITIONALLY and calls `promptCreateItem(host, [type],
+null)` for every declared name — a user can already create a parentless `Issue` or
+`Bug` through it, and always could, independent of anything this feature adds. A
+`childTypeChoices(null)` that named only `Deliverable` as rootable would make the
+GENERATED README's hierarchy table claim `Issue`/`Bug` cannot be roots while the
+toolbar it is describing lets you create one anyway — the exact "documentation
+contradicts the real behavior" defect this whole plan has been catching elsewhere,
+just pre-existing this time rather than introduced by Deliverable. Since this task is
+already the one touching `childTypeChoices(null)`'s top-level branch, the correct fix
+is to make it agree with the toolbar's real, standing behavior: spread the WHOLE
+`EXTRA_TYPES` list, not a hand-picked subset. `Deliverable` needs no special
+"rootable" flag distinguishing it from `Issue`/`Bug` — on this axis it never was
+different from them.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -76,8 +91,8 @@ it('offers Deliverable under an Epic, a Feature or a PBI, beside Issue and Bug',
 	expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Deliverable']);
 });
 
-it('offers Deliverable at the top level too — the one extra type that is rootable', () => {
-	expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone', 'Deliverable']);
+it('offers every extra type at the top level too, matching the toolbar\'s own creator', () => {
+	expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone', 'Issue', 'Bug', 'Deliverable']);
 });
 
 it('pins Deliverable at EXTRA_TYPE_RANK wherever it hangs, holding only Tasks', () => {
@@ -102,12 +117,18 @@ imports if not already present (`buildModel`/`defaultSettings`/`FakeVault` alrea
 per the existing fixture; `defaultTypeFolder` needs adding to the `../../src/domain/settings`
 import list).
 
+**If an existing test in this file already asserts the OLD `childTypeChoices(null)`
+value (`['Epic', 'Milestone']`, no extra types) — check for one before writing the
+above — update its expected value to include `'Issue', 'Bug'` too: that assertion was
+pinning the pre-existing documentation/toolbar mismatch this task fixes, not a
+behavior to preserve.**
+
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/domain/itemTypes.test.ts`
 Expected: FAIL — `childTypeChoices(get('Epic'))` returns `['Feature', 'Issue', 'Bug']`
-(no Deliverable), `childTypeChoices(null)` returns `['Epic', 'Milestone']` (no
-Deliverable), and `defaultTypeFolder('Deliverable')` returns `''`.
+(no Deliverable), `childTypeChoices(null)` returns `['Epic', 'Milestone']` (no extra
+types at all), and `defaultTypeFolder('Deliverable')` returns `''`.
 
 - [ ] **Step 3: Implement**
 
@@ -115,18 +136,6 @@ In `src/domain/settings.ts`:
 
 ```ts
 export const EXTRA_TYPES = ['Issue', 'Bug', 'Deliverable'];
-```
-
-Right after `EXTRA_TYPES`' own doc comment block (before `MARKER_TYPES`), add:
-
-```ts
-/**
- * The subset of `EXTRA_TYPES` that may also sit at the TOP LEVEL, with no parent at
- * all — `Deliverable` is the first member. `EXTRA_TYPES` alone cannot express this:
- * `Issue` and `Bug` still need a real rung above them, so `childTypeChoices`' top-level
- * branch reads this list instead of `EXTRA_TYPES` itself.
- */
-export const ROOTABLE_EXTRA_TYPES = ['Deliverable'];
 ```
 
 In `DEFAULT_TYPE_SUBFOLDERS`, add a line:
@@ -140,15 +149,17 @@ In `DEFAULT_TYPE_SUBFOLDERS`, add a line:
 In `src/domain/itemTypes.ts`, `childTypeChoices`'s top-level branch:
 
 ```ts
-	// Top level is the ladder's top plus the markers plus the rootable extra types: a
-	// milestone hangs from nothing, a rootable Deliverable may choose to hang from
-	// nothing, while an ordinary extra type (Issue, Bug) hangs from something and
-	// creating one with no parent would make an item whose own rule says it should
-	// have had one.
-	if (!parent) return [ladderChild, ...MARKER_TYPES, ...ROOTABLE_EXTRA_TYPES];
+	// Top level is the ladder's top, the markers, and every extra type: a milestone
+	// hangs from nothing, and an extra type may equally choose to — the toolbar's own
+	// top-level creator has always offered Issue and Bug with no parent, unconditionally
+	// (renderToolbar iterates ALL_TYPES), so this list has to agree with that standing
+	// behavior rather than invent a narrower "which extra types are really rootable"
+	// question nothing else in the view asks.
+	if (!parent) return [ladderChild, ...MARKER_TYPES, ...EXTRA_TYPES];
 ```
 
-Add `ROOTABLE_EXTRA_TYPES` to the `import { ALL_TYPES, BacklogSettings, byName, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';` line at the top of `itemTypes.ts`.
+No import changes are needed in `itemTypes.ts` — `EXTRA_TYPES` is already imported
+there (it is what the under-a-parent branch already spreads).
 
 The under-a-parent branch (`return onLadder ? [ladderChild, ...EXTRA_TYPES] : [ladderChild];`)
 needs no change — it already spreads the whole `EXTRA_TYPES` list, so `Deliverable`
@@ -749,8 +760,9 @@ git commit -m "feat: model the Deliverable workflow's state, in the raw-item pha
 - Consumes: `BacklogItem.deliverableStateValue` (Task 6), `sameValue` (existing, from
   `noteFields.ts`).
 - Produces: `ItemWrite.deliverableState?: string`, `ItemWrite.removeDeliverableStateKey?: boolean`,
-  `computeDeliverableStateWrites(item, state): ItemWrite[]`. Consumed by Task 9
-  (`storage/frontmatter.ts`), Task 15 (`cardMoves.ts`).
+  `computeDeliverableStateWrites(item, state): ItemWrite[]`, and a Deliverable-scoped
+  `missingKeyStubs` (this task's second fix, below). Consumed by Task 8
+  (`storage/frontmatter.ts`), Task 12 (`cardMoves.ts`).
 
 Deliberately the `state`/`removeStateKey` shape, not `AxisWrite` — no span/date
 semantics apply here, and no stamp logic (`settings`/`today` params) is needed, per
@@ -792,10 +804,49 @@ describe('computeDeliverableStateWrites', () => {
 });
 ```
 
+**Found by review, a second gap in this same file: `computeInitWrites`' backfill must
+scope the Deliverable-state stub to Deliverable-typed items only.** Joining
+`OPTIONAL_FIELDS` (Task 3) puts `'deliverableState'` in the generic list
+`missingKeyStubs` iterates for EVERY item, with no type filter — so pressing "Assign
+missing properties" with `deliverableStateKey` configured would stamp an empty
+`deliverableStatus: ''` onto every PBI, Task, Epic, Issue and Bug in the backlog that
+lacks the key, not just Deliverables. `missingKeyStubs` already has exactly this shape
+of exception for `horizon` (skipped when the axis is unconfigured); this is the same
+kind of per-field narrowing, keyed on the ITEM's type instead of on a global
+configuration flag:
+
+```ts
+// test/domain/writePlan.test.ts — new test, beside any existing computeInitWrites
+// coverage in this file
+describe('computeInitWrites — the Deliverable state stub', () => {
+	it('backfills the Deliverable state key only on Deliverable-typed items', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10 } });
+		const configured = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const model = buildModel(vault.app, vault.entries(), configured);
+
+		const writes = computeInitWrites(model, configured);
+
+		const forD = writes.find((w) => w.file.path === 'D.md');
+		const forP = writes.find((w) => w.file.path === 'P.md');
+		expect(forD?.stubs).toContain('deliverableState');
+		expect(forP?.stubs ?? []).not.toContain('deliverableState');
+	});
+});
+```
+
+Add `computeInitWrites` to this file's existing `../../src/domain/writePlan` import
+line if it is not already imported.
+
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/domain/writePlan.test.ts -t "computeDeliverableStateWrites"`
 Expected: FAIL — `computeDeliverableStateWrites` does not exist.
+
+Run: `npx vitest run test/domain/writePlan.test.ts -t "Deliverable state stub"`
+Expected: FAIL — `computeInitWrites` stamps `'deliverableState'` onto `P.md` too, since
+`missingKeyStubs` has no type-scoping for it yet.
 
 - [ ] **Step 3: Implement**
 
@@ -826,6 +877,28 @@ export function computeDeliverableStateWrites(item: BacklogItem, state: string |
 
 `sameValue` is already imported from `./noteFields` at the top of this file.
 
+Scope the backfill stub in `missingKeyStubs`, right beside the existing `horizon`
+exception:
+
+```ts
+function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
+	const stubs: OptionalField[] = [];
+	for (const field of OPTIONAL_FIELDS) {
+		// A named horizon property with no values is an UNCONFIGURED bucket axis — see
+		// the existing comment on this branch, unchanged.
+		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
+		// The Deliverable workflow's own state describes a Deliverable, never a PBI, a
+		// Task or any other type sharing the same backfill pass — the property-table row
+		// this key gets in the generated README (Task 20) says "on a Deliverable", and
+		// this is what keeps that literally true rather than aspirational.
+		if (field === 'deliverableState' && item.typeName?.toLowerCase() !== 'deliverable') continue;
+		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
+		stubs.push(field);
+	}
+	return stubs;
+}
+```
+
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run test/domain/writePlan.test.ts`
@@ -835,7 +908,7 @@ Expected: PASS
 
 ```bash
 git add src/domain/writePlan.ts test/domain/writePlan.test.ts
-git commit -m "feat: plan writes for the Deliverable workflow's state"
+git commit -m "feat: plan writes for the Deliverable workflow's state, scoped to Deliverables"
 ```
 
 ---
@@ -2682,13 +2755,10 @@ it('omits the Deliverable state row when unconfigured', () => {
 	expect(content).not.toContain('deliverableStatus');
 });
 
-it('says Deliverable may also stand alone, without claiming Issue and Bug can', () => {
+it('says every extra type may also stand alone, matching the toolbar\'s real behavior', () => {
 	const content = backlogReadmeContent(defaultSettings(), [], 'test');
 	expect(content).toContain('Deliverable');
-	expect(content).toMatch(/Deliverable.*stand alone|stand alone.*Deliverable/);
-	// The prose must not claim the WHOLE extra-types list hangs from any rung once one
-	// of them (Deliverable) does not have to.
-	expect(content).not.toMatch(/Issue.*Bug.*Deliverable.*hang from any rung/);
+	expect(content).toMatch(/stand alone/);
 });
 ```
 
@@ -2710,27 +2780,27 @@ target rows:
 	}
 ```
 
-In `typeSection`, rewrite the opening paragraph to ask `childTypeChoices(null)` the
-same per-type root question the table below it already asks, rather than assuming
-every `EXTRA_TYPES` member answers alike:
+**Found by review: there is no per-type "which extras are rootable" question left to
+ask here, because Task 1's own fix means the answer is now "all of them, uniformly."**
+An earlier draft of this task branched `typeSection`'s prose on `childTypeChoices(null)`
+per extra type, on the assumption that `Deliverable` alone could stand alone while
+`Issue`/`Bug` could not — the same assumption Task 1's `ROOTABLE_EXTRA_TYPES` made and
+review found false (the toolbar has always let `Issue`/`Bug` be created with no
+parent). With that premise gone, the branching collapses to one case: every
+`EXTRA_TYPES` member may stand alone, so the prose says so once, unconditionally,
+rather than asking a question whose answer never varies:
 
 ```ts
 function typeSection(settings: BacklogSettings): string[] {
 	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
-	const rootableExtras = EXTRA_TYPES.filter((t) => childTypeChoices(null).includes(t));
-	const pinnedExtras = EXTRA_TYPES.filter((t) => !rootableExtras.includes(t));
-	const extraProse =
-		pinnedExtras.length > 0 && rootableExtras.length > 0
-			? `${pinnedExtras.map(code).join(' and ')} sit *beside* it — they hang from any rung above the ` +
-				`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which is why ` +
-				`they are types rather than levels. ${rootableExtras.map(code).join(' and ')} ${rootableExtras.length === 1 ? 'is' : 'are'} the same shape, but may also stand alone with no parent at all.`
-			: `${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
-				`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
-				'is why they are types rather than levels.';
 	return [
 		`## ${TYPES_HEADING}`,
 		'',
-		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ${extraProse} ` +
+		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
+			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
+			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
+			'is why they are types rather than levels. They may also stand alone, with no ' +
+			'parent at all, exactly as the table below shows. ' +
 			`${MARKER_TYPES.join(' and ')} is neither: a ` +
 			`marker hangs from nothing and holds nothing, and states a date rather than work.`,
 		'',
@@ -2752,19 +2822,19 @@ function typeSection(settings: BacklogSettings): string[] {
 }
 ```
 
-This reads generically off `EXTRA_TYPES`/`childTypeChoices(null)` rather than naming
-`Deliverable` by string, so a future rootable extra type needs no further change here.
+This is a straight simplification of the existing function's opening paragraph, not a
+new per-type mechanism — `childTypeChoices`/`parentsOf` below still state each type's
+own root capability in the table itself (unchanged), which is what the reader actually
+checks per type; the paragraph above it now makes a claim that is uniformly true rather
+than one that used to need per-type qualification.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run test/domain/backlogReadme.test.ts`
-Expected: PASS — including every existing test in this file (with `EXTRA_TYPES` today
-holding `Issue`/`Bug`/`Deliverable` and only `Deliverable` rootable, `pinnedExtras =
-['Issue', 'Bug']` and `rootableExtras = ['Deliverable']`, both non-empty, so the
-existing generic-extra-types assertions — if any test the prose's exact old wording —
-may need re-reading against the new sentence; if a pre-existing test asserts the OLD
-uniform sentence verbatim, update its expected string to match the new one rather than
-reverting the fix).
+Expected: PASS — including every existing test in this file; if a pre-existing test
+asserts the OLD uniform sentence (before this task touched it) verbatim, update its
+expected string to include the new "may also stand alone" clause rather than reverting
+the fix.
 
 - [ ] **Step 5: Commit**
 
@@ -2902,6 +2972,16 @@ git commit -m "docs: document Deliverables in the shipped README"
 - §7 (shipped README.md) → Task 21.
 - The two Codex findings from the second review round (raw-item phase placement;
   `syncCountLabel` parity) → Tasks 6, 13, 17.
+- Later review rounds, on the plan itself: the menu gate's OR bug, the keyboard tests'
+  empty-leading-column assumption, and the focus-scope prose overstatement → Tasks 19,
+  18, 16/21; the toolbar count's whole-base scoping and the empty advisory's
+  focus-blindness → Tasks 17, 14; the stray-column tooltip naming the wrong workflow's
+  option → Task 16; the raw-item-phase claim recurring in §6 of the design spec (fixed
+  there directly, not a plan task); and, this round, `Issue`/`Bug` already being
+  root-creatable via the toolbar (Task 1 no longer invents a `ROOTABLE_EXTRA_TYPES`
+  subset; Task 20's prose simplifies to match) and the Deliverable-state backfill stub
+  needing the same Deliverable-typed scoping the observed-vocabulary collector already
+  has (Task 7's `missingKeyStubs` fix).
 - PBI acceptance criteria: rank pinning and Task-only children (Task 1), root creation
   both via the row `+` and the toolbar (Task 1), badge coverage test (Task 2), never
   pruned by `hierarchyOnly` (already free — `pruneOutsideHierarchy` reads `ALL_TYPES`
