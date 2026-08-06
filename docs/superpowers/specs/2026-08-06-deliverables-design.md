@@ -18,9 +18,12 @@ forcing both through one `stateValues` list means either the list grows to descr
 unrelated processes at once, or Deliverables borrow a workflow that doesn't fit them.
 
 `Issue` and `Bug` already prove the "pinned rank, holds Tasks, sits beside the ladder"
-shape works (`[[Types beside the ladder]]`). `Deliverable` reuses that shape wholesale
-and adds exactly one capability neither has: creatable with **no parent**, because unlike
-a defect a deliverable does not necessarily concern anything already in the tree.
+shape works (`[[Types beside the ladder]]`). `Deliverable` reuses that shape wholesale —
+**including root creation, which is not new here either**: the toolbar's top-level
+creator has always offered every declared type with no parent, unconditionally (see
+Scope and Architecture §1 below), so `Issue`/`Bug` could already be created rootless
+before this increment touches anything. What `Deliverable` actually adds is its own
+review workflow, per the paragraph above — nothing about where it may sit in the tree.
 
 ## Scope
 

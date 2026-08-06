@@ -716,6 +716,32 @@ it('reads the Deliverable workflow state independently of the requirements one',
 	expect(d.done).toBe(true);
 });
 
+it('marks deliverableDone true for a Deliverable done in ITS OWN workflow, requirements state untouched', () => {
+	// Found by review: every other test in this describe block only ever asserts
+	// deliverableDone === false, so an implementation that hardcoded false (or never
+	// wired deliverableDoneValues into addItem at all) would still pass the suite.
+	// This is the one case that actually exercises the true branch.
+	const settings = {
+		...defaultSettings(),
+		stateKey: 'status',
+		deliverableStateKey: 'deliverableStatus',
+		deliverableDoneValues: ['Published'],
+	};
+	const vault = new FakeVault();
+	vault.addFile('D.md', {
+		frontmatter: { type: 'Deliverable', order: 10, status: 'Open', deliverableStatus: 'Published' },
+	});
+	const model = buildModel(vault.app, vault.entries(), settings);
+	const d = model.items.find((i) => i.title === 'D');
+	if (!d) throw new Error('missing D');
+
+	expect(d.deliverableDone).toBe(true);
+	// Done in ITS OWN workflow, not the requirements one — 'Open' names no requirements
+	// done value, so item.done must stay false.
+	expect(d.stateValue).toBe('Open');
+	expect(d.done).toBe(false);
+});
+
 it('collects observed Deliverable states onto the model, scoped to Deliverable items', () => {
 	const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
 	const vault = new FakeVault();
@@ -1983,6 +2009,25 @@ it('renders a card done in its own workflow as done, regardless of the requireme
 
 	// Done on the REQUIREMENTS board, not on this one.
 	expect(cardByTitle(containerEl, 'D').classList.contains('pbl-done')).toBe(false);
+});
+
+it('renders a card done in ITS OWN workflow as done, even when the requirements state is not', () => {
+	// Found by review: the negative test above alone cannot rule out an
+	// implementation that never wires deliverableDone into createCard at all, or
+	// hardcodes false — this is the case that requires the positive branch to work.
+	const vault = boardVault();
+	vault.addFile('D.md', {
+		frontmatter: { type: 'Deliverable', order: 10, status: 'Open', deliverableStatus: 'Published' },
+	});
+	const harness = makeView(vault, {
+		stateProperty: 'note.status',
+		deliverableStateProperty: 'note.deliverableStatus',
+		deliverableDoneValues: 'Published',
+	});
+	harness.view.setProjection('deliverables');
+	const { containerEl } = harness;
+
+	expect(cardByTitle(containerEl, 'D').classList.contains('pbl-done')).toBe(true);
 });
 
 it('shows "no deliverables yet" rather than "all done and hidden" for a base with none', () => {
