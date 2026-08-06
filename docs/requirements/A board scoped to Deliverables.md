@@ -23,6 +23,7 @@ files:
   - src/storage/collapseStore.ts
   - src/view/collapseState.ts
   - src/view/render/projections.ts
+  - src/domain/backlogReadme.ts
 ---
 
 # A board scoped to Deliverables
@@ -133,6 +134,14 @@ narrowed to one type.
 - A drop on a Deliverables-board column writes `deliverableState` alone — the drag input
   gets the same wrong-property regression coverage the menu input does, since the two
   reach the write through separate code paths that must not disagree.
+- Alt+Left/Right on a Deliverables-board card writes `deliverableState` alone too —
+  covered as its own case, not assumed from the drag or menu fix, since each of the
+  three inputs in "one move, three inputs" was independently found hardcoded to the
+  wrong write during this design's review.
+- The generated README, when `deliverableStateKey` is configured, lists it in the
+  property table — the same contract every other property this view writes already
+  gets, so "only the properties above are written" stays true of a vault using this
+  board.
 - The pane carries the same board-shaped styling (columns readable, no clipped overflow,
   no leftover tree-only root drop zone) in Deliverables mode as in Board mode.
 - A configured-but-empty Deliverables board (no `Deliverable` results in the base) shows
@@ -184,8 +193,13 @@ wiring (`:123`) calls whichever `move` its caller gave it rather than hardcoding
 menu would; and `renderBoardAdvisory` (`:84-91`) gains a Deliverables-scoped sibling that
 asks whether `model.results` contains any `Deliverable` rather than whether it is empty,
 so a base full of other work is never reported as "done and hidden" on this board.
-`src/view/interactions/cardDrag.ts`, `keyboard.ts` — wiring the new board's drop
-targets (through the parameterized `renderColumn` above) and its Alt-arrow ladder.
+`src/view/interactions/cardDrag.ts` — wiring the new board's drop targets through the
+parameterized `renderColumn` above.
+`src/view/interactions/keyboard.ts` — `handleBoardMoveKey` (`:293`) takes the same
+`move` callback `renderColumn` does (or branches on `host.projection`, matching whichever
+shape the menu/drag fix settles on) instead of hardcoding `host.performBoardMove` — the
+third of the three move inputs, found independently hardcoded to the wrong write and
+fixed as its own case rather than assumed to follow from the other two.
 `src/view/interactions/menu.ts` — three changes, not one: the Set-state section's
 visibility gate (`menu.ts:70`) checks whichever key is active for `host.projection`,
 not only the requirements `stateKey`; `stateChoices` (`menu.ts:289`) sources
@@ -201,3 +215,11 @@ projection is silently dropped on read like any unrecognised value.
 `src/view/collapseState.ts` — `CollapseState.projection()` and its write-back
 counterpart map `'deliverables'` to and from `DELIVERABLES_MODE`, the same round trip
 `board`/`roadmap` already get.
+`src/domain/backlogReadme.ts` — `fieldRows` (`:126-152`) gains
+`if (settings.deliverableStateKey) rows.push(...)`, matching its existing manual,
+per-property shape (the horizon/start/target rows immediately above it) rather than a
+generic loop over `OPTIONAL_PROPERTIES` — `fieldRows` already has that shape for every
+property before this one, so this PBI matches precedent rather than refactoring it. The
+full "declared vs. observed states" section for the Deliverable workflow is out of scope
+(design spec, Scope/Out) — only the property-table row, which an existing sentence
+elsewhere in the generated document depends on being complete.

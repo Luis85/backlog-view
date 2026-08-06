@@ -64,6 +64,13 @@ a defect a deliverable does not necessarily concern anything already in the tree
   shape of cost already ruled out for WIP limits/policies/stamps; every Deliverable
   result renders regardless of either workflow's done state, narrowed only by the quick
   filter.
+- A full second "declared vs. observed states" section in the generated README,
+  mirroring `stateSection`/`readmeStates`/`unlistedDone` for the Deliverable workflow
+  (added during review — see Architecture §2). The property-table **row** for
+  `deliverableStateKey` is required (its absence makes the generated document's own
+  claims false); a whole descriptive section about that workflow's vocabulary is
+  additive documentation depth nobody has asked for, the same distinction WIP
+  limits/policies/stamps already draw for the board itself.
 
 ## Architecture
 
@@ -133,6 +140,29 @@ deliverableState: {
 This is the same table `horizon`/`start`/`target` already extended for the roadmap axis
 — joining it means `configProblems`, `adoptableProperties` and the backfill's stubs all
 cover the new property for free, with no new code in any of those four readers.
+
+**A fifth reader is not on that list and does not get it for free — missed until this
+round of review.** `domain/backlogReadme.ts`'s generated-README property table
+(`fieldRows`, `:126-152`) is hand-enumerated — one `if (settings.stateKey) rows.push(...)`
+per property — rather than driven by `PROPERTY_TABLE`/`OPTIONAL_PROPERTIES` the way the
+four readers above are, so it is not "the vocabulary" in the sense that paragraph in
+`domain/CLAUDE.md` means and a field joining `OptionalField` does not put a row in this
+table by itself. Left unfixed, a vault with `deliverableStateKey` configured would get a
+generated README whose own words say "only the properties above are written" while a key
+the board genuinely writes carries no row — the exact contradiction the `EXTRA_TYPES`
+prose fix above exists to prevent, in a different function. `fieldRows` gains one more
+`if (settings.deliverableStateKey) rows.push(...)` line, matching its existing pattern
+(the horizon/start/target rows immediately above it in the same function) rather than
+restructuring the function to read `OPTIONAL_PROPERTIES` generically — that
+generalization would be a real improvement but is a wider change than this feature earns,
+since `fieldRows` already carries the same manual shape for every property before this
+one. **Out of scope, added here rather than assumed free**: a full second "declared vs.
+observed Deliverable states" section mirroring `readmeStates`/`stateSection`/
+`unlistedDone` for the requirements workflow. Its absence does not make any existing
+sentence in the generated document false — unlike the property-table row, which is why
+that one is required and this one is not — it only means the Deliverables workflow's own
+vocabulary is less richly documented there than the requirements one's. The same
+deferral this Scope section already makes for WIP limits, policies and stamps.
 
 Two plain list fields join `BacklogSettings` beside it, mirroring `states`/`doneValues`:
 `deliverableStates: string[]` (default `[]`, falls back to observed values exactly as
@@ -373,9 +403,19 @@ was true, and "reuse the rest of the render path unmodified" was not.
   *button* out on its own — with the requirements `stateKey` configured, it would still
   render while viewing the Deliverables board, promising a hide/show it does not perform
   here. The gate becomes `host.settings.stateKey && host.projection !== 'deliverables'`.
+- **The Alt-arrow ladder is the third input hardcoding the wrong move, not the second —
+  missed in the previous round's own fix for the other two.** `handleBoardMoveKey`
+  (`interactions/keyboard.ts:293`) calls `host.performBoardMove` directly, exactly the
+  shape the menu and drag fixes above both had before this design named the pattern
+  explicitly. "One move, three inputs" means what it says: a fix that changes two of the
+  three and stops is exactly the failure the rule exists to prevent, so `handleBoardMoveKey`
+  takes the same `move` callback `renderColumn` now takes (§6, drag), or branches on
+  `host.projection` the way `stateChoices`/`chooseState` do (§6, menu) — either shape is
+  fine as long as all three inputs share it, which the plan should verify explicitly
+  rather than trust a description of "one move, three inputs" to have been applied
+  uniformly by construction.
 
-The toolbar gets a fourth toggle position. `interactions/keyboard.ts` extends the
-Alt-arrow ladder to the new projection.
+The toolbar gets a fourth toggle position.
 
 The empty-state rule matches the requirements board's: `[[Columns from the workflow]]`
 already establishes that a board needs a configured state property before it draws
@@ -389,7 +429,9 @@ columns; the Deliverables board gates on `deliverableStateKey` the same way.
   cross-contamination between the two workflows' columns; a Deliverable nested inside a
   focused Feature/PBI subtree still renders as a card; a Deliverable whose *requirements*
   state is done still renders), `writePlan.test.ts` (`computeDeliverableStateWrites`, no
-  stamps emitted).
+  stamps emitted), `backlogReadme.test.ts` (a configured `deliverableStateKey` gets a
+  property-table row; the `EXTRA_TYPES` prose names `Deliverable`'s root capability
+  rather than asserting it hangs from a rung).
 - `storage/`: `frontmatter.test.ts` — apply/capture/undo for the new fields, including
   the compare-and-swap restore path `applyRestores` already exercises for `state`; and
   `collapseStore.test.ts` — the Deliverables mode round-trips through `readEntry`'s
@@ -409,7 +451,11 @@ columns; the Deliverables board gates on `deliverableStateKey` the same way.
   `cardDrag.test.ts` / a board-drag test — a drop on a Deliverables-board column writes
   `deliverableState` alone, the drag counterpart of the menu regression test above, since
   the same wrong-property failure mode reaches through `renderColumn`'s wiring
-  independently of the menu's. `emptyStates.test.ts` — a Deliverables board with a
+  independently of the menu's. `keyboard.test.ts` — Alt+Left/Right on a Deliverables-board
+  card writes `deliverableState` alone too: the third input in "one move, three inputs,"
+  covered separately from the drag and menu cases rather than assumed to follow from
+  either, since each of the three was independently found hardcoded to the wrong move in
+  this design's own review history. `emptyStates.test.ts` — a Deliverables board with a
   configured workflow, a non-empty base and zero Deliverable results shows "No
   deliverables yet," never "All N items are done and hidden." `toolbar.test.ts` — the
   completed-items toggle is absent while `host.projection === 'deliverables'`, even with
