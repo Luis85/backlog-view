@@ -86,11 +86,27 @@ this spec had not traced before its first draft. So the moment `Deliverable` joi
 
 `childTypeChoices(null)` governs something narrower and unrelated to that menu: only
 `domain/backlogReadme.ts`'s generated-README root detection reads it
-(`childTypeChoices(null).includes(typeName)`, in `isRoot`). Adding `Deliverable` to its
-top-level branch is a one-line, **documentation-accuracy-only** change — it makes the
-generated README correctly describe a Deliverable as able to have no parent — not a
-prerequisite for the feature to work. Whether to make it is folded into Acceptance
-criteria below rather than called out as a UI mechanism.
+(`childTypeChoices(null).includes(typeName)`, in `parentsOf`). Adding `Deliverable` to
+its top-level branch is a one-line, **documentation-accuracy-only** change — it makes
+the generated README's **table** correctly describe a Deliverable as able to have no
+parent. Whether to make it is folded into Acceptance criteria below rather than called
+out as a UI mechanism.
+
+**That table isn't the only prose reading `EXTRA_TYPES` there — missed in the first
+correction.** `typeSection`'s opening paragraph (`backlogReadme.ts`, the sentence above
+the table) interpolates the whole `EXTRA_TYPES` list into one uniform claim: "`Issue` and
+`Bug` sit beside it — they hang from any rung above the deepest." Once `Deliverable`
+joins that list the sentence is no longer true of all of it — it also hangs from
+nothing at all — so fixing the table alone leaves the paragraph directly above it
+contradicting it. The generator needs to read the same root-capability question the
+table already asks (`childTypeChoices(null).includes(t)`) rather than assume every extra
+type answers alike, and say so: something in the shape of "`Issue` and `Bug` sit beside
+it — they hang from any rung above the deepest… `Deliverable` is the same shape, but may
+also stand alone with no parent." A generated document contradicting itself between one
+paragraph and the table beneath it is exactly the failure mode `docs-check.mjs`'s own
+"counted, not merely found" rule (root `docs/README.md`, rule 6) was written to catch in
+this repository's own register — the same principle applies to a register this plugin
+generates for someone else's vault.
 
 Everywhere else `Deliverable` is matched by the existing `isExtraType` — no second
 predicate, unlike `Milestone`'s `isMarkerType`, because a Deliverable's
@@ -277,13 +293,42 @@ the one path for the drop/Alt-arrow/menu trio, following "one move, three inputs
 new method because the write target differs from `performBoardMove`'s, even though both
 ultimately call a `computeXWrites` + `applySafely` pair.
 
-`render/board.ts`'s card shell (`createCard`/`renderCardBody`/`wireCardActivation`) is
-reused as-is — a Deliverable card looks like any other card. The toolbar gets a fourth
-toggle position. `CardDragController` gets a third set of column drop targets (mirroring
-the board's, writing through `performDeliverablesBoardMove`); `interactions/keyboard.ts`
-extends the Alt-arrow ladder to the new projection; `interactions/menu.ts`'s card-menu
-Set-state section sources from whichever board is active
-(`host.projection === 'deliverables' ? host.deliverablesBoard : host.board`).
+**`render/board.ts`'s card shell is not quite "reused as-is" — corrected from the first
+draft.** `createCard` hardcodes its `pbl-done` class from `item.done`
+(`src/view/render/board.ts:230-236`), which is the requirements workflow's completion —
+so a Draft Deliverable that happens to read Done on the *requirements* board would render
+dimmed as finished here, and a Deliverable finished only in its own workflow would not
+render as finished at all. `BacklogItem` gains `deliverableDone: boolean`, computed in
+`assignAll` beside `item.done` the same way `deliverableStateValue` is computed beside
+`stateValue` (§3), and `createCard` takes the completion flag as a parameter instead of
+reading `item.done` itself — defaulted to `item.done` so the two existing call sites
+(requirements board, roadmap) need no change, with the Deliverables board's call site
+passing `item.deliverableDone` explicitly. `renderCardBody`/`wireCardActivation` are
+unaffected; only the one class computation moves.
+
+**`interactions/menu.ts`'s card menu needs three changes, not one — corrected from the
+first draft**, which said only that the Set-state *choices* should source from whichever
+board is active. Traced against the file: the section's own visibility gate
+(`if (host.settings.stateKey) addSetStateMenu(...)`, `menu.ts:70`) checks only the
+requirements key, so on a card viewed from the Deliverables board it would stay hidden
+whenever `stateKey` is unconfigured, even with a Deliverable workflow fully set up;
+`chooseState` (`menu.ts:305-311`) branches to `performBoardMove` only on
+`host.projection === 'board'`, falling through to `computeStateWrites` — a write to the
+**requirements** key — for `'deliverables'`, meaning an unfixed menu would write to the
+wrong property, not merely display wrong; and `addStateItems`'s checked-entry logic
+(`menu.ts:323-327`) calls that same `computeStateWrites` unconditionally to decide which
+entry is checked, so it would check against `item.stateValue` rather than
+`item.deliverableStateValue`. All three need a `'deliverables'` branch mirroring the
+existing `'board'` one: the gate reads whichever key is active for
+`host.projection`, `stateChoices` sources `host.deliverablesBoard?.board` the way it
+already sources `host.board?.board`, `chooseState` routes to
+`performDeliverablesBoardMove`, and the checked-entry test calls
+`computeDeliverableStateWrites` instead of `computeStateWrites` on that branch.
+
+The toolbar gets a fourth toggle position. `CardDragController` gets a third set of
+column drop targets (mirroring the board's, writing through
+`performDeliverablesBoardMove`); `interactions/keyboard.ts` extends the Alt-arrow ladder
+to the new projection.
 
 The empty-state rule matches the requirements board's: `[[Columns from the workflow]]`
 already establishes that a board needs a configured state property before it draws
@@ -306,10 +351,16 @@ columns; the Deliverables board gates on `deliverableStateKey` the same way.
 - `view/`: **an assertion that the fourth toggle actually renders the Deliverables
   board**, not just that `host.deliverablesBoard` was computed — `renderProjectionContent`
   is where a correct model can still draw the wrong thing, so this is the one case
-  worth a dedicated test rather than folding into toolbar coverage. Plus a
-  `contextCardWrites.test.ts`-style block for the Deliverables board (context row never
-  a card, never a write target — the same three questions asked of the general board's
-  drag/keyboard/menu paths), and keyboard/menu coverage for the fourth projection.
+  worth a dedicated test rather than folding into toolbar coverage. `menu.test.ts` —
+  the Set-state section appears on a Deliverables-board card when only
+  `deliverableStateKey` is configured (not `stateKey`), its checked entry reflects
+  `deliverableStateValue`, and picking one writes `deliverableState` alone — a
+  regression test standing in for the "wrong property" failure mode this round of
+  review caught before any code existed to catch it in. `rendering.test.ts` — a card's
+  `pbl-done` class follows the active board's own completion, not the other workflow's.
+  Plus a `contextCardWrites.test.ts`-style block for the Deliverables board (context row
+  never a card, never a write target — the same three questions asked of the general
+  board's drag/keyboard/menu paths), and keyboard coverage for the fourth projection.
 
 ## Open questions carried into the plan, not blocking it
 

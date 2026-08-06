@@ -79,6 +79,12 @@ narrowed to one type.
   renders here. This board does not implement "Show completed items" in this increment
   (Scope, in the design spec) — building it would need its own rollup over the
   Deliverable workflow, not the requirements one, and nothing has asked for it yet.
+- **3d — a Deliverable's two workflow states disagree on completion** (e.g. `Done` on
+  the requirements board, `Draft` here, or the reverse). Its card's finished styling
+  (`pbl-done`) here reflects the **Deliverable** workflow's own done values, never the
+  requirements board's — the shared card shell takes completion as an input rather than
+  reading `item.done` itself, so the two boards can disagree about one card without
+  either one lying about it.
 - **4a — the card is a context row (`outsideFilter`).** Never a card to drag, never a
   write target, never counted — the context-row rule applies here exactly as it does on
   the requirements board.
@@ -101,6 +107,14 @@ narrowed to one type.
   nested inside a currently-focused subtree (never only the synthetic focus-level roots).
 - Neither the requirements workflow's completion state nor "Show completed items" hides
   a card here; only the quick filter narrows this board's population.
+- A card's finished styling here follows the Deliverable workflow's own done values,
+  never the requirements board's — the two can disagree about one card and each board
+  shows its own answer.
+- On a Deliverable card viewed from this board: the card menu's Set state section
+  appears whenever `deliverableStateKey` is configured, even if the requirements
+  `stateKey` is not; its checked entry reflects `item.deliverableStateValue`, never
+  `item.stateValue`; and picking one writes `deliverableState` alone — never the
+  requirements key, whichever key happens to also be configured.
 - Picking the Deliverables board survives closing and reopening the view, the same way
   Board and Roadmap already do — not merely reverting to the tree because the stored
   value went unrecognised.
@@ -115,8 +129,8 @@ every optional property already does), plus `deliverableStates` and
 `deliverableDoneValues` beside `states`/`doneValues`.
 `src/domain/viewOptions.ts` — a new "Deliverables" group: the state property picker,
 the ordered workflow states, the done values.
-`src/domain/model.ts` — `BacklogItem.deliverableStateValue` and
-`BacklogModel.observedDeliverableStates`, built the same way `stateValue` and
+`src/domain/model.ts` — `BacklogItem.deliverableStateValue`, `deliverableDone` and
+`BacklogModel.observedDeliverableStates`, built the same way `stateValue`, `done` and
 `observedStates` already are.
 `src/domain/board.ts` — `boardColumns` takes the workflow (state reader, states, done
 values) as a parameter instead of reading `settings.stateKey`/`states`/`doneValues`
@@ -132,11 +146,22 @@ directly, so the requirements board and this one share one implementation.
 `renderDeliverablesBoardContent` branch beside `renderBoardContent`/
 `renderRoadmapContent`, gated on `settings.deliverableStateKey`; without it the fourth
 toggle falls through to `renderTree`, whatever `host.deliverablesBoard` holds.
-`src/view/backlogView.ts`, `src/view/render/board.ts`, `src/view/render/toolbar.ts` —
-the fourth toggle and its rendering, reusing the card shell `render/board.ts` already
-shares across projections.
-`src/view/interactions/cardDrag.ts`, `keyboard.ts`, `menu.ts` — wiring the new board's
-drop targets, its Alt-arrow ladder, and its card menu's Set state.
+`src/view/backlogView.ts`, `src/view/render/toolbar.ts` — the fourth toggle.
+`src/view/render/board.ts` — `createCard` takes its completion flag as a parameter
+(defaulted to `item.done`, so the requirements board and the roadmap need no change)
+instead of reading `item.done` itself, so the Deliverables board's call site can pass
+`item.deliverableDone`.
+`src/view/interactions/cardDrag.ts`, `keyboard.ts` — wiring the new board's drop
+targets and its Alt-arrow ladder.
+`src/view/interactions/menu.ts` — three changes, not one: the Set-state section's
+visibility gate (`menu.ts:70`) checks whichever key is active for `host.projection`,
+not only the requirements `stateKey`; `stateChoices` (`menu.ts:289`) sources
+`host.deliverablesBoard?.board` on that projection, mirroring how it already sources
+`host.board?.board` for `'board'`; and both `chooseState` (`menu.ts:305`, the write)
+and `addStateItems` (`menu.ts:323`, the checked entry) route to
+`performDeliverablesBoardMove` / `computeDeliverableStateWrites` rather than falling
+through to the requirements-keyed `computeStateWrites` — the gap that would otherwise
+have this board's menu write to the wrong property, not just display it wrong.
 `src/storage/collapseStore.ts` — a `DELIVERABLES_MODE` constant beside
 `BOARD_MODE`/`ROADMAP_MODE`, added to `readEntry`'s stored-mode allowlist, or the
 projection is silently dropped on read like any unrecognised value.

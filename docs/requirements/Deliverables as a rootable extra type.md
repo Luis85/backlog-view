@@ -10,6 +10,7 @@ files:
   - src/domain/settings.ts
   - src/domain/itemTypes.ts
   - src/view/render/rows.ts
+  - src/domain/backlogReadme.ts
   - styles/badges.css
 ---
 
@@ -85,6 +86,10 @@ under a real parent — and that is where this PBI's one real behavioural additi
 - The generated README's hierarchy table describes `Deliverable` as able to have no
   parent (`childTypeChoices(null)` includes it) — a documentation-accuracy criterion,
   not a functional one; nothing in the interactive UI depends on it.
+- The generated README's **prose above that table** agrees with it: it must not claim
+  every member of `EXTRA_TYPES` "hangs from any rung" once `Deliverable` is one of them
+  and does not. A generated document contradicting its own table is a defect in the
+  generator, not an acceptable inconsistency to leave for the reader to reconcile.
 
 ## Where it lives
 
@@ -97,6 +102,11 @@ root-creatable, for free.
 `src/domain/itemTypes.ts` — `childTypeChoices`' **under-a-parent** branch (`Epic`,
 `Feature`, `PBI`) offers `Deliverable` beside `Issue` and `Bug`; its top-level branch
 (`!parent`) also gains `Deliverable`, but only for `domain/backlogReadme.ts`'s
-`isRoot` check — the generated README, not the interactive creator.
+`parentsOf` check — the generated README, not the interactive creator.
 `src/view/render/rows.ts` — the badge table gains a `deliverable` entry (icon and badge
 class); `styles/badges.css` gains the colour.
+`src/domain/backlogReadme.ts` — beyond the `parentsOf`/`childTypeChoices(null)` table fix
+above, `typeSection`'s opening paragraph also names `EXTRA_TYPES` as a uniform group that
+"hangs from any rung above the deepest"; it needs to read the same per-type
+`childTypeChoices(null)` question the table already asks rather than assume every extra
+type answers alike, and say so explicitly once `Deliverable` is the exception.
