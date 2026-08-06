@@ -175,11 +175,22 @@ per Scope.
 
 ### 3. Model — `src/domain/model.ts`
 
-`BacklogItem` gains `deliverableStateValue: string | null`, and `BacklogModel` gains
-`observedDeliverableStates: string[]`, built in `assignAll` the same way `stateValue`
-and `observedStates` already are — a second, parallel field rather than a generalized
-loop, matching how `plannedStart`/`plannedTarget`/`horizon` are already three separate
-fields rather than one map. This is a deliberate non-abstraction: the model already has
+`BacklogItem` gains `deliverableStateValue: string | null` and `deliverableDone: boolean`,
+and `BacklogModel` gains `observedDeliverableStates: string[]`.
+
+**Wrong phase in an earlier draft, caught by review: `stateValue` and `done` are
+computed in `addItem` — the `RawItem`/raw-frontmatter-read phase, `model.ts:267-289` —
+not in `assignAll`, which runs two phases later.** `buildModel` calls
+`collectObservedStates(linked.all, settings)` right after `linkAll`
+(`model.ts:180`) and well before `assignAll` (`model.ts:183`) ever runs; the
+collector can only see a field that phase already populated. `deliverableStateValue`
+and `deliverableDone` are computed the same place `stateValue`/`done` are — in
+`addItem`, alongside them — so `collectObservedDeliverableStates(linked.all, settings)`
+sits beside `collectObservedStates` in `buildModel`, reading fields that already exist
+by then. Built the same way `stateValue` and `observedStates` already are — a second,
+parallel field rather than a generalized loop, matching how `plannedStart`/
+`plannedTarget`/`horizon` are already three separate fields rather than one map. This is
+a deliberate non-abstraction: the model already has
 precedent for "one field per optional property," and a generic loop over "state-like
 fields" would touch a tested, working phase for one caller.
 
@@ -478,6 +489,25 @@ was true, and "reuse the rest of the render path unmodified" was not.
   *button* out on its own — with the requirements `stateKey` configured, it would still
   render while viewing the Deliverables board, promising a hide/show it does not perform
   here. The gate becomes `host.settings.stateKey && host.projection !== 'deliverables'`.
+- **The toolbar's own item count hardcodes the same requirements-only predicate this
+  section just decoupled the board from — found by review, not by the earlier drafts.**
+  `syncCountLabel` (`render/toolbar.ts:179-186`) runs on every render regardless of
+  projection and computes `shown` as `model.results.filter((item) =>
+  !host.isRowHidden(item)).length` — `isRowHidden` is `hidden(item, true)`
+  (`backlogView.ts:307-343`), whose `hidingCompleted()` branch hides a fully-done
+  *requirements* subtree. A Deliverable done only in the requirements workflow renders
+  as a card on the Deliverables board (this section's whole point) while the toolbar
+  simultaneously reports it hidden — "0 of 1" beside a visible card. The population
+  predicate this section already had to invent for `boardColumns`' `visible`/
+  `population` arguments (filter-only, never `hidingCompleted`) is exactly the rule
+  `syncCountLabel` needs too, so it is exposed once rather than re-derived at the call
+  site: `BacklogViewHost` gains `isRowHiddenByFilterOnly(item): boolean` — the quick
+  filter alone, `this.filter.active && !this.filter.keeps(item.file.path)`, never
+  `hidingCompleted()` — and `boardColumns`' Deliverables-board `visible` argument
+  becomes `(item) => host.isRowHiddenByFilterOnly(item) === false && isDeliverable(item)`
+  instead of a second inline predicate. `syncCountLabel` picks between the two by
+  `host.projection === 'deliverables'`, the same test the completed-toggle's gate above
+  uses.
 - **The Alt-arrow ladder is the third input hardcoding the wrong move, not the second —
   missed in the previous round's own fix for the other two.** `handleBoardMoveKey`
   (`interactions/keyboard.ts:293`) calls `host.performBoardMove` directly, exactly the

@@ -199,9 +199,12 @@ directly, so the requirements board and this one share one implementation.
 `computeDeliverableStateWrites`, deliberately with no stamp logic.
 `src/storage/frontmatter.ts` — applying and capturing the new fields through
 `optionalKeyFor(settings, 'deliverableState')`.
-`src/view/host.ts` — `projection` gains `'deliverables'`, and `performDeliverablesBoardMove`
+`src/view/host.ts` — `projection` gains `'deliverables'`, `performDeliverablesBoardMove`
 is declared on `BacklogViewHost` as a one-line delegation to `CardMoveController`,
-mirroring `performBoardMove`'s own delegation exactly.
+mirroring `performBoardMove`'s own delegation exactly, and `isRowHiddenByFilterOnly(item)`
+is declared beside `isRowHidden`/`isRowHiddenUnfiltered` — the quick filter alone, never
+"Show completed items": the predicate this board's population needs and the one
+`syncCountLabel` (below) is missing today.
 `src/view/cardMoves.ts` — `CardMoveController` gains `performDeliverablesBoardMove` as a
 fourth sibling to `performBoardMove`/`performHorizonMove`/`performScheduleMove`,
 delegating to the same private `applyCardMove` (pending class, no-op check, announcement)
@@ -213,13 +216,19 @@ silently drop that behavior.
 through the same `ProjectionContent.board` field `renderBoardContent` already uses —
 there is no second snapshot field; without this branch the fourth toggle falls through to
 `renderTree` and nothing computes a board at all.
-`src/view/backlogView.ts` — the fourth toggle, and `renderTreeContent`'s
-`pbl-board-mode` class condition widens to `projection === 'board' || projection ===
-'deliverables'` (`backlogView.ts:468`) — the two are shaped alike and share the class,
-rather than the Deliverables board inheriting the tree's overflow and root drop zone by
-omission.
-`src/view/render/toolbar.ts` — the fourth toggle, and `renderCompletedToggle`'s gate
-(`toolbar.ts:210`) adds `&& host.projection !== 'deliverables'`.
+`src/view/backlogView.ts` — the fourth toggle, `renderTreeContent`'s `pbl-board-mode`
+class condition widens to `projection === 'board' || projection === 'deliverables'`
+(`backlogView.ts:468`) — the two are shaped alike and share the class, rather than the
+Deliverables board inheriting the tree's overflow and root drop zone by omission — and
+`isRowHiddenByFilterOnly` is implemented beside `isRowHidden`/`isRowHiddenUnfiltered`
+(`backlogView.ts:307-343`), reusing the same `filter.active`/`filter.keeps` check
+`hidden()` already makes on its first branch, never reaching `hidingCompleted()`.
+`src/view/render/toolbar.ts` — the fourth toggle; `renderCompletedToggle`'s gate
+(`toolbar.ts:210`) adds `&& host.projection !== 'deliverables'`; and `syncCountLabel`
+(`toolbar.ts:179-186`), which runs every render regardless of projection, picks
+`isRowHiddenByFilterOnly` over `isRowHidden` when `host.projection === 'deliverables'` —
+found by review: unfixed, a Deliverable done only in the requirements workflow renders as
+a visible card here while the toolbar simultaneously reports the base as "0 of 1".
 `src/view/render/board.ts` — three changes, not one: `createCard` takes its completion
 flag as a parameter (defaulted to `item.done`, so the requirements board and the roadmap
 need no change) instead of reading `item.done` itself, so the Deliverables board's call
