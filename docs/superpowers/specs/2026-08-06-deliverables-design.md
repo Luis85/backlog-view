@@ -26,8 +26,10 @@ a defect a deliverable does not necessarily concern anything already in the tree
 
 **In:**
 - `Deliverable` joins `EXTRA_TYPES`: pinned at `EXTRA_TYPE_RANK`, `Task` children, valid
-  under `Epic`/`Feature`/`PBI` — and *also* offered by the **+** modal at the top level,
-  which today's extra types are not.
+  under `Epic`/`Feature`/`PBI` — and, like every `EXTRA_TYPES` member, already creatable
+  at the top level today through the toolbar's "pick another type" menu (confirmed
+  against `renderToolbar`, see Architecture §1 — this corrects the first draft of this
+  spec, which wrongly attributed root offering to `childTypeChoices`).
 - Its own folder (`typeFolder.deliverable`, default `deliverables`), badge and icon —
   the shipped opinion every declared type gets.
 - A fourth board projection, `Deliverables`, alongside Tree/Board/Roadmap: cards are
@@ -68,19 +70,26 @@ a defect a deliverable does not necessarily concern anything already in the tree
 `newItemsGroup`), so they need no change — this is the same "free" reuse
 `[[Milestones as their own type]]` documents for the same reason.
 
-`childTypeChoices`' top-level branch is the one change beyond what `Issue`/`Bug` already
-get:
+**Root creation needs no `itemTypes.ts` change at all — corrected from the first draft.**
+That draft assumed `childTypeChoices(null)` gates what the top-level **+** offers, the
+way it gates a row's own **+**. It does not: `renderToolbar` (`view/render/toolbar.ts`)
+wires the top-level creator itself, and its "pick another type" menu already iterates
+`ALL_TYPES` unconditionally, calling `promptCreateItem(host, [type], null)` for every
+declared name — `Issue` and `Bug` are already offered at the root there today, a fact
+this spec had not traced before its first draft. So the moment `Deliverable` joins
+`EXTRA_TYPES`, that menu offers it at the root for free, with **zero** view-layer change.
 
-```ts
-// itemTypes.ts, childTypeChoices
-if (!parent) return [ladderChild, ...MARKER_TYPES, ...ROOTABLE_TYPES];
-```
+`childTypeChoices(null)` governs something narrower and unrelated to that menu: only
+`domain/backlogReadme.ts`'s generated-README root detection reads it
+(`childTypeChoices(null).includes(typeName)`, in `isRoot`). Adding `Deliverable` to its
+top-level branch is a one-line, **documentation-accuracy-only** change — it makes the
+generated README correctly describe a Deliverable as able to have no parent — not a
+prerequisite for the feature to work. Whether to make it is folded into Acceptance
+criteria below rather than called out as a UI mechanism.
 
-`ROOTABLE_TYPES = ['Deliverable']` is a new, narrow list — not a flag on `EXTRA_TYPES`
-generally, and not extending `Issue`/`Bug`'s own offering, which the scoping
-conversation explicitly ruled out. Everywhere else `Deliverable` is matched by the
-existing `isExtraType` — no second predicate, unlike `Milestone`'s `isMarkerType`, because
-a Deliverable's rank/children/hangs-from rules are exactly `Issue`/`Bug`'s.
+Everywhere else `Deliverable` is matched by the existing `isExtraType` — no second
+predicate, unlike `Milestone`'s `isMarkerType`, because a Deliverable's
+rank/children/hangs-from rules are exactly `Issue`/`Bug`'s.
 
 `src/view/render/rows.ts`'s badge table gains a `deliverable` entry (icon + badge
 class), and `styles/badges.css` gains the colour — the same "no fallback for a declared
@@ -132,12 +141,27 @@ becomes parametrized over a small `Workflow` shape instead:
 ```ts
 interface Workflow {
   stateOf(item: BacklogItem): string | null;
-  values: string[];          // stateMenuValues' result, precomputed by the caller
+  values: string[];          // stateMenuValues' result — the configured list, or the
+                              // observed⋃done fallback when nothing is configured
+  observedValues: string[];  // the RAW observed values, always — corrected below
   doneValues: string[];
   wipLimits: Record<string, number>;   // {} for the Deliverables board
   columnPolicies: Record<string, string>; // {} for the Deliverables board
 }
 ```
+
+**`observedValues` is not redundant with `values` — corrected from the first draft**,
+which precomputed only `values` and dropped this. `workflowColumns` today does two
+things with the observed set, not one: `stateMenuValues` folds it in only as a
+*fallback* (when no `stateValues` are configured); separately, and unconditionally, it
+walks `model.observedStates` a second time to mint a stray column for any observed value
+the configured list didn't already name — the "never lose a card to an unmapped status"
+guarantee. A `Workflow` carrying only `values` cannot reproduce that second pass once a
+workflow *is* configured, since at that point `values` no longer contains the observed
+set at all. Both call sites pass their own raw list — `model.observedStates` for the
+requirements board, `model.observedDeliverableStates` for the Deliverables board — so
+`boardColumns`' stray-column pass reads `observedValues` exactly where `workflowColumns`
+reads `model.observedStates` today, unchanged in behavior for the requirements board.
 
 The requirements board's call site builds this from `settings.stateKey` /
 `item.stateValue` / `model.observedStates`, unchanged in behavior. The Deliverables
@@ -176,9 +200,21 @@ No `settings`/`today` params, deliberately — no stamp logic to consult, per Sc
 apply/capture `state`/`removeStateKey` (`applyWrites`, `touchedKeys`,
 `captureInverses`), so undo/redo work identically with no new capture logic.
 
-### 6. View — `src/view/host.ts` and the render/interaction layer
+### 6. View — `src/view/host.ts`, `src/storage/collapseStore.ts`, the render/interaction layer
 
-`host.projection` gains `'deliverables'`. `performDeliverablesBoardMove(item, state)` is
+`host.projection` gains `'deliverables'`. **Persistence needs its own change, missing
+from the first draft**: `storage/collapseStore.ts` stores the projection as a `mode`
+string validated against an allowlist (`readEntry`'s `readEnum(record.mode, [BOARD_MODE,
+ROADMAP_MODE])`) — a third value is silently dropped on read today, since nothing names
+it. This needs a `DELIVERABLES_MODE` constant beside `BOARD_MODE`/`ROADMAP_MODE`, added
+to that allowlist, and `view/collapseState.ts`'s `CollapseState.projection()` (plus its
+write-back counterpart) mapping `'deliverables'` to and from it — the same round trip
+`'board'`/`'roadmap'` already get. Without this, picking the Deliverables board would
+silently revert to the tree on reopen, exactly the gap `[[Milestones as their own type]]`'s
+own landmines list warns this codebase to check for on every new declared value
+threaded through a stored enum.
+
+`performDeliverablesBoardMove(item, state)` is
 the one path for the drop/Alt-arrow/menu trio, following "one move, three inputs" — a
 new method because the write target differs from `performBoardMove`'s, even though both
 ultimately call a `computeXWrites` + `applySafely` pair.
@@ -208,6 +244,9 @@ columns; the Deliverables board gates on `deliverableStateKey` the same way.
   row never a card, never a write target — the same three questions asked of the general
   board's drag/keyboard/menu paths), plus toolbar/keyboard/menu coverage for the fourth
   projection.
+- `storage/`: `collapseStore.test.ts` — the Deliverables mode round-trips through
+  `readEntry`'s allowlist exactly as `board`/`roadmap` already do, and a legacy stored
+  value untouched by this change still reads back unchanged.
 
 ## Open questions carried into the plan, not blocking it
 

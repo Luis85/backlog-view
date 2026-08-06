@@ -20,6 +20,8 @@ files:
   - src/view/interactions/cardDrag.ts
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
+  - src/storage/collapseStore.ts
+  - src/view/collapseState.ts
 ---
 
 # A board scoped to Deliverables
@@ -81,7 +83,11 @@ narrowed to one type.
 - No non-Deliverable item ever appears as a card here, whatever its own state.
 - No result is lost: every Deliverable result renders in exactly one column, and column
   counts sum to the Deliverable card count — the same guarantee [[Product Kanban]]
-  states for the requirements board.
+  states for the requirements board, including a stray column for an observed value the
+  configured workflow does not name.
+- Picking the Deliverables board survives closing and reopening the view, the same way
+  Board and Roadmap already do — not merely reverting to the tree because the stored
+  value went unrecognised.
 
 ## Where it lives
 
@@ -109,3 +115,9 @@ the fourth toggle and its rendering, reusing the card shell `render/board.ts` al
 shares across projections.
 `src/view/interactions/cardDrag.ts`, `keyboard.ts`, `menu.ts` — wiring the new board's
 drop targets, its Alt-arrow ladder, and its card menu's Set state.
+`src/storage/collapseStore.ts` — a `DELIVERABLES_MODE` constant beside
+`BOARD_MODE`/`ROADMAP_MODE`, added to `readEntry`'s stored-mode allowlist, or the
+projection is silently dropped on read like any unrecognised value.
+`src/view/collapseState.ts` — `CollapseState.projection()` and its write-back
+counterpart map `'deliverables'` to and from `DELIVERABLES_MODE`, the same round trip
+`board`/`roadmap` already get.
