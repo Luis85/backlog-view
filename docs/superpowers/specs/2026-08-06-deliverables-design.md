@@ -96,27 +96,33 @@ this spec had not traced before its first draft. So the moment `Deliverable` joi
 
 `childTypeChoices(null)` governs something narrower and unrelated to that menu: only
 `domain/backlogReadme.ts`'s generated-README root detection reads it
-(`childTypeChoices(null).includes(typeName)`, in `parentsOf`). Adding `Deliverable` to
-its top-level branch is a one-line, **documentation-accuracy-only** change — it makes
-the generated README's **table** correctly describe a Deliverable as able to have no
-parent. Whether to make it is folded into Acceptance criteria below rather than called
-out as a UI mechanism.
+(`childTypeChoices(null).includes(typeName)`, in `parentsOf`).
 
-**That table isn't the only prose reading `EXTRA_TYPES` there — missed in the first
-correction.** `typeSection`'s opening paragraph (`backlogReadme.ts`, the sentence above
-the table) interpolates the whole `EXTRA_TYPES` list into one uniform claim: "`Issue` and
-`Bug` sit beside it — they hang from any rung above the deepest." Once `Deliverable`
-joins that list the sentence is no longer true of all of it — it also hangs from
-nothing at all — so fixing the table alone leaves the paragraph directly above it
-contradicting it. The generator needs to read the same root-capability question the
-table already asks (`childTypeChoices(null).includes(t)`) rather than assume every extra
-type answers alike, and say so: something in the shape of "`Issue` and `Bug` sit beside
-it — they hang from any rung above the deepest… `Deliverable` is the same shape, but may
-also stand alone with no parent." A generated document contradicting itself between one
-paragraph and the table beneath it is exactly the failure mode `docs-check.mjs`'s own
-"counted, not merely found" rule (root `docs/README.md`, rule 6) was written to catch in
-this repository's own register — the same principle applies to a register this plugin
-generates for someone else's vault.
+**Corrected again, by a later review round: the top-level branch is not a
+`Deliverable`-only or `EXTRA_TYPES`-only addition — it becomes `ALL_TYPES` in full.**
+The reasoning above (the toolbar's top-level creator draws no line anywhere in the
+vocabulary — `Feature`, `PBI` and `Task` are already offered parentless there today,
+not only the extra types) applies to `childTypeChoices(null)` exactly as it applies to
+the toolbar: a function whose whole job is to describe that menu's real behaviour
+cannot single out `Deliverable`, or `EXTRA_TYPES`, without inventing a "which types make
+sense as roots" question the toolbar itself never asks. This is still a
+**documentation-accuracy-only** change — nothing in the interactive UI depends on it,
+since the toolbar already offers every type root-creatable regardless of what this
+function returns.
+
+**That also means `typeSection`'s opening paragraph needs NO edit — corrected from an
+earlier draft of this note, which wrongly predicted it would.** That draft assumed
+`Deliverable` (or, once broadened, the extra types) would be singled out as newly
+rootable while the paragraph's "`Issue` and `Bug` sit beside it — they hang from any
+rung above the deepest" claim stayed uniformly true of the rest, so the two would
+contradict each other the moment `Deliverable` joined without a parallel carve-out in
+the prose. But once `childTypeChoices(null)` agrees with the toolbar's real behaviour —
+equal to `ALL_TYPES` in full — there is no "some extra types are rootable and one isn't"
+distinction left for prose to draw at all: the paragraph describes structural shape
+(ladder rung, pinned extra type, no-rung marker), a question root capability never bears
+on, and the table beneath it already carries the per-type root marker correctly for the
+whole vocabulary once the point above lands. Nothing here is `Deliverable`-specific;
+every declared type's row gets the same "*(nothing — it is a root)*" marker alike.
 
 Everywhere else `Deliverable` is matched by the existing `isExtraType` — no second
 predicate, unlike `Milestone`'s `isMarkerType`, because a Deliverable's

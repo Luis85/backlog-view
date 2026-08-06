@@ -1566,12 +1566,24 @@ git commit -m "refactor: parametrize boardColumns over a Workflow, add the Deliv
 **Files:**
 - Modify: `src/storage/collapseStore.ts`
 - Modify: `src/view/collapseState.ts`
+- Modify: `src/view/host.ts` (the `Projection` type alone — see below)
 - Test: `test/storage/collapseStore.test.ts`
 
 **Interfaces:**
 - Consumes: `BOARD_MODE`/`ROADMAP_MODE` (existing), `readEnum` (existing).
-- Produces: `DELIVERABLES_MODE` constant; `Projection` (Task 11) round-trips through
-  `CollapseState.projection()`/`setProjection()`.
+- Produces: `Projection = 'tree' | 'board' | 'roadmap' | 'deliverables'`; `DELIVERABLES_MODE`
+  constant; both round-trip through `CollapseState.projection()`/`setProjection()`.
+
+**Found by review: `CollapseState.projection()`/`setProjection()` cannot type-check
+against the OLD `Projection` union.** An earlier draft of this task typed
+`projection(): Projection` returning `'deliverables'` and `setProjection(mode:
+Projection)` accepting it, while leaving `Projection` itself unwidened until Task 11 —
+`npx tsc --noEmit` fails on this task's own commit, and the storage-only Vitest run in
+Step 4 below does not catch that, since it never type-checks `collapseState.ts` against
+the interface. The `Projection` widening is a one-line type declaration with no
+implementation behind it (`BacklogViewHost`'s two new methods are still Task 11's own
+job), so it moves here, to the task that actually needs it to compile — Task 11 below
+now consumes it rather than producing it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1624,6 +1636,13 @@ In `readEntry`, widen the allowlist:
 	const mode = readEnum(record.mode, [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE]);
 ```
 
+In `src/view/host.ts`, widen the `Projection` type alone (the two new
+`BacklogViewHost` interface members are Task 11's own job, not this task's):
+
+```ts
+export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables';
+```
+
 In `src/view/collapseState.ts`, import `DELIVERABLES_MODE` and widen `projection()`/
 `setProjection()`:
 
@@ -1643,49 +1662,50 @@ In `src/view/collapseState.ts`, import `DELIVERABLES_MODE` and widen `projection
 	}
 ```
 
-(`Projection` itself is widened in Task 11; this task's own tests exercise the store
-directly, so they do not depend on that yet.)
-
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Run tests to verify they pass, and confirm the type-check**
 
 Run: `npx vitest run test/storage/collapseStore.test.ts`
 Expected: PASS
 
+Run: `npx tsc --noEmit`
+Expected: PASS — `Projection` now includes `'deliverables'` in the same commit as the
+code that returns/accepts it, so nothing here is left type-broken for Task 11 to fix.
+`BacklogViewHost` gains no new interface members in this task, so no implementer is
+left incomplete either — that compile failure is Task 11's own, deliberately.
+
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/storage/collapseStore.ts src/view/collapseState.ts test/storage/collapseStore.test.ts
+git add src/storage/collapseStore.ts src/view/collapseState.ts src/view/host.ts test/storage/collapseStore.test.ts
 git commit -m "feat: persist the Deliverables projection in the collapse store"
 ```
 
 ---
 
-### Task 11: Widen `Projection`, declare the write path and the filter-only predicate on `BacklogViewHost`
+### Task 11: Declare the write path and the filter-only predicate on `BacklogViewHost`
 
 **Files:**
 - Modify: `src/view/host.ts`
 - Test: none (interface-only; exercised by later tasks' tests)
 
 **Interfaces:**
-- Consumes: `Projection` (existing), `computeDeliverableStateWrites`/`ItemWrite`
-  (Task 7).
-- Produces: `Projection = 'tree' | 'board' | 'roadmap' | 'deliverables'`;
-  `BacklogViewHost.performDeliverablesBoardMove(item, state): Promise<boolean>`;
+- Consumes: `Projection` (widened by Task 10, already includes `'deliverables'`),
+  `computeDeliverableStateWrites`/`ItemWrite` (Task 7).
+- Produces: `BacklogViewHost.performDeliverablesBoardMove(item, state): Promise<boolean>`;
   `BacklogViewHost.isRowHiddenByFilterOnly(item): boolean`. Consumed by every
   remaining task.
 
 This is a pure interface change with no runtime behavior of its own — TypeScript will
 fail every implementer (`ProductBacklogView`) to compile until Task 13 implements both
-new methods, which is expected and is why this task carries no test of its own; the
-compile failure IS the check, resolved by Task 13.
+new methods. **Found by review: that expected compile failure must not be committed on
+its own, here or after Task 12.** Neither this task's own commit nor Task 12's leaves
+`npm run check` passing — the whole point of the two new interface members is that
+nothing implements them until Task 13 — so both defer to Task 13's single combined
+commit rather than landing a broken `npx tsc --noEmit` twice first. This task carries
+no test of its own for the same reason Task 12 doesn't: the compile failure IS the
+check, and Task 13's Step 4 is where it is confirmed resolved.
 
-- [ ] **Step 1: Widen `Projection`**
-
-```ts
-export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables';
-```
-
-- [ ] **Step 2: Declare the write-path method**
+- [ ] **Step 1: Declare the write-path method**
 
 Beside `performBoardMove` in the `BacklogViewHost` interface:
 
@@ -1699,7 +1719,7 @@ Beside `performBoardMove` in the `BacklogViewHost` interface:
 	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
 ```
 
-- [ ] **Step 3: Declare the filter-only visibility predicate**
+- [ ] **Step 2: Declare the filter-only visibility predicate**
 
 Beside `isRowHiddenUnfiltered`:
 
@@ -1714,19 +1734,19 @@ Beside `isRowHiddenUnfiltered`:
 	isRowHiddenByFilterOnly(item: BacklogItem): boolean;
 ```
 
-- [ ] **Step 4: Confirm the expected compile failure**
+- [ ] **Step 3: Confirm the expected compile failure**
 
 Run: `npx tsc --noEmit`
 Expected: FAIL — `ProductBacklogView` (in `src/view/backlogView.ts`) does not implement
 `performDeliverablesBoardMove` or `isRowHiddenByFilterOnly` yet. This is the expected
 state until Task 13.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Do not commit yet — proceed to Task 12, then Task 13**
 
-```bash
-git add src/view/host.ts
-git commit -m "feat: declare the Deliverables write path and filter-only visibility on BacklogViewHost"
-```
+Task 13's Step 5 is the single combined commit for `src/view/host.ts` (this task),
+`src/view/cardMoves.ts` (Task 12) and `src/view/backlogView.ts` (Task 13) — the three
+land together, since `npm run check` cannot pass on any one of them alone until Task 13
+implements the interface Tasks 11 and 12 only declare and extend.
 
 ---
 
@@ -1774,12 +1794,12 @@ actually invokes it. Task 16's view-level tests are what exercises this method e
 end, the same way `test/view/boardMoves.test.ts` is what exercises `performBoardMove`
 rather than a unit test of `CardMoveController` alone.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 2: Do not commit yet — proceed to Task 13**
 
-```bash
-git add src/view/cardMoves.ts
-git commit -m "feat: CardMoveController.performDeliverablesBoardMove"
-```
+Same reason as Task 11's own deferred commit: `ProductBacklogView` still does not
+implement `BacklogViewHost`'s two new members, so `npx tsc --noEmit` stays red through
+this task. Task 13's Step 5 commits `host.ts`, `cardMoves.ts` and `backlogView.ts`
+together once that implementation lands.
 
 ---
 
@@ -1837,10 +1857,10 @@ this touches a base class every view test constructs)
 Expected: PASS — no existing test asserts on `pbl-board-mode` being absent for a
 projection value that did not exist before this task, so nothing here should regress.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (Tasks 11, 12 and 13 together)**
 
 ```bash
-git add src/view/backlogView.ts
+git add src/view/host.ts src/view/cardMoves.ts src/view/backlogView.ts
 git commit -m "feat: wire the Deliverables write path and filter-only visibility on the view"
 ```
 
