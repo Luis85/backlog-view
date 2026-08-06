@@ -81,20 +81,73 @@ is to make it agree with the toolbar's real, standing behavior: spread the WHOLE
 "rootable" flag distinguishing it from `Issue`/`Bug` — on this axis it never was
 different from them.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Update the fixture and every pre-existing assertion the widened
+  vocabulary breaks, then add new tests**
+
+**Found by review: this task's earlier draft added new tests but left several
+PRE-EXISTING assertions in `test/domain/itemTypes.test.ts` unchanged, and a full run
+of the file cannot pass with `EXTRA_TYPES`/`ALL_TYPES` widened until they are fixed
+too.** Traced against the actual current file (not a paraphrase — line numbers below
+are from the file as it stands before this task):
+
+1. **The shared `fixture()` (lines 37-56) needs a `Deliverable` file**, or a loop added
+   in the very next task-list item below throws `missing fixture item Deliverable`
+   the moment `EXTRA_TYPES` includes it. Add this line right after the existing
+   `Issue.md` line, parented under `Epic` the same way `Bug`/`Issue` already are:
 
 ```ts
-// test/domain/itemTypes.test.ts — inside the existing describe block, beside the
-// other childTypeChoices tests
-it('offers Deliverable under an Epic, a Feature or a PBI, beside Issue and Bug', () => {
-	const { get } = fixture();
-	expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Deliverable']);
-});
+	vault.addFile('Deliverable.md', { frontmatter: { type: 'Deliverable', order: 50 }, parentLink: 'Epic' });
+```
 
-it('offers every extra type at the top level too, matching the toolbar\'s own creator', () => {
-	expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone', 'Issue', 'Bug', 'Deliverable']);
-});
+2. **`'offers the extra types under every rung above the deepest'`** (currently lines
+   97-102) — its three assertions each need `, 'Deliverable'` appended, since the
+   under-a-parent branch already spreads the whole (now three-member) `EXTRA_TYPES`:
 
+```ts
+	it('offers the extra types under every rung above the deepest', () => {
+		const { get } = fixture();
+		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Deliverable']);
+		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug', 'Deliverable']);
+		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug', 'Deliverable']);
+	});
+```
+
+3. **`'still refuses to put a marker under anything'`** (currently lines 134-139) loops
+   `for (const parent of [...LEVELS, ...EXTRA_TYPES]) { expect(childTypeChoices(get(parent))).not.toContain('Milestone'); }`
+   — this is why fixture step 1 above is required: without a `Deliverable` fixture
+   file, `get('Deliverable')` throws inside this loop the moment `EXTRA_TYPES` includes
+   it. With the fixture fixed, this test needs NO other edit — it already generalizes
+   over whatever `EXTRA_TYPES` holds.
+
+4. **`'offers only the top level at the top level'`** (currently lines 120-125) —
+   REPLACE its body and its now-stale `// CHANGED:` comment entirely; this is the
+   assertion pinning the exact value this task changes, not a new test to add beside it:
+
+```ts
+	it('offers every extra type at the top level too, matching the toolbar\'s own creator', () => {
+		// The toolbar's top-level "pick another type" menu has always offered every
+		// ALL_TYPES entry unconditionally, with no parent — this list has to agree with
+		// that standing behavior rather than invent a narrower one.
+		expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone', 'Issue', 'Bug', 'Deliverable']);
+	});
+```
+
+5. **Both literal `ALL_TYPES` array assertions** — `'offers the ladder then the extras
+   for assignment by hand'` (currently line 144) and `'is a fixed vocabulary, matched
+   case-insensitively'` (currently line 151) — each need `'Deliverable'` inserted
+   between `'Bug'` and `'Milestone'`:
+
+```ts
+	expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Deliverable', 'Milestone']);
+```
+
+   Apply this exact change to BOTH occurrences (the second test also has an unrelated
+   `LEVELS` assertion immediately above it — leave that one as it is).
+
+Then add the new tests, none of which have a pre-existing counterpart — inside the
+`describe('childTypeChoices', ...)` block, alongside the others:
+
+```ts
 it('pins Deliverable at EXTRA_TYPE_RANK wherever it hangs, holding only Tasks', () => {
 	const vault = new FakeVault();
 	vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
@@ -112,23 +165,19 @@ it('defaults the Deliverable folder to <home>/deliverables', () => {
 });
 ```
 
-Add `FakeVault`, `buildModel`, `defaultSettings`, `defaultTypeFolder` to that file's
-imports if not already present (`buildModel`/`defaultSettings`/`FakeVault` already are,
-per the existing fixture; `defaultTypeFolder` needs adding to the `../../src/domain/settings`
-import list).
-
-**If an existing test in this file already asserts the OLD `childTypeChoices(null)`
-value (`['Epic', 'Milestone']`, no extra types) — check for one before writing the
-above — update its expected value to include `'Issue', 'Bug'` too: that assertion was
-pinning the pre-existing documentation/toolbar mismatch this task fixes, not a
-behavior to preserve.**
+Add `defaultTypeFolder` to the file's existing `../../src/domain/settings` import list
+(`ALL_TYPES`/`defaultSettings`/`defaultTypeFolder` — new — `EXTRA_TYPES`/`LEVELS`/
+`MARKER_TYPES`/`resolveSettings`); `FakeVault`/`buildModel` are already imported.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/domain/itemTypes.test.ts`
-Expected: FAIL — `childTypeChoices(get('Epic'))` returns `['Feature', 'Issue', 'Bug']`
-(no Deliverable), `childTypeChoices(null)` returns `['Epic', 'Milestone']` (no extra
-types at all), and `defaultTypeFolder('Deliverable')` returns `''`.
+Expected: FAIL on every point above, before the Step 1 edits land — after they land
+(and before Step 3's implementation), the SAME run should fail differently:
+`childTypeChoices(get('Epic'))` still returns `['Feature', 'Issue', 'Bug']` (no
+Deliverable, since `EXTRA_TYPES` has not been widened in `settings.ts` yet),
+`childTypeChoices(null)` still returns `['Epic', 'Milestone']`, and
+`defaultTypeFolder('Deliverable')` still returns `''`.
 
 - [ ] **Step 3: Implement**
 
@@ -1642,6 +1691,10 @@ it('names the current focus, not the whole base, when a Deliverable exists outsi
 	const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
 	expect(title).toContain('focus');
 	expect(hint).toContain('All types');
+	// Must not suggest creating one "here" as an alternative to clearing focus — a
+	// Deliverable created from the toolbar while focused on Feature is parentless and
+	// would not appear on this board either, so that phrasing would be a dead end.
+	expect(hint).not.toMatch(/create one here/i);
 });
 ```
 
@@ -1691,6 +1744,17 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
  * problem on the tree — word the guidance in terms of the current focus and name the
  * way back, rather than inventing a second "does the WHOLE base have one" query no
  * other empty state here makes either.
+ *
+ * **A second gap, found by a later review round: the focused guidance must not offer
+ * "create one here" as an alternative to clearing focus.** The toolbar's New button
+ * creates a Deliverable with no parent (`promptCreateItem(host, ['Deliverable'],
+ * null)`); a focus on a LEVEL like `Feature` only admits a new root when the root's
+ * own type matches that level (`collectFocusRoots`' `matches`), and a Deliverable
+ * never does unless the focus happens to be `PBI` itself (`EXTRA_TYPE_RANK`). So
+ * creating from here while focused on `Feature` would file a note this very board
+ * still would not show — a suggestion that looks like a fix and silently is not one.
+ * Clearing focus is the one action that actually works for both "see the existing
+ * ones" and "create a new one that will show up", so it is the only one offered.
  */
 export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const focused = host.model?.focused ?? false;
@@ -1700,8 +1764,9 @@ export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLEle
 		focused ? 'No deliverables in this focus' : 'No deliverables yet',
 		focused
 			? 'Nothing typed "Deliverable" is in the current focus. Switch the focus button ' +
-				'in the toolbar back to "All types" to see Deliverables elsewhere in the base, ' +
-				'or create one here.'
+				'in the toolbar back to "All types" to see Deliverables elsewhere in the base — ' +
+				'or to create a new one, since one made from here would not appear on this ' +
+				'board until you do.'
 			: 'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
 				'menu, or type an existing note as a Deliverable from its Set type menu.',
 	);
@@ -2878,24 +2943,29 @@ to:
 
 ```
 - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
-  `Bug` and `Deliverable` that sit beside it rather than on it (`Deliverable` may also
-  stand alone, with no parent at all), or `Milestone` — a marker on neither, which
-  states a date rather than work.
+  `Bug` and `Deliverable` that sit beside it rather than on it, or `Milestone` — a
+  marker on neither, which states a date rather than work.
 ```
+
+(No parenthetical singling out `Deliverable`'s root capability here — as Step 2 below
+covers, all three extra types share it, so this top-level bullet stays the same shape
+it already had.)
 
 - [ ] **Step 2: Update "Issues and bugs sit beside the ladder"**
 
 Around `README.md:306-354`, add a short paragraph after the existing "None of this is
-enforced" paragraph (before "### Where new items are filed"), naming `Deliverable`'s
-one difference from `Issue`/`Bug` — root creation and its own board (cross-referencing
-the board section this task also updates):
+enforced" paragraph (before "### Where new items are filed"). **Found by review: an
+earlier draft of this paragraph called root creation an addition unique to
+`Deliverable`, which Task 1's own fix makes false — the toolbar's top-level creator has
+always offered `Issue` and `Bug` with no parent too, unconditionally.** `Deliverable`'s
+real difference from them is its own workflow and board, not rootability:
 
 ```
-`Deliverable` is the same shape — pinned rank, `Task` children, never re-typed by a
-move — with one addition: it may also be created with **no parent at all**, from the
-toolbar's own "pick another type" menu. It gets its own folder and badge colour like
-every declared type, and its own board — see [The Deliverables board](#the-deliverables-board)
-below.
+`Deliverable` is the same shape as `Issue` and `Bug` — pinned rank, `Task` children,
+never re-typed by a move, and (like them) creatable with **no parent at all**, from the
+toolbar's own "pick another type" menu. What is new is its own folder and badge colour
+like every declared type gets, and its own board with its own workflow — see
+[The Deliverables board](#the-deliverables-board) below.
 ```
 
 Update the sentence naming badge colours ("`Issue` and `Bug` each get their own badge
@@ -2942,6 +3012,21 @@ in the natural reading position for a new group), add three rows:
 | Deliverable state property | *(off)* | Note property with the Deliverable workflow's own state; enables the Deliverables board |
 | Deliverable workflow states (in order) | *(off)* | The Deliverables board's columns, in that order. Left unset, it draws the states your Deliverables actually carry |
 | Deliverable states that count as done | `Done, Closed, Completed, Removed` | Which Deliverable state values complete a Deliverable, for this workflow alone |
+```
+
+**Found by review: the EXISTING "Show completed items" row in this same table needs its
+own edit, or the finished table contradicts itself.** That row currently reads:
+
+```
+| Show completed items | on | Off hides fully-done subtrees from every projection (only while a state property is set); nothing about ranking or rollups changes |
+```
+
+"Every projection" was true before this feature — it is no longer, since Task 17
+explicitly exempts the Deliverables board and this task's own new board section (Step
+3) says the toggle has no effect there. Change its Purpose column to:
+
+```
+| Show completed items | on | Off hides fully-done subtrees from the tree, the board and the roadmap (only while a state property is set); the Deliverables board ignores it — see [The Deliverables board](#the-deliverables-board) — and nothing about ranking or rollups changes anywhere |
 ```
 
 - [ ] **Step 5: Commit**
