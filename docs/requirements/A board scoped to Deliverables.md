@@ -189,8 +189,9 @@ narrowed to one type.
 `PROPERTY_TABLE` (so it gets collision-checking, adoption and backfill for free, the way
 every optional property already does), plus `deliverableStates` and
 `deliverableDoneValues` beside `states`/`doneValues`.
-`src/domain/viewOptions.ts` — a new "Deliverables" group: the state property picker,
-the ordered workflow states, the done values.
+`src/domain/viewOptions.ts` — a new "Deliverables" group: `deliverableStateProperty` (the
+state property picker), `deliverableStateValues` (the ordered workflow states) and
+`deliverableDoneValues` (the done values).
 `src/domain/model.ts` — `BacklogItem.deliverableStateValue` and `deliverableDone`, built
 the same way `stateValue`/`done` already are.
 `src/domain/vocabulary.ts` — `collectObservedDeliverableStates`, filtering to
