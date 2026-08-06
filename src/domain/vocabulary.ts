@@ -47,16 +47,24 @@ function firstSeen(
 }
 
 /**
+ * The sort every workflow's state menu shares: alphabetical, then open states before
+ * the workflow's own done values — so a second (or third) workflow calls this with its
+ * own done list instead of copying the sort-and-partition beside it.
+ */
+function sortOpenThenDone(values: string[], doneValues: string[]): string[] {
+	const done = new Set(doneValues.map((v) => v.toLowerCase()));
+	const sorted = values.sort((a, b) => a.localeCompare(b));
+	return [...sorted.filter((v) => !done.has(v.toLowerCase())), ...sorted.filter((v) => done.has(v.toLowerCase()))];
+}
+
+/**
  * First occurrence of every state value, sorted for the state menus: open states
  * alphabetically, done states after them. Deduped case-insensitively, keeping
  * the casing seen first.
  */
 export function collectObservedStates(all: VocabularySource[], settings: BacklogSettings): string[] {
-	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
-	const values = firstSeen(all, (item) => (item.stateValue === null ? [] : [item.stateValue])).sort((a, b) =>
-		a.localeCompare(b),
-	);
-	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
+	const values = firstSeen(all, (item) => (item.stateValue === null ? [] : [item.stateValue]));
+	return sortOpenThenDone(values, settings.doneValues);
 }
 
 /** Every tag the results carry, alphabetical and deduped case-insensitively. */
@@ -93,9 +101,8 @@ export function collectObservedHorizons(all: VocabularySource[]): string[] {
  */
 export function collectObservedDeliverableStates(all: VocabularySource[], settings: BacklogSettings): string[] {
 	const deliverables = all.filter((item) => item.typeName?.toLowerCase() === 'deliverable');
-	const done = new Set(settings.deliverableDoneValues.map((v) => v.toLowerCase()));
 	const values = firstSeen(deliverables, (item) =>
 		item.deliverableStateValue === null ? [] : [item.deliverableStateValue],
-	).sort((a, b) => a.localeCompare(b));
-	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
+	);
+	return sortOpenThenDone(values, settings.deliverableDoneValues);
 }
