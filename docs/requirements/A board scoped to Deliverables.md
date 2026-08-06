@@ -65,6 +65,16 @@ narrowed to one type.
 - **1a — no Deliverable state property is configured.** The board shows the same
   unconfigured empty state the requirements board shows without a `stateKey` — a
   workflow is this mode's prerequisite here too.
+- **1b — the Deliverable workflow is configured, but the base holds no `Deliverable`
+  results at all.** Every column renders empty, and the board shows "No deliverables
+  yet" — never "All N items are done and hidden," which is what the requirements
+  board's own empty-column advisory would say if reused unmodified: it cannot tell "the
+  base is empty" from "nothing here matches this board's type," and this board's
+  population is a type filter, not a completion state.
+- **1c — the requirements `stateKey` is also configured.** The toolbar's "Show completed
+  items" toggle does not appear while viewing the Deliverables board, even though it
+  would appear on the requirements board with the same settings — the control has no
+  effect here (3c), so it is absent rather than present and inert.
 - **3a — a Deliverable also carries the requirements board's own state property.** It
   is an ordinary card on the requirements board too, unaffected: the two properties are
   independent, and neither board's move touches the other's key.
@@ -120,6 +130,15 @@ narrowed to one type.
   value went unrecognised.
 - Selecting the fourth toggle actually renders the Deliverables board's columns and
   cards into the pane — asserted directly, not inferred from the board model existing.
+- A drop on a Deliverables-board column writes `deliverableState` alone — the drag input
+  gets the same wrong-property regression coverage the menu input does, since the two
+  reach the write through separate code paths that must not disagree.
+- The pane carries the same board-shaped styling (columns readable, no clipped overflow,
+  no leftover tree-only root drop zone) in Deliverables mode as in Board mode.
+- A configured-but-empty Deliverables board (no `Deliverable` results in the base) shows
+  "No deliverables yet," never a message claiming items are done and hidden.
+- "Show completed items" does not appear in the toolbar while viewing the Deliverables
+  board, whatever the requirements `stateKey` holds.
 
 ## Where it lives
 
@@ -146,13 +165,27 @@ directly, so the requirements board and this one share one implementation.
 `renderDeliverablesBoardContent` branch beside `renderBoardContent`/
 `renderRoadmapContent`, gated on `settings.deliverableStateKey`; without it the fourth
 toggle falls through to `renderTree`, whatever `host.deliverablesBoard` holds.
-`src/view/backlogView.ts`, `src/view/render/toolbar.ts` — the fourth toggle.
-`src/view/render/board.ts` — `createCard` takes its completion flag as a parameter
-(defaulted to `item.done`, so the requirements board and the roadmap need no change)
-instead of reading `item.done` itself, so the Deliverables board's call site can pass
-`item.deliverableDone`.
+`src/view/backlogView.ts` — the fourth toggle, and `renderTreeContent`'s
+`pbl-board-mode` class condition widens to `projection === 'board' || projection ===
+'deliverables'` (`backlogView.ts:468`) — the two are shaped alike and share the class,
+rather than the Deliverables board inheriting the tree's overflow and root drop zone by
+omission.
+`src/view/render/toolbar.ts` — the fourth toggle, and `renderCompletedToggle`'s gate
+(`toolbar.ts:210`) adds `&& host.projection !== 'deliverables'`.
+`src/view/render/board.ts` — three changes, not one: `createCard` takes its completion
+flag as a parameter (defaulted to `item.done`, so the requirements board and the roadmap
+need no change) instead of reading `item.done` itself, so the Deliverables board's call
+site can pass `item.deliverableDone`; `renderBoard`/`renderColumn` (`:19-42`, `:94-126`)
+take the resolved `BoardModel` and a `move` callback as parameters instead of deriving
+`boardColumns(...)` and `host.performBoardMove` internally, so `renderColumn`'s drop
+wiring (`:123`) calls whichever `move` its caller gave it rather than hardcoding
+`performBoardMove` — the drag counterpart of the menu fix above, since an unparametrized
+`renderColumn` would let a drop write the wrong property exactly as an unparametrized
+menu would; and `renderBoardAdvisory` (`:84-91`) gains a Deliverables-scoped sibling that
+asks whether `model.results` contains any `Deliverable` rather than whether it is empty,
+so a base full of other work is never reported as "done and hidden" on this board.
 `src/view/interactions/cardDrag.ts`, `keyboard.ts` — wiring the new board's drop
-targets and its Alt-arrow ladder.
+targets (through the parameterized `renderColumn` above) and its Alt-arrow ladder.
 `src/view/interactions/menu.ts` — three changes, not one: the Set-state section's
 visibility gate (`menu.ts:70`) checks whichever key is active for `host.projection`,
 not only the requirements `stateKey`; `stateChoices` (`menu.ts:289`) sources

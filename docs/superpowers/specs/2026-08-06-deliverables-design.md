@@ -325,10 +325,57 @@ already sources `host.board?.board`, `chooseState` routes to
 `performDeliverablesBoardMove`, and the checked-entry test calls
 `computeDeliverableStateWrites` instead of `computeStateWrites` on that branch.
 
-The toolbar gets a fourth toggle position. `CardDragController` gets a third set of
-column drop targets (mirroring the board's, writing through
-`performDeliverablesBoardMove`); `interactions/keyboard.ts` extends the Alt-arrow ladder
-to the new projection.
+**Four more gaps this round, all in code the first three drafts left untouched or
+under-specified.** The pattern across all four is the same one the menu round found:
+`render/board.ts` and its neighbors were built for exactly one board, and reach for that
+board's specifics directly rather than through a parameter — so "reuse the card shell"
+was true, and "reuse the rest of the render path unmodified" was not.
+
+- **`renderBoard`/`renderColumn` hardcode `host.settings`, `host.performBoardMove` and
+  `boardColumns`' requirements-scoped call internally** (`render/board.ts:19-42`, the
+  drop wiring at `:123` calling `performBoardMove` directly) — not parameters today, so
+  giving `CardDragController` "a third set of column drop targets" is not by itself
+  enough: the renderer that builds those targets is the one hardcoding which move they
+  perform. `renderBoard` takes the resolved `BoardModel` and a `move` callback as
+  parameters instead of deriving both from `host` internally — `boardColumns`' result and
+  `host.performBoardMove` for the requirements board, `host.deliverablesBoard` and
+  `host.performDeliverablesBoardMove` for this one — and `renderColumn` receives `move`
+  from its caller rather than closing over `ctx.host.performBoardMove` directly. Left as
+  first drafted, a **drag** on the Deliverables board would have written the
+  requirements state key, the same failure mode the menu fix (above) closes for the
+  other two inputs — drag is the third of the "one move, three inputs" trio and needs
+  the identical fix, not a different one.
+- **The board-mode CSS class is set by projection value, exactly, not by "is this a
+  board-shaped pane"** (`backlogView.ts:468`,
+  `this.viewEl.toggleClass('pbl-board-mode', projection === 'board')`). Missing a
+  `'deliverables'` branch, the shared pane keeps the tree's `overflow-x: hidden`
+  (`styles/tree.css`) and the tree's root drop zone, so the fourth toggle's columns would
+  render clipped and partly unreachable even with every other piece correct. The
+  condition becomes `projection === 'board' || projection === 'deliverables'` — one
+  class, both board-shaped projections, since nothing about this board's *layout* differs
+  from the requirements one.
+- **The board's "nothing to show" advisory assumes the population and the base are the
+  same size** (`renderBoardAdvisory`, `render/board.ts:84-91`): with every column empty,
+  it reads `model.results.length` to choose between "no backlog items" and "all done and
+  hidden" — a question that conflates "the base is empty" with "nothing matches this
+  board's type filter." A base with fifty PBIs and zero Deliverables would report "50
+  items are done and hidden," which is false on both counts (nothing is hidden by
+  completion here — see the showCompleted exclusion above — and the fifty PBIs are not
+  done, they are simply not Deliverables). The Deliverables board needs its own advisory,
+  asking whether **`model.results` contains any Deliverable** rather than whether it is
+  empty: no Deliverables anywhere → a new "No deliverables yet" guidance state (the
+  `renderEmptyState` shape, scoped wording); filtering hides them all → the existing
+  filter-empty state, reused as-is; nothing else lands on `renderAllDoneState`, since this
+  board has no completion-hiding concept for it to describe.
+- **"Show completed items" stays visible and clickable on a board it does nothing to**
+  (`renderCompletedToggle`, `toolbar.ts:210`, gated only on `host.settings.stateKey`).
+  Scoping the control's *effect* out of this board (Scope, above) does not scope the
+  *button* out on its own — with the requirements `stateKey` configured, it would still
+  render while viewing the Deliverables board, promising a hide/show it does not perform
+  here. The gate becomes `host.settings.stateKey && host.projection !== 'deliverables'`.
+
+The toolbar gets a fourth toggle position. `interactions/keyboard.ts` extends the
+Alt-arrow ladder to the new projection.
 
 The empty-state rule matches the requirements board's: `[[Columns from the workflow]]`
 already establishes that a board needs a configured state property before it draws
@@ -357,10 +404,19 @@ columns; the Deliverables board gates on `deliverableStateKey` the same way.
   `deliverableStateValue`, and picking one writes `deliverableState` alone — a
   regression test standing in for the "wrong property" failure mode this round of
   review caught before any code existed to catch it in. `rendering.test.ts` — a card's
-  `pbl-done` class follows the active board's own completion, not the other workflow's.
-  Plus a `contextCardWrites.test.ts`-style block for the Deliverables board (context row
-  never a card, never a write target — the same three questions asked of the general
-  board's drag/keyboard/menu paths), and keyboard coverage for the fourth projection.
+  `pbl-done` class follows the active board's own completion, not the other workflow's;
+  `pbl-board-mode` is present on the pane in Deliverables mode, matching `'board'`.
+  `cardDrag.test.ts` / a board-drag test — a drop on a Deliverables-board column writes
+  `deliverableState` alone, the drag counterpart of the menu regression test above, since
+  the same wrong-property failure mode reaches through `renderColumn`'s wiring
+  independently of the menu's. `emptyStates.test.ts` — a Deliverables board with a
+  configured workflow, a non-empty base and zero Deliverable results shows "No
+  deliverables yet," never "All N items are done and hidden." `toolbar.test.ts` — the
+  completed-items toggle is absent while `host.projection === 'deliverables'`, even with
+  `stateKey` configured. Plus a `contextCardWrites.test.ts`-style block for the
+  Deliverables board (context row never a card, never a write target — the same three
+  questions asked of the general board's drag/keyboard/menu paths), and keyboard coverage
+  for the fourth projection.
 
 ## Open questions carried into the plan, not blocking it
 
