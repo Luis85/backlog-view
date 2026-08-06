@@ -1,0 +1,347 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-06T00:00:00Z",
+  "title": "Design System: Product Backlog",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Interactive Accent",
+        "canonical": "var(--interactive-accent)"
+      },
+      "text-normal": {
+        "role": "neutral",
+        "displayName": "Text Normal",
+        "canonical": "var(--text-normal)"
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Text Muted",
+        "canonical": "var(--text-muted)"
+      },
+      "text-faint": {
+        "role": "neutral",
+        "displayName": "Text Faint",
+        "canonical": "var(--text-faint)"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "var(--background-primary)"
+      },
+      "surface-sunken": {
+        "role": "neutral",
+        "displayName": "Sunken Surface",
+        "canonical": "var(--background-secondary)"
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline Border",
+        "canonical": "var(--background-modifier-border)"
+      },
+      "done": {
+        "role": "secondary",
+        "displayName": "Done Green",
+        "canonical": "var(--color-green-rgb)"
+      },
+      "over-limit": {
+        "role": "secondary",
+        "displayName": "Over-Limit Red",
+        "canonical": "var(--text-error)"
+      },
+      "attention": {
+        "role": "secondary",
+        "displayName": "Attention Orange",
+        "canonical": "var(--color-orange-rgb)"
+      },
+      "marker": {
+        "role": "secondary",
+        "displayName": "Marker Cyan",
+        "canonical": "var(--color-cyan)"
+      },
+      "ladder-0": {
+        "role": "tertiary",
+        "displayName": "Epic Orange",
+        "canonical": "var(--color-orange-rgb)"
+      },
+      "ladder-1": {
+        "role": "tertiary",
+        "displayName": "Feature Purple",
+        "canonical": "var(--color-purple-rgb)"
+      },
+      "ladder-2": {
+        "role": "tertiary",
+        "displayName": "PBI Blue",
+        "canonical": "var(--color-blue-rgb)"
+      },
+      "ladder-3": {
+        "role": "tertiary",
+        "displayName": "Task Yellow",
+        "canonical": "var(--color-yellow-rgb)"
+      },
+      "extra-issue": {
+        "role": "tertiary",
+        "displayName": "Issue Pink",
+        "canonical": "var(--color-pink-rgb)"
+      },
+      "extra-bug": {
+        "role": "tertiary",
+        "displayName": "Bug Red",
+        "canonical": "var(--color-red-rgb)"
+      },
+      "extra-milestone": {
+        "role": "tertiary",
+        "displayName": "Milestone Cyan",
+        "canonical": "var(--color-cyan-rgb)"
+      },
+      "extra-deliverable": {
+        "role": "tertiary",
+        "displayName": "Deliverable Green",
+        "canonical": "var(--color-green-rgb)"
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Empty-state headlines only. The one place the interface raises its voice."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Row and card titles, column headers, toolbar buttons, the filter input."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Badges, chips, counts, limits, breadcrumbs, meta cells. Everything that annotates rather than names."
+      }
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "value": "var(--shadow-s)",
+        "purpose": "The only true elevation in the system: the root-drop strip that overlays the tree during a drag. Nothing else floats, so nothing else casts."
+      },
+      {
+        "name": "ring",
+        "value": "0 0 0 1px var(--interactive-accent) inset",
+        "purpose": "Selected card, selected board column, drop-over target. A ring rather than a border change, so nothing reflows."
+      },
+      {
+        "name": "rail",
+        "value": "inset 2px 0 0 var(--interactive-accent)",
+        "purpose": "The selected tree row's leading edge."
+      },
+      {
+        "name": "cage",
+        "value": "inset 0 0 0 2px var(--interactive-accent)",
+        "purpose": "Drop-inside on a tree row, paired with a 0.1-alpha accent tint."
+      }
+    ],
+    "motion": [
+      {
+        "name": "reveal",
+        "value": "opacity 120ms ease-in-out",
+        "purpose": "Every hover-revealed control: grips, add buttons, tag affordances, the filter's width change."
+      },
+      {
+        "name": "chevron",
+        "value": "transform 100ms ease-in-out",
+        "purpose": "The disclosure chevron's 90deg rotation."
+      },
+      {
+        "name": "pending-pulse",
+        "value": "900ms ease-in-out infinite alternate (0.45 to 0.7 opacity)",
+        "purpose": "A row or card whose move has been written and is awaiting the Bases refresh."
+      },
+      {
+        "name": "expand-nudge",
+        "value": "600ms ease-in-out forwards (45deg at 50%, 90deg at 100%)",
+        "purpose": "Hovering a collapsed row mid-drag to expand it. The half-rotation is the countdown."
+      },
+      {
+        "name": "busy-in",
+        "value": "120ms ease-out 250ms both",
+        "purpose": "The write-in-flight indicator, delayed so a single-file write finishes before it would ever appear."
+      },
+      {
+        "name": "spin",
+        "value": "900ms linear infinite; 3s steps(8) under prefers-reduced-motion",
+        "purpose": "Spinners. Under reduced motion they step rather than spin, because they still have to read as working."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Tree Row",
+      "kind": "custom",
+      "refersTo": "row",
+      "description": "The backlog tree's unit: grip, chevron, type badge, title, then fixed end columns. Quiet until addressed.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-grip\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"9\" cy=\"6\" r=\"1\"/><circle cx=\"9\" cy=\"12\" r=\"1\"/><circle cx=\"9\" cy=\"18\" r=\"1\"/><circle cx=\"15\" cy=\"6\" r=\"1\"/><circle cx=\"15\" cy=\"12\" r=\"1\"/><circle cx=\"15\" cy=\"18\" r=\"1\"/></svg></span><span class=\"ds-chevron\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></span><span class=\"ds-badge ds-badge-feature\">Feature</span><span class=\"ds-title\">Buckets from a horizon property</span></div>",
+      "css": ".ds-row { display: flex; align-items: center; gap: 4px; min-height: 30px; padding: 2px 4px; border-radius: var(--radius-s, 4px); cursor: pointer; user-select: none; font-size: var(--font-ui-small, 13px); color: var(--text-normal, #dcddde); } .ds-row:hover { background-color: var(--background-modifier-hover, rgba(255,255,255,0.075)); } .ds-row:hover .ds-title { color: var(--text-accent, #7f6df2); } .ds-grip { display: flex; align-items: center; color: var(--text-faint, #666); opacity: 0; transition: opacity 120ms ease-in-out; cursor: grab; } .ds-row:hover .ds-grip { opacity: 1; } .ds-grip svg { width: 14px; height: 14px; } .ds-chevron { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: var(--radius-s, 4px); color: var(--text-muted, #999); transition: transform 100ms ease-in-out; } .ds-chevron svg { width: 16px; height: 16px; } .ds-chevron:hover { color: var(--text-normal, #dcddde); background-color: var(--background-modifier-hover, rgba(255,255,255,0.075)); } .ds-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"
+    },
+    {
+      "name": "Type Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "One fixed hue per rung of the ladder. Identity, not decoration — never reused for state.",
+      "html": "<span class=\"ds-badge ds-badge-epic\">Epic</span> <span class=\"ds-badge ds-badge-feature\">Feature</span> <span class=\"ds-badge ds-badge-pbi\">PBI</span> <span class=\"ds-badge ds-badge-task\">Task</span> <span class=\"ds-badge ds-badge-pbi ds-badge-implied\">PBI</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 58px; max-width: 120px; font-size: var(--font-ui-smaller, 11px); font-weight: var(--font-medium, 500); line-height: 1.6; padding: 0 4px; border-radius: var(--radius-s, 4px); border: 1px solid transparent; white-space: nowrap; color: rgb(var(--ds-badge-rgb)); background-color: rgba(var(--ds-badge-rgb), 0.14); } .ds-badge-epic { --ds-badge-rgb: var(--color-orange-rgb, 233, 151, 63); } .ds-badge-feature { --ds-badge-rgb: var(--color-purple-rgb, 168, 130, 255); } .ds-badge-pbi { --ds-badge-rgb: var(--color-blue-rgb, 8, 109, 221); } .ds-badge-task { --ds-badge-rgb: var(--color-yellow-rgb, 224, 222, 113); } .ds-badge-implied { background-color: transparent; border-color: rgba(var(--ds-badge-rgb), 0.4); border-style: dashed; opacity: 0.8; }"
+    },
+    {
+      "name": "State Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "A real button stripped of button chrome. One shape serves both the state and horizon properties, because they sit in adjacent columns and a second look would read as a second kind of thing.",
+      "html": "<button class=\"ds-chip\">In progress</button> <button class=\"ds-chip ds-chip-done\">Done</button> <button class=\"ds-chip ds-chip-unset\">Set state</button> <span class=\"ds-chip ds-chip-static\">Done</span>",
+      "css": ".ds-chip { appearance: none; display: inline-flex; align-items: center; gap: 2px; max-width: 140px; overflow: hidden; white-space: nowrap; font-family: inherit; font-size: var(--font-ui-smaller, 11px); font-weight: inherit; color: var(--text-muted, #999); background-color: var(--background-secondary, #20262b); border: 1px solid var(--background-modifier-border, #333); border-radius: var(--radius-s, 4px); padding: 0 4px; line-height: 1.7; height: auto; box-shadow: none; margin: 0; cursor: pointer; } .ds-chip:not(.ds-chip-static):hover { background-color: var(--background-modifier-hover, rgba(255,255,255,0.075)); color: var(--text-normal, #dcddde); } .ds-chip-done { color: rgb(var(--color-green-rgb, 68, 207, 110)); border-color: rgba(var(--color-green-rgb, 68, 207, 110), 0.35); } .ds-chip-unset { color: var(--text-faint, #666); border-style: dashed; } .ds-chip-static { cursor: default; opacity: 0.75; }"
+    },
+    {
+      "name": "Board Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The row's equivalent where there is no rank to indicate. Surface inside a sunken column; the border is the whole edge treatment.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-head\"><span class=\"ds-badge ds-badge-pbi\">PBI</span><span class=\"ds-card-title\">Move and resize a bar</span></div><div class=\"ds-card-parent\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 18h6\"/><path d=\"M9 6v12\"/><path d=\"M5 6h4\"/></svg><span>Scheduling work</span></div></div><div class=\"ds-card ds-card-context\"><div class=\"ds-card-head\"><span class=\"ds-badge ds-badge-feature ds-badge-implied\">Feature</span><span class=\"ds-card-title\">Scheduling work</span></div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; margin-bottom: 8px; border: 1px solid var(--background-modifier-border, #333); border-radius: var(--radius-m, 8px); background-color: var(--background-primary, #1e1e1e); cursor: pointer; } .ds-card:hover { border-color: var(--background-modifier-border-hover, #555); } .ds-card-head { display: flex; align-items: center; gap: 8px; min-width: 0; } .ds-card-title { font-size: var(--font-ui-small, 13px); color: var(--text-normal, #dcddde); overflow-wrap: anywhere; } .ds-card-parent { display: flex; align-items: center; gap: 2px; font-size: var(--font-ui-smaller, 11px); color: var(--text-faint, #666); white-space: nowrap; } .ds-card-parent svg { width: 12px; height: 12px; } .ds-card-context { border-style: dashed; cursor: default; } .ds-card-context .ds-card-title { color: var(--text-muted, #999); font-style: italic; }"
+    },
+    {
+      "name": "Board Column Header",
+      "kind": "custom",
+      "refersTo": "board-column",
+      "description": "The column's name, its count pill and its WIP limit. Over the limit colours the numbers and adds an icon — a signal, never a refusal.",
+      "html": "<div class=\"ds-col\"><div class=\"ds-col-header\"><span class=\"ds-col-name\">In progress</span><span class=\"ds-col-count\">5</span><span class=\"ds-col-limit\">/ 3</span><span class=\"ds-col-over\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg></span></div></div>",
+      "css": ".ds-col { width: 260px; border: 1px solid var(--background-modifier-border, #333); border-radius: var(--radius-m, 8px); background-color: var(--background-secondary, #20262b); } .ds-col-header { display: flex; align-items: center; gap: 4px; padding: 8px 12px; font-size: var(--font-ui-small, 13px); font-weight: var(--font-medium, 500); color: var(--text-normal, #dcddde); } .ds-col-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-col-count { margin-left: auto; font-size: var(--font-ui-smaller, 11px); color: var(--text-error, #e5534b); background-color: var(--background-modifier-hover, rgba(255,255,255,0.075)); border-radius: var(--radius-l, 12px); padding: 0 8px; min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; } .ds-col-limit { font-size: var(--font-ui-smaller, 11px); color: var(--text-error, #e5534b); font-variant-numeric: tabular-nums; } .ds-col-over { display: flex; align-items: center; color: var(--text-error, #e5534b); } .ds-col-over svg { width: 14px; height: 14px; }"
+    },
+    {
+      "name": "Rollup Progress",
+      "kind": "custom",
+      "refersTo": "row",
+      "description": "A parent row's rollup. 48x5px, green fill, tabular label; complete turns the label green and medium.",
+      "html": "<span class=\"ds-progress\"><span class=\"ds-progress-bar\"><span class=\"ds-progress-fill\" style=\"width:62%\"></span></span><span class=\"ds-progress-label\">62%</span></span> <span class=\"ds-progress ds-progress-complete\"><span class=\"ds-progress-bar\"><span class=\"ds-progress-fill\" style=\"width:100%\"></span></span><span class=\"ds-progress-label\">100%</span></span>",
+      "css": ".ds-progress { display: inline-flex; align-items: center; gap: 4px; } .ds-progress-bar { width: 48px; height: 5px; border-radius: 3px; background-color: var(--background-modifier-border, #333); overflow: hidden; } .ds-progress-fill { display: block; height: 100%; border-radius: 3px; background-color: rgb(var(--color-green-rgb, 68, 207, 110)); } .ds-progress-label { font-size: var(--font-ui-smaller, 11px); color: var(--text-muted, #999); min-width: 28px; text-align: end; font-variant-numeric: tabular-nums; } .ds-progress-complete .ds-progress-label { color: rgb(var(--color-green-rgb, 68, 207, 110)); font-weight: var(--font-medium, 500); }"
+    },
+    {
+      "name": "Timeline Bars",
+      "kind": "custom",
+      "refersTo": "bar",
+      "description": "The signature component. Silhouette carries meaning: a fade for an open end, a dashed outline for a span inferred from children, a diamond for a milestone, a tick for something outside the window.",
+      "html": "<div class=\"ds-bars\"><span class=\"ds-bar\"></span><span class=\"ds-bar ds-bar-done\"></span><span class=\"ds-bar ds-bar-open-end\"></span><span class=\"ds-bar ds-bar-inferred\"></span><span class=\"ds-bar ds-bar-milestone\"></span><span class=\"ds-bar ds-bar-outside\"></span></div>",
+      "css": ".ds-bars { display: flex; align-items: center; gap: 16px; } .ds-bar { --ds-bar-color: var(--interactive-accent, #7f6df2); display: block; width: 80px; height: 14px; border-radius: var(--radius-s, 4px); background-color: var(--ds-bar-color); } .ds-bar-done { --ds-bar-color: var(--color-green, #44cf6e); opacity: 0.7; } .ds-bar-open-end { background: linear-gradient(to right, var(--ds-bar-color) 55%, transparent); border-top-right-radius: 0; border-bottom-right-radius: 0; } .ds-bar-inferred { background: none; border: 1px dashed var(--ds-bar-color); } .ds-bar-milestone { width: 12px; height: 12px; border-radius: var(--radius-s, 4px); transform: rotate(45deg); background-color: var(--color-cyan, #53dfdd); } .ds-bar-outside { width: 10px; height: 8px; border-radius: 0; background: none; border-top: 2px solid var(--ds-bar-color); opacity: 0.7; }"
+    },
+    {
+      "name": "Tag Pill",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Accent text on a 0.12-alpha accent field. The remove and add affordances stay at zero opacity until the row is addressed, and reserve their space so revealing them reflows nothing.",
+      "html": "<span class=\"ds-tags\"><span class=\"ds-tag\">roadmap<button class=\"ds-tag-remove\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></button></span><span class=\"ds-tag\">writes<button class=\"ds-tag-remove\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></button></span><button class=\"ds-tag-add\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg></button></span>",
+      "css": ".ds-tags { display: inline-flex; align-items: center; gap: 4px; font-size: var(--font-ui-smaller, 11px); } .ds-tag { display: inline-flex; align-items: center; border-radius: var(--radius-l, 12px); padding: 0 4px; line-height: 1.6; color: var(--text-accent, #7f6df2); background-color: hsla(var(--interactive-accent-hsl, 254, 80%, 68%), 0.12); } .ds-tag-remove { display: inline-flex; align-items: center; justify-content: center; appearance: none; box-shadow: none; background: transparent; border: none; border-radius: var(--radius-s, 4px); padding: 0; margin-inline-start: 2px; width: 12px; height: 12px; color: var(--text-muted, #999); cursor: pointer; opacity: 0; transition: opacity 120ms ease-in-out; } .ds-tags:hover .ds-tag-remove, .ds-tag-remove:focus-visible { opacity: 1; } .ds-tag-remove:hover { color: var(--text-error, #e5534b); background-color: var(--background-modifier-hover, rgba(255,255,255,0.075)); } .ds-tag-remove svg { width: 10px; height: 10px; } .ds-tag-add { display: inline-flex; align-items: center; justify-content: center; appearance: none; box-shadow: none; background: transparent; border: 1px dashed var(--background-modifier-border, #333); border-radius: var(--radius-l, 12px); padding: 0; width: 16px; height: 16px; color: var(--text-faint, #666); cursor: pointer; opacity: 0; transition: opacity 120ms ease-in-out; } .ds-tags:hover .ds-tag-add, .ds-tag-add:focus-visible { opacity: 1; } .ds-tag-add:hover { color: var(--text-accent, #7f6df2); border-color: var(--text-accent, #7f6df2); } .ds-tag-add svg { width: 11px; height: 11px; }"
+    },
+    {
+      "name": "Empty State",
+      "kind": "custom",
+      "refersTo": "title",
+      "description": "The one place the interface raises its voice — and it does so when there is nothing to show. 40px faint icon, medium muted title, hint capped at 420px.",
+      "html": "<div class=\"ds-empty\"><span class=\"ds-empty-icon\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 3v16a2 2 0 0 0 2 2h16\"/><path d=\"M7 16h8\"/><path d=\"M7 11h12\"/><path d=\"M7 6h3\"/></svg></span><div class=\"ds-empty-title\">No roadmap axis is configured</div><div class=\"ds-empty-hint\">Pick a horizon property or a pair of date properties in the view options, or let the plugin suggest them.</div><button class=\"ds-empty-btn\">Configure the view</button></div>",
+      "css": ".ds-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 32px 16px; text-align: center; } .ds-empty-icon { color: var(--text-faint, #666); } .ds-empty-icon svg { width: 40px; height: 40px; } .ds-empty-title { font-size: var(--font-ui-medium, 15px); font-weight: var(--font-medium, 500); color: var(--text-muted, #999); } .ds-empty-hint { max-width: 420px; font-size: var(--font-ui-small, 13px); color: var(--text-faint, #666); } .ds-empty-btn { margin-top: 8px; font-size: var(--font-ui-small, 13px); padding: 4px 12px; border-radius: var(--radius-s, 4px); border: 1px solid var(--background-modifier-border, #333); background-color: var(--background-secondary, #20262b); color: var(--text-normal, #dcddde); cursor: pointer; } .ds-empty-btn:hover { background-color: var(--background-modifier-hover, rgba(255,255,255,0.075)); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Native Instrument",
+    "overview": "This is a plugin that should be indistinguishable from a part of Obsidian someone shipped. It contributes structure — rank, depth, columns, spans — and contributes no surface whatsoever. Every colour, every size step, every radius and every font in the interface is an Obsidian design token read at paint time, so an unfamiliar theme changes everything the user sees and breaks nothing. There is no brand here to defend, and introducing one would be the single most damaging change anyone could make to this system.\n\nPrecision comes from restraint. A component at rest is a 1px border and a label. Weight is added only by state — hover, selection, focus, drag, over-limit — and each state adds exactly one signal, never two. Controls that are not currently needed are not currently visible: grips, add buttons and tag affordances fade in at 120ms when the pointer arrives, and reserve their space so nothing reflows when they do. Depth is almost entirely absent; what looks like layering is tonal, a lighter surface sitting inside a sunken container.\n\nColour is spent, not applied. Four hues carry the work-item ladder and four more carry the types beside it — that is identity, and it is how you find your altitude in a tree three hundred rows deep. Everywhere else colour means state and nothing else: accent for active, green for finished, red for over the agreed limit, orange for attention, cyan for a marker that is not work. A screen with no problems on it is monochrome apart from its badges.",
+    "keyCharacteristics": [
+      "Every value is an Obsidian variable; the system owns no palette, no font and no scale.",
+      "Flat by default — one shadow exists in the entire stylesheet, on the one element that floats.",
+      "Dashed means \"present, but not asserted\" — consistently, in eight different places.",
+      "One signal per state. Done dims; it is not also struck through.",
+      "Controls are quiet until addressed, and reachable without a pointer."
+    ],
+    "rules": [
+      {
+        "name": "The Borrowed Palette Rule",
+        "body": "No colour originates here. Every colour expression in styles/ reads an Obsidian variable — including the accent tints (hsla(var(--interactive-accent-hsl), …)) and the semantic --color-*-rgb families. Audit test: a hex, rgb(), hsl() or named colour literal in styles/ is a finding. Exactly one exists — the grey var() fallback on .pbl-badge.pbl-implied in styles/badges.css — and no render path can reach it, which is why the register counts the palette as done. Whether a fallback nothing renders is permitted is the question Styling rules are checks has to answer. Nothing currently checks any of this.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ladder Rule",
+        "body": "A type's colour is identity, not decoration. It is assigned once, fixed for the life of the ladder, and never reused for state, selection or emphasis. Adding a type takes an unclaimed hue — never a rotation, never a slot after the last one.",
+        "section": "colors"
+      },
+      {
+        "name": "The Spent Colour Rule",
+        "body": "Outside the badges, colour must mean a state — accent (active or targeted), green (done), red (over the limit or destructive), orange (attention), cyan (marker). A colour introduced for any other reason is decoration and does not ship.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Font Rule",
+        "body": "The plugin never names a typeface. If a family declaration other than inherit appears in styles/, the system has stopped being native.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Number Rule",
+        "body": "Any number that changes in place takes font-variant-numeric: tabular-nums. A quantity that shifts its neighbours as it counts is a quantity nobody can read at a glance.",
+        "section": "typography"
+      },
+      {
+        "name": "The Band Rule, and it has no exceptions",
+        "body": "On the dated axis the timeline takes what is left; every other band declares a maximum and scrolls itself. A cap without its own overflow-y creates no scrollport, so an unbounded band in a short pane grows until it squeezes the timeline out. A band added later declares both.",
+        "section": "layout"
+      },
+      {
+        "name": "The Whole-Column Rule",
+        "body": "A fixed end column is present at full width or absent. It never shrinks, and it never partially occludes its neighbour.",
+        "section": "layout"
+      },
+      {
+        "name": "The One Shadow Rule",
+        "body": "A shadow means the element is physically above the content behind it. If it is not floating, it gets a ring, a rail or a border — never a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Reflow Feedback Rule",
+        "body": "No state may change an element's box. Rings are inset, revealed controls reserve their space with opacity rather than display, and the drag overlay is absolutely positioned — because a control that enters the box model on reveal shifts the row out from under the pointer that was reaching for it. That shipped once.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Dashed Line Rule",
+        "body": "A dashed border means present, but not asserted — and it means that everywhere: a context row's card, a column or bucket holding a value the configuration does not name, an unset chip, an implied badge, an inferred span, a drop ghost, the add-a-tag button, and the root-drop strip before it is targeted. A solid border asserts; a dashed one reports. Never use dashed for emphasis.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Shape-Before-Colour Rule",
+        "body": "Every state that matters must survive a monochrome screenshot. Over-limit colours its numbers red and adds an icon. A stray column is dashed and carries a marker. Done dims and the chip changes. Colour is the fastest signal, never the only one.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Reveal-Beside-Its-Rule Rule",
+        "body": "A media query adds no specificity, so a hover: none override written above the opacity: 0 it undoes loses the cascade and reveals nothing. Every hover-revealed control carries its own reveal immediately after its own hide, where no later rule for the same selector can get between the pair. That shipped broken once; test/view/rendering.test.ts now checks the ordering.",
+        "section": "components"
+      },
+      {
+        "name": "The Import Order Is Behaviour Rule",
+        "body": "styles/index.css assembles the partials, and two rules of equal specificity are decided by which came last. cards.css follows board.css and timeline.css follows roadmap.css because the later of each pair overrides the earlier. Moving a line in that list can change what the user sees while every partial still parses.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do reach for an Obsidian variable first, every time — --text-*, --background-*, --interactive-accent, --size-*, --radius-*, --font-ui-*, --icon-*. If no token fits, that is a finding worth stating in a comment, not a licence to invent a value.",
+      "Do give each state exactly one signal, and make that signal survive a monochrome screenshot (shape or icon alongside colour).",
+      "Do use a dashed border for anything present but not asserted, and only for that.",
+      "Do put a hover-revealed control's @media (hover: none) reveal immediately after the opacity: 0 it undoes.",
+      "Do use logical properties — inset-inline-start, padding-inline, margin-inline-end, text-align: end. The tree will run right-to-left.",
+      "Do give any new band on the dated axis both a maximum height and its own overflow-y.",
+      "Do add a new partial under styles/, import it from index.css in a position you can justify, and say in its header why it sits there if the position is load-bearing.",
+      "Do add a new type's colour as an unclaimed hue in styles/badges.css."
+    ],
+    "donts": [
+      "Don't write a colour literal. Not a hex, not rgb(), not hsl(), not a named colour. The one in the tree today is a var() fallback nothing can render, and it is the open question Styling rules are checks has to settle — not a precedent to follow.",
+      "Don't introduce a font family. inherit is the only legal value.",
+      "Don't add a box-shadow that is not inset or a 1px ring unless the element genuinely floats above other content. One does today.",
+      "Don't let a state change an element's box — no display toggles on revealed controls, no borders that appear on hover, no padding that grows on selection.",
+      "Don't say the same thing twice. Done dims; it is not also struck through, greyed and badged, or moved.",
+      "Don't name a physical side (left, right, margin-left, padding-right, border-left) where a logical property exists. Several remain — Nothing pins a physical side enumerates them. Nothing currently checks this.",
+      "Don't write a raw pixel value without knowing which of three piles it lands in. Obsidian variables, not values fixes the classification: a token (--size-*, --font-ui-*) where one fits; a bound columnFit sums (the badge's max-width, the grip, the chevron, the title's min-width), which stays a number because a theme must not change an arithmetic TypeScript is doing; or genuinely arbitrary — hairlines and radii are exempt by default, since a border that scales with a spacing token is not a border. A value in the third pile carries a one-line reason. Nothing currently checks this.",
+      "Don't duplicate a bound across the stylesheet and the code without a check. ROW_LEAD_WIDTH in src/view/render/columns.ts sums eight widths that live in styles/tree.css and styles/columns.css, verified today only by whoever remembers.",
+      "Don't style a context row or card as writable. Dashed, muted, italic, default cursor, no hover response.",
+      "Don't put a hover: none or prefers-reduced-motion rule anywhere but styles/touch.css / styles/motion.css — unless it must sit beside the rule it overrides, which is the documented exception and the only one.",
+      "Don't exceed 400 lines in a partial. npm run build fails on it."
+    ]
+  }
+}
