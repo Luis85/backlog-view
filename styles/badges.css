@@ -55,6 +55,8 @@
 .pbl-lvl-bug { --pbl-badge-rgb: var(--color-red-rgb); }
 /* A marker is not work, so it takes a colour no rung and no container uses. */
 .pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
+/* Green is otherwise unused across the four levels and the three other extra types. */
+.pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 
 .pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
 	color: rgb(var(--pbl-badge-rgb));

@@ -117,8 +117,9 @@ describe('backlogReadmeContent', () => {
 		// The clamp at the deepest rung: a Task holds a Task, which the ladder read
 		// literally would deny — and the + button on the row would then contradict it.
 		expect(typeRow(content, 'Task')).toContain('| `Task` |');
-		// An extra type hangs from any rung above the deepest and holds the deepest.
-		expect(typeRow(content, 'Bug')).toMatch(/\| `Epic`, `Feature`, `PBI` \| `Task` \|/);
+		// An extra type hangs from any rung above the deepest and holds the deepest — and
+		// is also offered as a root, since the toolbar's top-level creator names it too.
+		expect(typeRow(content, 'Bug')).toMatch(/\| \*\(nothing — it is a root\)\*, `Epic`, `Feature`, `PBI` \| `Task` \|/);
 		// The ladder's top reads as a root, because that is what is offered with no parent.
 		expect(typeRow(content, 'Epic')).toContain('*(nothing — it is a root)*');
 	});
@@ -591,7 +592,7 @@ describe('backlogReadmeContent', () => {
 		// Not every move: only one into a NEW parent, and never an extra type.
 		expect(auto).toContain('rewrites what you drag into a **new parent**');
 		expect(auto).toContain('Reordering among siblings rewrites nothing');
-		expect(auto).toContain('`Issue` and `Bug` keep their type wherever they land');
+		expect(auto).toContain('`Issue` and `Bug` and `Deliverable` keep their type wherever they land');
 		expect(auto).toContain('deeper in the subtree you dragged is left alone');
 	});
 

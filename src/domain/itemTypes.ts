@@ -100,11 +100,13 @@ export function childTypeChoices(parent: LadderPosition | null): string[] {
 	// list is the answer, and every affordance built from it has to be ABSENT rather than
 	// empty (the add button, `New <child>`); see `renderRowTrailing`.
 	if (parent !== null && isMarkerType(parent.typeName)) return [];
+	// The toolbar's top-level creator has always offered every declared type
+	// unconditionally, with no parent (`renderToolbar`'s "pick another type" menu
+	// iterates ALL_TYPES) — this has to agree with that standing behavior rather than
+	// invent a narrower "which types make sense as roots" question nothing else in
+	// the view asks.
+	if (!parent) return ALL_TYPES;
 	const ladderChild = LEVELS[childLevelIndex(parent)];
-	// Top level is the ladder's top plus the markers, and exactly those two: a milestone
-	// hangs from nothing, while a Bug hangs from something and creating one with no parent
-	// would make an item whose own rule says it should have had one.
-	if (!parent) return [ladderChild, ...MARKER_TYPES];
 	const onLadder = parent.levelIndex >= 0 && parent.levelIndex < LEVELS.length - 1;
 	return onLadder ? [ladderChild, ...EXTRA_TYPES] : [ladderChild];
 }

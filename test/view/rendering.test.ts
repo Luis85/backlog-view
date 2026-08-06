@@ -95,6 +95,16 @@ describe('rendering', () => {
 		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
 	});
 
+	it('renders a Deliverable with its own badge icon and colour', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		const badge = rowByTitle(containerEl, 'D').querySelector('.pbl-badge');
+		expect(badge?.classList.contains('pbl-lvl-deliverable')).toBe(true);
+		expect(badge?.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBe('package');
+	});
+
 	it('withholds every create affordance on a row that can hold nothing', () => {
 		// Absent, not empty. `addLabel` builds its text from `childTypes[0]`, so an empty
 		// list renders "New undefined" and opens a modal with no type to pick — the same

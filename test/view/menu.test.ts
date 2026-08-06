@@ -69,6 +69,7 @@ describe('context menu', () => {
 			'Task',
 			'Issue',
 			'Bug',
+			'Deliverable',
 			'Milestone',
 		]);
 		expect(submenu.item('Epic')?.checked).toBe(true);

@@ -30,6 +30,7 @@ const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
+	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
 };
 
 /** Render the tree content (or the empty state) into the tree element. */
