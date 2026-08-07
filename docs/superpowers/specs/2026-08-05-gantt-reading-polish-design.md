@@ -8,8 +8,8 @@ on the roadmap's dated axis. Date: 2026-08-05.
 The whole ask spans four sub-projects, sequenced so each draws on a settled grid:
 
 1. **Visual & reading polish** — this spec. New design; render + CSS + one store field.
-2. **Lanes** — already designed
-   ([[2026-08-05-lanes-in-both-card-projections-design]]), implemented next.
+2. **Lanes** — specified in the register as [[Lanes on the roadmap]] (and
+   [[Swimlanes by parent]] for the board), implemented next.
 3. **Hierarchy & interaction** — [[Progress on the bar]], [[Focus level picks the rows]]
    and the keyboard lift in [[Keyboard and menu on the roadmap]] are specified in the
    register and need implementation plans, not design.
@@ -67,15 +67,24 @@ before the milestone lines so they stay visually behind everything. Faint dashed
 border color: the header's own rhythm extended down the grid.
 
 **Weekend shading.** One `.pbl-weekend-layer` div, not one per weekend: weekends repeat
-every 7 days exactly, so the layer is a single `repeating-linear-gradient` whose stops
-are `calc()` over a published `--pbl-day-px`, phase-shifted by a published
-`--pbl-weekend-offset` — days from the window start to the first Saturday, computed by
+every 7 days exactly, so the layer is a single gradient tiled to exactly seven days —
+`background-size: calc(var(--pbl-day-px) * 7)` — and phase-shifted by a published
+`--pbl-weekend-offset`: days from the window start to the first Saturday, computed by
 a new pure `weekendOffsetDays(window)` in `src/domain/timeline.ts` on the ISO weekday
-rule the module already uses. Rendered at week zoom only (see above).
+rule the module already uses. The tile size is what makes the shift correct rather than
+decorative: a gradient left at its default size tiles at the layer's own width, so
+shifting it exposes a repeat whose phase is that width's, not the week's, and any window
+that is not a whole number of weeks gains a stray band at its left edge. Rendered at
+week zoom only (see above).
 
-**Today label.** The today line keeps its tooltip and gains a small "Today" pill in the
-header track at the same offset, red-tinted to match the line — the milestone label's
-existing pattern with a different color. The exact date stays in the tooltip.
+**Today label.** The today line keeps its tooltip and gains a small "Today" pill,
+red-tinted to match the line — the milestone label's existing pattern with a different
+color. It mounts in the header's **super** tier, not the cell tier the milestone labels
+use: both are opaque pills absolutely positioned at `top: 0` against an offset in the
+same day, so a milestone dated today would be covered by the pill appended after it —
+along with the hover that reveals its full name. Different tiers is the whole collision
+rule; the super tier's own cells are decoration with nothing to hover. The exact date
+stays in the tooltip.
 
 ### 2. Two-tier header
 
@@ -90,14 +99,18 @@ instead of `Aug 2026`, quarter cells `Q3` instead of `Q3 2026`. Week cells keep
 `4 Aug` — a week can straddle two months, so its own label stays self-sufficient.
 
 Structurally the header becomes lead + a two-row tier stack. `TimelineRender.headerTrack`
-keeps pointing at the *bottom* track, so milestone labels, the today label and the drop
-ghost's date preview keep their mount unchanged. Cell widths don't change, so
+keeps pointing at the *bottom* track, so milestone labels and the drop ghost's date
+preview keep their mount unchanged; the today pill takes the super tier for the reason
+above, which is the one thing this restructure is asked for beyond orientation. Cell widths don't change, so
 `jumpToToday`'s centring math is untouched.
 
 ### 3. Row tracking
 
 - **Hover:** `.pbl-timeline-row:hover` gets `--background-modifier-hover` across lead
-  and track — one element, so the highlight cannot split.
+  and track. The row is one element, but that is not enough on its own: the sticky
+  lead paints an opaque `--background-primary` so the track can scroll under it, and
+  an opaque child never lets its parent's background through. The lead therefore
+  composes the same tint over `--background-primary` itself, in its own rule.
 - **Zebra:** alternate rows get a `pbl-row-even` class from the render loop (CSS has no
   nth-of-class), tinted via `color-mix(… 50%, transparent)` so weekend stripes still
   read through it and hover stays clearly stronger.
@@ -110,7 +123,10 @@ ghost's date preview keep their mount unchanged. Cell widths don't change, so
 Each row's track gets one `.pbl-bar-label` div with the item's title — decoration only
 (`aria-hidden`; the row's accessible name already carries title and dates). The side is
 picked in TS from geometry: right of the bar when `barEnd + LABEL_RESERVE_PX` fits in
-the track, else left of it. Max-width plus ellipsis, muted, smaller font,
+the track, else left of it. `barEnd` is the width the STYLESHEET draws, not the span's:
+a milestone is a 12px diamond and an out-of-window marker a 10px arrow however few days
+they cover, so measuring from `--pbl-bar-width` would start the label inside the mark it
+names. Max-width plus ellipsis, muted, smaller font,
 `pointer-events: none` so grips and the drop overlay never lose a hit. All labels hide
 via CSS while `.pbl-dragging` — the grid declutters exactly when the user is aiming a
 drop. Milestone diamonds get the same treatment through the same code path.

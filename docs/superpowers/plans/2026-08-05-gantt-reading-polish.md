@@ -17,8 +17,8 @@
 - UI text is sentence case; styles via `setCssProps`, never inline `style` strings; no `querySelector` in `src/` naming a tree receiver (test files may query freely).
 - No new runtime dependencies; no writes to frontmatter, localStorage or the `.base` outside `storage/` (this increment adds none — density goes through the existing collapse store).
 - CSS custom properties read by new rules must stay within the set the partials already read (`--background-modifier-hover`, `--background-modifier-border`, `--background-primary`, `--text-muted`, `--font-ui-smaller`, `--size-4-1`, `--size-4-2`, `--color-red`), so `test/harness/harness.test.ts`'s theme-stub coverage check needs no stub additions. If you add any other `var(--x)`, you must also add it to `test/harness/theme.css`.
-- **This branch has in-flight lanes work landing in parallel.** Before starting, `git pull`; `src/storage/collapseStore.ts`, `src/view/collapseState.ts` and `src/view/render/toolbar.ts` are shared surfaces. All edits in this plan are additive (new fields, new functions), so conflicts resolve by keeping both sides.
-- Commit messages: plain imperative sentences, no `feat:`/`fix:` prefixes (repo style), ending with the `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` trailer.
+- The lanes work this plan was written to follow is **not** in flight — it is specified in the register as [[Lanes on the roadmap]] and unimplemented, so this increment lands first rather than behind it. `src/storage/collapseStore.ts`, `src/view/collapseState.ts` and `src/view/render/toolbar.ts` are still the surfaces lanes will touch; every edit here is additive (new fields, new functions), so it stays a merge lanes can resolve by keeping both sides.
+- Commit messages: plain imperative sentences, no `feat:`/`fix:` prefixes (repo style), ending with the `Co-Authored-By:` trailer for whichever model writes them.
 
 ---
 
@@ -246,7 +246,7 @@ git commit -m "Phase the weekend banding from the window's first Saturday"
 
 **Interfaces:**
 - Consumes: `superCells` from Task 1.
-- Produces: header DOM `header > [lead, .pbl-timeline-tiers > [.pbl-timeline-track.pbl-timeline-super, .pbl-timeline-track]]`; super cells carry `pbl-timeline-cell pbl-timeline-cell-super`. `renderCellHeader` still returns the **bottom** track, so `TimelineRender.headerTrack`, milestone labels and the drop ghost keep their mount. The new partial file exists for every later task to append to.
+- Produces: header DOM `header > [lead, .pbl-timeline-tiers > [.pbl-timeline-track.pbl-timeline-super, .pbl-timeline-track]]`; super cells carry `pbl-timeline-cell pbl-timeline-cell-super`. `renderCellHeader` returns **both** tracks as `HeaderTiers`; `TimelineRender.headerTrack` is still the bottom one, so milestone labels and the drop ghost keep their mount, while Task 4's today pill takes the super tier (two opaque pills at `top: 0` in one tier collide, and the milestone label is the one with a hover to lose). The new partial file exists for every later task to append to.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -316,16 +316,25 @@ Run: `npx vitest run test/view/timelineFurniture.test.ts`
 In `src/view/render/timeline.ts`, add `superCells` to the import from `../../domain/timeline`, and replace `renderCellHeader` with:
 
 ```ts
+/** The header's two tracks. Both span `--pbl-tl-days`, so one offset places a mark in either. */
+interface HeaderTiers {
+	/** The cell tier — `TimelineRender.headerTrack`, where the milestone labels and the drop ghost mount. */
+	cells: HTMLElement;
+	/** The coarser tier above it, which is where the today pill goes (Task 4). */
+	supers: HTMLElement;
+}
+
 /** Presentational, like the tree's column header: every row carries its own dates. */
-function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
+function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HeaderTiers {
 	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-timeline-lead' });
 	// Two stacked tracks in the track slot: the coarser orientation tier above the
-	// cells. The BOTTOM track is still what this returns — milestone labels, the
-	// today label and the drop ghost's dates all mount against the cell tier.
+	// cells. Both come back, because the two labels the header carries deliberately
+	// live in different tiers — see renderTodayLabel.
 	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers' });
-	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
-	return renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
+	const supers = renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
+	const cells = renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
+	return { cells, supers };
 }
 
 function renderHeaderTier(
@@ -344,7 +353,16 @@ function renderHeaderTier(
 }
 ```
 
-Also add `TimelineCell` to the import from `../../domain/timeline`.
+Also add `TimelineCell` to the import from `../../domain/timeline`, and in `renderTimeline`
+destructure the new return shape (the rest of the function is unchanged, `headerTrack`
+still being the cell tier):
+
+```ts
+	const { cells: headerTrack, supers: superTrack } = renderCellHeader(content, window, scale);
+```
+
+`superTrack` is unused until Task 4; if lint objects in the meantime, land Tasks 3 and 4
+back to back rather than suppressing it.
 
 - [ ] **Step 4: Create the partial and import it**
 
@@ -410,7 +428,7 @@ git commit -m "Draw the timeline header as two tiers"
 
 **Interfaces:**
 - Consumes: `weekendOffsetDays` (Task 2), the two-tier header (Task 3).
-- Produces: `.pbl-grid-line` (one per interior cell boundary, `--pbl-grid-left`), `.pbl-weekend-layer` (week zoom only, `--pbl-weekend-offset`; `--pbl-day-px` published on the content layer), `.pbl-today-label` in the bottom header track (`--pbl-today-left`, track-relative).
+- Produces: `.pbl-grid-line` (one per interior cell boundary, `--pbl-grid-left`), `.pbl-weekend-layer` (week zoom only, `--pbl-weekend-offset`; `--pbl-day-px` published on the content layer), `.pbl-today-label` in the **super** header tier (`--pbl-today-left`, track-relative — the tiers are the same width, so the offset is the same number either way).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -449,6 +467,17 @@ describe('grid rhythm', () => {
 		const trackLeft = parseFloat(label.style.getPropertyValue('--pbl-today-left'));
 		expect(TIMELINE_LEAD_PX + trackLeft).toBe(view.roadmap?.todayLeft ?? -1);
 	});
+
+	it('keeps the today pill out of the tier the milestone labels own', () => {
+		// Both are opaque, both sit at top: 0, and both are placed by an offset within
+		// the same day — so a milestone dated today would be buried by the pill drawn
+		// after it, tooltip and all. Separate tiers is the whole collision rule.
+		const { containerEl } = datedRoadmap(furnishedVault());
+		const label = containerEl.querySelector<HTMLElement>('.pbl-today-label');
+		expect(label?.parentElement?.classList.contains('pbl-timeline-super')).toBe(true);
+		const milestone = containerEl.querySelector<HTMLElement>('.pbl-milestone-label');
+		expect(milestone?.parentElement?.classList.contains('pbl-timeline-super')).toBe(false);
+	});
 });
 ```
 
@@ -478,10 +507,16 @@ In `renderTimeline` (`src/view/render/timeline.ts`):
 	renderGridLines(content, window, scale);
 ```
 
-4. After the today-line block (`setTooltip(line, …)`):
+4. After the today-line block (`setTooltip(line, …)`) — into `superTrack` from Task 3,
+   **not** `headerTrack`:
 
 ```ts
-	const todayLabel = headerTrack.createDiv({ cls: 'pbl-today-label', text: 'Today' });
+	// The SUPER tier, because the cell tier is the milestone labels' — two opaque
+	// pills at top: 0, placed by an offset inside the same day, and this one is
+	// created later, so on a date carrying a milestone it would cover the label and
+	// swallow the hover that reveals the full name. The super tier's own cells are
+	// decoration with no tooltip of their own to lose.
+	const todayLabel = superTrack.createDiv({ cls: 'pbl-today-label', text: 'Today' });
 	todayLabel.setCssProps({ '--pbl-today-left': `${todayOffset(window, today, scale)}px` });
 	setTooltip(todayLabel, formatCivil(today));
 ```
@@ -524,7 +559,14 @@ Append to `styles/timelineFurniture.css`:
 
 /* Saturdays and Sundays, one gradient: 2 days of tint, 5 of nothing, repeating —
    phased by --pbl-weekend-offset (days to the first Saturday, in px). Translucent,
-   so it composes with the zebra tint and the hover in either paint order. */
+   so it composes with the zebra tint and the hover in either paint order.
+
+   The background-size is what makes the phase survive the repeat, and is not
+   cosmetic: left at its default a gradient tiles at the LAYER's width, so shifting
+   it exposes a copy phased to that width rather than to the week, and any window
+   that is not a whole number of weeks — the 92-day Jul–Sep default among them —
+   grows a stray band at its left edge. Sized to exactly one seven-day period, the
+   tile IS the period and every copy lands on a Saturday. */
 .pbl-weekend-layer {
 	position: absolute;
 	top: 0;
@@ -532,18 +574,18 @@ Append to `styles/timelineFurniture.css`:
 	left: var(--pbl-tl-lead);
 	right: 0;
 	pointer-events: none;
-	background-image: repeating-linear-gradient(
+	background-image: linear-gradient(
 		to right,
 		var(--background-modifier-hover) 0,
 		var(--background-modifier-hover) calc(var(--pbl-day-px) * 2),
-		transparent calc(var(--pbl-day-px) * 2),
-		transparent calc(var(--pbl-day-px) * 7)
+		transparent calc(var(--pbl-day-px) * 2)
 	);
+	background-size: calc(var(--pbl-day-px) * 7) 100%;
 	background-position-x: var(--pbl-weekend-offset);
 }
 
-/* The milestone label's shape at the today line's own offset: backed, because it
-   sits over the cell labels; red to match the line it names. */
+/* The milestone label's shape at the today line's own offset, one tier up from it:
+   backed, because it sits over the year band; red to match the line it names. */
 .pbl-today-label {
 	position: absolute;
 	top: 0;
@@ -638,13 +680,30 @@ Append to `styles/timelineFurniture.css`:
 ```css
 /* Ordered faint-to-strong: zebra under hover, both translucent so the weekend
    banding reads through them. Each outranks timeline.css's transparent
-   `.pbl-card.pbl-timeline-row` background by specificity, not by order. */
+   `.pbl-card.pbl-timeline-row` background by specificity, not by order — but
+   hover and zebra tie with each other, so WITHIN this block order is behaviour
+   and hover has to stay last. */
 .pbl-card.pbl-timeline-row.pbl-row-even {
 	background-color: color-mix(in srgb, var(--background-modifier-hover) 35%, transparent);
 }
 
+/* The row's background does not reach its lead cell: `.pbl-timeline-lead` paints an
+   opaque --background-primary so the track can scroll under the sticky column, and an
+   opaque child never shows its parent's background through. Tinting the row alone
+   starts the highlight at the day area and leaves the title outside the thing tracking
+   it. So the lead composes the same tint over --background-primary itself — opaque, as
+   it must stay — which is why these are the same two percentages twice and not a
+   variable: the pair is the appearance, and a reader comparing them is the check. */
+.pbl-card.pbl-timeline-row.pbl-row-even .pbl-timeline-lead {
+	background-color: color-mix(in srgb, var(--background-modifier-hover) 35%, var(--background-primary));
+}
+
 .pbl-card.pbl-timeline-row:hover {
 	background-color: color-mix(in srgb, var(--background-modifier-hover) 80%, transparent);
+}
+
+.pbl-card.pbl-timeline-row:hover .pbl-timeline-lead {
+	background-color: color-mix(in srgb, var(--background-modifier-hover) 80%, var(--background-primary));
 }
 
 /* Only once there is anything under the sticky edge to hint at. */
@@ -653,7 +712,14 @@ Append to `styles/timelineFurniture.css`:
 }
 ```
 
-- [ ] **Step 5: Run the file, the suite, `npm run check`** — all PASS
+The lead pairing is a CASCADE fact, and jsdom computes no cascade — no test in this
+suite can reach it. It is a harness check: `npm run harness` at `?view=roadmap`, hover a
+row, and the highlight has to run unbroken from the title through the bar. Step 5 below
+covers it.
+
+- [ ] **Step 5: Run the file, the suite, `npm run check`** — all PASS. Then
+`npm run harness` at `?view=roadmap` and hover a row: the highlight must span the lead
+and the track as one band, in both colour schemes. Nothing in vitest can answer that.
 
 - [ ] **Step 6: Commit**
 
@@ -672,7 +738,7 @@ git commit -m "Track timeline rows: stripes, hover and a scrolled-lead shadow"
 - Test: `test/view/timelineFurniture.test.ts`
 
 **Interfaces:**
-- Produces: `LABEL_RESERVE_PX = 160` (exported); one `.pbl-bar-label` per row with `pbl-bar-label-after` + `--pbl-label-left`, or `pbl-bar-label-before` + `--pbl-label-right`. Decoration only: `aria-hidden`, `pointer-events: none`, hidden while `.pbl-dragging`.
+- Produces: `LABEL_RESERVE_PX = 160` (exported); `markWidth`, which answers with the width the STYLESHEET draws rather than `--pbl-bar-width`; one `.pbl-bar-label` per row with `pbl-bar-label-after` + `--pbl-label-left`, or `pbl-bar-label-before` + `--pbl-label-right`. Decoration only: `aria-hidden`, `pointer-events: none`, hidden while `.pbl-dragging`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -697,6 +763,21 @@ describe('bar labels', () => {
 		view.setZoom('quarter');
 		expect(label()?.classList.contains('pbl-bar-label-before')).toBe(true);
 	});
+
+	it('clears the mark the stylesheet draws, not the one the span implies', () => {
+		const vault = new FakeVault();
+		// A milestone: one day of span, so 4px of --pbl-bar-width — and a 12px diamond
+		// on screen. Measuring the span would start the title inside the mark.
+		vault.addFile('Ship it.md', { frontmatter: { type: 'PBI', order: 10, due: '2030-06-15' } });
+		const { containerEl } = datedRoadmap(vault);
+		const bar = containerEl.querySelector<HTMLElement>('.pbl-bar-milestone');
+		const label = containerEl.querySelector<HTMLElement>('.pbl-bar-label-after');
+		if (!bar || !label) throw new Error('no milestone diamond, or no after-label');
+		const gap =
+			parseFloat(label.style.getPropertyValue('--pbl-label-left')) -
+			parseFloat(bar.style.getPropertyValue('--pbl-bar-left'));
+		expect(gap).toBe(12);
+	});
 });
 ```
 
@@ -713,6 +794,10 @@ In `src/view/render/timeline.ts`, add near `TIMELINE_LEAD_PX`:
  * edge, the label flips to the bar's left rather than truncating against nothing.
  */
 export const LABEL_RESERVE_PX = 160;
+
+/** `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css` — see `markWidth`. */
+const MILESTONE_MARK_PX = 12;
+const OUTSIDE_MARK_PX = 10;
 ```
 
 In `renderBarRow`, after the grips loop and before the marker `aria-label` line:
@@ -721,9 +806,28 @@ In `renderBarRow`, after the grips loop and before the marker `aria-label` line:
 	renderBarLabel(track, bar, geometry, scale, window);
 ```
 
-Add the helper beside `barClasses`:
+Add both helpers beside `barClasses`:
 
 ```ts
+/**
+ * How wide the mark actually DRAWS, which is what a label beside it has to clear.
+ * `--pbl-bar-width` is not that number for two of the three shapes: `.pbl-bar-milestone`
+ * is a 12px diamond and `.pbl-bar-outside` a 10px arrow whatever the span, so a
+ * one-day milestone at quarter zoom measures 4px here and would have its title
+ * painted across it. Same order of tests as `barClasses`, which is what decides
+ * which shape is drawn — keep the two in step, and both in step with
+ * `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css`.
+ *
+ * The diamond's 45° rotation puts its tips ~2.5px outside this box; the label's own
+ * 8px of padding is the clearance, so this stays the CSS width rather than a
+ * bounding-box calculation nothing else in the file does.
+ */
+function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
+	if (geometry.outside) return OUTSIDE_MARK_PX;
+	if (geometry.milestone) return MILESTONE_MARK_PX;
+	return Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
+}
+
 /**
  * The title where the reader's eye already is — decoration only. The row's
  * accessible name carries the title and the bar's aria-label the dates, so this
@@ -738,7 +842,7 @@ function renderBarLabel(
 ): void {
 	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
 	const left = geometry.startDay * scale.dayPx;
-	const width = Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
+	const width = markWidth(geometry, scale);
 	const trackWidth = window.days * scale.dayPx;
 	if (left + width + LABEL_RESERVE_PX <= trackWidth) {
 		label.addClass('pbl-bar-label-after');
