@@ -184,8 +184,10 @@ export function weekendOffsetDays(window: TimelineWindow): number {
  * Where a span sits in the window, in whole days from its start. Ends are
  * inclusive — a one-day span is one day wide — and an end the note does not
  * state borrows the other, so a single date renders at the date it has. An
- * equal pair, stated or inferred, is the milestone case, a point in time
- * rather than a span. Reversed spans never reach here: they shelve as
+ * equal pair the note STATES is the milestone case, a point in time rather
+ * than a span — an end borrowed from the other is not one, or every note
+ * carrying a single date would render as a diamond instead of the one-day
+ * bar it is. Reversed spans never reach here: they shelve as
  * unreadable. `outside` is the further answer a POINT needs, that a clipped
  * span does not: whether anything of it is in view at all.
  */

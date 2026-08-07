@@ -126,10 +126,12 @@ pill takes the band for the reason above. Cell widths don't change, so
 Each row's track gets one `.pbl-bar-label` div with the item's title — decoration only
 (`aria-hidden`; the row's accessible name already carries title and dates). The side is
 picked in TS from geometry: right of the bar when `barEnd + LABEL_RESERVE_PX` fits in
-the track, else left of it. `barEnd` is the width the STYLESHEET draws, not the span's:
-a milestone is a 12px diamond and an out-of-window marker a 10px arrow however few days
-they cover, so measuring from `--pbl-bar-width` would start the label inside the mark it
-names. Max-width plus ellipsis, muted, smaller font,
+the track, else left of it — and no label at all when neither side has the room, which a
+bar clipped at both window edges is the case of. Dropping it loses nothing: the row's
+lead column carries the same title, which is the whole reason this is decoration. `barEnd`
+is the width the STYLESHEET draws, not the span's: a milestone is a 12px diamond and an
+out-of-window marker a 10px arrow however few days they cover, so measuring from
+`--pbl-bar-width` would start the label inside the mark it names. Max-width plus ellipsis, muted, smaller font,
 `pointer-events: none` so grips and the drop overlay never lose a hit. All labels hide
 via CSS while `.pbl-dragging` — the grid declutters exactly when the user is aiming a
 drop. Milestone diamonds get the same treatment through the same code path.

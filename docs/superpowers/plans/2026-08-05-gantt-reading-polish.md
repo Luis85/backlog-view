@@ -268,7 +268,9 @@ function furnishedVault(): FakeVault {
 	const vault = new FakeVault();
 	vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-20' } });
 	vault.addFile('Beta.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-10', due: '2026-09-01' } });
-	vault.addFile('Gamma.md', { frontmatter: { type: 'PBI', order: 30, due: '2026-09-15' } });
+	// A STATED equal pair — `barGeometry` reports `milestone` only when the note gives
+	// both ends, so a lone `due` is a one-day bar and draws no diamond and no line.
+	vault.addFile('Gamma.md', { frontmatter: { type: 'PBI', order: 30, start: '2026-09-15', due: '2026-09-15' } });
 	return vault;
 }
 
@@ -581,7 +583,10 @@ Append to `styles/timelineFurniture.css`:
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-tl-lead);
-	right: 0;
+	/* The WINDOW's width, not the wrapper's right edge: `.pbl-timeline-content` carries
+	   `min-width: 100%`, so in a pane wider than the dated track it runs on past the
+	   last cell — and `right: 0` would band blank space no header dates explain. */
+	width: var(--pbl-tl-days);
 	pointer-events: none;
 	background-image: linear-gradient(
 		to right,
@@ -778,8 +783,10 @@ describe('bar labels', () => {
 	it('clears the mark the stylesheet draws, not the one the span implies', () => {
 		const vault = new FakeVault();
 		// A milestone: one day of span, so 4px of --pbl-bar-width — and a 12px diamond
-		// on screen. Measuring the span would start the title inside the mark.
-		vault.addFile('Ship it.md', { frontmatter: { type: 'PBI', order: 10, due: '2030-06-15' } });
+		// on screen. Measuring the span would start the title inside the mark. Both
+		// ends stated, because that is what `barGeometry` requires of a milestone: an
+		// end borrowed from a lone `due` is a one-day BAR and never reaches this branch.
+		vault.addFile('Ship it.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-15', due: '2030-06-15' } });
 		const { containerEl } = datedRoadmap(vault);
 		const bar = containerEl.querySelector<HTMLElement>('.pbl-bar-milestone');
 		const label = containerEl.querySelector<HTMLElement>('.pbl-bar-label-after');
@@ -788,6 +795,17 @@ describe('bar labels', () => {
 			parseFloat(label.style.getPropertyValue('--pbl-label-left')) -
 			parseFloat(bar.style.getPropertyValue('--pbl-bar-left'));
 		expect(gap).toBe(12);
+	});
+
+	it('drops the label rather than placing it off the track', () => {
+		const vault = new FakeVault();
+		// Clipped at both window edges: no room after, and flipping it before a bar
+		// starting at day 0 would set --pbl-label-right to the whole track width and
+		// park the label behind the sticky lead. The lead already shows the title.
+		vault.addFile('Whole plan.md', { frontmatter: { type: 'PBI', order: 10, start: '2020-01-01', due: '2040-01-01' } });
+		const { containerEl } = datedRoadmap(vault);
+		expect(containerEl.querySelector('.pbl-bar')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
 	});
 });
 ```
@@ -851,11 +869,19 @@ function renderBarLabel(
 	scale: TimelineScale,
 	window: TimelineWindow,
 ): void {
-	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
 	const left = geometry.startDay * scale.dayPx;
 	const width = markWidth(geometry, scale);
 	const trackWidth = window.days * scale.dayPx;
-	if (left + width + LABEL_RESERVE_PX <= trackWidth) {
+	const after = left + width + LABEL_RESERVE_PX <= trackWidth;
+	// Neither side has room: a bar clipped at BOTH window edges leaves none, and
+	// flipping it before a bar that starts at day 0 would put the whole label off the
+	// track behind the sticky lead column. Nothing is lost by dropping it — the row's
+	// lead carries the same title, which is what makes this decoration rather than
+	// content, and squeezing it over the bar would only trade a hidden label for an
+	// unreadable one.
+	if (!after && left < LABEL_RESERVE_PX) return;
+	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
+	if (after) {
 		label.addClass('pbl-bar-label-after');
 		label.setCssProps({ '--pbl-label-left': `${left + width}px` });
 	} else {
