@@ -21,8 +21,14 @@ function grip(containerEl: HTMLElement): HTMLElement {
 	return el;
 }
 
-function mouse(type: string, clientX: number): MouseEvent {
-	return new MouseEvent(type, { bubbles: true, clientX });
+function pointer(type: string, clientX: number): PointerEvent {
+	return new PointerEvent(type, { bubbles: true, clientX, pointerId: 1, button: 0 });
+}
+
+function timeline(containerEl: HTMLElement): HTMLElement {
+	const el = containerEl.querySelector<HTMLElement>('.pbl-timeline');
+	if (!el) throw new Error('no timeline scroller');
+	return el;
 }
 
 describe('the lead-column resize grip', () => {
@@ -54,15 +60,15 @@ describe('the lead-column resize grip', () => {
 			const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
 			if (!content) throw new Error('no timeline content');
 
-			el.dispatchEvent(mouse('mousedown', 0));
-			window.dispatchEvent(mouse('mousemove', 40));
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 40));
 			// Live feedback only — the pick is not persisted mid-gesture.
 			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${TIMELINE_LEAD_PX + 40}px`);
 			expect(view.leadWidth).toBeNull();
 			expect(config.setCalls).toEqual([]);
 			expect(vault.writeLog).toHaveLength(0);
 
-			window.dispatchEvent(mouse('mouseup', 40));
+			el.dispatchEvent(pointer('pointerup', 40));
 			expect(view.leadWidth).toBe(TIMELINE_LEAD_PX + 40);
 			expect(config.setCalls).toEqual([]);
 			expect(vault.writeLog).toHaveLength(0);
@@ -72,14 +78,16 @@ describe('the lead-column resize grip', () => {
 			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
 			view.setProjection('roadmap');
 
-			grip(containerEl).dispatchEvent(mouse('mousedown', 0));
-			window.dispatchEvent(mouse('mousemove', -10_000));
-			window.dispatchEvent(mouse('mouseup', -10_000));
+			let el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', -10_000));
+			el.dispatchEvent(pointer('pointerup', -10_000));
 			expect(view.leadWidth).toBe(MIN_TIMELINE_LEAD_PX);
 
-			grip(containerEl).dispatchEvent(mouse('mousedown', 0));
-			window.dispatchEvent(mouse('mousemove', 10_000));
-			window.dispatchEvent(mouse('mouseup', 10_000));
+			el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 10_000));
+			el.dispatchEvent(pointer('pointerup', 10_000));
 			expect(view.leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
 		});
 
@@ -87,10 +95,31 @@ describe('the lead-column resize grip', () => {
 			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
 			view.setProjection('roadmap');
 
-			grip(containerEl).dispatchEvent(mouse('mousedown', 0));
-			window.dispatchEvent(mouse('mousemove', 0));
-			window.dispatchEvent(mouse('mouseup', 0));
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 0));
+			el.dispatchEvent(pointer('pointerup', 0));
 			expect(view.leadWidth).toBeNull();
+		});
+
+		it('leaves the timeline scrolled exactly where it was — the lead is sticky and covers no track', () => {
+			// Geometry, not measurement: the day track starts at `leadWidth` in content
+			// coordinates and the sticky lead covers exactly that much of the viewport, so
+			// the date at the visible leading edge is a function of `scrollLeft` alone,
+			// independent of the lead's own width. A resize must therefore leave
+			// `scrollLeft` untouched — panning it is the bug this test watches for.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			const scroller = timeline(containerEl);
+			scroller.scrollLeft = 300;
+
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 140));
+			el.dispatchEvent(pointer('pointerup', 140));
+
+			expect(view.leadWidth).toBe(TIMELINE_LEAD_PX + 140);
+			expect(timeline(containerEl).scrollLeft).toBe(300);
 		});
 	});
 

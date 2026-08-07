@@ -123,6 +123,9 @@
 	width: 6px;
 	cursor: col-resize;
 	z-index: 1;
+	/* Otherwise the browser reads a touch drag here as a pan of the scroller beneath
+	   it and the pointermove stream this grip needs never arrives. */
+	touch-action: none;
 }
 .pbl-timeline-lead-grip:hover,
 .pbl-timeline-lead-grip:focus-visible {

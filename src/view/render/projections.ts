@@ -29,7 +29,15 @@ export interface ProjectionContent {
 /** The scroller's memory across renders: what it drew, at what scale, and where each band sat. */
 export interface ScrollAnchor {
 	content: string;
-	todayLeft: number | null;
+	/**
+	 * Today's offset WITHIN THE DAY TRACK — `todayLeft` minus the lead width it was drawn
+	 * under — never the lead-inclusive pixel. The day track starts at `leadWidth` in
+	 * content coordinates and the sticky lead covers exactly that much of the viewport, so
+	 * the date at the visible leading edge is a function of `scrollLeft` alone; a lead
+	 * resize changes `todayLeft` without the window moving at all, and the lead term has
+	 * to cancel out of the comparison rather than being read as a shift to correct for.
+	 */
+	todayTrackLeft: number | null;
 	/** The scale the offsets were measured at; null off the dated axis. */
 	scale: string | null;
 	/** Each band's own offsets, by identity — never by position in a collection. */
@@ -97,6 +105,11 @@ function resolvedLeadWidth(roadmap: RoadmapSnapshot | null): number {
 	return roadmap?.leadWidth ?? TIMELINE_LEAD_PX;
 }
 
+/** `todayLeft` minus the lead width it was drawn under — see `ScrollAnchor.todayTrackLeft`. */
+function todayTrackLeft(todayLeft: number | null, roadmap: RoadmapSnapshot | null): number | null {
+	return todayLeft == null ? null : todayLeft - resolvedLeadWidth(roadmap);
+}
+
 /** What the render just drew, named finer than the projection: the roadmap's two axes are different content on one frame. */
 function drawnContent(roadmap: RoadmapSnapshot | null, todayLeft: number | null, projection: Projection): string {
 	if (todayLeft != null) return 'dates';
@@ -130,7 +143,7 @@ export function restoreScroll(
 	const scroller = roadmap?.scroller ?? treeEl;
 	for (const box of scrollBoxes(treeEl, roadmap)) restoreBox(box, scroller, same, anchor);
 	scroller.scrollLeft = anchorScrollLeft(anchor, same, todayLeft, roadmap, scroller.clientWidth);
-	return { content: drawn, todayLeft, scale, offsets: {}, leadingDate: null };
+	return { content: drawn, todayTrackLeft: todayTrackLeft(todayLeft, roadmap), scale, offsets: {}, leadingDate: null };
 }
 
 /**
@@ -157,7 +170,9 @@ function scaleChangeScrollLeft(anchor: ScrollAnchor, roadmap: RoadmapSnapshot): 
  * - the same content at a different scale keeps the date at the leading edge
  *   (`scaleChangeScrollLeft`);
  * - the same content at the same scale keeps the pixel carry, corrected by how far
- *   today moved — exact for that case, which is every ordinary refresh.
+ *   today moved WITHIN THE DAY TRACK — a lead resize changes `todayLeft` without the
+ *   window moving, and comparing track-relative offsets is what cancels the lead term
+ *   out rather than reading a widen as a pan.
  */
 function anchorScrollLeft(
 	anchor: ScrollAnchor,
@@ -173,7 +188,8 @@ function anchorScrollLeft(
 		if (zoomed !== null) return zoomed;
 	}
 	const saved = anchor.offsets['timeline']?.left ?? anchor.offsets['pane']?.left ?? 0;
-	if (todayLeft != null && anchor.todayLeft != null) return Math.max(saved + (todayLeft - anchor.todayLeft), 0);
+	const track = todayTrackLeft(todayLeft, roadmap);
+	if (track != null && anchor.todayTrackLeft != null) return Math.max(saved + (track - anchor.todayTrackLeft), 0);
 	return saved;
 }
 

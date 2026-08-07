@@ -70,7 +70,7 @@ bigger constant, since no single number fits every vault's titles.
   resolved width and the clamp bounds.
 - Dragging updates only the CSS custom property until release: `config.setCalls` and
   the vault's write log stay empty through the whole gesture, and exactly one width is
-  persisted, at its end — never one per `mousemove`.
+  persisted, at its end — never one per `pointermove`.
 - ArrowLeft/ArrowRight on the focused grip step the width and persist each step
   immediately; Home returns it to the default and clears the stored pick; neither
   touches a note or the `.base`.

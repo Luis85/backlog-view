@@ -74,6 +74,11 @@ export default defineConfig({
 			// today/milestone/gridline math and the drag's own lead-column hit test)
 			// measured 98.04/93.81/99.24/99.24 — all four round down to the figures already
 			// recorded above, so none of the four move.
+			//
+			// The lead-resize fix pass (the scroll-anchor's today term made track-relative
+			// so a resize stops panning the grid, and the grip moved from mouse to pointer
+			// events for touch) measured 98.04/93.82/99.24/99.24 — the same figures again,
+			// so none of the four move.
 			thresholds: {
 				statements: 98.0,
 				branches: 93.8,

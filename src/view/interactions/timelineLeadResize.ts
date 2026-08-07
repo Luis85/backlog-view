@@ -11,12 +11,18 @@ import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/collap
  *
  * Not `CardDragController`: that controller's whole shape is a `BacklogItem` picked
  * up and dropped somewhere (`cardDrag.ts`'s own preamble), and a column boundary is
- * neither a card nor a drop target. Plain mouse events keep the same delta-then-clamp
- * shape `timelineDrag.ts`'s holds already use, without forcing a fake item through
- * machinery built for one — and jsdom has no working `PointerEvent`/pointer-capture
- * (the same reason `test/helpers/dnd.ts` fakes drag gestures with `MouseEvent`s
- * instead of the real `DragEvent`), so `mousedown`/`mousemove`/`mouseup` on `window`
- * is also the one shape both a browser and this repo's tests can drive.
+ * neither a card nor a drop target. Pointer events (not `mousedown`/`mousemove`/
+ * `mouseup`) keep the same delta-then-clamp shape `timelineDrag.ts`'s holds already
+ * use, without forcing a fake item through machinery built for one — and this plugin
+ * is not desktop-only (`manifest.json`), so a mouse-only grip cannot be resized on a
+ * touch device at all. `setPointerCapture` on the grip itself is what lets the stream
+ * survive the pointer leaving a 6px strip: capture re-targets every later event at the
+ * capturing element regardless of where the pointer physically is, which is also why
+ * the move/up handlers live on the GRIP rather than `window` now — capture makes the
+ * window-level net this used to need redundant. jsdom implements the `PointerEvent`
+ * constructor but not capture itself, so `setPointerCapture`/`releasePointerCapture`
+ * are called through an optional chain: real browsers use them, tests dispatch
+ * directly on the grip and never need them to do anything.
  *
  * `tabindex="0"` — a REAL tab stop — where every other control inside this
  * one-tab-stop pane (`src/view/CLAUDE.md`'s Controls section) is `tabindex="-1"`
@@ -77,22 +83,27 @@ export function renderLeadResize(
 		host.roadmap?.scroller?.querySelector<HTMLElement>('.pbl-timeline-lead-grip')?.focus();
 	};
 
-	grip.addEventListener('mousedown', (evt) => {
+	grip.addEventListener('pointerdown', (evt) => {
 		if (evt.button !== 0) return;
 		// Not text selection: a resize drag has to feel like one, not a text drag.
 		evt.preventDefault();
+		grip.setPointerCapture?.(evt.pointerId);
 		const startX = evt.clientX;
 		const startWidth = host.leadWidth ?? defaultWidth;
-		const onMove = (moveEvt: MouseEvent): void => live(clampLeadWidth(startWidth + (moveEvt.clientX - startX)));
-		const onUp = (upEvt: MouseEvent): void => {
-			window.removeEventListener('mousemove', onMove);
-			window.removeEventListener('mouseup', onUp);
+		const onMove = (moveEvt: PointerEvent): void => live(clampLeadWidth(startWidth + (moveEvt.clientX - startX)));
+		const onUp = (upEvt: PointerEvent): void => {
+			grip.removeEventListener('pointermove', onMove);
+			grip.removeEventListener('pointerup', onUp);
+			grip.removeEventListener('pointercancel', onUp);
+			grip.releasePointerCapture?.(upEvt.pointerId);
 			commit(clampLeadWidth(startWidth + (upEvt.clientX - startX)));
 		};
-		// On `window`, not the grip: the gesture has to keep tracking once the pointer
-		// leaves a 6px strip, the ordinary way a browser drag-resize is built.
-		window.addEventListener('mousemove', onMove);
-		window.addEventListener('mouseup', onUp);
+		// On the grip itself, riding pointer capture — not `window`: capture keeps the
+		// stream targeted here even once the pointer leaves the 6px strip, so there is
+		// nothing left for a window-level net to catch.
+		grip.addEventListener('pointermove', onMove);
+		grip.addEventListener('pointerup', onUp);
+		grip.addEventListener('pointercancel', onUp);
 	});
 
 	grip.addEventListener('keydown', (evt) => {
