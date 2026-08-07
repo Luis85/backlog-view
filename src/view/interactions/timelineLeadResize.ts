@@ -83,6 +83,18 @@ export function renderLeadResize(
 	// per repeat event. `defaultWidth` back to `null` is `density`'s own rule: the
 	// default needs no stored entry, so dragging back to it clears the pick rather than
 	// writing the number that means the same thing.
+	// Commit only a width that DIFFERS from the one on screen. Asked here, once, rather
+	// than by each gesture in its own way — three separate versions of this question have
+	// now been wrong. It is not "did the pointer move": at a pane boundary a real drag
+	// (or ArrowRight at the ceiling) produces a delta whose clamped target is the width
+	// already drawn, and committing that writes the CLAMP back over a wider stored pick,
+	// losing a choice made in a wider pane for good. What matters is only what would
+	// change. Home stays an explicit reset and does not come through here.
+	const commitIfChanged = (width: number): void => {
+		if (width === current) return;
+		commit(width);
+	};
+
 	const commit = (width: number): void => {
 		host.setLeadWidth(width === defaultWidth ? null : width);
 		// The write above re-renders the whole projection, destroying THIS element —
@@ -130,14 +142,7 @@ export function renderLeadResize(
 		const onUp = (upEvt: PointerEvent): void => {
 			if (!mine(upEvt)) return;
 			end(upEvt);
-			const delta = upEvt.clientX - startX;
-			// A tap is not a resize, and neither is a drag that ends where it began. The
-			// baseline is the width DRAWN, so committing a zero-delta release would write
-			// that back — silently replacing a stored pick the pane is merely clamping for
-			// display with the clamped number itself, and losing a width chosen in a wider
-			// pane to a stray tap.
-			if (delta === 0) return;
-			commit(clampLeadWidth(startWidth + delta, available));
+			commitIfChanged(clampLeadWidth(startWidth + (upEvt.clientX - startX), available));
 		};
 		// A cancel is the platform saying the gesture stopped being the user's — palm
 		// rejection, an orientation change, another gesture taking it over. The width it
@@ -162,7 +167,7 @@ export function renderLeadResize(
 		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
 			evt.preventDefault();
 			const step = evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX;
-			commit(clampLeadWidth(current + step, available));
+			commitIfChanged(clampLeadWidth(current + step, available));
 		} else if (evt.key === 'Home') {
 			evt.preventDefault();
 			commit(defaultWidth);

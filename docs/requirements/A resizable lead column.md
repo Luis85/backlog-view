@@ -97,9 +97,13 @@ bigger constant, since no single number fits every vault's titles.
   that exceeded `aria-valuemax`, covered the reserved day track, persisted, and was
   thrown away by the very next render. It does not narrow a pick already stored from a
   wider pane: that one is clamped for display and returns in full.
-- **2d — a release that resized nothing.** A tap, or a drag ending where it began,
-  commits nothing. The gesture's baseline is the width DRAWN, so committing a zero
-  delta would write the clamp back over a wider stored pick and lose it for good.
+- **2d — a gesture that changes nothing.** A tap, a drag ending where it began, or a
+  drag or ArrowRight pushing further into a ceiling the column already sits at: all
+  commit nothing. The test is the resulting WIDTH, not the pointer's delta — at the
+  pane's ceiling a real gesture produces a real delta whose clamped target is the width
+  already drawn, and committing it would write the clamp back over a wider stored pick
+  and lose it for good. Home is the exception by design: it is an explicit reset and
+  clears the pick whatever is on screen.
 
 ## Acceptance criteria
 

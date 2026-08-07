@@ -155,6 +155,28 @@ describe('the lead-column resize grip', () => {
 			expect(view.leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
 		});
 
+		it('keeps the pick when a real gesture at the pane ceiling changes nothing', () => {
+			// The narrower version of the same rule, and the one a zero-delta guard misses:
+			// the column is already at what the pane can draw, so dragging further right
+			// produces a real delta whose CLAMPED target is the width already on screen.
+			// Committing it writes the clamp back over the wider stored pick.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			Object.defineProperty(treeOf(containerEl), 'clientWidth', { value: 350, configurable: true });
+			view.setProjection('roadmap');
+			view.setLeadWidth(MAX_TIMELINE_LEAD_PX);
+			expect(grip(containerEl).getAttribute('aria-valuenow')).toBe(String(leadBoundsFor(350).max));
+
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 500));
+			el.dispatchEvent(pointer('pointerup', 500));
+			expect(view.leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
+
+			// ArrowRight at the same ceiling asks the same question and must answer it alike.
+			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+			expect(view.leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
+		});
+
 		it('cannot drag past what the pane can draw — no width is stored that the render throws away', () => {
 			// A 350px pane announces and draws a 270px ceiling. Clamping the gesture to the
 			// STORABLE 480 put 400 on screen and into aria-valuenow, persisted it, and let
