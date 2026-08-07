@@ -305,12 +305,21 @@ narrowed to one type.
 - A stray column never appears on the Deliverables board for a value only a
   non-Deliverable item carries under the configured Deliverable state property, and
   that value is never offered on that other item's own Set-state menu.
-- The generated README, whenever the *resolved* Deliverable state key is non-empty —
-  its own key, or (falling back) the requirements one — lists it in the property table,
-  naming which of the two relationships holds ("separate from the requirements
-  workflow's" or "the same property … since no Deliverable state property is
-  configured") — the same contract every other property this view writes already gets,
-  so "only the properties above are written" stays true of a vault using this board.
+- The generated README lists the *resolved* Deliverable state key in the property table
+  whenever it is non-empty — its own key, or (falling back) the requirements one — so
+  "only the properties above are written" stays true of a vault using this board, the
+  same contract every other property this view writes already gets.
+  **One property gets one row, and a relationship is stated only where there are two.**
+  Whether there are two is asked of the resolved key against `stateKey`, never of the
+  raw option: the two workflows share a property both when the Deliverable key is unset
+  AND when it is set to the requirements key on purpose — the one collision
+  `configProblems` exempts — and asking the option documented that second arrangement as
+  two separate properties, listing the one key twice in a table of what a note may
+  carry. Shared, the requirements row says it carries both workflows. Distinct, the
+  Deliverable row names itself separate from the requirements one. And with no
+  requirements key configured at all there is no such row and no `## Workflow states`
+  section, so no relationship is stated — "separate from the requirements workflow's"
+  would name something the reader cannot find.
 - The pane carries the same board-shaped styling (columns readable, no clipped overflow,
   no leftover tree-only root drop zone) in Deliverables mode as in Board mode.
 - A configured-but-empty Deliverables board (no `Deliverable` results in the base) shows
@@ -496,11 +505,13 @@ counterpart map `'deliverables'` to and from `DELIVERABLES_MODE`, the same round
 `board`/`roadmap` already get.
 `src/domain/backlogReadme.ts` — `fieldRows` gates its Deliverable row on
 `resolvedDeliverableStateKey(settings)` rather than the raw key, so the row still
-documents the property the board actually reads and writes under the fallback, and its
-own relationship sentence states which of the two is true — "separate from the
-requirements workflow's" when `deliverableStateKey` is configured, or "the same
-property … since no Deliverable state property is configured" when it is not — rather
-than always claiming independence. This matches its existing manual, per-property shape
+documents the property the board actually reads and writes under the fallback. Whether
+that key is a SECOND property or the same one is decided by comparing it against
+`settings.stateKey` — again not the raw option, which is what made an explicitly shared
+key read as two separate properties and appear twice in the table. Shared, the
+requirements row carries the whole description and no second row is emitted; distinct,
+the Deliverable row names the relationship; with no requirements key at all it names
+none, there being nothing in the document to relate to. This matches its existing manual, per-property shape
 (the horizon/start/target rows immediately above it) rather than a generic loop over
 `OPTIONAL_PROPERTIES` — `fieldRows` already has that shape for every property before
 this one, so this PBI matches precedent rather than refactoring it. The full "declared
