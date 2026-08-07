@@ -472,6 +472,11 @@ describe('the Deliverables board can be set up from its own empty state', () => 
 		const empty = harness.containerEl.querySelector('.pbl-empty');
 		expect(empty?.textContent).toContain('No workflow to show');
 		expect(empty?.querySelector('button')?.textContent).toContain('Add the default properties');
+		// The press binds `status` to the REQUIREMENTS property here, so the hint has to
+		// name that one too: guidance naming only the Deliverable property sends the user
+		// looking for a setting the button they just pressed did not touch.
+		expect(empty?.textContent).toContain('"Deliverable state property"');
+		expect(empty?.textContent).toContain('"State property"');
 	});
 
 	it('withholds it when the shared property was deliberately CLEARED', () => {

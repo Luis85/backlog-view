@@ -106,10 +106,11 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 		treeEl,
 		'square-kanban',
 		'No workflow to show',
-		'The Deliverables board is a projection of its own workflow, and this view has no ' +
-			'Deliverable state property yet. Set "Deliverable state property" in the view ' +
-			'options — and optionally "Deliverable workflow states (in order)" — and the ' +
-			'board will draw one column per state.',
+		'The Deliverables board projects a workflow, and this view has neither state ' +
+			'property set. Set "Deliverable state property" in the view options to give ' +
+			'Deliverables a workflow of their own, or set "State property" and they share ' +
+			'the requirements one. Either draws a column per state, and "Deliverable ' +
+			'workflow states (in order)" names them.',
 	);
 	// BOTH fields fix this frame, which is `resolvedDeliverableStateKey`'s own rule as a
 	// list: this board resolves through its own key when one is set and through the
@@ -120,6 +121,12 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 	// withholding the press that would have set it. A CLEARED `state` is still a
 	// decision and still hides the button: `adoptableProperties` asks the config, not
 	// the settings.
+	//
+	// The HINT above names both properties for the same reason, and that is not
+	// tidiness: on a fresh view this button binds `status` to the requirements `State
+	// property`, so a hint naming only the Deliverable one would send the user looking
+	// for a setting the press they just made did not touch. What the guidance says the
+	// way out is and what the button beside it actually does have to be one answer.
 	renderSetupCta(host, empty, ['deliverableState', 'state']);
 }
 
