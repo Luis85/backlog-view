@@ -37,9 +37,9 @@ the hierarchy has to travel on the card.
   are built by `renderCardBody`.
 - Expansion backed by the existing per-path collapse state, so it persists per saved
   view per device.
-- Removing the projection gate on the toolbar's Expand all / Collapse all, so those
-  controls reach cards. Its stated reason — the card projections have nothing
-  collapsible — is what this feature retires.
+- Replacing the projection gate on the toolbar's Expand all / Collapse all with one
+  asking whether the rendered surface has any disclosure, so those controls reach cards
+  without going live on a projection that drew none.
 - A card-menu path to the same children, because each card projection is one tab stop.
 
 **Out:**
@@ -60,7 +60,7 @@ the hierarchy has to travel on the card.
 
 A card whose **visible** direct children number one or more renders a disclosure line as
 the last element of the shared card body: a chevron, and a count naming the children's
-type when they share one (`3 features`) or the neutral `3 items` when they do not.
+type when they share one (`3 features`) or the neutral `3 children` when they do not.
 
 The plural is a naive `+ s`, the same shape `columnLabel` already uses for `1 card` /
 `2 cards`. Type names are user data, so a declared type that does not pluralize that way
@@ -130,12 +130,13 @@ second one. Consequences, all of them intended:
 - Expanding an Epic's card also expands that Epic's row in the tree, and vice versa. One
   bit, one meaning: *this node is open*.
 - Collapse all and Expand all in the toolbar drive cards, **once their gate is
-  removed** — see Architecture §5. They render today only under
-  `host.projection === 'tree'`, on the stated grounds that "the board and the roadmap
-  have nothing collapsible yet", which is precisely what this feature retires. Sharing
-  the store is not on its own enough to make them reachable, and a promise that the
-  toolbar does not keep is the defect this repository files under *write the guarantee
-  to the check, never ahead of it*.
+  replaced** — see Architecture §5. They render today only under
+  `host.projection === 'tree'`, and sharing the store is not on its own enough to make
+  them reachable; a promise the toolbar does not keep is the defect this repository
+  files under *write the guarantee to the check, never ahead of it*. The replacement
+  is not a plain removal, because half the original reason still holds: on a
+  projection that drew no disclosure the buttons are disabled, or they would write
+  collapse state that changes nothing on screen and surfaces later in the tree.
 - `collapseNewParents` settles each path once, so a write does not snap open cards shut.
 
 **While the quick filter runs, the toggle is `disabled`.** The filter *overrides* collapse
@@ -278,10 +279,33 @@ surface reusing the card shell without the body is right by default.
 
 Expand all and Collapse all are wrapped in `if (host.projection === 'tree')`, whose
 comment gives the reason: "the board and the roadmap have nothing collapsible yet, and a
-control that visibly does nothing is worse than none." Both halves stop being true here,
-so the gate goes and the comment with it. `Collapse all` already iterates `model.items`
-and skips childless ones, so it needs no other change: in a card projection it shuts
-every disclosure, which is the same sentence it means in the tree.
+control that visibly does nothing is worse than none." The **first** half stops being
+true here. The second does not, and it is the half that matters: a board with no
+configured workflow draws guidance rather than cards, a roadmap with no configured axis
+does the same, and a dated axis with an empty shelf draws nothing but timeline rows.
+In each of those a bare removal would leave two live buttons that change nothing on
+screen while still writing collapse state — inert *and* not inert, the worst pairing,
+since the effect shows up later in the tree.
+
+So the gate is replaced rather than deleted: the controls render in every projection,
+and a card projection that drew **no disclosure** disables them. The condition is the
+set §1 already publishes — `projection === 'tree' || cardChildrenShown.size > 0` — so
+the buttons say exactly what the screen offers, from the same source the menu reads.
+
+That has to happen **after** the content renders, because the set is filled by the
+render: `renderToolbar` runs first and the cards are drawn afterwards, so a decision
+taken during the toolbar pass would read the *previous* frame's set. The codebase
+already has the shape for this — `syncCountLabel` is a post-content toolbar sync
+called after the content render for the same reason — so this is one more of those
+beside it, not a new mechanism.
+
+Disabled rather than absent, and via the real `disabled` property rather than CSS,
+matching what the same buttons already do while the quick filter runs and the rule
+behind it: `pointer-events: none` stops a mouse and nothing else.
+
+`Collapse all` needs no other change — it already iterates `model.items` and skips
+childless ones, so in a card projection it shuts every disclosure, which is the same
+sentence it means in the tree.
 
 They stay `disabled` while the quick filter runs, from the same `syncFilterUi` call that
 disables them today — the rule the card's own toggle now follows for the same reason.
@@ -357,6 +381,11 @@ harness:
 - Expand all and Collapse all render in board and roadmap mode and drive the cards'
   disclosures, and stay disabled while the quick filter runs. The first half is the
   claim the toolbar's gate would otherwise have silently broken.
+- They are **disabled** in a card projection that drew no disclosure — asserted on a
+  board with no configured workflow and on a dated roadmap whose only rows are timeline
+  rows. Enabled buttons there would write collapse state that changes nothing on screen
+  and then surprises the tree later, which is the failure the original gate prevented
+  and that removing it naively would reintroduce.
 
 `test/view/contextCardWrites.test.ts` — extended: a context card's disclosure renders,
 lists, opens, and writes nothing on any of its paths.
