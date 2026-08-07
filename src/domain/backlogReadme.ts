@@ -149,7 +149,11 @@ function fieldRows(settings: BacklogSettings): string[] {
 	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
 	if (settings.deliverableStateKey) {
-		rows.push(`| ${cell(settings.deliverableStateKey)} | Optional, on a Deliverable | The Deliverable workflow's own state — a separate workflow from the one above |`);
+		// NOT "the one above": that claim is false whenever settings.stateKey is unset, since
+		// fieldRows then has no requirements-workflow row at all (and no ## Workflow states
+		// section either) — a fully independent, reachable configuration. Named by
+		// relationship instead, which holds whether or not that row exists in THIS document.
+		rows.push(`| ${cell(settings.deliverableStateKey)} | Optional, on a Deliverable | The Deliverable workflow's own state — separate from the requirements workflow's |`);
 	}
 	return rows;
 }

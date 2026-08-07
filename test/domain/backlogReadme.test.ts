@@ -89,6 +89,18 @@ describe('backlogReadmeContent', () => {
 		expect(content).not.toMatch(/only.*(root|no parent)/i);
 	});
 
+	it('renders the Deliverable state row with no positional claim, when nothing precedes it', () => {
+		// A fully independent, reachable configuration: deliverableStateKey needs no
+		// stateKey, so the requirements-workflow row — and the whole '## Workflow states'
+		// section — can be entirely absent from this same document while this row renders.
+		// "The one above" would have no antecedent here.
+		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const content = backlogReadmeContent(settings, [], 'test');
+		expect(content).toContain('| `deliverableStatus` | Optional, on a Deliverable |');
+		expect(content).not.toContain('## Workflow states');
+		expect(content).not.toMatch(/\bthe one above\b/i);
+	});
+
 	it('states the ranking step the planner actually uses', () => {
 		expect(readme(settingsWith(), [])).toContain(`${ORDER_SPACING} apart`);
 	});
