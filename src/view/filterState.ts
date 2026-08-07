@@ -60,9 +60,16 @@ export class FilterState {
 	 * a matching ancestor's subtree, changing the tree. Walking up marks a Deliverable's
 	 * own subtree and nothing else, so the tree is untouched either way.
 	 *
-	 * `seen` keeps it linear rather than re-walking a subtree per Deliverable already
-	 * reached by the first pass; the upward walk is per missed Deliverable and bounded
-	 * by the tree's depth.
+	 * **The second pass writes no path the focused forest covers**, and that is a guard
+	 * (`outsideFocus`) rather than a hope: a focus root can sit UNDER an out-of-focus
+	 * Deliverable — a Task under one, with Task focus active — so marking that
+	 * Deliverable's subtree freely would put a focused Task on screen that neither it nor
+	 * anything below it matched. The claim that this pass leaves the tree alone was
+	 * asserted here before it was true; it is checked now, in both directions.
+	 *
+	 * `inFocus` is collected up front rather than accumulated during the first pass,
+	 * because the guard has to answer about pass ONE's coverage while pass two is still
+	 * writing. The upward walk is per missed Deliverable and bounded by the tree's depth.
 	 */
 	recompute(model: BacklogModel | null): void {
 		const needle = this.text.trim().toLowerCase();
@@ -73,20 +80,31 @@ export class FilterState {
 		}
 		const visible = new Set<string>();
 		const matches = new Set<string>();
-		const seen = new Set<string>();
-		const markSubtree = (item: BacklogItem): void => {
-			visible.add(item.file.path);
-			for (const child of item.children) markSubtree(child);
+		// What the FOCUSED forest covers, collected before either pass so the second can
+		// refuse to write to any of it. `model.roots` is that forest, and a focus root's own
+		// descendants are in it too — which is the case the guard exists for.
+		const inFocus = new Set<string>();
+		const collect = (item: BacklogItem): void => {
+			inFocus.add(item.file.path);
+			for (const child of item.children) collect(child);
 		};
-		const visit = (item: BacklogItem): boolean => {
-			seen.add(item.file.path);
+		for (const root of model.roots) collect(root);
+		const anywhere = (): boolean => true;
+		const outsideFocus = (item: BacklogItem): boolean => !inFocus.has(item.file.path);
+		const markSubtree = (item: BacklogItem, allowed: (i: BacklogItem) => boolean): void => {
+			if (!allowed(item)) return;
+			visible.add(item.file.path);
+			for (const child of item.children) markSubtree(child, allowed);
+		};
+		const visit = (item: BacklogItem, allowed: (i: BacklogItem) => boolean): boolean => {
+			if (!allowed(item)) return false;
 			const selfMatch = item.title.toLowerCase().includes(needle);
 			if (selfMatch) {
 				matches.add(item.file.path);
-				markSubtree(item);
+				markSubtree(item, allowed);
 			}
 			let anyMatch = selfMatch;
-			for (const child of item.children) anyMatch = visit(child) || anyMatch;
+			for (const child of item.children) anyMatch = visit(child, allowed) || anyMatch;
 			if (anyMatch) visible.add(item.file.path);
 			return anyMatch;
 		};
@@ -96,13 +114,13 @@ export class FilterState {
 			}
 			return false;
 		};
-		for (const root of model.roots) visit(root);
+		for (const root of model.roots) visit(root, anywhere);
 		for (const item of model.deliverableResults) {
-			if (seen.has(item.file.path)) continue;
-			// Its own subtree only — never the matching ancestor, which is not rendered
-			// here and whose other descendants are the tree's business, not this pass's.
-			if (ancestorMatched(item)) markSubtree(item);
-			visit(item);
+			if (inFocus.has(item.file.path)) continue;
+			// Its own subtree only — never the matching ancestor, which is not rendered here,
+			// and never a focused row below it, which is the tree's and not this pass's.
+			if (ancestorMatched(item)) markSubtree(item, outsideFocus);
+			visit(item, outsideFocus);
 		}
 		this.visible = visible;
 		this.matches = matches;

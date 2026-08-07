@@ -250,6 +250,12 @@ narrowed to one type.
   does without one. It walks UP from each Deliverable and marks only that Deliverable's
   own subtree, never the matching ancestor's: starting the whole walk at `realRoots`
   instead would mark the focused rows in that ancestor's subtree too, changing the tree.
+  **That pass writes no path the focused forest covers, and it is guarded rather than
+  assumed** — a focus root can sit UNDER an out-of-focus Deliverable (a Task under one,
+  with Task focus active), so marking a matching Deliverable's subtree freely would put
+  a focused Task on screen for a match the tree does not even render. Checked in both
+  directions: the Deliverable keeps its card, the Task stays hidden, and a Task that
+  matches on its own still shows.
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button

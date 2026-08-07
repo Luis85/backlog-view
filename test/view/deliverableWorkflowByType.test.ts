@@ -351,3 +351,36 @@ describe('a match keeps its whole subtree, focus or no focus', () => {
 		expect(cards(focused.containerEl)).toBe(0);
 	});
 });
+
+describe('the Deliverables filter pass never writes a focused row', () => {
+	/** A Task under a Deliverable: under Task focus the Task is a focus ROOT while its
+	 *  Deliverable parent is not, so the pass meets the focused forest from below. */
+	function taskUnderDeliverable(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Handbook.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('Write it.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Handbook' });
+		return vault;
+	}
+
+	it('keeps the Deliverable card without revealing its focused Task', () => {
+		const harness = makeView(taskUnderDeliverable(), CONFIG, { focus: 'Task' });
+		const { containerEl } = harness;
+		harness.view.setFilter('Handbook');
+
+		// The tree is the focused forest, and nothing in it matched — marking the
+		// Deliverable's subtree freely would put this Task on screen for a match the
+		// user cannot even see, since the Deliverable itself is not rendered here.
+		expect(containerEl.querySelectorAll('.pbl-row').length).toBe(0);
+
+		// The board it was all for still keeps the card.
+		harness.view.setProjection('deliverables');
+		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(1);
+	});
+
+	it('still shows the focused Task when the TASK is what matched', () => {
+		const harness = makeView(taskUnderDeliverable(), CONFIG, { focus: 'Task' });
+		const { containerEl } = harness;
+		harness.view.setFilter('Write');
+		expect(containerEl.querySelectorAll('.pbl-row').length).toBe(1);
+	});
+});
