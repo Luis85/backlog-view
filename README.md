@@ -27,9 +27,9 @@ Azure DevOps Boards.
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
-  - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue` and
-    `Bug` that sit beside it rather than on it, or `Milestone` — a marker on neither, which
-    states a date rather than work.
+  - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
+    `Bug` and `Deliverable` that sit beside it rather than on it, or `Milestone` — a
+    marker on neither, which states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
@@ -104,7 +104,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 
 | Action | How |
 | --- | --- |
-| Switch projection | Toolbar toggle — **backlog tree**, **kanban board**, **roadmap**. See [The board](#the-board) and [The roadmap](#the-roadmap) |
+| Switch projection | Toolbar toggle — **backlog tree**, **kanban board**, **roadmap**, **Deliverables board**. See [The board](#the-board), [The roadmap](#the-roadmap) and [The Deliverables board](#the-deliverables-board) |
 | Expand / collapse | Click the chevron, or use the toolbar buttons |
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
 | Re-order among siblings | Drag a row and drop it **between** two rows |
@@ -323,9 +323,9 @@ choices directly (`New PBI`, `New Issue`, `New Bug`), and `Set type` offers ever
 declared type. A row with only one option — a Task, or a Bug, which holds only Tasks —
 asks nothing and creates it straight away.
 
-`Issue` and `Bug` each get their own badge icon and colour — an alert in pink and a bug in
-red, distinct from the four level colours. They rank with `PBI`, so focusing that level
-shows them beside it rather than hiding them.
+`Issue`, `Bug` and `Deliverable` each get their own badge icon and colour — an alert in
+pink, a bug in red, a package in green — distinct from the four level colours. They rank
+with `PBI`, so focusing that level shows them beside it rather than hiding them.
 
 **The type vocabulary is fixed.** That is deliberate: a configurable vocabulary means every
 rule about levels has to hold for any list someone can type, and the reward is a rename.
@@ -335,6 +335,12 @@ ladder as before — nothing is rejected, it simply is not one of the shipped na
 None of this is enforced. The ladder has always guided what the view *offers* and what it
 *writes* without refusing a move you make deliberately, and extra types follow the same
 rule: drag a Bug wherever the work actually belongs.
+
+`Deliverable` is the same shape as `Issue` and `Bug` — pinned rank, `Task` children,
+never re-typed by a move, and (like them) creatable with **no parent at all**, from the
+toolbar's own "pick another type" menu. What is new is its own folder and badge colour
+like every declared type gets, and its own board with its own workflow — see
+[The Deliverables board](#the-deliverables-board) below.
 
 ### Where new items are filed
 
@@ -491,7 +497,7 @@ represented beneath them rather than scattered across the columns as cards of th
 That is the same re-rooting the tree does, and it is usually what you want from a board:
 one card per thing you are tracking, at the altitude you are tracking it.
 
-**The projection is working position, not configuration.** Which of the three a view is
+**The projection is working position, not configuration.** Which of the four a view is
 showing is remembered per saved view, per device, beside the collapse state — it is never
 written to the `.base`, so opening the same backlog on another machine does not move
 anyone else's view.
@@ -547,6 +553,28 @@ matches no column, it sits in the no-state column.
 
 Every move — drag, keyboard or menu — is the same gated write, announced in the same words,
 and taken back by the same <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>.
+
+### The Deliverables board
+
+A fourth projection, alongside tree/board/roadmap, reserved for items typed
+`Deliverable` — concepts, designs and anything else the team must produce rather than
+plan. It has its **own workflow**: its own state property, its own ordered states, its
+own done values, entirely independent of the board above. A Deliverable finished in one
+workflow does not read as finished in the other.
+
+Columns and a workflow only — no WIP limits, no column policies, no started/finished
+date stamps, and "Show completed items" has no effect here: a Deliverable's
+completion state on either workflow never hides its card, and only the quick filter
+narrows what is shown. (The toolbar's **Focus** picker still applies here as it does
+everywhere else — focused on a Feature, this board shows only the Deliverables nested
+under that focus; focused on PBI specifically, every Deliverable stays visible
+regardless of where it sits, the same way `Issue` and `Bug` already do under PBI
+focus.) Moving a card (drag, Alt+Left/Right, or the card menu's Set state) writes only
+the Deliverable state property.
+
+Everything else about a Deliverable — its parent, its rank, its tags, its place on the
+roadmap — is the same property every other type already uses; nothing about this board
+changes how those work.
 
 ## The roadmap
 
@@ -645,8 +673,11 @@ Open the view options in the Bases toolbar to configure:
 | Horizons (in order) | `Now, Next, Later` | The buckets the horizon axis draws, in order. Naming a **Horizon property** is enough to turn the axis on — the values ship populated, so you only need to edit this list to rename or add buckets |
 | Start date property / Target date property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
 | Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
-| Show completed items | on | Off hides fully-done subtrees from every projection (only while a state property is set); nothing about ranking or rollups changes |
-| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Show completed items | on | Off hides fully-done subtrees from the tree, the board and the roadmap (only while a state property is set); the Deliverables board ignores it — see [The Deliverables board](#the-deliverables-board) — and nothing about ranking or rollups changes anywhere |
+| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/deliverables`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Deliverable state property | *(off)* | Note property with the Deliverable workflow's own state; enables the Deliverables board |
+| Deliverable workflow states (in order) | *(off)* | The Deliverables board's columns, in that order. Left unset, it draws the states your Deliverables actually carry |
+| Deliverable states that count as done | `Done, Closed, Completed, Removed` | Which Deliverable state values complete a Deliverable, for this workflow alone |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |
