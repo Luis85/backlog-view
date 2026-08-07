@@ -150,7 +150,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 		drawEmpty: (h, aside) => {
 			const m = h.model;
 			if (!m) return;
-			if (m.deliverableResults.length === 0) renderNoDeliverablesState(h, aside);
+			if (m.deliverableResults.length === 0) renderNoDeliverablesState(aside);
 			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
 		},
 	});

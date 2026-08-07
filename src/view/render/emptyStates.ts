@@ -125,7 +125,7 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
  * you clear focus" case to describe here — either the base has a Deliverable somewhere,
  * in which case it is already a card, or it does not.
  */
-export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLElement): void {
+export function renderNoDeliverablesState(treeEl: HTMLElement): void {
 	guidanceShell(
 		treeEl,
 		'package',

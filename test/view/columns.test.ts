@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { expandAll, fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { rowContext, syncColumnFit } from '../../src/view/render/columns';
 
 useViewHarness();
 
@@ -114,6 +115,44 @@ describe('property columns', () => {
 		// Expanding the chain puts a row eight levels in — 192px of indent — on screen
 		expandAll(containerEl);
 		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+	});
+
+	it('never lets a Deliverable narrow columns on the Deliverables board via a stale real-hierarchy depth', () => {
+		// Same eight-level chain as the test above, but ending in a Deliverable, under a
+		// focus on a level nothing in this chain is typed — `collectFocusRoots` never
+		// reaches this branch, so `assignVisualDepth` never re-roots it: `D.depth` stays
+		// its REAL hierarchy depth (8) rather than a focused-visual one. That is exactly
+		// the depth-scale drift `BacklogModel.deliverableResults` can carry: it is built
+		// from the whole, unfocused tree, so an item inside the focused subtree gets a
+		// focused-visual depth while one outside it (like this D) keeps its real one —
+		// two scales in one array. `renderedDepth` must not read either scale for a card.
+		const vault = new FakeVault();
+		vault.addFile('L0.md', { frontmatter: { type: 'Epic', order: 10 } });
+		for (let i = 1; i <= 7; i++) {
+			vault.addFile(`L${i}.md`, { frontmatter: { type: 'Task', order: 10 }, parentLink: `L${i - 1}` });
+		}
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 }, parentLink: 'L7' });
+		const { containerEl, view } = makeView(vault, {}, { collapsed: true, focus: 'Feature' });
+		view.setProjection('deliverables');
+		const tree = treeOf(containerEl);
+		const viewEl = containerEl.querySelector('.pbl-view');
+		Object.defineProperty(tree, 'clientWidth', { value: 560, configurable: true });
+
+		const d = view.model?.byPath.get('D.md');
+		if (!d) throw new Error('missing D');
+		// Sanity: the focus above truly left this item on the real-hierarchy scale —
+		// otherwise this test would not be exercising the drift it claims to.
+		expect(d.depth).toBe(8);
+
+		// Built the way a Deliverables-board render pass would: one rendered card,
+		// pointing at this Deliverable. Called directly, bypassing the app's own
+		// tree-only gating on `refit()`, so this asserts `syncColumnFit`'s own contract
+		// rather than relying on that gating to keep the two from ever meeting.
+		const rows = new Map<string, HTMLElement>([[d.file.path, document.createElement('div')]]);
+		const ctx = rowContext(view, null as never, rows);
+		syncColumnFit(ctx, viewEl as HTMLElement, tree);
+
+		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
 	});
 
 	it('gives the horizon its own column, between the properties and the state', () => {

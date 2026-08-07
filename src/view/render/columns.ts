@@ -131,8 +131,17 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
  * model: `ctx.rows` holds exactly what was rendered, so this cannot disagree with
  * the tree the user is looking at, and a collapse shrinks it the same pass it
  * happens in.
+ *
+ * Zero off the tree: a board card is never indented, so the term this measures does
+ * not exist on either board-shaped projection — and `.depth` is not safe to read for
+ * one anyway. `BacklogModel.deliverableResults` (`domain/model.ts`) is built from the
+ * whole, unfocused tree, so under an active focus it can hold items on two different
+ * depth SCALES at once: one re-rooted by `assignVisualDepth` (inside the focused
+ * subtree) and one still carrying its real hierarchy depth (outside it). Reading
+ * either would be answering a question this projection does not ask.
  */
 function renderedDepth(ctx: RowContext): number {
+	if (ctx.host.projection !== 'tree') return 0;
 	let max = 0;
 	for (const path of ctx.rows.keys()) {
 		const depth = ctx.host.model?.byPath.get(path)?.depth ?? 0;
