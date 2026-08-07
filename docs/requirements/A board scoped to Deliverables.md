@@ -238,24 +238,22 @@ narrowed to one type.
   declared workflow the columns are the declaration and this changes nothing, and without
   one the board draws the states its own visible work holds rather than columns for work
   it is not showing.
-- **The quick filter indexes everything it will be ASKED about**, which is not the
-  rendered forest: `FilterState.recompute` walks `model.roots`, and this board asks about
-  `model.deliverableResults` — the whole, unfocused tree. A second, additive pass covers
-  the Deliverables the first missed, or a Deliverable outside the focused subtree renders
-  until anything is typed and then vanishes whether or not its own title matched, which is
-  the focus restriction this board exists to ignore arriving through the filter instead.
-  That pass carries the ANCESTOR question with it — a missed Deliverable's ancestors are
-  outside the focused forest too, and the contract is a match plus its **whole subtree**,
-  so typing an Epic's title must keep its Deliverables here under a focus exactly as it
-  does without one. It walks UP from each Deliverable and marks only that Deliverable's
-  own subtree, never the matching ancestor's: starting the whole walk at `realRoots`
-  instead would mark the focused rows in that ancestor's subtree too, changing the tree.
-  **That pass writes no path the focused forest covers, and it is guarded rather than
-  assumed** — a focus root can sit UNDER an out-of-focus Deliverable (a Task under one,
-  with Task focus active), so marking a matching Deliverable's subtree freely would put
-  a focused Task on screen for a match the tree does not even render. Checked in both
-  directions: the Deliverable keeps its card, the Task stays hidden, and a Task that
-  matches on its own still shows.
+- **The quick filter keeps ONE index per population, not one index patched to serve
+  two.** The tree, the requirements board and the roadmap render out of `model.roots`,
+  which a focus narrows; this board renders `model.deliverableResults`, built from the
+  whole tree and deliberately focus-immune. `FilterState` therefore holds a `focused`
+  and a `whole` index — the same match-path rule (`indexMatches`) over each forest — and
+  every caller names the scope it is asking about, resolved once from the projection
+  (`ProductBacklogView.filterScope`). Unfocused the two forests are the same one, so the
+  second index IS the first and the distinction costs nothing.
+  That shape was arrived at the expensive way, and the history is the argument for it:
+  one index that this board also consulted took four rounds of fixes, each correct and
+  each one case short — the out-of-focus Deliverable that was never indexed, its matching
+  ANCESTOR that was not either, a focused row BELOW one that the patch then wrote to and
+  should not have, and finally the two the guard could not reach at all (an in-focus
+  Deliverable whose ancestor sits ABOVE the focus root, and a Deliverable whose matching
+  descendant sits BELOW it across that boundary). Two indexes make all six structural:
+  neither is a special case of the other, and neither can write into the other.
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button

@@ -384,3 +384,52 @@ describe('the Deliverables filter pass never writes a focused row', () => {
 		expect(containerEl.querySelectorAll('.pbl-row').length).toBe(1);
 	});
 });
+
+describe('the two scopes, at the cases one index kept missing', () => {
+	/** Epic > PBI > (Deliverable), and Epic > Deliverable — so a focus can land above,
+	 *  below or beside the Deliverable depending on the level chosen. */
+	function deepTree(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Widget Platform.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature X.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Widget Platform' });
+		vault.addFile('Slice.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature X' });
+		vault.addFile('Manual.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Slice',
+		});
+		vault.addFile('Chapter.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Manual' });
+		return vault;
+	}
+	const cards = (el: HTMLElement) => el.querySelectorAll('.pbl-card').length;
+	const board = (focus?: string) => {
+		const harness = makeView(deepTree(), CONFIG, focus ? { focus } : {});
+		harness.view.setProjection('deliverables');
+		return harness;
+	};
+
+	it('keeps an IN-focus Deliverable whose ancestor ABOVE the focus root matched', () => {
+		// Under PBI focus the Deliverable is inside the focused forest, so a pass that
+		// skipped everything already indexed never asked whether the Epic above the focus
+		// root matched. The `whole` index has no such boundary: the Epic matches and its
+		// whole subtree comes with it.
+		expect(cards(board().containerEl)).toBe(1);
+		const focused = board('PBI');
+		focused.view.setFilter('Widget');
+		expect(cards(focused.containerEl)).toBe(1);
+	});
+
+	it('keeps a Deliverable whose DESCENDANT across the focus boundary matched', () => {
+		// Under Task focus the Task is a focus root and its Deliverable parent is not, so
+		// a guarded pass stopped at the boundary and never learned the Task had matched —
+		// dropping the card that is meant to expose matches below it.
+		const focused = board('Task');
+		focused.view.setFilter('Chapter');
+		expect(cards(focused.containerEl)).toBe(1);
+	});
+
+	it('still hides a Deliverable nothing in its line matched', () => {
+		const focused = board('PBI');
+		focused.view.setFilter('nothing matches this');
+		expect(cards(focused.containerEl)).toBe(0);
+	});
+});
