@@ -111,7 +111,15 @@ export function renderTimeline(
 	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
 	const tracks = new Map<string, HTMLElement>();
 	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks };
-	for (const bar of bars) renderBarRow(ctx, mounts, window, bar, scale);
+	bars.forEach((bar, index) => {
+		const row = renderBarRow(ctx, mounts, window, bar, scale);
+		// Assigned at render because CSS has no nth-of-class, and nth-child would
+		// count the header, the lines and the layers interleaved in this container.
+		if (index % 2 === 1) row.addClass('pbl-row-even');
+	});
+	const syncScrolled = () => grid.toggleClass('pbl-scrolled-x', grid.scrollLeft > 0);
+	grid.addEventListener('scroll', syncScrolled, { passive: true });
+	syncScrolled();
 	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -263,7 +271,7 @@ function renderBarRow(
 	window: TimelineWindow,
 	bar: TimelineBar,
 	scale: TimelineScale,
-): void {
+): HTMLElement {
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
@@ -305,6 +313,7 @@ function renderBarRow(
 	// already states.
 	if (isMarkerType(bar.item.typeName)) row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
 	wireCardActivation(ctx, row, bar.item);
+	return row;
 }
 
 /**

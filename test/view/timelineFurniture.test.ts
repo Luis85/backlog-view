@@ -101,3 +101,24 @@ describe('grid rhythm', () => {
 		expect(milestone?.parentElement?.classList.contains('pbl-timeline-band')).toBe(false);
 	});
 });
+
+describe('row tracking', () => {
+	it('stripes alternate rows from the render pass', () => {
+		const { containerEl } = datedRoadmap(furnishedVault());
+		const rows = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
+		expect(rows.length).toBe(3);
+		expect(rows.map((r) => r.classList.contains('pbl-row-even'))).toEqual([false, true, false]);
+	});
+
+	it('marks the grid once it is scrolled, so the lead column can carry its edge', () => {
+		const { containerEl } = datedRoadmap(furnishedVault());
+		const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
+		if (!scroller) throw new Error('no timeline scroller');
+		scroller.scrollLeft = 120;
+		scroller.dispatchEvent(new Event('scroll'));
+		expect(scroller.classList.contains('pbl-scrolled-x')).toBe(true);
+		scroller.scrollLeft = 0;
+		scroller.dispatchEvent(new Event('scroll'));
+		expect(scroller.classList.contains('pbl-scrolled-x')).toBe(false);
+	});
+});

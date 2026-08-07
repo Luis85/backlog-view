@@ -77,3 +77,36 @@
 	font-weight: 600;
 	color: var(--color-red);
 }
+
+/* Ordered faint-to-strong: zebra under hover, both translucent so the weekend
+   banding reads through them. Each outranks timeline.css's transparent
+   `.pbl-card.pbl-timeline-row` background by specificity, not by order — but
+   hover and zebra tie with each other, so WITHIN this block order is behaviour
+   and hover has to stay last. */
+.pbl-card.pbl-timeline-row.pbl-row-even {
+	background-color: color-mix(in srgb, var(--background-modifier-hover) 35%, transparent);
+}
+
+/* The row's background does not reach its lead cell: `.pbl-timeline-lead` paints an
+   opaque --background-primary so the track can scroll under the sticky column, and an
+   opaque child never shows its parent's background through. Tinting the row alone
+   starts the highlight at the day area and leaves the title outside the thing tracking
+   it. So the lead composes the same tint over --background-primary itself — opaque, as
+   it must stay — which is why these are the same two percentages twice and not a
+   variable: the pair is the appearance, and a reader comparing them is the check. */
+.pbl-card.pbl-timeline-row.pbl-row-even .pbl-timeline-lead {
+	background-color: color-mix(in srgb, var(--background-modifier-hover) 35%, var(--background-primary));
+}
+
+.pbl-card.pbl-timeline-row:hover {
+	background-color: color-mix(in srgb, var(--background-modifier-hover) 80%, transparent);
+}
+
+.pbl-card.pbl-timeline-row:hover .pbl-timeline-lead {
+	background-color: color-mix(in srgb, var(--background-modifier-hover) 80%, var(--background-primary));
+}
+
+/* Only once there is anything under the sticky edge to hint at. */
+.pbl-scrolled-x .pbl-timeline-lead {
+	box-shadow: 4px 0 6px -3px var(--background-modifier-border);
+}
