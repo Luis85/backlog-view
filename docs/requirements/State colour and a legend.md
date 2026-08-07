@@ -63,9 +63,18 @@ cannot name a state differently.
 - **1a — a vocabulary longer than five states.** Slots repeat rather than run out; two
   states can share a colour once the vocabulary passes the palette's length, the same
   tradeoff a rotating scheme always makes.
-- **3a — no workflow property configured.** `stateMenuValues` returns no states, so
-  the legend keys only today and the milestone — never an empty strip pretending to be
-  full, and never withheld for a reason unrelated to the axis being drawn.
+- **3a — no workflow property configured.** `stateMenuValues` does NOT reliably return
+  no states here — with `settings.stateKey === ''` it still falls back to
+  `[settings.doneValues[0]]`, a "Done" entry with nothing behind it — while
+  `domain/model.ts` sets every `stateValue` to null in that same configuration, so no bar
+  can carry a state colour at all. The legend therefore gates the state swatches on
+  `settings.stateKey` directly, the same property that decides whether a bar has one to
+  draw, rather than on what `stateMenuValues` happens to return: only today and the
+  milestone key, never an empty strip pretending to be full, and never a swatch for a
+  colour nothing on the grid draws. This was the third instance of one bug on this
+  branch — the general rule it protects is that a swatch exists only where a bar can
+  draw the thing it keys, stated in the code where the gate is decided
+  (`src/view/render/legend.ts`).
 
 ## Acceptance criteria
 
@@ -76,6 +85,9 @@ cannot name a state differently.
   decided by CSS specificity rather than source order.
 - The legend renders only where `renderTimelineControls` also renders (roadmap mode,
   dated axis) — never on the horizon axis, the board, or the tree.
+- With no workflow property configured (`settings.stateKey === ''`), the legend shows
+  exactly Today and Milestone and no state swatch — never a "Done" swatch keying a
+  colour no bar on that grid can draw.
 - The legend sits outside `.pbl-timeline` (the scroller) and under the toolbar, so
   scrolling the grid never scrolls the legend with it.
 - The legend carries `aria-hidden` and nothing inside it is a `button` or otherwise
@@ -93,6 +105,9 @@ returning the cell track alone. The legend strip is its own module,
 `src/view/render/legend.ts`, mounted between the toolbar and the tree in
 `src/view/backlogView.ts` (`legendEl`) and re-rendered every `render()` pass so the
 projection and axis-pick gates it shares with `renderTimelineControls` stay in sync.
+`renderLegend` gates the state swatches specifically on `host.settings.stateKey`, right
+beside where it builds them — never on `stateMenuValues(...)`'s own return, which still
+answers `[doneValues[0]]` with no workflow configured (see extension 3a).
 The colour rules — the five slots, the accent fallback via `--pbl-state-color`, and
 the done rule's specificity over a slot — are `styles/timeline.css`; the legend's own
 swatches and layout are `styles/legend.css`; the Today pill's rule is deleted from

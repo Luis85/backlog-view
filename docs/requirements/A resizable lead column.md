@@ -33,7 +33,7 @@ bigger constant, since no single number fits every vault's titles.
 | **Actor** | Backlog owner |
 | **Trigger** | The reader drags the grip at the lead column's right edge, or focuses it and presses an arrow key or Home |
 | **Preconditions** | Roadmap mode is on, the dated axis is drawn |
-| **Guarantee** | The width is UI state — per saved view, per device, beside the zoom and density picks — never the `.base` and never a frontmatter write. It is resolved once per render and used for both the CSS column and every mark placed against it, so a resize can never leave the grid and its marks disagreeing. |
+| **Guarantee** | The width is UI state — per saved view, per device, beside the zoom and density picks — never the `.base` and never a frontmatter write. It is resolved once per render, clamped to what the pane can actually give, and used for both the CSS column and every mark placed against it, so a resize can never leave the grid and its marks disagreeing and a stored width wider than the pane can never cover the whole grid. |
 
 **Main flow**
 
@@ -66,6 +66,18 @@ bigger constant, since no single number fits every vault's titles.
 - **5a — a stored width this plugin never wrote, or one outside the clamp range.** Read
   defensively and dropped, like every stored pick: the view opens at the default width
   rather than trusting a corrupt-but-plausible number into the layout.
+- **4a — the pane is narrower than the stored pick.** Picking 480px in a wide split and
+  then narrowing it (or rotating a phone) used to draw the full stored width regardless,
+  covering the whole grid with an opaque column and pinning the grip off-screen where
+  nothing could reach it. The width actually DRAWN now clamps to what the pane can give,
+  reserving a minimum for the day track so the grid never disappears entirely; the
+  STORED pick is untouched, so it returns in full the moment the pane widens again — the
+  same rule `density` and the axis pick already keep. A measurement of 0 or less
+  (unmeasured: jsdom, or Obsidian rendering before layout settles) reads as "not
+  measured", never "clamp to the minimum", and falls through to the stored width. The
+  pane's own `ResizeObserver` re-renders the dated axis when, and only when, this
+  effective width actually changes, so narrowing a live split recovers reachability
+  without a reader having to trigger a render some other way.
 
 ## Acceptance criteria
 
@@ -89,23 +101,41 @@ bigger constant, since no single number fits every vault's titles.
   dropped back to the document body after the first one.
 - Never written to the `.base`: UI state per saved view per device, beside the density
   and zoom picks it is validated and restored exactly like.
+- A stored width wider than the pane it is drawn in renders CLAMPED: the CSS column, the
+  today/milestone/gridline math and the grip's own `aria-valuenow` all agree on the
+  clamped number, `aria-valuemax` states the widest the pane can currently give rather
+  than the storable maximum, and `host.leadWidth` keeps reporting the full stored pick.
+  An unmeasured pane (`clientWidth` 0 or less) never clamps. Narrowing the pane after the
+  fact re-renders the dated axis to the newly effective width, and only when that width
+  actually changed.
 
 ## Where it lives
 
 The grip's markup and its drag/keyboard wiring are `src/view/interactions/timelineLeadResize.ts`,
 mounted from `renderCellHeader` in `src/view/render/timeline.ts` — which is also where
-the effective width is resolved once per render (`ctx.host.leadWidth ?? TIMELINE_LEAD_PX`)
-and threaded through the CSS custom property and the today-line/milestone-line/gridline
-math that used to read `TIMELINE_LEAD_PX` directly, the bug commit 791e1da already fixed
-once at a fixed width. The resolved width rides on `RoadmapSnapshot.leadWidth`
-(`src/view/host.ts`), populated in `src/view/render/roadmap.ts`, so `centreOnToday` in
+the effective width is resolved once per render: the stored pick (or `TIMELINE_LEAD_PX`)
+clamped against the pane by `effectiveLeadWidth`, also in `timelineLeadResize.ts` beside
+`clampLeadWidth` — a pure function of the stored width and the measured available pixels,
+reserving `MIN_DAY_TRACK_PX` for the day track and treating 0-or-less as "not measured"
+rather than clamping to nothing. The one resolved value is threaded through the CSS
+custom property and the today-line/milestone-line/gridline math that used to read
+`TIMELINE_LEAD_PX` directly, the bug commit 791e1da already fixed once at a fixed width.
+The resolved width rides on `RoadmapSnapshot.leadWidth` (`src/view/host.ts`), populated in
+`src/view/render/roadmap.ts` from the pane's own `treeEl.clientWidth` — the same element
+`src/view/backlogView.ts`'s `ResizeObserver` watches — so `centreOnToday` in
 `src/view/render/projections.ts` and the drag-and-drop grid's own `overLeadColumn` hit
 test in `src/view/interactions/timelineDrag.ts` read the same number the column is
-actually drawn at rather than the constant. The pick is stored exactly like `density`'s
-own shape — a `leadWidth` field in `src/storage/collapseStore.ts`, validated as a finite
-number inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` rather than checked against an
-enum, since it is the first stored pick that is a number rather than a name — held in
-`src/view/collapseState.ts` and exposed through `BacklogViewHost.leadWidth`/`setLeadWidth`
-in `src/view/host.ts` and `src/view/backlogView.ts`. The grip's own styling, beside the
-lead column's, is `styles/timeline.css`. Driven in `test/view/timelineLeadResize.test.ts`
-and `test/storage/collapseStore.test.ts`.
+actually drawn at rather than the constant, and so the ResizeObserver-driven `onResize`
+in `backlogView.ts` (extended here to cover the dated axis, guarded by the same
+`refitting` flag the tree's column ladder already uses against recursion) can compare a
+fresh measurement against exactly what was last drawn. The pick is stored exactly like
+`density`'s own shape — a `leadWidth` field in `src/storage/collapseStore.ts`, validated as
+a finite number inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` rather than checked
+against an enum, since it is the first stored pick that is a number rather than a name —
+held in `src/view/collapseState.ts` and exposed through
+`BacklogViewHost.leadWidth`/`setLeadWidth` in `src/view/host.ts` and
+`src/view/backlogView.ts`. The grip's own styling, beside the lead column's, is
+`styles/timeline.css`. Driven in `test/view/timelineLeadResize.test.ts` and
+`test/storage/collapseStore.test.ts` — the pane-resize path through a minimal
+`ResizeObserver` double, `test/helpers/dom.ts`'s `fireResize`, since jsdom implements
+none.

@@ -37,6 +37,18 @@ describe('the roadmap legend', () => {
 		expect(legendEl(containerEl)).toBeNull(); // board
 	});
 
+	it('shows Today and Milestone but no state swatch when no workflow property is configured', () => {
+		// `stateMenuValues` still returns a done value even with `stateKey === ''` (it
+		// falls back to `observedStates` plus a done default), but `domain/model.ts` sets
+		// every `stateValue` to null in that configuration, so no bar can carry a state
+		// colour — the legend must not key one nothing on the grid draws.
+		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		expect(legendEl(containerEl)).not.toBeNull();
+		expect(swatchLabels(containerEl)).toEqual(['Today', 'Milestone']);
+	});
+
 	it('keys one swatch per vocabulary state, in the same slot classes the bars carry, then today, then the milestone', () => {
 		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
 		view.setProjection('roadmap');

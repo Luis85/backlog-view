@@ -39,9 +39,13 @@ export function renderLeadResize(
 	host: BacklogViewHost,
 	leadEl: HTMLElement,
 	content: HTMLElement,
-	current: number,
-	defaultWidth: number,
+	// Grouped rather than five parameters: `current` is the EFFECTIVE width this render
+	// drew (already clamped to `available`, see `effectiveLeadWidth`), and `available` is
+	// threaded through only so `aria-valuemax` can say what the pane can actually give —
+	// see below.
+	lead: { current: number; defaultWidth: number; available: number },
 ): void {
+	const { current, defaultWidth, available } = lead;
 	const grip = leadEl.createDiv({
 		cls: 'pbl-timeline-lead-grip',
 		attr: {
@@ -49,7 +53,12 @@ export function renderLeadResize(
 			'aria-orientation': 'vertical',
 			'aria-label': 'Resize the title column',
 			'aria-valuemin': String(MIN_TIMELINE_LEAD_PX),
-			'aria-valuemax': String(MAX_TIMELINE_LEAD_PX),
+			// Capped to what the pane can actually give right now, not the storable
+			// maximum: a reader dragging past this point would see nothing move, because
+			// the render clamps it straight back — `effectiveLeadWidth` is the same clamp
+			// `renderTimeline` draws with, asked of the widest width instead of the stored
+			// one, so the two can never name a different ceiling.
+			'aria-valuemax': String(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, available)),
 			'aria-valuenow': String(current),
 			tabindex: '0',
 		},
@@ -89,7 +98,11 @@ export function renderLeadResize(
 		evt.preventDefault();
 		grip.setPointerCapture?.(evt.pointerId);
 		const startX = evt.clientX;
-		const startWidth = host.leadWidth ?? defaultWidth;
+		// The gesture's baseline is where the grip VISUALLY is — `current`, the effective
+		// width this render drew — never `host.leadWidth` directly: on a pane too narrow
+		// for the stored pick those two disagree, and starting from the stored one would
+		// jump the column the instant the pointer moved a single pixel.
+		const startWidth = current;
 		const onMove = (moveEvt: PointerEvent): void => live(clampLeadWidth(startWidth + (moveEvt.clientX - startX)));
 		const end = (evt: PointerEvent): void => {
 			grip.removeEventListener('pointermove', onMove);
@@ -123,7 +136,7 @@ export function renderLeadResize(
 		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
 			evt.preventDefault();
 			const step = evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX;
-			commit(clampLeadWidth((host.leadWidth ?? defaultWidth) + step));
+			commit(clampLeadWidth(current + step));
 		} else if (evt.key === 'Home') {
 			evt.preventDefault();
 			commit(defaultWidth);
@@ -136,4 +149,33 @@ const KEY_STEP_PX = 10;
 
 function clampLeadWidth(px: number): number {
 	return Math.min(MAX_TIMELINE_LEAD_PX, Math.max(MIN_TIMELINE_LEAD_PX, px));
+}
+
+/**
+ * Room reserved for the day track when the pane is too narrow to also hold the
+ * stored lead width — enough that a sliver of grid always survives, never the whole
+ * width the opaque lead column. Its own constant, not `MIN_TIMELINE_LEAD_PX`: that one
+ * bounds what may be STORED, this one bounds what the lead may DRAW at, and the two
+ * answer different questions the moment a pane is narrower than the sum of both.
+ */
+export const MIN_DAY_TRACK_PX = 80;
+
+/**
+ * The lead width actually DRAWN — the stored pick clamped against the space the pane
+ * actually has, never against the pick itself: a stored 480 in a 300px pane draws
+ * narrower here without being rewritten, so it comes back in full the moment the pane
+ * widens again, the same rule `density` and the axis pick already keep. `renderTimeline`
+ * resolves this ONCE and threads the result everywhere the CSS width and the TS
+ * arithmetic — the today line, the milestone lines, the gridlines — have to agree; see
+ * its own comment for what happens when they don't (commit 791e1da).
+ *
+ * **A measurement of 0 or less means "not measured", not "clamp to the minimum".**
+ * jsdom reports `clientWidth` as 0 and Obsidian itself renders before layout settles,
+ * so a clamp that fired on an unmeasured pane would shrink the column for every reader
+ * rather than only the one actually looking at a narrow split. Falling through to the
+ * stored width in that case is what keeps the two apart.
+ */
+export function effectiveLeadWidth(stored: number, availablePx: number): number {
+	if (availablePx <= 0) return stored;
+	return Math.max(0, Math.min(stored, availablePx - MIN_DAY_TRACK_PX));
 }

@@ -95,10 +95,12 @@ export interface RoadmapSnapshot {
 	scale: TimelineScale | null;
 	/**
 	 * The lead-column width this render actually drew, resolved once from the user's
-	 * pick or `TIMELINE_LEAD_PX`; null on the horizon axis. Everything downstream that
-	 * used to read `TIMELINE_LEAD_PX` directly — the scroll-centring math, the drag's
+	 * pick or `TIMELINE_LEAD_PX` and then clamped to what the pane can actually give
+	 * (`effectiveLeadWidth`); null on the horizon axis. Everything downstream that used
+	 * to read `TIMELINE_LEAD_PX` directly — the scroll-centring math, the drag's
 	 * lead-column hit test — reads this instead, so a resize cannot leave one of them
-	 * disagreeing with what is actually drawn.
+	 * disagreeing with what is actually drawn, and a pane too narrow for the stored pick
+	 * cannot leave one of them assuming room that is not there.
 	 */
 	leadWidth: number | null;
 }

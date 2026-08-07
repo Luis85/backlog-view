@@ -31,7 +31,57 @@ function applyOptions(el: HTMLElement, options?: CreateOptions | string): void {
 	if (opts.type !== undefined) el.setAttribute('type', opts.type);
 }
 
+/**
+ * A minimal `ResizeObserver` for jsdom, which implements none: `observe`/`unobserve`/
+ * `disconnect` just track which elements a callback is watching, and nothing fires on
+ * its own — real layout never happens here. `fireResize` (below) is what a test uses to
+ * say "the platform just told every observer of this element that it resized", the same
+ * one-shot shape `dragend`/`keydown` already stand in for real platform events.
+ */
+class MockResizeObserver {
+	private static instances: MockResizeObserver[] = [];
+	private readonly targets = new Set<Element>();
+
+	constructor(private readonly callback: ResizeObserverCallback) {
+		MockResizeObserver.instances.push(this);
+	}
+
+	observe(target: Element): void {
+		this.targets.add(target);
+	}
+
+	unobserve(target: Element): void {
+		this.targets.delete(target);
+	}
+
+	disconnect(): void {
+		this.targets.clear();
+	}
+
+	/** Every observer currently watching `target`, in registration order. */
+	static watching(target: Element): MockResizeObserver[] {
+		return MockResizeObserver.instances.filter((o) => o.targets.has(target));
+	}
+
+	fire(): void {
+		this.callback([], this as unknown as ResizeObserver);
+	}
+}
+
+/**
+ * Simulate the platform reporting that `target` resized — every live observer watching
+ * it fires once, synchronously (real ones batch into a microtask; nothing here needs
+ * that ordering). A `disconnect`ed view's observer is not "watching" any more, so this
+ * is naturally a no-op once `onunload` has run, exactly like a real one.
+ */
+export function fireResize(target: Element): void {
+	for (const observer of MockResizeObserver.watching(target)) observer.fire();
+}
+
 export function installObsidianDom(): void {
+	if (typeof globalThis.ResizeObserver === 'undefined') {
+		globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+	}
 	const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
 	if (proto.__obsidianDomInstalled) return;
 	proto.__obsidianDomInstalled = true;

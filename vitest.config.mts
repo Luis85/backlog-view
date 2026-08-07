@@ -79,10 +79,17 @@ export default defineConfig({
 			// so a resize stops panning the grid, and the grip moved from mouse to pointer
 			// events for touch) measured 98.04/93.82/99.24/99.24 — the same figures again,
 			// so none of the four move.
+			//
+			// The pane-clamp review pass (the legend gated on a configured workflow, the
+			// lead column's effective width clamped against the pane it is actually drawn
+			// in, and the mock `ResizeObserver` that made the resize-driven re-render
+			// testable at all) measured 98.12/93.84/99.43/99.29 — statements and functions
+			// round up to new decimals (98.1 and 99.4), branches and lines round down to the
+			// figures already recorded above (93.8, 99.2), so only two of the four move.
 			thresholds: {
-				statements: 98.0,
+				statements: 98.1,
 				branches: 93.8,
-				functions: 99.2,
+				functions: 99.4,
 				lines: 99.2,
 			},
 		},

@@ -3,7 +3,7 @@ import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderTitleText } from './rows';
 import { CardDragController } from '../interactions/cardDrag';
-import { renderLeadResize } from '../interactions/timelineLeadResize';
+import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
@@ -92,6 +92,13 @@ export interface TimelineDrawing {
 	 * did, so a second null check here would guard nothing reachable.
 	 */
 	observedStates: string[];
+	/**
+	 * The pane's own measured width, in pixels — `renderRoadmap`'s `treeEl.clientWidth`,
+	 * the same element `backlogView.ts`'s `ResizeObserver` watches, so a render and a
+	 * resize-driven re-render agree on what "the space available" means. 0 or less reads
+	 * as "not measured" — see `effectiveLeadWidth`.
+	 */
+	available: number;
 }
 
 export function renderTimeline(
@@ -100,13 +107,16 @@ export function renderTimeline(
 	bars: TimelineBar[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
-	const { today, scale, dnd, observedStates } = drawing;
+	const { today, scale, dnd, observedStates, available } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
 	// the milestone lines and the gridlines all have to agree on the same number, or a
-	// resize reopens the 17px mismatch commit 791e1da fixed.
-	const leadWidth = ctx.host.leadWidth ?? TIMELINE_LEAD_PX;
+	// resize reopens the 17px mismatch commit 791e1da fixed. Clamped against the pane
+	// (`effectiveLeadWidth`) so a wide stored pick cannot cover a narrow one edge to
+	// edge — the STORED pick itself is untouched, only what this render draws.
+	const stored = ctx.host.leadWidth ?? TIMELINE_LEAD_PX;
+	const leadWidth = effectiveLeadWidth(stored, available);
 	// TWO elements, not one. The scroll box is the outer one; the positioned layer is
 	// the inner. Full-height marks — the today line, the milestone lines, and the drop
 	// overlay that joins them — resolve `top: 0; bottom: 0` against their containing
@@ -135,7 +145,7 @@ export function renderTimeline(
 		const weekend = content.createDiv({ cls: 'pbl-weekend-layer', attr: { 'aria-hidden': 'true' } });
 		weekend.setCssProps({ '--pbl-weekend-offset': `${weekendOffsetDays(window) * scale.dayPx}px` });
 	}
-	const headerTrack = renderCellHeader(ctx, content, window, scale, leadWidth);
+	const headerTrack = renderCellHeader(ctx, content, window, scale, { width: leadWidth, available });
 	renderGridLines(content, window, scale, leadWidth);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
@@ -188,11 +198,13 @@ function renderCellHeader(
 	content: HTMLElement,
 	window: TimelineWindow,
 	scale: TimelineScale,
-	leadWidth: number,
+	// `available` rides along only so the grip can state a real `aria-valuemax` — see
+	// `renderLeadResize`.
+	lead: { width: number; available: number },
 ): HTMLElement {
 	const header = content.createDiv({ cls: 'pbl-timeline-header' });
-	const lead = header.createDiv({ cls: 'pbl-timeline-lead' });
-	renderLeadResize(ctx.host, lead, content, leadWidth, TIMELINE_LEAD_PX);
+	const leadEl = header.createDiv({ cls: 'pbl-timeline-lead' });
+	renderLeadResize(ctx.host, leadEl, content, { current: lead.width, defaultWidth: TIMELINE_LEAD_PX, available: lead.available });
 	// Two stacked tiers in the track slot: the coarser orientation tier, then the cells.
 	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers', attr: { 'aria-hidden': 'true' } });
 	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');

@@ -30,18 +30,29 @@ export function renderLegend(host: BacklogViewHost, legendEl: HTMLElement, obser
 		return;
 	}
 	legendEl.setAttribute('aria-hidden', 'true');
-	// The same list, the same index, the same modulo `stateColorSlot` applies to a bar.
-	// Except for done, which is the one state whose bar does NOT draw its slot: a done
-	// row's bar is overridden to green in `timeline.css`, deliberately, because green
-	// for finished is a meaning the user already reads. A swatch wearing the slot class
-	// would key pink for a bar that draws green — a legend disagreeing with the only
-	// thing it exists to explain. So the swatch asks the same question the override
-	// does, `isDoneValue`, rather than trusting the index alone.
-	const states = stateMenuValues(host.settings, observedStates);
-	states.forEach((state, i) => {
-		const slot = isDoneValue(host.settings, state) ? 'pbl-legend-done' : `pbl-state-${i % STATE_COLOR_SLOTS}`;
-		addSwatch(legendEl, slot, state);
-	});
+	// A swatch exists only where a bar can draw the thing it keys — the general rule
+	// behind all three state-colour bugs this branch has had (the done swatch keying
+	// its slot instead of green, the milestone swatch keying cyan while the diamond
+	// drew its state slot, and this one): without a workflow property `stateKey` is
+	// `''`, `domain/model.ts` sets every `stateValue` to null, and no bar can carry a
+	// state colour at all — so the state swatches are gated on the same property that
+	// gates whether a bar has one to draw, never rendered for a vocabulary nothing on
+	// the grid can key.
+	if (host.settings.stateKey) {
+		// The same list, the same index, the same modulo `stateColorSlot` applies to a
+		// bar. Except for done, which is the one state whose bar does NOT draw its slot:
+		// a done row's bar is overridden to green in `timeline.css`, deliberately,
+		// because green for finished is a meaning the user already reads. A swatch
+		// wearing the slot class would key pink for a bar that draws green — a legend
+		// disagreeing with the only thing it exists to explain. So the swatch asks the
+		// same question the override does, `isDoneValue`, rather than trusting the
+		// index alone.
+		const states = stateMenuValues(host.settings, observedStates);
+		states.forEach((state, i) => {
+			const slot = isDoneValue(host.settings, state) ? 'pbl-legend-done' : `pbl-state-${i % STATE_COLOR_SLOTS}`;
+			addSwatch(legendEl, slot, state);
+		});
+	}
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
 	addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
 }

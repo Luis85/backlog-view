@@ -75,6 +75,11 @@ export function renderRoadmap(
 			scale: activeScale,
 			dnd,
 			observedStates: model.observedStates,
+			// The PANE's width, not the frame's or the not-yet-built scroller's: this is
+			// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
+			// a resize-driven re-render there measure the same thing and cannot disagree
+			// about whether the effective width actually changed.
+			available: treeEl.clientWidth,
 		});
 		cards.push(...timeline.cards);
 		todayLeft = timeline.todayLeft;

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { fireResize } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
+import { makeView, noOptionalProperties, treeOf, useViewHarness } from '../helpers/view';
 import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../src/storage/collapseStore';
+import { effectiveLeadWidth, MIN_DAY_TRACK_PX } from '../../src/view/interactions/timelineLeadResize';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 useViewHarness();
@@ -231,5 +233,133 @@ describe('the lead-column resize grip', () => {
 		map['Plan.base#Roadmap'].leadWidth = 'wide';
 		const third = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
 		expect(third.view.leadWidth).toBeNull();
+	});
+
+	describe('the pane clamp, so a stored width cannot cover the whole pane', () => {
+		it('renders the pane clamped while the stored pick keeps the number the user chose', () => {
+			// Regression for the defect: a stored 480px pick in a 350px pane used to be
+			// drawn at the full 480px, covering the whole grid — nothing on the pointer or
+			// keyboard could reach the grip pinned off the right edge.
+			const vault = datedVault();
+			const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			Object.defineProperty(treeOf(containerEl), 'clientWidth', { value: 350, configurable: true });
+
+			view.setLeadWidth(MAX_TIMELINE_LEAD_PX);
+
+			const expected = 350 - MIN_DAY_TRACK_PX;
+			const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+			if (!content) throw new Error('no timeline content');
+			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${expected}px`);
+			expect(grip(containerEl).getAttribute('aria-valuenow')).toBe(String(expected));
+			// The stored pick itself is untouched — it comes back in full the moment the
+			// pane widens again, the same rule `density` and the axis pick already keep.
+			expect(view.leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
+		});
+
+		it('does not clamp an unmeasured (zero-width) pane — falls through to the stored pick', () => {
+			// jsdom never lays anything out, so `clientWidth` is 0 unless a test stubs it —
+			// exactly the "not measured" case a clamp must not treat as "clamp to nothing".
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+
+			view.setLeadWidth(MAX_TIMELINE_LEAD_PX);
+
+			const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+			if (!content) throw new Error('no timeline content');
+			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${MAX_TIMELINE_LEAD_PX}px`);
+		});
+	});
+
+	describe('the pane resizing on its own, on the dated axis', () => {
+		it('re-renders when a resize narrows the pane enough to change the effective width', () => {
+			const vault = datedVault();
+			const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
+			const tree = treeOf(containerEl);
+			Object.defineProperty(tree, 'clientWidth', { value: 1000, configurable: true });
+			view.setProjection('roadmap');
+			view.setLeadWidth(MAX_TIMELINE_LEAD_PX);
+			const before = grip(containerEl);
+			expect(before.getAttribute('aria-valuenow')).toBe(String(MAX_TIMELINE_LEAD_PX));
+
+			Object.defineProperty(tree, 'clientWidth', { value: 350, configurable: true });
+			fireResize(tree);
+
+			const after = grip(containerEl);
+			expect(after).not.toBe(before); // the projection actually rebuilt
+			expect(after.getAttribute('aria-valuenow')).toBe(String(350 - MIN_DAY_TRACK_PX));
+			// The resize clamps what is DRAWN — never the stored pick, which comes back in
+			// full the moment the pane widens again.
+			expect(view.leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
+		});
+
+		it('does nothing when a resize leaves the effective width unchanged', () => {
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			const tree = treeOf(containerEl);
+			const before = grip(containerEl);
+
+			// `clientWidth` is 0 in jsdom before AND after — unmeasured both times, so the
+			// effective width the resize recomputes is the same fallback the render already
+			// drew, and nothing about it warrants tearing the projection down.
+			fireResize(tree);
+
+			expect(grip(containerEl)).toBe(before);
+		});
+
+		it('does nothing off the roadmap projection or off the dated axis', () => {
+			const vault = datedVault();
+			const { view, containerEl } = makeView(
+				vault,
+				{ ...DATE_AXIS, horizonProperty: 'note.horizon', horizonValues: 'Now, Later' },
+				{ collapsed: true },
+			);
+			const tree = treeOf(containerEl);
+			Object.defineProperty(tree, 'clientWidth', { value: 200, configurable: true });
+
+			// Board: `this.projection !== 'roadmap'`.
+			view.setProjection('board');
+			const board = treeOf(containerEl).firstElementChild;
+			fireResize(tree);
+			expect(treeOf(containerEl).firstElementChild).toBe(board);
+
+			// Roadmap, horizon axis: `activeAxis(...) !== 'dates'`.
+			view.setProjection('roadmap');
+			view.setAxisPick('horizons');
+			const frame = treeOf(containerEl).firstElementChild;
+			fireResize(tree);
+			expect(treeOf(containerEl).firstElementChild).toBe(frame);
+		});
+
+		it('does nothing while no axis is configured at all', () => {
+			// `this.roadmap` is null here (`renderRoadmapNoAxisState`), the one other way
+			// `projection === 'roadmap'` can reach the resize handler with nothing to clamp.
+			const { view, containerEl } = makeView(new FakeVault(), noOptionalProperties(), { collapsed: true });
+			const tree = treeOf(containerEl);
+			view.setProjection('roadmap');
+			const guidance = treeOf(containerEl).firstElementChild;
+
+			expect(() => fireResize(tree)).not.toThrow();
+			expect(treeOf(containerEl).firstElementChild).toBe(guidance);
+		});
+	});
+});
+
+describe('effectiveLeadWidth', () => {
+	it('draws the stored width unclamped when the pane has room for it', () => {
+		expect(effectiveLeadWidth(300, 1000)).toBe(300);
+	});
+
+	it('clamps down to what the pane can give, reserving room for the day track', () => {
+		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, 300)).toBe(300 - MIN_DAY_TRACK_PX);
+	});
+
+	it('falls through to the stored width at an unmeasured pane — 0 or negative never clamps to the minimum', () => {
+		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, 0)).toBe(MAX_TIMELINE_LEAD_PX);
+		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, -50)).toBe(MAX_TIMELINE_LEAD_PX);
+	});
+
+	it('never draws negative, in a pane narrower than the reserved day track alone', () => {
+		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, 40)).toBe(0);
 	});
 });

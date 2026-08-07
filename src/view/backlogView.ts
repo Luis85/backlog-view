@@ -15,6 +15,7 @@ import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildColumnMenu, buildItemMenu } from './interactions/menu';
+import { effectiveLeadWidth } from './interactions/timelineLeadResize';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
@@ -85,7 +86,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** The Base's visible properties as columns, resolved once per data update. */
 	chips: ChipProp[] = [];
 
-	/** Guards the one re-render a changed fit may ask for, so it cannot recurse. */
+	/**
+	 * Guards the one re-render a changed fit may ask for, so it cannot recurse — shared
+	 * by the tree's column ladder and the dated axis's lead-width clamp, since the two
+	 * projections that use it are mutually exclusive and never guard at once.
+	 */
 	private refitting = false;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
@@ -260,13 +265,32 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth ?? TIMELINE_LEAD_PX);
 	}
 
-	/** Re-measure after a resize, and rebuild only if a column came or went. */
+	/**
+	 * Re-measure after a resize, and rebuild only if a column came or went — or, on the
+	 * dated axis, only if the lead column's EFFECTIVE width would actually change.
+	 */
 	private onResize(): void {
-		// The COLUMN ladder is the tree's alone — board columns and the timeline scroll
-		// rather than dropping columns, and the shelf answers to a stored pick rather
-		// than to a width.
-		if (this.projection !== 'tree') return;
-		if (this.refit()) this.renderTreeContent();
+		if (this.projection === 'tree') {
+			if (this.refit()) this.renderTreeContent();
+			return;
+		}
+		// The COLUMN ladder is the tree's alone — board columns and the horizon axis's
+		// buckets scroll rather than dropping columns, and the shelf answers to a stored
+		// pick rather than to a width. The dated axis is the one other case a resize can
+		// starve: its lead column is sized against the pane, not its own content, so a
+		// narrowed split can leave a stale render covering the whole grid until something
+		// else happens to re-render it.
+		if (this.projection !== 'roadmap' || !this.roadmap) return;
+		if (activeAxis(this.settings, this.axisPick) !== 'dates') return;
+		// Same reasoning as `refit`'s own guard: the re-render below cannot itself be
+		// what triggers another pass.
+		if (this.refitting) return;
+		const stored = this.leadWidth ?? TIMELINE_LEAD_PX;
+		const effective = effectiveLeadWidth(stored, this.treeEl.clientWidth);
+		if (effective === this.roadmap.leadWidth) return;
+		this.refitting = true;
+		this.renderTreeContent();
+		this.refitting = false;
 	}
 
 	onDataUpdated(): void {
