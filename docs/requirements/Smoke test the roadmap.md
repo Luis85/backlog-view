@@ -31,5 +31,12 @@ and each stays open until they are, so a stale check is visible rather than assu
   and its label, two milestones on one date, today's collision, label truncation, and a
   milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
 - The grid furniture stays furniture under a real theme: gridlines, weekend banding
-  and the row stripes read as background behind the bars, and the Today and milestone
-  labels stay legible over the header cells. **Never checked.**
+  and the row stripes read as background behind the bars, the Today and milestone
+  labels stay legible over the header cells, the two header tiers stay aligned, the
+  scrolled-lead shadow appears once the grid scrolls, bar labels hide while a drag is
+  live, and compact rows actually shorten the row. **Never checked.**
+- The row hover/zebra tint spans the opaque lead cell and the track as one band, not
+  two — checked in Chromium via `npm run harness`, in both schemes. Per ADR 0020 the
+  harness is faithful about layout and not about colour, so that run settles that the
+  band spans lead and track together and says nothing about what the tint looks like.
+  **Layout checked 2026-08-07, in both schemes; appearance never checked.**

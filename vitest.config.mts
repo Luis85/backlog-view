@@ -57,9 +57,14 @@ export default defineConfig({
 			// weekend banding, the today label, row tracking, bar labels, the density
 			// toggle) measured 98.00/93.79/99.22/99.22, all four above their thresholds, so
 			// all four move to the actual rounded down to one decimal.
+			//
+			// The whole-branch review's fix wave (toolbar refocus-after-rebuild, the two
+			// new watched-failing tests it required) measured 98.01/93.81/99.23/99.23.
+			// Only branches rounds down to a new decimal (93.8, up from 93.7); the other
+			// three round down to the figure already recorded above and stay put.
 			thresholds: {
 				statements: 98.0,
-				branches: 93.7,
+				branches: 93.8,
 				functions: 99.2,
 				lines: 99.2,
 			},

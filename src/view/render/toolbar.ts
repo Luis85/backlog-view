@@ -14,6 +14,13 @@ import { ScaleId } from '../../domain/timeline';
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const model = host.model;
 	if (!model) return;
+	// `barEl.empty()` below destroys whatever element currently holds focus inside the
+	// toolbar. Any control whose click re-renders the view — the density toggle, a zoom
+	// button, an axis button — would otherwise drop focus to `document.body`, so a
+	// keyboard or screen-reader user has to tab back through the whole toolbar to press
+	// it again. This is the rebuild losing the focus, not any one control's fault, so it
+	// is fixed once, here, rather than in each control.
+	const refocusLabel = capturedFocusLabel(barEl);
 	barEl.empty();
 
 	const newLevel = newItemType(host.settings, model);
@@ -100,6 +107,29 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(host, model));
+	refocusByLabel(barEl, refocusLabel);
+}
+
+/**
+ * `aria-label` is the identity to restore focus by, not the control's class:
+ * `.pbl-zoom-btn` and `.pbl-axis-btn` each name several buttons, while every toolbar
+ * control's `aria-label` is unique and stable ('Zoom to weeks', 'Compact rows',
+ * 'Roadmap axis'…). The density toggle's label is deliberately state-independent
+ * (see `renderTimelineControls`), which is what lets it survive its own toggle here.
+ */
+function capturedFocusLabel(barEl: HTMLElement): string | null {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement) || !barEl.contains(active)) return null;
+	return active.getAttribute('aria-label');
+}
+
+/** The other half of `capturedFocusLabel`: find the rebuilt control with that label. */
+function refocusByLabel(barEl: HTMLElement, label: string | null): void {
+	if (!label) return;
+	const match = Array.from(barEl.querySelectorAll<HTMLElement>('[aria-label]')).find(
+		(el) => el.getAttribute('aria-label') === label,
+	);
+	match?.focus();
 }
 
 /**

@@ -384,12 +384,15 @@ function renderBarLabel(
 	const width = markWidth(geometry, scale);
 	const trackWidth = window.days * scale.dayPx;
 	const after = left + width + LABEL_RESERVE_PX <= trackWidth;
-	// Neither side has room: a bar clipped at BOTH window edges leaves none, and
-	// flipping it before a bar that starts at day 0 would put the whole label off the
-	// track behind the sticky lead column. Nothing is lost by dropping it — the row's
-	// lead carries the same title, which is what makes this decoration rather than
-	// content, and squeezing it over the bar would only trade a hidden label for an
-	// unreadable one.
+	// Dropped whenever there is no room after the bar's right edge AND its start sits
+	// within the reserve of the track's own left edge. That is a bar clipped at BOTH
+	// window edges, but not only that: it is also a bar clipped at the right alone that
+	// merely BEGINS within 160px of the left edge without being clipped there itself —
+	// reachable whenever timelineWindow clamps to MAX_TIMELINE_DAYS. Either way, flipping
+	// the label before such a bar would put it off the track behind the sticky lead
+	// column. Nothing is lost by dropping it — the row's lead carries the same title,
+	// which is what makes this decoration rather than content, and squeezing it over the
+	// bar would only trade a hidden label for an unreadable one.
 	if (!after && left < LABEL_RESERVE_PX) return;
 	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
 	if (after) {

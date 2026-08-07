@@ -44,9 +44,11 @@ nothing is written, and no rendering decision changes what places or what shelve
 4. Alternate rows stripe, the hovered row highlights across lead and track, and the
    sticky lead column carries a shadow once the grid is scrolled.
 5. Each bar carries its title beside it in the track, flipping to the bar's other
-   side where the window's edge leaves no room; a bar clipped at both edges drops the
-   label entirely, since the row's own lead column already carries the title. All
-   labels hide while a drag is live.
+   side where the window's edge leaves no room; the label drops entirely when there is
+   no room on either side — a bar clipped at both window edges, but also a bar clipped
+   at the right alone that merely begins within the label's reserve of the track's left
+   edge — since the row's own lead column already carries the title. All labels hide
+   while a drag is live.
 6. A toolbar toggle compacts the row height, stored per saved view per device beside
    the zoom pick — UI state, never the `.base`. Its accessible name is fixed at
    'Compact rows'; `aria-pressed` carries the state.
@@ -71,8 +73,10 @@ nothing is written, and no rendering decision changes what places or what shelve
 - The Today label mounts in a header strip of its own, above both tiers, never beside
   a milestone label.
 - Bar labels are aria-hidden, take no pointer events, flip sides against
-  `LABEL_RESERVE_PX`, are dropped entirely when a bar is clipped at both window edges,
-  and hide while a drag is live.
+  `LABEL_RESERVE_PX`, are dropped entirely when there is no room on either side of the
+  bar — a bar clipped at both window edges, and also a bar clipped at the right alone
+  that starts within the reserve of the track's left edge — and hide while a drag is
+  live.
 - The density pick round-trips through the collapse store, renders only on the dated
   axis, and an unrecognized stored value reads as comfortable. The toggle's accessible
   name never changes; `aria-pressed` is what carries the state.

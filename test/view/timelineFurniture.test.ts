@@ -99,6 +99,12 @@ describe('grid rhythm', () => {
 		expect(band.firstElementChild?.classList.contains('pbl-today-label')).toBe(true);
 		const milestone = containerEl.querySelector<HTMLElement>('.pbl-milestone-label');
 		expect(milestone?.parentElement?.classList.contains('pbl-timeline-band')).toBe(false);
+		// The band also has to be the FIRST strip, not merely an exclusive one: moving its
+		// creation below the two tier tracks would leave it holding only the pill and still
+		// stack it under the cells, which is what "own strip" is for.
+		const tiers = band.parentElement;
+		if (!tiers) throw new Error('no tiers wrapper');
+		expect(tiers.firstElementChild).toBe(band);
 	});
 });
 
