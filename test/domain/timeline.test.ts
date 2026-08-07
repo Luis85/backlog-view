@@ -16,6 +16,7 @@ import {
 	superCells,
 	timelineCells,
 	timelineWindow,
+	weekendOffsetDays,
 } from '../../src/domain/timeline';
 
 const d = (year: number, month: number, day: number): CivilDate => ({ year, month, day });
@@ -291,5 +292,14 @@ describe('the header tiers', () => {
 		expect(timelineCells(window, scaleFor('quarter')).map((c) => c.label)).toEqual(['Q3']);
 		// A week can straddle two months, so its label keeps naming both parts itself.
 		expect(timelineCells(window, scaleFor('week'))[0].label).toBe('29 Jun');
+	});
+});
+
+describe('the weekend phase', () => {
+	it('counts days to the first Saturday, zero when the window opens on one', () => {
+		// timelineWindow([], 2026-08-15) starts 2026-07-01, a Wednesday; first Saturday is Jul 4.
+		expect(weekendOffsetDays(timelineWindow([], d(2026, 8, 15)))).toBe(3);
+		// timelineWindow([], 2026-09-15) starts 2026-08-01, itself a Saturday.
+		expect(weekendOffsetDays(timelineWindow([], d(2026, 9, 15)))).toBe(0);
 	});
 });

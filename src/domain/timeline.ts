@@ -172,6 +172,15 @@ export function timelineWindow(spans: DateSpan[], today: CivilDate): TimelineWin
 }
 
 /**
+ * Days from the window's start to its first Saturday — the phase the weekend
+ * layer's 7-day repeating gradient starts at. ISO weekday, the module's own
+ * boundary rule, so the same window shades the same days on every device.
+ */
+export function weekendOffsetDays(window: TimelineWindow): number {
+	return (5 - isoWeekday(window.start) + 7) % 7;
+}
+
+/**
  * Where a span sits in the window, in whole days from its start. Ends are
  * inclusive — a one-day span is one day wide — and an end the note does not
  * state borrows the other, so a single date renders at the date it has. An
