@@ -5,7 +5,7 @@ import { BacklogItem } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
-import { stateMenuValues } from '../../domain/settings';
+import { resolvedDeliverableStateKey, stateMenuValues } from '../../domain/settings';
 import { BoardModel, cardPaths, hiddenMatches } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
@@ -84,8 +84,12 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		// show Set state on the tree or roadmap the moment only `deliverableStateKey` is
 		// configured, while the rest of the menu there still reads the (unconfigured)
 		// requirements `stateKey`: a menu offering picks that write to an empty key,
-		// silently dropped by `applyWrites`' "never write to an empty key" rule.
-		const activeStateKey = host.projection === 'deliverables' ? host.settings.deliverableStateKey : host.settings.stateKey;
+		// silently dropped by `applyWrites`' "never write to an empty key" rule. On the
+		// Deliverables projection this is the RESOLVED key — falling back to the shared
+		// `stateKey` exactly as the write path and the model's own read do — so the menu
+		// offers Set state whenever a move would actually write something, fallback or not.
+		const activeStateKey =
+			host.projection === 'deliverables' ? resolvedDeliverableStateKey(host.settings) : host.settings.stateKey;
 		if (activeStateKey) addSetStateMenu(host, menu, item);
 		// Per axis, and absent rather than inert when one is not configured — the state
 		// chip's own rule.

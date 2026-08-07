@@ -19,6 +19,7 @@ import {
 	isDoneValue,
 	OptionalField,
 	optionalKeyFor,
+	resolvedDeliverableStateKey,
 	vaultFolder,
 } from '../domain/settings';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
@@ -195,7 +196,11 @@ function applyInto(
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
-	const deliverableStateKey = optionalKeyFor(settings, 'deliverableState');
+	// The RESOLVED key — falls back to the requirements workflow's own `stateKey` when
+	// the Deliverable one is unset, so a card that looks movable on the Deliverables
+	// board (the model read through the same fallback, `model.ts`) actually lands bytes
+	// somewhere rather than resolving to the empty key `optionalKeyFor` would give here.
+	const deliverableStateKey = resolvedDeliverableStateKey(settings);
 	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
 	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 	applyStamps(fm, settings, write, leaving);
@@ -274,7 +279,9 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	const deliverableStateKeyTouched = optionalKeyFor(settings, 'deliverableState');
+	// Same resolved key `applyInto` just wrote: capture and apply must read the SAME
+	// fallback, or a key written under it would have no inverse to undo it with.
+	const deliverableStateKeyTouched = resolvedDeliverableStateKey(settings);
 	if (deliverableStateWritten(write) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
 	// Listed whenever the write CARRIES a stamp, including the started date it may
 	// decline to write: a key whose value did not change emits no inverse anyway, and

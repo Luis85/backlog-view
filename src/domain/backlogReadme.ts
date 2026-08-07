@@ -1,4 +1,12 @@
-import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, MARKER_TYPES, stateMenuValues } from './settings';
+import {
+	ALL_TYPES,
+	BacklogSettings,
+	EXTRA_TYPES,
+	LEVELS,
+	MARKER_TYPES,
+	resolvedDeliverableStateKey,
+	stateMenuValues,
+} from './settings';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
@@ -148,12 +156,25 @@ function fieldRows(settings: BacklogSettings): string[] {
 	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
 	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
-	if (settings.deliverableStateKey) {
+	// The RESOLVED key: under the fallback (no Deliverable state property configured)
+	// this is `settings.stateKey`, so the row still appears — omitting it whenever
+	// `deliverableStateKey` alone is empty would fail to document a property the
+	// Deliverables board actually reads and writes.
+	const deliverableKey = resolvedDeliverableStateKey(settings);
+	if (deliverableKey) {
 		// NOT "the one above": that claim is false whenever settings.stateKey is unset, since
 		// fieldRows then has no requirements-workflow row at all (and no ## Workflow states
 		// section either) — a fully independent, reachable configuration. Named by
 		// relationship instead, which holds whether or not that row exists in THIS document.
-		rows.push(`| ${cell(settings.deliverableStateKey)} | Optional, on a Deliverable | The Deliverable workflow's own state — separate from the requirements workflow's |`);
+		//
+		// The relationship itself has two true answers, not one: a configured
+		// `deliverableStateKey` really is separate from the requirements workflow's, but
+		// under the fallback `deliverableKey` IS `settings.stateKey` — the same property,
+		// not a second one — so "separate" would be false exactly there.
+		const relation = settings.deliverableStateKey
+			? "separate from the requirements workflow's"
+			: "the same property as the requirements workflow's, since no Deliverable state property is configured";
+		rows.push(`| ${cell(deliverableKey)} | Optional, on a Deliverable | The Deliverable workflow's own state — ${relation} |`);
 	}
 	return rows;
 }

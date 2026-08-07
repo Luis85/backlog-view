@@ -14,7 +14,7 @@ import {
 	readTags,
 	resolveParent,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
+import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from './settings';
 import { earliest, latest, reversedSpan } from './timeline';
 import {
 	collectObservedDeliverableStates,
@@ -285,9 +285,11 @@ function addItem(
 	const seed = outsideParentSeed(app, file, parentRef, settings);
 	const stateValue = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	const doneValues = settings.doneValues.map((v) => v.toLowerCase());
-	const deliverableStateValue = settings.deliverableStateKey
-		? readString(ownValue(fm, settings.deliverableStateKey))
-		: null;
+	// Reads through the resolved (fallback-aware) key, never the raw `deliverableStateKey`
+	// — see `resolvedDeliverableStateKey`'s own comment for why the raw field stays
+	// unresolved in `BacklogSettings` itself.
+	const deliverableStateKey = resolvedDeliverableStateKey(settings);
+	const deliverableStateValue = deliverableStateKey ? readString(ownValue(fm, deliverableStateKey)) : null;
 	const deliverableDoneValues = settings.deliverableDoneValues.map((v) => v.toLowerCase());
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.

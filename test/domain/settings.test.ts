@@ -15,6 +15,7 @@ import {
 	OPTIONAL_PROPERTIES,
 	optionalKeyFor,
 	optionalProperty,
+	resolvedDeliverableStateKey,
 	resolveSettings,
 	stateMenuValues,
 } from '../../src/domain/settings';
@@ -457,6 +458,56 @@ describe('the Deliverable workflow', () => {
 			fakeConfig({ stateProperty: 'note.status', deliverableStateProperty: 'note.status' }),
 		);
 		expect(configProblems(s).some((p) => p.includes('deliverable state'))).toBe(true);
+	});
+});
+
+describe('the Deliverable workflow falls back to the shared one', () => {
+	it("reads and writes the requirements workflow's key when its own is unset", () => {
+		const s = { ...defaultSettings(), stateKey: 'status' };
+		expect(resolvedDeliverableStateKey(s)).toBe('status');
+	});
+
+	it('keeps its own key over the shared one once a Deliverable state property is configured', () => {
+		const s = { ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'deliverableStatus' };
+		expect(resolvedDeliverableStateKey(s)).toBe('deliverableStatus');
+	});
+
+	it('resolves to no key at all when neither workflow has one configured', () => {
+		expect(resolvedDeliverableStateKey(defaultSettings())).toBe('');
+	});
+
+	it('falls back to the shared workflow states when its own list is empty', () => {
+		const s = resolveSettings(fakeConfig({ stateValues: 'New, Active, Done' }));
+		expect(s.deliverableStates).toEqual(['New', 'Active', 'Done']);
+	});
+
+	it('keeps its own declared states over the shared list once configured', () => {
+		const s = resolveSettings(
+			fakeConfig({ stateValues: 'New, Active, Done', deliverableStateValues: 'Draft, Published' }),
+		);
+		expect(s.deliverableStates).toEqual(['Draft', 'Published']);
+	});
+
+	it('falls back to the shared (resolved) done values, not the hardcoded default, when its own are unset', () => {
+		// The requirements workflow's OWN done values are customized here — resolving to
+		// DEFAULT_DONE_VALUES instead would ignore that customization the moment the
+		// Deliverable workflow shares the property.
+		const s = resolveSettings(fakeConfig({ doneValues: 'Shipped, Retired' }));
+		expect(s.deliverableDoneValues).toEqual(['Shipped', 'Retired']);
+	});
+
+	it('keeps its own done values over the shared list once configured', () => {
+		const s = resolveSettings(fakeConfig({ doneValues: 'Shipped', deliverableDoneValues: 'Published' }));
+		expect(s.deliverableDoneValues).toEqual(['Published']);
+	});
+
+	it('does not report a false collision when the Deliverable state falls back to the shared key', () => {
+		// Sharing a key by fallback is intended; sharing one by explicit configuration
+		// is the collision `configProblems` already reports (see the test above).
+		const s = resolveSettings(fakeConfig({ stateProperty: 'note.status' }));
+		expect(s.deliverableStateKey).toBe('');
+		expect(resolvedDeliverableStateKey(s)).toBe('status');
+		expect(configProblems(s)).toEqual([]);
 	});
 });
 

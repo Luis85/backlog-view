@@ -137,13 +137,30 @@ describe('applyWrites', () => {
 		const configured = { ...settings, deliverableStateKey: 'deliverableStatus' };
 		const inverses: RestoreWrite[] = [];
 
-		await applyWrites(vault.app, configured, [{ file: item, removeDeliverableStateKey: true }], undefined, (inv) =>
-			inverses.push(inv),
-		);
+		await applyWrites(vault.app, configured, [{ file: item, removeDeliverableStateKey: true }], undefined, (inv) => inverses.push(inv));
 		expect('deliverableStatus' in vault.fm('D.md')).toBe(false);
 
 		await applyRestores(vault.app, inverses);
 		expect(vault.fm('D.md')['deliverableStatus']).toBe('Draft');
+	});
+
+	it("falls back to the shared state key when its own is unset — write, remove, undo", async () => {
+		// "Deliverables don't need their own dedicated status property" — the write must
+		// land on the requirements workflow's own key rather than being dropped, which is
+		// what an unresolved empty key would otherwise do (see "never to an empty key",
+		// above). Capture-and-restore must agree with the same fallback, or the undo
+		// would have no inverse to put the value back with.
+		const vault = new FakeVault();
+		const item = vault.addFile('D.md', { frontmatter: { type: 'Deliverable' } });
+		const shared = { ...settings, stateKey: 'status' };
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, shared, [{ file: item, deliverableState: 'Draft' }]);
+		expect(vault.fm('D.md')['status']).toBe('Draft');
+		await applyWrites(vault.app, shared, [{ file: item, removeDeliverableStateKey: true }], undefined, (inv) => inverses.push(inv));
+		expect('status' in vault.fm('D.md')).toBe(false);
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('D.md')['status']).toBe('Draft');
 	});
 
 	it('writes the horizon on its own key, and removes it with a restorable inverse', async () => {

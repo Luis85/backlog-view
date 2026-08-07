@@ -378,6 +378,28 @@ export function optionalKeyFor(settings: BacklogSettings, field: OptionalField):
 	return settings[PROPERTY_TABLE[field].settingsKey];
 }
 
+/**
+ * The Deliverable workflow's own state key, or the requirements workflow's shared one
+ * when the Deliverable one is unset — "Deliverables don't need their own dedicated
+ * status property; they can use the same one". This is the single statement of that
+ * fallback: every reader and writer of the Deliverable workflow's state — the model's
+ * own read (`model.ts`), the write path (`storage/frontmatter.ts`), the row menu's
+ * routing and the board's "no workflow" guidance — calls this rather than
+ * `settings.deliverableStateKey` directly, so a card that looks movable on screen
+ * cannot resolve to a key nothing actually writes.
+ *
+ * Deliberately NOT folded into `optionalKeyFor`: `configProblems` (via
+ * `ownedProperties`) and `adoptableProperties` read `deliverableStateKey` RAW through
+ * that function, because sharing a key by FALLBACK is intended while sharing one by
+ * explicit configuration is the collision they already report. Applying this fallback
+ * inside `optionalKeyFor` would make every fallback-configured board collide with the
+ * very workflow it is deliberately reusing — the `''` a cleared/unset key resolves to
+ * there is what lets `ownedProperties` skip it.
+ */
+export function resolvedDeliverableStateKey(settings: BacklogSettings): string {
+	return settings.deliverableStateKey || settings.stateKey;
+}
+
 /** The property id a frontmatter key is named by in the view options. */
 export function notePropertyId(key: string): string {
 	return `note.${key}`;
@@ -642,10 +664,23 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// `.base` that relies on the defaults grants `Done` a limit the rest of the app
 	// says it cannot have.
 	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
+	// Falls back to the requirements workflow's own EFFECTIVE done values, not the
+	// hardcoded default: "Deliverables don't need their own dedicated status property;
+	// they can use the same one" applies here too, so a vault that customized
+	// `doneValues` must not have that customization ignored the moment the Deliverable
+	// workflow shares it. Both this and `deliverableStates` below are baked in HERE,
+	// eagerly, the same way `effectiveDoneValues` already is — unlike the state KEY
+	// (`resolvedDeliverableStateKey`), a value list carries no collision risk, so there
+	// is no reason for every reader to re-resolve a fallback `resolveSettings` can state
+	// once.
 	const deliverableDoneValuesRaw = list('deliverableDoneValues');
 	const effectiveDeliverableDoneValues =
-		deliverableDoneValuesRaw.length > 0 ? deliverableDoneValuesRaw : fallback.deliverableDoneValues;
+		deliverableDoneValuesRaw.length > 0 ? deliverableDoneValuesRaw : effectiveDoneValues;
 	const states = dedupe(list('stateValues'));
+	// Same rule, over the declared vocabulary rather than the done values: falls back to
+	// the shared workflow's OWN declared states, which — like this field — still falls
+	// through to the observed values (`menuValues`) when neither is configured.
+	const deliverableStatesRaw = dedupe(list('deliverableStateValues'));
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
@@ -693,7 +728,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		startKey: propKey('startProperty', fallback.startKey),
 		targetKey: propKey('targetProperty', fallback.targetKey),
 		deliverableStateKey: propKey('deliverableStateProperty', fallback.deliverableStateKey),
-		deliverableStates: dedupe(list('deliverableStateValues')),
+		deliverableStates: deliverableStatesRaw.length > 0 ? deliverableStatesRaw : states,
 		deliverableDoneValues: effectiveDeliverableDoneValues,
 	};
 }

@@ -493,6 +493,33 @@ describe('the Deliverables board', () => {
 		expect(title).toContain('deliverable');
 	});
 
+	it('shows the Deliverables board, not guidance, when only the shared (requirements) key is configured', () => {
+		// Deliverables don't need their own dedicated status property — the guidance
+		// state must only appear when NEITHER workflow has a state property.
+		const vault = boardVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'New' } });
+		const harness = makeView(vault, { stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		expect(containerEl.querySelector('.pbl-empty-hint')).toBeNull();
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		expect(cardTitles(containerEl)).toContain('D');
+	});
+
+	it('moving a card on the Deliverables board under the fallback writes the shared key end to end', async () => {
+		const vault = boardVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'New' } });
+		const harness = makeView(vault, { stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardDrag(cardByTitle(containerEl, 'D'), columnByName(containerEl, 'Done'));
+		await flush();
+
+		expect(vault.fm('D.md')['status']).toBe('Done');
+	});
+
 	it('names the DELIVERABLE workflow-states option in a stray column’s hint, not the requirements one', () => {
 		const vault = boardVault();
 		vault.addFile('D.md', {

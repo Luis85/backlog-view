@@ -8,6 +8,7 @@ import { BoardSnapshot, Projection, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { CivilDate } from '../../domain/noteFields';
 import { activeAxis } from '../../domain/roadmap';
+import { resolvedDeliverableStateKey } from '../../domain/settings';
 import { daysBetween, dayAt } from '../../domain/timeline';
 
 /**
@@ -204,7 +205,10 @@ function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragC
  */
 function renderDeliverablesBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
 	const label = 'Deliverables board';
-	if (!ctx.host.settings.deliverableStateKey) {
+	// The RESOLVED key: this guidance is a lie about a workflow that does not exist, and
+	// under the fallback one does exist — the shared requirements one — the moment
+	// either key is configured.
+	if (!resolvedDeliverableStateKey(ctx.host.settings)) {
 		renderDeliverablesBoardNoWorkflowState(ctx.host, treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
 	}

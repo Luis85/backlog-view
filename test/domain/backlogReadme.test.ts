@@ -101,6 +101,26 @@ describe('backlogReadmeContent', () => {
 		expect(content).not.toMatch(/\bthe one above\b/i);
 	});
 
+	it('documents the shared key under the fallback, without the false "separate" claim', () => {
+		// Deliverables don't need their own dedicated status property — with no
+		// Deliverable state property configured, the workflow shares the requirements
+		// one, and the row about it must say so rather than repeating the "separate"
+		// claim that is only true when it actually has a key of its own.
+		const settings = { ...defaultSettings(), stateKey: 'status' };
+		const content = backlogReadmeContent(settings, [], 'test');
+		expect(content).toContain('| `status` | Optional, on a Deliverable |');
+		expect(content).toContain("the same property as the requirements workflow's");
+		expect(content).not.toContain("separate from the requirements workflow's");
+	});
+
+	it('still claims "separate" when the Deliverable workflow has its own distinct key', () => {
+		const settings = { ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'deliverableStatus' };
+		const content = backlogReadmeContent(settings, [], 'test');
+		expect(content).toContain(
+			"| `deliverableStatus` | Optional, on a Deliverable | The Deliverable workflow's own state — separate from the requirements workflow's |",
+		);
+	});
+
 	it('states the ranking step the planner actually uses', () => {
 		expect(readme(settingsWith(), [])).toContain(`${ORDER_SPACING} apart`);
 	});

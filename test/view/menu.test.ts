@@ -325,4 +325,36 @@ describe('the Deliverables board’s card menu', () => {
 		rowByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
 	});
+
+	it('offers Set state on a Deliverables-board card when only the shared (requirements) key is configured', () => {
+		// Deliverables don't need their own dedicated status property — with no
+		// Deliverable state property configured, the board falls back to the shared one.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Draft' } });
+		const harness = makeView(vault, { stateProperty: 'note.status', stateValues: 'Draft, Review' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const setState = Menu.lastShown?.item('Set state');
+		expect(setState).toBeDefined();
+		const submenu = setState?.submenu;
+		expect(submenu?.items.map((i) => i.titleText)).toContain('Review');
+	});
+
+	it('checks the fallback entry against the shared key, and writing it touches only that key', async () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Draft' } });
+		const harness = makeView(vault, { stateProperty: 'note.status', stateValues: 'Draft, Review' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const submenu = Menu.lastShown?.item('Set state')?.submenu;
+		expect(submenu?.item('Draft')?.checked).toBe(true);
+
+		submenu?.item('Review')?.click();
+		await flush();
+		expect(vault.fm('D.md')['status']).toBe('Review');
+	});
 });
