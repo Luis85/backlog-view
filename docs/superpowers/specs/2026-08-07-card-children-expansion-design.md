@@ -216,10 +216,17 @@ Exports two functions:
   reads. Recording it here rather than re-deriving it there is the point: one pass
   decides, and the menu cannot reach a different answer than the screen.
 
-The set itself is a `ReadonlySet<string>` on `BacklogViewHost`, owned by the view and
-cleared at the top of each render pass — the same lifecycle `host.board` and
-`host.roadmap` have, for the same reason: a snapshot that outlived its render would
-describe a screen that is gone.
+**Writing and reading it are different paths, deliberately.** The renderer writes through
+a mutable `Set<string>` carried on `RowContext` — `ctx.cardKids`, beside the `rows` index
+the render already fills the same way — and readers get a `ReadonlySet<string>` on
+`BacklogViewHost`. The host member cannot be the write path: it is read by modules that
+have no business adding to it, and a `ReadonlySet` has no `add`, so a renderer reaching
+for one would need a cast, which is how a readonly boundary becomes decorative. The view
+owns the real set, hands it to `rowContext`, and exposes only the readonly view of it.
+
+It is cleared at the top of each render pass, next to `rowEls.clear()` — the same
+lifecycle `host.board` and `host.roadmap` have, for the same reason: a snapshot that
+outlived its render would describe a screen that is gone.
 
 It is its own module rather than more of `render/board.ts` (338 lines, and rising each
 time a card grows something) for the reason the architecture already states: one file per
