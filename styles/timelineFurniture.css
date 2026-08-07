@@ -20,3 +20,60 @@
 .pbl-timeline-cell-super {
 	font-weight: 600;
 }
+
+/* The header's cell rhythm, extended down the body. Positioned, so it paints above
+   row backgrounds and below the bars (positioned later in the DOM) — a 1px dashed
+   line over a hover tint is the normal gantt look. */
+.pbl-grid-line {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-grid-left);
+	border-left: 1px dashed var(--background-modifier-border);
+	pointer-events: none;
+}
+
+/* Saturdays and Sundays, one gradient: 2 days of tint, 5 of nothing, repeating —
+   phased by --pbl-weekend-offset (days to the first Saturday, in px). Translucent,
+   so it composes with the zebra tint and the hover in either paint order.
+
+   The background-size is what makes the phase survive the repeat, and is not
+   cosmetic: left at its default a gradient tiles at the LAYER's width, so shifting
+   it exposes a copy phased to that width rather than to the week, and any window
+   that is not a whole number of weeks — the 92-day Jul–Sep default among them —
+   grows a stray band at its left edge. Sized to exactly one seven-day period, the
+   tile IS the period and every copy lands on a Saturday. */
+.pbl-weekend-layer {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-tl-lead);
+	/* The WINDOW's width, not the wrapper's right edge: `.pbl-timeline-content` carries
+	   `min-width: 100%`, so in a pane wider than the dated track it runs on past the
+	   last cell — and `right: 0` would band blank space no header dates explain. */
+	width: var(--pbl-tl-days);
+	pointer-events: none;
+	background-image: linear-gradient(
+		to right,
+		var(--background-modifier-hover) 0,
+		var(--background-modifier-hover) calc(var(--pbl-day-px) * 2),
+		transparent calc(var(--pbl-day-px) * 2)
+	);
+	background-size: calc(var(--pbl-day-px) * 7) 100%;
+	background-position-x: var(--pbl-weekend-offset);
+}
+
+/* The milestone label's shape at the today line's own offset, red to match the line
+   it names — but RELATIVE, not absolute, and that is the point. In flow it gives the
+   otherwise-empty band its height, so no constant has to be kept in step with the
+   pill's font for the strip to fit it; `left` then nudges it to the date without
+   taking it back out of flow. Nothing shares the strip, so it needs no backing. */
+.pbl-today-label {
+	position: relative;
+	left: var(--pbl-today-left);
+	display: inline-block;
+	padding: var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	color: var(--color-red);
+}

@@ -18,6 +18,7 @@ import {
 	timelineWindow,
 	TimelineScale,
 	TimelineWindow,
+	weekendOffsetDays,
 } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -92,8 +93,18 @@ export function renderTimeline(
 		// `dayPx >= 2 * lineWidth` is what lets today's line and a coincident
 		// milestone's both draw inside one day instead of one erasing the other.
 		'--pbl-tl-line': `${scale.lineWidth}px`,
+		'--pbl-day-px': `${scale.dayPx}px`,
 	});
-	const { cells: headerTrack } = renderCellHeader(content, window, scale);
+	// One layer, not one band per weekend: weekends are exactly 7-day periodic, so
+	// the stylesheet repeats a 2-on/5-off gradient and TS publishes only the phase.
+	// Week zoom alone — at 4px and 2px per day the stripes are noise, which is where
+	// the surveyed tools stop shading too.
+	if (scale.id === 'week') {
+		const weekend = content.createDiv({ cls: 'pbl-weekend-layer', attr: { 'aria-hidden': 'true' } });
+		weekend.setCssProps({ '--pbl-weekend-offset': `${weekendOffsetDays(window) * scale.dayPx}px` });
+	}
+	const { cells: headerTrack, todayBand } = renderCellHeader(content, window, scale);
+	renderGridLines(content, window, scale);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
@@ -105,6 +116,16 @@ export function renderTimeline(
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
+	// The band, which exists so this pill shares a strip with nothing. It is opaque
+	// and placed by a day offset, so in either tier it would sooner or later land on
+	// top of something: a milestone label in the cell tier, whose hover reveals a
+	// name nothing else states, or — since the cells now drop the year — the super
+	// tier's `2026`, the only place the year appears at all. Neither can be dodged by
+	// nudging pixels the way the two 2px LINES are, because these are labels wide
+	// enough to overlap for days on either side of the date.
+	const todayLabel = todayBand.createDiv({ cls: 'pbl-today-label', text: 'Today' });
+	todayLabel.setCssProps({ '--pbl-today-left': `${todayOffset(window, today, scale)}px` });
+	setTooltip(todayLabel, formatCivil(today));
 	// One overlay over the day area, spanning the full height of the CONTENT (which is
 	// at least the scrollport, so the blank grid below the last row — the state every
 	// fresh backlog starts in — is a drop target too). Positioned past the sticky lead
@@ -208,6 +229,21 @@ function renderMilestoneLines(
 		const labelEl = headerTrack.createDiv({ cls: 'pbl-milestone-label', text: label });
 		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
+	}
+}
+
+/**
+ * The header's cell boundaries, extended down the grid body — decoration only,
+ * drawn before the milestone lines so a boundary never paints over a mark that
+ * means something. No line at day 0: that boundary is the lead column's border.
+ */
+function renderGridLines(content: HTMLElement, window: TimelineWindow, scale: TimelineScale): void {
+	let day = 0;
+	for (const cell of timelineCells(window, scale)) {
+		day += cell.days;
+		if (day >= window.days) break;
+		const line = content.createDiv({ cls: 'pbl-grid-line', attr: { 'aria-hidden': 'true' } });
+		line.setCssProps({ '--pbl-grid-left': `${TIMELINE_LEAD_PX + day * scale.dayPx}px` });
 	}
 }
 
