@@ -4,6 +4,8 @@ order: 30
 status: Active
 created: 2026-08-01
 source: user request
+horizon: Next
+area: product
 ---
 
 # Product Kanban

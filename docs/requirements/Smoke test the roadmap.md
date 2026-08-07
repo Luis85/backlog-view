@@ -1,6 +1,6 @@
 ---
 type: Feature
-parent: "[[Feature Test]]"
+parent: "[[Plugin Features Smoke Test]]"
 order: 30
 status: Open
 created: 2026-08-02
