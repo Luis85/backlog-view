@@ -46,28 +46,45 @@ narrowed to one type.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Toggling the toolbar to the Deliverables board |
-| **Preconditions** | The Deliverable state property is configured (the "Deliverables" view-options group) |
-| **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states — and a move here writes only the Deliverable state property, never the requirements board's. |
+| **Preconditions** | A Deliverable workflow resolves to some key — the Deliverable state property when it is configured, or (falling back, all three fields as one unit) the requirements board's own `stateKey`/`states`/`doneValues` when it is not (`resolvedDeliverableStateKey`, `deliverableKeyFallsBack` in `resolveSettings`) |
+| **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states — and a move here writes the *resolved* Deliverable state key: the Deliverable's own configured property when one is set, or (falling back) the requirements board's `stateKey` itself — in which case the two boards share one property rather than each owning a different one. |
 
 **Main flow**
 
 1. The toolbar toggle grows a fourth position: Tree, Board, Roadmap, Deliverables.
-2. Choosing it shows a board whose columns are the workflow the new "Deliverables"
-   settings group defines — no-state first, then its configured states in order, then
-   any observed value the configuration does not name.
+2. Choosing it shows a board whose columns are the workflow the "Deliverables" settings
+   group defines — its own state property, states and done values when
+   `deliverableStateProperty` is configured, or (falling back, as one unit —
+   `deliverableKeyFallsBack` in `resolveSettings`) the requirements workflow's own
+   resolved key, declared states and *effective* done values when it is not. Either way:
+   no-state first, then the configured states in order, then any observed value the
+   configuration does not name.
 3. Its cards are every `Deliverable`-typed item in `model.results`, case-insensitively —
    the same match `isExtraType` already recognises — regardless of the *requirements*
    workflow's state, and regardless of "Show completed items" (which this board does
    not honor; see 3c).
-4. A drag, an Alt+Left/Right, or the card menu's Set state all write the Deliverable
-   state property alone, through the same gate every other move goes through, and
+4. A drag, an Alt+Left/Right, or the card menu's Set state all write the resolved
+   Deliverable state key alone, through the same gate every other move goes through, and
    announce themselves the same way board moves already do.
+5. Creating a new item from this board's own toolbar always creates a Deliverable: the
+   primary New button is bound to it unconditionally, and the chevron "New item of
+   another type" picker the other projections offer is absent here, since nothing else
+   could ever appear as a card on this board.
 
 **Extensions**
 
-- **1a — no Deliverable state property is configured.** The board shows the same
-  unconfigured empty state the requirements board shows without a `stateKey` — a
-  workflow is this mode's prerequisite here too.
+- **1a — neither the Deliverable state property nor the requirements one is
+  configured.** Only then does the board show the unconfigured empty state the
+  requirements board shows without a `stateKey` — a workflow is this mode's
+  prerequisite here too, and the fallback means an unconfigured Deliverable property
+  alone is no longer enough to trigger it.
+- **2a — the Deliverable state property IS configured, on its own distinct key, but its
+  own states or done values are not.** They fall through to THIS workflow's own
+  observed values or the shipped default (`DEFAULT_DONE_VALUES`) — never to the
+  requirements workflow's declared states or customized done values. The fallback is
+  all-or-nothing on the KEY: an independently-keyed workflow shares nothing with the
+  requirements one, and only an unset key borrows every field of it together (key,
+  states and done values as one unit, never just one of the three).
 - **1b — the Deliverable workflow is configured, but the base holds no `Deliverable`
   results at all.** Every column renders empty, and the board shows "No deliverables
   yet" — never "All N items are done and hidden," which is what the requirements
@@ -78,11 +95,20 @@ narrowed to one type.
   items" toggle does not appear while viewing the Deliverables board, even though it
   would appear on the requirements board with the same settings — the control has no
   effect here (3c), so it is absent rather than present and inert.
-- **3a — a Deliverable also carries the requirements board's own state property.** It
-  is an ordinary card on the requirements board too, unaffected: the two properties are
-  independent, and neither board's move touches the other's key.
-- **3b — a hierarchy focus level is active (the toolbar's focus picker, shared by every
-  projection).** Cards are drawn from `model.results` rather than `model.roots`, so a
+- **3a — a Deliverable also carries the requirements board's own state property (or,
+  under the fallback, the two workflows are the same property).** It is never an
+  ordinary card on the requirements board — that board excludes every `Deliverable`
+  from its cards, its `fullCount` and its stray columns, whatever either workflow's
+  state says. It still counts on the tree and on both roadmap axes; only the
+  requirements board's cards are scoped away from it. A Deliverable acting purely as an
+  excluded ancestor is the one exception: it still renders there as a context row for a
+  matching visible descendant, exactly as an `Issue` or a `Bug` already does — never a
+  real, in-filter card, a ranking peer or a count, whatever its state. See
+  [[A Deliverables board]].
+- **3b — a hierarchy focus level is active** (set from the toolbar's focus picker on
+  another projection and carried over — this board's own toolbar renders no picker to
+  set one from here; see 5a). Cards are drawn from `model.results` rather than
+  `model.roots`, so a
   Deliverable nested inside the focused subtree still renders — but `model.results`
   itself narrows to that subtree while a focus is active, exactly as it already does for
   the tree and the requirements board. **Two different rules apply, by focus level, and
@@ -118,15 +144,27 @@ narrowed to one type.
   mints a stray column and is never offered on that note's own Set-state menu — a
   column no Deliverable card could ever land in is not a target this board offers,
   whatever key happens to hold a value.
+- **5a — a focus level was set from another projection and is still active when the
+  Deliverables board is chosen.** The toolbar's focus picker itself is absent here —
+  nothing to narrow by, since every card is already a Deliverable — but the focus still
+  narrows `model.results` exactly as 3b describes, so a static label names it and a
+  clear button stays, the one way back to "All types" without leaving this board. With
+  no focus active, the whole control is absent — nothing to show and nothing to clear.
 
 ## Acceptance criteria
 
 - The toolbar offers exactly Tree, Board, Roadmap, Deliverables, and the fourth shows
   cards only for items typed `Deliverable`.
-- Its columns come from a workflow (state property, ordered states, done values)
-  configured independently from the requirements board's `stateValues`/`doneValues`.
-- A move — drag, Alt+arrow, or menu — writes only the Deliverable state property; the
-  requirements board's state is untouched by it, and vice versa.
+- Its columns come from a workflow (state property, ordered states, done values) that
+  is either its own, configured independently from the requirements board's
+  `stateValues`/`doneValues`, or — when no Deliverable state property is configured —
+  the requirements workflow's own resolved key, declared states and effective done
+  values, falling back as one unit.
+- A move — drag, Alt+arrow, or menu — writes the *resolved* Deliverable state key alone
+  (`resolvedDeliverableStateKey`): its own configured property when one is set, in
+  which case the requirements board's state is untouched by it and vice versa; or,
+  falling back, the requirements board's `stateKey` itself, in which case the two
+  boards deliberately share the one write.
 - Undo takes back a Deliverables-board move through the same one slot every other move
   in the view uses.
 - No non-Deliverable item ever appears as a card here, whatever its own state.
@@ -141,10 +179,12 @@ narrowed to one type.
   never the requirements board's — the two can disagree about one card and each board
   shows its own answer.
 - On a Deliverable card viewed from this board: the card menu's Set state section
-  appears whenever `deliverableStateKey` is configured, even if the requirements
-  `stateKey` is not; its checked entry reflects `item.deliverableStateValue`, never
-  `item.stateValue`; and picking one writes `deliverableState` alone — never the
-  requirements key, whichever key happens to also be configured.
+  appears whenever the *resolved* Deliverable state key is non-empty — its own key, or
+  (falling back) the requirements one — even when the requirements `stateKey` alone
+  would otherwise be unset; its checked entry reflects `item.deliverableStateValue`,
+  never `item.stateValue`; and picking one writes `deliverableState`, which lands on
+  the resolved key alone — its own key when configured, the requirements key itself
+  when falling back, never a third, uninvolved property.
 - Picking the Deliverables board survives closing and reopening the view, the same way
   Board and Roadmap already do — not merely reverting to the tree because the stored
   value went unrecognised.
@@ -166,10 +206,12 @@ narrowed to one type.
 - A stray column never appears on the Deliverables board for a value only a
   non-Deliverable item carries under the configured Deliverable state property, and
   that value is never offered on that other item's own Set-state menu.
-- The generated README, when `deliverableStateKey` is configured, lists it in the
-  property table — the same contract every other property this view writes already
-  gets, so "only the properties above are written" stays true of a vault using this
-  board.
+- The generated README, whenever the *resolved* Deliverable state key is non-empty —
+  its own key, or (falling back) the requirements one — lists it in the property table,
+  naming which of the two relationships holds ("separate from the requirements
+  workflow's" or "the same property … since no Deliverable state property is
+  configured") — the same contract every other property this view writes already gets,
+  so "only the properties above are written" stays true of a vault using this board.
 - The pane carries the same board-shaped styling (columns readable, no clipped overflow,
   no leftover tree-only root drop zone) in Deliverables mode as in Board mode.
 - A configured-but-empty Deliverables board (no `Deliverable` results in the base) shows
@@ -179,21 +221,50 @@ narrowed to one type.
 - A quick-filter match hidden under a visible Deliverable card is reachable from the
   keyboard through the card menu, the same as on the requirements board.
 - The plugin's own shipped `README.md` — not only the generated per-vault one — names
-  `Deliverable` beside `Issue`/`Bug`, describes the fourth projection and its
-  independent workflow, and lists the new "Deliverables" view-options group: a user
-  reading the plugin's manual can find this feature without reading this design.
+  `Deliverable` beside `Issue`/`Bug`, describes the fourth projection, its workflow (its
+  own when configured, or the requirements one when not), and lists the new
+  "Deliverables" view-options group: a user reading the plugin's manual can find this
+  feature without reading this design.
+- The requirements board never shows a Deliverable as a real card, whatever either
+  workflow's state says, and its `fullCount` and the toolbar's item count agree with
+  that — except a Deliverable rendered purely as a context row for a matching visible
+  descendant, which the requirements board still shows exactly as it does for any other
+  excluded ancestor.
+- The toolbar's primary New button on the Deliverables board always creates a
+  Deliverable, and the chevron "New item of another type" picker is absent there —
+  asserted directly against the requirements board, where the picker still offers every
+  type.
+- The toolbar's focus picker never renders on the Deliverables board — nothing to
+  narrow by — but a focus level already active from another projection still narrows
+  this board's own cards, stays named by a static label, and stays clearable from a
+  button that remains.
 
 ## Where it lives
 
 `src/domain/settings.ts` — a `deliverableState` field joins `OptionalField` and
 `PROPERTY_TABLE` (so it gets collision-checking, adoption and backfill for free, the way
 every optional property already does), plus `deliverableStates` and
-`deliverableDoneValues` beside `states`/`doneValues`.
+`deliverableDoneValues` beside `states`/`doneValues`. `resolveSettings` names the key's
+own fallback condition once (`deliverableKeyFallsBack` — true exactly when no
+Deliverable state property is configured) and consults it for all three returned
+fields: `deliverableStateKey` itself, and the gate in front of `deliverableStates`' and
+`deliverableDoneValues`' own emptiness checks. Falling back means falling back to ALL
+THREE of the requirements workflow's own resolved key, declared states and effective
+done values together — an independently-keyed Deliverable workflow shares none of them,
+ever, falling through instead to its own observed values or the shipped default
+(`DEFAULT_DONE_VALUES`). `resolvedDeliverableStateKey(settings)` is the one function
+every other reader and writer calls for the key — never `settings.deliverableStateKey`
+directly — deliberately excluded from `optionalKeyFor`, since `configProblems`/
+`adoptableProperties` need the RAW (possibly empty) key to tell a fallback share from an
+explicit collision.
 `src/domain/viewOptions.ts` — a new "Deliverables" group: `deliverableStateProperty` (the
 state property picker), `deliverableStateValues` (the ordered workflow states) and
 `deliverableDoneValues` (the done values).
 `src/domain/model.ts` — `BacklogItem.deliverableStateValue` and `deliverableDone`, built
-the same way `stateValue`/`done` already are.
+the same way `stateValue`/`done` already are, reading through `resolvedDeliverableStateKey(settings)`
+rather than the raw `deliverableStateKey` — so a card that looks movable on the
+Deliverables board, own key or shared fallback, resolves to the value that key
+actually holds.
 `src/domain/vocabulary.ts` — `collectObservedDeliverableStates`, filtering to
 `typeName?.toLowerCase() === 'deliverable'` **before** the first-seen walk
 `collectObservedStates` already does, and sorting against `deliverableDoneValues` rather
@@ -206,7 +277,10 @@ directly, so the requirements board and this one share one implementation.
 (the `state`/`removeStateKey` shape, not `AxisWrite`'s — no span semantics here) and
 `computeDeliverableStateWrites`, deliberately with no stamp logic.
 `src/storage/frontmatter.ts` — applying and capturing the new fields through
-`optionalKeyFor(settings, 'deliverableState')`.
+`resolvedDeliverableStateKey(settings)`, the fallback-aware key, never the raw
+`optionalKeyFor(settings, 'deliverableState')` — so a move on the Deliverables board
+lands bytes even when no Deliverable-specific property is configured, and undo
+(`touchedKeys`) captures the very key `applyInto` wrote.
 `src/view/host.ts` — `projection` gains `'deliverables'`, `performDeliverablesBoardMove`
 is declared on `BacklogViewHost` as a one-line delegation to `CardMoveController`,
 mirroring `performBoardMove`'s own delegation exactly, and `isRowHiddenByFilterOnly(item)`
@@ -220,10 +294,12 @@ those three already share — not a standalone write, which would either reimple
 silently drop that behavior.
 `src/view/render/projections.ts` — `renderProjectionContent` gains an explicit
 `renderDeliverablesBoardContent` branch beside `renderBoardContent`/
-`renderRoadmapContent`, gated on `settings.deliverableStateKey`, returning its board
-through the same `ProjectionContent.board` field `renderBoardContent` already uses —
-there is no second snapshot field; without this branch the fourth toggle falls through to
-`renderTree` and nothing computes a board at all.
+`renderRoadmapContent`, gated on `resolvedDeliverableStateKey(ctx.host.settings)` rather
+than the raw key — so the "no workflow" guidance shows only when NEITHER workflow
+resolves — returning its board through the same `ProjectionContent.board` field
+`renderBoardContent` already uses — there is no second snapshot field; without this
+branch the fourth toggle falls through to `renderTree` and nothing computes a board at
+all.
 `src/view/backlogView.ts` — the fourth toggle, `renderTreeContent`'s `pbl-board-mode`
 class condition widens to `projection === 'board' || projection === 'deliverables'`
 (`backlogView.ts:468`) — the two are shaped alike and share the class, rather than the
@@ -231,24 +307,49 @@ Deliverables board inheriting the tree's overflow and root drop zone by omission
 `isRowHiddenByFilterOnly` is implemented beside `isRowHidden`/`isRowHiddenUnfiltered`
 (`backlogView.ts:307-343`), reusing the same `filter.active`/`filter.keeps` check
 `hidden()` already makes on its first branch, never reaching `hidingCompleted()`.
-`src/view/render/toolbar.ts` — the fourth toggle; `renderCompletedToggle`'s gate
-(`toolbar.ts:210`) adds `&& host.projection !== 'deliverables'`; and `syncCountLabel`
-(`toolbar.ts:179-186`), which runs every render regardless of projection, picks
-`isRowHiddenByFilterOnly` over `isRowHidden` when `host.projection === 'deliverables'` —
-found by review: unfixed, a Deliverable done only in the requirements workflow renders as
-a visible card here while the toolbar simultaneously reports the base as "0 of 1".
-`src/view/render/board.ts` — three changes, not one: `createCard` takes its completion
+`src/view/render/toolbar.ts` — the fourth toggle; `renderCompletedToggle`'s gate adds
+`&& host.projection !== 'deliverables'`; and `syncCountLabel`, which runs every render
+regardless of projection, picks `isRowHiddenByFilterOnly` over `isRowHidden` when
+`host.projection === 'deliverables'` — found by review: unfixed, a Deliverable done only
+in the requirements workflow renders as a visible card here while the toolbar
+simultaneously reports the base as "0 of 1". Extended by the later board-scoping change,
+covered in `test/view/deliverablesToolbar.test.ts` rather than folded into
+`test/view/toolbar.test.ts`: `renderToolbar`'s `onDeliverables` flag binds the primary
+New button to `DELIVERABLE_TYPE` unconditionally — never the focus-dependent
+`newItemType` the other projections use — and skips rendering the chevron "New item of
+another type" picker entirely, since a board that only ever shows one type has nothing
+for a second choice to add; `syncCountLabel` gains a parallel `onRequirementsBoard`
+branch that filters `Deliverable` out of the population and the tooltip breakdown it
+counts, agreeing with `renderRequirementsBoard`'s own exclusion (`view/render/board.ts`)
+rather than a second, independently-computed count that could drift from it; and
+`renderFocusPicker` drops its own button and menu entirely on the Deliverables
+projection, rendering nothing when no focus is active and, when one is, a static
+`.pbl-focus-label` plus the shared `renderFocusClearButton` — the one control this board
+keeps, since an already-active focus still narrows `model.results` here and the user
+must stay able to clear it without leaving the projection.
+`src/view/render/board.ts` — four changes, not three: `createCard` takes its completion
 flag as a parameter (defaulted to `item.done`, so the requirements board and the roadmap
 need no change) instead of reading `item.done` itself, so the Deliverables board's call
-site can pass `item.deliverableDone`; `renderBoard`/`renderColumn` (`:19-42`, `:94-126`)
-take the resolved `BoardModel` and a `move` callback as parameters instead of deriving
-`boardColumns(...)` and `host.performBoardMove` internally, so `renderColumn`'s drop
-wiring (`:123`) calls whichever `move` its caller gave it rather than hardcoding
-`performBoardMove` — the drag counterpart of the menu fix above, since an unparametrized
-`renderColumn` would let a drop write the wrong property exactly as an unparametrized
-menu would; and `renderBoardAdvisory` (`:84-91`) gains a Deliverables-scoped sibling that
-asks whether `model.results` contains any `Deliverable` rather than whether it is empty,
-so a base full of other work is never reported as "done and hidden" on this board.
+site can pass `item.deliverableDone`; `renderBoard`/`renderColumn` take the resolved
+`BoardModel` and a `move` callback as parameters instead of deriving `boardColumns(...)`
+and `host.performBoardMove` internally, so `renderColumn`'s drop wiring calls whichever
+`move` its caller gave it rather than hardcoding `performBoardMove` — the drag
+counterpart of the menu fix above, since an unparametrized `renderColumn` would let a
+drop write the wrong property exactly as an unparametrized menu would; `renderBoardAdvisory`
+gains a Deliverables-scoped sibling that asks whether `model.results` contains any
+`Deliverable` rather than whether it is empty, so a base full of other work is never
+reported as "done and hidden" on this board; and — added by the later board-scoping
+change, covered in `test/view/board.test.ts` and `test/view/deliverablesBoardContext.test.ts`
+rather than folded into this PBI's own suite — `renderRequirementsBoard` filters every
+`Deliverable` out of the population it passes to `boardColumns` (its cards, its
+`observedValues` via `collectObservedStates` in `domain/vocabulary.ts`, and both its
+`isRowHidden`/`isRowHiddenUnfiltered` predicates), so a Deliverable never becomes a
+stray column, a card or a counted result on the requirements board. The predicate is
+`item.outsideFilter || !isDeliverable(item)`: a real, in-filter Deliverable is always
+excluded, but one rendered purely as a context row for a visible descendant is exempted
+from the exclusion — the same "renders, parents, and that is all" guarantee every other
+excluded ancestor already gets, restored after an earlier version of this predicate
+dropped it unconditionally (see extension 3a above).
 `src/view/interactions/cardDrag.ts` — wiring the new board's drop targets through the
 parameterized `renderColumn` above.
 `src/view/interactions/keyboard.ts` — two changes, not one: `handleProjectionKeydown`
@@ -266,12 +367,13 @@ helper — `host.board?.board ?? null`, no projection branch needed because `hos
 already the one field holding whichever board-shaped projection's snapshot is current —
 replaces the repeated `host.projection === 'board' ? host.board?.board : null` ternary at
 all three of its existing call sites plus the one this PBI adds; the Set-state section's
-visibility gate (`menu.ts:70`) checks whichever
-key is active for `host.projection`, not only the requirements `stateKey`; `chooseState`
-(`menu.ts:305`, the write) and `addStateItems` (`menu.ts:323`, the checked entry) route
-to `performDeliverablesBoardMove` / `computeDeliverableStateWrites` rather than falling
-through to the requirements-keyed `computeStateWrites`; and `addMatchSection`
-(`menu.ts:248`), the keyboard path to a quick-filter match hidden under a card, now
+visibility gate checks whichever key is active for `host.projection` — on the
+Deliverables projection, the *resolved* key (`resolvedDeliverableStateKey`), never the
+raw `deliverableStateKey`, so the menu still offers Set state under the fallback — not
+only the requirements `stateKey`; `chooseState` (the write) and `addStateItems` (the
+checked entry) route to `performDeliverablesBoardMove` / `computeDeliverableStateWrites`
+rather than falling through to the requirements-keyed `computeStateWrites`; and
+`addMatchSection`, the keyboard path to a quick-filter match hidden under a card, now
 resolves through `activeBoard` too instead of returning early on every projection but
 `'board'`.
 `src/storage/collapseStore.ts` — a `DELIVERABLES_MODE` constant beside
@@ -280,17 +382,24 @@ projection is silently dropped on read like any unrecognised value.
 `src/view/collapseState.ts` — `CollapseState.projection()` and its write-back
 counterpart map `'deliverables'` to and from `DELIVERABLES_MODE`, the same round trip
 `board`/`roadmap` already get.
-`src/domain/backlogReadme.ts` — `fieldRows` (`:126-152`) gains
-`if (settings.deliverableStateKey) rows.push(...)`, matching its existing manual,
-per-property shape (the horizon/start/target rows immediately above it) rather than a
-generic loop over `OPTIONAL_PROPERTIES` — `fieldRows` already has that shape for every
-property before this one, so this PBI matches precedent rather than refactoring it. The
-full "declared vs. observed states" section for the Deliverable workflow is out of scope
-(design spec, Scope/Out) — only the property-table row, which an existing sentence
-elsewhere in the generated document depends on being complete.
+`src/domain/backlogReadme.ts` — `fieldRows` gates its Deliverable row on
+`resolvedDeliverableStateKey(settings)` rather than the raw key, so the row still
+documents the property the board actually reads and writes under the fallback, and its
+own relationship sentence states which of the two is true — "separate from the
+requirements workflow's" when `deliverableStateKey` is configured, or "the same
+property … since no Deliverable state property is configured" when it is not — rather
+than always claiming independence. This matches its existing manual, per-property shape
+(the horizon/start/target rows immediately above it) rather than a generic loop over
+`OPTIONAL_PROPERTIES` — `fieldRows` already has that shape for every property before
+this one, so this PBI matches precedent rather than refactoring it. The full "declared
+vs. observed states" section for the Deliverable workflow is out of scope (design spec,
+Scope/Out) — only the property-table row, which an existing sentence elsewhere in the
+generated document depends on being complete.
 `README.md` — the plugin's own shipped manual, distinct from the generated per-vault one
-above: `Deliverable` joins the type list (`:30-32`) and the "Issues and bugs sit beside
-the ladder" section (`:306-354`, matching its existing depth rather than re-deriving it),
-the board section (from `:499`) gains a short paragraph naming the fourth projection and
-its independent workflow, and the view-options table (`:626-653`) gains the new
-"Deliverables" group's rows.
+above: `Deliverable` joins the type list and the "Issues and bugs sit beside the ladder"
+section, matching its existing depth rather than re-deriving it; "## The board" names
+Deliverables' exclusion from that board; "## The Deliverables board" describes the
+fourth projection's workflow (its own when configured, or, falling back, the one the
+board above already uses), the toolbar's New button bound to it, and the focus picker's
+reduced, clear-only form; and the view-options table gains the new "Deliverables"
+group's rows, each stating its own fallback.

@@ -550,6 +550,10 @@ matches no column, it sits in the no-state column.
   the filter excluded still gets an inert card, so its results have somewhere to sit.
   Unfocused, the board is results only — an excluded item never gets a card without a focus
   level pointing at it. Either way, a context card carries no control that would write to it.
+- **`Deliverable` items never appear here.** They get a board of their own — see
+  [The Deliverables board](#the-deliverables-board) — though one acting purely as an
+  excluded ancestor can still render as an inert context card for a visible descendant,
+  the same as any other excluded parent.
 
 Every move — drag, keyboard or menu — is the same gated write, announced in the same words,
 and taken back by the same <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>.
@@ -558,19 +562,37 @@ and taken back by the same <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>.
 
 A fourth projection, alongside tree/board/roadmap, reserved for items typed
 `Deliverable` — concepts, designs and anything else the team must produce rather than
-plan. It has its **own workflow**: its own state property, its own ordered states, its
-own done values, entirely independent of the board above. A Deliverable finished in one
-workflow does not read as finished in the other.
+plan. It draws from a **workflow**: its own state property, ordered states and done
+values when you configure one — in which case it is entirely independent of the board
+above, and a Deliverable finished in one workflow does not read as finished in the
+other — or, left unconfigured, the same workflow the board above already uses, so a
+vault that never bothered to name a separate property still gets a working
+Deliverables board rather than an inert one; in that case the two boards deliberately
+share the one property and the one write.
+
+A Deliverable never appears as a card on the board above — that board is scoped to
+everything else, whatever either workflow's state says — though it still counts on the
+tree and on both roadmap axes, and one acting purely as an excluded ancestor still
+shows there as a context card for a matching visible descendant, the same as any other
+excluded parent.
 
 Columns and a workflow only — no WIP limits, no column policies, no started/finished
 date stamps, and "Show completed items" has no effect here: a Deliverable's
 completion state on either workflow never hides its card, and only the quick filter
-narrows what is shown. (The toolbar's **Focus** picker still applies here as it does
-everywhere else — focused on a Feature, this board shows only the Deliverables nested
-under that focus; focused on PBI specifically, every Deliverable stays visible
-regardless of where it sits, the same way `Issue` and `Bug` already do under PBI
-focus.) Moving a card (drag, <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or the card menu's
-Set state) writes only the Deliverable state property.
+narrows what is shown. The toolbar's **Focus** picker does not appear on this board —
+every card is already a Deliverable, so there is nothing left to narrow by — but a
+focus level set from another projection and still active keeps narrowing this board's
+own cards too, named by a label and clearable from a button that stays. (Focused on a
+Feature, this board shows only the Deliverables nested under that focus; focused on PBI
+specifically, every Deliverable stays visible regardless of where it sits, the same way
+`Issue` and `Bug` already do under PBI focus.) Moving a card (drag,
+<kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or the card menu's Set state) writes the
+resolved Deliverable state property — its own key when you configured one, or the
+shared one when you did not.
+
+The toolbar's **New** button on this board always creates a Deliverable; the picker for
+every other type, offered everywhere else, is absent here since nothing else could ever
+appear as a card.
 
 Everything else about a Deliverable — its parent, its rank, its tags, its place on the
 roadmap — is the same property every other type already uses; nothing about this board
@@ -676,9 +698,9 @@ Open the view options in the Bases toolbar to configure:
 | Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
 | Show completed items | on | Off hides fully-done subtrees from the tree, the board and the roadmap (only while a state property is set); the Deliverables board ignores it — see [The Deliverables board](#the-deliverables-board) — and nothing about ranking or rollups changes anywhere |
 | Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/deliverables`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
-| Deliverable state property | *(off)* | Note property with the Deliverable workflow's own state; enables the Deliverables board |
-| Deliverable workflow states (in order) | *(off)* | The Deliverables board's columns, in that order. Left unset, it draws the states your Deliverables actually carry |
-| Deliverable states that count as done | `Done, Closed, Completed, Removed` | Which Deliverable state values complete a Deliverable, for this workflow alone |
+| Deliverable state property | *(off)* | Note property with the Deliverable workflow's own state. Left off, the Deliverables board falls back to the board above's own state property (and, with it, its states and done values) rather than going inert |
+| Deliverable workflow states (in order) | *(off)* | The Deliverables board's columns, in that order. Falls back to **Workflow states (in order)** above when no Deliverable state property is configured either; with your own property set but no list, it draws the states your Deliverables actually carry |
+| Deliverable states that count as done | `Done, Closed, Completed, Removed` | Which Deliverable state values complete a Deliverable. Falls back to **States that count as done** above when no Deliverable state property is configured either; with your own property set but no list of your own, it stays the default shown here rather than borrowing that customization |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |

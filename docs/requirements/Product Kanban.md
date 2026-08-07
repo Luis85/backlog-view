@@ -66,18 +66,26 @@ top of them:
 
 - The two projections never disagree: one model, one result set, one write gate, one
   undo history. A change made on the board is the change the tree shows.
-- The board exists only where a workflow can: a configured state property is the
+- The board exists only where a workflow can: a configured state property — the
+  Deliverables board's own, or (falling back) the requirements board's — is the
   mode's prerequisite, and without one board mode is guidance, not columns. Past that
-  gate, the board never loses a result: at full scope, every result the model holds
-  renders in exactly one column, and column counts sum to that count. The hierarchy
-  scope
-  ("Ignore notes outside the hierarchy") prunes ahead of both projections alike, its
-  toll carried by the same ignored-note advisory the tree shows; past it, exactly two
-  controls narrow further, in both projections alike — the focus level (descendants
-  surface in card rollups, ancestors as context) and "Show completed items"
-  (fully-done subtrees hide, by the tree's own `subtreeDone` predicate). The
-  narrowing belongs to those controls, never to the board: restoring them restores
-  every result to a column.
+  gate, the board never loses a result to its OWN population: at full scope, every
+  result the model holds renders in exactly one column on the board that shows its
+  type, and that board's column counts sum to that count. The hierarchy scope ("Ignore
+  notes outside the hierarchy") prunes ahead of every projection alike, its toll
+  carried by the same ignored-note advisory the tree shows; past it, exactly two
+  controls narrow a board's population further, in every projection alike — the focus
+  level (descendants surface in card rollups, ancestors as context) and "Show completed
+  items" (fully-done subtrees hide, by the tree's own `subtreeDone` predicate). The
+  narrowing belongs to those two controls, never to a board picking and choosing among
+  its OWN type's results — with one deliberate exception that is not really an
+  exception: **type** itself decides which of the two boards a result is even eligible
+  for. The requirements board excludes every `Deliverable`, and the Deliverables board
+  excludes everything else, each scoped to the one kind of work it exists to show (see
+  [[A Deliverables board]]). Restoring the two controls restores every eligible result
+  to a column; nothing restores a Deliverable to the requirements board's columns,
+  because it was never that board's result to begin with — the tree and the roadmap
+  still hold it, and it still counts there.
 - No second source of truth: no board-only rank property, no board-only state, no
   state string written that the user did not configure or observe.
 - A row outside the Base's filter obeys the context-row rule on the board exactly as

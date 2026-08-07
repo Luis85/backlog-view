@@ -77,15 +77,22 @@ named, reachable by pointer and from a column menu this increment introduces and
 creation from a column will later share. A fifth did not extend this board but
 multiplied it: `Deliverable` items — concepts, designs, anything the team must produce
 rather than build — get a second board of their own, reached by a fourth toolbar
-toggle, with its own workflow property, states and done values, independent of the
-requirements board's, so a design's review status never has to share a column list with
-a PBI's implementation status. It keeps the guarantee — one model, one write gate, one
-undo history — and the three inputs that move a card, but takes none of the fourth
-increment's agreements: no WIP limit, no column policy, no date stamp, and it does not
-honor "Show completed items", since completion there is a question the Deliverable
-workflow answers, not the requirements one. What remains under the epic — lanes, creation
-from a column, column collapse, and the touch verdict a device has to answer — is
-still design.
+toggle, with a workflow property, states and done values overridable independently of
+the requirements board's, or — left unconfigured — falling back to the requirements
+board's own as one unit, so a vault that never bothered to name a separate property
+still gets a working Deliverables board rather than an inert one. A later fix scoped the
+requirements board the other way in return: it now excludes every `Deliverable` from
+its cards, its count and its stray columns, so a design's review status never has to
+share a column list with a PBI's implementation status even when the two workflows turn
+out to be the same property — a Deliverable acting purely as an excluded ancestor still
+surfaces there as a context row, exactly as any other excluded parent does. It keeps
+the guarantee — one model, one write gate, one undo history — and the three inputs
+that move a card, but takes none of the fourth increment's agreements: no WIP limit,
+no column policy, no date stamp, and it does not honor "Show completed items", since
+completion there is a question the Deliverable workflow answers, not the requirements
+one; its own toolbar creates only Deliverables and its own focus control is
+clear-only. What remains under the epic — lanes, creation from a column, column
+collapse, and the touch verdict a device has to answer — is still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly
