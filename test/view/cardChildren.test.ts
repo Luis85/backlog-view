@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
-import { useViewHarness } from '../helpers/view';
+import { refresh, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/render/cardChildren';
 
@@ -65,5 +65,121 @@ describe('children on the card', () => {
 		const children = listedChildren(view, epicB);
 		expect(children.map((c) => c.title)).toEqual(['Feature B1', 'Feature B2']);
 		expect(childrenLabel(children)).toBe('2 features');
+	});
+
+	it('excludes a child the view is hiding, and says so in the count', () => {
+		// Feature B1 is Done; with completed work hidden it is not a child on screen.
+		const { containerEl } = makeBoard(boardVault(), { showCompleted: false });
+		const card = cardByTitle(containerEl, 'Epic B');
+		expect(disclosure(card)?.textContent).toContain('1 feature');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['Feature B2']);
+	});
+
+	// The rollup beside it still counts two. That disagreement is deliberate, and a
+	// deliberate disagreement nothing explains is indistinguishable from a bug.
+	it('explains the omitted child in the tooltip, and only when there is one', () => {
+		const hiding = makeBoard(boardVault(), { showCompleted: false });
+		expect(disclosure(cardByTitle(hiding.containerEl, 'Epic B'))?.dataset.tooltip).toContain(
+			'1 more is hidden by the current view',
+		);
+
+		const showing = makeBoard(boardVault());
+		expect(disclosure(cardByTitle(showing.containerEl, 'Epic B'))?.dataset.tooltip).not.toContain('hidden');
+	});
+
+	// `aria-controls` says the two are related and nothing about what the list holds.
+	// A reader landing straight on the list needs the count, which is the toggle's text.
+	it('names the list by the disclosure, not merely controls it', () => {
+		const { containerEl } = makeBoard(boardVault());
+		const card = cardByTitle(containerEl, 'Epic B');
+		const toggle = disclosure(card);
+		const list = card.querySelector<HTMLElement>('.pbl-card-kids-list');
+
+		expect(toggle?.id).toBeTruthy();
+		expect(list?.getAttribute('aria-labelledby')).toBe(toggle?.id);
+		expect(toggle?.textContent).toContain('2 features');
+	});
+
+	it('styles a done child done', () => {
+		const { containerEl } = makeBoard(boardVault());
+		const card = cardByTitle(containerEl, 'Epic B');
+		disclosure(card)?.click();
+		const done = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid.pbl-done'));
+		expect(done.map((el) => el.querySelector('.pbl-card-kid-title')?.textContent)).toEqual([
+			'Feature B1',
+		]);
+	});
+
+	it('opens the child, not the card, on a primary click', () => {
+		const vault = boardVault();
+		const { containerEl } = makeBoard(vault);
+		const card = cardByTitle(containerEl, 'Epic B');
+		disclosure(card)?.click();
+
+		card.querySelectorAll<HTMLElement>('.pbl-card-kid')[0].click();
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Feature B1.md']);
+	});
+
+	it('opens the child, not the card, on a middle click', () => {
+		const vault = boardVault();
+		const { containerEl } = makeBoard(vault);
+		const card = cardByTitle(containerEl, 'Epic B');
+		disclosure(card)?.click();
+
+		card
+			.querySelectorAll<HTMLElement>('.pbl-card-kid')[0]
+			.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Feature B1.md']);
+	});
+
+	// The toggle is the control whose failure is invisible: the card expands either way,
+	// so an opened note is the only evidence the guard is missing.
+	it('opens nothing when the toggle itself is clicked', () => {
+		const vault = boardVault();
+		const { containerEl } = makeBoard(vault);
+		disclosure(cardByTitle(containerEl, 'Epic B'))?.click();
+		expect(vault.opened).toEqual([]);
+	});
+
+	it('opens nothing when the toggle itself is middle-clicked', () => {
+		const vault = boardVault();
+		const { containerEl } = makeBoard(vault);
+		disclosure(cardByTitle(containerEl, 'Epic B'))?.dispatchEvent(
+			new MouseEvent('auxclick', { button: 1, bubbles: true }),
+		);
+		expect(vault.opened).toEqual([]);
+	});
+
+	it('keeps an expanded card expanded across a data update', () => {
+		const vault = boardVault();
+		const { containerEl, view } = makeBoard(vault);
+		disclosure(cardByTitle(containerEl, 'Epic B'))?.click();
+
+		refresh(view, vault);
+
+		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
+	});
+
+	it('shares its bit with the tree row, because it is the same bit', () => {
+		const vault = boardVault();
+		const { containerEl, view } = makeBoard(vault);
+		disclosure(cardByTitle(containerEl, 'Epic B'))?.click();
+
+		view.setProjection('tree');
+
+		expect(titlesOf(containerEl)).toContain('Feature B1');
+	});
+
+	it('disables the toggle while the quick filter runs, and lists anyway', () => {
+		const { containerEl, view } = makeBoard(boardVault());
+		view.setFilter('Feature B');
+		const card = cardByTitle(containerEl, 'Epic B');
+		// Asserted on the property, not a class: a control disabled only in CSS still
+		// answers a keyboard.
+		expect(disclosure(card)?.disabled).toBe(true);
+		expect(kidTitles(card)).toEqual(['Feature B1', 'Feature B2']);
 	});
 });
