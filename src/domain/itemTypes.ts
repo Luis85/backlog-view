@@ -1,4 +1,4 @@
-import { ALL_TYPES, BacklogSettings, byName, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';
+import { ALL_TYPES, BacklogSettings, byName, DELIVERABLE_TYPE, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';
 
 /**
  * The type vocabulary: the level ladder, and the types that sit beside it.
@@ -81,6 +81,16 @@ export function isMarkerType(typeName: string | null): boolean {
 	if (typeName === null) return false;
 	const name = typeName.toLowerCase();
 	return MARKER_TYPES.some((t) => t.toLowerCase() === name);
+}
+
+/**
+ * True when `typeName` is the Deliverable workflow's own type (case-insensitive). One
+ * statement of the match that used to be a bare string literal at five call sites — the
+ * board's population, the toolbar's count and the backfill among them — so a rename of
+ * the type can no longer make any of them disagree with `EXTRA_TYPES`.
+ */
+export function isDeliverableType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === DELIVERABLE_TYPE.toLowerCase();
 }
 
 /**

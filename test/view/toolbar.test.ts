@@ -533,7 +533,7 @@ describe('toolbar count breakdown', () => {
 describe('the Deliverables board toggle', () => {
 	it('offers a fourth toggle position for the Deliverables board', () => {
 		const { containerEl, view } = makeView(fixture());
-		const btn = projectionButton(containerEl, 'Show Deliverables board');
+		const btn = projectionButton(containerEl, 'Show as Deliverables board');
 		expect(btn).toBeTruthy();
 
 		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -584,7 +584,8 @@ describe('the Deliverables board toggle', () => {
 		harness.view.setProjection('deliverables');
 		const { containerEl } = harness;
 
-		const label = containerEl.querySelector<HTMLElement>('.pbl-count-label');
-		expect(label?.getAttribute('aria-label') ?? label?.getAttribute('data-tooltip') ?? '').not.toContain('PBI');
+		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
+		expect(count?.dataset.tooltip).toContain('Deliverable');
+		expect(count?.dataset.tooltip).not.toContain('PBI');
 	});
 });

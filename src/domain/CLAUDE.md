@@ -33,9 +33,9 @@ a node test that did would be measuring the runner.
   is resolved) → `BacklogItem` (+ levels, depth, `focusRoot`, rollups). A field exists
   only once the phase that owns it has run, so a signature states which fields are real
   and the compiler enforces it — this used to be ten placeholder values in `addItem` and
-  a request that readers remember. Only `BacklogItem` leaves this module, and it still
-  carries all 28 fields, so nothing downstream knows the difference. **Adding a field
-  means choosing its phase**, which is the question that was easy to skip before.
+  a request that readers remember. Only `BacklogItem` leaves this module, so nothing
+  downstream knows the difference. **Adding a field means choosing its phase**, which is
+  the question that was easy to skip before.
   Promotion is an in-place assertion in `linkAll` and `assignAll`, each followed
   immediately by the loop that fills every field it claims: the graph is cyclic, so a
   phase cannot rebuild its items without rebuilding every reference to them. Those two

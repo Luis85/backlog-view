@@ -1,3 +1,4 @@
+import { isDeliverableType } from './itemTypes';
 import { FieldReading, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
@@ -100,7 +101,7 @@ export function collectObservedHorizons(all: VocabularySource[]): string[] {
  * item's coincidental value in the same key.
  */
 export function collectObservedDeliverableStates(all: VocabularySource[], settings: BacklogSettings): string[] {
-	const deliverables = all.filter((item) => item.typeName?.toLowerCase() === 'deliverable');
+	const deliverables = all.filter((item) => isDeliverableType(item.typeName));
 	const values = firstSeen(deliverables, (item) =>
 		item.deliverableStateValue === null ? [] : [item.deliverableStateValue],
 	);

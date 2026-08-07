@@ -81,7 +81,7 @@ describe('backlogReadmeContent', () => {
 		expect(content).not.toContain('deliverableStatus');
 	});
 
-	it('shows the Deliverable row and does not claim only extras can root', () => {
+	it('lists Deliverable in the type section, and does not claim only extras can root', () => {
 		const content = backlogReadmeContent(defaultSettings(), [], 'test');
 		expect(content).toContain('Deliverable');
 		// A Feature/PBI/Task can also be created with no parent (the toolbar's top-level
@@ -553,7 +553,7 @@ describe('backlogReadmeContent', () => {
 		// Not every move: only one into a NEW parent, and never an extra type.
 		expect(auto).toContain('rewrites what you drag into a **new parent**');
 		expect(auto).toContain('Reordering among siblings rewrites nothing');
-		expect(auto).toContain('`Issue` and `Bug` and `Deliverable` keep their type wherever they land');
+		expect(auto).toContain('`Issue`, `Bug` and `Deliverable` keep their type wherever they land');
 		expect(auto).toContain('deeper in the subtree you dragged is left alone');
 	});
 

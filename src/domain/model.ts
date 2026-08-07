@@ -30,8 +30,7 @@ import {
  * placeholder values and a paragraph of prose asking readers to remember.
  *
  * `RawItem` → `LinkedItem` → `BacklogItem`, each extending the one before. Consumers
- * outside this module only ever meet `BacklogItem`, which still carries all 28 fields,
- * so nothing downstream changes.
+ * outside this module only ever meet `BacklogItem`, so nothing downstream changes.
  */
 
 /**

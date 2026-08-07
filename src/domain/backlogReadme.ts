@@ -2,7 +2,7 @@ import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, MARKER_TYPES, stateMen
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
-import { cell, code, list, yamlScalar } from './readmeText';
+import { andList, cell, code, list, yamlScalar } from './readmeText';
 import { hasDateAxis, hasHorizonAxis } from './roadmap';
 import { ORDER_SPACING } from './writePlan';
 
@@ -100,7 +100,7 @@ function typeSection(settings: BacklogSettings): string[] {
 		`## ${TYPES_HEADING}`,
 		'',
 		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
-			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
+			`${andList(EXTRA_TYPES)} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
 			`${MARKER_TYPES.join(' and ')} is neither: a ` +
@@ -116,7 +116,7 @@ function typeSection(settings: BacklogSettings): string[] {
 			(settings.autoType
 				? ' With one exception, and it belongs to this view: assigning types on a move ' +
 					`rewrites what you drag into a **new parent**, a name of your own included. ` +
-					`Reordering among siblings rewrites nothing, ${EXTRA_TYPES.map(code).join(' and ')} ` +
+					`Reordering among siblings rewrites nothing, ${andList(EXTRA_TYPES.map(code))} ` +
 					'keep their type wherever they land, and the same custom name deeper in the ' +
 					'subtree you dragged is left alone.'
 				: ' Nothing rewrites it into one of these.'),

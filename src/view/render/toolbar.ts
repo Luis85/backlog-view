@@ -4,7 +4,7 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { displayType, focusTarget } from '../../domain/itemTypes';
+import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
@@ -187,7 +187,7 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const model = host.model;
 	if (!label || !model) return;
 	const onDeliverables = host.projection === 'deliverables';
-	const isDeliverable = (item: BacklogItem) => item.typeName?.toLowerCase() === 'deliverable';
+	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const population = onDeliverables ? model.results.filter(isDeliverable) : model.results;
 	const hidden = (item: BacklogItem): boolean =>
 		onDeliverables ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
@@ -330,7 +330,7 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	position('tree', 'list-tree', 'Show as backlog tree');
 	position('board', 'square-kanban', 'Show as kanban board');
 	position('roadmap', 'map', 'Show as roadmap');
-	position('deliverables', 'package', 'Show Deliverables board');
+	position('deliverables', 'package', 'Show as Deliverables board');
 }
 
 /**

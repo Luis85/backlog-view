@@ -533,7 +533,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/**
 	 * The card-move plumbing (planning, applying and announcing a board, horizon or
 	 * schedule move) lives in `CardMoveController` — see `src/view/cardMoves.ts` for
-	 * why. These four stay here as one-line delegations, the same shape `applySafely`
+	 * why. These stay here as one-line delegations, the same shape `applySafely`
 	 * /`canUndo`/`undoLast` already use for the write gate, so `BacklogViewHost` still
 	 * resolves to this one class and nothing that calls them has to change.
 	 */

@@ -14,6 +14,21 @@ import {
 import { BacklogViewHost, Projection } from './host';
 
 /**
+ * The stored `mode` value for each projection, null for the tree — a `Record` rather
+ * than a chain of ternaries, so the compiler refuses to build once a fifth `Projection`
+ * joins the union without a case here. The chain this replaced (`mode === 'tree' ? null
+ * : mode === 'board' ? BOARD_MODE : ...`) had an unguarded final `else`, which stayed
+ * green after a new projection was added and silently persisted its bare name instead
+ * of the constant `readEntry`'s allowlist expects.
+ */
+const PROJECTION_MODE: Record<Projection, string | null> = {
+	tree: null,
+	board: BOARD_MODE,
+	roadmap: ROADMAP_MODE,
+	deliverables: DELIVERABLES_MODE,
+};
+
+/**
  * The view's working position, remembered across sessions: which rows are shut,
  * which projection — tree, board or roadmap — the view is showing, which roadmap
  * axis it shows when both are configured, and which type the tree is focused on.
@@ -73,7 +88,7 @@ export class CollapseState {
 	setProjection(mode: Projection): void {
 		// The tree is the default and needs no stored value; a stored entry saved
 		// before a projection existed reads back as the tree the same way.
-		this.mode = mode === 'tree' ? null : mode === 'board' ? BOARD_MODE : mode === 'roadmap' ? ROADMAP_MODE : DELIVERABLES_MODE;
+		this.mode = PROJECTION_MODE[mode];
 		this.scheduleSave();
 	}
 

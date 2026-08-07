@@ -303,29 +303,35 @@ parent done in a base that hides done items): taking that change back is exactly
 undo is for. Tags are undone as an add/remove of the same tags rather than as a
 snapshot, so tags you added yourself in between stay.
 
-### Issues and bugs sit beside the ladder
+### Extra types sit beside the ladder
 
 `Epic → Feature → PBI → Task` is a ladder: each level's children are the level below.
 Some work does not fit a rung. A **Bug** breaks down into Tasks whether it was raised
 against an Epic, a Feature or a PBI — its position says nothing about what it contains.
 
-So `Issue` and `Bug` are **extra types** rather than a fifth level, and two things follow:
+So `Issue`, `Bug` and `Deliverable` are **extra types** rather than a fifth level, and
+two things follow:
 
 - **They hang from any level above the lowest.** Add one under an Epic, a Feature or a
-  PBI. Their own children are always Tasks, so nothing is offered under a Bug but a Task.
+  PBI. Their own children are always Tasks, so nothing is offered under one but a Task.
 - **A move never re-types them.** Dropping a Bug under an Epic leaves a Bug — where
   dropping a *PBI* there would make it a Feature. Their Tasks stay Tasks too, because the
-  subtree follows the Bug rather than the rung it landed on.
+  subtree follows the extra type rather than the rung it landed on.
+
+All three are also creatable with **no parent at all**, from the toolbar's own "pick
+another type" menu — like every declared type.
 
 Where a row can hold more than one kind of thing, **the + button asks**: the new-item
 modal offers a type, defaulting to the ladder's own child. The context menu lists the
-choices directly (`New PBI`, `New Issue`, `New Bug`), and `Set type` offers every
-declared type. A row with only one option — a Task, or a Bug, which holds only Tasks —
-asks nothing and creates it straight away.
+choices directly (`New PBI`, `New Issue`, `New Bug`, `New Deliverable`), and `Set type`
+offers every declared type. A row with only one option — a Task, or an extra type, which
+holds only Tasks — asks nothing and creates it straight away.
 
 `Issue`, `Bug` and `Deliverable` each get their own badge icon and colour — an alert in
 pink, a bug in red, a package in green — distinct from the four level colours. They rank
 with `PBI`, so focusing that level shows them beside it rather than hiding them.
+`Deliverable` also has its own board with its own workflow — see
+[The Deliverables board](#the-deliverables-board) below.
 
 **The type vocabulary is fixed.** That is deliberate: a configurable vocabulary means every
 rule about levels has to hold for any list someone can type, and the reward is a rename.
@@ -335,12 +341,6 @@ ladder as before — nothing is rejected, it simply is not one of the shipped na
 None of this is enforced. The ladder has always guided what the view *offers* and what it
 *writes* without refusing a move you make deliberately, and extra types follow the same
 rule: drag a Bug wherever the work actually belongs.
-
-`Deliverable` is the same shape as `Issue` and `Bug` — pinned rank, `Task` children,
-never re-typed by a move, and (like them) creatable with **no parent at all**, from the
-toolbar's own "pick another type" menu. What is new is its own folder and badge colour
-like every declared type gets, and its own board with its own workflow — see
-[The Deliverables board](#the-deliverables-board) below.
 
 ### Where new items are filed
 
@@ -569,8 +569,8 @@ narrows what is shown. (The toolbar's **Focus** picker still applies here as it 
 everywhere else — focused on a Feature, this board shows only the Deliverables nested
 under that focus; focused on PBI specifically, every Deliverable stays visible
 regardless of where it sits, the same way `Issue` and `Bug` already do under PBI
-focus.) Moving a card (drag, Alt+Left/Right, or the card menu's Set state) writes only
-the Deliverable state property.
+focus.) Moving a card (drag, <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or the card menu's
+Set state) writes only the Deliverable state property.
 
 Everything else about a Deliverable — its parent, its rank, its tags, its place on the
 roadmap — is the same property every other type already uses; nothing about this board

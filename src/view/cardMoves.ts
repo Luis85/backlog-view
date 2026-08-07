@@ -18,9 +18,10 @@ import { BacklogViewHost } from './host';
 import { announceBoardMove, announceHorizonMove, announceScheduleMove } from './interactions/cardDrag';
 
 /**
- * Card-move write orchestration: the three `BacklogViewHost` methods a drag, an
- * Alt+arrow and a card menu all land on (`performBoardMove`, `performHorizonMove`,
- * `performScheduleMove`), plus the tree's own drop (`performDrop`). Extracted from
+ * Card-move write orchestration: the `BacklogViewHost` methods a drag, an Alt+arrow
+ * and a card menu all land on (`performBoardMove`, `performDeliverablesBoardMove`,
+ * `performHorizonMove`, `performScheduleMove`), plus the tree's own drop
+ * (`performDrop`). Extracted from
  * `ProductBacklogView` the same way `WriteGate` was — see
  * `docs/tasks/Split the view dispatch hub.md`, which named this exact cluster
  * ("the card-move plumbing") as a candidate seam and picked the write gate instead;

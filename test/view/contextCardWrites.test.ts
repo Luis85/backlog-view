@@ -201,8 +201,10 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		// that would edit this note — Set state included, which on the Deliverables
 		// board is the drag's equal and so must be withheld exactly as the drag is. Not
 		// vacuous: `deliverableStateProperty` is configured, D1 is a real result and
-		// gets a Set state entry of its own (asserted elsewhere) — the withholding here
-		// is `editable`'s (`!item.outsideFilter`), not the key being unconfigured.
+		// gets a Set state entry of its own (asserted in test/view/menu.test.ts, 'offers
+		// Set state on a Deliverables-board card when only the Deliverable key is
+		// configured') — the withholding here is `editable`'s (`!item.outsideFilter`),
+		// not the key being unconfigured.
 		view.showContextMenuFor(ctx as never);
 		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set type')).toBeUndefined();

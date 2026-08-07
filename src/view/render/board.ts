@@ -16,7 +16,7 @@ import {
 	overBy,
 	requirementsWorkflow,
 } from '../../domain/board';
-import { childTypeChoices } from '../../domain/itemTypes';
+import { childTypeChoices, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 
 /** What differs between the two board-shaped projections' render passes. */
@@ -118,7 +118,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
-	const isDeliverable = (item: BacklogItem) => item.typeName?.toLowerCase() === 'deliverable';
+	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const board = boardColumns(
 		deliverablesWorkflow(model, host.settings),
 		model.results,

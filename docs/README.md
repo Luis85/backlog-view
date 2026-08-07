@@ -74,7 +74,16 @@ than the matches, so a filter cannot make an overcommitted stage look calm; it s
 in colour, in shape and in words, and it refuses nothing — a check drives every board
 write path against a column already over one. The policy is described rather than
 named, reachable by pointer and from a column menu this increment introduces and
-creation from a column will later share. What remains under the epic — lanes, creation
+creation from a column will later share. A fifth did not extend this board but
+multiplied it: `Deliverable` items — concepts, designs, anything the team must produce
+rather than build — get a second board of their own, reached by a fourth toolbar
+toggle, with its own workflow property, states and done values, independent of the
+requirements board's, so a design's review status never has to share a column list with
+a PBI's implementation status. It keeps the guarantee — one model, one write gate, one
+undo history — and the three inputs that move a card, but takes none of the fourth
+increment's agreements: no WIP limit, no column policy, no date stamp, and it does not
+honor "Show completed items", since completion there is a question the Deliverable
+workflow answers, not the requirements one. What remains under the epic — lanes, creation
 from a column, column collapse, and the touch verdict a device has to answer — is
 still design.
 

@@ -50,7 +50,7 @@ const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 export interface CollapseSnapshot {
 	collapsed: Set<string>;
 	expanded: Set<string>;
-	/** `BOARD_MODE` or `ROADMAP_MODE`; null or absent means the tree. */
+	/** `BOARD_MODE`, `ROADMAP_MODE` or `DELIVERABLES_MODE`; null or absent means the tree. */
 	mode?: string | null;
 	/** The retained roadmap-axis pick; null or absent means the user never picked. */
 	axis?: string | null;

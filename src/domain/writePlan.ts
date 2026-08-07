@@ -1,7 +1,15 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex, PlacementEnd } from './itemTypes';
+import {
+	childLevelIndex,
+	EXTRA_TYPE_RANK,
+	isDeliverableType,
+	isExtraType,
+	isMarkerType,
+	nextLevelIndex,
+	PlacementEnd,
+} from './itemTypes';
 import { readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import {
@@ -463,7 +471,7 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// Task or any other type sharing the same backfill pass — the property-table row
 		// this key gets in the generated README (Task 20) says "on a Deliverable", and
 		// this is what keeps that literally true rather than aspirational.
-		if (field === 'deliverableState' && item.typeName?.toLowerCase() !== 'deliverable') continue;
+		if (field === 'deliverableState' && !isDeliverableType(item.typeName)) continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

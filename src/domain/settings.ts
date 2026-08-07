@@ -115,7 +115,11 @@ export interface BacklogSettings {
  * `LEVELS` is the ladder, top to bottom; `EXTRA_TYPES` sit beside it (see `itemTypes.ts`).
  */
 export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
-export const EXTRA_TYPES = ['Issue', 'Bug', 'Deliverable'];
+/** The Deliverable workflow's own type name, named once so `EXTRA_TYPES` and every
+ * `isDeliverableType` call site read the identical string rather than two spellings
+ * that can drift. */
+export const DELIVERABLE_TYPE = 'Deliverable';
+export const EXTRA_TYPES = ['Issue', 'Bug', DELIVERABLE_TYPE];
 /**
  * The third category: a declared **marker**. It occupies no rung, holds nothing, and
  * hangs from nothing — the opposite of an extra type on all three counts, which is why
