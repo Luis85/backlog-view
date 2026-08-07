@@ -48,8 +48,14 @@ partials assembled by `styles-assemble.mjs`.
 - Modify: `styles/index.css` (import list)
 - Modify: `src/view/render/columns.ts` (`RowContext`, `rowContext`)
 - Modify: `src/view/render/board.ts` (`renderCardBody`)
-- Modify: `src/view/host.ts` (`BacklogViewHost.cardChildrenShown`)
 - Modify: `src/view/backlogView.ts` (own the set, clear it per pass, pass it to `rowCtx`)
+
+**Not `src/view/host.ts`, and not a public getter.** The set's first reader is Task 3's
+card menu, so exposing it here would add a class member and an interface member that
+nothing consumes — which `fallow`'s `unused-class-members` rule fails, and rightly:
+`usedClassMembers` is for framework-invoked members and would only hide it. Task 1 keeps
+the set **private**, where `rowCtx()` consumes it; Task 3 adds the getter and the
+interface member in the commit that first reads them.
 
 **Interfaces:**
 - Consumes: `BacklogViewHost.isRowHidden`, `isCollapsed`, `setCollapsed`, `isFiltering`,
@@ -60,7 +66,7 @@ partials assembled by `styles-assemble.mjs`.
   - `childrenLabel(children: BacklogItem[]): string`
   - `renderCardChildren(ctx: RowContext, card: HTMLElement, item: BacklogItem): void`
   - `RowContext.cardKids: Set<string>`
-  - `BacklogViewHost.cardChildrenShown: ReadonlySet<string>`
+  - `ProductBacklogView.cardKids` (**private**; Task 3 exposes it)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -159,34 +165,18 @@ export function rowContext(
 }
 ```
 
-- [ ] **Step 4: Publish it on the host**
+- [ ] **Step 4: Let the view own the set**
 
-In `src/view/host.ts`, beside `board` and `roadmap`:
+In `src/view/backlogView.ts`, add the field beside `board` (near line 58) and the two
+wiring changes. **No getter and no `host.ts` change** — see the Files note above.
 
 ```ts
 	/**
-	 * Paths whose card drew a child disclosure in the last render pass — rebuilt per
-	 * pass exactly as `board` and `roadmap` are. The menu offers children where the
-	 * screen shows them; a surface that drew no body (a timeline row, a tree row) is
-	 * absent, so the discriminator is what happened rather than which projection it is.
-	 *
-	 * Readonly, and not the write path: the render fills the view's own set through
-	 * `RowContext.cardKids`. A renderer adding through this member would need a cast,
-	 * which is how a readonly boundary becomes decorative.
+	 * Paths whose card drew a child disclosure this pass. Private until Task 3's menu
+	 * reads it: an interface member nothing consumes is dead code one layer up, and
+	 * `fallow` says so.
 	 */
-	readonly cardChildrenShown: ReadonlySet<string>;
-```
-
-In `src/view/backlogView.ts`, add the field beside `board` (near line 58), the getter, and
-the two wiring changes:
-
-```ts
-	/** Backing store for `cardChildrenShown`; the render fills it, `render` clears it. */
 	private readonly cardKids = new Set<string>();
-
-	get cardChildrenShown(): ReadonlySet<string> {
-		return this.cardKids;
-	}
 ```
 
 In `rowCtx()` (near line 523):
@@ -791,10 +781,41 @@ git commit -m "test: the disclosure's guards, watched failing"
 
 **Files:**
 - Modify: `src/view/interactions/menu.ts`
+- Modify: `src/view/host.ts` (add `BacklogViewHost.cardChildrenShown`)
+- Modify: `src/view/backlogView.ts` (add the getter over Task 1's private `cardKids`)
 - Modify: `test/view/cardChildren.test.ts`
 
 **Interfaces:**
-- Consumes: `listedChildren` and `BacklogViewHost.cardChildrenShown` from Task 1.
+- Consumes: `listedChildren` from Task 1, and Task 1's private `ProductBacklogView.cardKids`.
+- Produces: `BacklogViewHost.cardChildrenShown: ReadonlySet<string>`.
+
+**This task exposes the set Task 1 filled.** Task 1 kept it private because nothing read
+it yet, and `fallow`'s `unused-class-members` rule fails a member with no consumer. Add
+both halves here, in the commit that first reads them.
+
+In `src/view/host.ts`, beside `board` and `roadmap`:
+
+```ts
+	/**
+	 * Paths whose card drew a child disclosure in the last render pass — rebuilt per
+	 * pass exactly as `board` and `roadmap` are. The menu offers children where the
+	 * screen shows them; a surface that drew no body (a timeline row, a tree row) is
+	 * absent, so the discriminator is what happened rather than which projection it is.
+	 *
+	 * Readonly, and not the write path: the render fills the view's own set through
+	 * `RowContext.cardKids`. A renderer adding through this member would need a cast,
+	 * which is how a readonly boundary becomes decorative.
+	 */
+	readonly cardChildrenShown: ReadonlySet<string>;
+```
+
+In `src/view/backlogView.ts`, beside the private field Task 1 added:
+
+```ts
+	get cardChildrenShown(): ReadonlySet<string> {
+		return this.cardKids;
+	}
+```
 - Produces: `addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void`,
   called from `buildItemMenu`.
 
