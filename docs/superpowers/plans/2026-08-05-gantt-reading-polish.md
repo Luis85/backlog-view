@@ -1183,8 +1183,8 @@ nothing is written, and no rendering decision changes what places or what shelve
    both clipped to the window, the bottom tier dropping the year the top tier carries.
 2. Each interior cell boundary extends down the grid body; at week zoom, weekends
    shade as a single repeating band phased to the window's first Saturday.
-3. The today line's date names itself with a Today label in the header, beside the
-   milestone labels.
+3. The today line's date names itself with a Today label in the header, one tier above
+   the milestone labels so neither can bury the other.
 4. Alternate rows stripe, the hovered row highlights across lead and track, and the
    sticky lead column carries a shadow once the grid is scrolled.
 5. Each bar carries its title beside it in the track, flipping to the bar's other
