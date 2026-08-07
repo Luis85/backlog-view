@@ -83,7 +83,13 @@
 	pointer-events: none;
 }
 
+/* Border-box for the reason `.pbl-timeline-cell` is, and one more: `--pbl-tl-lead` is
+   `TIMELINE_LEAD_PX` published from TS, and the same constant is added in TS to place the
+   today line, the milestone lines and the gridlines. Let the padding and border grow the
+   box and the column is 17px wider than the number those marks were positioned with, so
+   every one of them lands 17px left of the label naming it. */
 .pbl-timeline-lead {
+	box-sizing: border-box;
 	flex: 0 0 var(--pbl-tl-lead);
 	width: var(--pbl-tl-lead);
 	min-width: 0;
@@ -111,7 +117,15 @@
 	display: flex;
 }
 
+/* `--pbl-cell-w` is a number of DAYS times `dayPx`, the same arithmetic that places every
+   bar, line and gridline in the track below. So the cell's box has to BE that width:
+   under the default `content-box` its padding and its 1px border are added to it, each
+   cell renders 17px wide of its own date range, and the error compounds — nine month
+   cells came out 153px wider than the days they name, dragging every header label right
+   of the mark it labels and shearing the two tiers apart (the year tier has fewer cells,
+   so it accumulates less). Border-box is load-bearing here, not housekeeping. */
 .pbl-timeline-cell {
+	box-sizing: border-box;
 	flex: 0 0 var(--pbl-cell-w);
 	width: var(--pbl-cell-w);
 	padding: var(--size-4-1) var(--size-4-2);
@@ -221,12 +235,17 @@
 	border-right: none;
 }
 
-/* A point in time is not a span: an equal pair, stated or inferred, renders as the Gantt diamond. */
+/* A point in time is not a span: an equal pair the note states renders as the Gantt diamond.
+   CENTRED on its date, not started at it: `--pbl-bar-left` is the left edge a span wants,
+   but a point has no width to spend, and a 12px diamond hung off that edge sits 6px right
+   of the full-height line drawn for the same milestone at the same date. `translateX`
+   precedes the rotation so it moves the diamond along the track rather than along its own
+   rotated axis. */
 .pbl-bar-milestone {
 	width: 12px;
 	height: 12px;
 	border-radius: var(--radius-s);
-	transform: translateY(-50%) rotate(45deg);
+	transform: translateY(-50%) translateX(-50%) rotate(45deg);
 }
 
 /* Wholly past an edge: a direction, not a date. Half the bar height and no fill of its

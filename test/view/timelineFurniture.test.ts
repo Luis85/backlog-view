@@ -45,7 +45,13 @@ describe('the two-tier header', () => {
 		expect(superLabels(containerEl).some((l) => /^[A-Z][a-z]{2} \d{4}$/.test(l))).toBe(true);
 	});
 
-	it('sizes both tiers to the same total width, so the columns cannot shear', () => {
+	// Both tiers get the same total from TS. That is NOT the same claim as the drawn
+	// columns lining up, and for a while it was true while they sheared by 102px: jsdom
+	// computes no layout, so this reads the `--pbl-cell-w` values written to the elements
+	// and never the widths they render at. What turns equal numbers into equal columns is
+	// `box-sizing: border-box` — `test/view/timelineBoxing.test.ts` refuses its deletion,
+	// and only a browser can confirm the result.
+	it('gives both tiers the same total width in the values it writes', () => {
 		const { containerEl } = datedRoadmap(furnishedVault());
 		const sum = (cells: HTMLElement[]) =>
 			cells.reduce((n, c) => n + parseFloat(c.style.getPropertyValue('--pbl-cell-w')), 0);

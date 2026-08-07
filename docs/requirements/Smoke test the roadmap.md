@@ -35,6 +35,15 @@ and each stays open until they are, so a stale check is visible rather than assu
   labels stay legible over the header cells, the two header tiers stay aligned, the
   scrolled-lead shadow appears once the grid scrolls, bar labels hide while a drag is
   live, and compact rows actually shorten the row. **Never checked.**
+- Everything the header names sits over the thing it names: each year over its own
+  months, each month label over its own days, the Today and milestone labels over their
+  own lines, and the milestone diamond centred on its line. All of it is one arithmetic
+  in TS and two `box-sizing: border-box` declarations in CSS, and jsdom can check
+  neither — see `test/view/timelineBoxing.test.ts`, which refuses the declarations'
+  deletion and can say nothing about the widths that result.
+  **Layout measured in Chromium 2026-08-07 via `npm run harness`: lead 220px against the
+  220 TS positions with, both tiers 1092px, `2027` and `Jan` both at 1076px, today line
+  and label both 488px, milestone line and label and diamond centre all 704px.**
 - The row hover/zebra tint spans the opaque lead cell and the track as one band, not
   two — checked in Chromium via `npm run harness`, in both schemes. Per ADR 0020 the
   harness is faithful about layout and not about colour, so that run settles that the
