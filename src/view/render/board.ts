@@ -122,30 +122,26 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 }
 
 /**
- * The Deliverables board — every Deliverable-typed result `model.results` currently
- * contains, focused or not: it reads `model.results` rather than `model.roots`
- * because a type filter over the latter cannot reach a nested Deliverable under an
- * active focus (a focus's roots are Features/PBIs, never a Deliverable itself). This
- * is NOT the same as bypassing focus — `model.results` is itself narrowed to the
- * focused subtree when a focus is active (`buildModel`'s `shown()`), so a Deliverable
- * OUTSIDE that subtree will not render here until focus clears — **except under `PBI`
- * focus specifically**, where `collectFocusRoots`' own `extraFocused` rule
- * (`EXTRA_TYPE_RANK === focusIdx`) already admits every extra type as a focus root by
- * TYPE rather than by subtree position, the same established behavior `Issue`/`Bug`
- * get under PBI focus today — a parentless Deliverable stays visible there too. Also
- * regardless of either workflow's completion state (Scope: no "Show completed items"
- * concept here).
+ * The Deliverables board — every Deliverable-typed item the base holds, in every
+ * focus state. It reads `model.deliverableResults`, never `model.results` or
+ * `model.roots`: the human's own request is that a focus level set on another
+ * projection must never make a Deliverable invisible here, and `model.results` is
+ * itself narrowed to the focused subtree while a focus is active (`buildModel`'s
+ * `shown()`) — `domain/model.ts` builds `deliverableResults` off the whole, unfocused
+ * tree for exactly this projection. Every candidate here is already Deliverable-typed
+ * by construction, so `population` (the filter-ignoring `fullCount` count) is
+ * unconditional. Also regardless of either workflow's completion state (Scope: no
+ * "Show completed items" concept here).
  */
 export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
-	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const board = boardColumns(
 		deliverablesWorkflow(model, host.settings),
-		model.results,
-		(item) => !host.isRowHiddenByFilterOnly(item) && isDeliverable(item),
-		(item) => isDeliverable(item),
+		model.deliverableResults,
+		(item) => !host.isRowHiddenByFilterOnly(item),
+		() => true,
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performDeliverablesBoardMove(item, state),
@@ -154,8 +150,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 		drawEmpty: (h, aside) => {
 			const m = h.model;
 			if (!m) return;
-			const anyDeliverable = m.results.some(isDeliverable);
-			if (!anyDeliverable) renderNoDeliverablesState(h, aside);
+			if (m.deliverableResults.length === 0) renderNoDeliverablesState(h, aside);
 			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
 		},
 	});

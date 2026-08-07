@@ -2,7 +2,6 @@ import { setIcon } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
-import { admitsEveryDeliverable } from '../../domain/itemTypes';
 import { adoptableProperties, LEVELS, OptionalField } from '../../domain/settings';
 
 /**
@@ -116,60 +115,23 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 }
 
 /**
- * A configured Deliverable workflow with no Deliverable-typed results in the currently
- * shown population — distinct from "everything is done and hidden", which this board
- * has no concept of (Scope): a base full of other work is never reported as complete.
+ * A configured Deliverable workflow with no Deliverable-typed results in the base —
+ * distinct from "everything is done and hidden", which this board has no concept of
+ * (Scope): a base full of other work is never reported as complete.
  *
- * **Found by review: `model.results` is narrowed to the focused subtree while a focus
- * is active (Task 16's own note on `renderDeliverablesBoard`), so an unqualified
- * "no deliverables yet" is false the moment a Deliverable exists elsewhere in the base
- * but not under the current focus.** This reuses the same `model.focused` distinction
- * `renderEmptyState`/`emptyHint` (this file, existing) already draw for the identical
- * problem on the tree — word the guidance in terms of the current focus and name the
- * way back, rather than inventing a second "does the WHOLE base have one" query no
- * other empty state here makes either.
- *
- * **A second gap, found by a later review round: the focused guidance must not offer
- * "create one here" as an alternative to clearing focus — except where it truthfully
- * can.** The toolbar's New button creates a Deliverable with no parent
- * (`promptCreateItem(host, ['Deliverable'], null)`); a focus on a LEVEL like
- * `Feature` only admits a new root when the root's own type matches that level
- * (`collectFocusRoots`' `matches`), and a Deliverable never does — UNLESS the focus
- * is `PBI` itself (`extraFocused`, `EXTRA_TYPE_RANK`) or the focus is `Deliverable`
- * BY NAME (`focusExtra` matches `typeName` alone, regardless of subtree position).
- * Both are focuses this same focus picker offers (`ALL_TYPES`-driven, Task 1). So
- * creating from here while focused on `Feature` files a note this very board still
- * would not show — a suggestion that looks like a fix and silently is not one — but
- * creating while focused on `PBI` or `Deliverable` shows it immediately, and telling
- * the user to clear focus first in THAT case is the same kind of wrong claim in the
- * other direction. `admitsNewDeliverable` below names the two focuses that differ.
- *
- * **Found by a later review round still: this check must ask by focus TYPE, not by
- * whether the toolbar's own vocabulary loop needed editing.** `host.settings.focusLevel`
- * is read directly (`itemTypes.ts`'s own `settings.focusLevel.trim().toLowerCase()`
- * pattern) rather than through `model.focused`, which only says THAT a focus is
- * active, never which one.
+ * No focus-dependent wording: the Deliverables board's population
+ * (`BacklogModel.deliverableResults`) is never narrowed by the focus level, so unlike
+ * `renderEmptyState`/`emptyHint`'s tree guidance there is no "elsewhere in the base, if
+ * you clear focus" case to describe here — either the base has a Deliverable somewhere,
+ * in which case it is already a card, or it does not.
  */
 export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLElement): void {
-	const focused = host.model?.focused ?? false;
-	// Shared with the toolbar's fixed focus button (`admitsEveryDeliverable`) — one
-	// statement of "which focus levels leave every Deliverable reachable" for both.
-	const admitsNewDeliverable = admitsEveryDeliverable(host.settings.focusLevel);
 	guidanceShell(
 		treeEl,
 		'package',
-		focused ? 'No deliverables in this focus' : 'No deliverables yet',
-		focused
-			? admitsNewDeliverable
-				? 'Nothing typed "Deliverable" is in the current focus. Create one from the ' +
-					'toolbar\'s New button — it will appear here — or clear the focus in the ' +
-					'toolbar (back to "All types") to see Deliverables elsewhere in the base.'
-				: 'Nothing typed "Deliverable" is in the current focus. Clear the focus in the ' +
-					'toolbar (back to "All types") to see Deliverables elsewhere in the base — ' +
-					'or create a new one, since one made from here would not appear on this ' +
-					'board until you do.'
-			: 'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
-				'button, or type an existing note as a Deliverable from its Set type menu.',
+		'No deliverables yet',
+		'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
+			'button, or type an existing note as a Deliverable from its Set type menu.',
 	);
 }
 

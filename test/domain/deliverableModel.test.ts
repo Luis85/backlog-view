@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { collectObservedDeliverableStates } from '../../src/domain/vocabulary';
 import { buildModel } from '../../src/domain/model';
-import { defaultSettings, resolvedDeliverableStateKey } from '../../src/domain/settings';
+import { ALL_TYPES, defaultSettings, resolvedDeliverableStateKey } from '../../src/domain/settings';
 import { applyWrites } from '../../src/storage/frontmatter';
 import { FakeVault } from '../helpers/vault';
 
@@ -158,5 +158,37 @@ describe('the Deliverable workflow falls back to the shared one, on the READ sid
 
 		expect(epic.descendantCount).toBe(1);
 		expect(epic.doneDescendants).toBe(1);
+	});
+});
+
+describe('BacklogModel.deliverableResults — immune to the focus level', () => {
+	/**
+	 * The Deliverable hangs directly off the Epic — a SIBLING of the Feature, never one
+	 * of its descendants. Before this board was made focus-immune, focusing a level
+	 * other than PBI/Deliverable re-rooted `model.results` at that level's own items,
+	 * and `collectFocusRoots` never walks into a branch holding no match for the
+	 * focused level — so a Deliverable sitting beside it, rather than under it, dropped
+	 * out of `model.results` (and, with it, off the Deliverables board) entirely. The
+	 * human's own words: switching to that board must never make a Deliverable
+	 * invisible "as there are only the deliverables to display" — driven over every
+	 * level `ALL_TYPES` names, plus no focus at all, rather than picking one favourite
+	 * level to prove immune.
+	 */
+	function fixture(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI' });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 20 }, parentLink: 'Epic' });
+		return vault;
+	}
+
+	it.each(['', ...ALL_TYPES])('contains the Deliverable under focus level %j', (level) => {
+		const vault = fixture();
+		const settings = { ...defaultSettings(), focusLevel: level };
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(model.deliverableResults.map((item) => item.title)).toEqual(['D']);
 	});
 });

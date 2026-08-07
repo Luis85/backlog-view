@@ -579,18 +579,15 @@ excluded parent.
 Columns and a workflow only — no WIP limits, no column policies, no started/finished
 date stamps, and "Show completed items" has no effect here: a Deliverable's
 completion state on either workflow never hides its card, and only the quick filter
-narrows what is shown. The toolbar's **Focus** control still appears on this board, but
-never as a menu to pick a *different* focus — every card is already a Deliverable, so
-there is nothing left to narrow by that way. With no focus set, or with the inherited
-focus on **PBI** or on **Deliverable** itself (neither narrows this board either), it
-reads a plain, disabled "Deliverables" button. Any other inherited focus level still
-narrows this board's own cards, named by a label and clearable from a button that
-stays. (Focused on a Feature, this board shows only the Deliverables nested under that
-focus; focused on PBI
-specifically, every Deliverable stays visible regardless of where it sits, the same way
-`Issue` and `Bug` already do under PBI focus.) Moving a card (drag,
-<kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or the card menu's Set state) writes the
-resolved Deliverable state property — its own key when you configured one, or the
+narrows what is shown. **The focus level set elsewhere in the toolbar has no effect on
+this board at all** — a focus left on, say, Feature would otherwise make a Deliverable
+outside that subtree confusingly disappear, so the toolbar's **Focus** control always
+reads a plain, disabled "Deliverables" button here, whatever the inherited focus is:
+never a menu to pick a *different* focus (every card is already a Deliverable, so there
+is nothing to narrow by that way), and never a "Focused: …" label with a clear button,
+since no focus level narrows this board's own cards for one to clear. Moving a card
+(drag, <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or the card menu's Set state) writes
+the resolved Deliverable state property — its own key when you configured one, or the
 shared one when you did not.
 
 The toolbar's **New** button on this board always creates a Deliverable; the picker for

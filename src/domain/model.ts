@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
-import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isExtraType, isMarkerType } from './itemTypes';
+import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isDeliverableType, isExtraType, isMarkerType } from './itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -167,6 +167,14 @@ export interface BacklogModel {
 	 * ancestors loaded only for context inflate the answer.
 	 */
 	results: BacklogItem[];
+	/**
+	 * Every Deliverable-typed result in the base, regardless of any active focus level —
+	 * the Deliverables board's own population. Unlike `results`, which a focus level
+	 * re-roots to one subtree (`collectFocusRoots`), this is read off the whole,
+	 * unfocused tree, so no OTHER type being focused elsewhere can narrow it. Excludes
+	 * `outsideFilter` items, same as `results`.
+	 */
+	deliverableResults: BacklogItem[];
 	/** True when a focus level restricts the rendered tree. */
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
@@ -213,6 +221,9 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		observedTags,
 		observedHorizons,
 		observedDeliverableStates,
+		// Read off `items` — the whole tree `assignAll` just built, before either branch
+		// below narrows anything to a focus subtree. See `BacklogModel.deliverableResults`.
+		deliverableResults: items.filter((item) => !item.outsideFilter && isDeliverableType(item.typeName)),
 		ignoredCount,
 	};
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
@@ -363,12 +374,7 @@ function readOwnKeys(
  * it is also the evidence that a note belongs to the hierarchy, and dropping a Base
  * result because its anchor happens to be hidden would be worse than not showing it.
  */
-function outsideParentSeed(
-	app: App,
-	file: TFile,
-	ref: ParentRef,
-	settings: BacklogSettings,
-): TFile | null {
+function outsideParentSeed(app: App, file: TFile, ref: ParentRef, settings: BacklogSettings): TFile | null {
 	if (ref.file) return ref.file;
 	if (!settings.folderHierarchy || ref.hasValue || ref.explicitRoot) return null;
 	return nearestFolderNote(app, file.path);

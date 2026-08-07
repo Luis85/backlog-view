@@ -431,42 +431,41 @@ describe('the Deliverables board', () => {
 		expect(title).toContain('deliverable');
 	});
 
-	it('names the current focus, not the whole base, when a Deliverable exists outside it', () => {
+	it('shows a Deliverable outside the focused subtree, since the focus level never narrows this board', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		// A top-level Deliverable, outside any Feature subtree — `collectFocusRoots` never
-		// reaches it once focus narrows to "Feature", so `model.results` excludes it even
-		// though it exists in the base.
+		// A top-level Deliverable, outside any Feature subtree — the human's own request
+		// is that a focus level set on another projection must never make it invisible
+		// here; `model.deliverableResults` is read off the whole, unfocused tree for
+		// exactly this reason (`domain/model.ts`).
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
 		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' }, { focus: 'Feature' });
 		harness.view.setProjection('deliverables');
 		const { containerEl } = harness;
 
-		const title = containerEl.querySelector('.pbl-empty-title')?.textContent ?? '';
-		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
-		expect(title).toContain('focus');
-		expect(hint).toContain('All types');
-		// Must not suggest creating one "here" as an alternative to clearing focus — a
-		// Deliverable created from the toolbar while focused on Feature is parentless and
-		// would not appear on this board either, so that phrasing would be a dead end.
-		expect(hint).not.toMatch(/create one here/i);
+		expect(containerEl.querySelector('.pbl-empty-title')).toBeNull();
+		expect(cardTitles(containerEl)).toContain('D');
 	});
 
-	it('offers "create one" under PBI focus, since a parentless Deliverable shows there', () => {
+	it('shows the same "No deliverables yet" guidance whatever the inherited focus level', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		// No PBI and no Deliverable exist yet — `collectFocusRoots`' `extraFocused` rule
-		// admits every extra type at the PBI rung regardless of subtree, so a Deliverable
-		// created from the toolbar while focused on PBI would appear here immediately,
-		// unlike the Feature-focus case above.
+		// No Deliverable anywhere in the base — the guidance no longer varies by focus,
+		// so a level that used to admit every Deliverable (PBI) and one that used to
+		// narrow the board (Feature) must read identically.
 		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' }, { focus: 'PBI' });
 		harness.view.setProjection('deliverables');
 		const { containerEl } = harness;
 
+		const title = containerEl.querySelector('.pbl-empty-title')?.textContent ?? '';
 		const hint = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(title).toContain('deliverable');
 		expect(hint).toMatch(/create one/i);
-		expect(hint).not.toMatch(/would not appear/i);
+
+		harness.view.setFocusLevel('Feature');
+		const hintAfter = containerEl.querySelector('.pbl-empty-hint')?.textContent ?? '';
+		expect(hintAfter).toBe(hint);
 	});
 
 	it('draws the Deliverables board, scoped to Deliverable-typed results, once configured', () => {

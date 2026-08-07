@@ -4,7 +4,7 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { admitsEveryDeliverable, displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
+import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES, DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
@@ -183,12 +183,13 @@ export function detectIgnoredGrouping(data: BasesQueryResult | null | undefined)
  * loaded for context are not items of this base and must not inflate the number.
  * Collapsed rows still count as shown — only filtering and hiding narrow it,
  * which `isRowHidden` covers both of, in both projections. The Deliverables board is
- * scoped a third way: its population is Deliverable-typed results only (never the
- * whole base, whatever else the query returned), hidden by the filter-only predicate
- * that board itself renders with rather than the "Show completed items" one, since
- * that toggle does not apply there. Also fixes the label's own tooltip, which used to
- * be set once by `renderToolbar` at full-render time and never rescoped here — so it
- * could disagree with the text sitting right next to it.
+ * scoped a third way: its population is `model.deliverableResults` — every
+ * Deliverable-typed result, regardless of any active focus level, never the whole
+ * base — hidden by the filter-only predicate that board itself renders with rather
+ * than the "Show completed items" one, since that toggle does not apply there. Also
+ * fixes the label's own tooltip, which used to be set once by `renderToolbar` at
+ * full-render time and never rescoped here — so it could disagree with the text
+ * sitting right next to it.
  *
  * The requirements board is scoped a FOURTH way, for the opposite reason the
  * Deliverables board is scoped at all: Deliverables are managed on their own board now
@@ -204,7 +205,7 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const onRequirementsBoard = host.projection === 'board';
 	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const population = onDeliverables
-		? model.results.filter(isDeliverable)
+		? model.deliverableResults
 		: onRequirementsBoard
 			? model.results.filter((item) => !isDeliverable(item))
 			: model.results;
@@ -290,58 +291,35 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
  * It offers levels AND extra types, so the wording says "type" throughout: "all levels"
  * would be a promise this menu no longer keeps.
  *
- * **The Deliverables board is the one projection that never offers the menu.** It
- * shows one type by definition, so a control that PICKS a type to narrow by has
- * nothing to add. Unlike `renderCompletedToggle`'s own irrelevant control, though, the
- * button here does not go absent: whenever nothing is narrowing it further, this
- * board's population already IS "every Deliverable" — the same thing the button's
- * label would say if it opened a menu — so a real, disabled `<button>` reads
- * "Deliverables" instead of vanishing (the human's own request; a class or
- * `aria-disabled` alone would leave it focusable, which `src/view/CLAUDE.md`'s "once a
- * control is focusable, disabling it in CSS is a lie" rule forbids).
- *
- * "Whenever nothing is narrowing it further" is **not** the same test as "no focus is
- * active" — `admitsEveryDeliverable` (`itemTypes.ts`) is that test, shared with
- * `renderNoDeliverablesState`'s `admitsNewDeliverable` so the two cannot drift into
- * answering it differently. Focus is shared UI state, not a per-projection setting, and
- * an already-active focus still narrows THIS board's own population
- * (`renderDeliverablesBoard` reads `model.results`, itself re-rooted by focus) —
- * **except focus `PBI` or focus `Deliverable` itself**, which
- * `collectFocusRoots`'s `extraFocused` rule already admits every Deliverable under
- * regardless of subtree position, so the fixed button is exactly as true there as it
- * is with no focus at all. Every OTHER level (extension 3b of
- * `docs/requirements/A board scoped to Deliverables.md`, a deliberate, reviewed
- * decision) narrows this board exactly as it narrows the tree, and a fixed
- * "Deliverables" label would misreport that — so those keep their own, already-honest
- * shape: a static label naming the ACTUAL inherited focus, and the one real,
- * meaningful action left — clearing it — stays a real button. Making "Deliverables"
- * true of every inherited focus, including the ones that really do narrow, would mean
- * the Deliverables board stopped inheriting that narrowing at all — reversing
- * extension 3b's decision, which is not this button's call to make.
+ * **The Deliverables board is the one projection the focus level never affects, full
+ * stop** (the human's own request: a focus set on another projection must never make a
+ * Deliverable invisible here just because the wrong level was left active). So this is
+ * the one projection whose control is unconditionally the fixed, disabled
+ * "Deliverables" button, whatever `model.focused` says — never the menu (nothing to
+ * narrow by, since every card is already a Deliverable) and never the "Focused: <level>"
+ * label, since no level narrows this board's population
+ * (`BacklogModel.deliverableResults`, `renderDeliverablesBoard`) for the clear button
+ * beside it to have anything to undo. A class or `aria-disabled` alone would leave it
+ * focusable, which `src/view/CLAUDE.md`'s "once a control is focusable, disabling it in
+ * CSS is a lie" rule forbids.
  */
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	// A focus naming no configured type re-roots nothing — report all levels.
-	const active = model.focused ? focusTarget(host.settings) : '';
 	// Working position, not configuration: the collapse store persists it and the view
 	// rebuilds itself, because no Bases refresh follows a change it was not told about.
 	const setLevel = (level: string) => host.setFocusLevel(level);
 
 	if (host.projection === 'deliverables') {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
-		if (admitsEveryDeliverable(active)) {
-			const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
-			setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-			btn.createSpan({ text: 'Deliverables' });
-			btn.disabled = true;
-			setTooltip(btn, 'This board always shows Deliverables');
-			return;
-		}
-		wrap.addClass('pbl-focus-active');
-		wrap.createSpan({ cls: 'pbl-focus-label', text: `Focused: ${active}` });
-		renderFocusClearButton(wrap, setLevel);
+		const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
+		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
+		btn.createSpan({ text: 'Deliverables' });
+		btn.disabled = true;
+		setTooltip(btn, 'This board always shows every Deliverable — the focus level has no effect here');
 		return;
 	}
 
+	// A focus naming no configured type re-roots nothing — report all levels.
+	const active = model.focused ? focusTarget(host.settings) : '';
 	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 	wrap.toggleClass('pbl-focus-active', active !== '');
 

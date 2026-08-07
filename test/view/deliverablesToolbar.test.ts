@@ -179,29 +179,18 @@ describe('the focus control on the Deliverables board', () => {
 		expect(containerEl.querySelector('.pbl-focus-label')).toBeNull();
 	});
 
-	it('drops the picker that offers a new focus, but keeps a way to clear one already set', () => {
+	it('still reads the fixed, disabled "Deliverables" button under an inherited Feature focus', () => {
+		// Reversed by the human's own request: a focus level set on another projection
+		// must never narrow this board, Feature included — so there is nothing left to
+		// clear, and no "Focused: Feature" label either.
 		const harness = makeView(fixture(), {}, { focus: 'Feature' });
 		harness.view.setProjection('deliverables');
 		const { containerEl } = harness;
 
-		// The control that would let the user pick a DIFFERENT focus from here is gone —
-		// this board only ever shows Deliverables, so choosing a type to narrow by has
-		// nothing to offer.
-		expect(containerEl.querySelector('.pbl-focus-btn')).toBeNull();
-		// But an already-active focus still narrows this board's own population
-		// (`renderDeliverablesBoard` reads `model.results`, itself re-rooted by focus), so
-		// the user must never be left unable to clear it without leaving the projection.
-		const clear = containerEl.querySelector<HTMLElement>('.pbl-focus-clear');
-		expect(clear).not.toBeNull();
-
-		clear?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(harness.view.settings.focusLevel).toBe('');
-		// Clearing the inherited focus lands back on the fixed, disabled "Deliverables"
-		// button — not on nothing: `.pbl-focus` stays, now holding that button instead
-		// of the label and clear button it just held.
 		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
 		expect(btn?.textContent).toContain('Deliverables');
 		expect(btn?.disabled).toBe(true);
+		expect(containerEl.querySelector('.pbl-focus-label')).toBeNull();
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 	});
 });

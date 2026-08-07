@@ -21,7 +21,6 @@ views:
     startedDateProperty: note.started
     finishedDateProperty: note.finished
     showCompleted: true
-    deliverableStateProperty: note.deliverableStatus
   - type: table
     name: Data Quality
     groupBy:
