@@ -433,12 +433,18 @@ Create `styles/card-children.css`:
 	transform: rotate(90deg);
 }
 
+/*
+ * No padding and no gap: the indent belongs to the ENTRY, below, so the button covers
+ * it. A `<ul>` that carried the indent itself would leave a clickable strip beside every
+ * child that belongs to neither — and on a card, space that belongs to no control
+ * belongs to the card, which would put "open the parent" exactly where the eye reads
+ * "child". Giving it to the button makes that strip activate the child instead.
+ */
 .pbl-card-kids-list {
 	display: flex;
 	flex-direction: column;
-	gap: 1px;
 	margin: 0;
-	padding: 0 0 0 var(--size-4-3);
+	padding: 0;
 	list-style: none;
 }
 
@@ -451,7 +457,8 @@ Create `styles/card-children.css`:
 	align-items: center;
 	gap: var(--size-2-2);
 	width: 100%;
-	padding: var(--size-2-1);
+	/* The left value is the list's indent, carried by the button so it is clickable. */
+	padding: var(--size-2-1) var(--size-2-1) var(--size-2-1) var(--size-4-3);
 	height: auto;
 	line-height: 1.4;
 	box-shadow: none;

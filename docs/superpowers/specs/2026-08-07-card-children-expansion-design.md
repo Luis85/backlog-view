@@ -123,6 +123,17 @@ The rule for this feature, stated once rather than remembered per control: **eve
 element it adds inside a card stops both `click` and `auxclick`.** Two events, because
 the card listens for two.
 
+**Whitespace is not one of those elements**, and that is deliberate rather than an
+oversight. Space inside the disclosure that belongs to no control belongs to the card,
+exactly as it already does around the property cells — where `renderPropCells` stops
+propagation for `.pbl-prop-value` and `.pbl-tag` and says in a comment that "the empty
+space around them stays part of the row's click target". A guard on the container would
+make the disclosure the one region of a card that answers differently, and carve dead
+zones into a surface whose primary affordance is *click to open*. What the layout owes
+instead is to leave as little such space as possible: the child list's indent is carried
+by the entry button rather than by the `<ul>`, so the strip beside each child activates
+that child instead of belonging to nobody.
+
 ### Expansion state
 
 `host.isCollapsed(path)` and `host.setCollapsed(path, …)` — the tree's own state, not a
