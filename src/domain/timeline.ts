@@ -239,36 +239,65 @@ export function dayAt(window: TimelineWindow, scale: TimelineScale, x: number): 
 	return addDays(window.start, day);
 }
 
+/** The units a header tier can draw. The scales own the first three; `year` exists only as a super-unit. */
+type HeaderUnit = ScaleId | 'year';
+
+/** The coarser orientation band drawn above each scale's cells — [[Reading the grid]]. */
+const SUPER_UNIT: Record<ScaleId, HeaderUnit> = { week: 'month', month: 'year', quarter: 'year' };
+
+function unitSpan(unit: HeaderUnit, day: CivilDate): number {
+	if (unit === 'week') return 7;
+	if (unit === 'month') return daysInMonth(day.year, day.month);
+	if (unit === 'quarter') {
+		const first = quarterFirstMonth(day.month);
+		return [0, 1, 2].reduce((sum, i) => sum + daysInMonth(day.year, first + i), 0);
+	}
+	return daysBetween({ year: day.year, month: 1, day: 1 }, { year: day.year + 1, month: 1, day: 1 });
+}
+
 /**
  * The whole unit `day` falls in, in days — the default DURATION a shelf drop takes
  * when the item arrives with none of its own. Used by that one gesture and by nothing
  * else: it is not a snapping unit, and no gesture that already has a date consults it.
  */
 export function cellSpan(scale: TimelineScale, day: CivilDate): number {
-	if (scale.unit === 'week') return 7;
-	if (scale.unit === 'month') return daysInMonth(day.year, day.month);
-	const first = quarterFirstMonth(day.month);
-	return [0, 1, 2].reduce((sum, i) => sum + daysInMonth(day.year, first + i), 0);
+	return unitSpan(scale.unit, day);
 }
 
-/** The header cells of one scale across the window, clipped at both edges. */
-export function timelineCells(window: TimelineWindow, scale: TimelineScale): TimelineCell[] {
+/** One tier's cells across the window, clipped at both edges — the walk both tiers share. */
+function unitCells(window: TimelineWindow, unit: HeaderUnit, label: (unitStart: CivilDate) => string): TimelineCell[] {
 	const cells: TimelineCell[] = [];
 	for (let day = 0; day < window.days; ) {
 		const date = addDays(window.start, day);
-		const offset = unitOffset(scale, date);
-		const length = Math.min(cellSpan(scale, date) - offset, window.days - day);
-		cells.push({ label: cellLabel(scale, addDays(date, -offset)), days: length });
+		const offset = unitOffset(unit, date);
+		const length = Math.min(unitSpan(unit, date) - offset, window.days - day);
+		cells.push({ label: label(addDays(date, -offset)), days: length });
 		day += length;
 	}
 	return cells;
 }
 
+/** The header cells of one scale across the window, clipped at both edges. */
+export function timelineCells(window: TimelineWindow, scale: TimelineScale): TimelineCell[] {
+	return unitCells(window, scale.unit, (start) => cellLabel(scale.unit, start));
+}
+
+/**
+ * The coarser tier above the cells — months above weeks, years above months and
+ * quarters — for orientation. Same walk, same clipping, so the two tiers' day
+ * totals always agree with the window.
+ */
+export function superCells(window: TimelineWindow, scale: TimelineScale): TimelineCell[] {
+	const unit = SUPER_UNIT[scale.unit];
+	return unitCells(window, unit, (start) => superLabel(unit, start));
+}
+
 /** How far into its own unit a date sits — 0 when the cell starts there. */
-function unitOffset(scale: TimelineScale, date: CivilDate): number {
-	if (scale.unit === 'week') return isoWeekday(date);
-	if (scale.unit === 'month') return date.day - 1;
-	return daysBetween({ year: date.year, month: quarterFirstMonth(date.month), day: 1 }, date);
+function unitOffset(unit: HeaderUnit, date: CivilDate): number {
+	if (unit === 'week') return isoWeekday(date);
+	if (unit === 'month') return date.day - 1;
+	if (unit === 'quarter') return daysBetween({ year: date.year, month: quarterFirstMonth(date.month), day: 1 }, date);
+	return daysBetween({ year: date.year, month: 1, day: 1 }, date);
 }
 
 /** Monday is 0 — ISO 8601, one boundary on every device rather than a locale guess. */
@@ -280,9 +309,20 @@ function quarterFirstMonth(month: number): number {
 	return month - ((month - 1) % 3);
 }
 
-/** The cell's name, taken from the unit's own first day so a clipped cell still names it. */
-function cellLabel(scale: TimelineScale, unitStart: CivilDate): string {
-	if (scale.unit === 'week') return `${unitStart.day} ${MONTH_LABELS[unitStart.month - 1]}`;
-	if (scale.unit === 'month') return `${MONTH_LABELS[unitStart.month - 1]} ${unitStart.year}`;
-	return `Q${Math.floor((unitStart.month - 1) / 3) + 1} ${unitStart.year}`;
+/**
+ * The cell's name, from the unit's own first day so a clipped cell still names it.
+ * Year-free below the top tier: the super tier carries the year, and repeating it
+ * per cell is the noise the tier exists to remove. The week cell keeps its month —
+ * a week can straddle two, so its label stays self-sufficient.
+ */
+function cellLabel(unit: ScaleId, unitStart: CivilDate): string {
+	if (unit === 'week') return `${unitStart.day} ${MONTH_LABELS[unitStart.month - 1]}`;
+	if (unit === 'month') return MONTH_LABELS[unitStart.month - 1];
+	return `Q${Math.floor((unitStart.month - 1) / 3) + 1}`;
+}
+
+/** The super tier's name for its unit — the tier that owns the year spells it out. */
+function superLabel(unit: HeaderUnit, unitStart: CivilDate): string {
+	if (unit === 'month') return `${MONTH_LABELS[unitStart.month - 1]} ${unitStart.year}`;
+	return String(unitStart.year);
 }

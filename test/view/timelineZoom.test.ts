@@ -82,7 +82,7 @@ describe('the zoom control', () => {
 		view.setProjection('roadmap');
 
 		view.setZoom('quarter');
-		expect(cellLabels(containerEl).some((l) => /^Q[1-4] \d{4}$/.test(l))).toBe(true);
+		expect(cellLabels(containerEl).some((l) => /^Q[1-4]$/.test(l))).toBe(true);
 		expect(vault.writeLog).toHaveLength(0);
 		expect(scaleFor(view.zoom).dayPx).toBe(2);
 	});

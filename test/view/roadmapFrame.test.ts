@@ -404,9 +404,9 @@ describe('the grid at each density', () => {
 		const { view, containerEl } = datedRoadmap(vault);
 
 		view.setZoom('quarter');
-		expect(cellLabels(containerEl).some((label) => /^Q[1-4] \d{4}$/.test(label))).toBe(true);
+		expect(cellLabels(containerEl).some((label) => /^Q[1-4]$/.test(label))).toBe(true);
 		view.setZoom('month');
-		expect(cellLabels(containerEl)).toContain('Aug 2026');
+		expect(cellLabels(containerEl)).toContain('Aug');
 	});
 });
 
