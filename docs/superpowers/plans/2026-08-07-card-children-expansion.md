@@ -35,6 +35,12 @@ partials assembled by `styles-assemble.mjs`.
   read-only property is what makes the context-row rule hold without a check.
 - A wikilink in `docs/` must not wrap across a line — `docs-check.mjs` captures the
   newline inside it and reports "unresolved wikilink".
+- **Every `git add` in this plan is a reminder, not an inventory.** Before committing,
+  run `git status --short` and stage everything your task actually changed. A file left
+  unstaged does not fail your local `npm run check` — your working tree still has it —
+  so the gap only appears on a clean checkout, as a compile error in someone else's
+  commit. Verify with `git stash -u && npm run build; git stash pop` if you changed a
+  type or an interface.
 
 ---
 
@@ -596,8 +602,8 @@ across a line — reword so it does not.
 - [ ] **Step 11: Commit**
 
 ```bash
-git add src/view/render/cardChildren.ts styles/card-children.css styles/index.css \
-  src/view/render/columns.ts src/view/render/board.ts src/view/host.ts \
+git add src/view/render/cardChildren.ts styles/cardChildren.css styles/index.css \
+  src/view/render/columns.ts src/view/render/board.ts \
   src/view/backlogView.ts docs/requirements/Children\ on\ the\ card.md \
   test/view/cardChildren.test.ts
 git commit -m "feat: expand a card to see its direct children"
@@ -997,7 +1003,11 @@ register note's `## Where it lives` gains its name.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/view/interactions/menu.ts test/view/cardChildren.test.ts
+# host.ts and backlogView.ts carry the getter and interface member this task adds —
+# without them a clean checkout has the menu reading a host member that does not exist,
+# and TypeScript fails at that access.
+git add src/view/interactions/menu.ts src/view/host.ts src/view/backlogView.ts \
+  test/view/cardChildren.test.ts
 git commit -m "feat: the card menu offers the children the card lists"
 ```
 
