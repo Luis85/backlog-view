@@ -4,7 +4,7 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
+import { admitsEveryDeliverable, displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ALL_TYPES, DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
@@ -293,26 +293,31 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
  * **The Deliverables board is the one projection that never offers the menu.** It
  * shows one type by definition, so a control that PICKS a type to narrow by has
  * nothing to add. Unlike `renderCompletedToggle`'s own irrelevant control, though, the
- * button here does not go absent: with no inherited focus narrowing it further, this
+ * button here does not go absent: whenever nothing is narrowing it further, this
  * board's population already IS "every Deliverable" — the same thing the button's
  * label would say if it opened a menu — so a real, disabled `<button>` reads
  * "Deliverables" instead of vanishing (the human's own request; a class or
  * `aria-disabled` alone would leave it focusable, which `src/view/CLAUDE.md`'s "once a
  * control is focusable, disabling it in CSS is a lie" rule forbids).
  *
- * Focus is shared UI state, though, not a per-projection setting, and an already-active
- * focus still narrows THIS board's own population **UNLESS it is `PBI`**
- * (`renderDeliverablesBoard` reads `model.results`, itself re-rooted by focus — see
- * `renderNoDeliverablesState`'s `admitsNewDeliverable`, and extension 3b of
- * `docs/requirements/A board scoped to Deliverables.md`, which states as a deliberate,
- * reviewed decision that a non-`PBI` inherited focus narrows this board exactly as it
- * narrows the tree). A fixed "Deliverables" label would misreport that narrowing, so
- * this case keeps its own, already-honest shape instead: a static label naming the
- * ACTUAL inherited focus, and the one real, meaningful action left — clearing it —
- * stays a real button. Making "Deliverables" true of every inherited focus, not only
- * the common no-focus case, would mean the Deliverables board stopped inheriting that
- * narrowing at all — reversing extension 3b's decision, which is not this button's
- * call to make.
+ * "Whenever nothing is narrowing it further" is **not** the same test as "no focus is
+ * active" — `admitsEveryDeliverable` (`itemTypes.ts`) is that test, shared with
+ * `renderNoDeliverablesState`'s `admitsNewDeliverable` so the two cannot drift into
+ * answering it differently. Focus is shared UI state, not a per-projection setting, and
+ * an already-active focus still narrows THIS board's own population
+ * (`renderDeliverablesBoard` reads `model.results`, itself re-rooted by focus) —
+ * **except focus `PBI` or focus `Deliverable` itself**, which
+ * `collectFocusRoots`'s `extraFocused` rule already admits every Deliverable under
+ * regardless of subtree position, so the fixed button is exactly as true there as it
+ * is with no focus at all. Every OTHER level (extension 3b of
+ * `docs/requirements/A board scoped to Deliverables.md`, a deliberate, reviewed
+ * decision) narrows this board exactly as it narrows the tree, and a fixed
+ * "Deliverables" label would misreport that — so those keep their own, already-honest
+ * shape: a static label naming the ACTUAL inherited focus, and the one real,
+ * meaningful action left — clearing it — stays a real button. Making "Deliverables"
+ * true of every inherited focus, including the ones that really do narrow, would mean
+ * the Deliverables board stopped inheriting that narrowing at all — reversing
+ * extension 3b's decision, which is not this button's call to make.
  */
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// A focus naming no configured type re-roots nothing — report all levels.
@@ -323,7 +328,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 
 	if (host.projection === 'deliverables') {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
-		if (active === '') {
+		if (admitsEveryDeliverable(active)) {
 			const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
 			setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
 			btn.createSpan({ text: 'Deliverables' });

@@ -151,6 +151,34 @@ describe('the focus control on the Deliverables board', () => {
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 	});
 
+	it('still reads the fixed, disabled "Deliverables" button under an inherited PBI focus', () => {
+		// PBI does not narrow this board — `collectFocusRoots`'s `extraFocused` rule
+		// already admits every Deliverable as a focus root under PBI focus regardless
+		// of subtree position — so the fixed button stays exactly as true as it is
+		// with no focus at all, never the "Focused: PBI" label.
+		const harness = makeView(fixture(), {}, { focus: 'PBI' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
+		expect(btn?.textContent).toContain('Deliverables');
+		expect(btn?.disabled).toBe(true);
+		expect(containerEl.querySelector('.pbl-focus-label')).toBeNull();
+	});
+
+	it('still reads the fixed, disabled "Deliverables" button under an inherited Deliverable focus', () => {
+		// Focusing Deliverable by name reaches every Deliverable in the base by
+		// definition, so this also does not narrow the board.
+		const harness = makeView(fixture(), {}, { focus: 'Deliverable' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
+		expect(btn?.textContent).toContain('Deliverables');
+		expect(btn?.disabled).toBe(true);
+		expect(containerEl.querySelector('.pbl-focus-label')).toBeNull();
+	});
+
 	it('drops the picker that offers a new focus, but keeps a way to clear one already set', () => {
 		const harness = makeView(fixture(), {}, { focus: 'Feature' });
 		harness.view.setProjection('deliverables');

@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
-import { isDeliverableType } from '../../domain/itemTypes';
+import { admitsEveryDeliverable } from '../../domain/itemTypes';
 import { adoptableProperties, LEVELS, OptionalField } from '../../domain/settings';
 
 /**
@@ -152,8 +152,9 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
  */
 export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const focused = host.model?.focused ?? false;
-	const focusLevel = host.settings.focusLevel.trim().toLowerCase();
-	const admitsNewDeliverable = focusLevel === 'pbi' || isDeliverableType(focusLevel);
+	// Shared with the toolbar's fixed focus button (`admitsEveryDeliverable`) — one
+	// statement of "which focus levels leave every Deliverable reachable" for both.
+	const admitsNewDeliverable = admitsEveryDeliverable(host.settings.focusLevel);
 	guidanceShell(
 		treeEl,
 		'package',

@@ -94,6 +94,26 @@ export function isDeliverableType(typeName: string | null): boolean {
 }
 
 /**
+ * Whether a focus level leaves the Deliverables board's own population UNNARROWED:
+ * no focus at all, `PBI`, or `Deliverable` itself. Every other level narrows the
+ * board to Deliverables inside that subtree (`buildModel`'s `shown()` over the
+ * re-rooted focus). PBI and Deliverable are the exceptions because
+ * `collectFocusRoots`'s `extraFocused` rule already admits every extra type as a
+ * focus root by TYPE rather than by subtree position — so a Deliverable anywhere in
+ * the base is reachable under a PBI focus, and focusing Deliverable by name reaches
+ * every one of them by definition.
+ *
+ * One statement, consulted by both the toolbar's fixed "Deliverables" focus button
+ * (`renderFocusPicker`) and the board's own "create here" guidance
+ * (`admitsNewDeliverable` in `emptyStates.ts`) — two places that ask the identical
+ * question and must not be left free to answer it differently.
+ */
+export function admitsEveryDeliverable(focusLevel: string): boolean {
+	const level = focusLevel.trim().toLowerCase();
+	return level === '' || level === 'pbi' || isDeliverableType(level);
+}
+
+/**
  * The types that may be created under `parent`, the ladder's own child first.
  *
  * Extra types are offered under a real rung above the deepest one — under an Epic, a
