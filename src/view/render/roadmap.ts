@@ -50,6 +50,7 @@ export function renderRoadmap(
 			boxes: [],
 			window: null,
 			scale: null,
+			leadWidth: null,
 		};
 	}
 	const roadmap = buildRoadmap(model, host.settings, (item) => !host.isRowHidden(item), axis);
@@ -60,6 +61,7 @@ export function renderRoadmap(
 	let scroller: HTMLElement | null = null;
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
+	let leadWidth: number | null = null;
 	if (axis === 'horizons') {
 		const bucketsEl = frameEl.createDiv({ cls: 'pbl-roadmap-buckets' });
 		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd));
@@ -79,6 +81,7 @@ export function renderRoadmap(
 		scroller = timeline.scroller;
 		window = timeline.window;
 		scale = activeScale;
+		leadWidth = timeline.leadWidth;
 		wireTimelineDrag(ctx, dnd, {
 			overlay: timeline.overlay,
 			scroller: timeline.scroller,
@@ -86,6 +89,7 @@ export function renderRoadmap(
 			scale: activeScale,
 			headerTrack: timeline.headerTrack,
 			tracks: timeline.tracks,
+			leadWidth: timeline.leadWidth,
 		});
 	}
 	// Captured before the shelf renders: collapsing the shelf changes ITS contribution
@@ -113,7 +117,7 @@ export function renderRoadmap(
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
-	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale };
+	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth };
 }
 
 /**

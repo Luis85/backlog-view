@@ -75,8 +75,10 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 
 /**
  * Where the scroller must sit for today to be centred in the part of it a reader can
- * SEE. The lead column is `position: sticky; left: 0`, so it covers viewport 0…220 at
- * every scroll position and the day area is the band from 220 to the right edge.
+ * SEE. The lead column is `position: sticky; left: 0`, so it covers viewport 0…`leadWidth`
+ * at every scroll position and the day area is the band from `leadWidth` to the right
+ * edge — the width a reader has actually resized it to, never the default alone, or the
+ * band this centres in would disagree with the column that is really covering the view.
  * Centring on `clientWidth / 2` therefore hides today behind the labels in any pane
  * narrower than twice the lead — a 320px split puts it at viewport 160, under an opaque
  * column — which defeats both the opening scroll and Jump to today in exactly the narrow
@@ -84,9 +86,15 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
  * than the lead itself, where the best available answer is the first visible pixel of
  * day.
  */
-export function centreOnToday(todayLeft: number, viewport: number): number {
-	const band = Math.max(viewport - TIMELINE_LEAD_PX, 0);
-	return Math.max(todayLeft - TIMELINE_LEAD_PX - band / 2, 0);
+export function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
+	const band = Math.max(viewport - leadWidth, 0);
+	return Math.max(todayLeft - leadWidth - band / 2, 0);
+}
+
+/** The width THIS render drew, or the default off the dated axis — split out so the
+ * `??` does not add to `anchorScrollLeft`'s own branching. */
+function resolvedLeadWidth(roadmap: RoadmapSnapshot | null): number {
+	return roadmap?.leadWidth ?? TIMELINE_LEAD_PX;
 }
 
 /** What the render just drew, named finer than the projection: the roadmap's two axes are different content on one frame. */
@@ -158,7 +166,7 @@ function anchorScrollLeft(
 	roadmap: RoadmapSnapshot | null,
 	viewport: number,
 ): number {
-	if (!same) return todayLeft == null ? 0 : centreOnToday(todayLeft, viewport);
+	if (!same) return todayLeft == null ? 0 : centreOnToday(todayLeft, viewport, resolvedLeadWidth(roadmap));
 	const scale = roadmap?.scale?.id ?? null;
 	if (scale !== anchor.scale && roadmap) {
 		const zoomed = scaleChangeScrollLeft(anchor, roadmap);

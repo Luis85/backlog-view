@@ -93,6 +93,14 @@ export interface RoadmapSnapshot {
 	window: TimelineWindow | null;
 	/** The density the grid drew at; null on the horizon axis. */
 	scale: TimelineScale | null;
+	/**
+	 * The lead-column width this render actually drew, resolved once from the user's
+	 * pick or `TIMELINE_LEAD_PX`; null on the horizon axis. Everything downstream that
+	 * used to read `TIMELINE_LEAD_PX` directly — the scroll-centring math, the drag's
+	 * lead-column hit test — reads this instead, so a resize cannot leave one of them
+	 * disagreeing with what is actually drawn.
+	 */
+	leadWidth: number | null;
 }
 
 /**
@@ -204,6 +212,13 @@ export interface BacklogViewHost {
 	readonly density: string | null;
 	/** Toggle compact rows and re-render; the collapse store persists the pick. */
 	setDensity(value: string | null): void;
+	/**
+	 * The retained timeline lead-column width in pixels, or null for
+	 * `TIMELINE_LEAD_PX`, the default. UI state exactly like the density beside it.
+	 */
+	readonly leadWidth: number | null;
+	/** Resize the lead column and re-render; the collapse store persists the pick. */
+	setLeadWidth(value: number | null): void;
 	/** Put today back in the middle of the timeline's scroller, from any position. */
 	jumpToToday(): void;
 	/**

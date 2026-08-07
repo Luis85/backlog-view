@@ -39,8 +39,11 @@ Five bundles, each independently shippable:
 
 - **Dependencies, progress fill, lanes, the lift** — other increments, per the
   decomposition above.
-- **Resizable lead column** and **dates in the lead column** — offered, declined.
-  Addable later without rework.
+- **Dates in the lead column** — offered, declined. Addable later without rework.
+- ~~**Resizable lead column** — offered, declined.~~ Out of date: it shipped —
+  [[A resizable lead column]] — once the fixed 220px was measured against a real
+  vault and left a title only ~68px to itself. This line is kept struck through
+  rather than deleted so the spec does not silently start contradicting what ships.
 - **Weekend shading at month and quarter zoom** — at 4px/day and 2px/day the stripes
   are noise; the surveyed tools stop shading around the same density.
 

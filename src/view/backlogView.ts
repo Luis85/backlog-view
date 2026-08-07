@@ -30,6 +30,7 @@ import { renderLoadingState } from './render/emptyStates';
 import { renderLegend } from './render/legend';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
+import { TIMELINE_LEAD_PX } from './render/timeline';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
 
@@ -240,10 +241,23 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.render();
 	}
 
+	get leadWidth(): number | null {
+		return this.collapse.leadWidthPick();
+	}
+
+	setLeadWidth(value: number | null): void {
+		if (value === this.leadWidth) return;
+		this.collapse.setLeadWidth(value);
+		// UI state like the density: no config was set, so this render is the change.
+		this.render();
+	}
+
 	jumpToToday(): void {
 		const roadmap = this.roadmap;
 		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
-		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth);
+		// `roadmap.leadWidth` is null only off the dated axis, which `todayLeft` already
+		// rules out — the fallback is for the type checker, not a case this reaches.
+		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth ?? TIMELINE_LEAD_PX);
 	}
 
 	/** Re-measure after a resize, and rebuild only if a column came or went. */

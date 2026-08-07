@@ -3,6 +3,7 @@ import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderTitleText } from './rows';
 import { CardDragController } from '../interactions/cardDrag';
+import { renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
@@ -35,10 +36,14 @@ import { CivilDate } from '../../domain/noteFields';
  */
 
 /**
- * Width of the sticky lead column naming each row. Published to CSS below, and
- * exported for `jumpToToday`'s centring math — the visible band it centres today in
- * is the scroller's width minus this column, which covers the same pixels at every
- * scroll position.
+ * DEFAULT width of the sticky lead column naming each row — drawn until a reader
+ * drags the resize grip (`interactions/timelineLeadResize.ts`) or the Base is opened
+ * for the first time, and what the grip's Home key returns to. The width actually
+ * drawn is resolved ONCE per render, in `renderTimeline`, from the user's own pick
+ * (`host.leadWidth`) or this default, and threaded everywhere this constant used to
+ * be read directly — see that resolution's own comment for why: the CSS width and
+ * the TS arithmetic that places the today line, the milestone lines and the
+ * gridlines must never diverge, which is precisely the bug commit 791e1da fixed.
  */
 export const TIMELINE_LEAD_PX = 220;
 
@@ -70,6 +75,8 @@ export interface TimelineRender {
 	headerTrack: HTMLElement;
 	/** Each drawn row's day track, by path — where a MOVE's preview is drawn, in its own row. */
 	tracks: Map<string, HTMLElement>;
+	/** The lead width THIS render actually drew — the resolved pick, or `TIMELINE_LEAD_PX`. */
+	leadWidth: number;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -95,6 +102,11 @@ export function renderTimeline(
 ): TimelineRender {
 	const { today, scale, dnd, observedStates } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
+	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
+	// directly: the CSS width below and the TS arithmetic that places the today line,
+	// the milestone lines and the gridlines all have to agree on the same number, or a
+	// resize reopens the 17px mismatch commit 791e1da fixed.
+	const leadWidth = ctx.host.leadWidth ?? TIMELINE_LEAD_PX;
 	// TWO elements, not one. The scroll box is the outer one; the positioned layer is
 	// the inner. Full-height marks — the today line, the milestone lines, and the drop
 	// overlay that joins them — resolve `top: 0; bottom: 0` against their containing
@@ -107,7 +119,7 @@ export function renderTimeline(
 	grid.toggleClass('pbl-density-compact', ctx.host.density === 'compact');
 	const content = grid.createDiv({ cls: 'pbl-timeline-content' });
 	content.setCssProps({
-		'--pbl-tl-lead': `${TIMELINE_LEAD_PX}px`,
+		'--pbl-tl-lead': `${leadWidth}px`,
 		'--pbl-tl-days': `${window.days * scale.dayPx}px`,
 		// The stylesheet stops hard-coding 2px: the width is the scale's, because
 		// `dayPx >= 2 * lineWidth` is what lets today's line and a coincident
@@ -123,12 +135,12 @@ export function renderTimeline(
 		const weekend = content.createDiv({ cls: 'pbl-weekend-layer', attr: { 'aria-hidden': 'true' } });
 		weekend.setCssProps({ '--pbl-weekend-offset': `${weekendOffsetDays(window) * scale.dayPx}px` });
 	}
-	const headerTrack = renderCellHeader(content, window, scale);
-	renderGridLines(content, window, scale);
+	const headerTrack = renderCellHeader(ctx, content, window, scale, leadWidth);
+	renderGridLines(content, window, scale, leadWidth);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
-	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
+	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
 	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
 	bars.forEach((bar, index) => {
@@ -140,7 +152,7 @@ export function renderTimeline(
 	const syncScrolled = () => grid.toggleClass('pbl-scrolled-x', grid.scrollLeft > 0);
 	grid.addEventListener('scroll', syncScrolled, { passive: true });
 	syncScrolled();
-	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
+	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
@@ -155,21 +167,34 @@ export function renderTimeline(
 	// somewhere to land, out of the way until a drag needs it — reached by a second
 	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
 	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
-	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay, headerTrack, tracks };
+	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay, headerTrack, tracks, leadWidth };
 }
 
 /**
- * Presentational, like the tree's column header: every row carries its own dates.
+ * The cell tiers are presentational, like the tree's column header: every row
+ * carries its own dates, so the month/quarter labels add nothing a screen reader
+ * needs. The LEAD cell is not: it now carries the resize grip, a real control, so
+ * `aria-hidden` sits on the tiers alone rather than the whole header — an
+ * `aria-hidden` ancestor removes every focusable descendant from the accessibility
+ * tree along with the decoration, and this cell is no longer only decoration.
+ *
  * Returns the cell tier alone — `TimelineRender.headerTrack`, where the milestone
  * labels and the drop ghost mount. It once also handed back an empty band reserved
  * for the Today pill; the legend strip above the grid took over naming the today
  * line's colour, so the pill and its band are gone and this is a plain track again.
  */
-function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
-	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
-	header.createDiv({ cls: 'pbl-timeline-lead' });
+function renderCellHeader(
+	ctx: RowContext,
+	content: HTMLElement,
+	window: TimelineWindow,
+	scale: TimelineScale,
+	leadWidth: number,
+): HTMLElement {
+	const header = content.createDiv({ cls: 'pbl-timeline-header' });
+	const lead = header.createDiv({ cls: 'pbl-timeline-lead' });
+	renderLeadResize(ctx.host, lead, content, leadWidth, TIMELINE_LEAD_PX);
 	// Two stacked tiers in the track slot: the coarser orientation tier, then the cells.
-	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers' });
+	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers', attr: { 'aria-hidden': 'true' } });
 	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
 	return renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
 }
@@ -206,9 +231,12 @@ function renderMilestoneLines(
 	window: TimelineWindow,
 	bars: TimelineBar[],
 	today: CivilDate,
-	scale: TimelineScale,
+	// `scale` and `leadWidth` grouped into one param — both are "how a day converts to a
+	// pixel here", and the pair is what keeps this under the five-parameter budget.
+	ruler: { scale: TimelineScale; leadWidth: number },
 ): void {
 	const { grid, headerTrack } = mounts;
+	const { scale, leadWidth } = ruler;
 	// Insertion order is bar order, which is row order — so a shared line names its
 	// milestones the way the rows read.
 	const byDay = new Map<number, string[]>();
@@ -230,7 +258,7 @@ function renderMilestoneLines(
 		// lineWidth` is what guarantees the step still fits inside the day it steps in.
 		const nudge = day === todayDay ? scale.lineWidth : 0;
 		const line = grid.createDiv({ cls: 'pbl-milestone-line', attr: { 'aria-hidden': 'true' } });
-		line.setCssProps({ '--pbl-milestone-left': `${TIMELINE_LEAD_PX + day * scale.dayPx + nudge}px` });
+		line.setCssProps({ '--pbl-milestone-left': `${leadWidth + day * scale.dayPx + nudge}px` });
 		// The label sits in the header band, where the month header already is, and the
 		// full name stays in the tooltip: horizontal space is the scarce resource in an
 		// Obsidian pane, so the line survives the narrowing and the text is what gives way.
@@ -248,13 +276,13 @@ function renderMilestoneLines(
  * drawn before the milestone lines so a boundary never paints over a mark that
  * means something. No line at day 0: that boundary is the lead column's border.
  */
-function renderGridLines(content: HTMLElement, window: TimelineWindow, scale: TimelineScale): void {
+function renderGridLines(content: HTMLElement, window: TimelineWindow, scale: TimelineScale, leadWidth: number): void {
 	let day = 0;
 	for (const cell of timelineCells(window, scale)) {
 		day += cell.days;
 		if (day >= window.days) break;
 		const line = content.createDiv({ cls: 'pbl-grid-line', attr: { 'aria-hidden': 'true' } });
-		line.setCssProps({ '--pbl-grid-left': `${TIMELINE_LEAD_PX + day * scale.dayPx}px` });
+		line.setCssProps({ '--pbl-grid-left': `${leadWidth + day * scale.dayPx}px` });
 	}
 }
 
