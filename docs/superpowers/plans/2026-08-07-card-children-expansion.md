@@ -267,15 +267,18 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	ctx.cardKids.add(item.file.path);
 
 	const wrap = card.createDiv({ cls: 'pbl-card-kids' });
-	const list = wrap.createEl('ul', { cls: 'pbl-card-kids-list' });
-	list.id = uniqueElementId('pbl-card-kids');
+	// Toggle first, list second — DOM order IS reading order, so the count is met
+	// before the items it counts. Both ids are minted rather than derived: these
+	// attributes resolve across the whole document, and two saved views can sit in
+	// split panes.
 	const toggle = wrap.createEl('button', {
 		cls: 'pbl-card-kids-toggle',
-		attr: { type: 'button', tabindex: '-1', 'aria-controls': list.id },
+		attr: { type: 'button', tabindex: '-1' },
 	});
-	// Both ids are minted rather than derived: these attributes resolve across the whole
-	// document, and two saved views can sit in split panes.
 	toggle.id = uniqueElementId('pbl-card-kids-toggle');
+	const list = wrap.createEl('ul', { cls: 'pbl-card-kids-list' });
+	list.id = uniqueElementId('pbl-card-kids');
+	toggle.setAttribute('aria-controls', list.id);
 	// The list is NAMED by the toggle, not merely controlled by it. `aria-controls`
 	// says the two are related and nothing about what the list holds, so a reader
 	// arriving straight at the list would get no count and no context; `aria-labelledby`
@@ -291,9 +294,6 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	// controls take, for the same reason — `pointer-events: none` stops a mouse and
 	// nothing else.
 	toggle.disabled = host.isFiltering();
-	// The list sits after the toggle in the DOM so a reader meets the count first; CSS
-	// orders them visually.
-	wrap.append(list);
 
 	// The disclosure counts what it LISTS and the rollup beside it counts everything
 	// beneath, so with completed work hidden the two disagree on purpose. Said out loud
