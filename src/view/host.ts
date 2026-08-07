@@ -197,6 +197,13 @@ export interface BacklogViewHost {
 	readonly zoom: ScaleId;
 	/** Pick a density and re-render; the collapse store persists it. */
 	setZoom(id: ScaleId): void;
+	/**
+	 * The retained row density for the dated axis — 'compact', or null for
+	 * comfortable, the default. UI state exactly like the zoom beside it.
+	 */
+	readonly density: string | null;
+	/** Toggle compact rows and re-render; the collapse store persists the pick. */
+	setDensity(value: string | null): void;
 	/** Put today back in the middle of the timeline's scroller, from any position. */
 	jumpToToday(): void;
 	/**

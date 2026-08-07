@@ -96,6 +96,7 @@ export function renderTimeline(
 	// nothing. A line that stops partway down is worse than no line: it says the plan
 	// divides there.
 	const grid = containerEl.createDiv({ cls: 'pbl-timeline' });
+	grid.toggleClass('pbl-density-compact', ctx.host.density === 'compact');
 	const content = grid.createDiv({ cls: 'pbl-timeline-content' });
 	content.setCssProps({
 		'--pbl-tl-lead': `${TIMELINE_LEAD_PX}px`,

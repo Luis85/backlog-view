@@ -360,6 +360,16 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	position('week', 'calendar-days', 'Zoom to weeks');
 	position('month', 'calendar', 'Zoom to months');
 	position('quarter', 'calendar-range', 'Zoom to quarters');
+	const compact = host.density === 'compact';
+	// The name is the SETTING, fixed, and aria-pressed carries its value — a toggle
+	// whose name changes to the next action announces "Comfortable rows, pressed"
+	// while compact rows are on, which states the opposite of what is true. The icon
+	// still swaps: it is the sighted affordance, and it says nothing to a reader.
+	const densityBtn = iconButton(barEl, compact ? 'rows-2' : 'rows-4', 'Compact rows');
+	densityBtn.addClass('pbl-density-toggle');
+	densityBtn.toggleClass('is-active', compact);
+	densityBtn.setAttribute('aria-pressed', String(compact));
+	densityBtn.addEventListener('click', () => host.setDensity(compact ? null : 'compact'));
 	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());

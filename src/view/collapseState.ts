@@ -39,6 +39,8 @@ export class CollapseState {
 	private axis: string | null = null;
 	/** The retained timeline zoom; null until the user first picks one. */
 	private zoom: string | null = null;
+	/** The retained timeline row density; null means comfortable, the default. */
+	private density: string | null = null;
 	/** The focused type name; null means the whole tree, the default. */
 	private focus: string | null = null;
 	private shelfExpanded = false;
@@ -92,6 +94,16 @@ export class CollapseState {
 
 	setZoom(id: string): void {
 		this.zoom = id;
+		this.scheduleSave();
+	}
+
+	/** The retained row density for this saved view — null means comfortable, the default. */
+	densityPick(): string | null {
+		return this.density;
+	}
+
+	setDensity(value: string | null): void {
+		this.density = value;
 		this.scheduleSave();
 	}
 
@@ -202,6 +214,7 @@ export class CollapseState {
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
 		this.zoom = snapshot.zoom ?? null;
+		this.density = snapshot.density ?? null;
 		this.focus = snapshot.focus ?? null;
 		this.shelfExpanded = snapshot.shelfExpanded ?? false;
 		this.shelfSortValue = snapshot.shelfSort ?? null;
@@ -275,6 +288,7 @@ export class CollapseState {
 			mode: this.mode,
 			axis: this.axis,
 			zoom: this.zoom,
+			density: this.density,
 			focus: this.focus,
 			shelfExpanded: this.shelfExpanded,
 			shelfSort: this.shelfSortValue,

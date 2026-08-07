@@ -41,6 +41,8 @@ const AXIS_VALUES = ['horizons', 'dates'];
  * defensively, not trusted as a type.
  */
 const ZOOM_VALUES = ['week', 'month', 'quarter'];
+/** The values the `density` field may hold; absent means comfortable rows, the default. */
+const DENSITY_VALUES = ['compact'];
 /** The values the `shelfSort` field may hold. Mirrors `ShelfSort` in `domain/shelf.ts`. */
 const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 
@@ -54,6 +56,8 @@ export interface CollapseSnapshot {
 	axis?: string | null;
 	/** The retained timeline zoom; null or absent means the user never picked. */
 	zoom?: string | null;
+	/** The retained timeline row density; null or absent means comfortable, the default. */
+	density?: string | null;
 	/** The focused type name; null or absent means the whole tree, the default. */
 	focus?: string | null;
 	/** True only once the user has explicitly expanded the shelf; absent means collapsed, the default. */
@@ -88,6 +92,8 @@ interface StoredEntry {
 	axis?: string;
 	/** Absent until the user picks a timeline zoom; retained even while unused. */
 	zoom?: string;
+	/** Absent means comfortable rows, the default. */
+	density?: string;
 	/**
 	 * Absent means the whole tree, the default. Stored as the type name the user picked
 	 * and NOT checked against the vocabulary here: `focusTarget` already answers a name
@@ -208,14 +214,15 @@ function writeShelf(entry: StoredEntry, expanded: boolean, sort: string | null, 
 }
 
 /**
- * The four picks whose default is simply absence — the tree, no axis pick, no zoom, the
- * whole tree. Empty and null are the same thing here, which is what makes clearing a
- * focus remove the field rather than store a name meaning "none".
+ * The five picks whose default is simply absence — the tree, no axis pick, no zoom, no
+ * density, the whole tree. Empty and null are the same thing here, which is what makes
+ * clearing a focus remove the field rather than store a name meaning "none".
  */
 function writePicks(entry: StoredEntry, snapshot: CollapseSnapshot): void {
 	if (snapshot.mode) entry.mode = snapshot.mode;
 	if (snapshot.axis) entry.axis = snapshot.axis;
 	if (snapshot.zoom) entry.zoom = snapshot.zoom;
+	if (snapshot.density) entry.density = snapshot.density;
 	if (snapshot.focus) entry.focus = snapshot.focus;
 }
 
@@ -227,6 +234,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 		mode: entry?.mode ?? null,
 		axis: entry?.axis ?? null,
 		zoom: entry?.zoom ?? null,
+		density: entry?.density ?? null,
 		focus: entry?.focus ?? null,
 		...defaultShelf(entry),
 	};
@@ -326,6 +334,7 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.mode !== undefined ||
 		entry.axis !== undefined ||
 		entry.zoom !== undefined ||
+		entry.density !== undefined ||
 		entry.focus !== undefined ||
 		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
@@ -347,6 +356,8 @@ function readEntry(value: unknown): StoredEntry | null {
 	if (axis !== undefined) entry.axis = axis;
 	const zoom = readEnum(record.zoom, ZOOM_VALUES);
 	if (zoom !== undefined) entry.zoom = zoom;
+	const density = readEnum(record.density, DENSITY_VALUES);
+	if (density !== undefined) entry.density = density;
 	// Not an enum: the vocabulary this is matched against lives in `domain/settings.ts`
 	// and a name outside it already reads as no focus, so the only check here is shape.
 	if (typeof record.focus === 'string' && record.focus.length > 0) entry.focus = record.focus;

@@ -111,3 +111,52 @@ describe('jump to today', () => {
 	});
 });
 
+describe('the density toggle', () => {
+	function densityButton(containerEl: HTMLElement): HTMLButtonElement {
+		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-density-toggle');
+		if (!btn) throw new Error('density toggle not found');
+		return btn;
+	}
+
+	it('compacts the grid from the toolbar without touching a note or the base', () => {
+		const vault = datedVault();
+		const { view, containerEl, config } = makeView(vault, DATE_AXIS, { collapsed: true });
+		expect(containerEl.querySelector('.pbl-density-toggle')).toBeNull(); // tree mode
+		view.setProjection('roadmap');
+
+		expect(densityButton(containerEl).getAttribute('aria-pressed')).toBe('false');
+		densityButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(densityButton(containerEl).getAttribute('aria-pressed')).toBe('true');
+		// The name is the setting, not the next action: it must NOT flip with the
+		// state, or the pressed toggle announces the mode it is not in.
+		expect(densityButton(containerEl).getAttribute('aria-label')).toBe('Compact rows');
+		expect(containerEl.querySelector('.pbl-timeline')?.classList.contains('pbl-density-compact')).toBe(true);
+		expect(vault.writeLog).toHaveLength(0);
+		expect(config.setCalls).toEqual([]);
+
+		// Toggling back clears the class and the pick.
+		densityButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-timeline')?.classList.contains('pbl-density-compact')).toBe(false);
+		expect(view.density).toBeNull();
+	});
+
+	it('comes back compact across a reopen, and reads a foreign value as comfortable', () => {
+		const vault = datedVault();
+		const first = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
+		first.view.setProjection('roadmap');
+		first.view.setDensity('compact');
+		first.view.onunload();
+
+		const second = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
+		expect(second.view.density).toBe('compact');
+		second.view.onunload();
+
+		// Stored state is user-writable data another version may have written: an
+		// unknown density reads back as the default, never trusted into the class.
+		const map = vault.localStorage.get('product-backlog:collapse') as Record<string, { density?: string }>;
+		map['Plan.base#Roadmap'].density = 'cozy';
+		const third = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
+		expect(third.view.density).toBeNull();
+	});
+});
+

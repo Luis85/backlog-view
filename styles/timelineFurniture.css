@@ -139,3 +139,14 @@
 .pbl-dragging .pbl-bar-label {
 	visibility: hidden;
 }
+
+/* Compact rows: the 14px bar still fits a 24px row. Outranks timeline.css's
+   min-height and the lead's padding by specificity. */
+.pbl-density-compact .pbl-timeline-row .pbl-timeline-track {
+	min-height: 24px;
+}
+
+.pbl-density-compact .pbl-timeline-lead {
+	padding-top: 0;
+	padding-bottom: 0;
+}

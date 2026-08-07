@@ -222,6 +222,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.render();
 	}
 
+	get density(): string | null {
+		return this.collapse.densityPick();
+	}
+
+	setDensity(value: string | null): void {
+		if (value === this.density) return;
+		this.collapse.setDensity(value);
+		// UI state like the zoom: no config was set, so this render is the change.
+		this.render();
+	}
+
 	jumpToToday(): void {
 		const roadmap = this.roadmap;
 		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
