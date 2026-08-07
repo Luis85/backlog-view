@@ -1,7 +1,7 @@
 import { BasesQueryResult, Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, BusyState, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { showMenuForClick } from '../interactions/menu';
+import { offerableTypes, showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
@@ -38,7 +38,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 			// particular is a real thing to want. Except `Deliverable` on the requirements
 			// board, which excludes Deliverables by construction — creating one there
 			// would write a note the board it was created from cannot show.
-			for (const type of topLevelTypes(host)) {
+			for (const type of offerableTypes(host)) {
 				menu.addItem((mi) =>
 					mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
 				);
@@ -424,16 +424,6 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 }
 
 /**
- * The types the toolbar's top-level creator offers. `Deliverable` is withheld on the
- * requirements board for the same reason `Set type` withholds it there
- * (`interactions/menu.ts`): that board excludes Deliverables, so the note would be
- * written and then be nowhere on screen. Everywhere else the whole vocabulary stands.
- */
-function topLevelTypes(host: BacklogViewHost): string[] {
-	return host.projection === 'board' ? ALL_TYPES.filter((type) => !isDeliverableType(type)) : ALL_TYPES;
-}
-
-/**
  * The type the PRIMARY New button makes — `newItemType`'s focus-following answer,
  * filtered through the very list the chevron beside it offers.
  *
@@ -445,7 +435,7 @@ function topLevelTypes(host: BacklogViewHost): string[] {
  * projection does offer, which is the ladder's top in every case today.
  */
 function primaryNewType(host: BacklogViewHost, model: BacklogModel): string {
-	const offered = topLevelTypes(host);
+	const offered = offerableTypes(host);
 	const focused = newItemType(host.settings, model);
 	return offered.includes(focused) ? focused : offered[0];
 }

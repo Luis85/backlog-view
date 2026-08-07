@@ -195,15 +195,17 @@ narrowed to one type.
   Deliverable key — and the row's state chip shows and styles that same value, so the
   chip and the menu it opens can never name two workflows. Everything not typed
   `Deliverable` keeps the requirements workflow everywhere, unchanged.
-- The requirements board offers no way to make a Deliverable from itself: `Deliverable`
-  is withheld from that board's `Set type` submenu and from the toolbar's "New item of
-  another type" picker, because a note it wrote would be excluded from the very board it
+- The requirements board offers no way to make a Deliverable from itself, at **any** of
+  the four surfaces that name a type: `Set type`, a card's own `New <child>`, and both
+  toolbar creators. A note written from there would be excluded from the very board it
   was created on. Withheld, not disabled — the "absent rather than inert" rule the state
   chip already follows — and only there: every other projection offers the whole
-  vocabulary. **Both** creators draw from that one list: the primary New button follows
-  the focus target (`newItemType`), so a `Deliverable` focus left active from another
-  projection would otherwise read "New Deliverable" on the requirements board while the
-  chevron beside it withheld exactly that type.
+  vocabulary. One rule, one function (`offerableTypes`), because it was broken twice by
+  being applied a surface at a time: the primary New button follows the focus target
+  (`newItemType`), so a `Deliverable` focus left active elsewhere read "New Deliverable"
+  while the chevron beside it filtered; and `childTypeChoices` answers about the LADDER
+  — a PBI holds Deliverables — which is a different question from what this board can
+  show, so every card kept offering `New Deliverable` while `Set type` filtered.
 - On a Deliverable card viewed from this board: the card menu's Set state section
   appears whenever the *resolved* Deliverable state key is non-empty — its own key, or
   (falling back) the requirements one — even when the requirements `stateKey` alone

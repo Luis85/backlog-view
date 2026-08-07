@@ -43,6 +43,25 @@ function tracksDeliverableState(item: BacklogItem): boolean {
 }
 
 /**
+ * Which of `types` this projection may offer, for every surface that offers one —
+ * `Set type`, a row's `New <child>`, and (through this same function) the toolbar's two
+ * creators. `Deliverable` is withheld on the requirements board alone, because that
+ * board excludes Deliverables by construction (`renderRequirementsBoard`): a note
+ * created there vanishes on the pass that writes it, with no indication of where it
+ * went. Withheld, not disabled — the "absent rather than inert" rule the state chip and
+ * the axis actions already follow.
+ *
+ * One function, because "the board does not offer a type it cannot show" is one rule
+ * and it was broken twice by being applied at one surface at a time: first the primary
+ * New button while the chevron beside it filtered, then every card's `New Deliverable`
+ * while `Set type` filtered. A new surface that offers a type calls this rather than
+ * reading `ALL_TYPES` or `childTypeChoices` straight.
+ */
+export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPES): string[] {
+	return host.projection === 'board' ? types.filter((type) => !isDeliverableType(type)) : types;
+}
+
+/**
  * The column's menu. A policy is text, not an action, so its one entry is disabled:
  * the menu exists to make the policy reachable without a pointer, and an entry that
  * looked clickable would promise a command that does not exist.
@@ -84,7 +103,11 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	const editable = !item.outsideFilter;
 	// One entry per type rather than one entry that then asks: a menu is already a list
 	// of choices, so naming them here is a click shorter than a picker in the modal.
-	for (const type of childTypes) {
+	// Intersected with what this projection may offer, because `childTypeChoices` answers
+	// a question about the LADDER and this one is about the board on screen — found by
+	// review: an Epic/Feature/PBI card on the requirements board still offered
+	// `New Deliverable`, the same broken creation path the toolbar's own filter closes.
+	for (const type of offerableTypes(host, childTypes)) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(`New ${type}`)
@@ -533,18 +556,6 @@ function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	});
 }
 
-/**
- * `Deliverable` is withheld on the requirements board alone — that board excludes
- * Deliverables by construction (`renderRequirementsBoard`), so picking it there is an
- * offer to make the card vanish with no indication of where it went. Withheld, not
- * disabled: the same "absent rather than inert" rule the state chip and the axis
- * actions follow. Every other projection still offers it, since every other
- * projection can show the result.
- */
-function typeChoices(host: BacklogViewHost): string[] {
-	return host.projection === 'board' ? ALL_TYPES.filter((type) => !isDeliverableType(type)) : ALL_TYPES;
-}
-
 function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	const apply = (level: string) => {
 		void host.applySafely([{ file: item.file, typeName: level }]);
@@ -552,7 +563,7 @@ function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	menu.addItem((mi) => {
 		mi.setTitle('Set type').setIcon('tag');
 		const submenu = submenuOf(mi);
-		for (const level of typeChoices(host)) {
+		for (const level of offerableTypes(host)) {
 			submenu.addItem((si) => {
 				si.setTitle(level).onClick(() => apply(level));
 				if (item.typeName !== null && item.typeName.toLowerCase() === level.toLowerCase()) {

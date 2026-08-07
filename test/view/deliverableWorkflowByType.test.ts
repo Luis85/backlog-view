@@ -127,6 +127,27 @@ describe('the requirements board does not offer a type it cannot show', () => {
 		expect(primary()).toBe('New Epic');
 	});
 
+	it('withholds New Deliverable from a card’s own child creator too', () => {
+		// `childTypeChoices` answers about the LADDER — a PBI holds Deliverables — and
+		// that is a different question from what this board can show. Found by review:
+		// filtering Set type alone left every Epic/Feature/PBI card offering
+		// "New Deliverable", the same creation path the toolbar's filter closes.
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: 'In progress' } });
+		const harness = makeView(vault, CONFIG);
+		const { containerEl } = harness;
+
+		rowByTitle(containerEl, 'P').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('New Deliverable')).toBeDefined();
+
+		harness.view.setProjection('board');
+		cardByTitle(containerEl, 'P').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('New Deliverable')).toBeUndefined();
+		// Withheld, not emptied: the ladder's own child and the other extras remain.
+		expect(Menu.lastShown?.item('New Task')).toBeDefined();
+		expect(Menu.lastShown?.item('New Bug')).toBeDefined();
+	});
+
 	it('withholds New Deliverable from the toolbar’s type picker on the board', () => {
 		const harness = makeView(vaultWithBoth(), CONFIG);
 		const { containerEl } = harness;
