@@ -90,9 +90,12 @@ the guarantee — one model, one write gate, one undo history — and the three 
 that move a card, but takes none of the fourth increment's agreements: no WIP limit,
 no column policy, no date stamp, and it does not honor "Show completed items", since
 completion there is a question the Deliverable workflow answers, not the requirements
-one; its own toolbar creates only Deliverables and its own focus control is
-clear-only. What remains under the epic — lanes, creation from a column, column
-collapse, and the touch verdict a device has to answer — is still design.
+one; its own toolbar creates only Deliverables — and its focus control, briefly
+clear-only while an inherited focus still narrowed this board like any other, was
+later reversed to ignore the focus level outright, since no level narrows this board
+and there is never anything left to clear. What remains under the epic — lanes,
+creation from a column, column collapse, and the touch verdict a device has to
+answer — is still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly

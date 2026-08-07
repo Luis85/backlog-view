@@ -87,7 +87,11 @@ top of them:
   [[A Deliverables board]]). Restoring the two controls restores every eligible result
   to a column; nothing restores a Deliverable to the requirements board's columns,
   because it was never that board's result to begin with — the tree and the roadmap
-  still hold it, and it still counts there.
+  still hold it, and it still counts there. The Deliverables board carries a second,
+  later exception of its own: neither of the two controls narrows IT at all — the
+  focus level was reversed to leave it alone entirely, and "Show completed items"
+  never applied there to begin with — so only the quick filter narrows this one
+  board's population (see [[A board scoped to Deliverables]] extension 3b).
 - No second source of truth: no board-only rank property, no board-only state, no
   state string written that the user did not configure or observe.
 - A row outside the Base's filter obeys the context-row rule on the board exactly as
