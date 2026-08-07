@@ -1246,8 +1246,10 @@ points at the new one. Keep the existing sentence — it is still true — and a
 
 In `docs/requirements/Hierarchy on the board.md` and
 `docs/requirements/Hierarchy on the roadmap.md`, add a sentence to each naming
-[[Children on the card]] as the shared implementation both features draw on. Keep each
-link on one line — a wrapped wikilink fails `docs-check.mjs`.
+`[[Children on the card]]` as the shared implementation both features draw on. Write it
+as a real wikilink in those two notes (no backticks — it is in code style *here* only
+because this plan predates the note it names, and `docs-check.mjs` resolves links inside
+code spans as prose). Keep each link on one line: a wrapped wikilink fails the checker.
 
 - [ ] **Step 4: Register the live-vault check**
 
