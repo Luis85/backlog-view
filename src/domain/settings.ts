@@ -664,33 +664,40 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// `.base` that relies on the defaults grants `Done` a limit the rest of the app
 	// says it cannot have.
 	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
-	// Falls back to the requirements workflow's own EFFECTIVE done values, not the
-	// hardcoded default: "Deliverables don't need their own dedicated status property;
-	// they can use the same one" applies here too, so a vault that customized
-	// `doneValues` must not have that customization ignored the moment the Deliverable
-	// workflow shares it. Both this and `deliverableStates` below are baked in HERE,
-	// eagerly, the same way `effectiveDoneValues` already is — unlike the state KEY
-	// (`resolvedDeliverableStateKey`), a value list carries no collision risk, so there
-	// is no reason for every reader to re-resolve a fallback `resolveSettings` can state
-	// once.
-	const deliverableDoneValuesRaw = list('deliverableDoneValues');
-	const effectiveDeliverableDoneValues =
-		deliverableDoneValuesRaw.length > 0 ? deliverableDoneValuesRaw : effectiveDoneValues;
 	const states = dedupe(list('stateValues'));
-	// The KEY's own fallback condition, named once and used twice: resolved here rather
-	// than only inline in the returned `deliverableStateKey` field, because the states
-	// fallback below has to ask the identical question — not a second one that happens
-	// to agree with it today. See `resolvedDeliverableStateKey`, which states the same
-	// condition (`settings.deliverableStateKey === ''`) for every READER outside this
-	// function; this is that condition's one computation inside it.
+	// The KEY's own fallback condition, named ONCE and consulted by every Deliverable-
+	// workflow field below: the returned `deliverableStateKey` directly, and
+	// `deliverableStates`/`deliverableDoneValues` as the gate in front of each list's
+	// own emptiness check — not three expressions that happen to agree today. Resolved
+	// here, before either list, because both need it. See `resolvedDeliverableStateKey`,
+	// which states the identical condition (`settings.deliverableStateKey === ''`) for
+	// every READER outside this function; this is that condition's one computation
+	// inside it — `deliverableStateKeyOwn` IS what becomes `settings.deliverableStateKey`
+	// below, so the two cannot drift into asking different questions.
 	const deliverableStateKeyOwn = propKey('deliverableStateProperty', fallback.deliverableStateKey);
 	const deliverableKeyFallsBack = deliverableStateKeyOwn === '';
-	// Falls back to the shared workflow's OWN declared states ONLY when the KEY is also
-	// falling back — a Deliverable state property configured on its OWN distinct key,
-	// with no declared states of its own yet, must not borrow a vocabulary that belongs
-	// to a DIFFERENT property. Own key configured: this list still falls through to ITS
-	// OWN observed values (`menuValues`) when left empty, exactly as `states` does for
-	// the requirements workflow — never to `states`, which is not read through that key.
+	// Falls back to the requirements workflow's own EFFECTIVE done values ONLY when the
+	// KEY is also falling back: "Deliverables don't need their own dedicated status
+	// property; they can use the same one" applies here too, so a vault that customized
+	// `doneValues` must not have that customization ignored while the Deliverable
+	// workflow shares its property. An OWN, distinct key with no done values of its own
+	// is a genuinely independent workflow and gets the shipped default
+	// (`fallback.deliverableDoneValues`) instead — never an unrelated property's
+	// customized list, exactly as before this workflow could share anything. Unlike the
+	// state KEY (`resolvedDeliverableStateKey`), a value list carries no collision risk,
+	// so there is no reason for every reader to re-resolve this fallback; both this and
+	// `deliverableStates` below are baked in HERE, eagerly, gated on the SAME condition.
+	const deliverableDoneValuesRaw = list('deliverableDoneValues');
+	const effectiveDeliverableDoneValues = deliverableDoneValuesRaw.length > 0
+		? deliverableDoneValuesRaw
+		: deliverableKeyFallsBack ? effectiveDoneValues : fallback.deliverableDoneValues;
+	// Same rule, over the declared vocabulary rather than the done values: falls back to
+	// the shared workflow's OWN declared states ONLY when the KEY is also falling back —
+	// a Deliverable state property configured on its OWN distinct key, with no declared
+	// states of its own yet, must not borrow a vocabulary that belongs to a DIFFERENT
+	// property. Own key configured: this list still falls through to ITS OWN observed
+	// values (`menuValues`) when left empty, exactly as `states` does for the
+	// requirements workflow — never to `states`, which is not read through that key.
 	const deliverableStatesRaw = dedupe(list('deliverableStateValues'));
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key

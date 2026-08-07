@@ -513,6 +513,21 @@ describe('the Deliverable workflow falls back to the shared one', () => {
 		expect(s.deliverableDoneValues).toEqual(['Shipped', 'Retired']);
 	});
 
+	it('does NOT borrow the shared done values when its own KEY is configured but its own done values are not', () => {
+		// The same partial-override shape as the states test above, for the sibling
+		// field: an OWN, distinct Deliverable state property with no done values of its
+		// own is a genuinely independent workflow — it must get the shipped default,
+		// never the requirements workflow's customized (and unrelated) done values.
+		const s = resolveSettings(
+			fakeConfig({
+				doneValues: 'Shipped, Retired',
+				deliverableStateProperty: 'note.deliverableStatus',
+			}),
+		);
+		expect(s.deliverableStateKey).toBe('deliverableStatus');
+		expect(s.deliverableDoneValues).toEqual(DEFAULT_DONE_VALUES);
+	});
+
 	it('keeps its own done values over the shared list once configured', () => {
 		const s = resolveSettings(fakeConfig({ doneValues: 'Shipped', deliverableDoneValues: 'Published' }));
 		expect(s.deliverableDoneValues).toEqual(['Published']);

@@ -506,5 +506,24 @@ describe('boardColumns with the Deliverables workflow', () => {
 		expect(columnLabels).not.toContain('Active');
 		expect(columnLabels).toContain('Blocked');
 	});
+
+	it("suggests the shipped default as its one-click-done value, never the requirements workflow's customized done values, when its key is configured but its own done values are not", () => {
+		// The sibling of the states test above, for `deliverableDoneValues`: an OWN,
+		// distinct Deliverable state property with no done values of its own is a
+		// genuinely independent workflow. `menuValues` appends a done value once the
+		// observed tier is reached (nothing declared for either list) — that suggestion
+		// must be the shipped default ('Done'), never an unrelated property's
+		// customized ('Shipped') done values.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Blocked' } });
+		const s = resolveSettings(
+			new FakeViewConfig({ doneValues: 'Shipped, Retired', deliverableStateProperty: 'note.deliverableStatus' }),
+		);
+		const model = buildModel(vault.app, vault.entries(), s);
+
+		const board = boardColumns(deliverablesWorkflow(model, s), model.results, everything);
+
+		expect(labels(board)).toEqual(['No state', 'Blocked', 'Done']);
+	});
 });
 
