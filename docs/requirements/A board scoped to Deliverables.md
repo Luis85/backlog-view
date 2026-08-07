@@ -195,6 +195,27 @@ narrowed to one type.
   Deliverable key — and the row's state chip shows and styles that same value, so the
   chip and the menu it opens can never name two workflows. Everything not typed
   `Deliverable` keeps the requirements workflow everywhere, unchanged.
+- The tree's single state column therefore serves BOTH workflows, and asks two different
+  questions to do it: the CELL exists whenever *either* workflow has a key
+  (`hasStateColumn`), and the CHIP inside it is gated on the key *this row's* workflow
+  writes (`stateKeyFor`, the same function `Set state` gates on, so a chip and a menu can
+  never disagree about which key a row writes). A vault configuring only the Deliverable
+  property gets the column, a chip on its Deliverables and an empty cell on every other
+  row — empty rather than absent, or the columns after it shift on that row alone. The
+  header takes the configured property's own display name while one key is in play,
+  fallback included, and the generic word `State` only where two DISTINCT keys share the
+  column, since naming it after either would misidentify the property half the rows below
+  it are showing.
+- **Completion is deliberately NOT type-scoped.** `item.done`, `subtreeDone`, the rollup,
+  the row's finished styling and "Show completed items" all stay the requirements
+  workflow's, on every projection but the Deliverables board (which has no completion
+  concept of its own, above). So a Deliverable carrying a done requirements state and an
+  open Deliverable state reads as done to the tree while its chip says otherwise. That is
+  a known consequence of two distinct keys, accepted rather than overlooked: `subtreeDone`
+  rolls up through a Deliverable's `Task` children, which the requirements workflow tracks,
+  so "this Deliverable is done" and "its subtree is done" would become two claims the model
+  answers as one. Sharing the key — the shipped default — makes the divergence
+  unreachable.
 - The requirements board offers no way to make a Deliverable from itself, at **any** of
   the four surfaces that name a type: `Set type`, a card's own `New <child>`, and both
   toolbar creators. A note written from there would be excluded from the very board it

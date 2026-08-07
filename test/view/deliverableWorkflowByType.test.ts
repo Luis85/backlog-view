@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { flush, makeView, rowByTitle } from '../helpers/view';
+import { flush, makeView, noOptionalProperties, rowByTitle } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
 
 /**
@@ -93,6 +93,47 @@ describe('the workflow an item is tracked by follows its type, not the projectio
 		// one click earlier.
 		expect(chipText('D')).toBe('Draft');
 		expect(chipText('P')).toBe('In progress');
+	});
+});
+
+describe('the state column serves both workflows', () => {
+	const header = (containerEl: HTMLElement) =>
+		containerEl.querySelector('.pbl-cols .pbl-state-col')?.textContent;
+	/** A chip needs a property column to exist, since the header only draws with one. */
+	const withColumn = (harness: ReturnType<typeof makeView>) => {
+		harness.config.order = ['note.points'];
+		harness.view.onDataUpdated();
+		return harness.containerEl;
+	};
+
+	it('takes the generic name only while two DISTINCT keys share the column', () => {
+		// Two workflows on one column: naming it after either misidentifies the property
+		// half the rows below it are showing.
+		expect(header(withColumn(makeView(vaultWithBoth(), CONFIG)))).toBe('State');
+		// One key in play — configured or falling back — and the column is that one
+		// property, named as the user named it.
+		const shared = { stateProperty: 'note.status', stateValues: 'To do, Done' };
+		expect(header(withColumn(makeView(vaultWithBoth(), shared)))).toBe('status');
+		const deliverableOnly = { deliverableStateProperty: 'note.deliverableStatus' };
+		expect(header(withColumn(makeView(vaultWithBoth(), deliverableOnly)))).toBe('deliverableStatus');
+	});
+
+	it('draws the column for a Deliverable-only workflow, with a chip on Deliverables alone', () => {
+		// The menu offers and writes Deliverable states in this configuration, so a tree
+		// showing no chip at all was the menu and the column disagreeing.
+		const { containerEl } = makeView(vaultWithBoth(), { deliverableStateProperty: 'note.deliverableStatus' });
+
+		const cell = (title: string) => rowByTitle(containerEl, title).querySelector('.pbl-state-col');
+		expect(cell('D')?.querySelector('.pbl-state-text')?.textContent).toBe('Draft');
+		// The PBI's own workflow has no key, so no chip — but the cell still renders, or
+		// every column after it would shift on that row alone.
+		expect(cell('P')).not.toBeNull();
+		expect(cell('P')?.querySelector('.pbl-state-chip')).toBeNull();
+	});
+
+	it('renders no state column when neither workflow has a key', () => {
+		const { containerEl } = makeView(vaultWithBoth(), noOptionalProperties());
+		expect(rowByTitle(containerEl, 'D').querySelector('.pbl-state-col')).toBeNull();
 	});
 });
 

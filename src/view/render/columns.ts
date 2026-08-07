@@ -3,6 +3,7 @@ import { BacklogViewHost, ChipProp } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
+import { hasStateColumn, stateKeyFor } from '../../domain/board';
 import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
@@ -80,7 +81,10 @@ function columnFit(
 	depth: number,
 	width: number,
 ): { hideProps: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
-	const state = settings.stateKey ? STATE_COL_WIDTH : 0;
+	// Either workflow's key earns the column, so a Deliverable-only vault budgets for
+	// the chip its rows actually draw. The rollup beside it stays the requirements
+	// workflow's own (`subtreeDone`), so its term keeps asking about `stateKey` alone.
+	const state = hasStateColumn(settings) ? STATE_COL_WIDTH : 0;
 	const horizon = hasHorizonAxis(settings) ? HORIZON_COL_WIDTH : 0;
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
 	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
@@ -189,6 +193,20 @@ export function chipProps(host: BacklogViewHost): ChipProp[] {
 		.map((prop) => ({ prop, label: chipLabel(host, prop), tags: prop === tagsId }));
 }
 
+/**
+ * What the state column is called. One column, and with two workflows configured on
+ * DISTINCT keys it holds two properties — a Deliverable row shows one, every other row
+ * the other — so naming it after either would misidentify the property half the rows
+ * below it are showing. It takes the generic word there, and the configured property's
+ * own display name whenever only one key is in play (including the fallback, where the
+ * two keys ARE one key and there is nothing generic about the answer).
+ */
+function stateColumnLabel(host: BacklogViewHost): string {
+	const { stateKey, deliverableStateKey } = host.settings;
+	if (stateKey && deliverableStateKey && stateKey !== deliverableStateKey) return 'State';
+	return chipLabel(host, `note.${stateKey || deliverableStateKey}`);
+}
+
 function chipLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
 	try {
 		return host.config.getDisplayName(prop);
@@ -220,8 +238,8 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 			text: chipLabel(ctx.host, `note.${settings.horizonKey}`),
 		});
 	}
-	if (settings.stateKey) {
-		header.createDiv({ cls: 'pbl-state-col pbl-col-label', text: chipLabel(ctx.host, `note.${settings.stateKey}`) });
+	if (hasStateColumn(settings)) {
+		header.createDiv({ cls: 'pbl-state-col pbl-col-label', text: stateColumnLabel(ctx.host) });
 	}
 	if (settings.stateKey || settings.showCounts) {
 		header.createDiv({
@@ -245,7 +263,10 @@ export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: Backlo
 	if (hasHorizonAxis(ctx.host.settings)) {
 		renderHorizonChip(ctx.host, row.createDiv({ cls: 'pbl-horizon-col' }), item);
 	}
-	if (ctx.host.settings.stateKey) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
+	// The CELL follows the base's configuration and the CHIP inside it follows the
+	// row's own workflow, so a column that exists for Deliverables alone leaves an empty
+	// cell on every other row rather than shifting the columns after it.
+	if (hasStateColumn(ctx.host.settings)) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
 	renderRollup(ctx.host, row, item);
 }
 
@@ -377,12 +398,18 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
  * Deliverable under the fallback (no Deliverable state property configured) reads the
  * shared key, so this is the identical value either way.
  *
- * The COLUMN itself is still gated on `settings.stateKey` by the caller. With progress
- * tracking off and only a Deliverable state property configured there is no state
- * column at all, so a Deliverable's state is editable on its own board and not in the
- * tree — the same "no column, no chip" rule every other configuration follows.
+ * The CELL is the base's question (`hasStateColumn` — either workflow having a key) and
+ * the CHIP is the row's own (`stateKeyFor` — the key ITS workflow writes). The two are
+ * different tests because they answer different things: a vault that configures only
+ * the Deliverable property still has a state column, and every non-Deliverable row in
+ * it draws an empty cell rather than a "State" button whose picks would be dropped by
+ * `applyWrites`' "never write to an empty key" rule. Empty rather than absent, because
+ * a column that skipped a row would shift every column after it on that row alone.
+ * `stateKeyFor` is the same function `buildItemMenu` gates Set state on, so the chip
+ * and the menu can never disagree about which key this row writes.
  */
 function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
+	if (!stateKeyFor(host.settings, item)) return;
 	const deliverable = isDeliverableType(item.typeName);
 	const value = deliverable ? item.deliverableStateValue : item.stateValue;
 	const done = deliverable ? item.deliverableDone : item.done;

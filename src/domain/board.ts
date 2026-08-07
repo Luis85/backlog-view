@@ -1,6 +1,6 @@
 import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
-import { BacklogSettings, byName, menuValues, stateMenuValues } from './settings';
+import { BacklogSettings, byName, menuValues, resolvedDeliverableStateKey, stateMenuValues } from './settings';
 import { collectObservedStates } from './vocabulary';
 
 /**
@@ -111,6 +111,31 @@ export function requirementsWorkflow(model: BacklogModel, settings: BacklogSetti
 		wipLimits: settings.wipLimits,
 		columnPolicies: settings.columnPolicies,
 	};
+}
+
+/**
+ * The frontmatter key THIS item's state lives under — the resolved Deliverable key for
+ * a Deliverable, the requirements `stateKey` for everything else, and `''` when the
+ * workflow that tracks it has no key configured at all.
+ *
+ * The same "an item's workflow follows its TYPE" rule the chip and the menu both
+ * render from, stated once so they cannot gate on different keys: a chip drawn where
+ * the menu offers nothing, or a menu offering picks that write to an empty key, are
+ * the two halves of one disagreement. `''` is what makes "no key, no affordance" a
+ * single test rather than a per-surface one.
+ */
+export function stateKeyFor(settings: BacklogSettings, item: BacklogItem): string {
+	return isDeliverableType(item.typeName) ? resolvedDeliverableStateKey(settings) : settings.stateKey;
+}
+
+/**
+ * Whether this base has a state column at all: EITHER workflow having a key is enough,
+ * because a vault that configures only the Deliverable one still has Deliverable rows
+ * with a state to show. Rows whose own workflow has no key render an empty cell — every
+ * configured column renders on every row, or the columns after it shift per row.
+ */
+export function hasStateColumn(settings: BacklogSettings): boolean {
+	return settings.stateKey !== '' || settings.deliverableStateKey !== '';
 }
 
 /**

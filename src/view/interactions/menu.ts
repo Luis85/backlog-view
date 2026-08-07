@@ -6,8 +6,8 @@ import { BacklogItem } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
-import { resolvedDeliverableStateKey, stateMenuValues } from '../../domain/settings';
-import { BoardModel, cardPaths, deliverablesWorkflow, hiddenMatches } from '../../domain/board';
+import { stateMenuValues } from '../../domain/settings';
+import { BoardModel, cardPaths, deliverablesWorkflow, hiddenMatches, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -125,10 +125,10 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		// write to an empty key" rule. For a Deliverable this is the RESOLVED key —
 		// falling back to the shared `stateKey` exactly as the write path and the model's
 		// own read do — so the menu offers Set state whenever a move would actually write.
-		const activeStateKey = tracksDeliverableState(item)
-			? resolvedDeliverableStateKey(host.settings)
-			: host.settings.stateKey;
-		if (activeStateKey) addSetStateMenu(host, menu, item);
+		// `stateKeyFor` is the same function the row's state chip gates on
+		// (`render/columns.ts`), so a chip drawn where this menu offers nothing — or the
+		// reverse — is not a mistake either side can make alone.
+		if (stateKeyFor(host.settings, item)) addSetStateMenu(host, menu, item);
 		// Per axis, and absent rather than inert when one is not configured — the state
 		// chip's own rule.
 		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
