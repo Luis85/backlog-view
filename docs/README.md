@@ -120,7 +120,9 @@ dropped back on the shelf removes its keys, exactly as the horizon axis's shelf 
 does. It ships alongside three discrete densities and a jump-to-today, a frame that
 scrolls inside itself rather than the pane, and the date decision moved into the writer
 — the layer that can see a note's live value — so a note's own time, offset and spelling
-survive a gesture that moves its date.
+survive a gesture that moves its date. The dated axis reads as a gantt: a two-tier
+header, weekend banding at week zoom, a labeled today line, striped and hoverable rows,
+titles beside the bars, and a compact density.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a

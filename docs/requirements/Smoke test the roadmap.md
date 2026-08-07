@@ -30,3 +30,6 @@ and each stays open until they are, so a stale check is visible rather than assu
 - [[Roadmap milestone appearance]] — the cyan badge, the diamond, the full-height line
   and its label, two milestones on one date, today's collision, label truncation, and a
   milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
+- The grid furniture stays furniture under a real theme: gridlines, weekend banding
+  and the row stripes read as background behind the bars, and the Today and milestone
+  labels stay legible over the header cells. **Never checked.**

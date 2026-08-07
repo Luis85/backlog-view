@@ -52,11 +52,16 @@ export default defineConfig({
 			// deltas here are taken from. Nothing regressed; the older pair was simply taken
 			// at a different commit, and quoting it as this increment's baseline would have
 			// invented a branches drop that never happened.
+			//
+			// The gantt-reading-polish increment (grid furniture: header tiers, gridlines,
+			// weekend banding, the today label, row tracking, bar labels, the density
+			// toggle) measured 98.00/93.79/99.22/99.22, all four above their thresholds, so
+			// all four move to the actual rounded down to one decimal.
 			thresholds: {
-				statements: 97.66,
-				branches: 93.25,
-				functions: 98.19,
-				lines: 97.06,
+				statements: 98.0,
+				branches: 93.7,
+				functions: 99.2,
+				lines: 99.2,
 			},
 		},
 	},
