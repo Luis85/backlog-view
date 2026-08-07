@@ -1117,33 +1117,90 @@ git commit -m "fix: a card names a matched child once, not twice"
 
 - [ ] **Step 1: Write the failing test**
 
+**Four cases, two per projection.** The rule is about *card projections*, not about the
+board, so board-only coverage would still pass if the controls were always disabled on
+the roadmap, never redrew its bucket and shelf cards, or stayed enabled on a
+timeline-only dated axis. Each projection gets one enabled case and one disabled case.
+
 ```ts
+	function collapseCtls(containerEl: HTMLElement): HTMLButtonElement[] {
+		return Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
+	}
+
+	function collapseCtl(containerEl: HTMLElement, label: string): HTMLButtonElement | undefined {
+		// `iconButton` puts the label in `aria-label`; the button's own text is an icon.
+		return collapseCtls(containerEl).find((b) => b.getAttribute('aria-label') === label);
+	}
+
+	function kidTitlesOf(card: HTMLElement): (string | null)[] {
+		return Array.from(card.querySelectorAll('.pbl-card-kid-title')).map((el) => el.textContent);
+	}
+
 	it('offers Expand all and Collapse all on the board, driving the cards', () => {
 		const { containerEl } = makeBoard(boardVault());
-		const expand = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl')).find(
-			(b) => b.getAttribute('aria-label') === 'Expand all',
-		);
+		const expand = collapseCtl(containerEl, 'Expand all');
 		expect(expand?.disabled).toBe(false);
 
 		expand?.click();
 
-		expect(
-			Array.from(cardByTitle(containerEl, 'Epic B').querySelectorAll('.pbl-card-kid-title')).map(
-				(el) => el.textContent,
-			),
-		).toEqual(['Feature B1', 'Feature B2']);
+		expect(kidTitlesOf(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
+	});
+
+	it('drives the roadmap’s cards too', () => {
+		// A horizon roadmap: its bucket cards and shelf cards both come through
+		// `renderCardBody`, so they carry disclosures exactly as board cards do.
+		const vault = horizonVault();
+		vault.addFile('Feature N1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Now item' });
+		const { containerEl } = makeRoadmap(vault);
+		const expand = collapseCtl(containerEl, 'Expand all');
+		expect(expand?.disabled).toBe(false);
+
+		expand?.click();
+
+		expect(kidTitlesOf(cardByTitle(containerEl, 'Now item'))).toEqual(['Feature N1']);
 	});
 
 	// Half the original gate's reason survives: on a projection that drew no disclosure
 	// these buttons change nothing on screen and still write collapse state, which then
 	// surprises the tree. Disabled, not absent, and on the property rather than in CSS.
-	it('disables them on a card projection that drew no disclosure', () => {
-		// A board with no configured workflow draws guidance, not cards.
+	it('disables them on a board that drew no cards at all', () => {
+		// No configured workflow, so the board draws guidance rather than columns.
 		const { containerEl } = makeBoard(boardVault(), { stateProperty: '', stateValues: '' });
-		const ctls = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
-		expect(ctls.length).toBe(2);
-		expect(ctls.every((b) => b.disabled)).toBe(true);
+		expect(collapseCtls(containerEl).length).toBe(2);
+		expect(collapseCtls(containerEl).every((b) => b.disabled)).toBe(true);
 	});
+
+	it('disables them on a dated roadmap whose only rows are timeline rows', () => {
+		const vault = new FakeVault();
+		// BOTH dated, so both draw bars and neither is unplaceable: the shelf stays
+		// empty, no card body is drawn anywhere in the projection, and there is
+		// genuinely nothing to collapse. This is the case a board-only test cannot
+		// reach — cards exist on screen, and none of them is a card body.
+		vault.addFile('Dated epic.md', {
+			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-12-01' },
+		});
+		vault.addFile('Dated feature.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-09-01', due: '2026-10-01' },
+			parentLink: 'Dated epic',
+		});
+		const { containerEl } = makeRoadmap(vault, DATED_AXIS);
+
+		// Confirm the fixture really is timeline-only before trusting the verdict.
+		expect(shelfTitles(containerEl)).toEqual([]);
+		expect(collapseCtls(containerEl).every((b) => b.disabled)).toBe(true);
+	});
+```
+
+`DATED_AXIS` is the constant defined in Task 3 — if these live in a different file,
+repeat it rather than exporting it from a test:
+`{ startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' }`.
+
+Imports for this block:
+
+```ts
+import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
+import { horizonVault, makeRoadmap, shelfTitles } from '../helpers/roadmap';
+import { FakeVault } from '../helpers/vault';
 ```
 
 Check the accessible-name attribute `iconButton` sets before writing the finder — read
@@ -1213,12 +1270,23 @@ and add it to the import from `./render/toolbar` on line 27.
 Run: `npx vitest run test/view/toolbar.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Watch the second assertion fail**
+- [ ] **Step 6: Watch the disabled cases fail**
 
 Temporarily change `nothingToCollapse` to `false`.
 
-Run: `npx vitest run test/view/toolbar.test.ts -t 'no disclosure'`
-Expected: FAIL — the buttons are enabled. Restore and re-run: PASS.
+Run: `npx vitest run test/view/toolbar.test.ts -t 'disables them'`
+Expected: FAIL — **both** cases, the board one and the dated-roadmap one. If only the
+board case goes red, the roadmap fixture is not timeline-only; the `shelfTitles`
+assertion inside it should have caught that, so fix the fixture.
+
+Restore and re-run: PASS.
+
+Then the mirror check — temporarily change `nothingToCollapse` to
+`host.projection !== 'tree'` (the naive "always disabled off the tree" bug):
+
+Run: `npx vitest run test/view/toolbar.test.ts -t 'Expand all|roadmap'`
+Expected: FAIL on both enabled cases. This is the failure mode board-only coverage
+would have missed entirely. Restore.
 
 - [ ] **Step 7: Run the full check and commit**
 
