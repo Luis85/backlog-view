@@ -1180,8 +1180,14 @@ git commit -m "Toggle compact timeline rows from the toolbar"
 
 - [ ] **Step 1: Find the new PBI's order**
 
-Run: `grep -l 'parent: "\[\[The timeline\]\]"' docs/requirements/*.md | xargs grep '^order:'`
-Pick `order: <highest + 10>`.
+Run: `grep -rZl 'parent: "\[\[The timeline\]\]"' docs/requirements | xargs -0 grep -H '^order:'`
+
+NUL-delimited, because every note in this register is named in prose and half of them
+contain spaces — plain `xargs` splits `Bars from two dates.md` into four arguments and
+the pipeline exits 123 having reported nothing.
+
+As of writing that prints 10, 20 and 30, so the value below is **40**. Re-run it anyway:
+a sibling landing first moves it.
 
 - [ ] **Step 2: Write the note**
 
@@ -1191,7 +1197,7 @@ Create `docs/requirements/Reading the grid.md` (adjust `order:` per Step 1):
 ---
 type: PBI
 parent: "[[The timeline]]"
-order: 60
+order: 40
 status: Done
 priority: P2
 created: 2026-08-05
