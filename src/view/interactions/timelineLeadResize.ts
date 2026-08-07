@@ -91,19 +91,32 @@ export function renderLeadResize(
 		const startX = evt.clientX;
 		const startWidth = host.leadWidth ?? defaultWidth;
 		const onMove = (moveEvt: PointerEvent): void => live(clampLeadWidth(startWidth + (moveEvt.clientX - startX)));
-		const onUp = (upEvt: PointerEvent): void => {
+		const end = (evt: PointerEvent): void => {
 			grip.removeEventListener('pointermove', onMove);
 			grip.removeEventListener('pointerup', onUp);
-			grip.removeEventListener('pointercancel', onUp);
-			grip.releasePointerCapture?.(upEvt.pointerId);
+			grip.removeEventListener('pointercancel', onCancel);
+			grip.releasePointerCapture?.(evt.pointerId);
+		};
+		const onUp = (upEvt: PointerEvent): void => {
+			end(upEvt);
 			commit(clampLeadWidth(startWidth + (upEvt.clientX - startX)));
+		};
+		// A cancel is the platform saying the gesture stopped being the user's — palm
+		// rejection, an orientation change, another gesture taking it over. The width it
+		// happened to reach is one nobody chose, so it is put BACK rather than saved:
+		// `live` alone, never `commit`, which also leaves the store with no entry to
+		// take away later. `touch-action: none` does not make this rare — that stops the
+		// scroller stealing the pan, not the platform interrupting.
+		const onCancel = (cancelEvt: PointerEvent): void => {
+			end(cancelEvt);
+			live(startWidth);
 		};
 		// On the grip itself, riding pointer capture — not `window`: capture keeps the
 		// stream targeted here even once the pointer leaves the 6px strip, so there is
 		// nothing left for a window-level net to catch.
 		grip.addEventListener('pointermove', onMove);
 		grip.addEventListener('pointerup', onUp);
-		grip.addEventListener('pointercancel', onUp);
+		grip.addEventListener('pointercancel', onCancel);
 	});
 
 	grip.addEventListener('keydown', (evt) => {

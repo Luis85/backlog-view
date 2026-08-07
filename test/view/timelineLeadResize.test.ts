@@ -74,6 +74,34 @@ describe('the lead-column resize grip', () => {
 			expect(vault.writeLog).toHaveLength(0);
 		});
 
+		it('takes back a cancelled gesture rather than saving where it was interrupted', () => {
+			// `pointercancel` is the browser saying the gesture is not the user's any more —
+			// palm rejection, an orientation change, another gesture taking over. None of
+			// those is a width anybody chose, and `touch-action: none` prevents none of
+			// them: it stops the scroller stealing the pan, not the platform interrupting.
+			const vault = datedVault();
+			const { view, containerEl, config } = makeView(vault, DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+
+			const el = grip(containerEl);
+			const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+			if (!content) throw new Error('no timeline content');
+
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 60));
+			el.dispatchEvent(pointer('pointercancel', 60));
+
+			// Nothing stored, and the live column put back where the gesture found it.
+			expect(view.leadWidth).toBeNull();
+			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${TIMELINE_LEAD_PX}px`);
+			expect(config.setCalls).toEqual([]);
+			expect(vault.writeLog).toHaveLength(0);
+
+			// And the gesture is over: a later move is not still resizing.
+			el.dispatchEvent(pointer('pointermove', 200));
+			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${TIMELINE_LEAD_PX}px`);
+		});
+
 		it('clamps at both ends rather than accepting whatever the pointer names', () => {
 			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
 			view.setProjection('roadmap');

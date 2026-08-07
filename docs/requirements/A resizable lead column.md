@@ -59,6 +59,10 @@ bigger constant, since no single number fits every vault's titles.
 - **3a — a step (or a drag) lands back on the default width.** Stores null, not the
   default number — the same "absence is the default" rule `density` already follows,
   so the entry needs no field for the common case of never having resized at all.
+- **2b — the platform cancels the gesture.** Palm rejection, an orientation change, or
+  another gesture taking over ends the drag with `pointercancel`, and the width it had
+  reached is one nobody chose: the column goes back to where the gesture found it and
+  nothing is stored. Only a release commits.
 - **5a — a stored width this plugin never wrote, or one outside the clamp range.** Read
   defensively and dropped, like every stored pick: the view opens at the default width
   rather than trusting a corrupt-but-plausible number into the layout.
