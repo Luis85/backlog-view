@@ -202,12 +202,10 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const model = host.model;
 	if (!label || !model) return;
 	const onDeliverables = host.projection === 'deliverables';
-	const onRequirementsBoard = host.projection === 'board';
-	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const population = onDeliverables
 		? model.deliverableResults
-		: onRequirementsBoard
-			? model.results.filter((item) => !isDeliverable(item))
+		: host.projection === 'board'
+			? model.results.filter((item) => !isDeliverableType(item.typeName))
 			: model.results;
 	const hidden = (item: BacklogItem): boolean =>
 		onDeliverables ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
@@ -346,12 +344,8 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	});
 
 	if (active === '') return;
-	renderFocusClearButton(wrap, setLevel);
-}
-
-/** The one-click way back to "All types" — shared by the ordinary picker and the
- * Deliverables board's reduced, escape-hatch-only form of it. */
-function renderFocusClearButton(wrap: HTMLElement, setLevel: (level: string) => void): void {
+	// The one-click way back to "All types". The Deliverables board returns above
+	// without one: nothing narrows that board, so there is nothing to clear.
 	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
 		attr: { type: 'button', 'aria-label': 'Show all types' },

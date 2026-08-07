@@ -1,5 +1,7 @@
+import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { BacklogSettings, byName, menuValues, stateMenuValues } from './settings';
+import { collectObservedStates } from './vocabulary';
 
 /**
  * Deriving the board from the model and the settings: which columns exist, which
@@ -87,12 +89,24 @@ export interface Workflow {
 	columnPolicies: Record<string, string>;
 }
 
-/** The requirements board's workflow — `boardColumns`' original, only caller until now. */
+/**
+ * The requirements board's workflow — `boardColumns`' original, only caller until now.
+ *
+ * `observedValues` is the stray-column vocabulary, and it is collected here rather
+ * than taken from `model.observedStates`: Deliverables are managed on their own board
+ * (`renderRequirementsBoard`) and never become a card here, so a state value carried
+ * only by one must not mint a column nothing can ever land in. Stated in this factory
+ * rather than spread-and-overridden at the call site, so the domain tests exercise the
+ * same workflow the view builds instead of one the view then replaces a field of.
+ */
 export function requirementsWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
 	return {
 		stateOf: (item) => item.stateValue,
 		values: stateMenuValues(settings, model.observedStates),
-		observedValues: model.observedStates,
+		observedValues: collectObservedStates(
+			model.results.filter((item) => !isDeliverableType(item.typeName)),
+			settings,
+		),
 		doneValues: settings.doneValues,
 		wipLimits: settings.wipLimits,
 		columnPolicies: settings.columnPolicies,

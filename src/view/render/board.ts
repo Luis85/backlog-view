@@ -18,7 +18,6 @@ import {
 } from '../../domain/board';
 import { childTypeChoices, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { collectObservedStates } from '../../domain/vocabulary';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
@@ -92,21 +91,13 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	// exclusion must not be the one place a Deliverable alone loses it. It still counts
 	// nowhere: `population` below is unchanged, and `boardColumns` already zeroes every
 	// `outsideFilter` card out of both `count` and `fullCount` regardless of type.
-	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const board = boardColumns(
-		{
-			...requirementsWorkflow(model, host.settings),
-			// The same collector `model.observedStates` itself is built from, fed a
-			// Deliverable-free population — a coincidental state value on one must not
-			// open a stray column here that nothing else would ever land in.
-			observedValues: collectObservedStates(
-				model.results.filter((item) => !isDeliverable(item)),
-				host.settings,
-			),
-		},
+		// Its `observedValues` is already Deliverable-free — the stray-column half of
+		// this same exclusion, stated in the workflow itself.
+		requirementsWorkflow(model, host.settings),
 		model.focused ? model.roots : model.results,
-		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverable(item)),
-		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverable(item),
+		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverableType(item.typeName)),
+		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverableType(item.typeName),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performBoardMove(item, state),
