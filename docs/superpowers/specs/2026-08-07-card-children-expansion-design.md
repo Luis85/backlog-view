@@ -61,9 +61,9 @@ type when they share one (`3 features`) or the neutral `3 items` when they do no
 
 The plural is a naive `+ s`, the same shape `columnLabel` already uses for `1 card` /
 `2 cards`. Type names are user data, so a declared type that does not pluralize that way
-reads slightly wrong; the ceiling is a word, never an action, and `[[English ships
-alone]]` is what makes it acceptable for now. The `1 child` / `n children` fallback needs
-no such caveat.
+reads slightly wrong; the ceiling is a word, never an action, and it is
+[[English ships alone]] that makes it acceptable for now. The `1 child` / `n children`
+fallback needs no such caveat.
 
 A card with no visible direct children renders nothing at all — no chevron, no empty
 line. That is the tree's own rule for a row whose children have all hidden: the chevron
@@ -100,6 +100,14 @@ primary event alone still let the card's `auxclick` open the *parent* in a new t
 is a bug this codebase already shipped and fixed once, in the card's search-match links;
 the same two handlers are the fix here.
 
+**The toggle stops propagation too.** `wireCardActivation` listens on the whole
+`.pbl-card`, so a click on the disclosure button bubbles to it and opens the parent note
+— the same defect as above, on the one control whose entire purpose is to *not* leave the
+board. It is the more dangerous instance, because the card still expands underneath the
+note that just opened, so the toggle looks like it worked. Every listener this feature
+adds inside a card stops propagation; the rule is stated once, at the card boundary,
+rather than remembered per control.
+
 ### Expansion state
 
 `host.isCollapsed(path)` and `host.setCollapsed(path, …)` — the tree's own state, not a
@@ -111,6 +119,18 @@ second one. Consequences, all of them intended:
   bit, one meaning: *this node is open*.
 - Collapse all and Expand all in the toolbar reach cards without knowing they exist.
 - `collapseNewParents` settles each path once, so a write does not snap open cards shut.
+
+**While the quick filter runs, the toggle is `disabled`.** The filter *overrides* collapse
+state rather than replacing it — `BacklogView.isCollapsed` returns
+`!filter.active && collapse.isCollapsed(path)`, so everything on a match path renders
+expanded — while `setCollapsed` still writes through. A live toggle would therefore
+mutate persisted state, report expanded on the very next read, appear to do nothing, and
+then collapse the item minutes later when the filter cleared. The tree already refuses
+that: its collapse controls take a real `disabled` flag in `syncFilterUi`, on the stated
+grounds that disabling a focusable control in CSS is a lie — `pointer-events: none` stops
+a mouse and nothing else. The card's toggle takes the same flag, from the same place, for
+the same reason. Filtering thus lists every visible card's children, which is what makes
+the deduplication rule below unconditional rather than a special case.
 
 Toggling rebuilds **that card's list in place** and nothing else — no board rebuild, no
 model rebuild, and no element search: the handler closes over the card's own container.
@@ -143,10 +163,21 @@ cards. So, exactly as `.pbl-add`, the state chip and the match links already are
 - The disclosure toggle is a real `<button>` with `tabindex="-1"` and `aria-expanded`,
   reachable by assistive technology and invisible to Tab.
 - Each child entry is a `<button>` with `tabindex="-1"`.
-- The **card menu is the keyboard path**: a children section offering an expand/collapse
-  entry and an `Open child "…"` entry per listed child. Without it the feature is
-  pointer-only, which is the failure the match links' own comment names — a list of
-  children nobody without a mouse can reach is not a list of children.
+- The **card menu is the keyboard path**: a children section offering an
+  `Open child "…"` entry per listed child. Without it the feature is pointer-only, which
+  is the failure the match links' own comment names — a list of children nobody without a
+  mouse can reach is not a list of children.
+
+The menu offers **no expand/collapse entry**, deliberately. The purpose of the keyboard
+path is to *reach* a child, and `Open child "…"` reaches it whether the card is expanded
+or not — expansion is a visual affordance, and the toggle itself is already activatable
+by assistive technology, which is exactly what `tabindex="-1"` buys. Adding the entry
+would buy nothing and cost a new host API: `buildItemMenu` holds only `host` and `item`,
+the in-place rebuild lives in a closure the render owns, and `refreshSubtree` is the
+tree's. So the entry could set collapse state but not redraw the card without a full
+`host.render()` — a board rebuild, contradicting the paragraph above it. A menu entry
+whose only honest implementation is the thing the spec forbids is an entry not worth
+having.
 
 The list is a `<ul>` of `<li>`s labelled by the disclosure, so a reader is told how many
 children there are before it reads them.
@@ -183,9 +214,11 @@ narrowing the walk would take grandchildren with it.
 
 ### 4. `addChildrenSection` in `src/view/interactions/menu.ts`
 
-Beside `addMatchSection`, reading the same `listedChildren`. Gated on the card
-projections (`host.projection !== 'tree'`), because in the tree the row's own children
-are already on screen and its chevron already toggles them.
+Beside `addMatchSection`, reading the same `listedChildren`. `Open child "…"` entries
+only — see Behaviour, Keyboard and assistive technology, for why there is no
+expand/collapse entry. Gated on the card projections (`host.projection !== 'tree'`),
+because in the tree the row's own children are already on screen and its chevron already
+toggles them.
 
 ### 5. Context cards
 
@@ -235,11 +268,17 @@ harness:
   implementation.
 - Clicking a child opens **the child**; middle-clicking opens the child in a new tab.
   Both assert the parent was not opened, because that is the failure mode.
+- Clicking the **toggle** opens nothing — the same assertion on the control that must
+  never leave the board, since an expansion that also opened the note would still look
+  like it worked.
+- The toggle is `disabled` while the quick filter runs, and every card lists its children
+  in that state. Asserted on the flag, not on a class: a control disabled only in CSS
+  still answers a keyboard.
 - The toggle writes collapse state, and an expanded card survives a data update — the
   regression that ephemeral state would have caused.
 - Expanding a card expands the same item's row in the tree, since that shared bit is a
   decision and not an accident.
-- The card menu offers the same children the card lists, and offers expand/collapse.
+- The card menu offers the same children the card lists.
 
 `test/view/contextCardWrites.test.ts` — extended: a context card's disclosure renders,
 lists, opens, and writes nothing on any of its paths.
