@@ -1,5 +1,13 @@
 # Gantt Reading Polish Implementation Plan
 
+> **Superseded 2026-08-07, in part:** Task 4's today-label pill (`.pbl-today-label`, the
+> `.pbl-timeline-band` it mounted in, and `HeaderTiers.todayBand`) was removed once a
+> legend strip existed to name the today line's colour instead — see
+> `docs/requirements/State colour and a legend.md`. The rest of this plan (gridlines,
+> weekend banding, the two-tier header, row tracking, bar labels, the density toggle)
+> still describes what shipped. Left as a transcript of the tasks as they were executed
+> rather than rewritten task-by-task.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Furnish the roadmap's dated axis so it reads as a gantt chart — body gridlines, weekend banding, a labeled today marker, a two-tier header, row tracking, bar labels, and a compact row density toggle.

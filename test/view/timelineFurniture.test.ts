@@ -84,33 +84,11 @@ describe('grid rhythm', () => {
 		expect(containerEl.querySelector('.pbl-weekend-layer')).toBeNull();
 	});
 
-	it('names the today line in the header, at the line’s own offset', () => {
-		const { view, containerEl } = datedRoadmap(furnishedVault());
-		const label = containerEl.querySelector<HTMLElement>('.pbl-today-label');
-		if (!label) throw new Error('no today label');
-		expect(label.textContent).toBe('Today');
-		const trackLeft = parseFloat(label.style.getPropertyValue('--pbl-today-left'));
-		expect(TIMELINE_LEAD_PX + trackLeft).toBe(view.roadmap?.todayLeft ?? -1);
-	});
-
-	it('gives the today pill a strip nothing else draws in', () => {
-		// The pill is opaque and placed by a day offset, so anything else it shares a
-		// strip with can end up underneath it: a milestone dated today in the cell
-		// tier, or — since the bottom tier drops the year — the super tier's `2026`
-		// when today falls near a super cell's start. Its own band is the whole rule.
+	it('still draws the today line itself, unlabeled — the legend names its colour now', () => {
 		const { containerEl } = datedRoadmap(furnishedVault());
-		const band = containerEl.querySelector<HTMLElement>('.pbl-timeline-band');
-		if (!band) throw new Error('no today band');
-		expect(band.children).toHaveLength(1);
-		expect(band.firstElementChild?.classList.contains('pbl-today-label')).toBe(true);
-		const milestone = containerEl.querySelector<HTMLElement>('.pbl-milestone-label');
-		expect(milestone?.parentElement?.classList.contains('pbl-timeline-band')).toBe(false);
-		// The band also has to be the FIRST strip, not merely an exclusive one: moving its
-		// creation below the two tier tracks would leave it holding only the pill and still
-		// stack it under the cells, which is what "own strip" is for.
-		const tiers = band.parentElement;
-		if (!tiers) throw new Error('no tiers wrapper');
-		expect(tiers.firstElementChild).toBe(band);
+		expect(containerEl.querySelector('.pbl-today')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-today-label')).toBeNull();
+		expect(containerEl.querySelector('.pbl-timeline-band')).toBeNull();
 	});
 });
 

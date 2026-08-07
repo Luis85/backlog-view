@@ -62,6 +62,12 @@ export default defineConfig({
 			// new watched-failing tests it required) measured 98.01/93.81/99.23/99.23.
 			// Only branches rounds down to a new decimal (93.8, up from 93.7); the other
 			// three round down to the figure already recorded above and stay put.
+			//
+			// The per-state bar colour and legend increment (a domain slot function, the
+			// legend's own render module, the Today pill's removal) measured
+			// 98.01/93.82/99.23/99.23 — statements, functions and lines exactly repeat the
+			// figure above and branches ticks up 0.01, which still rounds down to the same
+			// 93.8, so none of the four move.
 			thresholds: {
 				statements: 98.0,
 				branches: 93.8,

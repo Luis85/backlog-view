@@ -396,6 +396,30 @@ export function stateMenuValues(settings: BacklogSettings, observedStates: strin
 }
 
 /**
+ * Palette slots the roadmap's dated axis rotates a state's bar colour through — see
+ * `stateColorSlot`. Five, not eight: red is the today line's own colour and cyan the
+ * milestone line's (`styles/timeline.css`), and green is the done rule's, so keeping
+ * the rotation clear of all three is what lets the legend tell a state's bar apart
+ * from the furniture around it.
+ */
+export const STATE_COLOR_SLOTS = 5;
+
+/**
+ * Which palette slot a state value's bar takes on the roadmap's dated axis: its index
+ * in `stateMenuValues` — the same vocabulary the board's columns and the Set state
+ * menu use, so a bar and a menu entry can never disagree about a state's colour —
+ * wrapped modulo `STATE_COLOR_SLOTS` so a vocabulary longer than the palette repeats
+ * rather than running out. No state, or a value outside the vocabulary (an item's own
+ * unlisted value, most often), gets no slot: null, which is the bar's plain accent
+ * colour rather than a guess.
+ */
+export function stateColorSlot(settings: BacklogSettings, observedStates: string[], state: string | null): number | null {
+	if (state === null) return null;
+	const index = stateMenuValues(settings, observedStates).findIndex((value) => value.toLowerCase() === state.toLowerCase());
+	return index === -1 ? null : index % STATE_COLOR_SLOTS;
+}
+
+/**
  * Whether a state value counts as done, by the same case-insensitive match the model
  * and the board's columns already use. Takes a VALUE rather than an item because the
  * stamps ask it of a state being written, which no item holds yet.

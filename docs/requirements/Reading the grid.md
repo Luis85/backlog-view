@@ -39,8 +39,10 @@ nothing is written, and no rendering decision changes what places or what shelve
    both clipped to the window, the bottom tier dropping the year the top tier carries.
 2. Each interior cell boundary extends down the grid body; at week zoom, weekends
    shade as a single repeating band phased to the window's first Saturday.
-3. The today line's date names itself with a Today label in a header strip of its own,
-   above both tiers, so it can bury neither a milestone's name nor the year.
+3. The today line renders unlabeled; its colour is named by the legend strip above
+   the grid instead, and its exact date stays on its tooltip —
+   [[State colour and a legend]] retired the header-band pill this bullet used to
+   describe, once a legend existed to make it redundant.
 4. Alternate rows stripe, the hovered row highlights across lead and track, and the
    sticky lead column carries a shadow once the grid is scrolled.
 5. Each bar carries its title beside it in the track, flipping to the bar's other
@@ -70,8 +72,8 @@ nothing is written, and no rendering decision changes what places or what shelve
 - Gridlines are one per interior cell boundary — none at day 0, where the lead
   column's border already is.
 - Weekend banding renders at week zoom only, phased by `weekendOffsetDays`.
-- The Today label mounts in a header strip of its own, above both tiers, never beside
-  a milestone label.
+- The today line carries no label of its own; [[State colour and a legend]] is where
+  its colour is now named.
 - Bar labels are aria-hidden, take no pointer events, flip sides against
   `LABEL_RESERVE_PX`, are dropped entirely when there is no room on either side of the
   bar — a bar clipped at both window edges, and also a bar clipped at the right alone
@@ -86,9 +88,10 @@ nothing is written, and no rendering decision changes what places or what shelve
 ## Where it lives
 
 `superCells`, `weekendOffsetDays` and the year-free `cellLabel` in
-`src/domain/timeline.ts`; the tiers, the today band, gridlines, weekend layer, stripes,
-scroll shadow and bar labels — dropped when neither side has room — in
-`src/view/render/timeline.ts`; the density toggle in `src/view/render/toolbar.ts` over
+`src/domain/timeline.ts`; the tiers, gridlines, weekend layer, stripes, scroll shadow
+and bar labels — dropped when neither side has room — in `src/view/render/timeline.ts`
+(the today band it once also drew is gone; see [[State colour and a legend]]); the
+density toggle in `src/view/render/toolbar.ts` over
 a `density` field beside `zoom` in `src/storage/collapseStore.ts`, held in
 `src/view/collapseState.ts` exactly like the zoom beside it; the rules in
 `styles/timelineFurniture.css`. Driven in `test/domain/timeline.test.ts`,

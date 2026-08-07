@@ -3,11 +3,9 @@
    Position in index.css is NOT load-bearing: everything here that overrides
    `timeline.css` outranks it by specificity, never by order. */
 
-/* The track slot of the header, holding the today band and two stacked tracks. Block
-   layout: each track keeps its own `width: var(--pbl-tl-days)`, and the flex-basis the
-   track class declares is inert outside a flex parent. `.pbl-timeline-band` needs no
-   rule of its own — it is a plain block filling this width, and its height is whatever
-   the pill inside it turns out to be. */
+/* The track slot of the header, holding two stacked tracks. Block layout: each track
+   keeps its own `width: var(--pbl-tl-days)`, and the flex-basis the track class
+   declares is inert outside a flex parent. */
 .pbl-timeline-tiers {
 	flex: 0 0 var(--pbl-tl-days);
 	width: var(--pbl-tl-days);
@@ -61,21 +59,6 @@
 	);
 	background-size: calc(var(--pbl-day-px) * 7) 100%;
 	background-position-x: var(--pbl-weekend-offset);
-}
-
-/* The milestone label's shape at the today line's own offset, red to match the line
-   it names — but RELATIVE, not absolute, and that is the point. In flow it gives the
-   otherwise-empty band its height, so no constant has to be kept in step with the
-   pill's font for the strip to fit it; `left` then nudges it to the date without
-   taking it back out of flow. Nothing shares the strip, so it needs no backing. */
-.pbl-today-label {
-	position: relative;
-	left: var(--pbl-today-left);
-	display: inline-block;
-	padding: var(--size-4-1);
-	font-size: var(--font-ui-smaller);
-	font-weight: 600;
-	color: var(--color-red);
 }
 
 /* Ordered faint-to-strong: zebra under hover, both translucent so the weekend

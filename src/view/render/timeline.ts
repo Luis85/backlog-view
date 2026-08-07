@@ -6,6 +6,7 @@ import { CardDragController } from '../interactions/cardDrag';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
+import { stateColorSlot } from '../../domain/settings';
 import {
 	BarGeometry,
 	barGeometry,
@@ -77,6 +78,13 @@ export interface TimelineDrawing {
 	scale: TimelineScale;
 	/** The controller every bar's grips are wired through — the same one the shelf uses. */
 	dnd: CardDragController;
+	/**
+	 * The vocabulary `stateColorSlot` indexes a bar's colour into — passed down by
+	 * `renderRoadmap`, which already holds the non-null model this axis draws from,
+	 * rather than re-read here off `ctx.host.model`: a bar exists only because a model
+	 * did, so a second null check here would guard nothing reachable.
+	 */
+	observedStates: string[];
 }
 
 export function renderTimeline(
@@ -85,7 +93,7 @@ export function renderTimeline(
 	bars: TimelineBar[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
-	const { today, scale, dnd } = drawing;
+	const { today, scale, dnd, observedStates } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// TWO elements, not one. The scroll box is the outer one; the positioned layer is
 	// the inner. Full-height marks — the today line, the milestone lines, and the drop
@@ -115,14 +123,14 @@ export function renderTimeline(
 		const weekend = content.createDiv({ cls: 'pbl-weekend-layer', attr: { 'aria-hidden': 'true' } });
 		weekend.setCssProps({ '--pbl-weekend-offset': `${weekendOffsetDays(window) * scale.dayPx}px` });
 	}
-	const { cells: headerTrack, todayBand } = renderCellHeader(content, window, scale);
+	const headerTrack = renderCellHeader(content, window, scale);
 	renderGridLines(content, window, scale);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
 	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
 	const tracks = new Map<string, HTMLElement>();
-	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks };
+	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
 	bars.forEach((bar, index) => {
 		const row = renderBarRow(ctx, mounts, window, bar, scale);
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
@@ -136,16 +144,6 @@ export function renderTimeline(
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
-	// The band, which exists so this pill shares a strip with nothing. It is opaque
-	// and placed by a day offset, so in either tier it would sooner or later land on
-	// top of something: a milestone label in the cell tier, whose hover reveals a
-	// name nothing else states, or — since the cells now drop the year — the super
-	// tier's `2026`, the only place the year appears at all. Neither can be dodged by
-	// nudging pixels the way the two 2px LINES are, because these are labels wide
-	// enough to overlap for days on either side of the date.
-	const todayLabel = todayBand.createDiv({ cls: 'pbl-today-label', text: 'Today' });
-	todayLabel.setCssProps({ '--pbl-today-left': `${todayOffset(window, today, scale)}px` });
-	setTooltip(todayLabel, formatCivil(today));
 	// One overlay over the day area, spanning the full height of the CONTENT (which is
 	// at least the scrollport, so the blank grid below the last row — the state every
 	// fresh backlog starts in — is a drop target too). Positioned past the sticky lead
@@ -160,27 +158,20 @@ export function renderTimeline(
 	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay, headerTrack, tracks };
 }
 
-/** What the header hands back: the tier a mark mounts against, per mark. */
-interface HeaderTiers {
-	/** The cell tier — `TimelineRender.headerTrack`, where the milestone labels and the drop ghost mount. */
-	cells: HTMLElement;
-	/** The empty strip above both tiers, which the today pill has to itself (Task 4). */
-	todayBand: HTMLElement;
-}
-
-/** Presentational, like the tree's column header: every row carries its own dates. */
-function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HeaderTiers {
+/**
+ * Presentational, like the tree's column header: every row carries its own dates.
+ * Returns the cell tier alone — `TimelineRender.headerTrack`, where the milestone
+ * labels and the drop ghost mount. It once also handed back an empty band reserved
+ * for the Today pill; the legend strip above the grid took over naming the today
+ * line's colour, so the pill and its band are gone and this is a plain track again.
+ */
+function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
 	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-timeline-lead' });
-	// Three stacked strips in the track slot: an empty band, then the coarser
-	// orientation tier, then the cells. The band is created here rather than where
-	// its pill is so it lands ABOVE both tiers — a mark appended later would sit
-	// under them. Why the pill gets a strip nobody else draws in: see renderTimeline.
+	// Two stacked tiers in the track slot: the coarser orientation tier, then the cells.
 	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers' });
-	const todayBand = tiers.createDiv({ cls: 'pbl-timeline-band' });
 	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
-	const cells = renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
-	return { cells, todayBand };
+	return renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
 }
 
 function renderHeaderTier(
@@ -275,6 +266,8 @@ interface BarRowMounts {
 	dnd: CardDragController;
 	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
 	tracks: Map<string, HTMLElement>;
+	/** See `TimelineDrawing.observedStates`. */
+	observedStates: string[];
 }
 
 function renderBarRow(
@@ -286,6 +279,14 @@ function renderBarRow(
 ): HTMLElement {
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
+	// The bar's colour, by the item's own state — never computed here: `stateColorSlot`
+	// is the one place that decides a slot, so a bar and the Set state menu cannot name
+	// a state a different colour. No slot (no state, or a value the vocabulary does not
+	// carry) adds no class, and the bar keeps its plain accent — `styles/timeline.css`
+	// owns what a slot actually paints, mirroring the level badge's TS-adds-the-class,
+	// CSS-owns-the-colour split.
+	const slot = stateColorSlot(ctx.host.settings, mounts.observedStates, bar.item.stateValue);
+	if (slot !== null) row.addClass(`pbl-state-${slot}`);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderBadge(ctx.host, lead, bar.item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });

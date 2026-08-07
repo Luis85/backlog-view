@@ -27,6 +27,7 @@ import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
+import { renderLegend } from './render/legend';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
@@ -50,6 +51,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	readonly viewEl: HTMLElement;
 	private toolbarEl: HTMLElement;
+	private legendEl: HTMLElement;
 	private treeEl: HTMLElement;
 	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
@@ -89,6 +91,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		super(controller);
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view' });
 		this.toolbarEl = this.viewEl.createDiv({ cls: 'pbl-toolbar' });
+		// Below the toolbar, above the tree, so a legend rendered into it never scrolls
+		// away with the timeline it keys — the class it draws under is toggled by
+		// `renderLegend` itself, which is also what makes it absent (not merely hidden)
+		// off the dated axis.
+		this.legendEl = this.viewEl.createDiv();
 		this.treeEl = this.viewEl.createDiv({
 			cls: 'pbl-tree',
 			attr: { role: 'tree', tabindex: '0' },
@@ -463,10 +470,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	// ------------------------------------------------------------------- render
 
 	render(): void {
-		if (!this.model) return;
+		const model = this.model;
+		if (!model) return;
 		renderToolbar(this, this.toolbarEl);
 		// The toolbar was just rebuilt; a batch may still be running behind it.
 		this.syncBusyUi();
+		renderLegend(this, this.legendEl, model.observedStates);
 		this.renderTreeContent();
 	}
 

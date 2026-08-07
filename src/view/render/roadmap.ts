@@ -68,7 +68,12 @@ export function renderRoadmap(
 		dnd.wireScroller(treeEl);
 	} else {
 		const activeScale = scaleFor(host.zoom);
-		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, { today, scale: activeScale, dnd });
+		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, {
+			today,
+			scale: activeScale,
+			dnd,
+			observedStates: model.observedStates,
+		});
 		cards.push(...timeline.cards);
 		todayLeft = timeline.todayLeft;
 		scroller = timeline.scroller;

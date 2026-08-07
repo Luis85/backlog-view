@@ -26,7 +26,9 @@ colliding with it.
 Five bundles, each independently shippable:
 
 - **Grid rhythm** — vertical cell-boundary lines in the grid body, weekend shading at
-  week zoom, a labeled Today marker in the header.
+  week zoom, a labeled Today marker in the header (superseded 2026-08-07 by
+  [[State colour and a legend]] — the marker is unlabeled again, named by the legend
+  strip instead).
 - **Two-tier header** — months above weeks, years above months, years above quarters.
 - **Row tracking** — row hover highlight, subtle zebra striping, a shadow on the sticky
   lead column once scrolled.
@@ -77,7 +79,12 @@ shifting it exposes a repeat whose phase is that width's, not the week's, and an
 that is not a whole number of weeks gains a stray band at its left edge. Rendered at
 week zoom only (see above).
 
-**Today label.** The today line keeps its tooltip and gains a small "Today" pill,
+**Today label — superseded 2026-08-07.** The pill this section designs shipped and was
+later removed once a legend existed to name the today line's colour instead; see
+[[State colour and a legend]] in the register. Kept below as the record of why it was
+built the way it was; the header band it describes no longer exists.
+
+The today line keeps its tooltip and gains a small "Today" pill,
 red-tinted to match the line — the milestone label's existing pattern with a different
 color. It gets a **strip of its own** above both header tiers, because it is opaque and
 placed by a day offset, and in either tier it would eventually land on top of something

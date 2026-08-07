@@ -64,6 +64,46 @@ describe('a marker on the dated axis', () => {
 	});
 });
 
+describe('per-state bar colour', () => {
+	it('slots a row by its state\'s index in the same vocabulary the board and Set state use', () => {
+		const vault = new FakeVault();
+		vault.addFile('First.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'New' } });
+		vault.addFile('Second.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-08-06', status: 'Active' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		expect(rowFor(containerEl, 'First')?.classList.contains('pbl-state-0')).toBe(true);
+		expect(rowFor(containerEl, 'Second')?.classList.contains('pbl-state-1')).toBe(true);
+	});
+
+	it('leaves an unstated item with no slot class', () => {
+		const vault = new FakeVault();
+		vault.addFile('No state.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		const classes = [...(rowFor(containerEl, 'No state')?.classList ?? [])];
+		expect(classes.some((c) => c.startsWith('pbl-state-'))).toBe(false);
+	});
+
+	it('leaves a value outside the vocabulary with no slot class', () => {
+		const vault = new FakeVault();
+		vault.addFile('Odd.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'Blocked' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		const classes = [...(rowFor(containerEl, 'Odd')?.classList ?? [])];
+		expect(classes.some((c) => c.startsWith('pbl-state-'))).toBe(false);
+	});
+
+	it('carries both its slot and pbl-done on a done state, leaving the CSS to pick the winner', () => {
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'Done' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		const row = rowFor(containerEl, 'Shipped');
+		expect(row?.classList.contains('pbl-done')).toBe(true);
+		expect(row?.classList.contains('pbl-state-2')).toBe(true);
+	});
+});
+
 describe('the grab-cursor class', () => {
 	it('marks pbl-bar-holdable exactly where barHolds offers the body hold, asked of every bar rather than one', () => {
 		const vault = new FakeVault();
