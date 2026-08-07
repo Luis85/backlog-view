@@ -145,11 +145,15 @@ narrowed to one type.
   column no Deliverable card could ever land in is not a target this board offers,
   whatever key happens to hold a value.
 - **5a — a focus level was set from another projection and is still active when the
-  Deliverables board is chosen.** The toolbar's focus picker itself is absent here —
-  nothing to narrow by, since every card is already a Deliverable — but the focus still
-  narrows `model.results` exactly as 3b describes, so a static label names it and a
-  clear button stays, the one way back to "All types" without leaving this board. With
-  no focus active, the whole control is absent — nothing to show and nothing to clear.
+  Deliverables board is chosen.** The toolbar's focus picker never offers a menu to pick
+  a *different* focus from here — nothing to narrow by, since every card is already a
+  Deliverable — but the control itself is never absent. When the inherited focus is
+  `PBI` or `Deliverable` itself, or when none is active, it reads the same fixed,
+  disabled "Deliverables" button as with no focus at all (`admitsEveryDeliverable`,
+  `domain/itemTypes.ts`) — that focus does not narrow this board either. For every
+  other level, the focus still narrows `model.results` exactly as 3b describes, so a
+  static label names it and a clear button stays, the one way back to "All types"
+  without leaving this board.
 
 ## Acceptance criteria
 
@@ -234,10 +238,12 @@ narrowed to one type.
   Deliverable, and the chevron "New item of another type" picker is absent there —
   asserted directly against the requirements board, where the picker still offers every
   type.
-- The toolbar's focus picker never renders on the Deliverables board — nothing to
-  narrow by — but a focus level already active from another projection still narrows
-  this board's own cards, stays named by a static label, and stays clearable from a
-  button that remains.
+- The toolbar's focus picker renders a real, disabled `Deliverables` button whenever
+  the inherited focus level does not narrow this board — no focus at all, `PBI` focus,
+  or `Deliverable` focus itself (`admitsEveryDeliverable`, `domain/itemTypes.ts`) — and,
+  for every other level, the honest `Focused: <level>` label plus a working clear
+  button, so a focus that IS narrowing the board never leaves the user with no way
+  back.
 
 ## Where it lives
 
@@ -322,11 +328,18 @@ for a second choice to add; `syncCountLabel` gains a parallel `onRequirementsBoa
 branch that filters `Deliverable` out of the population and the tooltip breakdown it
 counts, agreeing with `renderRequirementsBoard`'s own exclusion (`view/render/board.ts`)
 rather than a second, independently-computed count that could drift from it; and
-`renderFocusPicker` drops its own button and menu entirely on the Deliverables
-projection, rendering nothing when no focus is active and, when one is, a static
-`.pbl-focus-label` plus the shared `renderFocusClearButton` — the one control this board
-keeps, since an already-active focus still narrows `model.results` here and the user
-must stay able to clear it without leaving the projection.
+`renderFocusPicker` drops the picker MENU entirely on the Deliverables projection —
+nothing to choose a focus from here — but the control itself always renders: a real,
+disabled `<button>` reading "Deliverables" whenever the inherited focus leaves the
+board's own population unnarrowed (no focus, `PBI` focus, or `Deliverable` focus
+itself — `admitsEveryDeliverable`, declared once in `domain/itemTypes.ts` and shared
+with `renderNoDeliverablesState`'s `admitsNewDeliverable` in `render/emptyStates.ts` so
+the two cannot answer the question differently), or a static `.pbl-focus-label` plus
+the shared `renderFocusClearButton` for every other level, since that focus really is
+narrowing `model.results` here and the user must stay able to clear it without leaving
+the projection. Covered, alongside the New-button and count-label changes above, in
+`test/view/deliverablesToolbar.test.ts`'s "the focus control on the Deliverables board"
+block.
 `src/view/render/board.ts` — four changes, not three: `createCard` takes its completion
 flag as a parameter (defaulted to `item.done`, so the requirements board and the roadmap
 need no change) instead of reading `item.done` itself, so the Deliverables board's call
@@ -401,5 +414,7 @@ section, matching its existing depth rather than re-deriving it; "## The board" 
 Deliverables' exclusion from that board; "## The Deliverables board" describes the
 fourth projection's workflow (its own when configured, or, falling back, the one the
 board above already uses), the toolbar's New button bound to it, and the focus picker's
-reduced, clear-only form; and the view-options table gains the new "Deliverables"
-group's rows, each stating its own fallback.
+reduced form — a disabled `Deliverables` button while the inherited focus does not
+narrow the board, a label naming it plus a working clear button while it does; and the
+view-options table gains the new "Deliverables" group's rows, each stating its own
+fallback.
