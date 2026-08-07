@@ -122,3 +122,51 @@ describe('row tracking', () => {
 		expect(scroller.classList.contains('pbl-scrolled-x')).toBe(false);
 	});
 });
+
+describe('bar labels', () => {
+	it('labels the bar where the eye is, flipping sides at the window edge', () => {
+		const vault = new FakeVault();
+		// Far enough out that the real clock cannot move the window edge: the free
+		// room right of the bar is 46 days (Jun 15 → Jul 31 2030, the padding month).
+		vault.addFile('Far off.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-01', due: '2030-06-15' } });
+		const { view, containerEl } = datedRoadmap(vault);
+
+		// Month zoom: 46 days × 4px = 184px ≥ the 160px reserve — label after the bar.
+		const label = () => containerEl.querySelector<HTMLElement>('.pbl-bar-label');
+		expect(label()?.textContent).toBe('Far off');
+		expect(label()?.getAttribute('aria-hidden')).toBe('true');
+		expect(label()?.classList.contains('pbl-bar-label-after')).toBe(true);
+
+		// Quarter zoom: 46 × 2px = 92px < 160 — the label flips before the bar.
+		view.setZoom('quarter');
+		expect(label()?.classList.contains('pbl-bar-label-before')).toBe(true);
+	});
+
+	it('clears the mark the stylesheet draws, not the one the span implies', () => {
+		const vault = new FakeVault();
+		// A milestone: one day of span, so 4px of --pbl-bar-width — and a 12px diamond
+		// on screen. Measuring the span would start the title inside the mark. Both
+		// ends stated, because that is what `barGeometry` requires of a milestone: an
+		// end borrowed from a lone `due` is a one-day BAR and never reaches this branch.
+		vault.addFile('Ship it.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-15', due: '2030-06-15' } });
+		const { containerEl } = datedRoadmap(vault);
+		const bar = containerEl.querySelector<HTMLElement>('.pbl-bar-milestone');
+		const label = containerEl.querySelector<HTMLElement>('.pbl-bar-label-after');
+		if (!bar || !label) throw new Error('no milestone diamond, or no after-label');
+		const gap =
+			parseFloat(label.style.getPropertyValue('--pbl-label-left')) -
+			parseFloat(bar.style.getPropertyValue('--pbl-bar-left'));
+		expect(gap).toBe(12);
+	});
+
+	it('drops the label rather than placing it off the track', () => {
+		const vault = new FakeVault();
+		// Clipped at both window edges: no room after, and flipping it before a bar
+		// starting at day 0 would set --pbl-label-right to the whole track width and
+		// park the label behind the sticky lead. The lead already shows the title.
+		vault.addFile('Whole plan.md', { frontmatter: { type: 'PBI', order: 10, start: '2020-01-01', due: '2040-01-01' } });
+		const { containerEl } = datedRoadmap(vault);
+		expect(containerEl.querySelector('.pbl-bar')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
+	});
+});

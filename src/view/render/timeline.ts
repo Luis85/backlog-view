@@ -41,6 +41,17 @@ import { CivilDate } from '../../domain/noteFields';
  */
 export const TIMELINE_LEAD_PX = 220;
 
+/**
+ * Room reserved for a title beside its bar, in PIXELS — matches the label's CSS
+ * budget (max-width 144px + 2×8px padding). Short of this at the window's right
+ * edge, the label flips to the bar's left rather than truncating against nothing.
+ */
+const LABEL_RESERVE_PX = 160;
+
+/** `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css` — see `markWidth`. */
+const MILESTONE_MARK_PX = 12;
+const OUTSIDE_MARK_PX = 10;
+
 /** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {
 	cards: BacklogItem[];
@@ -302,6 +313,7 @@ function renderBarRow(
 		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
+	renderBarLabel(track, bar, geometry, scale, window);
 	// The row is the timeline's one selection stop, so a MARKER'S row is where the
 	// line and the diamond's facts have to be readable (criterion 4a: neither is
 	// focusable, so nothing about a milestone may exist only under a hover). An
@@ -336,6 +348,58 @@ function renderBarRow(
  * stylesheet scope the grab cursor to a bar that actually registers a drag —
  * `pbl-bar` alone would advertise a hold on every one of those.
  */
+/**
+ * How wide the mark actually DRAWS, which is what a label beside it has to clear.
+ * `--pbl-bar-width` is not that number for two of the three shapes: `.pbl-bar-milestone`
+ * is a 12px diamond and `.pbl-bar-outside` a 10px arrow whatever the span, so a
+ * one-day milestone at quarter zoom measures 4px here and would have its title
+ * painted across it. Same order of tests as `barClasses`, which is what decides
+ * which shape is drawn — keep the two in step, and both in step with
+ * `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css`.
+ *
+ * The diamond's 45° rotation puts its tips ~2.5px outside this box; the label's own
+ * 8px of padding is the clearance, so this stays the CSS width rather than a
+ * bounding-box calculation nothing else in the file does.
+ */
+function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
+	if (geometry.outside) return OUTSIDE_MARK_PX;
+	if (geometry.milestone) return MILESTONE_MARK_PX;
+	return Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
+}
+
+/**
+ * The title where the reader's eye already is — decoration only. The row's
+ * accessible name carries the title and the bar's aria-label the dates, so this
+ * is aria-hidden; pointer-events die in CSS so the grips never lose a hit.
+ */
+function renderBarLabel(
+	track: HTMLElement,
+	bar: TimelineBar,
+	geometry: BarGeometry,
+	scale: TimelineScale,
+	window: TimelineWindow,
+): void {
+	const left = geometry.startDay * scale.dayPx;
+	const width = markWidth(geometry, scale);
+	const trackWidth = window.days * scale.dayPx;
+	const after = left + width + LABEL_RESERVE_PX <= trackWidth;
+	// Neither side has room: a bar clipped at BOTH window edges leaves none, and
+	// flipping it before a bar that starts at day 0 would put the whole label off the
+	// track behind the sticky lead column. Nothing is lost by dropping it — the row's
+	// lead carries the same title, which is what makes this decoration rather than
+	// content, and squeezing it over the bar would only trade a hidden label for an
+	// unreadable one.
+	if (!after && left < LABEL_RESERVE_PX) return;
+	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
+	if (after) {
+		label.addClass('pbl-bar-label-after');
+		label.setCssProps({ '--pbl-label-left': `${left + width}px` });
+	} else {
+		label.addClass('pbl-bar-label-before');
+		label.setCssProps({ '--pbl-label-right': `${trackWidth - left}px` });
+	}
+}
+
 function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolean): string {
 	const holdable = hasBodyHold ? ' pbl-bar-holdable' : '';
 	// Nothing of it is in view. Drawing the clamp would put a diamond at a date the item

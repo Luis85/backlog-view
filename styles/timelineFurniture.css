@@ -110,3 +110,32 @@
 .pbl-scrolled-x .pbl-timeline-lead {
 	box-shadow: 4px 0 6px -3px var(--background-modifier-border);
 }
+
+/* max-width + 2×padding = LABEL_RESERVE_PX in render/timeline.ts — the reserve the
+   side flip is decided against. Change them together. */
+.pbl-bar-label {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	max-width: 144px;
+	padding: 0 var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+}
+
+.pbl-bar-label-after {
+	left: var(--pbl-label-left);
+}
+
+.pbl-bar-label-before {
+	right: var(--pbl-label-right);
+}
+
+/* The grid declutters exactly while the user is aiming a drop. */
+.pbl-dragging .pbl-bar-label {
+	visibility: hidden;
+}
