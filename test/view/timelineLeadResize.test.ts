@@ -4,7 +4,7 @@ import { fireResize } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { makeView, noOptionalProperties, treeOf, useViewHarness } from '../helpers/view';
 import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../src/storage/collapseStore';
-import { effectiveLeadWidth, MIN_DAY_TRACK_PX } from '../../src/view/interactions/timelineLeadResize';
+import { effectiveLeadWidth, leadBoundsFor, MIN_DAY_TRACK_PX } from '../../src/view/interactions/timelineLeadResize';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 useViewHarness();
@@ -102,6 +102,38 @@ describe('the lead-column resize grip', () => {
 			// And the gesture is over: a later move is not still resizing.
 			el.dispatchEvent(pointer('pointermove', 200));
 			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${TIMELINE_LEAD_PX}px`);
+		});
+
+		it('answers to one contact: a second finger neither starts nor ends the gesture', () => {
+			// A column boundary is dragged by ONE pointer. A second pointerdown used to
+			// install its own handlers with its own startX, after which every move fed both
+			// and either finger lifting committed — so the width saved could be the one the
+			// other contact was aiming at.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+
+			const el = grip(containerEl);
+			const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+			if (!content) throw new Error('no timeline content');
+
+			const second = (type: string, clientX: number): PointerEvent =>
+				new PointerEvent(type, { bubbles: true, clientX, pointerId: 2, button: 0 });
+
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 40));
+			// A second contact lands and moves: it must change nothing.
+			el.dispatchEvent(second('pointerdown', 500));
+			el.dispatchEvent(second('pointermove', 900));
+			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${TIMELINE_LEAD_PX + 40}px`);
+
+			// And its release must not end the first finger's gesture or commit its width.
+			el.dispatchEvent(second('pointerup', 900));
+			expect(view.leadWidth).toBeNull();
+
+			// The original contact is still the one driving, and still commits its own width.
+			el.dispatchEvent(pointer('pointermove', 60));
+			el.dispatchEvent(pointer('pointerup', 60));
+			expect(view.leadWidth).toBe(TIMELINE_LEAD_PX + 60);
 		});
 
 		it('clamps at both ends rather than accepting whatever the pointer names', () => {
@@ -359,7 +391,33 @@ describe('effectiveLeadWidth', () => {
 		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, -50)).toBe(MAX_TIMELINE_LEAD_PX);
 	});
 
-	it('never draws negative, in a pane narrower than the reserved day track alone', () => {
-		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, 40)).toBe(0);
+	it('leaves the column something to be, in a pane too narrow to subtract a day track from', () => {
+		// The plain subtraction went to zero here — no titles at all, which is a worse
+		// answer than a cramped column. Half the pane is the floor instead.
+		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, 40)).toBe(20);
+		expect(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, 100)).toBe(50);
+	});
+});
+
+describe('leadBoundsFor', () => {
+	it('states the storable bounds where the pane can honour them, and at an unmeasured pane', () => {
+		expect(leadBoundsFor(1400)).toEqual({ min: MIN_TIMELINE_LEAD_PX, max: MAX_TIMELINE_LEAD_PX });
+		expect(leadBoundsFor(0)).toEqual({ min: MIN_TIMELINE_LEAD_PX, max: MAX_TIMELINE_LEAD_PX });
+	});
+
+	it('never reports a backwards range, however narrow the pane', () => {
+		// The separator announces this range. Below MIN_TIMELINE_LEAD_PX + MIN_DAY_TRACK_PX
+		// the pane cannot give the storable minimum, so a fixed valuemin would sit ABOVE
+		// valuemax — an invalid range handed to assistive tech in exactly the narrow case
+		// the clamp exists to support.
+		for (const pane of [40, 100, 200, 239, 240, 300, 420, 1400]) {
+			const { min, max } = leadBoundsFor(pane);
+			expect(min, `pane ${pane}`).toBeLessThanOrEqual(max);
+			expect(min, `pane ${pane}`).toBeGreaterThan(0);
+			// And what is drawn always sits inside what is announced.
+			const drawn = effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, pane);
+			expect(drawn, `pane ${pane}`).toBeGreaterThanOrEqual(min);
+			expect(drawn, `pane ${pane}`).toBeLessThanOrEqual(max);
+		}
 	});
 });

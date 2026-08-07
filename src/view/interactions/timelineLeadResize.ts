@@ -52,13 +52,14 @@ export function renderLeadResize(
 			role: 'separator',
 			'aria-orientation': 'vertical',
 			'aria-label': 'Resize the title column',
-			'aria-valuemin': String(MIN_TIMELINE_LEAD_PX),
-			// Capped to what the pane can actually give right now, not the storable
-			// maximum: a reader dragging past this point would see nothing move, because
-			// the render clamps it straight back — `effectiveLeadWidth` is the same clamp
-			// `renderTimeline` draws with, asked of the widest width instead of the stored
-			// one, so the two can never name a different ceiling.
-			'aria-valuemax': String(effectiveLeadWidth(MAX_TIMELINE_LEAD_PX, available)),
+			// BOTH ends come from the pane, not just the ceiling. A reader dragging past
+			// the ceiling would see nothing move, because the render clamps it straight
+			// back; and below `MIN_TIMELINE_LEAD_PX + MIN_DAY_TRACK_PX` the pane cannot
+			// even give the storable minimum, so announcing it would put valuemin above
+			// valuemax. `leadBoundsFor` is the same range `effectiveLeadWidth` clamps
+			// into, so what is announced and what is drawn cannot name different limits.
+			'aria-valuemin': String(leadBoundsFor(available).min),
+			'aria-valuemax': String(leadBoundsFor(available).max),
 			'aria-valuenow': String(current),
 			tabindex: '0',
 		},
@@ -92,8 +93,17 @@ export function renderLeadResize(
 		host.roadmap?.scroller?.querySelector<HTMLElement>('.pbl-timeline-lead-grip')?.focus();
 	};
 
+	// The pointer that owns the gesture in flight, or null between gestures. A column
+	// boundary is dragged by ONE contact: a second finger landing on the grip mid-drag
+	// used to install a second set of handlers with its own `startX`, after which every
+	// move fed both and either finger lifting committed — so the width saved could be
+	// the one the other contact was aiming at. It is refused rather than tracked,
+	// because there is no second thing here to drag.
+	let activePointer: number | null = null;
+
 	grip.addEventListener('pointerdown', (evt) => {
-		if (evt.button !== 0) return;
+		if (evt.button !== 0 || activePointer !== null) return;
+		activePointer = evt.pointerId;
 		// Not text selection: a resize drag has to feel like one, not a text drag.
 		evt.preventDefault();
 		grip.setPointerCapture?.(evt.pointerId);
@@ -103,14 +113,22 @@ export function renderLeadResize(
 		// for the stored pick those two disagree, and starting from the stored one would
 		// jump the column the instant the pointer moved a single pixel.
 		const startWidth = current;
-		const onMove = (moveEvt: PointerEvent): void => live(clampLeadWidth(startWidth + (moveEvt.clientX - startX)));
+		// Every callback below answers only to the contact that started the gesture —
+		// capture re-targets that pointer's events here, it does not stop another
+		// pointer's from arriving.
+		const mine = (e: PointerEvent): boolean => e.pointerId === activePointer;
+		const onMove = (moveEvt: PointerEvent): void => {
+			if (mine(moveEvt)) live(clampLeadWidth(startWidth + (moveEvt.clientX - startX)));
+		};
 		const end = (evt: PointerEvent): void => {
 			grip.removeEventListener('pointermove', onMove);
 			grip.removeEventListener('pointerup', onUp);
 			grip.removeEventListener('pointercancel', onCancel);
 			grip.releasePointerCapture?.(evt.pointerId);
+			activePointer = null;
 		};
 		const onUp = (upEvt: PointerEvent): void => {
+			if (!mine(upEvt)) return;
 			end(upEvt);
 			commit(clampLeadWidth(startWidth + (upEvt.clientX - startX)));
 		};
@@ -121,6 +139,7 @@ export function renderLeadResize(
 		// take away later. `touch-action: none` does not make this rare — that stops the
 		// scroller stealing the pan, not the platform interrupting.
 		const onCancel = (cancelEvt: PointerEvent): void => {
+			if (!mine(cancelEvt)) return;
 			end(cancelEvt);
 			live(startWidth);
 		};
@@ -176,6 +195,28 @@ export const MIN_DAY_TRACK_PX = 80;
  * stored width in that case is what keeps the two apart.
  */
 export function effectiveLeadWidth(stored: number, availablePx: number): number {
-	if (availablePx <= 0) return stored;
-	return Math.max(0, Math.min(stored, availablePx - MIN_DAY_TRACK_PX));
+	const { min, max } = leadBoundsFor(availablePx);
+	return Math.min(Math.max(stored, min), max);
+}
+
+/**
+ * The range the pane can actually honour, which is what the separator has to ANNOUNCE
+ * as well as draw within. Below `MIN_TIMELINE_LEAD_PX + MIN_DAY_TRACK_PX` the pane
+ * cannot give both, and the storable minimum stops being a floor the pane can reach: a
+ * 200px pane can spare 120px for the column, so reporting `aria-valuemin` 160 against
+ * an `aria-valuemax` of 120 hands assistive tech a backwards range — invalid exactly in
+ * the narrow case the clamp exists for. Both ends therefore come from the pane.
+ *
+ * The `availablePx / 2` term is what keeps the column from eating a pane too narrow to
+ * subtract a whole day track from: a lead wider than the grid it labels is not a
+ * timeline, and the plain subtraction went to zero — no titles at all — once the pane
+ * dropped under the track's own minimum.
+ *
+ * An unmeasured pane (0 or less) reports the storable bounds unchanged, for the reason
+ * `effectiveLeadWidth` falls through: not measured is not narrow.
+ */
+export function leadBoundsFor(availablePx: number): { min: number; max: number } {
+	if (availablePx <= 0) return { min: MIN_TIMELINE_LEAD_PX, max: MAX_TIMELINE_LEAD_PX };
+	const paneMax = Math.max(Math.min(MIN_TIMELINE_LEAD_PX, Math.floor(availablePx / 2)), availablePx - MIN_DAY_TRACK_PX);
+	return { min: Math.min(MIN_TIMELINE_LEAD_PX, paneMax), max: Math.min(MAX_TIMELINE_LEAD_PX, paneMax) };
 }

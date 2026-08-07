@@ -79,6 +79,18 @@ bigger constant, since no single number fits every vault's titles.
   effective width actually changes, so narrowing a live split recovers reachability
   without a reader having to trigger a render some other way.
 
+- **1a — two contacts on the grip at once.** A column boundary is dragged by ONE
+  pointer: a second `pointerdown` while a gesture is in flight is refused outright, and
+  every move, release and cancel answers only to the contact that started it. Otherwise
+  a second finger's release commits a width the first was not aiming at.
+- **4b — a pane too narrow to give the storable minimum AND a day track.** Both ends of
+  the announced range come from the pane, not just the ceiling: below
+  `MIN_TIMELINE_LEAD_PX + MIN_DAY_TRACK_PX` a fixed `aria-valuemin` would sit above
+  `aria-valuemax`, handing assistive tech a backwards range in exactly the narrow case
+  the clamp exists for. Narrower still, the column takes half the pane rather than the
+  pane minus a whole day track, which reached zero — no titles at all, a worse answer
+  than a cramped column.
+
 ## Acceptance criteria
 
 - The grip carries `role="separator"`, `aria-orientation="vertical"`, a real
