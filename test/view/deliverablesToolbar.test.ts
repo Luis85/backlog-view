@@ -163,7 +163,6 @@ describe('the focus control on the Deliverables board', () => {
 		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
 		expect(btn?.textContent).toContain('Deliverables');
 		expect(btn?.disabled).toBe(true);
-		expect(containerEl.querySelector('.pbl-focus-label')).toBeNull();
 	});
 
 	it('still reads the fixed, disabled "Deliverables" button under an inherited Deliverable focus', () => {
@@ -176,7 +175,6 @@ describe('the focus control on the Deliverables board', () => {
 		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
 		expect(btn?.textContent).toContain('Deliverables');
 		expect(btn?.disabled).toBe(true);
-		expect(containerEl.querySelector('.pbl-focus-label')).toBeNull();
 	});
 
 	it('still reads the fixed, disabled "Deliverables" button under an inherited Feature focus', () => {
@@ -190,7 +188,6 @@ describe('the focus control on the Deliverables board', () => {
 		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
 		expect(btn?.textContent).toContain('Deliverables');
 		expect(btn?.disabled).toBe(true);
-		expect(containerEl.querySelector('.pbl-focus-label')).toBeNull();
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 	});
 });

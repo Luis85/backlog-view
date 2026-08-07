@@ -315,14 +315,21 @@ describe('the Deliverables board’s card menu', () => {
 		expect(Menu.lastShown?.item('Open match "T"')).toBeDefined();
 	});
 
-	it('hides Set state on the tree when only the Deliverable key is configured', () => {
+	it('gates the tree’s Set state on each item’s OWN workflow key', () => {
 		const vault = new FakeVault();
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
-		// deliverableStateKey configured, requirements stateKey left unset — the tree's
-		// own Set state must not appear promising a write to an empty key.
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 20 } });
+		// deliverableStateKey configured, requirements stateKey left unset. Which key a
+		// menu promises to write is the ITEM's question, not the projection's: the
+		// Deliverable's resolves to a real key, so Set state is offered and a pick lands
+		// bytes; the PBI's resolves to '', so it must not appear promising a write to an
+		// empty key that `applyWrites` would silently drop.
 		const { containerEl } = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
 
 		rowByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Set state')).toBeDefined();
+
+		rowByTitle(containerEl, 'P').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
 	});
 

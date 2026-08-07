@@ -115,6 +115,30 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 }
 
 /**
+ * The requirements board under a focus it cannot honour. `Deliverable` is the one type
+ * that board excludes by construction, so focusing it leaves every focus root filtered
+ * out and the board empty — a state the ordinary empty guidance describes wrongly twice
+ * over: it reports the count as "all done and hidden", and it offers to create another
+ * item of the focused type, which is the one type this board would not show either.
+ *
+ * The way out is the focus, so that is the button — not a creation CTA. Switching to the
+ * Deliverables board is the other way, named in the prose because the mode toggle is
+ * already on screen beside this pane.
+ */
+export function renderBoardExcludedFocusState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const empty = guidanceShell(
+		treeEl,
+		'square-kanban',
+		'Nothing to show under this focus',
+		'The focus level is "Deliverable", and Deliverables are managed on their own board — ' +
+			'this one never shows them. Clear the focus to see the rest of the backlog, or ' +
+			'switch to the Deliverables board.',
+	);
+	const btn = empty.createEl('button', { cls: 'mod-cta', text: 'Show all types' });
+	btn.addEventListener('click', () => host.setFocusLevel(''));
+}
+
+/**
  * A configured Deliverable workflow with no Deliverable-typed results in the base —
  * distinct from "everything is done and hidden", which this board has no concept of
  * (Scope): a base full of other work is never reported as complete.

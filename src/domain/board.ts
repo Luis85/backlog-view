@@ -1,5 +1,7 @@
+import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
-import { BacklogSettings, byName, menuValues, stateMenuValues } from './settings';
+import { BacklogSettings, byName, menuValues, resolvedDeliverableStateKey, stateMenuValues } from './settings';
+import { collectObservedStates } from './vocabulary';
 
 /**
  * Deriving the board from the model and the settings: which columns exist, which
@@ -87,16 +89,53 @@ export interface Workflow {
 	columnPolicies: Record<string, string>;
 }
 
-/** The requirements board's workflow — `boardColumns`' original, only caller until now. */
+/**
+ * The requirements board's workflow — `boardColumns`' original, only caller until now.
+ *
+ * `observedValues` is the stray-column vocabulary, and it is collected here rather
+ * than taken from `model.observedStates`: Deliverables are managed on their own board
+ * (`renderRequirementsBoard`) and never become a card here, so a state value carried
+ * only by one must not mint a column nothing can ever land in. Stated in this factory
+ * rather than spread-and-overridden at the call site, so the domain tests exercise the
+ * same workflow the view builds instead of one the view then replaces a field of.
+ */
 export function requirementsWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
 	return {
 		stateOf: (item) => item.stateValue,
 		values: stateMenuValues(settings, model.observedStates),
-		observedValues: model.observedStates,
+		observedValues: collectObservedStates(
+			model.results.filter((item) => !isDeliverableType(item.typeName)),
+			settings,
+		),
 		doneValues: settings.doneValues,
 		wipLimits: settings.wipLimits,
 		columnPolicies: settings.columnPolicies,
 	};
+}
+
+/**
+ * The frontmatter key THIS item's state lives under — the resolved Deliverable key for
+ * a Deliverable, the requirements `stateKey` for everything else, and `''` when the
+ * workflow that tracks it has no key configured at all.
+ *
+ * The same "an item's workflow follows its TYPE" rule the chip and the menu both
+ * render from, stated once so they cannot gate on different keys: a chip drawn where
+ * the menu offers nothing, or a menu offering picks that write to an empty key, are
+ * the two halves of one disagreement. `''` is what makes "no key, no affordance" a
+ * single test rather than a per-surface one.
+ */
+export function stateKeyFor(settings: BacklogSettings, item: BacklogItem): string {
+	return isDeliverableType(item.typeName) ? resolvedDeliverableStateKey(settings) : settings.stateKey;
+}
+
+/**
+ * Whether this base has a state column at all: EITHER workflow having a key is enough,
+ * because a vault that configures only the Deliverable one still has Deliverable rows
+ * with a state to show. Rows whose own workflow has no key render an empty cell — every
+ * configured column renders on every row, or the columns after it shift per row.
+ */
+export function hasStateColumn(settings: BacklogSettings): boolean {
+	return settings.stateKey !== '' || settings.deliverableStateKey !== '';
 }
 
 /**

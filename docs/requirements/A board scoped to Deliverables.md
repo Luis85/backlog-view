@@ -188,6 +188,55 @@ narrowed to one type.
 - A card's finished styling here follows the Deliverable workflow's own done values,
   never the requirements board's — the two can disagree about one card and each board
   shows its own answer.
+- **Which workflow tracks an item is a property of its TYPE, not of the projection it
+  is drawn in.** A Deliverable's state is the Deliverable workflow's on the tree and on
+  the roadmap exactly as it is on this board: the tree's Set state offers *its* declared
+  states, checks the entry `item.deliverableStateValue` holds, and writes the resolved
+  Deliverable key — and the row's state chip shows and styles that same value, so the
+  chip and the menu it opens can never name two workflows. Everything not typed
+  `Deliverable` keeps the requirements workflow everywhere, unchanged.
+- The tree's single state column therefore serves BOTH workflows, and asks two different
+  questions to do it: the CELL exists whenever *either* workflow has a key
+  (`hasStateColumn`), and the CHIP inside it is gated on the key *this row's* workflow
+  writes (`stateKeyFor`, the same function `Set state` gates on, so a chip and a menu can
+  never disagree about which key a row writes). A vault configuring only the Deliverable
+  property gets the column, a chip on its Deliverables and an empty cell on every other
+  row — empty rather than absent, or the columns after it shift on that row alone. The
+  header takes the configured property's own display name while one key is in play,
+  fallback included, and the generic word `State` only where two DISTINCT keys share the
+  column, since naming it after either would misidentify the property half the rows below
+  it are showing.
+- **Completion is deliberately NOT type-scoped.** `item.done`, `subtreeDone`, the rollup,
+  the row's finished styling and "Show completed items" all stay the requirements
+  workflow's, on every projection but the Deliverables board (which has no completion
+  concept of its own, above). So a Deliverable carrying a done requirements state and an
+  open Deliverable state reads as done to the tree while its chip says otherwise. That is
+  a known consequence of two distinct keys, accepted rather than overlooked: `subtreeDone`
+  rolls up through a Deliverable's `Task` children, which the requirements workflow tracks,
+  so "this Deliverable is done" and "its subtree is done" would become two claims the model
+  answers as one. Sharing the key — the shipped default — makes the divergence
+  unreachable.
+- The requirements board offers no way to make a Deliverable from itself, at **any** of
+  the four surfaces that name a type: `Set type`, a card's own `New <child>`, and both
+  toolbar creators. A note written from there would be excluded from the very board it
+  was created on. Withheld, not disabled — the "absent rather than inert" rule the state
+  chip already follows — and only there: every other projection offers the whole
+  vocabulary. One rule, one function (`offerableTypes`), because it was broken twice by
+  being applied a surface at a time: the primary New button follows the focus target
+  (`newItemType`), so a `Deliverable` focus left active elsewhere read "New Deliverable"
+  while the chevron beside it filtered; and `childTypeChoices` answers about the LADDER
+  — a PBI holds Deliverables — which is a different question from what this board can
+  show, so every card kept offering `New Deliverable` while `Set type` filtered. The
+  focus PICKER is the fifth surface under the same rule: focusing `Deliverable` from the
+  requirements board narrows it to roots that board excludes, which is an empty board
+  one click away. An INHERITED focus still reads in the button, with the clear beside it.
+- **The requirements board's empty advisory answers for its OWN population**, never
+  `model.results` — which counts the Deliverables it excludes. A base of Deliverables
+  alone read "All N items are done and hidden", beside a `Show completed items` button
+  that would change nothing. A `Deliverable` focus inherited from another projection
+  gets its own state rather than the ordinary empty one, because that one names the
+  focused type and offers to create another: it says why the board is empty and its
+  button clears the focus.
 - On a Deliverable card viewed from this board: the card menu's Set state section
   appears whenever the *resolved* Deliverable state key is non-empty — its own key, or
   (falling back) the requirements one — even when the requirements `stateKey` alone

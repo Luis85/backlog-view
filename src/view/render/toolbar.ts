@@ -1,12 +1,12 @@
 import { BasesQueryResult, Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, BusyState, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { showMenuForClick } from '../interactions/menu';
+import { offerableTypes, showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
-import { ALL_TYPES, DELIVERABLE_TYPE } from '../../domain/settings';
+import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 import { ScaleId } from '../../domain/timeline';
 
@@ -22,7 +22,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// type there is nothing for a "New item of another type" picker to add, so it is
 	// absent rather than a chevron opening a one-entry menu.
 	const onDeliverables = host.projection === 'deliverables';
-	const newLevel = onDeliverables ? DELIVERABLE_TYPE : newItemType(host.settings, model);
+	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
 	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn' });
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	newBtn.createSpan({ text: `New ${newLevel}` });
@@ -35,8 +35,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 			const menu = new Menu();
 			// Every declared type, extras included: this menu is the one place a top-level
 			// item of any type can be made, and an Issue raised against nothing in
-			// particular is a real thing to want.
-			for (const type of ALL_TYPES) {
+			// particular is a real thing to want. Except `Deliverable` on the requirements
+			// board, which excludes Deliverables by construction — creating one there
+			// would write a note the board it was created from cannot show.
+			for (const type of offerableTypes(host)) {
 				menu.addItem((mi) =>
 					mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
 				);
@@ -202,12 +204,10 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const model = host.model;
 	if (!label || !model) return;
 	const onDeliverables = host.projection === 'deliverables';
-	const onRequirementsBoard = host.projection === 'board';
-	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const population = onDeliverables
 		? model.deliverableResults
-		: onRequirementsBoard
-			? model.results.filter((item) => !isDeliverable(item))
+		: host.projection === 'board'
+			? model.results.filter((item) => !isDeliverableType(item.typeName))
 			: model.results;
 	const hidden = (item: BacklogItem): boolean =>
 		onDeliverables ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
@@ -341,17 +341,17 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 		// being ACCEPTABLE as a focus (`focusTarget` already reads `ALL_TYPES`) is not the
 		// same as being OFFERABLE, and a name in neither hand-written list was one a saved
 		// view could hold and no user could pick.
-		for (const type of ALL_TYPES) choice(type, type);
+		// Through `offerableTypes` like every other type list: focusing `Deliverable` on
+		// the requirements board narrows it to roots that board excludes, leaving it empty.
+		// An INHERITED one still reads in the button, with the clear beside it — this only
+		// stops the state being reached from the projection it breaks.
+		for (const type of offerableTypes(host)) choice(type, type);
 		showMenuForClick(menu, evt);
 	});
 
 	if (active === '') return;
-	renderFocusClearButton(wrap, setLevel);
-}
-
-/** The one-click way back to "All types" — shared by the ordinary picker and the
- * Deliverables board's reduced, escape-hatch-only form of it. */
-function renderFocusClearButton(wrap: HTMLElement, setLevel: (level: string) => void): void {
+	// The one-click way back to "All types". The Deliverables board returns above
+	// without one: nothing narrows that board, so there is nothing to clear.
 	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
 		attr: { type: 'button', 'aria-label': 'Show all types' },
@@ -425,6 +425,23 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());
+}
+
+/**
+ * The type the PRIMARY New button makes — `newItemType`'s focus-following answer,
+ * filtered through the very list the chevron beside it offers.
+ *
+ * Both creators have to draw from one list or the narrower one is decoration. Found
+ * by review: `newItemType` returns the focus TARGET, and a `Deliverable` focus left
+ * active from another projection made the requirements board's primary button read
+ * "New Deliverable" — writing a note that board excludes — while the chevron beside
+ * it had already withheld exactly that type. Falls back to the first type this
+ * projection does offer, which is the ladder's top in every case today.
+ */
+function primaryNewType(host: BacklogViewHost, model: BacklogModel): string {
+	const offered = offerableTypes(host);
+	const focused = newItemType(host.settings, model);
+	return offered.includes(focused) ? focused : offered[0];
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */

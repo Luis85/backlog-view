@@ -1,6 +1,12 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { renderPropCells, renderRollup, RowContext } from './columns';
-import { renderAllDoneState, renderEmptyState, renderFilterEmptyState, renderNoDeliverablesState } from './emptyStates';
+import {
+	renderAllDoneState,
+	renderBoardExcludedFocusState,
+	renderEmptyState,
+	renderFilterEmptyState,
+	renderNoDeliverablesState,
+} from './emptyStates';
 import { renderBadge, renderTitleText } from './rows';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
@@ -16,9 +22,8 @@ import {
 	overBy,
 	requirementsWorkflow,
 } from '../../domain/board';
-import { childTypeChoices, isDeliverableType } from '../../domain/itemTypes';
+import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { collectObservedStates } from '../../domain/vocabulary';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
@@ -92,21 +97,13 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	// exclusion must not be the one place a Deliverable alone loses it. It still counts
 	// nowhere: `population` below is unchanged, and `boardColumns` already zeroes every
 	// `outsideFilter` card out of both `count` and `fullCount` regardless of type.
-	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const board = boardColumns(
-		{
-			...requirementsWorkflow(model, host.settings),
-			// The same collector `model.observedStates` itself is built from, fed a
-			// Deliverable-free population — a coincidental state value on one must not
-			// open a stray column here that nothing else would ever land in.
-			observedValues: collectObservedStates(
-				model.results.filter((item) => !isDeliverable(item)),
-				host.settings,
-			),
-		},
+		// Its `observedValues` is already Deliverable-free — the stray-column half of
+		// this same exclusion, stated in the workflow itself.
+		requirementsWorkflow(model, host.settings),
 		model.focused ? model.roots : model.results,
-		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverable(item)),
-		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverable(item),
+		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverableType(item.typeName)),
+		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverableType(item.typeName),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performBoardMove(item, state),
@@ -114,9 +111,19 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 		drawEmpty: (h, aside) => {
 			const m = h.model;
 			if (!m) return;
-			if (m.results.length === 0) renderEmptyState(h, aside);
+			// Asked of the board's OWN population, never `m.results`: Deliverables are
+			// managed elsewhere, so counting them here reported "all N items are done and
+			// hidden" over a board that simply had nothing of its own to show — a flat lie
+			// in a base of Deliverables alone, and again under a `Deliverable` focus, where
+			// every focus root is a type this board excludes.
+			const population = m.results.filter((item) => !isDeliverableType(item.typeName));
+			// That focus gets its own state rather than the ordinary empty one: the ordinary
+			// one would name the focused type and offer to create another — a fifth surface
+			// offering the one type this board cannot show.
+			if (m.focused && isDeliverableType(focusTarget(h.settings))) renderBoardExcludedFocusState(h, aside);
+			else if (population.length === 0) renderEmptyState(h, aside);
 			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
-			else renderAllDoneState(h, aside, m.results.length);
+			else renderAllDoneState(h, aside, population.length);
 		},
 	});
 }
