@@ -1,0 +1,22 @@
+/* The dated axis's reading furniture — the header tiers, gridlines, weekend banding,
+   row tracking, bar labels and the density class — `src/view/render/timeline.ts`.
+   Position in index.css is NOT load-bearing: everything here that overrides
+   `timeline.css` outranks it by specificity, never by order. */
+
+/* The track slot of the header, holding the today band and two stacked tracks. Block
+   layout: each track keeps its own `width: var(--pbl-tl-days)`, and the flex-basis the
+   track class declares is inert outside a flex parent. `.pbl-timeline-band` needs no
+   rule of its own — it is a plain block filling this width, and its height is whatever
+   the pill inside it turns out to be. */
+.pbl-timeline-tiers {
+	flex: 0 0 var(--pbl-tl-days);
+	width: var(--pbl-tl-days);
+}
+
+.pbl-timeline-super {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-cell-super {
+	font-weight: 600;
+}

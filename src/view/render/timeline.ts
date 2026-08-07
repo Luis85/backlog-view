@@ -12,7 +12,9 @@ import {
 	daysBetween,
 	formatCivil,
 	MIN_BAR_PX,
+	superCells,
 	timelineCells,
+	TimelineCell,
 	timelineWindow,
 	TimelineScale,
 	TimelineWindow,
@@ -91,7 +93,7 @@ export function renderTimeline(
 		// milestone's both draw inside one day instead of one erasing the other.
 		'--pbl-tl-line': `${scale.lineWidth}px`,
 	});
-	const headerTrack = renderCellHeader(content, window, scale);
+	const { cells: headerTrack } = renderCellHeader(content, window, scale);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
@@ -117,13 +119,39 @@ export function renderTimeline(
 	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay, headerTrack, tracks };
 }
 
+/** What the header hands back: the tier a mark mounts against, per mark. */
+interface HeaderTiers {
+	/** The cell tier — `TimelineRender.headerTrack`, where the milestone labels and the drop ghost mount. */
+	cells: HTMLElement;
+	/** The empty strip above both tiers, which the today pill has to itself (Task 4). */
+	todayBand: HTMLElement;
+}
+
 /** Presentational, like the tree's column header: every row carries its own dates. */
-function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
+function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HeaderTiers {
 	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-timeline-lead' });
-	const track = header.createDiv({ cls: 'pbl-timeline-track' });
-	for (const cell of timelineCells(window, scale)) {
-		const cellEl = track.createDiv({ cls: 'pbl-timeline-cell', text: cell.label });
+	// Three stacked strips in the track slot: an empty band, then the coarser
+	// orientation tier, then the cells. The band is created here rather than where
+	// its pill is so it lands ABOVE both tiers — a mark appended later would sit
+	// under them. Why the pill gets a strip nobody else draws in: see renderTimeline.
+	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers' });
+	const todayBand = tiers.createDiv({ cls: 'pbl-timeline-band' });
+	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
+	const cells = renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
+	return { cells, todayBand };
+}
+
+function renderHeaderTier(
+	tiers: HTMLElement,
+	cells: TimelineCell[],
+	scale: TimelineScale,
+	trackCls: string,
+	cellCls: string,
+): HTMLElement {
+	const track = tiers.createDiv({ cls: `pbl-timeline-track${trackCls ? ' ' + trackCls : ''}` });
+	for (const cell of cells) {
+		const cellEl = track.createDiv({ cls: cellCls, text: cell.label });
 		cellEl.setCssProps({ '--pbl-cell-w': `${cell.days * scale.dayPx}px` });
 	}
 	return track;

@@ -134,7 +134,7 @@ export function labelTexts(containerEl: HTMLElement): string[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label')).map((l) => l.textContent ?? '');
 }
 
-/** Every header cell's text, in drawn order — months, weeks or quarters by zoom. */
+/** Every header cell's text across BOTH tiers, in drawn order — super tier first. */
 export function cellLabels(containerEl: HTMLElement): string[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-cell')).map((c) => c.textContent ?? '');
 }

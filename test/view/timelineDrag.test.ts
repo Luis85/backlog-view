@@ -12,9 +12,11 @@ useViewHarness();
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.target' };
 
-/** The header's own day track — where a placement's preview belongs. */
+/** The header's own CELL-tier day track — where a placement's preview belongs. The
+ * header now stacks two tracks (a coarser super tier above the cells), so the
+ * selector excludes the super tier explicitly rather than relying on DOM order. */
 function headerTrackOf(containerEl: HTMLElement): HTMLElement {
-	const track = containerEl.querySelector<HTMLElement>('.pbl-timeline-header .pbl-timeline-track');
+	const track = containerEl.querySelector<HTMLElement>('.pbl-timeline-header .pbl-timeline-track:not(.pbl-timeline-super)');
 	if (!track) throw new Error('no header track');
 	return track;
 }
