@@ -273,6 +273,14 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 		cls: 'pbl-card-kids-toggle',
 		attr: { type: 'button', tabindex: '-1', 'aria-controls': list.id },
 	});
+	// Both ids are minted rather than derived: these attributes resolve across the whole
+	// document, and two saved views can sit in split panes.
+	toggle.id = uniqueElementId('pbl-card-kids-toggle');
+	// The list is NAMED by the toggle, not merely controlled by it. `aria-controls`
+	// says the two are related and nothing about what the list holds, so a reader
+	// arriving straight at the list would get no count and no context; `aria-labelledby`
+	// is what makes it announce "3 features" before its items.
+	list.setAttribute('aria-labelledby', toggle.id);
 	const chevron = toggle.createSpan({ cls: 'pbl-card-kids-chevron' });
 	setIcon(chevron, 'chevron-right');
 	toggle.createSpan({ cls: 'pbl-card-kids-count', text: childrenLabel(children) });
@@ -287,13 +295,21 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	// orders them visually.
 	wrap.append(list);
 
+	// The disclosure counts what it LISTS and the rollup beside it counts everything
+	// beneath, so with completed work hidden the two disagree on purpose. Said out loud
+	// only when it is true, and only in the one place a user can ask: two numbers
+	// differing with nothing to explain them reads as broken data, and a permanent
+	// caveat on every card reads as noise.
+	const omitted = item.children.length - children.length;
+	const note = omitted > 0 ? ` — ${omitted} more ${omitted === 1 ? 'is' : 'are'} hidden by the current view` : '';
+
 	const draw = (): void => {
 		// Read live, never captured at wire time: a surrounding refresh can change this
 		// under a listener that is still attached.
 		const collapsed = host.isCollapsed(item.file.path);
 		toggle.setAttribute('aria-expanded', String(!collapsed));
 		chevron.toggleClass('pbl-expanded', !collapsed);
-		setTooltip(toggle, collapsed ? `Show what is under "${item.title}"` : 'Hide these');
+		setTooltip(toggle, (collapsed ? `Show what is under "${item.title}"` : 'Hide these') + note);
 		list.empty();
 		if (collapsed) return;
 		for (const child of children) renderChildEntry(host, list, child);
@@ -613,6 +629,31 @@ Append to the `describe` block in `test/view/cardChildren.test.ts`:
 		expect(disclosure(card)?.textContent).toContain('1 feature');
 		disclosure(card)?.click();
 		expect(kidTitles(card)).toEqual(['Feature B2']);
+	});
+
+	// The rollup beside it still counts two. That disagreement is deliberate, and a
+	// deliberate disagreement nothing explains is indistinguishable from a bug.
+	it('explains the omitted child in the tooltip, and only when there is one', () => {
+		const hiding = makeBoard(boardVault(), { showCompleted: false });
+		expect(disclosure(cardByTitle(hiding.containerEl, 'Epic B'))?.dataset.tooltip).toContain(
+			'1 more is hidden by the current view',
+		);
+
+		const showing = makeBoard(boardVault());
+		expect(disclosure(cardByTitle(showing.containerEl, 'Epic B'))?.dataset.tooltip).not.toContain('hidden');
+	});
+
+	// `aria-controls` says the two are related and nothing about what the list holds.
+	// A reader landing straight on the list needs the count, which is the toggle's text.
+	it('names the list by the disclosure, not merely controls it', () => {
+		const { containerEl } = makeBoard(boardVault());
+		const card = cardByTitle(containerEl, 'Epic B');
+		const toggle = disclosure(card);
+		const list = card.querySelector<HTMLElement>('.pbl-card-kids-list');
+
+		expect(toggle?.id).toBeTruthy();
+		expect(list?.getAttribute('aria-labelledby')).toBe(toggle?.id);
+		expect(toggle?.textContent).toContain('2 features');
 	});
 
 	it('styles a done child done', () => {

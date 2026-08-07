@@ -85,8 +85,11 @@ class rows and cards already use — on `item.done`, the card's own test, not on
 already share. So:
 
 - With "Show completed items" off, a fully-done child is absent from the list, and the
-  card's rollup still counts it. The two numbers differ on purpose; the disclosure's
-  tooltip says it lists what is shown and the rollup counts everything beneath.
+  card's rollup still counts it. The two numbers differ on purpose, and a deliberate
+  disagreement that nothing explains is indistinguishable from a bug — so the
+  disclosure's tooltip names the shortfall (`2 more are hidden by the current view`),
+  and names it **only when there is one**. A caveat on every card would be noise, and
+  noise is how the one card that needed it stops being read.
 - While the quick filter runs, only children on a match path are listed.
 - A child that is itself a context row (`outsideFilter`) is listed when visible, and the
   rule that governs it is unchanged: it renders, it parents, it is never written.
@@ -198,8 +201,12 @@ tree's. So the entry could set collapse state but not redraw the card without a 
 whose only honest implementation is the thing the spec forbids is an entry not worth
 having.
 
-The list is a `<ul>` of `<li>`s labelled by the disclosure, so a reader is told how many
-children there are before it reads them.
+The list is a `<ul>` of `<li>`s **named by the disclosure** — `aria-labelledby` pointing
+at the toggle, whose text is the count — so a reader is told how many children there are
+before it reads them. `aria-controls` alone would not do it: it says the two elements are
+related and nothing about what the list holds, so a reader arriving straight at the list
+would get no count and no context. Both ids are minted rather than derived, because these
+attributes resolve across the whole document and two saved views can sit in split panes.
 
 ## Architecture
 
