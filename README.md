@@ -554,7 +554,7 @@ matches no column, it sits in the no-state column.
 Every move — drag, keyboard or menu — is the same gated write, announced in the same words,
 and taken back by the same <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>.
 
-### The Deliverables board
+## The Deliverables board
 
 A fourth projection, alongside tree/board/roadmap, reserved for items typed
 `Deliverable` — concepts, designs and anything else the team must produce rather than
