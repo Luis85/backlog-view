@@ -158,7 +158,7 @@ describe('the chrome the mock only records', () => {
  */
 describe('the harness draws every icon the view asks for', () => {
 	/**
-	 * Walk all three projections and both roadmap axes, collecting what `setIcon` was
+	 * Walk all four projections and both roadmap axes, collecting what `setIcon` was
 	 * asked for. Driving the view rather than grepping `src/` on purpose: several icon
 	 * names never appear as a literal beside a `setIcon` call — the type badges come
 	 * from a table, the spinner and the filter's two states from branches — and a grep
@@ -177,7 +177,7 @@ describe('the harness draws every icon the view asks for', () => {
 				missing.add(el.dataset.iconMissing ?? '');
 			}
 		};
-		for (const projection of ['tree', 'board', 'roadmap'] as const) {
+		for (const projection of ['tree', 'board', 'roadmap', 'deliverables'] as const) {
 			view.setProjection(projection);
 			collect();
 		}
