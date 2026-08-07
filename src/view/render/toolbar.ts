@@ -35,8 +35,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 			const menu = new Menu();
 			// Every declared type, extras included: this menu is the one place a top-level
 			// item of any type can be made, and an Issue raised against nothing in
-			// particular is a real thing to want.
-			for (const type of ALL_TYPES) {
+			// particular is a real thing to want. Except `Deliverable` on the requirements
+			// board, which excludes Deliverables by construction — creating one there
+			// would write a note the board it was created from cannot show.
+			for (const type of topLevelTypes(host)) {
 				menu.addItem((mi) =>
 					mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
 				);
@@ -419,6 +421,16 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());
+}
+
+/**
+ * The types the toolbar's top-level creator offers. `Deliverable` is withheld on the
+ * requirements board for the same reason `Set type` withholds it there
+ * (`interactions/menu.ts`): that board excludes Deliverables, so the note would be
+ * written and then be nowhere on screen. Everywhere else the whole vocabulary stands.
+ */
+function topLevelTypes(host: BacklogViewHost): string[] {
+	return host.projection === 'board' ? ALL_TYPES.filter((type) => !isDeliverableType(type)) : ALL_TYPES;
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */

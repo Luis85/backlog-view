@@ -1,4 +1,5 @@
 import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
+import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { RoadmapModel } from '../../domain/roadmap';
@@ -294,7 +295,9 @@ function handleBoardMoveKey(
 	// The Deliverables board is the requirements board's own handler, over a different
 	// workflow: same navigation, same guards, but the write lands on the Deliverable
 	// property alone — never on the requirements one this handler otherwise writes.
-	if (host.projection === 'deliverables') void host.performDeliverablesBoardMove(card, state);
+	// Asked of the CARD's type, the same question `chooseState` asks, so the keyboard
+	// and the menu cannot route one item's move to two different workflows.
+	if (isDeliverableType(card.typeName)) void host.performDeliverablesBoardMove(card, state);
 	else void host.performBoardMove(card, state);
 }
 

@@ -3,6 +3,7 @@ import { BacklogViewHost, ChipProp } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
+import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings } from '../../domain/settings';
@@ -357,10 +358,25 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
 	}
 }
 
-/** Clickable state chip — the inline write surface for the workflow state. */
+/**
+ * Clickable state chip — the inline write surface for the workflow state.
+ *
+ * WHOSE state is the item's type's question, the same one `Set state` asks in
+ * `interactions/menu.ts`: a Deliverable shows and edits the Deliverable workflow's
+ * value, so the chip and the menu it opens can never name different states. A
+ * Deliverable under the fallback (no Deliverable state property configured) reads the
+ * shared key, so this is the identical value either way.
+ *
+ * The COLUMN itself is still gated on `settings.stateKey` by the caller. With progress
+ * tracking off and only a Deliverable state property configured there is no state
+ * column at all, so a Deliverable's state is editable on its own board and not in the
+ * tree — the same "no column, no chip" rule every other configuration follows.
+ */
 function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
-	const value = item.stateValue;
-	const cls = 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
+	const deliverable = isDeliverableType(item.typeName);
+	const value = deliverable ? item.deliverableStateValue : item.stateValue;
+	const done = deliverable ? item.deliverableDone : item.done;
+	const cls = 'pbl-state-chip' + (done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
 
 	// A note the Base excluded is context: show the state it has, never offer to
 	// write it. An unset one renders nothing at all rather than a "State" button
@@ -368,7 +384,7 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 	if (item.outsideFilter) {
 		if (value === null) return;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
-		fillStateChip(chip, item, value);
+		fillStateChip(chip, done, value);
 		setTooltip(chip, "Not in this base's filter — state can't be changed here");
 		return;
 	}
@@ -384,13 +400,13 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
 		},
 	});
-	fillStateChip(chip, item, value);
+	fillStateChip(chip, done, value);
 	setTooltip(chip, 'Change state');
 	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
 }
 
-function fillStateChip(chip: HTMLElement, item: BacklogItem, value: string | null): void {
-	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
+function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): void {
+	const icon = done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
 	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
 }

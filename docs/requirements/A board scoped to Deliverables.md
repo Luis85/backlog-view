@@ -188,6 +188,19 @@ narrowed to one type.
 - A card's finished styling here follows the Deliverable workflow's own done values,
   never the requirements board's — the two can disagree about one card and each board
   shows its own answer.
+- **Which workflow tracks an item is a property of its TYPE, not of the projection it
+  is drawn in.** A Deliverable's state is the Deliverable workflow's on the tree and on
+  the roadmap exactly as it is on this board: the tree's Set state offers *its* declared
+  states, checks the entry `item.deliverableStateValue` holds, and writes the resolved
+  Deliverable key — and the row's state chip shows and styles that same value, so the
+  chip and the menu it opens can never name two workflows. Everything not typed
+  `Deliverable` keeps the requirements workflow everywhere, unchanged.
+- The requirements board offers no way to make a Deliverable from itself: `Deliverable`
+  is withheld from that board's `Set type` submenu and from the toolbar's "New item of
+  another type" picker, because a note it wrote would be excluded from the very board it
+  was created on. Withheld, not disabled — the "absent rather than inert" rule the state
+  chip already follows — and only there: every other projection offers the whole
+  vocabulary.
 - On a Deliverable card viewed from this board: the card menu's Set state section
   appears whenever the *resolved* Deliverable state key is non-empty — its own key, or
   (falling back) the requirements one — even when the requirements `stateKey` alone

@@ -1,12 +1,13 @@
 import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
+import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { resolvedDeliverableStateKey, stateMenuValues } from '../../domain/settings';
-import { BoardModel, cardPaths, hiddenMatches } from '../../domain/board';
+import { BoardModel, cardPaths, deliverablesWorkflow, hiddenMatches } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -25,6 +26,20 @@ import { addTagItems, tagsColumnVisible } from './tags';
  */
 function activeBoard(host: BacklogViewHost): BoardModel | null {
 	return host.board?.board ?? null;
+}
+
+/**
+ * Which workflow tracks this item's state — a property of its TYPE, never of the
+ * projection it happens to be drawn in. A Deliverable's state is the Deliverable
+ * workflow's on the tree and on the roadmap exactly as it is on its own board, so
+ * the key the menu gates on, the values it offers, the entry it checks and the write
+ * a pick lands all ask this one question. Asking `host.projection === 'deliverables'`
+ * instead answered right on the two boards and wrong everywhere else: the tree's Set
+ * state offered the requirements workflow's values for a Deliverable and wrote them
+ * to the requirements key.
+ */
+function tracksDeliverableState(item: BacklogItem): boolean {
+	return isDeliverableType(item.typeName);
 }
 
 /**
@@ -80,16 +95,16 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	if (editable) {
 		addSetTypeMenu(host, menu, item);
 		// Which key gates visibility has to be the SAME key `stateChoices`/`chooseState`
-		// will actually use for this projection — not an OR of both keys. An OR would
-		// show Set state on the tree or roadmap the moment only `deliverableStateKey` is
-		// configured, while the rest of the menu there still reads the (unconfigured)
-		// requirements `stateKey`: a menu offering picks that write to an empty key,
-		// silently dropped by `applyWrites`' "never write to an empty key" rule. On the
-		// Deliverables projection this is the RESOLVED key — falling back to the shared
-		// `stateKey` exactly as the write path and the model's own read do — so the menu
-		// offers Set state whenever a move would actually write something, fallback or not.
-		const activeStateKey =
-			host.projection === 'deliverables' ? resolvedDeliverableStateKey(host.settings) : host.settings.stateKey;
+		// will actually use for this ITEM — not an OR of both keys. An OR would show Set
+		// state the moment only `deliverableStateKey` is configured, while the rest of
+		// the menu still read the (unconfigured) requirements `stateKey`: a menu offering
+		// picks that write to an empty key, silently dropped by `applyWrites`' "never
+		// write to an empty key" rule. For a Deliverable this is the RESOLVED key —
+		// falling back to the shared `stateKey` exactly as the write path and the model's
+		// own read do — so the menu offers Set state whenever a move would actually write.
+		const activeStateKey = tracksDeliverableState(item)
+			? resolvedDeliverableStateKey(host.settings)
+			: host.settings.stateKey;
 		if (activeStateKey) addSetStateMenu(host, menu, item);
 		// Per axis, and absent rather than inert when one is not configured — the state
 		// chip's own rule.
@@ -308,12 +323,22 @@ interface StateChoice {
  * no-state — and a second list built from the same inputs would be a second
  * vocabulary to keep in step. The labels come from the columns too, so the entry a
  * user picks is named exactly as the column they can see.
+ *
+ * Off a board, WHICH list is `tracksDeliverableState`'s question. A Deliverable takes
+ * `deliverablesWorkflow`'s own `values` — the same resolution its board draws columns
+ * from, not a third opinion assembled here — so the tree offers a Deliverable the
+ * states it will actually be written into.
  */
 function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	const board = activeBoard(host);
 	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
-	const values = stateMenuValues(host.settings, host.model?.observedStates ?? []);
-	const current = item.stateValue;
+	const model = host.model;
+	const deliverable = tracksDeliverableState(item);
+	const values =
+		deliverable && model
+			? deliverablesWorkflow(model, host.settings).values
+			: stateMenuValues(host.settings, model?.observedStates ?? []);
+	const current = deliverable ? item.deliverableStateValue : item.stateValue;
 	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
 	return all.map((state) => ({ state, label: state }));
@@ -323,13 +348,14 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
  * The write a Set state entry means. On either board-shaped projection the menu is
  * the drag's equal, so it takes that projection's own move method — the same planned
  * write, the same gate, the same announcement — which is also the only path that can
- * express the no-state entry, never offered by the tree's list. `host.projection`
- * picks between the two boards' move methods first: a no-state pick on the
- * Deliverables board must land on `performDeliverablesBoardMove`, not fall through
- * to the requirements one just because both share `choice.state === null`.
+ * express the no-state entry, never offered by the tree's list.
+ * `tracksDeliverableState` picks the move method FIRST, before either projection
+ * test: a Deliverable's pick must land on `performDeliverablesBoardMove` wherever it
+ * was made, and a no-state pick must not fall through to the requirements move just
+ * because both workflows share `choice.state === null`.
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<unknown> {
-	if (host.projection === 'deliverables') return host.performDeliverablesBoardMove(item, choice.state);
+	if (tracksDeliverableState(item)) return host.performDeliverablesBoardMove(item, choice.state);
 	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
 	// The tree's own Set state plans through the same function the board's moves do, so
 	// the date stamps ride it too: a history with holes in it, where which hole depends
@@ -355,10 +381,9 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			const noop =
-				host.projection === 'deliverables'
-					? computeDeliverableStateWrites(item, choice.state).length === 0
-					: computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0;
+			const noop = tracksDeliverableState(item)
+				? computeDeliverableStateWrites(item, choice.state).length === 0
+				: computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0;
 			if (noop) si.setChecked(true);
 		});
 	}
@@ -508,6 +533,18 @@ function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	});
 }
 
+/**
+ * `Deliverable` is withheld on the requirements board alone — that board excludes
+ * Deliverables by construction (`renderRequirementsBoard`), so picking it there is an
+ * offer to make the card vanish with no indication of where it went. Withheld, not
+ * disabled: the same "absent rather than inert" rule the state chip and the axis
+ * actions follow. Every other projection still offers it, since every other
+ * projection can show the result.
+ */
+function typeChoices(host: BacklogViewHost): string[] {
+	return host.projection === 'board' ? ALL_TYPES.filter((type) => !isDeliverableType(type)) : ALL_TYPES;
+}
+
 function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	const apply = (level: string) => {
 		void host.applySafely([{ file: item.file, typeName: level }]);
@@ -515,7 +552,7 @@ function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	menu.addItem((mi) => {
 		mi.setTitle('Set type').setIcon('tag');
 		const submenu = submenuOf(mi);
-		for (const level of ALL_TYPES) {
+		for (const level of typeChoices(host)) {
 			submenu.addItem((si) => {
 				si.setTitle(level).onClick(() => apply(level));
 				if (item.typeName !== null && item.typeName.toLowerCase() === level.toLowerCase()) {
