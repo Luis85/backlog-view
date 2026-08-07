@@ -69,6 +69,20 @@ describe('the workflow an item is tracked by follows its type, not the projectio
 		expect(vault.fm('D.md')['status']).toBe('In progress');
 	});
 
+	it('draws the Deliverable state once, as the chip, never also as a property cell', () => {
+		// The row never draws one property twice with only one of them editable
+		// (`src/view/CLAUDE.md`). The chip reads the Deliverable key now, so that key has
+		// to leave the generic column set with `stateKey` — found by review: a Base whose
+		// property order names it rendered the value in both places.
+		const { view, containerEl, config } = makeView(vaultWithBoth(), CONFIG);
+		config.order = ['note.deliverableStatus', 'note.status'];
+		view.onDataUpdated();
+
+		const row = rowByTitle(containerEl, 'D');
+		expect(row.querySelector('.pbl-state-text')?.textContent).toBe('Draft');
+		expect(row.querySelectorAll('.pbl-prop').length).toBe(0);
+	});
+
 	it('shows the Deliverable’s own state on the tree’s state chip', () => {
 		const { containerEl } = makeView(vaultWithBoth(), CONFIG);
 

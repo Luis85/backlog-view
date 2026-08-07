@@ -6,7 +6,7 @@ import { removeTag } from '../interactions/tags';
 import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
-import { BacklogSettings } from '../../domain/settings';
+import { BacklogSettings, resolvedDeliverableStateKey } from '../../domain/settings';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -170,8 +170,18 @@ export function chipProps(host: BacklogViewHost): ChipProp[] {
 		`note.${host.settings.orderKey}`,
 		`note.${host.settings.typeKey}`,
 	]);
-	// The interactive chips already show these two properties.
+	// The interactive chips already show these properties. The Deliverable state key
+	// joins them now that the chip reads it on a Deliverable row: found by review —
+	// with its own key configured AND named in the Base's property order, the value
+	// rendered twice on such a row, once editable and once not, which is exactly what
+	// this skip list exists to prevent. Resolved, so the fallback case is the same key
+	// `stateKey` already removed rather than a second entry for it. Skipped for EVERY
+	// row, like `stateKey` itself: the column set is one decision per render pass, and
+	// the property describes a Deliverable anyway (`missingKeyStubs` refuses to stub it
+	// on anything else), so no other row loses a column it had a reason to carry.
 	if (host.settings.stateKey) skip.add(`note.${host.settings.stateKey}`);
+	const deliverableKey = resolvedDeliverableStateKey(host.settings);
+	if (deliverableKey) skip.add(`note.${deliverableKey}`);
 	if (hasHorizonAxis(host.settings)) skip.add(`note.${host.settings.horizonKey}`);
 	const tagsId = host.settings.tagsKey ? `note.${host.settings.tagsKey}` : '';
 	return props
