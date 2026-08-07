@@ -314,3 +314,40 @@ describe('the requirements board draws no column only a Deliverable could fill',
 		expect(columns).not.toContain('Shipped');
 	});
 });
+
+describe('a match keeps its whole subtree, focus or no focus', () => {
+	function underAnEpic(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Widget Platform.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feat.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Widget Platform' });
+		vault.addFile('Spec.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Widget Platform',
+		});
+		return vault;
+	}
+	const cards = (containerEl: HTMLElement) => containerEl.querySelectorAll('.pbl-card').length;
+
+	it('keeps a Deliverable whose out-of-focus ANCESTOR matched', () => {
+		// The filter contract is a match plus its whole subtree, and this board ignores
+		// the focus level — so typing the Epic's title has to keep its Deliverable either
+		// way. Indexing each missed Deliverable in isolation kept it unfocused and dropped
+		// it under a focus: the same focus-dependence one layer up from the last fix.
+		const unfocused = makeView(underAnEpic(), CONFIG);
+		unfocused.view.setProjection('deliverables');
+		unfocused.view.setFilter('Widget');
+		expect(cards(unfocused.containerEl)).toBe(1);
+
+		const focused = makeView(underAnEpic(), CONFIG, { focus: 'Feature' });
+		focused.view.setProjection('deliverables');
+		focused.view.setFilter('Widget');
+		expect(cards(focused.containerEl)).toBe(1);
+	});
+
+	it('still drops one no ancestor and nothing below it matched', () => {
+		const focused = makeView(underAnEpic(), CONFIG, { focus: 'Feature' });
+		focused.view.setProjection('deliverables');
+		focused.view.setFilter('nothing matches this');
+		expect(cards(focused.containerEl)).toBe(0);
+	});
+});

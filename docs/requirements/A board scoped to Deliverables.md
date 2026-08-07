@@ -244,6 +244,12 @@ narrowed to one type.
   the Deliverables the first missed, or a Deliverable outside the focused subtree renders
   until anything is typed and then vanishes whether or not its own title matched, which is
   the focus restriction this board exists to ignore arriving through the filter instead.
+  That pass carries the ANCESTOR question with it — a missed Deliverable's ancestors are
+  outside the focused forest too, and the contract is a match plus its **whole subtree**,
+  so typing an Epic's title must keep its Deliverables here under a focus exactly as it
+  does without one. It walks UP from each Deliverable and marks only that Deliverable's
+  own subtree, never the matching ancestor's: starting the whole walk at `realRoots`
+  instead would mark the focused rows in that ancestor's subtree too, changing the tree.
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button

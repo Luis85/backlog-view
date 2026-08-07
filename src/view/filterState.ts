@@ -51,12 +51,18 @@ export class FilterState {
 	 * the card vanished the moment anything was typed, its own title matching or not:
 	 * the focus restriction that board exists to ignore, reintroduced by the filter.
 	 *
-	 * The second pass is additive and cannot change what the TREE shows. It only ever
-	 * adds paths outside the focused forest, and those are not rendered under a focus —
-	 * which is also why it does not simply walk `realRoots` instead: that would let an
-	 * out-of-focus ANCESTOR's match mark its whole subtree, revealing focused rows that
-	 * matched nothing. `seen` keeps it linear rather than re-walking a subtree per
-	 * Deliverable already reached by the first pass.
+	 * That pass carries the ANCESTOR question with it, because the contract is a match
+	 * plus its whole subtree and a missed Deliverable's ancestors are all outside the
+	 * focused forest too. Without it, typing an Epic's title kept its Deliverables on
+	 * screen unfocused and dropped them under a focus — the same focus-dependence one
+	 * layer up, and the reason this walks UP from each Deliverable rather than simply
+	 * starting the whole walk at `realRoots`: that would also mark the focused rows in
+	 * a matching ancestor's subtree, changing the tree. Walking up marks a Deliverable's
+	 * own subtree and nothing else, so the tree is untouched either way.
+	 *
+	 * `seen` keeps it linear rather than re-walking a subtree per Deliverable already
+	 * reached by the first pass; the upward walk is per missed Deliverable and bounded
+	 * by the tree's depth.
 	 */
 	recompute(model: BacklogModel | null): void {
 		const needle = this.text.trim().toLowerCase();
@@ -84,9 +90,19 @@ export class FilterState {
 			if (anyMatch) visible.add(item.file.path);
 			return anyMatch;
 		};
+		const ancestorMatched = (item: BacklogItem): boolean => {
+			for (let up = item.parent; up; up = up.parent) {
+				if (up.title.toLowerCase().includes(needle)) return true;
+			}
+			return false;
+		};
 		for (const root of model.roots) visit(root);
 		for (const item of model.deliverableResults) {
-			if (!seen.has(item.file.path)) visit(item);
+			if (seen.has(item.file.path)) continue;
+			// Its own subtree only — never the matching ancestor, which is not rendered
+			// here and whose other descendants are the tree's business, not this pass's.
+			if (ancestorMatched(item)) markSubtree(item);
+			visit(item);
 		}
 		this.visible = visible;
 		this.matches = matches;
