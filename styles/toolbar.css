@@ -154,6 +154,14 @@
 	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
+/* The Deliverables board's reduced focus indicator: text, not a button — nothing here
+   opens a menu, so nothing is styled to look like it would. */
+.pbl-focus-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-accent);
+	white-space: nowrap;
+}
+
 .pbl-focus-clear {
 	padding: 0;
 }

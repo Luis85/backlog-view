@@ -161,14 +161,14 @@ export function renderNoDeliverablesState(host: BacklogViewHost, treeEl: HTMLEle
 		focused
 			? admitsNewDeliverable
 				? 'Nothing typed "Deliverable" is in the current focus. Create one from the ' +
-					'toolbar\'s New menu — it will appear here — or switch the focus button back ' +
-					'to "All types" to see Deliverables elsewhere in the base.'
-				: 'Nothing typed "Deliverable" is in the current focus. Switch the focus button ' +
-					'in the toolbar back to "All types" to see Deliverables elsewhere in the base — ' +
-					'or to create a new one, since one made from here would not appear on this ' +
+					'toolbar\'s New button — it will appear here — or clear the focus in the ' +
+					'toolbar (back to "All types") to see Deliverables elsewhere in the base.'
+				: 'Nothing typed "Deliverable" is in the current focus. Clear the focus in the ' +
+					'toolbar (back to "All types") to see Deliverables elsewhere in the base — ' +
+					'or create a new one, since one made from here would not appear on this ' +
 					'board until you do.'
 			: 'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
-				'menu, or type an existing note as a Deliverable from its Set type menu.',
+				'button, or type an existing note as a Deliverable from its Set type menu.',
 	);
 }
 

@@ -18,6 +18,7 @@ import {
 } from '../../domain/board';
 import { childTypeChoices, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
+import { collectObservedStates } from '../../domain/vocabulary';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
@@ -80,11 +81,25 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
+	// Deliverables are managed on their own board now — never a card, never a stray
+	// column and never counted here, whatever state they carry. Their Task children are
+	// untouched: Task-typed, so this predicate does not reach them, and they keep their
+	// own card and column placement even though their parent has none here.
+	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const board = boardColumns(
-		requirementsWorkflow(model, host.settings),
+		{
+			...requirementsWorkflow(model, host.settings),
+			// The same collector `model.observedStates` itself is built from, fed a
+			// Deliverable-free population — a coincidental state value on one must not
+			// open a stray column here that nothing else would ever land in.
+			observedValues: collectObservedStates(
+				model.results.filter((item) => !isDeliverable(item)),
+				host.settings,
+			),
+		},
 		model.focused ? model.roots : model.results,
-		(item) => !host.isRowHidden(item),
-		(item) => !host.isRowHiddenUnfiltered(item),
+		(item) => !host.isRowHidden(item) && !isDeliverable(item),
+		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverable(item),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performBoardMove(item, state),

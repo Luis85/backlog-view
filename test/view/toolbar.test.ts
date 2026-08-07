@@ -9,7 +9,6 @@ import {
 	key,
 	makeView,
 	noOptionalProperties,
-	projectionButton,
 	refresh,
 	rowByTitle,
 	titlesOf,
@@ -530,62 +529,6 @@ describe('toolbar count breakdown', () => {
 	});
 });
 
-describe('the Deliverables board toggle', () => {
-	it('offers a fourth toggle position for the Deliverables board', () => {
-		const { containerEl, view } = makeView(fixture());
-		const btn = projectionButton(containerEl, 'Show as Deliverables board');
-		expect(btn).toBeTruthy();
-
-		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(view.projection).toBe('deliverables');
-	});
-
-	it('hides "Show completed items" on the Deliverables board even with a requirements state key', () => {
-		const harness = makeView(fixture(), { stateProperty: 'note.status' });
-		harness.view.setProjection('deliverables');
-		expect(harness.containerEl.querySelector('.pbl-completed-toggle')).toBeNull();
-	});
-
-	it('counts a Deliverable done only in the requirements workflow as visible, not hidden', () => {
-		const vault = new FakeVault();
-		vault.addFile('D.md', {
-			frontmatter: { type: 'Deliverable', order: 10, status: 'Done', deliverableStatus: 'Draft' },
-		});
-		const harness = makeView(vault, {
-			stateProperty: 'note.status',
-			showCompleted: false,
-			deliverableStateProperty: 'note.deliverableStatus',
-		});
-		harness.view.setProjection('deliverables');
-		const { containerEl } = harness;
-
-		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
-	});
-
-	it('counts only Deliverable-typed items on the Deliverables board, never the whole base', () => {
-		const vault = new FakeVault();
-		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
-		vault.addFile('P1.md', { frontmatter: { type: 'PBI', order: 10 } });
-		vault.addFile('P2.md', { frontmatter: { type: 'PBI', order: 20 } });
-		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
-		harness.view.setProjection('deliverables');
-		const { containerEl } = harness;
-
-		// One Deliverable card renders; the toolbar must not report the base's other 2
-		// PBIs as part of "how many items are on this board".
-		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
-	});
-
-	it('scopes the count tooltip to Deliverables too, not just the label text', () => {
-		const vault = new FakeVault();
-		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
-		vault.addFile('P1.md', { frontmatter: { type: 'PBI', order: 10 } });
-		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
-		harness.view.setProjection('deliverables');
-		const { containerEl } = harness;
-
-		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
-		expect(count?.dataset.tooltip).toContain('Deliverable');
-		expect(count?.dataset.tooltip).not.toContain('PBI');
-	});
-});
+// The Deliverables board's own toolbar behavior (its toggle, its count scoping, its
+// New button and its reduced focus control) lives in deliverablesToolbar.test.ts —
+// split out to keep this file under its line budget, and because it is one subject.
