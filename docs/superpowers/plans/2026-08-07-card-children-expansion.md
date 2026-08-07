@@ -1229,6 +1229,11 @@ timeline-only dated axis. Each projection gets one enabled case and one disabled
 
 		// Confirm the fixture really is timeline-only before trusting the verdict.
 		expect(shelfTitles(containerEl)).toEqual([]);
+		// Presence FIRST, and not as ceremony: `[].every(...)` is true, so a bare
+		// `every` check would pass against an implementation that omitted the controls
+		// altogether — the one outcome the spec rules out, since disabled-and-present is
+		// what keeps them from vanishing as the projection changes.
+		expect(collapseCtls(containerEl).length).toBe(2);
 		expect(collapseCtls(containerEl).every((b) => b.disabled)).toBe(true);
 	});
 ```
