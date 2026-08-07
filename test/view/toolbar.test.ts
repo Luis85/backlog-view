@@ -52,8 +52,15 @@ describe('toolbar backfill', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
-			deliverableStateProperty: 'note.deliverableStatus',
 		});
+		// deliverableStateProperty is NOT bound: it now suggests the same key `status`
+		// does, `state` is declared first and claims it, and adoptableProperties'
+		// existing "don't suggest an already-taken key" guard skips the second
+		// suggestion of one already spoken for — leaving the Deliverable workflow to
+		// share `status` through its own fallback (`resolvedDeliverableStateKey`)
+		// rather than this action writing the same explicit key to both options.
+		expect(config.values.deliverableStateProperty).toBeUndefined();
+		expect(view.settings.deliverableStateKey).toBe('');
 		// Every one of them on the note, empty: the features are usable and nothing was
 		// decided for the user — no state, no horizon, no dates. Not deliverableStatus:
 		// that stub is scoped to Deliverable-typed items, and this note is an Epic.

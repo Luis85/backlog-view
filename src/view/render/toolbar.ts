@@ -292,14 +292,27 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
  *
  * **The Deliverables board is the one projection that never offers the menu.** It
  * shows one type by definition, so a control that PICKS a type to narrow by has
- * nothing to add — the same "absent, not disabled" call `renderCompletedToggle` makes
- * for its own irrelevant control. Focus is shared UI state, though, not a per-projection
- * setting, and an already-active focus still narrows THIS board's own population
+ * nothing to add. Unlike `renderCompletedToggle`'s own irrelevant control, though, the
+ * button here does not go absent: with no inherited focus narrowing it further, this
+ * board's population already IS "every Deliverable" — the same thing the button's
+ * label would say if it opened a menu — so a real, disabled `<button>` reads
+ * "Deliverables" instead of vanishing (the human's own request; a class or
+ * `aria-disabled` alone would leave it focusable, which `src/view/CLAUDE.md`'s "once a
+ * control is focusable, disabling it in CSS is a lie" rule forbids).
+ *
+ * Focus is shared UI state, though, not a per-projection setting, and an already-active
+ * focus still narrows THIS board's own population **UNLESS it is `PBI`**
  * (`renderDeliverablesBoard` reads `model.results`, itself re-rooted by focus — see
- * `renderNoDeliverablesState`'s `admitsNewDeliverable`), so a focus set from the tree
- * and then carried here must stay clearable from here too: a static label names it
- * (never a button that would open a menu doing nothing) and the one real, meaningful
- * action left — clearing it — stays a real button rather than vanishing with the rest.
+ * `renderNoDeliverablesState`'s `admitsNewDeliverable`, and extension 3b of
+ * `docs/requirements/A board scoped to Deliverables.md`, which states as a deliberate,
+ * reviewed decision that a non-`PBI` inherited focus narrows this board exactly as it
+ * narrows the tree). A fixed "Deliverables" label would misreport that narrowing, so
+ * this case keeps its own, already-honest shape instead: a static label naming the
+ * ACTUAL inherited focus, and the one real, meaningful action left — clearing it —
+ * stays a real button. Making "Deliverables" true of every inherited focus, not only
+ * the common no-focus case, would mean the Deliverables board stopped inheriting that
+ * narrowing at all — reversing extension 3b's decision, which is not this button's
+ * call to make.
  */
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// A focus naming no configured type re-roots nothing — report all levels.
@@ -309,9 +322,16 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	const setLevel = (level: string) => host.setFocusLevel(level);
 
 	if (host.projection === 'deliverables') {
-		// Nothing to narrow by and nothing to clear: fully absent, the common case.
-		if (active === '') return;
-		const wrap = barEl.createDiv({ cls: 'pbl-focus pbl-focus-active' });
+		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
+		if (active === '') {
+			const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
+			setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
+			btn.createSpan({ text: 'Deliverables' });
+			btn.disabled = true;
+			setTooltip(btn, 'This board always shows Deliverables');
+			return;
+		}
+		wrap.addClass('pbl-focus-active');
 		wrap.createSpan({ cls: 'pbl-focus-label', text: `Focused: ${active}` });
 		renderFocusClearButton(wrap, setLevel);
 		return;

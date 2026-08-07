@@ -272,7 +272,23 @@ function deliverableStateWritten(write: ItemWrite): boolean {
 	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
 }
 
-/** The frontmatter keys this write will touch, in the order they are written. */
+/**
+ * The frontmatter keys this write will touch, in the order they are written.
+ *
+ * Deduped before it returns: the requirements state and the Deliverable state may now
+ * explicitly share one key (`configProblems`' `STATE_KEY_SHARING_EXEMPT`), and a
+ * Deliverable item missing that key entirely gets it named twice by
+ * `missingKeyStubs` — once for each field's own gap-check — so `write.stubs` can carry
+ * both `state` and `deliverableState` resolving to the identical raw key. An
+ * ordinary (non-exempt) collision never reaches here at all, because `configProblems`
+ * gates every write while one is reported, so this dedupe only ever fires for the
+ * one legitimate pair it was written for. Without it, `captureInverse` records the
+ * same key twice with the same before/after pair, and the second, redundant entry
+ * reads on `applyRestores` as a conflict — the note already matches what undo would
+ * write, because the FIRST entry just restored it, so the compare-and-swap on the
+ * second sees a value that no longer matches what THIS write wrote and skips it,
+ * inflating `RestoreOutcome.conflicts` for a restore that in truth fully succeeded.
+ */
 function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	const keys: string[] = [];
 	if (write.removeParentKey || write.parent !== undefined) keys.push(settings.parentKey);
@@ -290,7 +306,7 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.finish !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
 	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
 	for (const key of stubKeys(settings, write.stubs)) keys.push(key);
-	return keys;
+	return [...new Set(keys)];
 }
 
 /**

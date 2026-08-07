@@ -346,7 +346,18 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
 	deliverableState: {
 		option: 'deliverableStateProperty',
-		suggested: 'deliverableStatus',
+		// Same suggestion as `state` itself: Deliverables sharing the requirements
+		// workflow's own property is a legitimate, explicitly requested configuration
+		// (see `configProblems`' exemption below and `resolvedDeliverableStateKey`'s
+		// fallback), so the setup action should reach for the one key both workflows
+		// already agree to share rather than inventing a second, disused property.
+		// `adoptableProperties`'s own "don't suggest an already-taken key" guard is
+		// what actually delivers that: `state` is declared first and claims `status`
+		// first, so a first-run setup leaves THIS key unbound and the Deliverable
+		// workflow falls back to `stateKey` — sharing the property through the
+		// fallback this codebase already trusts, never by writing the same explicit
+		// key to both options in one pass.
+		suggested: 'status',
 		label: 'deliverable state',
 		settingsKey: 'deliverableStateKey',
 	},
@@ -522,6 +533,27 @@ function ownedProperties(settings: BacklogSettings): { label: string; key: strin
 }
 
 /**
+ * The one pair `configProblems` lets share a key: the requirements state and the
+ * Deliverable state, explicitly configured to the same property. Sharing a key by
+ * FALLBACK was already legitimate (`resolvedDeliverableStateKey`, and `ownedProperties`
+ * reading `deliverableStateKey` RAW so that fallback resolves to '' and never reaches
+ * this map at all) — this is the same "Deliverables don't need their own dedicated
+ * status property; they can use the same one" idea, asked for explicitly rather than
+ * arrived at by leaving a key unset. The two workflows do not share a vocabulary
+ * (`deliverableStates`/`deliverableDoneValues` stay independent of `states`/`doneValues`
+ * once the key IS explicit — see the Deliverable workflow's own resolution rules), so
+ * one property silently overwriting the other's meaning — the usual reason a shared
+ * key is a mistake — never applies to this pair.
+ *
+ * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": a
+ * third property landing on the same key is still every bit the mistake it always was,
+ * so the exemption only fires when these two are the WHOLE group sharing the key —
+ * one more label on it (order, tags, an axis key, anything) reports as a collision
+ * again, state and deliverable state both named in it like any other clash.
+ */
+const STATE_KEY_SHARING_EXEMPT: [string, string] = ['state', 'deliverable state'];
+
+/**
  * Configuration mistakes that would corrupt writes (e.g. parent and order stored
  * under the same frontmatter key). The view surfaces these instead of guessing.
  */
@@ -535,6 +567,9 @@ export function configProblems(settings: BacklogSettings): string[] {
 		keys.set(key, users);
 	}
 	for (const [key, users] of keys) {
+		if (users.length === STATE_KEY_SHARING_EXEMPT.length && STATE_KEY_SHARING_EXEMPT.every((l) => users.includes(l))) {
+			continue;
+		}
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
 		}

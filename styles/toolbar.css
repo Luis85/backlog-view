@@ -154,6 +154,13 @@
 	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
+/* The Deliverables board's fixed "Deliverables" button: a real disabled control
+   (never a CSS-only lie), dimmed the same way every other disabled toolbar button is. */
+.pbl-focus-btn:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
 /* The Deliverables board's reduced focus indicator: text, not a button — nothing here
    opens a menu, so nothing is styled to look like it would. */
 .pbl-focus-label {

@@ -135,11 +135,20 @@ describe('creation on the Deliverables board', () => {
 });
 
 describe('the focus control on the Deliverables board', () => {
-	it('is entirely absent when no focus is set', () => {
+	it('reads "Deliverables", disabled, rather than disappearing when no focus is set', () => {
 		const harness = makeView(fixture());
 		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
 
-		expect(harness.containerEl.querySelector('.pbl-focus')).toBeNull();
+		// The board only ever shows Deliverables here — nothing is narrowing it — so
+		// the button is a real, disabled control rather than absent or a CSS-only lie.
+		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
+		expect(btn).not.toBeNull();
+		expect(btn?.tagName).toBe('BUTTON');
+		expect(btn?.textContent).toContain('Deliverables');
+		expect(btn?.disabled).toBe(true);
+		// Nothing to clear: no clear button rides along with the fixed label.
+		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 	});
 
 	it('drops the picker that offers a new focus, but keeps a way to clear one already set', () => {
@@ -159,6 +168,12 @@ describe('the focus control on the Deliverables board', () => {
 
 		clear?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(harness.view.settings.focusLevel).toBe('');
-		expect(containerEl.querySelector('.pbl-focus')).toBeNull();
+		// Clearing the inherited focus lands back on the fixed, disabled "Deliverables"
+		// button — not on nothing: `.pbl-focus` stays, now holding that button instead
+		// of the label and clear button it just held.
+		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
+		expect(btn?.textContent).toContain('Deliverables');
+		expect(btn?.disabled).toBe(true);
+		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 	});
 });

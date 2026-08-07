@@ -387,6 +387,12 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
+		// Six, not seven: `deliverableState` now suggests the SAME key `state` does
+		// ('status'), and `state` is declared first, so its own adoption claims
+		// 'status' before the loop ever reaches `deliverableState` — the existing
+		// "don't suggest an already-taken key" guard (below) skips it, leaving the
+		// Deliverable workflow to fall back to the shared `stateKey` rather than
+		// binding a second, explicit property to the same value.
 		expect(adoptableProperties(config, resolveSettings(config)).map((p) => p.suggested)).toEqual([
 			'status',
 			'started',
@@ -394,7 +400,6 @@ describe('adoptableProperties', () => {
 			'horizon',
 			'start',
 			'due',
-			'deliverableStatus',
 		]);
 	});
 
@@ -453,11 +458,38 @@ describe('the Deliverable workflow', () => {
 		expect(s.stateKey).toBe('status');
 	});
 
-	it('reports a collision between the two workflows sharing one key', () => {
+	it('does not report a collision when the two workflows explicitly share one key', () => {
+		// The human's own request: "I don't care if the properties are colliding as
+		// they do not share the same workflow." Explicit sharing is exempted by name
+		// (`STATE_KEY_SHARING_EXEMPT`), the same way fallback sharing already was.
 		const s = resolveSettings(
 			fakeConfig({ stateProperty: 'note.status', deliverableStateProperty: 'note.status' }),
 		);
-		expect(configProblems(s).some((p) => p.includes('deliverable state'))).toBe(true);
+		expect(s.stateKey).toBe('status');
+		expect(s.deliverableStateKey).toBe('status');
+		expect(configProblems(s)).toEqual([]);
+	});
+
+	it('does NOT widen the exemption to state sharing a key with anything else', () => {
+		// A width-guard on the exemption above: only the {state, deliverable state}
+		// PAIR is exempt. State colliding with a third property (order, here) is
+		// still exactly the mistake `configProblems` exists to catch — an exemption
+		// keyed on "an entry named state" rather than on the pair would swallow this.
+		const s = { ...defaultSettings(), stateKey: 'status', orderKey: 'status' };
+		const problems = configProblems(s);
+		expect(problems).toHaveLength(1);
+		expect(problems[0]).toContain('order and state');
+	});
+
+	it('still reports a collision when a third property joins the exempt pair on one key', () => {
+		// Exactly the pair is exempt, not "at least the pair": a third label sharing
+		// the same key makes it a real collision again, naming all three.
+		const s = { ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'status', orderKey: 'status' };
+		const problems = configProblems(s);
+		expect(problems).toHaveLength(1);
+		expect(problems[0]).toContain('order');
+		expect(problems[0]).toContain('state');
+		expect(problems[0]).toContain('deliverable state');
 	});
 });
 
