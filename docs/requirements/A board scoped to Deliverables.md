@@ -230,6 +230,20 @@ narrowed to one type.
   focus PICKER is the fifth surface under the same rule: focusing `Deliverable` from the
   requirements board narrows it to roots that board excludes, which is an empty board
   one click away. An INHERITED focus still reads in the button, with the clear beside it.
+- **The requirements board's own vocabulary is Deliverable-free in both passes that can
+  mint a column** — the configured list's fallback and the stray pass that runs even once
+  a workflow IS declared. Scoping one alone leaves the other drawing a column only a
+  Deliverable could fill, on a board that excludes every card that could sit in it. One
+  collection feeds both (`requirementsWorkflow`), taken from the FOCUSED results: with a
+  declared workflow the columns are the declaration and this changes nothing, and without
+  one the board draws the states its own visible work holds rather than columns for work
+  it is not showing.
+- **The quick filter indexes everything it will be ASKED about**, which is not the
+  rendered forest: `FilterState.recompute` walks `model.roots`, and this board asks about
+  `model.deliverableResults` — the whole, unfocused tree. A second, additive pass covers
+  the Deliverables the first missed, or a Deliverable outside the focused subtree renders
+  until anything is typed and then vanishes whether or not its own title matched, which is
+  the focus restriction this board exists to ignore arriving through the filter instead.
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button

@@ -42,6 +42,21 @@ export class FilterState {
 	 * Recompute against the model. Matches stay visible together with all their
 	 * ancestors and descendants — the match-path contract both projections render by,
 	 * which is what makes switching projections mid-filter find the same things.
+	 *
+	 * It has to index **everything it will be asked about**, which is not the same as
+	 * the rendered forest. `model.roots` is focus-narrowed, while the Deliverables board
+	 * asks about `model.deliverableResults` — built from the whole, unfocused tree
+	 * precisely so no focus can hide a Deliverable there. A Deliverable outside the
+	 * focused subtree was therefore never visited, so `keeps` answered false for it and
+	 * the card vanished the moment anything was typed, its own title matching or not:
+	 * the focus restriction that board exists to ignore, reintroduced by the filter.
+	 *
+	 * The second pass is additive and cannot change what the TREE shows. It only ever
+	 * adds paths outside the focused forest, and those are not rendered under a focus —
+	 * which is also why it does not simply walk `realRoots` instead: that would let an
+	 * out-of-focus ANCESTOR's match mark its whole subtree, revealing focused rows that
+	 * matched nothing. `seen` keeps it linear rather than re-walking a subtree per
+	 * Deliverable already reached by the first pass.
 	 */
 	recompute(model: BacklogModel | null): void {
 		const needle = this.text.trim().toLowerCase();
@@ -52,11 +67,13 @@ export class FilterState {
 		}
 		const visible = new Set<string>();
 		const matches = new Set<string>();
+		const seen = new Set<string>();
 		const markSubtree = (item: BacklogItem): void => {
 			visible.add(item.file.path);
 			for (const child of item.children) markSubtree(child);
 		};
 		const visit = (item: BacklogItem): boolean => {
+			seen.add(item.file.path);
 			const selfMatch = item.title.toLowerCase().includes(needle);
 			if (selfMatch) {
 				matches.add(item.file.path);
@@ -68,6 +85,9 @@ export class FilterState {
 			return anyMatch;
 		};
 		for (const root of model.roots) visit(root);
+		for (const item of model.deliverableResults) {
+			if (!seen.has(item.file.path)) visit(item);
+		}
 		this.visible = visible;
 		this.matches = matches;
 	}

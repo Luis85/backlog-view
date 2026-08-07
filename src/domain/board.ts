@@ -92,21 +92,34 @@ export interface Workflow {
 /**
  * The requirements board's workflow — `boardColumns`' original, only caller until now.
  *
- * `observedValues` is the stray-column vocabulary, and it is collected here rather
- * than taken from `model.observedStates`: Deliverables are managed on their own board
- * (`renderRequirementsBoard`) and never become a card here, so a state value carried
- * only by one must not mint a column nothing can ever land in. Stated in this factory
- * rather than spread-and-overridden at the call site, so the domain tests exercise the
- * same workflow the view builds instead of one the view then replaces a field of.
+ * ONE observed vocabulary, feeding both passes that can mint a column: the configured
+ * list's fallback (`stateMenuValues`, when no workflow is declared) and the stray pass
+ * that runs even once one is. It is collected here rather than taken from
+ * `model.observedStates`, which counts every result — Deliverables are managed on their
+ * own board (`renderRequirementsBoard`) and never become a card here, so a value only
+ * one of them carries must not open a column nothing can ever land in. Both halves, not
+ * one: scoping the strays alone still let the fallback draw the Deliverable-only column,
+ * which is the same defect through the other door.
+ *
+ * It is the FOCUSED population, since `model.results` is what a focus narrows. With a
+ * declared workflow that changes nothing — the columns are the declaration. Without
+ * one, the board draws the states its own visible work actually holds, which is the
+ * only vocabulary it could offer honestly: an unfocused list would draw columns for
+ * work this board is not showing.
+ *
+ * Stated in this factory rather than spread-and-overridden at the call site, so the
+ * domain tests exercise the same workflow the view builds instead of one the view then
+ * replaces a field of.
  */
 export function requirementsWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
+	const observed = collectObservedStates(
+		model.results.filter((item) => !isDeliverableType(item.typeName)),
+		settings,
+	);
 	return {
 		stateOf: (item) => item.stateValue,
-		values: stateMenuValues(settings, model.observedStates),
-		observedValues: collectObservedStates(
-			model.results.filter((item) => !isDeliverableType(item.typeName)),
-			settings,
-		),
+		values: stateMenuValues(settings, observed),
+		observedValues: observed,
 		doneValues: settings.doneValues,
 		wipLimits: settings.wipLimits,
 		columnPolicies: settings.columnPolicies,

@@ -255,3 +255,62 @@ describe('the requirements board does not offer a type it cannot show', () => {
 		expect(pickTitles()).toContain('New Bug');
 	});
 });
+
+describe('the quick filter reaches every Deliverable, focus or no focus', () => {
+	/** A Deliverable hanging off the Epic, so a `Feature` focus never walks to it. */
+	function outsideFocus(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Widget.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		return vault;
+	}
+
+	it('keeps a matching Deliverable outside the focused subtree', () => {
+		// `FilterState.recompute` walked `model.roots`, which a focus narrows — while this
+		// board's population is `model.deliverableResults`, built from the whole unfocused
+		// tree. So the card rendered fine until anything was typed and then vanished, its
+		// path never having been indexed: the focus restriction this board exists to
+		// ignore, reintroduced by the filter.
+		const harness = makeView(outsideFocus(), CONFIG, { focus: 'Feature' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+		expect(cardByTitle(containerEl, 'Widget')).toBeDefined();
+
+		harness.view.setFilter('Widget');
+		expect(cardByTitle(containerEl, 'Widget')).toBeDefined();
+	});
+
+	it('still hides a Deliverable the filter does not match', () => {
+		// The other direction, so a fix that simply indexed everything as visible fails
+		// this as loudly as the bug failed the one above.
+		const harness = makeView(outsideFocus(), CONFIG, { focus: 'Feature' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		harness.view.setFilter('nothing matches this');
+		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(0);
+	});
+});
+
+describe('the requirements board draws no column only a Deliverable could fill', () => {
+	it('keeps a Deliverable-only state out of the UNCONFIGURED workflow’s columns', () => {
+		// With no `stateValues` declared the columns fall back to the observed values, and
+		// that fallback read `model.observedStates` — every result, Deliverables included.
+		// So a value only a Deliverable carried opened a column on a board that excludes
+		// every card that could ever sit in it. Scoping the stray pass alone left this
+		// open: it is the same defect through the other door.
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: 'In progress' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 20, status: 'Shipped' } });
+		const harness = makeView(vault, { stateProperty: 'note.status' });
+		harness.view.setProjection('board');
+
+		const columns = [...harness.containerEl.querySelectorAll('.pbl-board-col-name')].map((el) => el.textContent);
+		expect(columns).toContain('In progress');
+		expect(columns).not.toContain('Shipped');
+	});
+});
