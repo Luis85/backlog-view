@@ -182,6 +182,12 @@ describe('the harness draws every icon the view asks for', () => {
 			collect();
 		}
 		for (const axis of ['horizons', 'dates'] as const) {
+			// Back onto the roadmap explicitly. This loop is about ITS axes, and leaving
+			// that to whichever projection the loop above happened to end on is exactly how
+			// appending a fourth projection silently stopped collecting the dated axis —
+			// `setAxisPick` re-rendered the Deliverables board, and the sweep went on
+			// passing because nothing named a control only that axis draws.
+			view.setProjection('roadmap');
 			view.setAxisPick(axis);
 			view.setShelfCollapsed(false);
 			collect();
@@ -203,6 +209,13 @@ describe('the harness draws every icon the view asks for', () => {
 		const { asked } = sweepIcons();
 		expect(asked.size).toBeGreaterThan(20);
 		expect(asked).toContain('inbox');
+		// One name per corner the sweep has to REACH, not just a count: a size and a
+		// single common icon stayed true while a whole projection's worth of controls
+		// went uncollected. `locate-fixed` is the dated axis's alone, `package` the
+		// Deliverables board's, and each fails the moment its leg of the sweep stops
+		// rendering — which is the failure this check exists for.
+		expect(asked).toContain('locate-fixed');
+		expect(asked).toContain('package');
 	});
 });
 

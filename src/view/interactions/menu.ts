@@ -45,20 +45,32 @@ function tracksDeliverableState(item: BacklogItem): boolean {
 /**
  * Which of `types` this projection may offer, for every surface that offers one —
  * `Set type`, a row's `New <child>`, and (through this same function) the toolbar's two
- * creators. `Deliverable` is withheld on the requirements board alone, because that
- * board excludes Deliverables by construction (`renderRequirementsBoard`): a note
- * created there vanishes on the pass that writes it, with no indication of where it
- * went. Withheld, not disabled — the "absent rather than inert" rule the state chip and
- * the axis actions already follow.
+ * creators.
  *
- * One function, because "the board does not offer a type it cannot show" is one rule
- * and it was broken twice by being applied at one surface at a time: first the primary
- * New button while the chevron beside it filtered, then every card's `New Deliverable`
- * while `Set type` filtered. A new surface that offers a type calls this rather than
- * reading `ALL_TYPES` or `childTypeChoices` straight.
+ * The rule is one sentence and it cuts BOTH ways: **a projection offers only the types
+ * it can show.** The requirements board excludes Deliverables
+ * (`renderRequirementsBoard`), so it withholds that one; the Deliverables board shows
+ * nothing else (`renderDeliverablesBoard`), so it withholds every other — including a
+ * Deliverable card's `New Task`, which wrote a note that vanished on the pass that
+ * created it exactly as `New Deliverable` did on the board next door. Withheld, not
+ * disabled — the "absent rather than inert" rule the state chip and the axis actions
+ * already follow. The tree and the roadmap show everything and narrow nothing.
+ *
+ * One function, because this was broken three times by being applied one surface at a
+ * time: the primary New button while the chevron beside it filtered, then every card's
+ * `New Deliverable` while `Set type` filtered, then the Deliverables board's own half of
+ * the rule while the requirements board's was in place. A new surface that offers a type
+ * calls this rather than reading `ALL_TYPES` or `childTypeChoices` straight.
  */
 export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPES): string[] {
-	return host.projection === 'board' ? types.filter((type) => !isDeliverableType(type)) : types;
+	if (host.projection === 'board') return types.filter((type) => !isDeliverableType(type));
+	if (host.projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
+	return types;
+}
+
+/** Whether `item` already carries this type — the comparison `Set type` checks by. */
+function isCurrentType(item: BacklogItem, type: string): boolean {
+	return item.typeName !== null && item.typeName.toLowerCase() === type.toLowerCase();
 }
 
 /**
@@ -557,18 +569,22 @@ function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 }
 
 function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	const choices = offerableTypes(host);
+	// Absent rather than inert, the same rule the entries themselves follow: on the
+	// Deliverables board the only offerable type is the one every card already carries,
+	// so the submenu would hold a single entry, already checked, whose pick writes
+	// nothing. A menu whose every option is a no-op is not a menu.
+	if (!choices.some((type) => !isCurrentType(item, type))) return;
 	const apply = (level: string) => {
 		void host.applySafely([{ file: item.file, typeName: level }]);
 	};
 	menu.addItem((mi) => {
 		mi.setTitle('Set type').setIcon('tag');
 		const submenu = submenuOf(mi);
-		for (const level of offerableTypes(host)) {
+		for (const level of choices) {
 			submenu.addItem((si) => {
 				si.setTitle(level).onClick(() => apply(level));
-				if (item.typeName !== null && item.typeName.toLowerCase() === level.toLowerCase()) {
-					si.setChecked(true);
-				}
+				if (isCurrentType(item, level)) si.setChecked(true);
 			});
 		}
 	});

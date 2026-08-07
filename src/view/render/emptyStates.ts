@@ -111,7 +111,16 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 			'options — and optionally "Deliverable workflow states (in order)" — and the ' +
 			'board will draw one column per state.',
 	);
-	renderSetupCta(host, empty, ['deliverableState']);
+	// BOTH fields fix this frame, which is `resolvedDeliverableStateKey`'s own rule as a
+	// list: this board resolves through its own key when one is set and through the
+	// requirements `stateKey` when it is not. Naming only the Deliverable field hid the
+	// button on the case that matters most — a fresh view, where `adoptableProperties`
+	// gives `status` to `state` first and drops `deliverableState` as a duplicate
+	// suggestion, so nothing here was adoptable and the guidance named an option while
+	// withholding the press that would have set it. A CLEARED `state` is still a
+	// decision and still hides the button: `adoptableProperties` asks the config, not
+	// the settings.
+	renderSetupCta(host, empty, ['deliverableState', 'state']);
 }
 
 /**

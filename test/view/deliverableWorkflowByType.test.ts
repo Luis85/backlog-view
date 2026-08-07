@@ -433,3 +433,57 @@ describe('the two scopes, at the cases one index kept missing', () => {
 		expect(cards(focused.containerEl)).toBe(0);
 	});
 });
+
+describe('the Deliverables board offers only the type it can show', () => {
+	it('withholds New Task and Set type from a Deliverable card', () => {
+		// The other half of the rule the requirements board already keeps. A Task created
+		// from here is legitimate work that this board cannot draw, so it vanishes on the
+		// pass that writes it — exactly what `New Deliverable` did on the board next door.
+		const harness = makeView(vaultWithBoth(), CONFIG);
+		const { containerEl } = harness;
+
+		rowByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('New Task')).toBeDefined();
+		expect(Menu.lastShown?.item('Set type')).toBeDefined();
+
+		harness.view.setProjection('deliverables');
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('New Task')).toBeUndefined();
+		// Absent rather than inert: the only offerable type is the one the card carries,
+		// so every entry the submenu could hold would write nothing.
+		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
+		// Still a menu — the state and navigation entries are untouched.
+		expect(Menu.lastShown?.item('Set state')).toBeDefined();
+		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
+	});
+});
+
+describe('the Deliverables board can be set up from its own empty state', () => {
+	it('offers the setup button when only the SHARED property is adoptable', () => {
+		// A fresh view: `adoptableProperties` gives `status` to `state` first and drops
+		// `deliverableState` as a duplicate suggestion, so naming only the Deliverable
+		// field hid the press that would configure this board through the fallback —
+		// guidance naming an option while withholding the button that sets it.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		const harness = makeView(vault, {});
+		harness.view.setProjection('deliverables');
+
+		const empty = harness.containerEl.querySelector('.pbl-empty');
+		expect(empty?.textContent).toContain('No workflow to show');
+		expect(empty?.querySelector('button')?.textContent).toContain('Add the default properties');
+	});
+
+	it('withholds it when the shared property was deliberately CLEARED', () => {
+		// Clearing an option is a decision, and `adoptableProperties` asks the config
+		// rather than the settings precisely so this stays true.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		const harness = makeView(vault, noOptionalProperties());
+		harness.view.setProjection('deliverables');
+
+		const empty = harness.containerEl.querySelector('.pbl-empty');
+		expect(empty?.textContent).toContain('No workflow to show');
+		expect(empty?.querySelector('button')).toBeNull();
+	});
+});
