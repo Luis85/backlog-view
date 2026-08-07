@@ -60,10 +60,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	roadmap: RoadmapSnapshot | null = null;
 	/**
 	 * Paths whose card drew a child disclosure this render pass, filled through
-	 * `RowContext.cardKids` and cleared beside `rowEls`. No public reader yet — the
-	 * card menu is the first one, in a later increment.
+	 * `RowContext.cardKids` and cleared beside `rowEls`. Exposed read-only as
+	 * `cardChildrenShown` — the card menu's `addChildrenSection` is its first reader.
 	 */
 	private readonly cardKids = new Set<string>();
+	get cardChildrenShown(): ReadonlySet<string> {
+		return this.cardKids;
+	}
 	/** What the scroller last drew and where today sat — see `restoreScroll`. */
 	private scroll: ScrollAnchor = { content: '', todayLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */

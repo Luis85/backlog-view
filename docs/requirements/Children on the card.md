@@ -83,12 +83,16 @@ card — and a count is the half of it that cannot be acted on.
 
 ## Where it lives
 
-`src/view/render/cardChildren.ts` — `listedChildren` (the visible direct children),
-`childrenLabel` (what to call them) and `renderCardChildren` (the disclosure, and the
-list when it is open), called from `renderCardBody` in `src/view/render/board.ts` so
-every card projection gets one implementation and timeline rows, which use the card
-shell without the body, get none. The module also records which paths it drew a
-disclosure for; the view publishes that set and `src/view/interactions/menu.ts` and the
-toolbar's bulk controls read it, so neither re-derives an answer the screen already has.
+`src/view/childrenList.ts` — `listedChildren` (the visible direct children) and
+`childrenLabel` (what to call them), pure and DOM-free so both readers below can share
+them without an import cycle. `src/view/render/cardChildren.ts` re-exports both and adds
+`renderCardChildren` (the disclosure, and the list when it is open), called from
+`renderCardBody` in `src/view/render/board.ts` so every card projection gets one
+implementation and timeline rows, which use the card shell without the body, get none.
+The render module also records which paths it drew a disclosure for; the view publishes
+that set as `BacklogViewHost.cardChildrenShown` and `src/view/interactions/menu.ts`'s
+`addChildrenSection` reads it — the same list and the same gate, reached through
+`buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
+(`showContextMenuFor`) — so neither re-derives an answer the screen already has.
 Driven in `test/view/cardChildren.test.ts`, and against context cards in
 `test/view/contextCardWrites.test.ts`.

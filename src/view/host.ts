@@ -165,6 +165,17 @@ export interface BacklogViewHost {
 	/** The roadmap of the last render, or null while the view is not a roadmap (or has no axis). */
 	readonly roadmap: RoadmapSnapshot | null;
 	/**
+	 * Paths whose card drew a child disclosure in the last render pass — rebuilt per
+	 * pass exactly as `board` and `roadmap` are. The menu offers children where the
+	 * screen shows them; a surface that drew no body (a timeline row, a tree row) is
+	 * absent, so the discriminator is what happened rather than which projection it is.
+	 *
+	 * Readonly, and not the write path: the render fills the view's own set through
+	 * `RowContext.cardKids`. A renderer adding through this member would need a cast,
+	 * which is how a readonly boundary becomes decorative.
+	 */
+	readonly cardChildrenShown: ReadonlySet<string>;
+	/**
 	 * The retained roadmap-axis pick for this saved view, or null before the user
 	 * ever picks. Retained even while its axis is unconfigured — restoring the
 	 * configuration restores the choice — so read the axis to draw through

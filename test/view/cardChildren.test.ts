@@ -4,6 +4,8 @@ import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
 import { refresh, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/render/cardChildren';
+import { Menu } from '../helpers/obsidian-mock';
+import { makeRoadmap, rowFor } from '../helpers/roadmap';
 
 useViewHarness();
 
@@ -181,5 +183,83 @@ describe('children on the card', () => {
 		// answers a keyboard.
 		expect(disclosure(card)?.disabled).toBe(true);
 		expect(kidTitles(card)).toEqual(['Feature B1', 'Feature B2']);
+	});
+
+	it('offers the same children in the card menu, on a right-click', () => {
+		const { containerEl } = makeBoard(boardVault());
+		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).toContain('Open child "Feature B1"');
+		expect(titles).toContain('Open child "Feature B2"');
+	});
+
+	// The menu key is the case the section exists for — and it reaches buildItemMenu
+	// through showContextMenuFor, never through the render's wiring. A discriminator
+	// that lived on the pointer path would pass the test above and fail here.
+	it('offers them on the menu key too', () => {
+		const { containerEl, view } = makeBoard(boardVault());
+		const card = cardByTitle(containerEl, 'Epic B');
+		card.click();
+		view.showContextMenuFor(
+			// The selected item, by the same path the card carries.
+			view.model!.items.find((i) => i.file.path === card.dataset.path)!,
+		);
+
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).toContain('Open child "Feature B1"');
+	});
+
+	it('opens the child from the menu entry', () => {
+		const vault = boardVault();
+		const { containerEl } = makeBoard(vault);
+		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		Menu.lastShown?.item('Open child "Feature B1"')?.clickHandler?.();
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Feature B1.md']);
+	});
+
+	it('offers nothing on a card that drew no disclosure', () => {
+		const { containerEl } = makeBoard(boardVault());
+		cardByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles.some((t) => t.startsWith('Open child'))).toBe(false);
+	});
+
+	/**
+	 * The dated axis, drawing both surfaces at once: `Dated epic` has two dates so it
+	 * gets a timeline ROW (the card shell in a bar-grid layout, never `renderCardBody`),
+	 * while its undated `Feature X` is unplaceable and lands on the shelf, which draws
+	 * ordinary cards. `horizonProperty: ''` clears the horizon axis `makeRoadmap`
+	 * configures by default, so `activeAxis` resolves to dates.
+	 */
+	function datedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Dated epic.md', {
+			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-12-01' },
+		});
+		vault.addFile('Feature X.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Dated epic' });
+		vault.addFile('Task X1.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Feature X' });
+		return vault;
+	}
+
+	const DATED_AXIS = { startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' };
+
+	it('offers nothing on a timeline row, which draws no body', () => {
+		const { containerEl } = makeRoadmap(datedVault(), DATED_AXIS);
+		rowFor(containerEl, 'Dated epic')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles.some((t) => t.startsWith('Open child'))).toBe(false);
+	});
+
+	it('still offers them on a shelf card in the same projection', () => {
+		const { containerEl } = makeRoadmap(datedVault(), DATED_AXIS);
+		cardByTitle(containerEl, 'Feature X').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).toContain('Open child "Task X1"');
 	});
 });
