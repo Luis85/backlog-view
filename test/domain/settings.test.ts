@@ -488,6 +488,23 @@ describe('the Deliverable workflow falls back to the shared one', () => {
 		expect(s.deliverableStates).toEqual(['Draft', 'Published']);
 	});
 
+	it('does NOT borrow the shared states when its own KEY is configured but its own states are not', () => {
+		// A legitimate partial override: a Deliverable state property of its own, but no
+		// declared vocabulary for it yet. The shared `states` belong to a DIFFERENT
+		// property (`stateKey`) and must not leak in just because this list is empty —
+		// the states' fallback has to ask the SAME question the key's fallback asks
+		// (`resolvedDeliverableStateKey`: is the own key unset?), not "is this list empty?".
+		const s = resolveSettings(
+			fakeConfig({
+				stateProperty: 'note.status',
+				stateValues: 'New, Active, Done',
+				deliverableStateProperty: 'note.deliverableStatus',
+			}),
+		);
+		expect(s.deliverableStateKey).toBe('deliverableStatus');
+		expect(s.deliverableStates).toEqual([]);
+	});
+
 	it('falls back to the shared (resolved) done values, not the hardcoded default, when its own are unset', () => {
 		// The requirements workflow's OWN done values are customized here — resolving to
 		// DEFAULT_DONE_VALUES instead would ignore that customization the moment the

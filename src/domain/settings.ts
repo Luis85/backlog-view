@@ -677,9 +677,20 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	const effectiveDeliverableDoneValues =
 		deliverableDoneValuesRaw.length > 0 ? deliverableDoneValuesRaw : effectiveDoneValues;
 	const states = dedupe(list('stateValues'));
-	// Same rule, over the declared vocabulary rather than the done values: falls back to
-	// the shared workflow's OWN declared states, which — like this field — still falls
-	// through to the observed values (`menuValues`) when neither is configured.
+	// The KEY's own fallback condition, named once and used twice: resolved here rather
+	// than only inline in the returned `deliverableStateKey` field, because the states
+	// fallback below has to ask the identical question — not a second one that happens
+	// to agree with it today. See `resolvedDeliverableStateKey`, which states the same
+	// condition (`settings.deliverableStateKey === ''`) for every READER outside this
+	// function; this is that condition's one computation inside it.
+	const deliverableStateKeyOwn = propKey('deliverableStateProperty', fallback.deliverableStateKey);
+	const deliverableKeyFallsBack = deliverableStateKeyOwn === '';
+	// Falls back to the shared workflow's OWN declared states ONLY when the KEY is also
+	// falling back — a Deliverable state property configured on its OWN distinct key,
+	// with no declared states of its own yet, must not borrow a vocabulary that belongs
+	// to a DIFFERENT property. Own key configured: this list still falls through to ITS
+	// OWN observed values (`menuValues`) when left empty, exactly as `states` does for
+	// the requirements workflow — never to `states`, which is not read through that key.
 	const deliverableStatesRaw = dedupe(list('deliverableStateValues'));
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
@@ -727,8 +738,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
 		startKey: propKey('startProperty', fallback.startKey),
 		targetKey: propKey('targetProperty', fallback.targetKey),
-		deliverableStateKey: propKey('deliverableStateProperty', fallback.deliverableStateKey),
-		deliverableStates: deliverableStatesRaw.length > 0 ? deliverableStatesRaw : states,
+		deliverableStateKey: deliverableStateKeyOwn,
+		deliverableStates: deliverableKeyFallsBack && deliverableStatesRaw.length === 0 ? states : deliverableStatesRaw,
 		deliverableDoneValues: effectiveDeliverableDoneValues,
 	};
 }

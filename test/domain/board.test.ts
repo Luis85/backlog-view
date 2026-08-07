@@ -10,8 +10,8 @@ import {
 } from '../../src/domain/board';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
-import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
-import { FakeVault } from '../helpers/vault';
+import { BacklogSettings, defaultSettings, resolveSettings } from '../../src/domain/settings';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /** Progress tracking on, with a configured workflow — the board's home ground. */
 const settings = {
@@ -475,6 +475,36 @@ describe('boardColumns with the Deliverables workflow', () => {
 		const col = board.columns.find((c) => c.label === 'Draft');
 		expect(col?.limit).toBeNull();
 		expect(col?.policy).toBe('');
+	});
+
+	it("draws its columns from its OWN observed values, never the requirements workflow's declared states, when its key is configured but its own states are not", () => {
+		// A normal requirements board (its own key AND declared states) plus a
+		// Deliverable state property of its own with no declared vocabulary yet — the
+		// key is NOT falling back here, so the states list must not borrow the shared
+		// one either; it must fall through to observed Deliverable values instead.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Blocked' } });
+		const s = resolveSettings(
+			new FakeViewConfig({
+				stateProperty: 'note.status',
+				stateValues: 'New, Active, Done',
+				deliverableStateProperty: 'note.deliverableStatus',
+			}),
+		);
+		const model = buildModel(vault.app, vault.entries(), s);
+
+		const board = boardColumns(deliverablesWorkflow(model, s), model.results, everything);
+
+		// Not the shared workflow's declared vocabulary (an unrelated property) — the
+		// requirements states never leak into a stray column, whatever `menuValues`
+		// does beyond that with the observed tier it correctly falls through to (it
+		// still appends a done value from `deliverableDoneValues` so marking something
+		// done is always offered, exactly as it does for any unconfigured workflow —
+		// unrelated to this fallback, and not what this test is about).
+		const columnLabels = labels(board);
+		expect(columnLabels).not.toContain('New');
+		expect(columnLabels).not.toContain('Active');
+		expect(columnLabels).toContain('Blocked');
 	});
 });
 
