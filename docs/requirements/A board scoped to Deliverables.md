@@ -230,6 +230,22 @@ narrowed to one type.
   focus PICKER is the fifth surface under the same rule: focusing `Deliverable` from the
   requirements board narrows it to roots that board excludes, which is an empty board
   one click away. An INHERITED focus still reads in the button, with the clear beside it.
+- **The rule cuts both ways, and this board keeps its own half**: it shows nothing but
+  Deliverables, so it offers nothing else — a Deliverable card's `New Task` is withheld
+  here exactly as `New Deliverable` is withheld next door, because a Task created from
+  this board vanishes on the pass that writes it. `Set type` goes with it rather than
+  becoming a one-entry submenu whose only option is the type the card already carries:
+  absent rather than inert, the same rule the state chip follows. Everything not about
+  type — Set state, the placement actions, navigation — is untouched.
+- **The unconfigured empty state can be fixed by its own button.** Its setup CTA names
+  BOTH the Deliverable state field and the requirements one, which is
+  `resolvedDeliverableStateKey`'s rule expressed as a list: this board resolves through
+  its own key when one is set and through `stateKey` when it is not. Naming only its own
+  field hid the button on the case that matters most — a fresh view, where
+  `adoptableProperties` gives the shared `status` suggestion to `state` first and drops
+  `deliverableState` as a duplicate, so nothing was adoptable and the guidance named an
+  option while withholding the press that would have set it. A CLEARED `state` still
+  hides the button: that is a decision, and `adoptableProperties` asks the config.
 - **The requirements board's own vocabulary is Deliverable-free in both passes that can
   mint a column** — the configured list's fallback and the stray pass that runs even once
   a workflow IS declared. Scoping one alone leaves the other drawing a column only a
