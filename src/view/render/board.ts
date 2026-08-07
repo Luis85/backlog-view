@@ -81,10 +81,17 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
-	// Deliverables are managed on their own board now — never a card, never a stray
-	// column and never counted here, whatever state they carry. Their Task children are
-	// untouched: Task-typed, so this predicate does not reach them, and they keep their
-	// own card and column placement even though their parent has none here.
+	// Deliverables are managed on their own board now — never a REAL card, never a
+	// stray column and never counted here, whatever state they carry. Their Task
+	// children are untouched: Task-typed, so this predicate does not reach them, and
+	// they keep their own card and column placement even though their parent has none
+	// here. `item.outsideFilter ||` exempts a Deliverable acting purely as CONTEXT
+	// (an excluded ancestor placing a visible descendant, admitted as a focus root under
+	// PBI focus exactly as an Issue or a Bug already is) — every other extra type keeps
+	// the "a context row renders whenever it has a visible child" guarantee, and this
+	// exclusion must not be the one place a Deliverable alone loses it. It still counts
+	// nowhere: `population` below is unchanged, and `boardColumns` already zeroes every
+	// `outsideFilter` card out of both `count` and `fullCount` regardless of type.
 	const isDeliverable = (item: BacklogItem) => isDeliverableType(item.typeName);
 	const board = boardColumns(
 		{
@@ -98,7 +105,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 			),
 		},
 		model.focused ? model.roots : model.results,
-		(item) => !host.isRowHidden(item) && !isDeliverable(item),
+		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverable(item)),
 		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverable(item),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {

@@ -282,6 +282,10 @@ describe('the requirements board excludes Deliverables', () => {
 	});
 });
 
+// A Deliverable acting purely as an outsideFilter context row (an excluded ancestor
+// placing a visible descendant) is exercised in deliverablesBoardContext.test.ts —
+// split out to keep this file under its line budget, and because it is one subject.
+
 describe('the projection toggle', () => {
 	function storedEntries(vault: FakeVault): Record<string, { mode?: string }> {
 		return (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, { mode?: string }>;
