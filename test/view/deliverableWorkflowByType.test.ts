@@ -189,6 +189,57 @@ describe('the requirements board does not offer a type it cannot show', () => {
 		expect(Menu.lastShown?.item('New Bug')).toBeDefined();
 	});
 
+	it('never reports a board with no requirements work as "all done"', () => {
+		// The advisory was asked of `model.results`, which counts the very Deliverables
+		// this board excludes — so a base of Deliverables alone read "All 2 items are
+		// done and hidden" beside a "Show completed items" button that would change
+		// nothing. Asked of the board's own population it is simply empty.
+		const vault = new FakeVault();
+		vault.addFile('D1.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('D2.md', { frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' } });
+		const harness = makeView(vault, CONFIG);
+		harness.view.setProjection('board');
+
+		const advisory = harness.containerEl.querySelector('.pbl-board-advisory')?.textContent ?? '';
+		expect(advisory).not.toContain('done and hidden');
+		expect(advisory).toContain('No backlog items');
+	});
+
+	it('explains a Deliverable focus rather than offering to create another', () => {
+		// Every focus root is a type this board excludes, so it is empty by construction.
+		// The ordinary empty state would name the focused type and offer a "New
+		// Deliverable" CTA — a fifth surface offering the one type this board cannot show.
+		const harness = makeView(vaultWithBoth(), CONFIG, { focus: 'Deliverable' });
+		harness.view.setProjection('board');
+		const advisory = harness.containerEl.querySelector('.pbl-board-advisory');
+
+		expect(advisory?.textContent).toContain('Deliverables are managed on their own board');
+		expect(advisory?.textContent).not.toContain('New Deliverable');
+		// The way out is the focus, so that is the button.
+		const btn = advisory?.querySelector('button');
+		expect(btn?.textContent).toBe('Show all types');
+		btn?.click();
+		expect(harness.view.settings.focusLevel).toBe('');
+	});
+
+	it('withholds Deliverable from the focus picker on the board', () => {
+		const harness = makeView(vaultWithBoth(), CONFIG);
+		const { containerEl } = harness;
+		const focusChoices = () => {
+			containerEl.querySelector<HTMLElement>('.pbl-focus-btn')?.click();
+			return Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		};
+
+		expect(focusChoices()).toContain('Deliverable');
+
+		harness.view.setProjection('board');
+		// Focusing it here narrows the board to roots it excludes — an empty board
+		// reachable in one click. Withheld at the source; an inherited one still reads
+		// in the button with the clear beside it.
+		expect(focusChoices()).not.toContain('Deliverable');
+		expect(focusChoices()).toContain('Bug');
+	});
+
 	it('withholds New Deliverable from the toolbar’s type picker on the board', () => {
 		const harness = makeView(vaultWithBoth(), CONFIG);
 		const { containerEl } = harness;

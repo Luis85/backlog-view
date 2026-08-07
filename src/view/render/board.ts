@@ -1,6 +1,12 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { renderPropCells, renderRollup, RowContext } from './columns';
-import { renderAllDoneState, renderEmptyState, renderFilterEmptyState, renderNoDeliverablesState } from './emptyStates';
+import {
+	renderAllDoneState,
+	renderBoardExcludedFocusState,
+	renderEmptyState,
+	renderFilterEmptyState,
+	renderNoDeliverablesState,
+} from './emptyStates';
 import { renderBadge, renderTitleText } from './rows';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
@@ -16,7 +22,7 @@ import {
 	overBy,
 	requirementsWorkflow,
 } from '../../domain/board';
-import { childTypeChoices, isDeliverableType } from '../../domain/itemTypes';
+import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 
 /** What differs between the two board-shaped projections' render passes. */
@@ -105,9 +111,19 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 		drawEmpty: (h, aside) => {
 			const m = h.model;
 			if (!m) return;
-			if (m.results.length === 0) renderEmptyState(h, aside);
+			// Asked of the board's OWN population, never `m.results`: Deliverables are
+			// managed elsewhere, so counting them here reported "all N items are done and
+			// hidden" over a board that simply had nothing of its own to show — a flat lie
+			// in a base of Deliverables alone, and again under a `Deliverable` focus, where
+			// every focus root is a type this board excludes.
+			const population = m.results.filter((item) => !isDeliverableType(item.typeName));
+			// That focus gets its own state rather than the ordinary empty one: the ordinary
+			// one would name the focused type and offer to create another — a fifth surface
+			// offering the one type this board cannot show.
+			if (m.focused && isDeliverableType(focusTarget(h.settings))) renderBoardExcludedFocusState(h, aside);
+			else if (population.length === 0) renderEmptyState(h, aside);
 			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
-			else renderAllDoneState(h, aside, m.results.length);
+			else renderAllDoneState(h, aside, population.length);
 		},
 	});
 }

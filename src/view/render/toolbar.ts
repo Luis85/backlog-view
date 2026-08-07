@@ -6,7 +6,7 @@ import { runInit } from '../interactions/structure';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
-import { ALL_TYPES, DELIVERABLE_TYPE } from '../../domain/settings';
+import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 import { ScaleId } from '../../domain/timeline';
 
@@ -341,7 +341,11 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 		// being ACCEPTABLE as a focus (`focusTarget` already reads `ALL_TYPES`) is not the
 		// same as being OFFERABLE, and a name in neither hand-written list was one a saved
 		// view could hold and no user could pick.
-		for (const type of ALL_TYPES) choice(type, type);
+		// Through `offerableTypes` like every other type list: focusing `Deliverable` on
+		// the requirements board narrows it to roots that board excludes, leaving it empty.
+		// An INHERITED one still reads in the button, with the clear beside it — this only
+		// stops the state being reached from the projection it breaks.
+		for (const type of offerableTypes(host)) choice(type, type);
 		showMenuForClick(menu, evt);
 	});
 

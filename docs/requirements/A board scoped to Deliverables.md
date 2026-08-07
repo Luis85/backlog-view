@@ -226,7 +226,17 @@ narrowed to one type.
   (`newItemType`), so a `Deliverable` focus left active elsewhere read "New Deliverable"
   while the chevron beside it filtered; and `childTypeChoices` answers about the LADDER
   — a PBI holds Deliverables — which is a different question from what this board can
-  show, so every card kept offering `New Deliverable` while `Set type` filtered.
+  show, so every card kept offering `New Deliverable` while `Set type` filtered. The
+  focus PICKER is the fifth surface under the same rule: focusing `Deliverable` from the
+  requirements board narrows it to roots that board excludes, which is an empty board
+  one click away. An INHERITED focus still reads in the button, with the clear beside it.
+- **The requirements board's empty advisory answers for its OWN population**, never
+  `model.results` — which counts the Deliverables it excludes. A base of Deliverables
+  alone read "All N items are done and hidden", beside a `Show completed items` button
+  that would change nothing. A `Deliverable` focus inherited from another projection
+  gets its own state rather than the ordinary empty one, because that one names the
+  focused type and offers to create another: it says why the board is empty and its
+  button clears the focus.
 - On a Deliverable card viewed from this board: the card menu's Set state section
   appears whenever the *resolved* Deliverable state key is non-empty — its own key, or
   (falling back) the requirements one — even when the requirements `stateKey` alone
