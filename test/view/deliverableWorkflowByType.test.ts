@@ -255,3 +255,181 @@ describe('the requirements board does not offer a type it cannot show', () => {
 		expect(pickTitles()).toContain('New Bug');
 	});
 });
+
+describe('the quick filter reaches every Deliverable, focus or no focus', () => {
+	/** A Deliverable hanging off the Epic, so a `Feature` focus never walks to it. */
+	function outsideFocus(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Widget.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		return vault;
+	}
+
+	it('keeps a matching Deliverable outside the focused subtree', () => {
+		// `FilterState.recompute` walked `model.roots`, which a focus narrows — while this
+		// board's population is `model.deliverableResults`, built from the whole unfocused
+		// tree. So the card rendered fine until anything was typed and then vanished, its
+		// path never having been indexed: the focus restriction this board exists to
+		// ignore, reintroduced by the filter.
+		const harness = makeView(outsideFocus(), CONFIG, { focus: 'Feature' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+		expect(cardByTitle(containerEl, 'Widget')).toBeDefined();
+
+		harness.view.setFilter('Widget');
+		expect(cardByTitle(containerEl, 'Widget')).toBeDefined();
+	});
+
+	it('still hides a Deliverable the filter does not match', () => {
+		// The other direction, so a fix that simply indexed everything as visible fails
+		// this as loudly as the bug failed the one above.
+		const harness = makeView(outsideFocus(), CONFIG, { focus: 'Feature' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		harness.view.setFilter('nothing matches this');
+		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(0);
+	});
+});
+
+describe('the requirements board draws no column only a Deliverable could fill', () => {
+	it('keeps a Deliverable-only state out of the UNCONFIGURED workflow’s columns', () => {
+		// With no `stateValues` declared the columns fall back to the observed values, and
+		// that fallback read `model.observedStates` — every result, Deliverables included.
+		// So a value only a Deliverable carried opened a column on a board that excludes
+		// every card that could ever sit in it. Scoping the stray pass alone left this
+		// open: it is the same defect through the other door.
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: 'In progress' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 20, status: 'Shipped' } });
+		const harness = makeView(vault, { stateProperty: 'note.status' });
+		harness.view.setProjection('board');
+
+		const columns = [...harness.containerEl.querySelectorAll('.pbl-board-col-name')].map((el) => el.textContent);
+		expect(columns).toContain('In progress');
+		expect(columns).not.toContain('Shipped');
+	});
+});
+
+describe('a match keeps its whole subtree, focus or no focus', () => {
+	function underAnEpic(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Widget Platform.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feat.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Widget Platform' });
+		vault.addFile('Spec.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Widget Platform',
+		});
+		return vault;
+	}
+	const cards = (containerEl: HTMLElement) => containerEl.querySelectorAll('.pbl-card').length;
+
+	it('keeps a Deliverable whose out-of-focus ANCESTOR matched', () => {
+		// The filter contract is a match plus its whole subtree, and this board ignores
+		// the focus level — so typing the Epic's title has to keep its Deliverable either
+		// way. Indexing each missed Deliverable in isolation kept it unfocused and dropped
+		// it under a focus: the same focus-dependence one layer up from the last fix.
+		const unfocused = makeView(underAnEpic(), CONFIG);
+		unfocused.view.setProjection('deliverables');
+		unfocused.view.setFilter('Widget');
+		expect(cards(unfocused.containerEl)).toBe(1);
+
+		const focused = makeView(underAnEpic(), CONFIG, { focus: 'Feature' });
+		focused.view.setProjection('deliverables');
+		focused.view.setFilter('Widget');
+		expect(cards(focused.containerEl)).toBe(1);
+	});
+
+	it('still drops one no ancestor and nothing below it matched', () => {
+		const focused = makeView(underAnEpic(), CONFIG, { focus: 'Feature' });
+		focused.view.setProjection('deliverables');
+		focused.view.setFilter('nothing matches this');
+		expect(cards(focused.containerEl)).toBe(0);
+	});
+});
+
+describe('the Deliverables filter pass never writes a focused row', () => {
+	/** A Task under a Deliverable: under Task focus the Task is a focus ROOT while its
+	 *  Deliverable parent is not, so the pass meets the focused forest from below. */
+	function taskUnderDeliverable(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Handbook.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('Write it.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Handbook' });
+		return vault;
+	}
+
+	it('keeps the Deliverable card without revealing its focused Task', () => {
+		const harness = makeView(taskUnderDeliverable(), CONFIG, { focus: 'Task' });
+		const { containerEl } = harness;
+		harness.view.setFilter('Handbook');
+
+		// The tree is the focused forest, and nothing in it matched — marking the
+		// Deliverable's subtree freely would put this Task on screen for a match the
+		// user cannot even see, since the Deliverable itself is not rendered here.
+		expect(containerEl.querySelectorAll('.pbl-row').length).toBe(0);
+
+		// The board it was all for still keeps the card.
+		harness.view.setProjection('deliverables');
+		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(1);
+	});
+
+	it('still shows the focused Task when the TASK is what matched', () => {
+		const harness = makeView(taskUnderDeliverable(), CONFIG, { focus: 'Task' });
+		const { containerEl } = harness;
+		harness.view.setFilter('Write');
+		expect(containerEl.querySelectorAll('.pbl-row').length).toBe(1);
+	});
+});
+
+describe('the two scopes, at the cases one index kept missing', () => {
+	/** Epic > PBI > (Deliverable), and Epic > Deliverable — so a focus can land above,
+	 *  below or beside the Deliverable depending on the level chosen. */
+	function deepTree(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Widget Platform.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature X.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Widget Platform' });
+		vault.addFile('Slice.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature X' });
+		vault.addFile('Manual.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Slice',
+		});
+		vault.addFile('Chapter.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Manual' });
+		return vault;
+	}
+	const cards = (el: HTMLElement) => el.querySelectorAll('.pbl-card').length;
+	const board = (focus?: string) => {
+		const harness = makeView(deepTree(), CONFIG, focus ? { focus } : {});
+		harness.view.setProjection('deliverables');
+		return harness;
+	};
+
+	it('keeps an IN-focus Deliverable whose ancestor ABOVE the focus root matched', () => {
+		// Under PBI focus the Deliverable is inside the focused forest, so a pass that
+		// skipped everything already indexed never asked whether the Epic above the focus
+		// root matched. The `whole` index has no such boundary: the Epic matches and its
+		// whole subtree comes with it.
+		expect(cards(board().containerEl)).toBe(1);
+		const focused = board('PBI');
+		focused.view.setFilter('Widget');
+		expect(cards(focused.containerEl)).toBe(1);
+	});
+
+	it('keeps a Deliverable whose DESCENDANT across the focus boundary matched', () => {
+		// Under Task focus the Task is a focus root and its Deliverable parent is not, so
+		// a guarded pass stopped at the boundary and never learned the Task had matched —
+		// dropping the card that is meant to expose matches below it.
+		const focused = board('Task');
+		focused.view.setFilter('Chapter');
+		expect(cards(focused.containerEl)).toBe(1);
+	});
+
+	it('still hides a Deliverable nothing in its line matched', () => {
+		const focused = board('PBI');
+		focused.view.setFilter('nothing matches this');
+		expect(cards(focused.containerEl)).toBe(0);
+	});
+});

@@ -230,6 +230,30 @@ narrowed to one type.
   focus PICKER is the fifth surface under the same rule: focusing `Deliverable` from the
   requirements board narrows it to roots that board excludes, which is an empty board
   one click away. An INHERITED focus still reads in the button, with the clear beside it.
+- **The requirements board's own vocabulary is Deliverable-free in both passes that can
+  mint a column** — the configured list's fallback and the stray pass that runs even once
+  a workflow IS declared. Scoping one alone leaves the other drawing a column only a
+  Deliverable could fill, on a board that excludes every card that could sit in it. One
+  collection feeds both (`requirementsWorkflow`), taken from the FOCUSED results: with a
+  declared workflow the columns are the declaration and this changes nothing, and without
+  one the board draws the states its own visible work holds rather than columns for work
+  it is not showing.
+- **The quick filter keeps ONE index per population, not one index patched to serve
+  two.** The tree, the requirements board and the roadmap render out of `model.roots`,
+  which a focus narrows; this board renders `model.deliverableResults`, built from the
+  whole tree and deliberately focus-immune. `FilterState` therefore holds a `focused`
+  and a `whole` index — the same match-path rule (`indexMatches`) over each forest — and
+  every caller names the scope it is asking about, resolved once from the projection
+  (`ProductBacklogView.filterScope`). Unfocused the two forests are the same one, so the
+  second index IS the first and the distinction costs nothing.
+  That shape was arrived at the expensive way, and the history is the argument for it:
+  one index that this board also consulted took four rounds of fixes, each correct and
+  each one case short — the out-of-focus Deliverable that was never indexed, its matching
+  ANCESTOR that was not either, a focused row BELOW one that the patch then wrote to and
+  should not have, and finally the two the guard could not reach at all (an in-focus
+  Deliverable whose ancestor sits ABOVE the focus root, and a Deliverable whose matching
+  descendant sits BELOW it across that boundary). Two indexes make all six structural:
+  neither is a special case of the other, and neither can write into the other.
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button

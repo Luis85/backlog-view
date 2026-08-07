@@ -1,6 +1,6 @@
 import { BasesView, Keymap, Menu, QueryController, setIcon } from 'obsidian';
 import { CollapseState } from './collapseState';
-import { FilterState } from './filterState';
+import { FilterScope, FilterState } from './filterState';
 import {
 	BacklogViewHost,
 	BoardSnapshot,
@@ -313,11 +313,24 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	isRowHiddenByFilterOnly(item: BacklogItem): boolean {
-		return this.filter.active && !this.filter.keeps(item.file.path);
+		return this.filter.active && !this.filter.keeps(item.file.path, this.filterScope);
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {
-		return this.filter.matched(item.file.path);
+		return this.filter.matched(item.file.path, this.filterScope);
+	}
+
+	/**
+	 * Which of the filter's indexes this projection's questions are answered from —
+	 * decided ONCE here rather than at each of the three call sites, because getting it
+	 * wrong at one of them is invisible until someone types into the box on that exact
+	 * projection. The Deliverables board renders `model.deliverableResults`, built from
+	 * the whole unfocused tree; every other projection renders out of `model.roots`,
+	 * which a focus narrows. See `FilterScope`, which states why one index cannot serve
+	 * both and what it cost to learn that.
+	 */
+	private get filterScope(): FilterScope {
+		return this.projection === 'deliverables' ? 'whole' : 'focused';
 	}
 
 	/**
@@ -335,7 +348,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// While filtering, the filter alone decides — a match must be findable even
 		// when completed items are hidden, so hiding is suspended.
 		if (this.filter.active) {
-			if (applyFilter && !this.filter.keeps(item.file.path)) return true;
+			if (applyFilter && !this.filter.keeps(item.file.path, this.filterScope)) return true;
 		} else if (this.hidingCompleted() && item.subtreeDone) {
 			return true;
 		}
