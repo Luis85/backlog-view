@@ -103,13 +103,22 @@ primary event alone still let the card's `auxclick` open the *parent* in a new t
 is a bug this codebase already shipped and fixed once, in the card's search-match links;
 the same two handlers are the fix here.
 
-**The toggle stops propagation too.** `wireCardActivation` listens on the whole
-`.pbl-card`, so a click on the disclosure button bubbles to it and opens the parent note
-— the same defect as above, on the one control whose entire purpose is to *not* leave the
-board. It is the more dangerous instance, because the card still expands underneath the
-note that just opened, so the toggle looks like it worked. Every listener this feature
-adds inside a card stops propagation; the rule is stated once, at the card boundary,
-rather than remembered per control.
+**The toggle stops propagation too — on both events.** `wireCardActivation` listens on
+the whole `.pbl-card` for `click` *and* `auxclick`, so a click on the disclosure button
+bubbles to it and opens the parent note, and a **middle** click bubbles to the other
+handler and opens the parent in a new tab. The first is the more dangerous instance,
+because the card still expands underneath the note that just opened, so the toggle looks
+like it worked.
+
+The second is the same middle-click hole described one paragraph above, and it does not
+close itself: a `click` guard never runs for `auxclick`, so a toggle that only stops
+`click` still opens the parent in a new tab. The toggle therefore carries **its own
+`auxclick` handler whose only job is to stop propagation** — it has nothing to do on a
+middle click, and doing nothing is exactly what has to be arranged for.
+
+The rule for this feature, stated once rather than remembered per control: **every
+element it adds inside a card stops both `click` and `auxclick`.** Two events, because
+the card listens for two.
 
 ### Expansion state
 
@@ -202,6 +211,14 @@ Exports two functions:
   states no rule the domain does not already own. `isRowHidden` is the rule, and it
   lives in the view because it is a render decision.
 - `renderCardChildren(ctx, card, item)` — the disclosure and, when expanded, the list.
+  It also **records the path it drew a disclosure for**, which is what §4's menu gate
+  reads. Recording it here rather than re-deriving it there is the point: one pass
+  decides, and the menu cannot reach a different answer than the screen.
+
+The set itself is a `ReadonlySet<string>` on `BacklogViewHost`, owned by the view and
+cleared at the top of each render pass — the same lifecycle `host.board` and
+`host.roadmap` have, for the same reason: a snapshot that outlived its render would
+describe a screen that is gone.
 
 It is its own module rather than more of `render/board.ts` (338 lines, and rising each
 time a card grows something) for the reason the architecture already states: one file per
@@ -227,22 +244,35 @@ Beside `addMatchSection`, reading the same `listedChildren`. `Open child "…"` 
 only — see Behaviour, Keyboard and assistive technology, for why there is no
 expand/collapse entry.
 
-**The gate is not the projection.** `showItemMenu` has exactly two call sites:
-`render/rows.ts` for tree rows, and `wireCardActivation` in `render/board.ts` — which
-board cards, roadmap bucket cards, shelf cards **and timeline rows** all share. So
-`host.projection !== 'tree'` would put `Open child` on a dated-axis timeline row, which
-draws no body and therefore no disclosure, and which this spec's Scope excludes. Nor
-would gating on the axis work: the dated axis draws timeline rows *and* an ordinary
-shelf of real cards, so the axis does not separate the two either.
+**The gate is neither the projection nor a parameter.** Two wrong answers first, because
+each is the obvious one and each fails somewhere specific:
 
-The question the gate actually needs to ask is **did this surface draw a card body**,
-because that is what draws the disclosure. So `wireCardActivation` takes it as a
-parameter and `render/timeline.ts` — the one card-shell caller that never calls
-`renderCardBody` — passes false. The section then renders on that flag and a non-empty
-`listedChildren`. This replaces the projection check rather than joining it: tree rows
-reach the menu through `rows.ts` and never set the flag, so the tree is excluded by the
-same rule instead of by a second one. Naming the real condition also means a future
-surface that reuses the card shell without the body is right by default.
+- `host.projection !== 'tree'` puts `Open child` on a dated-axis timeline row, which
+  draws no body and therefore no disclosure, and which this spec's Scope excludes.
+- The axis does not separate them either: the dated axis draws timeline rows *and* an
+  ordinary shelf of real cards.
+- Passing a flag through `wireCardActivation` fails at the case the section exists for.
+  That wires the **contextmenu** path only; the keyboard opens the same menu through
+  `host.showContextMenuFor`, which calls `buildItemMenu` directly
+  (`backlogView.ts`, reached from `keyboard.ts` for both a row and a card). A flag on the
+  pointer path would leave the Menu key — the whole reason there is a menu section —
+  either without the entries or wrong on timeline rows.
+
+So the menu **reads what the render drew.** `renderCardChildren` records each path it
+gave a disclosure into a set the view publishes on `BacklogViewHost`, rebuilt per render
+pass exactly as `host.board` and `host.roadmap` already are, and `addChildrenSection`
+renders for an item in that set. This is the idiom the board's Set state already
+follows — it offers `host.board`'s *rendered* columns rather than a list rebuilt from the
+settings, which is what makes "every target a drag can reach, the menu can too" true by
+construction rather than by two lists agreeing. The same property holds here: the menu
+cannot offer children for a surface that drew none, because the surface is what fills
+the set.
+
+Everything else follows without a second rule. Timeline rows never call the body, so they
+are absent. Tree rows never call it either, so the projection check disappears rather
+than being replaced. A card whose `listedChildren` is empty drew no disclosure and so is
+absent too, which means the section needs no separate emptiness test. And a future
+surface reusing the card shell without the body is right by default.
 
 ### 5. `renderToolbar` — remove the collapse controls' projection gate
 
@@ -304,9 +334,10 @@ harness:
   implementation.
 - Clicking a child opens **the child**; middle-clicking opens the child in a new tab.
   Both assert the parent was not opened, because that is the failure mode.
-- Clicking the **toggle** opens nothing — the same assertion on the control that must
-  never leave the board, since an expansion that also opened the note would still look
-  like it worked.
+- Clicking the **toggle** opens nothing, and **middle-clicking it** opens nothing — two
+  assertions, because the card listens for two events and a `click` guard does not cover
+  `auxclick`. The control that must never leave the board is also the one whose failure
+  is invisible, since it expands either way.
 - The toggle is `disabled` while the quick filter runs, and every card lists its children
   in that state. Asserted on the flag, not on a class: a control disabled only in CSS
   still answers a keyboard.
@@ -318,6 +349,11 @@ harness:
   does not, because it drew no body. Asserted on the dated axis, where a bar row and a
   shelf card sit in one projection and only one of them has a disclosure; a test that
   drove the projection alone would pass while the rule was wrong.
+- Both ways of opening that menu are driven: right-click *and* the **Menu key**, which
+  reaches `buildItemMenu` through `host.showContextMenuFor` and not through
+  `wireCardActivation`. Driving only the pointer would have passed for the design this
+  spec replaced, whose flag never reached the keyboard at all — and the keyboard is the
+  case the section exists for.
 - Expand all and Collapse all render in board and roadmap mode and drive the cards'
   disclosures, and stay disabled while the quick filter runs. The first half is the
   claim the toolbar's gate would otherwise have silently broken.
