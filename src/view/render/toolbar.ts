@@ -22,7 +22,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// type there is nothing for a "New item of another type" picker to add, so it is
 	// absent rather than a chevron opening a one-entry menu.
 	const onDeliverables = host.projection === 'deliverables';
-	const newLevel = onDeliverables ? DELIVERABLE_TYPE : newItemType(host.settings, model);
+	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
 	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn' });
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	newBtn.createSpan({ text: `New ${newLevel}` });
@@ -431,6 +431,23 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
  */
 function topLevelTypes(host: BacklogViewHost): string[] {
 	return host.projection === 'board' ? ALL_TYPES.filter((type) => !isDeliverableType(type)) : ALL_TYPES;
+}
+
+/**
+ * The type the PRIMARY New button makes — `newItemType`'s focus-following answer,
+ * filtered through the very list the chevron beside it offers.
+ *
+ * Both creators have to draw from one list or the narrower one is decoration. Found
+ * by review: `newItemType` returns the focus TARGET, and a `Deliverable` focus left
+ * active from another projection made the requirements board's primary button read
+ * "New Deliverable" — writing a note that board excludes — while the chevron beside
+ * it had already withheld exactly that type. Falls back to the first type this
+ * projection does offer, which is the ladder's top in every case today.
+ */
+function primaryNewType(host: BacklogViewHost, model: BacklogModel): string {
+	const offered = topLevelTypes(host);
+	const focused = newItemType(host.settings, model);
+	return offered.includes(focused) ? focused : offered[0];
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */

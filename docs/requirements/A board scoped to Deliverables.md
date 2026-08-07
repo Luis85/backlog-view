@@ -200,7 +200,10 @@ narrowed to one type.
   another type" picker, because a note it wrote would be excluded from the very board it
   was created on. Withheld, not disabled — the "absent rather than inert" rule the state
   chip already follows — and only there: every other projection offers the whole
-  vocabulary.
+  vocabulary. **Both** creators draw from that one list: the primary New button follows
+  the focus target (`newItemType`), so a `Deliverable` focus left active from another
+  projection would otherwise read "New Deliverable" on the requirements board while the
+  chevron beside it withheld exactly that type.
 - On a Deliverable card viewed from this board: the card menu's Set state section
   appears whenever the *resolved* Deliverable state key is non-empty — its own key, or
   (falling back) the requirements one — even when the requirements `stateKey` alone

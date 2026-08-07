@@ -98,6 +98,21 @@ describe('the requirements board does not offer a type it cannot show', () => {
 		expect(onBoard).toContain('Bug');
 	});
 
+	it('keeps the PRIMARY New button off Deliverable too, under an inherited Deliverable focus', () => {
+		// `newItemType` follows the FOCUS target, so a Deliverable focus left active from
+		// another projection made the button read "New Deliverable" on the requirements
+		// board while the chevron beside it had already withheld that type — a narrower
+		// list is decoration if the button beside it does not draw from it.
+		const harness = makeView(vaultWithBoth(), CONFIG, { focus: 'Deliverable' });
+		const { containerEl } = harness;
+		const primary = () => containerEl.querySelector('.pbl-new-btn')?.textContent;
+
+		expect(primary()).toBe('New Deliverable');
+
+		harness.view.setProjection('board');
+		expect(primary()).toBe('New Epic');
+	});
+
 	it('withholds New Deliverable from the toolbar’s type picker on the board', () => {
 		const harness = makeView(vaultWithBoth(), CONFIG);
 		const { containerEl } = harness;
