@@ -69,11 +69,11 @@ Manually, the equivalent is:
 3. In the view switcher of the Base, add a new view and pick **Product Backlog**.
 4. Drop existing notes into the folder, or use **+ New Epic** in the view to create items.
 5. Click the ✨ toolbar button once: it fills in the `type`/`order` your notes don't
-   have yet, and sets up the properties the board and the roadmap need — the board's and
-   the roadmap's own empty states offer the same button when you get there first. Notes
-   with neither a supported `type` nor a `parent` aren't treated as backlog items — to
-   organize a folder of plain notes by dragging, turn **Ignore notes outside the
-   hierarchy** off in the view options first.
+   have yet, and sets up the properties the board, the roadmap and the Deliverables
+   board need — each one's own empty state offers the same button when you get there
+   first. Notes with neither a supported `type` nor a `parent` aren't treated as backlog
+   items — to organize a folder of plain notes by dragging, turn **Ignore notes outside
+   the hierarchy** off in the view options first.
 
 Example `.base` file:
 
@@ -627,11 +627,12 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
   item. A milestone is its target date alone: with none of its own, it goes to the shelf,
   **Unplaced**, whatever dates its children carry.
 - **Dates are set from the row**, not from the bar: right-click → **Schedule** or
-  **Unschedule**, on any projection — the tree, the board and the roadmap all reach the
-  same row menu, deliberately: a write reachable only from roadmap mode would be a
-  projection disagreeing about what the backlog can do. What this release does *not* have
-  is a gesture on the bar itself — dragging one to move it, dragging its edge to resize, or
-  dragging an item off the shelf onto a date. Those are specified and not yet built.
+  **Unschedule**, on any projection — the tree, the board, the roadmap and the
+  Deliverables board all reach the same row menu, deliberately: a write reachable only
+  from roadmap mode would be a projection disagreeing about what the backlog can do.
+  What this release does *not* have is a gesture on the bar itself — dragging one to
+  move it, dragging its edge to resize, or dragging an item off the shelf onto a date.
+  Those are specified and not yet built.
 
   **Schedule appears only when the item has an end it can use.** A milestone is its target
   date alone, so on a roadmap configured with a start property and no target, milestones
