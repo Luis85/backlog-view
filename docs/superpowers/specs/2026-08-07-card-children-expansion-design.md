@@ -36,7 +36,10 @@ the hierarchy has to travel on the card.
 - Board cards, roadmap horizon-bucket cards and roadmap shelf cards, because all three
   are built by `renderCardBody`.
 - Expansion backed by the existing per-path collapse state, so it persists per saved
-  view per device and the toolbar's collapse/expand-all controls reach cards.
+  view per device.
+- Removing the projection gate on the toolbar's Expand all / Collapse all, so those
+  controls reach cards. Its stated reason — the card projections have nothing
+  collapsible — is what this feature retires.
 - A card-menu path to the same children, because each card projection is one tab stop.
 
 **Out:**
@@ -48,7 +51,7 @@ the hierarchy has to travel on the card.
 - Any write. Nothing here reparents, reorders, retypes or restates. Dragging a child out
   of the list, dropping onto the list, and creating a child from it are all out — the
   disclosure is a read affordance, and that is what makes the context-row rule hold by
-  construction rather than by a check (see Architecture §5).
+  construction rather than by a check (see Architecture §6).
 - Swimlanes. Untouched, still `[[Swimlanes by parent]]`'s.
 
 ## Behaviour
@@ -117,7 +120,13 @@ second one. Consequences, all of them intended:
   across data updates, sessions and projection switches.
 - Expanding an Epic's card also expands that Epic's row in the tree, and vice versa. One
   bit, one meaning: *this node is open*.
-- Collapse all and Expand all in the toolbar reach cards without knowing they exist.
+- Collapse all and Expand all in the toolbar drive cards, **once their gate is
+  removed** — see Architecture §5. They render today only under
+  `host.projection === 'tree'`, on the stated grounds that "the board and the roadmap
+  have nothing collapsible yet", which is precisely what this feature retires. Sharing
+  the store is not on its own enough to make them reachable, and a promise that the
+  toolbar does not keep is the defect this repository files under *write the guarantee
+  to the check, never ahead of it*.
 - `collapseNewParents` settles each path once, so a write does not snap open cards shut.
 
 **While the quick filter runs, the toggle is `disabled`.** The filter *overrides* collapse
@@ -216,11 +225,38 @@ narrowing the walk would take grandchildren with it.
 
 Beside `addMatchSection`, reading the same `listedChildren`. `Open child "…"` entries
 only — see Behaviour, Keyboard and assistive technology, for why there is no
-expand/collapse entry. Gated on the card projections (`host.projection !== 'tree'`),
-because in the tree the row's own children are already on screen and its chevron already
-toggles them.
+expand/collapse entry.
 
-### 5. Context cards
+**The gate is not the projection.** `showItemMenu` has exactly two call sites:
+`render/rows.ts` for tree rows, and `wireCardActivation` in `render/board.ts` — which
+board cards, roadmap bucket cards, shelf cards **and timeline rows** all share. So
+`host.projection !== 'tree'` would put `Open child` on a dated-axis timeline row, which
+draws no body and therefore no disclosure, and which this spec's Scope excludes. Nor
+would gating on the axis work: the dated axis draws timeline rows *and* an ordinary
+shelf of real cards, so the axis does not separate the two either.
+
+The question the gate actually needs to ask is **did this surface draw a card body**,
+because that is what draws the disclosure. So `wireCardActivation` takes it as a
+parameter and `render/timeline.ts` — the one card-shell caller that never calls
+`renderCardBody` — passes false. The section then renders on that flag and a non-empty
+`listedChildren`. This replaces the projection check rather than joining it: tree rows
+reach the menu through `rows.ts` and never set the flag, so the tree is excluded by the
+same rule instead of by a second one. Naming the real condition also means a future
+surface that reuses the card shell without the body is right by default.
+
+### 5. `renderToolbar` — remove the collapse controls' projection gate
+
+Expand all and Collapse all are wrapped in `if (host.projection === 'tree')`, whose
+comment gives the reason: "the board and the roadmap have nothing collapsible yet, and a
+control that visibly does nothing is worse than none." Both halves stop being true here,
+so the gate goes and the comment with it. `Collapse all` already iterates `model.items`
+and skips childless ones, so it needs no other change: in a card projection it shuts
+every disclosure, which is the same sentence it means in the tree.
+
+They stay `disabled` while the quick filter runs, from the same `syncFilterUi` call that
+disables them today — the rule the card's own toggle now follows for the same reason.
+
+### 6. Context cards
 
 A context card (`outsideFilter`) gets the disclosure like any other card. Nothing has to
 be withheld and nothing has to be checked, because **no path in this feature plans a
@@ -235,7 +271,7 @@ already asks its three questions of each card projection; this adds the disclosu
 what it drives, so a future edit that gives the list a write is caught by the suite that
 exists for exactly that.
 
-### 6. `styles/card-children.css` — new partial
+### 7. `styles/card-children.css` — new partial
 
 Imported after `cards.css`, since it styles a part of a card and the import **order**
 decides which of two equal-specificity rules wins. One partial per concern, under the
@@ -278,7 +314,13 @@ harness:
   regression that ephemeral state would have caused.
 - Expanding a card expands the same item's row in the tree, since that shared bit is a
   decision and not an accident.
-- The card menu offers the same children the card lists.
+- The card menu offers the same children the card lists — and a **timeline row's** menu
+  does not, because it drew no body. Asserted on the dated axis, where a bar row and a
+  shelf card sit in one projection and only one of them has a disclosure; a test that
+  drove the projection alone would pass while the rule was wrong.
+- Expand all and Collapse all render in board and roadmap mode and drive the cards'
+  disclosures, and stay disabled while the quick filter runs. The first half is the
+  claim the toolbar's gate would otherwise have silently broken.
 
 `test/view/contextCardWrites.test.ts` — extended: a context card's disclosure renders,
 lists, opens, and writes nothing on any of its paths.
