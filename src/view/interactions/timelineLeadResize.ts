@@ -118,7 +118,7 @@ export function renderLeadResize(
 		// pointer's from arriving.
 		const mine = (e: PointerEvent): boolean => e.pointerId === activePointer;
 		const onMove = (moveEvt: PointerEvent): void => {
-			if (mine(moveEvt)) live(clampLeadWidth(startWidth + (moveEvt.clientX - startX)));
+			if (mine(moveEvt)) live(clampLeadWidth(startWidth + (moveEvt.clientX - startX), available));
 		};
 		const end = (evt: PointerEvent): void => {
 			grip.removeEventListener('pointermove', onMove);
@@ -130,7 +130,14 @@ export function renderLeadResize(
 		const onUp = (upEvt: PointerEvent): void => {
 			if (!mine(upEvt)) return;
 			end(upEvt);
-			commit(clampLeadWidth(startWidth + (upEvt.clientX - startX)));
+			const delta = upEvt.clientX - startX;
+			// A tap is not a resize, and neither is a drag that ends where it began. The
+			// baseline is the width DRAWN, so committing a zero-delta release would write
+			// that back — silently replacing a stored pick the pane is merely clamping for
+			// display with the clamped number itself, and losing a width chosen in a wider
+			// pane to a stray tap.
+			if (delta === 0) return;
+			commit(clampLeadWidth(startWidth + delta, available));
 		};
 		// A cancel is the platform saying the gesture stopped being the user's — palm
 		// rejection, an orientation change, another gesture taking it over. The width it
@@ -155,7 +162,7 @@ export function renderLeadResize(
 		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
 			evt.preventDefault();
 			const step = evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX;
-			commit(clampLeadWidth(current + step));
+			commit(clampLeadWidth(current + step, available));
 		} else if (evt.key === 'Home') {
 			evt.preventDefault();
 			commit(defaultWidth);
@@ -166,8 +173,20 @@ export function renderLeadResize(
 /** How far one arrow-key press moves the column, in pixels. */
 const KEY_STEP_PX = 10;
 
-function clampLeadWidth(px: number): number {
-	return Math.min(MAX_TIMELINE_LEAD_PX, Math.max(MIN_TIMELINE_LEAD_PX, px));
+/**
+ * The range a GESTURE may reach, which is the pane's and not the store's. A width the
+ * pane cannot draw is one the reader cannot see: dragging past it moved `aria-valuenow`
+ * past the `aria-valuemax` beside it, covered the day track the clamp reserves, and
+ * persisted a number the very next render threw away. So the interaction honours the
+ * same range it announces.
+ *
+ * This does NOT narrow a pick already stored from a wider pane — that one is clamped
+ * for display and returns in full when the pane grows. It bounds what a reader can newly
+ * ASK for here, which in a narrow pane is all they can express anyway.
+ */
+function clampLeadWidth(px: number, availablePx: number): number {
+	const { min, max } = leadBoundsFor(availablePx);
+	return Math.min(max, Math.max(min, px));
 }
 
 /**

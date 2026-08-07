@@ -91,6 +91,16 @@ bigger constant, since no single number fits every vault's titles.
   pane minus a whole day track, which reached zero — no titles at all, a worse answer
   than a cramped column.
 
+- **2c — a gesture aimed past what the pane can draw.** Pointer and keyboard updates
+  clamp to `leadBoundsFor(available)`, the same range the separator announces — not to
+  the storable bounds. Otherwise a drag put a width on screen and into `aria-valuenow`
+  that exceeded `aria-valuemax`, covered the reserved day track, persisted, and was
+  thrown away by the very next render. It does not narrow a pick already stored from a
+  wider pane: that one is clamped for display and returns in full.
+- **2d — a release that resized nothing.** A tap, or a drag ending where it began,
+  commits nothing. The gesture's baseline is the width DRAWN, so committing a zero
+  delta would write the clamp back over a wider stored pick and lose it for good.
+
 ## Acceptance criteria
 
 - The grip carries `role="separator"`, `aria-orientation="vertical"`, a real

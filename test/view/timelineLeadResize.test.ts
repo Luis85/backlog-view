@@ -136,6 +136,51 @@ describe('the lead-column resize grip', () => {
 			expect(view.leadWidth).toBe(TIMELINE_LEAD_PX + 60);
 		});
 
+		it('does not replace a pane-clamped pick with the clamp on a tap that resized nothing', () => {
+			// The gesture's baseline is the width DRAWN, so a zero-delta release committed
+			// that — and where a wide stored pick is only being clamped for display, a stray
+			// tap silently replaced 480 with the clamp and the pick never came back when the
+			// pane widened. This needs a MEASURED, narrow pane: unclamped the two agree and
+			// the bug cannot show.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			Object.defineProperty(treeOf(containerEl), 'clientWidth', { value: 350, configurable: true });
+			view.setLeadWidth(MAX_TIMELINE_LEAD_PX);
+			expect(grip(containerEl).getAttribute('aria-valuenow')).toBe(String(350 - MIN_DAY_TRACK_PX));
+
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 200));
+			el.dispatchEvent(pointer('pointerup', 200));
+
+			expect(view.leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
+		});
+
+		it('cannot drag past what the pane can draw — no width is stored that the render throws away', () => {
+			// A 350px pane announces and draws a 270px ceiling. Clamping the gesture to the
+			// STORABLE 480 put 400 on screen and into aria-valuenow, persisted it, and let
+			// the rebuild snap back to 270 — a stored number nobody could ever see.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			// Stubbed BEFORE the roadmap renders: the grip captures the pane's width at
+			// render time, so a stub applied afterwards would leave it holding 0 — measuring
+			// the test's own ordering rather than the clamp.
+			Object.defineProperty(treeOf(containerEl), 'clientWidth', { value: 350, configurable: true });
+			view.setProjection('roadmap');
+			const paneMax = leadBoundsFor(350).max;
+
+			const el = grip(containerEl);
+			const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+			if (!content) throw new Error('no timeline content');
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 10_000));
+			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${paneMax}px`);
+			el.dispatchEvent(pointer('pointerup', 10_000));
+
+			expect(view.leadWidth).toBe(paneMax);
+			expect(Number(grip(containerEl).getAttribute('aria-valuenow'))).toBeLessThanOrEqual(
+				Number(grip(containerEl).getAttribute('aria-valuemax')),
+			);
+		});
+
 		it('clamps at both ends rather than accepting whatever the pointer names', () => {
 			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
 			view.setProjection('roadmap');
