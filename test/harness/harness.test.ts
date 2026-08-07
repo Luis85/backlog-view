@@ -165,17 +165,22 @@ describe('the harness draws every icon the view asks for', () => {
 	 * written to find them missed exactly those four. The instrument has to be able to
 	 * see the whole set before its verdict is worth anything.
 	 */
-	function sweepIcons(): { asked: Set<string>; missing: Set<string> } {
+	function sweepIcons(): { asked: Set<string>; missing: Set<string>; drew: string[] } {
 		const root = document.createElement('div');
 		document.body.appendChild(root);
 		const { view, containerEl } = mountHarness(root);
 		const asked = new Set<string>();
 		const missing = new Set<string>();
+		const drew: string[] = [];
 		const collect = () => {
 			for (const el of containerEl.querySelectorAll<HTMLElement>('[data-icon]')) asked.add(el.dataset.icon ?? '');
 			for (const el of containerEl.querySelectorAll<HTMLElement>('[data-icon-missing]')) {
 				missing.add(el.dataset.iconMissing ?? '');
 			}
+			// What the render pass itself says it just drew: `renderProjectionContent`
+			// names the scroller per projection. A witness the sweep cannot fake by
+			// collecting more of the same icons, which is what let a dark leg pass.
+			drew.push(containerEl.querySelector('.pbl-tree')?.getAttribute('aria-label') ?? '');
 		};
 		for (const projection of ['tree', 'board', 'roadmap', 'deliverables'] as const) {
 			view.setProjection(projection);
@@ -192,7 +197,7 @@ describe('the harness draws every icon the view asks for', () => {
 			view.setShelfCollapsed(false);
 			collect();
 		}
-		return { asked, missing };
+		return { asked, missing, drew };
 	}
 
 	it('resolves every name, aliases included', () => {
@@ -206,16 +211,22 @@ describe('the harness draws every icon the view asks for', () => {
 	it('measures something — the instrument is checked before its verdict is trusted', () => {
 		// A sweep that drove nothing, or a selector that matched nothing, would satisfy
 		// the test above forever.
-		const { asked } = sweepIcons();
+		const { asked, drew } = sweepIcons();
 		expect(asked.size).toBeGreaterThan(20);
 		expect(asked).toContain('inbox');
-		// One name per corner the sweep has to REACH, not just a count: a size and a
-		// single common icon stayed true while a whole projection's worth of controls
-		// went uncollected. `locate-fixed` is the dated axis's alone, `package` the
-		// Deliverables board's, and each fails the moment its leg of the sweep stops
-		// rendering — which is the failure this check exists for.
+		// Every leg actually rendered its OWN projection, asked of the label the render
+		// pass sets rather than of the icons it happened to draw. Two weaker forms of
+		// this check have now failed to catch a dark leg: a size plus one common icon,
+		// and then naming `package` — which the mode TOGGLE draws on every projection,
+		// so that assertion could not fail whatever the sweep did. An icon is evidence
+		// only if nothing else draws it; a projection's own name always is.
+		expect(drew).toContain('Product backlog');
+		expect(drew).toContain('Product backlog board');
+		expect(drew).toContain('Deliverables board');
+		expect(drew).toContain('Product backlog roadmap');
+		// The two axis legs share the roadmap's label, so the dated one is witnessed by
+		// the control only it draws.
 		expect(asked).toContain('locate-fixed');
-		expect(asked).toContain('package');
 	});
 });
 
