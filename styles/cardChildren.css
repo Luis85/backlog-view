@@ -1,0 +1,103 @@
+/* ==========================================================================
+   Children on the card
+
+   One level of the tree, on a card. Loaded after `cards.css` so its rules win at
+   equal specificity — the disclosure sits inside `.pbl-card` and overrides the
+   card's own type scale.
+   ========================================================================== */
+
+.pbl-card-kids {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+
+.pbl-card-kids-toggle {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	align-self: flex-start;
+	padding: 0 var(--size-2-1);
+	height: auto;
+	line-height: 1.4;
+	box-shadow: none;
+	background-color: transparent;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.pbl-card-kids-toggle:hover:not(:disabled) {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.pbl-card-kids-toggle:disabled {
+	opacity: 0.5;
+}
+
+.pbl-card-kids-chevron {
+	display: flex;
+	align-items: center;
+	transition: transform 100ms ease-in-out;
+}
+
+.pbl-card-kids-chevron .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-card-kids-chevron.pbl-expanded {
+	transform: rotate(90deg);
+}
+
+/*
+ * No padding and no gap: the indent belongs to the ENTRY, below, so the button covers
+ * it. A `<ul>` that carried the indent itself would leave a clickable strip beside every
+ * child that belongs to neither — and on a card, space that belongs to no control
+ * belongs to the card, which would put "open the parent" exactly where the eye reads
+ * "child". Giving it to the button makes that strip activate the child instead.
+ */
+.pbl-card-kids-list {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.pbl-card-kids-list:empty {
+	display: none;
+}
+
+.pbl-card-kid {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	width: 100%;
+	/* The left value is the list's indent, carried by the button so it is clickable. */
+	padding: var(--size-2-1) var(--size-2-1) var(--size-2-1) var(--size-4-3);
+	height: auto;
+	line-height: 1.4;
+	box-shadow: none;
+	background-color: transparent;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	text-align: left;
+}
+
+.pbl-card-kid:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.pbl-card-kid-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Done dims, exactly as the tree's rows and the card's own title do — styling is not
+   hiding, and a strike-through would say the same thing twice. See rendering.test.ts. */
+.pbl-card-kid.pbl-done .pbl-card-kid-title {
+	color: var(--text-faint);
+}

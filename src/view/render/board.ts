@@ -1,4 +1,5 @@
 import { setIcon, setTooltip } from 'obsidian';
+import { renderCardChildren } from './cardChildren';
 import { renderPropCells, renderRollup, RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderBadge, renderTitleText } from './rows';
@@ -274,6 +275,10 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 
 	if (ctx.chips.length > 0) renderPropCells(ctx, card, item);
 	renderRollup(host, card, item);
+	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
+	// come through here. Timeline rows never do — they use the card SHELL with a
+	// bar-grid row layout — which is exactly why they get no disclosure.
+	renderCardChildren(ctx, card, item);
 }
 
 /** Click opens (selecting first), middle-click opens in a new tab — every projection's cards. */

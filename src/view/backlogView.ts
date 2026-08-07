@@ -58,6 +58,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	board: BoardSnapshot | null = null;
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
+	/**
+	 * Paths whose card drew a child disclosure this render pass, filled through
+	 * `RowContext.cardKids` and cleared beside `rowEls`. No public reader yet — the
+	 * card menu is the first one, in a later increment.
+	 */
+	private readonly cardKids = new Set<string>();
 	/** What the scroller last drew and where today sat — see `restoreScroll`. */
 	private scroll: ScrollAnchor = { content: '', todayLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
@@ -486,6 +492,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.scroll = captureScroll(this.treeEl, this.roadmap, this.scroll);
 		this.treeEl.empty();
 		this.rowEls.clear();
+		// Same lifetime as the row index: a set that outlived its render would claim
+		// disclosures for a screen that is gone.
+		this.cardKids.clear();
 		if (projection !== 'tree') {
 			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
 			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-horizon', 'pbl-hide-state');
@@ -521,7 +530,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	/** The per-pass render state: the row index plus the hoisted config lookups. */
 	private rowCtx(): RowContext {
-		return rowContext(this, this.dnd, this.rowEls);
+		return rowContext(this, this.dnd, this.rowEls, this.cardKids);
 	}
 
 	// -------------------------------------------------------------------- writes
