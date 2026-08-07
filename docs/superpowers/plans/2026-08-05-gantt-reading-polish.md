@@ -268,9 +268,10 @@ function furnishedVault(): FakeVault {
 	const vault = new FakeVault();
 	vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-20' } });
 	vault.addFile('Beta.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-10', due: '2026-09-01' } });
-	// A STATED equal pair — `barGeometry` reports `milestone` only when the note gives
-	// both ends, so a lone `due` is a one-day bar and draws no diamond and no line.
-	vault.addFile('Gamma.md', { frontmatter: { type: 'PBI', order: 30, start: '2026-09-15', due: '2026-09-15' } });
+	// A Milestone, which is the TYPE `renderMilestoneLines` gates on — a PBI with equal
+	// dates draws the diamond but no line and no header label, so the type is what this
+	// fixture needs and the equal pair is what makes it a point rather than a span.
+	vault.addFile('Gamma.md', { frontmatter: { type: 'Milestone', order: 30, start: '2026-09-15', due: '2026-09-15' } });
 	return vault;
 }
 
