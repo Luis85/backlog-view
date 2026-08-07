@@ -997,8 +997,14 @@ git commit -m "feat: the card menu offers the children the card lists"
 - [ ] **Step 1: Write the failing test**
 
 ```ts
+	// FOCUSED on Epic, and that is load-bearing rather than incidental. On an unfocused
+	// board `Feature B1` has a card of its own, and `hiddenMatches` already skips every
+	// path in `cardPaths` — so the match list would omit it before this change, and the
+	// test would pass green against the unfixed code while appearing to prove the
+	// dedup. Focus removes the child's card, which is the only state where the
+	// disclosure and the match list can both reach for the same item.
 	it('does not name a matched child twice on one card', () => {
-		const { containerEl, view } = makeBoard(boardVault());
+		const { containerEl, view } = makeBoard(boardVault(), {}, { focus: 'Epic' });
 		view.setFilter('Feature B1');
 		const card = cardByTitle(containerEl, 'Epic B');
 
@@ -1030,6 +1036,11 @@ git commit -m "feat: the card menu offers the children the card lists"
 
 Run: `npx vitest run test/view/cardChildren.test.ts -t 'twice'`
 Expected: FAIL — `Feature B1` appears in both lists.
+
+**If it passes here, the fixture is wrong, not the code.** The most likely cause is a
+board that is not focused: a child with its own card is already skipped by
+`hiddenMatches`, so the assertion would be satisfied by machinery that predates this
+task. A green test at this step proves nothing and must be fixed before continuing.
 
 - [ ] **Step 3: State the rule once**
 
