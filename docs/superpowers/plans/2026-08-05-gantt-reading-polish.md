@@ -246,7 +246,7 @@ git commit -m "Phase the weekend banding from the window's first Saturday"
 
 **Interfaces:**
 - Consumes: `superCells` from Task 1.
-- Produces: header DOM `header > [lead, .pbl-timeline-tiers > [.pbl-timeline-track.pbl-timeline-super, .pbl-timeline-track]]`; super cells carry `pbl-timeline-cell pbl-timeline-cell-super`. `renderCellHeader` returns **both** tracks as `HeaderTiers`; `TimelineRender.headerTrack` is still the bottom one, so milestone labels and the drop ghost keep their mount, while Task 4's today pill takes the super tier (two opaque pills at `top: 0` in one tier collide, and the milestone label is the one with a hover to lose). The new partial file exists for every later task to append to.
+- Produces: header DOM `header > [lead, .pbl-timeline-tiers > [.pbl-timeline-band, .pbl-timeline-track.pbl-timeline-super, .pbl-timeline-track]]`; super cells carry `pbl-timeline-cell pbl-timeline-cell-super`. `renderCellHeader` returns `HeaderTiers` — the cell track and the empty band. `TimelineRender.headerTrack` is still the cell track, so milestone labels and the drop ghost keep their mount, while Task 4's today pill takes the band, which exists so that it collides with nothing (see Task 4). The new partial file exists for every later task to append to.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -316,25 +316,27 @@ Run: `npx vitest run test/view/timelineFurniture.test.ts`
 In `src/view/render/timeline.ts`, add `superCells` to the import from `../../domain/timeline`, and replace `renderCellHeader` with:
 
 ```ts
-/** The header's two tracks. Both span `--pbl-tl-days`, so one offset places a mark in either. */
+/** What the header hands back: the tier a mark mounts against, per mark. */
 interface HeaderTiers {
 	/** The cell tier — `TimelineRender.headerTrack`, where the milestone labels and the drop ghost mount. */
 	cells: HTMLElement;
-	/** The coarser tier above it, which is where the today pill goes (Task 4). */
-	supers: HTMLElement;
+	/** The empty strip above both tiers, which the today pill has to itself (Task 4). */
+	todayBand: HTMLElement;
 }
 
 /** Presentational, like the tree's column header: every row carries its own dates. */
 function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HeaderTiers {
 	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-timeline-lead' });
-	// Two stacked tracks in the track slot: the coarser orientation tier above the
-	// cells. Both come back, because the two labels the header carries deliberately
-	// live in different tiers — see renderTodayLabel.
+	// Three stacked strips in the track slot: an empty band, then the coarser
+	// orientation tier, then the cells. The band is created here rather than where
+	// its pill is so it lands ABOVE both tiers — a mark appended later would sit
+	// under them. Why the pill gets a strip nobody else draws in: see renderTimeline.
 	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers' });
-	const supers = renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
+	const todayBand = tiers.createDiv({ cls: 'pbl-timeline-band' });
+	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
 	const cells = renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
-	return { cells, supers };
+	return { cells, todayBand };
 }
 
 function renderHeaderTier(
@@ -358,10 +360,10 @@ destructure the new return shape (the rest of the function is unchanged, `header
 still being the cell tier):
 
 ```ts
-	const { cells: headerTrack, supers: superTrack } = renderCellHeader(content, window, scale);
+	const { cells: headerTrack, todayBand } = renderCellHeader(content, window, scale);
 ```
 
-`superTrack` is unused until Task 4; if lint objects in the meantime, land Tasks 3 and 4
+`todayBand` is unused until Task 4; if lint objects in the meantime, land Tasks 3 and 4
 back to back rather than suppressing it.
 
 - [ ] **Step 4: Create the partial and import it**
@@ -374,9 +376,11 @@ Create `styles/timelineFurniture.css`:
    Position in index.css is NOT load-bearing: everything here that overrides
    `timeline.css` outranks it by specificity, never by order. */
 
-/* The track slot of the header, holding two stacked tracks. Block layout: each
-   track keeps its own `width: var(--pbl-tl-days)`, and the flex-basis the track
-   class declares is inert outside a flex parent. */
+/* The track slot of the header, holding the today band and two stacked tracks. Block
+   layout: each track keeps its own `width: var(--pbl-tl-days)`, and the flex-basis the
+   track class declares is inert outside a flex parent. `.pbl-timeline-band` needs no
+   rule of its own — it is a plain block filling this width, and its height is whatever
+   the pill inside it turns out to be. */
 .pbl-timeline-tiers {
 	flex: 0 0 var(--pbl-tl-days);
 	width: var(--pbl-tl-days);
@@ -428,7 +432,7 @@ git commit -m "Draw the timeline header as two tiers"
 
 **Interfaces:**
 - Consumes: `weekendOffsetDays` (Task 2), the two-tier header (Task 3).
-- Produces: `.pbl-grid-line` (one per interior cell boundary, `--pbl-grid-left`), `.pbl-weekend-layer` (week zoom only, `--pbl-weekend-offset`; `--pbl-day-px` published on the content layer), `.pbl-today-label` in the **super** header tier (`--pbl-today-left`, track-relative — the tiers are the same width, so the offset is the same number either way).
+- Produces: `.pbl-grid-line` (one per interior cell boundary, `--pbl-grid-left`), `.pbl-weekend-layer` (week zoom only, `--pbl-weekend-offset`; `--pbl-day-px` published on the content layer), `.pbl-today-label` in the header's `.pbl-timeline-band` (`--pbl-today-left`, track-relative — every strip in the tier stack is the same width, so the offset is the same number wherever it mounts).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -468,15 +472,18 @@ describe('grid rhythm', () => {
 		expect(TIMELINE_LEAD_PX + trackLeft).toBe(view.roadmap?.todayLeft ?? -1);
 	});
 
-	it('keeps the today pill out of the tier the milestone labels own', () => {
-		// Both are opaque, both sit at top: 0, and both are placed by an offset within
-		// the same day — so a milestone dated today would be buried by the pill drawn
-		// after it, tooltip and all. Separate tiers is the whole collision rule.
+	it('gives the today pill a strip nothing else draws in', () => {
+		// The pill is opaque and placed by a day offset, so anything else it shares a
+		// strip with can end up underneath it: a milestone dated today in the cell
+		// tier, or — since the bottom tier drops the year — the super tier's `2026`
+		// when today falls near a super cell's start. Its own band is the whole rule.
 		const { containerEl } = datedRoadmap(furnishedVault());
-		const label = containerEl.querySelector<HTMLElement>('.pbl-today-label');
-		expect(label?.parentElement?.classList.contains('pbl-timeline-super')).toBe(true);
+		const band = containerEl.querySelector<HTMLElement>('.pbl-timeline-band');
+		if (!band) throw new Error('no today band');
+		expect(band.children).toHaveLength(1);
+		expect(band.firstElementChild?.classList.contains('pbl-today-label')).toBe(true);
 		const milestone = containerEl.querySelector<HTMLElement>('.pbl-milestone-label');
-		expect(milestone?.parentElement?.classList.contains('pbl-timeline-super')).toBe(false);
+		expect(milestone?.parentElement?.classList.contains('pbl-timeline-band')).toBe(false);
 	});
 });
 ```
@@ -507,16 +514,18 @@ In `renderTimeline` (`src/view/render/timeline.ts`):
 	renderGridLines(content, window, scale);
 ```
 
-4. After the today-line block (`setTooltip(line, …)`) — into `superTrack` from Task 3,
+4. After the today-line block (`setTooltip(line, …)`) — into `todayBand` from Task 3,
    **not** `headerTrack`:
 
 ```ts
-	// The SUPER tier, because the cell tier is the milestone labels' — two opaque
-	// pills at top: 0, placed by an offset inside the same day, and this one is
-	// created later, so on a date carrying a milestone it would cover the label and
-	// swallow the hover that reveals the full name. The super tier's own cells are
-	// decoration with no tooltip of their own to lose.
-	const todayLabel = superTrack.createDiv({ cls: 'pbl-today-label', text: 'Today' });
+	// The band, which exists so this pill shares a strip with nothing. It is opaque
+	// and placed by a day offset, so in either tier it would sooner or later land on
+	// top of something: a milestone label in the cell tier, whose hover reveals a
+	// name nothing else states, or — since the cells now drop the year — the super
+	// tier's `2026`, the only place the year appears at all. Neither can be dodged by
+	// nudging pixels the way the two 2px LINES are, because these are labels wide
+	// enough to overlap for days on either side of the date.
+	const todayLabel = todayBand.createDiv({ cls: 'pbl-today-label', text: 'Today' });
 	todayLabel.setCssProps({ '--pbl-today-left': `${todayOffset(window, today, scale)}px` });
 	setTooltip(todayLabel, formatCivil(today));
 ```
@@ -584,17 +593,19 @@ Append to `styles/timelineFurniture.css`:
 	background-position-x: var(--pbl-weekend-offset);
 }
 
-/* The milestone label's shape at the today line's own offset, one tier up from it:
-   backed, because it sits over the year band; red to match the line it names. */
+/* The milestone label's shape at the today line's own offset, red to match the line
+   it names — but RELATIVE, not absolute, and that is the point. In flow it gives the
+   otherwise-empty band its height, so no constant has to be kept in step with the
+   pill's font for the strip to fit it; `left` then nudges it to the date without
+   taking it back out of flow. Nothing shares the strip, so it needs no backing. */
 .pbl-today-label {
-	position: absolute;
-	top: 0;
+	position: relative;
 	left: var(--pbl-today-left);
+	display: inline-block;
 	padding: var(--size-4-1);
 	font-size: var(--font-ui-smaller);
 	font-weight: 600;
 	color: var(--color-red);
-	background-color: var(--background-primary);
 }
 ```
 
@@ -1011,6 +1022,9 @@ describe('the density toggle', () => {
 		expect(densityButton(containerEl).getAttribute('aria-pressed')).toBe('false');
 		densityButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(densityButton(containerEl).getAttribute('aria-pressed')).toBe('true');
+		// The name is the setting, not the next action: it must NOT flip with the
+		// state, or the pressed toggle announces the mode it is not in.
+		expect(densityButton(containerEl).getAttribute('aria-label')).toBe('Compact rows');
 		expect(containerEl.querySelector('.pbl-timeline')?.classList.contains('pbl-density-compact')).toBe(true);
 		expect(vault.writeLog).toHaveLength(0);
 		expect(config.setCalls).toEqual([]);
@@ -1079,7 +1093,11 @@ describe('the density toggle', () => {
 
 ```ts
 	const compact = host.density === 'compact';
-	const densityBtn = iconButton(barEl, compact ? 'rows-2' : 'rows-4', compact ? 'Comfortable rows' : 'Compact rows');
+	// The name is the SETTING, fixed, and aria-pressed carries its value — a toggle
+	// whose name changes to the next action announces "Comfortable rows, pressed"
+	// while compact rows are on, which states the opposite of what is true. The icon
+	// still swaps: it is the sighted affordance, and it says nothing to a reader.
+	const densityBtn = iconButton(barEl, compact ? 'rows-2' : 'rows-4', 'Compact rows');
 	densityBtn.addClass('pbl-density-toggle');
 	densityBtn.toggleClass('is-active', compact);
 	densityBtn.setAttribute('aria-pressed', String(compact));
@@ -1183,8 +1201,8 @@ nothing is written, and no rendering decision changes what places or what shelve
    both clipped to the window, the bottom tier dropping the year the top tier carries.
 2. Each interior cell boundary extends down the grid body; at week zoom, weekends
    shade as a single repeating band phased to the window's first Saturday.
-3. The today line's date names itself with a Today label in the header, one tier above
-   the milestone labels so neither can bury the other.
+3. The today line's date names itself with a Today label in a header strip of its own,
+   so it can bury neither a milestone's name nor the year.
 4. Alternate rows stripe, the hovered row highlights across lead and track, and the
    sticky lead column carries a shadow once the grid is scrolled.
 5. Each bar carries its title beside it in the track, flipping to the bar's other

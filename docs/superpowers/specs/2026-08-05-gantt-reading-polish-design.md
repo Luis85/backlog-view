@@ -79,12 +79,15 @@ week zoom only (see above).
 
 **Today label.** The today line keeps its tooltip and gains a small "Today" pill,
 red-tinted to match the line — the milestone label's existing pattern with a different
-color. It mounts in the header's **super** tier, not the cell tier the milestone labels
-use: both are opaque pills absolutely positioned at `top: 0` against an offset in the
-same day, so a milestone dated today would be covered by the pill appended after it —
-along with the hover that reveals its full name. Different tiers is the whole collision
-rule; the super tier's own cells are decoration with nothing to hover. The exact date
-stays in the tooltip.
+color. It gets a **strip of its own** above both header tiers, because it is opaque and
+placed by a day offset, and in either tier it would eventually land on top of something
+that matters: a milestone label dated today, whose hover reveals a name nothing else
+states, or the super tier's `2026` — the only place the year appears once the cells drop
+it. The two full-height LINES dodge each other inside one day by a 1px nudge; two labels
+are wide enough to overlap for days either side of the date, so nothing short of separate
+strips settles it. The strip costs one empty div and no reserved-height constant: the
+pill stays in flow and is nudged sideways with `position: relative`, so the band is
+exactly as tall as the pill turns out to be. The exact date stays in the tooltip.
 
 ### 2. Two-tier header
 
@@ -98,10 +101,10 @@ The bottom tier drops the year the top tier now carries: month cells label `Aug`
 instead of `Aug 2026`, quarter cells `Q3` instead of `Q3 2026`. Week cells keep
 `4 Aug` — a week can straddle two months, so its own label stays self-sufficient.
 
-Structurally the header becomes lead + a two-row tier stack. `TimelineRender.headerTrack`
-keeps pointing at the *bottom* track, so milestone labels and the drop ghost's date
-preview keep their mount unchanged; the today pill takes the super tier for the reason
-above, which is the one thing this restructure is asked for beyond orientation. Cell widths don't change, so
+Structurally the header becomes lead + a stack of three strips: an empty band, the super
+tier, the cells. `TimelineRender.headerTrack` keeps pointing at the *cell* track, so
+milestone labels and the drop ghost's date preview keep their mount unchanged; the today
+pill takes the band for the reason above. Cell widths don't change, so
 `jumpToToday`'s centring math is untouched.
 
 ### 3. Row tracking
