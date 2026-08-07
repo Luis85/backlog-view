@@ -46,6 +46,11 @@ and each stays open until they are, so a stale check is visible rather than assu
   line at 488px, milestone line and label and diamond centre all 704px.** The Today
   label this measured no longer exists — [[State colour and a legend]] replaced it with
   a legend strip, **never checked in Chromium**.
+- The dated axis's grid butts against the chrome above it — no blank strip between the
+  toolbar or the legend and the header, where the lead column's border and the first
+  gridline would otherwise simply stop. The horizon axis keeps its top gutter, so check
+  both axes. **Layout measured in Chromium 2026-08-07: the scroller starts at the
+  legend's own bottom edge.**
 - The legend strip above the grid: one swatch per configured state, then today, then
   the milestone — legible over the header, and a bar's colour actually matches its own
   swatch. **Never checked.**
