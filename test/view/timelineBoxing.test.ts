@@ -42,6 +42,6 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 	it('centres the milestone diamond on its date rather than starting it there', () => {
 		// A point has no width to spend: hung off `--pbl-bar-left` the 12px diamond sits
 		// 6px right of the full-height line drawn for the same milestone on the same day.
-		expect(ruleBody('.pbl-bar-milestone')).toContain('translateX(-50%)');
+		expect(ruleBody('.pbl-bar.pbl-bar-milestone')).toContain('translateX(-50%)');
 	});
 });

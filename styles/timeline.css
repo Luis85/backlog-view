@@ -265,11 +265,20 @@
    but a point has no width to spend, and a 12px diamond hung off that edge sits 6px right
    of the full-height line drawn for the same milestone at the same date. `translateX`
    precedes the rotation so it moves the diamond along the track rather than along its own
-   rotated axis. */
-.pbl-bar-milestone {
+   rotated axis.
+
+   Cyan, like the badge and like the full-height line drawn for the same date, and NOT
+   the state slot its row would otherwise give it: a milestone is keyed in the legend as
+   one thing with one colour, so a diamond wearing its workflow state instead would leave
+   the legend keying a colour the mark it names does not draw. Specificity, not order —
+   two classes here against the one `.pbl-bar` carries, so the state slot loses wherever
+   this rule sits in the file. A DONE milestone still goes green: that override names
+   three classes and outranks this, which is the same precedence every other bar has. */
+.pbl-bar.pbl-bar-milestone {
 	width: 12px;
 	height: 12px;
 	border-radius: var(--radius-s);
+	--pbl-bar-color: var(--color-cyan);
 	transform: translateY(-50%) translateX(-50%) rotate(45deg);
 }
 

@@ -39,3 +39,9 @@
    than the lines' 0.55 opacity — a key is read at a glance, not overlaid on content. */
 .pbl-legend-today { background-color: var(--color-red); }
 .pbl-legend-milestone { background-color: var(--color-cyan); }
+
+/* The done override in `timeline.css`, keyed rather than the slot the state also holds:
+   a done row's bar is green whatever its position in the vocabulary, so a swatch showing
+   that position would key a colour no bar draws. `legend.ts` picks this class by the same
+   `isDoneValue` the override is written for. */
+.pbl-legend-done { background-color: var(--color-green); }

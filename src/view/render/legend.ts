@@ -1,6 +1,6 @@
 import { BacklogViewHost } from '../host';
 import { activeAxis } from '../../domain/roadmap';
-import { stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
+import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -30,10 +30,18 @@ export function renderLegend(host: BacklogViewHost, legendEl: HTMLElement, obser
 		return;
 	}
 	legendEl.setAttribute('aria-hidden', 'true');
-	// The same list, the same index, the same modulo `stateColorSlot` applies to a bar —
-	// so a swatch and a bar can never name a state a different colour.
+	// The same list, the same index, the same modulo `stateColorSlot` applies to a bar.
+	// Except for done, which is the one state whose bar does NOT draw its slot: a done
+	// row's bar is overridden to green in `timeline.css`, deliberately, because green
+	// for finished is a meaning the user already reads. A swatch wearing the slot class
+	// would key pink for a bar that draws green — a legend disagreeing with the only
+	// thing it exists to explain. So the swatch asks the same question the override
+	// does, `isDoneValue`, rather than trusting the index alone.
 	const states = stateMenuValues(host.settings, observedStates);
-	states.forEach((state, i) => addSwatch(legendEl, `pbl-state-${i % STATE_COLOR_SLOTS}`, state));
+	states.forEach((state, i) => {
+		const slot = isDoneValue(host.settings, state) ? 'pbl-legend-done' : `pbl-state-${i % STATE_COLOR_SLOTS}`;
+		addSwatch(legendEl, slot, state);
+	});
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
 	addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
 }
