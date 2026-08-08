@@ -335,6 +335,28 @@ describe('the lead-column resize grip', () => {
 			expect(vault.writeLog).toHaveLength(0);
 		});
 
+		it('leaves the pane its own keys: a key the grip does not claim never moves the card selection', () => {
+			// The whole accepted ARIA deviation rests on this. The grip is a focusable
+			// non-`option` inside the pane's `listbox`, and what makes that cost the
+			// composite nothing is `handleRoadmapKeydown`'s `evt.target !==
+			// evt.currentTarget` guard. ArrowDown is the case that can see it: the grip
+			// claims Left, Right and Home and lets every other key bubble to the pane,
+			// so without the guard a reader resizing the column moves the selection with
+			// each press. Asserted at the forbidden thing rather than at the shelf's
+			// promoted controls, which only ever dispatch keys AT the pane.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			expect(view.selectedPath).toBeNull();
+
+			const el = grip(containerEl);
+			el.focus();
+			el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+			expect(view.selectedPath).toBeNull();
+			// And the grip did not quietly resize on a key it does not own either.
+			expect(view.leadWidth).toBeNull();
+		});
+
 		it('keeps keyboard focus on its own replacement across the rebuild its own keypress causes', () => {
 			// The same wall the shelf header's own controls hit (`shelfControls.ts`'s
 			// `refocus`): every keypress here re-renders the whole projection, destroying

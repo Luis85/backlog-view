@@ -63,13 +63,18 @@ and each stays open until they are, so a stale check is visible rather than assu
   as it moves, and whether a focusable separator inside the pane's `listbox` confuses
   the reader — the accepted deviation recorded in `src/view/CLAUDE.md`. **Never
   checked.**
-- The five state-colour slots under a real theme, light and dark: each reads as distinct
-  from the others and from the red, cyan and green that already mean today, a milestone
-  and done; a done bar is unmistakably green whatever slot its own state occupies; and a
-  swatch and its bars match at a glance rather than only by variable name. The
-  stylesheet check behind this says which variable each rule names and nothing about
-  what those resolve to, and per ADR 0020 the harness settles layout and not colour.
-  **Never checked.**
+- The four state-colour slots under a real theme, light and dark: each reads as distinct
+  from the others and from the four colours that already mean something — the red, cyan
+  and green of today, a milestone and done, and the ACCENT, which `.pbl-bar` falls back
+  to for an unslotted item and the legend keys as `Other`; a done bar is unmistakably
+  green whatever slot its own state occupies; and a swatch and its bars match at a
+  glance rather than only by variable name. The accent is the case no check here can
+  reach: `STATE_COLOR_SLOTS` reserves Obsidian's DEFAULT purple by dropping it as a
+  slot, but the accent is a user setting, so a reader who has set theirs to one of the
+  four slot colours reopens the collision against that slot — look with a non-default
+  accent as well as the default one. The stylesheet check behind this says which
+  variable each rule names and nothing about what those resolve to, and per ADR 0020
+  the harness settles layout and not colour. **Never checked.**
 - The row hover/zebra tint spans the opaque lead cell and the track as one band, not
   two, AND the lead stays opaque while tinted — the day track scrolls under it, so a
   translucent lead lets the grid show through the sticky column on every tinted row.

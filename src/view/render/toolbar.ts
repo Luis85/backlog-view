@@ -127,9 +127,9 @@ const KEY_ATTR = 'data-pbl-key';
  *
  * What that guarantees is exactly what carries a key: a control created without one is
  * not restored, and nothing here can see that it was meant to be. The check under the
- * sentence is `test/view/toolbar.test.ts`, which asserts every focusable element the
- * toolbar renders — across the three projections, filtered and focused — carries a key,
- * and that no two share one.
+ * sentence is `test/view/toolbarFocus.test.ts`, which asserts every focusable element
+ * the toolbar renders — across the three projections, under a focus level — carries a
+ * key, and that no two share one.
  */
 function capturedFocusKey(barEl: HTMLElement): string | null {
 	const active = document.activeElement;

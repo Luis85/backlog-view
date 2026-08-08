@@ -49,17 +49,14 @@ export function makeRoadmap(
 /**
  * `makeRoadmap`'s sibling for the suites that configure their own axis rather than
  * taking the horizon one: everything about the view comes from `cfg`, and nothing is
- * merged in behind it. Same shelf rule — open unless the caller asks for the collapsed
- * state itself.
+ * merged in behind it. The shelf is always opened — no caller of this one asserts on
+ * the collapsed state, and `makeRoadmap`'s `shelfCollapsed` is where that escape
+ * hatch already lives.
  */
-export function roadmapView(
-	vault: FakeVault,
-	cfg: Record<string, unknown>,
-	{ base, shelfCollapsed = false }: { base?: string; shelfCollapsed?: boolean } = {},
-): Harness {
+export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { base }: { base?: string } = {}): Harness {
 	const harness = makeView(vault, cfg, { collapsed: true, base });
 	harness.view.setProjection('roadmap');
-	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
+	harness.view.setShelfCollapsed(false);
 	return harness;
 }
 

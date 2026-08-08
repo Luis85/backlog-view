@@ -52,8 +52,12 @@ cannot name a state differently.
    state (the same slot classes the bars carry, in the same order), then the today
    line's colour, then the milestone line's colour.
 4. The legend is presentational: `aria-hidden`, no tab stop, no pointer handler. Every
-   fact a swatch stands for is already reachable without it — a state from the row's
-   chip or the Set state menu, today and a milestone from the line's own tooltip.
+   fact a swatch stands for is already reachable without it — a state, and its
+   done-ness, from hidden words in the timeline row itself (NOT from the row's chip:
+   this projection renders no state chip, so until those words existed a bar's state
+   lived in its colour alone and withholding the legend was a gap rather than a
+   restatement), a milestone from its own row's accessible name, and today from the
+   line's tooltip and from being today.
 5. The Today pill this PBI's own header band existed for ([[Reading the grid]]) is
    gone: the legend now names the today line's colour, so the header carries only the
    line itself and its tooltip, unlabeled.
@@ -111,9 +115,9 @@ completed items") with the vocabulary omitting its value, keyed neither there no
 vocabulary loop, and the same item once it actually lands on the grid.
 
 Beside it, a text check on the stylesheets: each swatch names the same palette colour as
-the mark it keys, the four slots are distinct, and none of them is the red, cyan or green
-that already mean today, a milestone and done — a claim `STATE_COLOR_SLOTS` makes in a
-comment and nothing checked. Its reach is the variable each rule names; what those resolve
+the mark it keys, the four slots are distinct, and none of them is the red, cyan, green
+or the default accent's purple that already mean today, a milestone, done and `Other` —
+a claim `STATE_COLOR_SLOTS` makes in a comment and nothing checked. Its reach is the variable each rule names; what those resolve
 to under a theme stays the live-vault question in [[Smoke test the roadmap]].
 
 The fifth defect was found by a reviewer AFTER the sweep existed, because the table had
@@ -183,6 +187,13 @@ what got drawn.
   window must not key cyan.
 - The legend sits outside `.pbl-timeline` (the scroller) and under the toolbar, so
   scrolling the grid never scrolls the legend with it.
+- A timeline row states its workflow state in WORDS as well as in colour — a hidden
+  span in the row itself, carrying the state's value, and its done-ness with it
+  (`<value> — done`, or `Done` where a done item carries no value). This is what the
+  legend's `aria-hidden` rests on, since the dated axis renders no state chip. A row
+  with no state, and every row where no workflow property is configured, renders no
+  such span; a MARKER's explicit `aria-label` replaces its content, so the same words
+  are folded into that label rather than lost.
 - The legend carries `aria-hidden` and nothing inside it is a `button` or otherwise
   reachable by Tab.
 - `.pbl-today-label` and `.pbl-timeline-band` no longer exist anywhere: the today

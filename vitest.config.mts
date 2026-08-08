@@ -114,6 +114,12 @@ export default defineConfig({
 			// commit before it. Cutting code nothing drove is what moves branches, and it
 			// rounds down to a new decimal (93.9, up from 93.8); the other three round down
 			// to the figures already recorded above and stay put.
+			//
+			// The final-review fix pass (one watched-failing test for the roadmap keydown
+			// guard the lead grip's whole tab-stop deviation rests on, plus comment, doc
+			// and test-instrument corrections) measured 98.13/93.97/99.43/99.30. Only
+			// branches moved at all, and it rounds down to the 93.9 already recorded, so
+			// none of the four move.
 			thresholds: {
 				statements: 98.1,
 				branches: 93.9,

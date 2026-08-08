@@ -62,9 +62,13 @@ describe('the legend keys the same palette colours the marks draw', () => {
 	const timelineCss = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
 	const legendCss = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
 
-	/** The palette colour a rule names — `--color-green`, `rgb(var(--color-pink-rgb))`, … */
-	function paletteColour(css: string, selector: string): string {
-		const body = bodyOf(css, selector, css === legendCss ? 'styles/legend.css' : 'styles/timeline.css');
+	/**
+	 * The palette colour a rule names — `--color-green`, `rgb(var(--color-pink-rgb))`, …
+	 * `file` is passed rather than recovered by comparing the two stylesheets' CONTENTS
+	 * for identity: the caller already knows which file it handed over.
+	 */
+	function paletteColour(css: string, selector: string, file: string): string {
+		const body = bodyOf(css, selector, file);
 		const named = /--color-([a-z]+)(?:-rgb)?\b/.exec(body);
 		if (!named) throw new Error(`${selector} names no palette colour: ${body.trim()}`);
 		return named[1];
@@ -75,7 +79,7 @@ describe('the legend keys the same palette colours the marks draw', () => {
 		['.pbl-legend-milestone', '.pbl-bar.pbl-bar-milestone'],
 		['.pbl-legend-today', '.pbl-today'],
 	])('keys %s with the colour %s draws', (swatch, mark) => {
-		expect(paletteColour(legendCss, swatch)).toBe(paletteColour(timelineCss, mark));
+		expect(paletteColour(legendCss, swatch, 'styles/legend.css')).toBe(paletteColour(timelineCss, mark, 'styles/timeline.css'));
 	});
 
 	it('keeps every state slot clear of the four colours that already mean something', () => {
@@ -89,7 +93,9 @@ describe('the legend keys the same palette colours the marks draw', () => {
 		// state and `Other` in one indistinguishable pair. The reach of that entry is
 		// exactly the DEFAULT — the accent is a user setting, and no text check here can
 		// see what a reader has set it to.
-		const slots = Array.from({ length: STATE_COLOR_SLOTS }, (_, i) => paletteColour(timelineCss, `.pbl-state-${i}`));
+		const slots = Array.from({ length: STATE_COLOR_SLOTS }, (_, i) =>
+			paletteColour(timelineCss, `.pbl-state-${i}`, 'styles/timeline.css'),
+		);
 		expect(new Set(slots).size, `slots repeat a colour: ${slots.join(', ')}`).toBe(STATE_COLOR_SLOTS);
 		for (const reserved of ['red', 'cyan', 'green', 'purple']) {
 			expect(slots, `slot palette must stay clear of ${reserved}`).not.toContain(reserved);
@@ -117,7 +123,17 @@ describe('the legend keys the same palette colours the marks draw', () => {
 		// stale rule is live CSS — `stateColorSlot` never emits the class, but a reader
 		// dropping a colour from the rotation and only editing the constant leaves the
 		// removed hue one edit away from coming back.
-		expect(timelineCss).not.toContain(`.pbl-state-${STATE_COLOR_SLOTS} `);
+		//
+		// Every index the stylesheet declares, not the one index past the constant: a
+		// check naming `.pbl-state-${STATE_COLOR_SLOTS}` alone sees a 5→4 drop and misses
+		// a 4→2 one, which is the same instrument that cannot see the whole set the root
+		// guide records. The count assertion is the instrument's own check — a regex that
+		// matched nothing would satisfy the loop below for any stylesheet at all.
+		const declared = [...timelineCss.matchAll(/\.pbl-state-(\d+)/g)].map((match) => Number(match[1]));
+		expect(declared, `slot rules found: ${declared.join(', ')}`).toHaveLength(STATE_COLOR_SLOTS);
+		for (const index of declared) {
+			expect(index, `.pbl-state-${index} is past the last slot the constant declares`).toBeLessThan(STATE_COLOR_SLOTS);
+		}
 	});
 });
 

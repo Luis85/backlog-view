@@ -11,7 +11,9 @@ import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/se
  * colour and nothing else — every fact a swatch stands for is already reachable without
  * it: a state and its done-ness from the hidden words `stateNote` puts in each timeline
  * row (never the tree's chip, which this projection does not render), a milestone from
- * its own row's accessible name, today from the line's tooltip and from being today.
+ * its own row's accessible name, and today from being today — not from the line's own
+ * tooltip, which hangs on an `aria-hidden` div and so carries nothing to the audience
+ * this paragraph is about.
  * That is what makes withholding it from assistive tech and the tab order correct rather
  * than a gap — and it was a gap until those words existed: a bar's state lived in its
  * colour alone.

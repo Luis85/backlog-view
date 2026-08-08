@@ -113,7 +113,8 @@ describe('the roadmap legend', () => {
 		// The legend exists to be read against the bars, so it may not key a colour the
 		// bars do not use. A done state still occupies a slot — it is in the vocabulary —
 		// but `.pbl-timeline-row.pbl-done .pbl-bar` overrides that slot with green, so a
-		// swatch wearing the slot class would key pink for a bar that draws green.
+		// swatch wearing the slot class would key its slot colour for a bar that draws
+		// green — whichever colour that slot happens to be, which the rotation changes.
 		const vault = new FakeVault();
 		vault.addFile('Shipped.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'Done' } });
 		const { view, containerEl } = makeView(vault, { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });

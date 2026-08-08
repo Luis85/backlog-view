@@ -30,10 +30,14 @@ import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/collap
  * selection the pane owns. This does not: it is chrome fixed to the grid's own
  * geometry, not a card, and it never renders among cards to begin with. Once it
  * holds focus, `handleRoadmapKeydown`'s own guard (`evt.target !== evt.currentTarget`
- * in `interactions/keyboard.ts`) already leaves its own keys alone — the same escape
- * hatch the shelf's promoted-to-real-tab-stop controls rely on when the pane has no
- * cards at all — so giving this one a real stop costs the composite nothing and there
- * is no menu a continuous "hold the arrow key" gesture would fit inside anyway.
+ * in `interactions/keyboard.ts`) leaves its own keys alone — the same escape hatch
+ * the shelf's promoted-to-real-tab-stop controls rely on when the pane has no cards
+ * at all — so giving this one a real stop costs the composite nothing and there is
+ * no menu a continuous "hold the arrow key" gesture would fit inside anyway. That
+ * guard is what the whole deviation rests on, so it is checked HERE, at the grip:
+ * `test/view/timelineLeadResize.test.ts` dispatches an ArrowDown — a key this grip
+ * does not claim, so it bubbles to the pane — at the focused grip and asserts the
+ * card selection does not move.
  */
 export function renderLeadResize(
 	host: BacklogViewHost,
@@ -107,7 +111,9 @@ export function renderLeadResize(
 		// never focuses the strip — and refocusing unconditionally handed the separator
 		// a focus the user had not given it, after which their next arrow key resized
 		// the column instead of moving the card selection (`handleRoadmapKeydown`
-		// bails on any event whose target is not the pane itself).
+		// bails on any event whose target is not the pane itself — the guard checked
+		// at the grip in the "leaves the pane its own keys" test). "A pointer resize
+		// takes no focus" in the same suite is what holds this half.
 		const held = document.activeElement === grip;
 		host.setLeadWidth(width === defaultWidth ? null : width);
 		// The write above re-renders the whole projection, destroying THIS element —

@@ -210,10 +210,10 @@ free of runtime code so imports stay cycle-free.
   cannot ship because it is not desktop-only, or no resize at all. What is checked is
   narrower than the claim — `test/view/timelineLeadResize.test.ts` asserts what the
   grip ANNOUNCES (`role`, `aria-orientation`, the three `aria-value*`, the real tab
-  stop) and that its own arrow keys resize; the guard that keeps those keys off the
-  pane is asserted for the SHELF's promoted controls (`test/view/shelfUx.test.ts`) and
-  not for the grip, and nothing here can say how a screen reader reads a separator in
-  that position. That last one is a live-vault item in
+  stop), that its own arrow keys resize, and the guard itself at the forbidden thing:
+  an ArrowDown, a key the grip does not claim and so lets bubble, dispatched at the
+  focused grip moves no card selection. What nothing here can say is how a screen
+  reader reads a separator in that position. That one is a live-vault item in
   `docs/requirements/Smoke test the roadmap.md`.
 - Any menu opened from a `<button>` goes through `showMenuForClick`. Enter or Space
   synthesizes a click at (0, 0), and `showAtMouseEvent` would drop the menu in the
