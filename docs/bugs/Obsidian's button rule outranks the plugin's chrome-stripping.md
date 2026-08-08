@@ -44,12 +44,17 @@ empirically — Chromium via Playwright, driven through `npm run harness` with t
 row's computed `background-color` and `box-shadow`. Before the fix below, both were
 Obsidian's filled values; after, both were the plugin's transparent ones.
 
-**The same shape lives in four other controls, verified live and deliberately left
+**The same shape lived in four other controls, verified live and deliberately left
 unfixed here:** `.pbl-state-chip` and `.pbl-horizon-chip` (`styles/columns.css`),
-`.pbl-tag-remove` (`styles/tags.css`) and `.pbl-card-match` (`styles/cards.css`) are all
+`.pbl-tag-remove` (`styles/tags.css`) and `.pbl-card-match` (`styles/cards.css`) were all
 real `<button>`s carrying none of `.clickable-icon`, styled with the same bare-class
-shape, so the same `(0,1,0)` loss applies to each. Two controls that look like the same
-family are not affected, for two different reasons — and `.pbl-add` is not even one shape:
+shape, so the same `(0,1,0)` loss applied to each. **Fixed since, in
+[[Four other controls still lose to Obsidian's button rule]]** — the same
+element-qualified-selector shape as the fix below, plus a `:focus-visible` outline each
+of the four needed and did not have, because the qualified override's own
+`box-shadow: none` now ties and beats Obsidian's `button:focus-visible` ring the same way
+it beats the base rule. Two controls that look like the same family are not affected, for
+two different reasons — and `.pbl-add` is not even one shape:
 the column header's (`header.createDiv({ cls: 'pbl-add clickable-icon' })` in
 `src/view/render/columns.ts`) is a `<div>`, so none of Obsidian's `button…` rules can match
 it at all, while the tree row's own (`addBtn` in `renderRowTrailing`,

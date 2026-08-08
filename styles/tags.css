@@ -79,6 +79,29 @@
 	background-color: var(--background-modifier-hover);
 }
 
+/* A real `<button>` loses its own `background: transparent`/`box-shadow: none`
+   above to Obsidian's `button:not(.clickable-icon)` at (0,1,1) — the base rule
+   is a bare class, (0,1,0), and loses regardless of source order, so at rest
+   this control has always painted Obsidian's filled chrome underneath the
+   opacity-0 that was meant to hide it entirely. Element-qualified to tie and win
+   on source order, the `button.pbl-card-kids-toggle` precedent in
+   cardChildren.css. The hover rule above already wins outright ((0,2,0) beats
+   Obsidian's (0,1,1)), so only rest needs restating — background-color here
+   rather than the `background` shorthand, since a per-property cascade only
+   needs the one property actually contested. */
+button.pbl-tag-remove {
+	background-color: transparent;
+	box-shadow: none;
+}
+
+/* That override also beats Obsidian's `button:focus-visible` ring at the same
+   (0,1,1) tie, so the button needs its own visible focus indicator — outline,
+   not box-shadow, matching every other control fixed this way. */
+.pbl-tag-remove:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
 .pbl-tag-remove .svg-icon {
 	width: 10px;
 	height: 10px;
