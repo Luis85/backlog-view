@@ -2,7 +2,8 @@
 type: PBI
 parent: "[[Dependencies]]"
 order: 30
-status: Open
+status: Done
+closed: 2026-08-08
 priority: P2
 created: 2026-08-08
 source: user request
@@ -51,10 +52,12 @@ a different control.
    list — and applies it through the same gate every other write here goes through
    ([[Safe writes]]).
 4. **Remove dependency…** offers **everything the list holds** — each prerequisite by name,
-   and each entry that became no edge by the raw text it holds — and picking one removes
-   every entry that line stands for. Removing the last one removes the key rather than
-   leaving an empty list behind. Where the list holds nothing the view can name at all, the
-   one thing offered is to remove the key itself.
+   each broken entry that still resolves within the model by the note it names, and each
+   broken entry naming nothing this base loaded by the raw text it holds, since raw text is
+   the only identity that kind has — and picking one removes every entry that line stands
+   for. Removing the last one removes the key rather than leaving an empty list behind.
+   Where the list holds nothing the view can name at all, the one thing offered is to
+   remove the key itself.
 
 **Extensions**
 
@@ -66,9 +69,9 @@ a different control.
 - **1c — the configuration has problems.** The gate refuses the batch loudly, as it
   refuses every other write while `configProblems` is non-empty. Nothing here gets its own
   variety of refusal.
-- **2a — every candidate is already a prerequisite, or would close a loop.** The suggester
-  says so instead of opening with nothing in it. An empty picker reads as a bug in the
-  picker rather than as a fact about the plan.
+- **2a — every candidate is already a prerequisite, or would close a loop.** A `Notice`
+  says so and the suggester never opens at all — not with nothing in it. An empty picker
+  reads as a bug in the picker rather than as a fact about the plan.
 - **2b — the prerequisite is a result the reader cannot currently see.** Still offered: the
   Base's results are the vocabulary, and "Show completed items" and the focus level narrow
   what is *drawn*, not what exists. The link is to a note, not to a row.
@@ -86,12 +89,15 @@ a different control.
 - **4a — the last prerequisite is removed.** The key is removed, not emptied. Absence is a
   value here as it is for every optional property, and an empty list left on disk is a
   value the reader would then have to be taught to ignore.
-- **4b — the entry to remove is a broken one.** Offered like any other, shown as the raw
-  text the note holds, and removed the same way — which includes 4c's rule and not merely
-  its shape: one line stands for **every** repeat of that text, so
-  `["[[Missing]]", "[[Missing]]"]` is gone in one action rather than leaving the identical
-  marker on screen. The collapsing that makes a picker line stand for several entries is
-  the reading side's, and it does not care whether the entry resolved. This is the whole cleanup path for a
+- **4b — the entry to remove is a broken one.** Offered like any other. An entry that still
+  resolves within the model — a self-reference or a link in a cycle — names a note this
+  base loaded, so it reads as that note: grouped and labelled by its title and path, the
+  same as a prerequisite that isn't broken. An entry naming nothing this base loaded has no
+  such note, so it reads as its own raw text instead — the only identity that kind has.
+  Either way one line stands for **every** repeat, so `["[[Missing]]", "[[Missing]]"]` is
+  gone in one action rather than leaving the identical marker on screen. The collapsing
+  that makes a picker line stand for several entries is the reading side's, and it does not
+  care whether the entry resolved. This is the whole cleanup path for a
   mistyped name, a self-reference or a link in a cycle, and it has to exist here or the
   marker the reader is being shown has no answer but hand-editing frontmatter — a marker
   pointing at a repair the view refuses to make. The register already settled this
@@ -141,7 +147,9 @@ a different control.
 - Removing a dependency removes every raw entry the offered line stands for — duplicates and
   alternate spellings alike — so it is gone after one removal rather than reappearing on the
   next refresh; removing the last one removes the key.
-- Every string this adds goes through the catalog like every other ([[The string catalog]]).
+- [[The string catalog]] is itself unbuilt design, so this is a forward dependency rather
+  than a criterion met today: these strings join the catalog, with the rest of the
+  plugin's, once that note is built.
 
 ## Where it lives
 

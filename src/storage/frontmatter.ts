@@ -324,7 +324,6 @@ function movesState(leaving: string | null, state: string | undefined): boolean 
 	return leaving === null || leaving.toLowerCase() !== state.toLowerCase();
 }
 
-
 /**
  * Whether a frontmatter value counts as "no date yet". Absent, null and empty text —
  * and a LIST holding nothing but those, because Obsidian writes an emptied list

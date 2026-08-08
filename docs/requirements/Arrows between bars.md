@@ -69,7 +69,11 @@ against one would report a date no note carries — a red mark on a fact that do
   ([[The unplaced shelf]]), hidden by the reader's own controls, collapsed into a lane
   ([[Lanes on the roadmap]]), or lying wholly outside the drawn window
   ([[Zoom and the today marker]]). No arrow: an arrow needs two ends and the view has one.
-  The dependency is still stated by the dependent's row, per step 3, which is the whole
+  Where a control did the hiding — "Show completed items" narrowing the rows the dated axis
+  even builds bars from — **no conflict either**, 1c's own suppression for the same reason:
+  a prerequisite with no bar was never derived, so there is nothing left of it to compare
+  against, and toggling the control back in restores the mark along with the arrow. The
+  dependency is still stated by the dependent's row, per step 3, which is the whole
   reason step 3 is not a nicety. Re-aiming the arrow at a visible ancestor instead would
   draw an ordering no note states.
 - **1b — the *dependent* is the end with no bar.** No arrow either, and — where it was the

@@ -178,6 +178,15 @@ function applyDependsOnDelta(
  * own exact spelling — which is what keeps this a strict generalisation of the old
  * behaviour rather than a looser one. The counted KEY changed; the counted QUANTITY (one
  * per captured line, multiplicity and all) did not.
+ *
+ * **Known limitation, deliberate:** a restored entry is appended, never reinserted at
+ * the position it was removed from, so undoing a removal from `[B, A]` hands back
+ * `[A, B]` — the row's own text visibly reorders even though nothing about which
+ * prerequisite it names changed. A positional restore is refused on purpose: a captured
+ * index is only meaningful if nothing else touched the list between the write and the
+ * undo, which is exactly the assumption compare-and-swap exists because it cannot make.
+ * The list is semantically a set (resolution collapses duplicates and spellings), so
+ * display order is the only thing this ever costs.
  */
 export function restoreDependsOn(
 	app: App,

@@ -37,7 +37,14 @@ can be checked by reading one directory.
   emits its own inverse, which is what makes undoing an undo redo. Tags restore by
   *effective* delta, never snapshot, so they compose with edits made in between —
   at the price that a scalar-shaped prior comes back as the list the writer writes
-  anyway.
+  anyway. `restoreDependsOn` pays a related price for the same reason: it appends what
+  it restores rather than reinserting at the removed position, so undoing a removal from
+  `[B, A]` can hand back `[A, B]` — a captured index would only be meaningful if nothing
+  else changed between the write and the undo, which is exactly what compare-and-swap
+  exists because it cannot assume. The list is semantically a set (resolution collapses
+  duplicates and spellings), so the only observable effect is display order — but
+  `dependencyNote` renders that order, so the row's own text visibly reorders. A known
+  limitation, not a bug: see `restoreDependsOn`'s own doc comment.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
 - Date stamps (`startedDate`, `finish`) are FIELDS of the state write that caused them,

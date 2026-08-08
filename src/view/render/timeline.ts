@@ -401,15 +401,29 @@ function renderDependencyArrows(
 	arrows: DependencyArrow[],
 	ruler: { scale: TimelineScale; leadWidth: number },
 ): void {
+	if (arrows.length === 0) return;
 	const { content, tracks } = mounts;
 	const { scale, leadWidth } = ruler;
 	const contentTop = content.getBoundingClientRect().top;
+	// Every rect this layer needs is read here, before any arrow element exists — the
+	// write pass below only creates elements, never reads a rect, so the browser never
+	// has to recalculate style+layout mid-loop for a DOM this same loop just mutated.
+	const specs: { conflict: boolean; anchor: { fromDay: number; toDay: number }; fromRect: DOMRect; toRect: DOMRect }[] =
+		[];
 	for (const arrow of arrows) {
 		const anchor = dependencyAnchor(window, arrow.from.span, arrow.to.span);
 		const fromRow = tracks.get(arrow.from.item.file.path)?.parentElement;
 		const toRow = tracks.get(arrow.to.item.file.path)?.parentElement;
 		if (!anchor || !fromRow || !toRow) continue;
-		drawArrow(content, arrow.conflict, { scale, leadWidth, contentTop }, anchor, [fromRow, toRow]);
+		specs.push({
+			conflict: arrow.conflict,
+			anchor,
+			fromRect: fromRow.getBoundingClientRect(),
+			toRect: toRow.getBoundingClientRect(),
+		});
+	}
+	for (const spec of specs) {
+		drawArrow(content, spec.conflict, { scale, leadWidth, contentTop }, spec.anchor, [spec.fromRect, spec.toRect]);
 	}
 }
 
@@ -440,18 +454,21 @@ export function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string
 	return all.length === 0 ? '' : `Waits for ${all.join(', ')}`;
 }
 
-/** One arrow element, positioned from the day axis and the two rows' own rects. */
+/**
+ * One arrow element, positioned from the day axis and the two rows' own rects — the
+ * rects are already read (by `renderDependencyArrows`, before any arrow exists) rather
+ * than taken from the rows here, so this function is pure write: no `getBoundingClientRect`
+ * call of its own to interleave with the elements the loop around it is creating.
+ */
 function drawArrow(
 	content: HTMLElement,
 	conflict: boolean,
 	ruler: { scale: TimelineScale; leadWidth: number; contentTop: number },
 	anchor: { fromDay: number; toDay: number },
-	rows: [HTMLElement, HTMLElement],
+	rects: [DOMRect, DOMRect],
 ): void {
 	const { scale, leadWidth, contentTop } = ruler;
-	const [fromRow, toRow] = rows;
-	const fromRect = fromRow.getBoundingClientRect();
-	const toRect = toRow.getBoundingClientRect();
+	const [fromRect, toRect] = rects;
 	const fromX = leadWidth + anchor.fromDay * scale.dayPx;
 	const toX = leadWidth + anchor.toDay * scale.dayPx;
 	const fromY = fromRect.top - contentTop + fromRect.height / 2;

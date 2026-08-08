@@ -2,7 +2,8 @@
 type: PBI
 parent: "[[Dependencies]]"
 order: 10
-status: Open
+status: Done
+closed: 2026-08-08
 priority: P2
 created: 2026-08-08
 source: user request
@@ -129,8 +130,9 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 - **4d — the item is on a tree row, a board card or a bucket card.** Nothing there says an
   entry is broken. Two surfaces read the mark today and no others: the **dated timeline**,
   where the dependent's row carries the marker ([[Arrows between bars]] 1d), and **Remove
-  dependency…**, which lists every entry that became no edge by the raw text it holds
-  ([[Linking two items]] 4b) and opens wherever a work item's menu opens. So the fact is
+  dependency…**, which shows a broken entry that still resolves within the model as the
+  note it names and only an entry naming nothing this base loaded by its raw text
+  ([[Linking two items]] 4b), and opens wherever a work item's menu opens. So the fact is
   *reachable* from every projection and *visible* in one. That is a deliberate narrowing
   rather than a hole to be filled here: a badge on a tree row, a card and a bucket card is
   three display decisions inside notes that own those rows, while this note owns the
