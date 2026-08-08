@@ -65,8 +65,9 @@ and must not be closed as one.
    wearer a test is least likely to sit beside.
 3. The suite and the case are told apart by icon and by rung, inside the shared axis, the
    way `Epic` and `Feature` are told apart by icon inside the ladder.
-4. The legend names both, so a reader who has not learned the axis can read what it means
-   rather than infer it.
+4. Nothing else is added to explain the axis. A badge already carries the type **in words**
+   (`pbl-badge-text`), so the row that wears the axis also names what it is; a key would be
+   a second surface repeating what the first one says in full.
 5. [[The type palette has no unclaimed hue left]] is closed with the shape that was chosen
    and what it cost, since it is that issue's resolution and not merely its consumer.
 
@@ -84,6 +85,13 @@ and must not be closed as one.
 - **3a — a third test type is added later.** The axis holds it — that is the property that
   makes this the right shape rather than a trick that works once — but nothing here builds
   for one. There is no third test type.
+- **4a — the roadmap legend is proposed as the place to name them.** It is the wrong
+  surface twice over, and an earlier draft of this note asked for it. `renderLegend` is
+  gated to the roadmap on its dated axis, where a test never appears at all, so a catalog
+  reader would never see the key; and adding a swatch there would break the rule that
+  module's own comment states — *a swatch exists only where a bar can draw the thing it
+  keys* — which is the rule three state-colour bugs were fixed by. A key for something the
+  screen cannot draw is the defect, not the omission.
 - **5a — a twelfth type is declared later, on its own.** This axis is not its answer: a
   lone type belongs to no family, so it is back to the issue's remaining options and to a
   second sharing decision. Closing the issue on this PBI's resolution must therefore say
@@ -107,7 +115,8 @@ and must not be closed as one.
   covers both.
 - The distinction between the two test types does not rest on colour alone, and the
   distinction between a test and a non-test does not rest on icon alone.
-- The legend names both types.
+- No legend or key is added anywhere for the axis, and the roadmap legend is untouched —
+  it keys what the dated axis draws, and it draws no tests.
 - [[The type palette has no unclaimed hue left]] is closed, with an outcome stating that
   the resolution is scoped to a same-family pair and is not a general answer for a
   standalone type arriving alone.
@@ -123,5 +132,6 @@ and must not be closed as one.
 **Nothing yet — this note is design.** The badge table is in `src/view/render/rows.ts`,
 which maps a type to an icon and a class; the axis and the borrowed hue are one rule in
 `styles/badges.css`, and the partial that must state *why* those two entries share a hue
-where every other type has its own. The legend is `src/view/render/legend.ts`. Nothing in
+where every other type has its own. `src/view/render/legend.ts` is **not** touched, per 4a.
+Nothing in
 `src/domain/` is touched: which colour a type wears has never been a domain question.
