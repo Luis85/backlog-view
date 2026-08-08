@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { adr, hierarchyTable, note, runRejections, useCase, withoutHierarchyRow } from '../helpers/register';
+import { adr, note, runRejections, useCase } from '../helpers/register';
 
 /**
  * **Does an invalid document fail?**
@@ -11,13 +11,13 @@ import { adr, hierarchyTable, note, runRejections, useCase, withoutHierarchyRow 
  * and recorded in prose, so each tightening re-derived the evidence or did without it.
  *
  * These are those plantings, executable. Each case is **one edit** to the valid corpus in
- * `checkerAccepts.test.ts`, so a failure names a rule rather than a document. Two sibling
- * files hold the groups that outgrew this one — the ADR rules, and the `**Checked by**`
- * citations; the accept direction is `checkerAccepts.test.ts`, and none of the four is
- * worth much alone.
+ * `checkerAccepts.test.ts`, so a failure names a rule rather than a document. Three
+ * sibling files hold the groups that outgrew this one — the ADR rules, the `**Checked
+ * by**` citations, and the hierarchy table against `LEGAL_CHILDREN`; the accept direction
+ * is `checkerAccepts.test.ts`, and none of the five is worth much alone.
  *
  * **The guarantee, stated exactly.** Every place the gate can report a problem has at
- * least one planted case across the three rejection files, so a rule deleted from
+ * least one planted case across the four rejection files, so a rule deleted from
  * `docs-check.mjs` turns one of them red.
  *
  * That was **measured, not read**: each of the 45 report sites was neutered in turn and
@@ -87,6 +87,16 @@ describe('the backlog tree', () => {
 				files['docs/requirements/Thing.md'] = note('Spike', 10, null, '# Thing\n\nWhy.\n');
 			},
 			'unknown type "Spike"',
+		],
+		[
+			// The same prototype hazard at the OLDER call site: a note declaring
+			// `type: toString` read the inherited function as its rule and slipped past
+			// `unknown type` entirely, for as long as this table has been a plain object.
+			'a note typed after an Object.prototype member',
+			(files) => {
+				files['docs/issues/Odd.md'] = note('toString', 20, 'Thing', '# Odd\n\n## The decision\n\nWe did it.\n');
+			},
+			'unknown type "toString"',
 		],
 		[
 			'a parent/child pair the hierarchy does not allow',
@@ -486,63 +496,6 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 			// this case planted `A trailing thought..md` instead, which is a perfectly legal
 			// Windows name ending in `d`, and passed against a rule that was reading a
 			// stripped stem. It asserted a false positive and read like a check.
-			// The five sites of the hierarchy-table rule. `LEGAL_CHILDREN` lives in the gate's
-			// own source and no fixture can edit it, so each of these plants the drift on the
-			// TABLE's side — which is the side that actually rotted: the gate learned
-			// `Deliverable` and the table did not, for a whole increment.
-			'a register that documents no hierarchy at all',
-			(files) => {
-				files['docs/README.md'] = '# docs\n\nThe register.\n';
-			},
-			'the hierarchy is documented nowhere',
-		],
-		[
-			'a hierarchy table missing a type the gate allows',
-			(files) => {
-				files['docs/README.md'] = withoutHierarchyRow('Milestone');
-			},
-			'the hierarchy table omits Milestone, which LEGAL_CHILDREN allows',
-		],
-		[
-			'a hierarchy table naming a type the gate does not know',
-			(files) => {
-				files['docs/README.md'] = `${hierarchyTable()}| \`Spike\` | \`PBI\` | *(nothing)* |\n`;
-			},
-			'the hierarchy table names Spike, which LEGAL_CHILDREN does not allow at all',
-		],
-		[
-			'a children list the gate disagrees with',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue` |');
-			},
-			'and the hierarchy table says Issue, PBI',
-		],
-		[
-			'a parent column that is not the inverse of the children',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |', '| `Task` | `PBI` |');
-			},
-			'Task may hang from Bug, Deliverable, Issue, PBI, and the hierarchy table says PBI',
-		],
-		[
-			// Flattening with `set` would keep the LAST row and call a contradictory table
-			// consistent — a false pass inside the rule written to remove false passes.
-			'a type given two rows, which is a contradiction rather than a merge',
-			(files) => {
-				files['docs/README.md'] = `${hierarchyTable()}| \`Deliverable\` | \`Epic\` | *(nothing)* |\n`;
-			},
-			'the hierarchy table gives Deliverable more than one row',
-		],
-		[
-			// One level up from the duplicate ROW: with two tables under the same headings,
-			// checking the first validates one document while a reader sees two.
-			'a hierarchy documented twice, in two tables',
-			(files) => {
-				files['docs/README.md'] = `${hierarchyTable()}\n${hierarchyTable()}`;
-			},
-			'the hierarchy is documented twice',
-		],
-		[
 			'a directory entry whose name ends in a dot',
 			(files) => {
 				files['docs/issues/A trailing thought.md.'] = 'Not a note, and not a name Windows can hold.\n';
@@ -554,7 +507,7 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 
 describe('the corpus covers every rule', () => {
 	it('is built against every place the gate can report a problem', async () => {
-		// The two rejection files were written by enumerating the gate's report sites and
+		// The rejection files were written by enumerating the gate's report sites and
 		// planting one violation per site. That mapping is hand-made and would rot the
 		// moment a rule was added — the exact drift this register removed hand-maintained
 		// counts to avoid — so it is pinned rather than described. A new `fail(` moves this

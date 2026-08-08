@@ -34,7 +34,19 @@ const ADRS = path.join(DOCS, "adrs");
  * it here too.
  */
 const EXTRA = ["Issue", "Bug", "Deliverable"];
-const LEGAL_CHILDREN = {
+/**
+ * NULL-PROTOTYPE, because every key read against it is user data — a `type:` a note
+ * declares, or a type name written into the README's hierarchy table. A plain object
+ * literal answers `LEGAL_CHILDREN["toString"]` with an inherited FUNCTION, which is
+ * truthy: a note typed `toString` sailed past the `unknown type` check for as long as this
+ * table has existed, and the table-versus-gate rule added beside it would have gone one
+ * worse and crashed the run trying to spread that function.
+ *
+ * The plugin already learned this three times over on three different tables — `byName`
+ * (`src/domain/settings.ts`) exists for exactly it — and the gate that checks the register
+ * had not. Same defect, one directory over.
+ */
+const LEGAL_CHILDREN = Object.assign(Object.create(null), {
 	Epic: new Set(["Feature", ...EXTRA]),
 	Feature: new Set(["PBI", ...EXTRA]),
 	PBI: new Set(["Task", ...EXTRA]),
@@ -44,7 +56,7 @@ const LEGAL_CHILDREN = {
 	Deliverable: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
-};
+});
 /**
  * The types that legitimately have no parent. An `Epic` is a root by POSITION — the top
  * of the ladder — and a `Milestone` is a root by NATURE: a release date is owned by the
