@@ -84,7 +84,11 @@ a different control.
   value here as it is for every optional property, and an empty list left on disk is a
   value the reader would then have to be taught to ignore.
 - **4b — the entry to remove is a broken one.** Offered like any other, shown as the raw
-  text the note holds, and removed the same way. This is the whole cleanup path for a
+  text the note holds, and removed the same way — which includes 4c's rule and not merely
+  its shape: one line stands for **every** repeat of that text, so
+  `["[[Missing]]", "[[Missing]]"]` is gone in one action rather than leaving the identical
+  marker on screen. The collapsing that makes a picker line stand for several entries is
+  the reading side's, and it does not care whether the entry resolved. This is the whole cleanup path for a
   mistyped name, a self-reference or a loop-closing link, and it has to exist here or the
   marker the reader is being shown has no answer but hand-editing frontmatter — a marker
   pointing at a repair the view refuses to make. The register already settled this
@@ -139,9 +143,10 @@ and the axis keys go through `axisEntries`, whose `key !== ''` test drops an unc
 key and whose `null` value means delete. Neither shape takes a **list**, which is what this
 property is, and neither appends to or removes from one. So an implementer adds an
 operation — append one entry, drop **every** raw entry a single offered line stands for
-(4b and 4c: a resolved dependency however many times and however it is spelled, or one
-unresolvable entry as written), drop the key when the last goes, and write nothing when the
-key is unset — rather than a call to something already written; whether it
+(4b and 4c alike: a resolved dependency however many times and however it is spelled, or an
+entry that became no edge however many times it is repeated), drop the key when the last
+goes, and write nothing when the key is unset — rather than a call to something already
+written; whether it
 also becomes the single statement of the rule for the other two is a refactor this note
 neither needs nor forbids. Which picks are legal is the loop question
 `src/domain/dropTargets.ts` already answers for the tree, asked of a second edge kind.

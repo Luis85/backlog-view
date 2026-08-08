@@ -44,8 +44,9 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
    Unbound, the property does not exist for this view: nothing is read, drawn or offered.
 2. Each result's value is read tolerantly, the way every field here is read — a single
    entry or a list, a `[[wikilink]]` or a bare name, blanks and repeats collapsed.
-3. Each entry resolves against the same item set `parent` resolves against, producing an
-   edge from the prerequisite to the item that named it.
+3. Each entry resolves against the same item set `parent` resolves against — the Base's
+   results plus the excluded ancestors the parent walk already loaded, and nothing
+   further — producing an edge from the prerequisite to the item that named it.
 4. Entries that cannot become an edge — unresolvable, self-referential, or the one that
    closes a loop — are kept and **marked broken**, never dropped and never rewritten by
    the reader. Never *by the reader* is the whole of it: the user can still remove one
@@ -74,15 +75,29 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   would make the user's YAML the user's problem.
 - **2b — the value repeats a name, or holds a blank entry.** Collapsed to one edge, and
   blanks are ignored. A duplicate is a typo, not a stronger dependency.
-- **3a — the entry resolves to a note the Base excluded.** The edge exists and the dependent
-  row states it, but it is never counted, never drawn ([[Arrows between bars]] owns that)
-  and never written to. This is the context-row rule with nothing new added, and it is worth
-  being exact about which direction it governs: **an excluded note may be named, and may not
-  do the naming.** The statement here was made by a result, on its own note, exactly as a
-  result naming an excluded `parent` is the case that puts a context row on screen in the
-  first place — it renders, it parents, and that is all. What the rule forbids is the other
-  direction, 3b's.
-- **3b — the item declaring the dependency is itself outside the filter.** Its list is
+- **3a — the entry names a note the Base excluded but the model has already loaded** — an
+  ancestor pulled in as a context row. The edge exists and the dependent row states it, but
+  it is never counted, never drawn ([[Arrows between bars]] owns that) and never written to.
+  This is the context-row rule with nothing new added, and it is worth being exact about
+  which direction it governs: **an excluded note may be named, and may not do the naming.**
+  The statement here was made by a result, on its own note, exactly as a result naming an
+  excluded `parent` is the case that puts a context row on screen in the first place — it
+  renders, it parents, and that is all. What the rule forbids is the other direction, 3c's.
+- **3b — the entry names a note this base never loaded.** It does not resolve, and the
+  boundary is the point: the item set is the Base's results plus the excluded **ancestors**
+  the parent walk pulls in, so a prerequisite that is neither is simply not there to
+  resolve against. **Nothing is loaded to make it resolve.** Doing so would mean a vault
+  read per named prerequisite — bounded by the entries someone typed rather than by the
+  tree — to obtain a note that then cannot be drawn (an arrow needs both ends inside the
+  filter), cannot be counted, and cannot be written to. The one thing it would add is the
+  prerequisite's title, which the entry already spells.
+  What such an entry must not be called is *mistyped*. Telling "no such note" from "a note
+  this base did not load" needs a lookup outside the loaded set, and `addItem` holds the
+  only cache read in this layer by design, so the view genuinely does not know which it is.
+  It says the true thing instead — this name does not resolve **here** — and shows the text
+  the note holds, which is how every entry that became no edge is presented, and reaches
+  the same removal path ([[Linking two items]]).
+- **3c — the item declaring the dependency is itself outside the filter.** Its list is
   not read at all. An excluded note's prerequisites are not this base's facts, the same
   reason its state is not this base's vocabulary.
 - **4a — an item names itself.** Marked broken. Nothing precedes itself, and silently
@@ -93,7 +108,7 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   not tidy — and the difference from a `parent` loop is worth stating: there the cut is
   what makes the tree renderable at all, so the link is cut in the model; here nothing
   needs cutting to draw anything, so only the mark exists.
-- **4c — the loop is entirely between context rows.** It is not read, per 3b, so there
+- **4c — the loop is entirely between context rows.** It is not read, per 3c, so there
   is no loop to mark.
 
 ## Acceptance criteria
@@ -105,13 +120,17 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   follow from the property being a list.
 - A value is read tolerantly — one entry or many, linked or bare — with blanks and
   repeats collapsed, and nothing is ever written, reordered or repaired by reading it.
-- Entries resolve against the same item set `parent` resolves against, by the same rule.
+- Entries resolve against the same item set `parent` resolves against, by the same rule, and
+  **no note is loaded in order to resolve one**: a prerequisite that is neither a result nor
+  an already-loaded ancestor does not resolve, and the vault is not consulted to find out
+  why. Nothing reports such an entry as mistyped, since the view cannot tell that from
+  out-of-base without the read it is not making.
 - An unresolvable, self-referential or loop-closing entry is marked, never dropped: no
   item is hidden, re-parented, re-ranked or re-levelled by any edge, and the tree's own
   shape is identical with the property configured and without it.
 - A context row's own list is never read, so no edge is ever declared by one, and it is
-  never written to. A result naming an excluded note as a prerequisite is the allowed
-  direction and produces an edge that is never counted and never drawn.
+  never written to. A result naming an **already-loaded** excluded note as a prerequisite is
+  the allowed direction and produces an edge that is never counted and never drawn.
 - Dependencies do not roll up: an item's prerequisites are its own, and no ancestor
   acquires them.
 - Resolution adds no second superlinear step beside `sortSiblingsDeep`: it is one pass over
