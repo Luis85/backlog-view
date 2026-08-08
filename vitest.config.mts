@@ -148,9 +148,23 @@ export default defineConfig({
 			// tree's chevron with the new timeline row deleted six branches along with the
 			// duplicate, which is a smaller denominator and a better codebase. The figure to
 			// record is the one the finished increment measures.
+			//
+			// The risk-management increment (the risk row in the optional-property table,
+			// its plan, its writer, and the Set risk menu) measured 98.22/94.05/99.47/99.38
+			// against a 98.21/94.00/99.46/99.37 baseline at the commit before it. Three of
+			// the four round down to figures already recorded above; branches rounds down to
+			// a new decimal (94.0, up from 93.9). Two things are worth knowing about that
+			// one. The BASELINE was already 94.0000 exactly — the increment before this left
+			// its threshold at 93.9 — so what this move records is a floor that had already
+			// been earned, plus 0.05 of genuinely new margin. And 0.05 of 3180 branches is
+			// under two branches, which is the thinnest margin this file has taken since the
+			// 94.0038 the note above refuses; it is taken because the rule here is that
+			// thresholds only ever go up, and left at 93.9 the floor would go on describing
+			// a tree two increments behind. The next increment to add an undriven branch
+			// will fail on it, which is what a floor is for.
 			thresholds: {
 				statements: 98.2,
-				branches: 93.9,
+				branches: 94.0,
 				functions: 99.4,
 				lines: 99.3,
 			},

@@ -83,6 +83,12 @@ can be checked by reading one directory.
   `2026-08-01 Planning` parses as a date — treated as one, re-picking `2026-08-01 Review`
   compares equal and writes nothing, and the merge carries ` Planning` onto its
   replacement. `axisEntries` yields the FIELD with the key so that stays decidable.
+- The risk level (`ItemWrite.risk`) is those same two rules a third time, in `applyRisk`,
+  and it shares neither writer: a level is a label the user picked from their own list, so
+  it takes the horizon's plain `setOwn` rather than the dated ends' civil-date equality and
+  datetime merge, and it has no vocabulary of fields to iterate. Its key joins
+  `touchedKeys` on the very condition `applyRisk` writes on, which is what makes a level
+  and its removal undoable — a key written but not captured is a change no undo could reach.
 - Two writes here are not work items — the `.base` file and the generated README — and
   both are in this directory for the same reason: "everything that puts bytes in the vault
   is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also

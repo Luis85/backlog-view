@@ -99,6 +99,15 @@ free of runtime code so imports stay cycle-free.
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
   value) plus the item's own unlisted value, so the current state can always render
   checked.
+- **Set risk is the state menu's shape without a chip or a projection**: rendered inside
+  `buildItemMenu`'s `editable` guard on `hasRiskLevels` — a property AND a levels list, so
+  a submenu never opens onto nothing — offering the declared list plus the item's own
+  unlisted value, checked from `computeRiskWrites` rather than from a comparison beside it,
+  with a `Clear risk` foot gated on `item.ownKeys.risk`. It lives in `interactions/menu.ts`
+  beside Set state rather than in `interactions/plan.ts`: risk is an attribute of the item,
+  not a position on an axis. One input, so there is no `performRiskMove` — the rule is that
+  a SECOND input calls the first one's method, and a lone menu path has nothing to disagree
+  with.
 - **The horizon chip is that same shape over the placement** (`renderHorizonChip`,
   beside the state chip in `render/columns.ts`): rendered on `hasHorizonAxis` — the one
   definition of a configured bucket axis, never a second opinion — static for a context
