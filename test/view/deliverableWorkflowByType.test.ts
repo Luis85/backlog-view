@@ -545,6 +545,9 @@ describe('the toolbar counts one population, not two', () => {
 		// item" (the PBI alone) — a regression would paint "2 items" here first.
 		expect(firstText).toBe('1 item');
 		expect(firstText).toBe(syncedText);
+		// Anchored absolutely, not only against `syncCountLabel`: agreeing with a readout
+		// that itself regressed is agreement about the wrong number.
+		expect(firstTooltip).toBe('1 PBI');
 		expect(firstTooltip).toBe(syncedTooltip);
 	});
 });

@@ -134,11 +134,19 @@ const ALL_TYPES_IMPORT = {
  * `src/domain/itemTypes.ts` — returns `ALL_TYPES` itself, unfiltered, so it is a second
  * way for a view file to reach the whole vocabulary without ever importing that name
  * (see `ALL_TYPES_IMPORT`, above, which this selector sits beside rather than replaces
- * — an import of the name is still worth catching at the point it enters a file). Every
- * view/ call site passes the item whose children are being offered
- * (`buildItemMenu`/`showItemMenu`'s `childTypes`, `renderRow`'s add button); none has a
- * reason to ask the top-level question, which is the toolbar's own and already goes
- * through `offerableTypes` instead. `backlogReadme.ts` calls it with `null` on purpose
+ * — an import of the name is still worth catching at the point it enters a file). No
+ * view/ call site has a reason to ask the top-level question: it is the toolbar's own and
+ * already goes through `offerableTypes` instead.
+ *
+ * Passing an ITEM is not the fix on its own, and this selector cannot say so — what
+ * `childTypeChoices(item)` returns is the rung below plus `EXTRA_TYPES`, and
+ * `Deliverable` is one of those, which is the exact route the requirements board's type
+ * button took to offering Deliverables. Every view/ call site therefore hands the result
+ * to `offerableTypes` — two through `buildItemMenu`, one at `renderRow`'s add button —
+ * and the message below says so rather than stopping at the item. Nothing checks that:
+ * a fourth call site could iterate the raw list with lint green, which is what
+ * `docs/tasks/Follow-ups from enforcing the Deliverables invariants.md` records.
+ * `backlogReadme.ts` calls it with `null` on purpose
  * (a type with no declared parent reads as a root in the generated table) and is
  * domain/, not view/, so it is out of this selector's scope the same way `settings.ts`
  * is out of `ALL_TYPES_IMPORT`'s.
@@ -146,7 +154,7 @@ const ALL_TYPES_IMPORT = {
 const CHILD_TYPE_CHOICES_NULL = {
 	selector: "CallExpression[callee.name='childTypeChoices'][arguments.0.value=null]",
 	message:
-		'childTypeChoices(null) returns the unfiltered ALL_TYPES vocabulary. Pass the item whose children are being offered, or route through offerableTypes (src/view/interactions/menu.ts) for the top-level case.',
+		'childTypeChoices(null) returns the unfiltered ALL_TYPES vocabulary. Route through offerableTypes (src/view/interactions/menu.ts) — and pass its result, not childTypeChoices(item) raw, which carries EXTRA_TYPES including Deliverable.',
 };
 
 /**

@@ -277,7 +277,10 @@ narrowed to one type.
   Deliverable, the tree and the roadmap count them all. The count label and the completed
   toggle's "(N hidden)" sit beside each other and disagreed — the label was scoped and the
   toggle was not, so a done Deliverable made the requirements board offer to reveal a
-  hidden card that board never had.
+  hidden card that board never had. "Every readout" is true of `render/toolbar.ts`, which
+  is where the readouts are and where `countedPopulation` is private: a readout added in
+  another view file would have to duplicate it, and nothing stops that
+  ([[Follow-ups from enforcing the Deliverables invariants]]).
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button

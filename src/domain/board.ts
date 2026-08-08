@@ -141,23 +141,25 @@ export function stateKeyFor(settings: BacklogSettings, item: BacklogItem): strin
 	return isDeliverableType(item.typeName) ? resolvedDeliverableStateKey(settings) : settings.stateKey;
 }
 
-/**
- * Both halves of an item's own workflow reading — its state value and whether that
- * value counts as done — taken together, so a caller cannot take half of the pair (the
- * same argument `HorizonSource` in `domain/roadmap.ts` already makes for the
- * placement). The same "an item's workflow follows its TYPE" rule `stateKeyFor` states
- * for the KEY, stated once more for the VALUE: a Deliverable's own reading is the
- * Deliverable workflow's value and done flag, never the requirements pair sitting on
- * the same note. Before this existed, the chip and the menu each hand-wrote the same
- * `isDeliverableType(item) ? deliverable : requirements` ternary — two copies of one
- * rule is how they came to disagree in the first place.
- */
+/** An item's state value and whether that value counts as done, from one workflow. */
 export interface WorkflowReading {
 	value: string | null;
 	done: boolean;
 }
 
-/** An item's own workflow reading, by its type — never a value from the other workflow. */
+/**
+ * The same "an item's workflow follows its TYPE" rule `stateKeyFor` states for the KEY,
+ * stated once more for the VALUE: a Deliverable's own reading is the Deliverable
+ * workflow's value and done flag, never the requirements pair sitting on the same note.
+ * Before this existed, the chip and the menu each hand-wrote the same
+ * `isDeliverableType(item) ? deliverable : requirements` ternary — two copies of one
+ * rule is how they came to disagree in the first place.
+ *
+ * The pair is returned together so both halves come from ONE type decision: a caller
+ * that needs only the value still gets the value of the workflow whose done flag it
+ * would have got. It does not stop a caller taking one half — `stateChoices` legitimately
+ * takes `.value` alone — and that is not what the pairing is for.
+ */
 export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
 	return isDeliverableType(item.typeName)
 		? { value: item.deliverableStateValue, done: item.deliverableDone }

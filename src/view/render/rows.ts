@@ -1,7 +1,7 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
-import { showItemMenu } from '../interactions/menu';
+import { offerableTypes, showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
@@ -114,7 +114,12 @@ function renderItem(
 	// into an empty group would be a lie (its progress bar tells the story).
 	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
 	const collapsed = host.isCollapsed(item.file.path);
-	const childTypes = childTypeChoices(item);
+	// Through `offerableTypes` like every other type list. `childTypeChoices` answers the
+	// ladder's question and its answer carries `EXTRA_TYPES` — `Deliverable` among them —
+	// so the raw list is the whole vocabulary minus the rungs, not what a projection may
+	// show. The tree may show every type, so this narrows nothing today; what it stops is
+	// the next surface reading the raw list because this one did.
+	const childTypes = offerableTypes(host, childTypeChoices(item));
 
 	const selected = host.selectedPath === item.file.path;
 	const row = containerEl.createDiv({
