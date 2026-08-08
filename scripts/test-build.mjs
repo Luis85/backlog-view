@@ -25,7 +25,7 @@ const pluginDir = path.join(vaultDir, "plugins", manifest.id);
 
 // A development bundle, not the release one: unminified and sourcemapped, because the
 // point of this build is to be debugged.
-execFileSync(process.execPath, ["esbuild.config.mjs", "once"], { stdio: "inherit" });
+execFileSync(process.execPath, ["scripts/esbuild.config.mjs", "once"], { stdio: "inherit" });
 
 await mkdir(pluginDir, { recursive: true });
 for (const file of VAULT_FILES) {
