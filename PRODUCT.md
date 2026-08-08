@@ -114,7 +114,7 @@ under rules that are checks rather than conventions.
 - **`docs/`** — the plugin's own backlog in its own schema: `requirements/` (Epic →
   Feature → PBI use cases), `tasks/`, `issues/`, `bugs/`, `milestones/`, `adrs/`. Every
   note states the evidence it rests on, and the whole register is gated by
-  `node docs-check.mjs`. This is the richest product record available; read it before
+  `npm run docs`. This is the richest product record available; read it before
   inferring anything.
 - **Precedent surveys run 2026-08-01** for both the board and the roadmap, covering the
   Kanban Guide, the major trackers and the Obsidian ecosystem — cited note by note.
