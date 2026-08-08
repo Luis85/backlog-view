@@ -256,6 +256,33 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a cited name that itself contains a quote', async () => {
+		// A test name may CONTAIN a quote — `test/view/board.test.ts` has one naming a state
+		// `"constructor"` — and one character class for both ends stopped at the inner one,
+		// captured a prefix, and reported a correct citation as stale. Curly outside,
+		// straight inside; the pairs admit each other.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = 'it(\'a state named "constructor"\', () => {});\n';
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — “a state named "constructor"”.',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a cited name whose repeated space is deliberate', async () => {
+		// The inverse of the false pass fixed one commit earlier, and caused by that fix:
+		// the source is no longer normalized, so collapsing every whitespace run in the
+		// CITATION rejects a name reproduced exactly. Only the Markdown wrap is normalized.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = "it('the  thing works', () => {});\n";
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "the  thing works".',
+		});
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a **Checked by** example inside a fence, which is documentation not a citation', async () => {
 		// `docs/README.md` documents the convention by showing it, naming a path that does
 		// not exist on purpose. Fenced, so it is an example being quoted rather than a

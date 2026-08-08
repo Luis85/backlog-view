@@ -452,8 +452,19 @@ const MARKER = "Checked by";
  * borrowed from the file names either — `vitest.config.mts` runs `test/**\/*.test.ts`, so
  * the spelling this admits is exactly the set of files that get executed.
  */
-const CITATION = /^[^`]*`(test\/[\w./-]+\.test\.ts|eslint\.config\.mjs)`[^`"“]*["“]([^"”]+)["”]/;
-const flat = (s) => s.replace(/\s+/g, " ");
+const CITATION = /^[^`]*`(test\/[\w./-]+\.test\.ts|eslint\.config\.mjs)`[^`"“]*(?:"([^"]+)"|“([^”]+)”)/;
+/**
+ * The WRAP only — a line break and the indentation after it — never every run of
+ * whitespace. Both halves of that were learned the hard way, one commit apart and in
+ * opposite directions. Flattening the SOURCE too let `it("the  thing works")` be named by
+ * a citation saying `the thing works`, a false pass in a rule about exactness. Flattening
+ * every run in the CITATION is the inverse: a name whose doubled space is deliberate,
+ * reproduced faithfully, was collapsed before the comparison and reported as stale.
+ *
+ * So: the citation is normalized for the one thing Markdown did to it and nothing else,
+ * and the source is not normalized at all, because nothing was done to it.
+ */
+const flat = (s) => s.replace(/\n[ \t]*/g, " ");
 for (const file of [...files, "README.md"]) {
 	// The root README is reached by name rather than by the walk, so its absence is a
 	// real possibility here in a way no `docs/` file's is — and a gate that CRASHED on a
@@ -480,7 +491,12 @@ for (const file of [...files, "README.md"]) {
 			fail(file, "has a **Checked by** with no `path.test.ts` and \"test name\" after it");
 			continue;
 		}
-		const [, target, name] = cited;
+		// Two delimiter pairs, each admitting the other inside it: a test name may CONTAIN a
+		// quote — `test/view/board.test.ts` has one naming a state `"constructor"` — and a
+		// single character class for both ends stopped at the inner one, captured a prefix,
+		// and reported a correct citation as stale.
+		const [, target, straight, curly] = cited;
+		const name = straight ?? curly;
 		// A path that climbs out of `test/` is not a test. `test/../src/domain/settings.ts`
 		// matched the pattern above — `[\w./-]+` admits `..` — and then resolved to the
 		// implementation, so quoting a function name off it passed as evidence. The pattern
