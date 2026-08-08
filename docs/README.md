@@ -171,12 +171,19 @@ Every pair holds:
 
 | Type | Parent may be | Children may be |
 | --- | --- | --- |
-| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug` |
-| `Feature` | `Epic` | `PBI`, `Issue`, `Bug` |
-| `PBI` | `Feature` | `Task`, `Issue`, `Bug` |
-| `Task` | `PBI`, `Issue`, `Bug` | *(nothing)* |
-| `Issue` / `Bug` | `Epic`, `Feature` or `PBI` | `Task` |
+| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Deliverable` |
+| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Deliverable` |
+| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Deliverable` |
+| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` | *(nothing)* |
+| `Issue` / `Bug` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
+
+The three EXTRA types travel together — `Issue`, `Bug` and `Deliverable` are one set
+repeated at each rung, which is what `childTypeChoices` answers as
+`[ladderChild, ...EXTRA_TYPES]` and what `docs-check.mjs` spells as its own `EXTRA`. A
+type added to that list belongs in this table, in `LEGAL_CHILDREN`, and in the folder
+table above, all three: `Deliverable` reached the plugin and none of them, and the gap
+survived a whole increment because each surface looked complete on its own.
 
 The plugin does not *enforce* this — the rules decide what is offered, never what is
 refused — which is exactly why the register has to hold to it by hand.
