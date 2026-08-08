@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault } from '../helpers/vault';
-import { FuzzySuggestModal, Menu, Modal, Notice } from '../helpers/obsidian-mock';
+import { FuzzySuggestModal, Menu, Modal, Notice, TFile } from '../helpers/obsidian-mock';
 import { flush, makeView, refresh, rowByTitle, useViewHarness } from '../helpers/view';
 
 /**
@@ -57,6 +57,16 @@ function suggester(): FuzzySuggestModal<unknown> {
  *  external edit can remove a note while a suggester sits open over it. */
 function refreshExcluding(view: ProductBacklogView, vault: FakeVault, path: string): void {
 	(view as unknown as Record<string, unknown>).data = { data: vault.entries().filter((e) => e.file.path !== path) };
+	view.onDataUpdated();
+}
+
+/** Rebuild the model with a DIFFERENT file object at the same path — the shape a note
+ *  deleted and recreated under its own name leaves behind. Obsidian mutates a renamed
+ *  file in place, so this is the one way `byPath` can hold something that is not the
+ *  note the menu was opened on. */
+function refreshReplacingFile(view: ProductBacklogView, vault: FakeVault, path: string): void {
+	const entries = vault.entries().map((e) => (e.file.path === path ? { ...e, file: new TFile(path) } : e));
+	(view as unknown as Record<string, unknown>).data = { data: entries };
 	view.onDataUpdated();
 }
 
@@ -327,6 +337,23 @@ describe('the write', () => {
 		await flush();
 
 		expect(vault.fm('B.md')['dependsOn']).toBe('A');
+		expect(view.canUndo()).toBe(false);
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+	});
+
+	it('writes nothing when the source note is replaced by another at the same path', async () => {
+		// The path still resolves, and the replacement is a perfectly ordinary result —
+		// so a path-only recheck passes and the batch writes through the captured, now
+		// detached file. Identity is the only question that separates the two.
+		const vault = vaultWith();
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Depends on…');
+		refreshReplacingFile(view, vault, 'B.md');
+		suggester().choose('A');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
 		expect(view.canUndo()).toBe(false);
 		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
 	});

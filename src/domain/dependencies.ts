@@ -222,6 +222,13 @@ function closeComponent(root: number, state: TarjanState): void {
 	// Spliced from the root's own position rather than popped until it turns up: the
 	// root is on the stack by construction, so a pop-until-found loop would carry an
 	// undefined arm nothing can reach.
+	//
+	// `lastIndexOf`, not `indexOf`, and the difference is the cost: everything above the
+	// root belongs to the root's own component (anything discovered later that did not
+	// was removed by its own closure), so a backwards scan stops at the component
+	// boundary rather than walking the ancestors below it. Each node is scanned once
+	// across the whole run — a singleton root is the last element and is found in one
+	// step, which is the shape a long acyclic chain has.
 	for (const member of state.stack.splice(state.stack.lastIndexOf(root))) {
 		state.onStack[member] = false;
 		state.component[member] = id;

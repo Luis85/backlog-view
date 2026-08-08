@@ -214,10 +214,17 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
  * one missing from it altogether. Shared by both entries because both plan through here:
  * the add path's own recheck only asks whether the PAIR is still legal, and the removal
  * path asks nothing at all, so neither on its own would have caught this.
+ *
+ * The recheck is by FILE IDENTITY, not by path: a note deleted and another created at
+ * the same path puts a REPLACEMENT in `byPath`, which a path-only test waves through
+ * while the batch still carries the captured — now detached — `TFile`. A rename is the
+ * case this must not refuse, and does not: Obsidian mutates the one `TFile` in place
+ * rather than minting a new one, so the object the menu captured is the object the
+ * refreshed model holds, under whatever path it now has.
  */
 function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
 	const source = host.model?.byPath.get(item.file.path);
-	if (source === undefined || source.outsideFilter) {
+	if (source === undefined || source.outsideFilter || source.file !== item.file) {
 		new Notice('That note changed while the picker was open, so nothing was written.');
 		return;
 	}
