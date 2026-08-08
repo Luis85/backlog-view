@@ -1,28 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { deriveBars, TimelineBar } from '../../src/domain/bars';
+import { DatedAxis, deriveBars } from '../../src/domain/bars';
 import { dependencyArrows } from '../../src/domain/dependencies';
 import { buildModel } from '../../src/domain/model';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 /**
- * Which prerequisite edges have two bars to draw between, and which of those contradict
- * their own dates — from `Arrows between bars`' Extensions. Driven through `buildModel` +
- * `deriveBars`, the same way `dependencies.test.ts` drives resolution, because the rules
- * here are about what the whole pipeline produces, not about `dependencyArrows` in
- * isolation.
+ * Which prerequisite edges have two bars to draw between, which of those contradict
+ * their own dates, and which SHELVED dependents contradict a prerequisite by the start
+ * they state — from `Arrows between bars`' Extensions, main flow steps 1-2 and 2b. Driven
+ * through `buildModel` + `deriveBars`, the same way `dependencies.test.ts` drives
+ * resolution, because the rules here are about what the whole pipeline produces, not
+ * about `dependencyArrows` in isolation.
  */
 
 const settings = { ...defaultSettings(), dependsOnKey: 'dependsOn', startKey: 'start', targetKey: 'target' };
 
-function barsFor(vault: FakeVault): TimelineBar[] {
+function datedAxis(vault: FakeVault): DatedAxis {
 	const model = buildModel(vault.app, vault.entries(), settings);
-	return deriveBars(model.items).bars;
+	return deriveBars(model.items);
 }
 
 /** Titles, so a test reads as the sentence it is checking. */
-function edges(bars: TimelineBar[]): Array<{ from: string; to: string; conflict: boolean }> {
-	return dependencyArrows(bars).map((a) => ({ from: a.from.item.title, to: a.to.item.title, conflict: a.conflict }));
+function edges(axis: DatedAxis): Array<{ from: string; to: string; conflict: boolean }> {
+	return dependencyArrows(axis.bars, axis.shelf).arrows.map((a) => ({
+		from: a.from.item.title,
+		to: a.to.item.title,
+		conflict: a.conflict,
+	}));
+}
+
+/** Paths of shelved dependents 2b marks in conflict — no arrow, so no `edges()` entry. */
+function shelfConflicts(axis: DatedAxis): string[] {
+	return [...dependencyArrows(axis.bars, axis.shelf).shelfConflicts];
 }
 
 describe('which edges draw', () => {
@@ -33,7 +43,7 @@ describe('which edges draw', () => {
 			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-01', target: '2026-08-10' },
 		});
 
-		expect(edges(barsFor(vault))).toEqual([]);
+		expect(edges(datedAxis(vault))).toEqual([]);
 	});
 
 	it('draws nothing when the dependent has no bar (1b)', () => {
@@ -41,7 +51,7 @@ describe('which edges draw', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
 		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: 'A' } }); // dateless: shelved
 
-		expect(edges(barsFor(vault))).toEqual([]);
+		expect(edges(datedAxis(vault))).toEqual([]);
 	});
 
 	it('draws nothing across the Base filter — needs no special case, since a context row never gets a bar (1c)', () => {
@@ -62,7 +72,7 @@ describe('which edges draw', () => {
 		// The resolved edge is real — Waiter's row still states it (step 3, Task 3's concern).
 		expect(model.byPath.get('Waiter.md')?.prerequisites.map((p) => p.title)).toEqual(['Epic']);
 
-		expect(edges(deriveBars(model.items).bars)).toEqual([]);
+		expect(edges(deriveBars(model.items))).toEqual([]);
 	});
 
 	it('draws nothing for an edge the model already marked broken (1d)', () => {
@@ -77,7 +87,7 @@ describe('which edges draw', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		expect(model.byPath.get('A.md')?.brokenPrerequisites).toEqual(['B']);
 
-		expect(edges(deriveBars(model.items).bars)).toEqual([]);
+		expect(edges(deriveBars(model.items))).toEqual([]);
 	});
 
 	it('takes part like anything else for a milestone (1e), whose two ends are the same day', () => {
@@ -87,7 +97,7 @@ describe('which edges draw', () => {
 			frontmatter: { type: 'PBI', order: 20, dependsOn: 'Ship', start: '2026-08-10', target: '2026-08-20' },
 		});
 
-		expect(edges(barsFor(vault))).toEqual([{ from: 'Ship', to: 'Followup', conflict: true }]);
+		expect(edges(datedAxis(vault))).toEqual([{ from: 'Ship', to: 'Followup', conflict: true }]);
 	});
 
 	it('draws an ordinary edge with two bars and no conflict', () => {
@@ -97,7 +107,7 @@ describe('which edges draw', () => {
 			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-15', target: '2026-08-20' },
 		});
 
-		expect(edges(barsFor(vault))).toEqual([{ from: 'A', to: 'B', conflict: false }]);
+		expect(edges(datedAxis(vault))).toEqual([{ from: 'A', to: 'B', conflict: false }]);
 	});
 });
 
@@ -108,7 +118,7 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 		vault.addFile('B.md', {
 			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: startB, target: '2026-08-20' },
 		});
-		return edges(barsFor(vault))[0]?.conflict ?? false;
+		return edges(datedAxis(vault))[0]?.conflict ?? false;
 	}
 
 	it('is a conflict when the dependent starts the same day the prerequisite ends', () => {
@@ -130,10 +140,11 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const parent = model.byPath.get('Parent.md');
 		expect(parent?.plannedTarget.value).not.toBeNull(); // stated
-		const parentBar = deriveBars(model.items).bars.find((b) => b.item.title === 'Parent');
+		const axis = deriveBars(model.items);
+		const parentBar = axis.bars.find((b) => b.item.title === 'Parent');
 		expect(parentBar?.inferredStart).toBe(true); // rolled up, and irrelevant to the comparison
 
-		expect(edges(deriveBars(model.items).bars)).toEqual([{ from: 'Parent', to: 'Waiter', conflict: true }]);
+		expect(edges(axis)).toEqual([{ from: 'Parent', to: 'Waiter', conflict: true }]);
 	});
 
 	it('rests only on dates the two notes state (2a): a rolled-up prerequisite end does not conflict', () => {
@@ -145,10 +156,11 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 			frontmatter: { type: 'PBI', order: 20, dependsOn: 'Parent', start: '2026-08-10', target: '2026-08-20' },
 		});
 		const model = buildModel(vault.app, vault.entries(), settings);
-		const parentBar = deriveBars(model.items).bars.find((b) => b.item.title === 'Parent');
+		const axis = deriveBars(model.items);
+		const parentBar = axis.bars.find((b) => b.item.title === 'Parent');
 		expect(parentBar?.inferredEnd).toBe(true);
 
-		expect(edges(deriveBars(model.items).bars)).toEqual([{ from: 'Parent', to: 'Waiter', conflict: false }]);
+		expect(edges(axis)).toEqual([{ from: 'Parent', to: 'Waiter', conflict: false }]);
 	});
 
 	it('rests only on dates the two notes state (2a): an absent prerequisite end does not conflict', () => {
@@ -158,10 +170,10 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 		vault.addFile('B.md', {
 			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-05', target: '2026-08-20' },
 		});
-		const bars = barsFor(vault);
-		expect(bars.find((b) => b.item.title === 'A')?.span.target).toBeNull();
+		const axis = datedAxis(vault);
+		expect(axis.bars.find((b) => b.item.title === 'A')?.span.target).toBeNull();
 
-		expect(edges(bars)).toEqual([{ from: 'A', to: 'B', conflict: false }]);
+		expect(edges(axis)).toEqual([{ from: 'A', to: 'B', conflict: false }]);
 	});
 
 	it('an absent dependent start does not conflict, and still draws — an open end (1g) is not a shelved dependent (2b)', () => {
@@ -169,19 +181,88 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
 		// A dependent with only a target stated: an open start, and still a bar.
 		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', target: '2026-08-20' } });
-		const bars = barsFor(vault);
-		expect(bars.find((b) => b.item.title === 'B')?.span.start).toBeNull();
+		const axis = datedAxis(vault);
+		expect(axis.bars.find((b) => b.item.title === 'B')?.span.start).toBeNull();
 
-		expect(edges(bars)).toEqual([{ from: 'A', to: 'B', conflict: false }]);
+		expect(edges(axis)).toEqual([{ from: 'A', to: 'B', conflict: false }]);
 	});
 
-	it('a shelved dependent is never in conflict (2b) — it has no bar and no arrow at all', () => {
-		const vault = new FakeVault();
-		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
-		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: 'A' } }); // no dates at all: shelved
+	describe('a shelved dependent (2b): judged by the start it states, never by having shelved', () => {
+		it('is exempt with no dates at all — unplanned is not late', () => {
+			const vault = new FakeVault();
+			vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
+			vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: 'A' } }); // no dates: shelved
 
-		const bars = barsFor(vault);
-		expect(bars.find((b) => b.item.title === 'B')).toBeUndefined();
-		expect(edges(bars)).toEqual([]);
+			const axis = datedAxis(vault);
+			expect(axis.bars.find((b) => b.item.title === 'B')).toBeUndefined();
+			expect(axis.shelf.find((c) => c.item.title === 'B')?.reason).toBeNull();
+			expect(edges(axis)).toEqual([]);
+			expect(shelfConflicts(axis)).toEqual([]);
+		});
+
+		it('is exempt with a start the reader refuses', () => {
+			const vault = new FakeVault();
+			vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
+			vault.addFile('B.md', {
+				frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: 'not-a-date', target: '2026-08-20' },
+			});
+
+			const axis = datedAxis(vault);
+			expect(axis.shelf.find((c) => c.item.title === 'B')?.reason).toBe('Unreadable start date');
+			expect(shelfConflicts(axis)).toEqual([]);
+		});
+
+		it('is in conflict with a stated, readable start when shelved for an unreadable target, if the prerequisite runs past it', () => {
+			const vault = new FakeVault();
+			vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
+			vault.addFile('B.md', {
+				frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-05', target: 'not-a-date' },
+			});
+
+			const axis = datedAxis(vault);
+			expect(axis.shelf.find((c) => c.item.title === 'B')?.reason).toBe('Unreadable target date');
+			expect(edges(axis)).toEqual([]); // still no arrow: B has no bar
+			expect(shelfConflicts(axis)).toEqual(['B.md']);
+		});
+
+		it('is not in conflict with the same stated start once the prerequisite no longer runs past it', () => {
+			const vault = new FakeVault();
+			vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
+			vault.addFile('B.md', {
+				frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-11', target: 'not-a-date' },
+			});
+
+			const axis = datedAxis(vault);
+			expect(axis.shelf.find((c) => c.item.title === 'B')?.reason).toBe('Unreadable target date');
+			expect(shelfConflicts(axis)).toEqual([]);
+		});
+
+		it('is in conflict with a stated, readable start when shelved for a target before the start', () => {
+			const vault = new FakeVault();
+			vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
+			vault.addFile('B.md', {
+				frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-05', target: '2026-08-01' },
+			});
+
+			const axis = datedAxis(vault);
+			expect(axis.shelf.find((c) => c.item.title === 'B')?.reason).toBe('Target date precedes the start date');
+			expect(shelfConflicts(axis)).toEqual(['B.md']);
+		});
+
+		it('a shelved MARKER contributes no start here, however its frontmatter is spelled (1e)', () => {
+			const vault = new FakeVault();
+			vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-10' } });
+			// No target: the marker shelves (reason null). Its stray start, read as an
+			// ordinary dependent's, would run before the prerequisite's own end and
+			// wrongly flag a conflict — which is exactly what must not happen (1e, 2b).
+			vault.addFile('B.md', {
+				frontmatter: { type: 'Milestone', order: 20, dependsOn: 'A', start: '2026-08-01' },
+			});
+
+			const axis = datedAxis(vault);
+			const shelved = axis.shelf.find((c) => c.item.title === 'B');
+			expect(shelved?.reason).toBeNull();
+			expect(shelfConflicts(axis)).toEqual([]);
+		});
 	});
 });

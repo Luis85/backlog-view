@@ -231,6 +231,39 @@ describe('dependency inverses', () => {
 
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['X', '[[Missing]]', '[[Missing]]']);
 	});
+
+	it('matches a live entry by the note it resolves to, not by exact text, so a respelled hand edit does not duplicate', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md');
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: 'A' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removeRaw: 'A' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// The user re-adds the SAME note by hand, spelled as a wikilink rather than bare —
+		// exactly what the removed line looked like on disk is gone, but the note is not.
+		vault.fm('Item.md')['dependsOn'] = '[[A]]';
+
+		await applyRestores(vault.app, inverses);
+
+		// One entry, not two: "[[A]]" already names the note the undo would add back, so
+		// a text-exact match that missed it would leave "A" and "[[A]]" both on the note.
+		expect(vault.fm('Item.md')['dependsOn']).toBe('[[A]]');
+	});
+
+	it('still matches a live entry naming no note by its exact text — nothing to resolve, nothing to share', async () => {
+		const vault = new FakeVault();
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: 'Ghost' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removeRaw: 'Ghost' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		vault.fm('Item.md')['dependsOn'] = 'Ghost';
+
+		await applyRestores(vault.app, inverses);
+
+		// The hand-typed line already satisfies the restore by its own exact spelling —
+		// still a no-op, the ordinary "already back" case, not a second unresolvable copy.
+		expect(vault.fm('Item.md')['dependsOn']).toBe('Ghost');
+	});
 });
 
 describe('tag inverses', () => {

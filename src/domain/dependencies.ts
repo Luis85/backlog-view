@@ -1,4 +1,5 @@
-import type { TimelineBar } from './bars';
+import type { ShelfCard, TimelineBar } from './bars';
+import { isMarkerType } from './itemTypes';
 import { CivilDate, LinkEntry } from './noteFields';
 import { daysBetween } from './timeline';
 
@@ -270,20 +271,43 @@ export interface DependencyArrow {
 }
 
 /**
- * Which prerequisite edges have two ends to draw between, and which of those contradict
- * their own dates — from [[Arrows between bars]] main flow steps 1-2.
- *
- * Takes the bars a placement pass already produced rather than the item set, because
- * drawability is a question about what ended up ON SCREEN: an end that is shelved,
- * hidden, collapsed or filtered out of the passed set simply has no bar here, and that
- * alone is why it draws no arrow (1a, 1b) — nothing here re-derives placement. Nothing
- * special is needed for 1c either: `deriveBars` routes an `outsideFilter` row to context
- * before any span is computed for it, so such a row never has a bar in the passed set
- * either — the same membership test that answers 1a/1b already answers 1c. A
- * `brokenPrerequisites` entry is likewise never re-examined: `resolveDependencies`
- * already kept it out of `prerequisites` (1d), so walking that list is the whole answer.
+ * What `dependencyArrows` returns: the edges with two bars to draw between (main flow
+ * 1-2), and — separately — every SHELVED dependent whose own stated start conflicts with
+ * a dated prerequisite (2b). The two sets cannot share one shape: an arrow needs a `to`
+ * bar and a shelved dependent has none, only a stated date instead of it. Nothing here
+ * decides HOW a shelf conflict is shown; a caller reads `shelfConflicts` to mark the
+ * card, exactly as it reads `arrows` to draw a line.
  */
-export function dependencyArrows(bars: TimelineBar[]): DependencyArrow[] {
+export interface DependencyArrows {
+	arrows: DependencyArrow[];
+	/** File paths of shelved dependents in conflict (2b) — no arrow, no `to` bar to draw one from. */
+	shelfConflicts: ReadonlySet<string>;
+}
+
+/**
+ * Which prerequisite edges have two ends to draw between and which of those contradict
+ * their own dates (main flow steps 1-2), plus which SHELVED dependents contradict a
+ * prerequisite by the start they state (2b) — [[Arrows between bars]].
+ *
+ * Bars answer drawability on their own: an end that is shelved, hidden, collapsed or
+ * filtered out of the passed set simply has no bar here, and that alone is why it draws
+ * no arrow (1a, 1b) — nothing here re-derives placement. Nothing special is needed for 1c
+ * either: `deriveBars` routes an `outsideFilter` row to context before any span is
+ * computed for it, so such a row never has a bar in the passed set either — the same
+ * membership test that answers 1a/1b already answers 1c. A `brokenPrerequisites` entry is
+ * likewise never re-examined: `resolveDependencies` already kept it out of
+ * `prerequisites` (1d), so walking that list is the whole answer.
+ *
+ * A shelved dependent has no bar, so its half of the question needs the shelf as a second
+ * input — the register's own answer once the plan that first read 2b backwards was
+ * corrected: shelving is a verdict on the whole span, judged over BOTH ends, while a
+ * conflict rests on the one end the dependent states. `shelvedConflicts` asks that
+ * question of `card.item.plannedStart` directly — the same field `bars.ts`'s
+ * `statedEnds`/`placeItem` read to decide bar or shelf in the first place, reached
+ * without importing `bars.ts` itself, which would close `bars.ts → model.ts →
+ * dependencies.ts → bars.ts` — rather than re-deriving anything about the placement.
+ */
+export function dependencyArrows(bars: TimelineBar[], shelf: ShelfCard[]): DependencyArrows {
 	const byPath = new Map<string, TimelineBar>();
 	for (const bar of bars) byPath.set(bar.item.file.path, bar);
 	const arrows: DependencyArrow[] = [];
@@ -294,7 +318,11 @@ export function dependencyArrows(bars: TimelineBar[]): DependencyArrow[] {
 			arrows.push({ from, to, conflict: conflicts(from, to) });
 		}
 	}
-	return arrows;
+	const shelfConflicts = new Set<string>();
+	for (const card of shelf) {
+		if (shelvedConflicts(card, byPath)) shelfConflicts.add(card.item.file.path);
+	}
+	return { arrows, shelfConflicts };
 }
 
 /**
@@ -304,16 +332,50 @@ export function dependencyArrows(bars: TimelineBar[]): DependencyArrow[] {
  *
  * Judged per END, not per item, and only on a date the note itself states: an end this
  * projection INFERRED (rolled up from a subtree) or never derived at all (absent — the
- * open end a shelved dependent or a dateless bar leaves) suppresses the comparison on
- * that side alone, so a prerequisite with a stated target and an inferred start still
- * conflicts (2a). A milestone needs no case of its own — `placeMarker` already reduced
- * it to its target at both ends before either bar reached this function (1e).
+ * open end a dateless bar leaves) suppresses the comparison on that side alone, so a
+ * prerequisite with a stated target and an inferred start still conflicts (2a). A
+ * milestone needs no case of its own — `placeMarker` already reduced it to its target at
+ * both ends before either bar reached this function (1e).
  */
 function conflicts(from: TimelineBar, to: TimelineBar): boolean {
 	const dependentStart = statedDate(to.span.start, to.inferredStart);
+	return dependentStart !== null && runsPast(from, dependentStart);
+}
+
+/**
+ * 2b: a SHELVED dependent is judged by the start it states, never by the fact that it
+ * shelved — shelving is a verdict drawn over both ends, a conflict over one of them. No
+ * readable stated start (no dates at all, or a start the reader refuses) is "unplanned",
+ * not "late", and is exempt regardless of why the item shelved. A stated, readable start
+ * is compared against a dated prerequisite's own end by the identical inclusive rule
+ * `conflicts` uses — the same contradiction between two written dates 2a is about, simply
+ * missing an arrow to draw it with.
+ *
+ * Never asked of a MARKER: `placeItem` reduces one to its target before any span rule
+ * runs (1e), so a stray start on a milestone note is not a date this projection uses,
+ * however its shelf reason is spelled — `item.plannedStart` would still read it off the
+ * note, since a `BacklogItem` field knows nothing of its own type, so the exclusion has
+ * to be made here. Read off `card.item.plannedStart` directly rather than through
+ * `bars.ts`'s `statedEnds`: that import would close `bars.ts → model.ts →
+ * dependencies.ts → bars.ts`, and the field it wraps is already on `BacklogItem`.
+ */
+function shelvedConflicts(card: ShelfCard, byPath: Map<string, TimelineBar>): boolean {
+	if (isMarkerType(card.item.typeName)) return false;
+	const start = card.item.plannedStart;
+	if (start.invalid || start.value === null) return false;
+	const stated = start.value;
+	return card.item.prerequisites.some((prerequisite) => {
+		const from = byPath.get(prerequisite.file.path);
+		return from !== undefined && runsPast(from, stated);
+	});
+}
+
+/** True when a prerequisite bar's own stated end runs on or past `start` — the inclusive
+ *  comparison main flow step 2 states, shared by an ordinary edge (2a) and a shelved
+ *  dependent's stated start (2b): one rule, asked with two different "other" ends. */
+function runsPast(from: TimelineBar, start: CivilDate): boolean {
 	const prerequisiteEnd = statedDate(from.span.target, from.inferredEnd);
-	if (dependentStart === null || prerequisiteEnd === null) return false;
-	return daysBetween(dependentStart, prerequisiteEnd) >= 0;
+	return prerequisiteEnd !== null && daysBetween(start, prerequisiteEnd) >= 0;
 }
 
 /** A bar's own end, or null when it is inferred or simply not there. */

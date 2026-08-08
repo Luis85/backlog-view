@@ -513,7 +513,7 @@ export async function applyRestores(
 		}
 		let inverse: RestoreWrite | null = null;
 		await app.fileManager.processFrontMatter(restore.file, (fm: Record<string, unknown>) => {
-			inverse = restoreInto(fm, restore, outcome);
+			inverse = restoreInto(app, fm, restore, outcome);
 		});
 		if (inverse) onInverse?.(inverse);
 		onProgress?.(++done, restores.length);
@@ -523,6 +523,7 @@ export async function applyRestores(
 
 /** Apply one file's restore into its live frontmatter; returns the redo inverse. */
 function restoreInto(
+	app: App,
 	fm: Record<string, unknown>,
 	restore: RestoreWrite,
 	outcome: RestoreOutcome,
@@ -542,7 +543,9 @@ function restoreInto(
 		const applied = applyTagDelta(fm, restore.tags.key, restore.tags.delta);
 		if (applied) tags = { key: restore.tags.key, delta: { add: applied.remove, remove: applied.add } };
 	}
-	const dependsOn = restore.dependsOn ? (restoreDependsOn(fm, restore.dependsOn) ?? undefined) : undefined;
+	const dependsOn = restore.dependsOn
+		? (restoreDependsOn(app, restore.file, fm, restore.dependsOn) ?? undefined)
+		: undefined;
 	if (changed.length === 0 && !tags && !dependsOn) return null;
 	return { file: restore.file, keys: changed, tags, dependsOn };
 }

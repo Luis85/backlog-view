@@ -64,6 +64,19 @@ function countOf(texts: string[]): Map<string, number> {
 }
 
 /**
+ * The note a dependency LINE names, exactly as the reader resolves one — shared by the
+ * forward writer's own duplicate guard (`applyDependsOnDelta`'s `dropText`/`already`) and
+ * the restore below, so "the same note" means one thing whichever direction is writing.
+ * Null for text that resolves to nothing, which is its own identity below: a broken line
+ * has no note to share, so it can only ever match its own exact spelling.
+ */
+function resolvedPathOf(app: App, file: TFile, text: string): string | null {
+	const linkpath = linkpathFromRawValue(text);
+	if (linkpath.length === 0) return null;
+	return app.metadataCache.getFirstLinkpathDest(linkpath, file.path)?.path ?? null;
+}
+
+/**
  * Apply one prerequisite delta to the LIVE list, returning the delta that undoes it —
  * or null when nothing changed, so a no-op neither rewrites the value into a different
  * shape nor spends the undo slot.
@@ -84,11 +97,7 @@ function applyDependsOnDelta(
 ): DependsOnRestore | null {
 	const current = liveEntries(fm, key);
 	// Which note a live entry names, asked exactly as the reader asks it.
-	const pathOf = (text: string): string | null => {
-		const linkpath = linkpathFromRawValue(text);
-		if (linkpath.length === 0) return null;
-		return app.metadataCache.getFirstLinkpathDest(linkpath, file.path)?.path ?? null;
-	};
+	const pathOf = (text: string): string | null => resolvedPathOf(app, file, text);
 	// The whole key goes at once, whatever it holds — including a value the reader
 	// discards entirely, which is the only state with no line to offer and so the only
 	// one that could otherwise be left on disk with nothing able to clear it. Captured by
@@ -152,27 +161,50 @@ function applyDependsOnDelta(
  * because an earlier partial replay already restored it — satisfies one occurrence of
  * what this replay would add, so only the copies genuinely missing get written. A count
  * of zero live copies is the ordinary case and restores the full multiplicity untouched.
+ *
+ * Both multisets are counted by RESOLVED NOTE (`resolvedPathOf`), not by exact text — the
+ * same reason `applyDependsOnDelta`'s own `add` guard resolves rather than compares raw
+ * strings: a line surviving between capture and replay may have been hand-edited to a
+ * different spelling of the same note (`A` respelled `[[A]]`), and a text-only compare
+ * would not recognise it as already there. Text is still the identity for an entry that
+ * resolves to nothing — a broken line has no note to share, so it can only satisfy its
+ * own exact spelling — which is what keeps this a strict generalisation of the old
+ * behaviour rather than a looser one. The counted KEY changed; the counted QUANTITY (one
+ * per captured line, multiplicity and all) did not.
  */
-export function restoreDependsOn(fm: Record<string, unknown>, restore: DependsOnRestore): DependsOnRestore | null {
-	const toRemove = countOf(restore.remove);
+export function restoreDependsOn(
+	app: App,
+	file: TFile,
+	fm: Record<string, unknown>,
+	restore: DependsOnRestore,
+): DependsOnRestore | null {
+	const identityOf = (text: string): string => resolvedPathOf(app, file, text) ?? text;
+	const toRemove = countOf(restore.remove.map(identityOf));
 	const removed: string[] = [];
 	const next: unknown[] = [];
 	for (const value of liveEntries(fm, restore.key)) {
 		const text = textOf(value);
-		const remaining = text !== null ? (toRemove.get(text) ?? 0) : 0;
-		if (text !== null && remaining > 0) {
-			toRemove.set(text, remaining - 1);
-			removed.push(text);
+		const key = text !== null ? identityOf(text) : null;
+		const remaining = key !== null ? (toRemove.get(key) ?? 0) : 0;
+		if (key !== null && remaining > 0) {
+			toRemove.set(key, remaining - 1);
+			removed.push(text as string);
 			continue;
 		}
 		next.push(value);
 	}
-	const already = countOf(next.map((value) => textOf(value)).filter((text): text is string => text !== null));
+	const already = countOf(
+		next
+			.map((value) => textOf(value))
+			.filter((text): text is string => text !== null)
+			.map(identityOf),
+	);
 	const added: string[] = [];
 	for (const text of restore.add) {
-		const have = already.get(text) ?? 0;
+		const key = identityOf(text);
+		const have = already.get(key) ?? 0;
 		if (have > 0) {
-			already.set(text, have - 1);
+			already.set(key, have - 1);
 			continue;
 		}
 		next.push(text);

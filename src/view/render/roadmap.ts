@@ -77,6 +77,7 @@ export function renderRoadmap(
 			scale: activeScale,
 			dnd,
 			observedStates: model.observedStates,
+			shelf: roadmap.shelf,
 			// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 			// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
 			// a resize-driven re-render there measure the same box. They can still read it

@@ -6,8 +6,8 @@ import { CardDragController } from '../interactions/cardDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { barHolds, TimelineBar } from '../../domain/bars';
-import { dependencyArrows } from '../../domain/dependencies';
+import { barHolds, ShelfCard, TimelineBar } from '../../domain/bars';
+import { DependencyArrow, dependencyArrows } from '../../domain/dependencies';
 import { isMarkerType } from '../../domain/itemTypes';
 import { stateColorSlot } from '../../domain/settings';
 import {
@@ -127,6 +127,13 @@ export interface TimelineDrawing {
 	 * too narrow. 0 or less reads as "not measured" — see `effectiveLeadWidth`.
 	 */
 	available: number;
+	/**
+	 * The dated axis's shelf, so `dependencyArrows` can judge a shelved dependent's own
+	 * stated start against a dated prerequisite (2b) — a question the drawn bars alone
+	 * cannot answer, since a shelved dependent has none. Not drawn here; `renderRoadmap`
+	 * draws the shelf itself, separately, after this pass.
+	 */
+	shelf: ShelfCard[];
 }
 
 export function renderTimeline(
@@ -135,7 +142,7 @@ export function renderTimeline(
 	bars: TimelineBar[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
-	const { today, scale, dnd, observedStates, available } = drawing;
+	const { today, scale, dnd, observedStates, available, shelf } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
@@ -198,7 +205,10 @@ export function renderTimeline(
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
 	// rows really landed rather than a guessed row height — see `renderDependencyArrows`.
-	renderDependencyArrows({ content, tracks }, window, bars, { scale, leadWidth });
+	// `shelfConflicts` is not read here: nothing on THIS grid draws a shelved dependent —
+	// it has no bar — so there is nothing for this pass to mark with it. It is the shelf's
+	// own card that states 2b's conflict, which is `renderShelf`'s concern, not this one's.
+	renderDependencyArrows({ content, tracks }, window, dependencyArrows(bars, shelf).arrows, { scale, leadWidth });
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -359,14 +369,14 @@ function renderMilestoneLines(
 function renderDependencyArrows(
 	mounts: { content: HTMLElement; tracks: Map<string, HTMLElement> },
 	window: TimelineWindow,
-	bars: TimelineBar[],
+	arrows: DependencyArrow[],
 	ruler: { scale: TimelineScale; leadWidth: number },
 ): void {
 	const { content, tracks } = mounts;
 	const { scale, leadWidth } = ruler;
 	const contentTop = content.getBoundingClientRect().top;
 	const conflicted = new Set<string>();
-	for (const arrow of dependencyArrows(bars)) {
+	for (const arrow of arrows) {
 		const anchor = dependencyAnchor(window, arrow.from.span, arrow.to.span);
 		const fromRow = tracks.get(arrow.from.item.file.path)?.parentElement;
 		const toRow = tracks.get(arrow.to.item.file.path)?.parentElement;
