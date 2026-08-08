@@ -15,8 +15,6 @@ import {
 	optionalKeyFor,
 	optionalProperty,
 	resolveSettings,
-	STATE_COLOR_SLOTS,
-	stateColorSlot,
 	stateMenuValues,
 } from '../../src/domain/settings';
 
@@ -300,38 +298,6 @@ describe('stateMenuValues', () => {
 		const settings = defaultSettings();
 		expect(stateMenuValues(settings, ['Active'])).toEqual(['Active', 'Done']);
 		expect(stateMenuValues(settings, [])).toEqual(['Done']);
-	});
-});
-
-describe('stateColorSlot', () => {
-	it('gives no slot to an item with no state', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
-		expect(stateColorSlot(settings, [], null)).toBeNull();
-	});
-
-	it('gives no slot to a value outside the vocabulary', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
-		expect(stateColorSlot(settings, [], 'Blocked')).toBeNull();
-	});
-
-	it('is the value\'s index in stateMenuValues, case-insensitively', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
-		expect(stateColorSlot(settings, [], 'new')).toBe(0);
-		expect(stateColorSlot(settings, [], 'Active')).toBe(1);
-		expect(stateColorSlot(settings, [], 'DONE')).toBe(2);
-	});
-
-	it('agrees with the board and the Set state menu: same vocabulary, observed included', () => {
-		const settings = defaultSettings();
-		expect(stateColorSlot(settings, ['Active'], 'Active')).toBe(0);
-		expect(stateColorSlot(settings, ['Active'], 'Done')).toBe(1);
-	});
-
-	it('wraps modulo the slot count for a vocabulary longer than the palette', () => {
-		const states = Array.from({ length: STATE_COLOR_SLOTS + 2 }, (_, i) => `State ${i}`);
-		const settings = { ...defaultSettings(), states };
-		expect(stateColorSlot(settings, [], `State ${STATE_COLOR_SLOTS}`)).toBe(0);
-		expect(stateColorSlot(settings, [], `State ${STATE_COLOR_SLOTS + 1}`)).toBe(1);
 	});
 });
 

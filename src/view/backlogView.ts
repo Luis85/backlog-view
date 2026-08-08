@@ -533,7 +533,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// changes what the key must say. Above the early return below, because that return
 		// is the tree's and this is the roadmap's.
 		const drawn = this.roadmap?.drawn ?? { done: false, milestone: false, accent: false };
-		renderLegend(this, this.legendEl, model.observedStates, drawn);
+		renderLegend(this, this.legendEl, this.roadmap?.palettes ?? [], drawn);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one

@@ -170,7 +170,7 @@ what got drawn.
 
 ## Acceptance criteria
 
-- A bar's `pbl-state-N` class agrees with `stateColorSlot`'s answer for that state,
+- A bar's `pbl-state-N` class agrees with `paletteSlot`'s answer for that state,
   case-insensitively, for every item the axis draws — no state and an unlisted value
   both carry no slot class.
 - A done state's bar renders green regardless of which slot its own state occupies,
@@ -202,16 +202,18 @@ what got drawn.
 
 ## Where it lives
 
-`stateColorSlot` and its four-slot constant are `src/domain/settings.ts`, beside
-`stateMenuValues` — the vocabulary both index into. `renderBarRow` in
+`STATE_COLOR_SLOTS` is `src/domain/settings.ts`, beside `stateMenuValues`. The slot
+function that indexes into a vocabulary was there too (`stateColorSlot`) until a second
+workflow existed; it is now `paletteSlot` in `src/domain/board.ts`, and
+[[A Deliverable is coloured by its own workflow]] is why. `renderBarRow` in
 `src/view/render/timeline.ts` adds the slot class to a bar's row; the same file's
 `renderCellHeader` lost the empty header band the Today pill used to mount in, now
 returning the cell track alone. The legend strip is its own module,
 `src/view/render/legend.ts`, mounted between the toolbar and the tree in
 `src/view/backlogView.ts` (`legendEl`) and re-rendered every `render()` pass so the
 projection and axis-pick gates it shares with `renderTimelineControls` stay in sync.
-`renderLegend` gates the state swatches specifically on `host.settings.stateKey`, right
-beside where it builds them — never on `stateMenuValues(...)`'s own return, which still
+`renderLegend` gates each palette's swatches specifically on that workflow's own raw key
+(`stateKey`, `deliverableStateKey`), right beside where it builds them — never on `stateMenuValues(...)`'s own return, which still
 answers `[doneValues[0]]` with no workflow configured (see extension 3a).
 The colour rules — the four slots, the accent fallback via `--pbl-state-color`, and
 the done rule's specificity over a slot — are `styles/timeline.css`; the legend's own

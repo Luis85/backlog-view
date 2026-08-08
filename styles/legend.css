@@ -21,6 +21,15 @@
 	gap: var(--size-2-2);
 }
 
+/* A workflow's name before its own swatches, drawn only where a base configures a second
+   state property and the strip therefore carries two vocabularies. Not an item — it is the
+   heading for the items after it — so it sits in the same flex row without the swatch gap,
+   and leans on the emphasis the strip's own muted colour leaves available. */
+.pbl-legend-group {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
 /* `--pbl-state-color` is the same token `timeline.css`'s `pbl-state-N` classes set on
    a bar's row; a swatch carries the identical class, so this reads the identical value
    rather than a second copy of the mapping. No fallback: every swatch `legend.ts` builds
@@ -55,8 +64,9 @@
 
 /* The done override in `timeline.css`, keyed rather than the slot the state also holds:
    a done row's bar is green whatever its position in the vocabulary, so a swatch showing
-   that position would key a colour no bar draws. `legend.ts` picks this class by the same
-   `isDoneValue` the override is written for. */
+   that position would key a colour no bar draws. `legend.ts` picks this class by
+   `paletteDone`, asked of the palette whose swatch it is — the requirements and Deliverable
+   workflows declare their done lists independently, and one green means finished on either. */
 .pbl-legend-done { background-color: var(--color-green); }
 
 /* The bar's own default (`--pbl-bar-color`'s fallback in `timeline.css`), keyed only

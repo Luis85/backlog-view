@@ -28,3 +28,5 @@ work through one column list.
 
 - [[A board scoped to Deliverables]] — the toggle, the columns, and the cards moving
   through a workflow of their own.
+- [[A Deliverable is coloured by its own workflow]] — the same type-dispatch rule reaching
+  the roadmap's dated axis, and a legend that names both vocabularies.

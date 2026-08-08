@@ -1,6 +1,14 @@
 import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
-import { BacklogSettings, byName, menuValues, resolvedDeliverableStateKey, stateMenuValues } from './settings';
+import { sameValue } from './noteFields';
+import {
+	BacklogSettings,
+	byName,
+	menuValues,
+	resolvedDeliverableStateKey,
+	STATE_COLOR_SLOTS,
+	stateMenuValues,
+} from './settings';
 import { collectObservedStates } from './vocabulary';
 
 /**
@@ -219,6 +227,89 @@ export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSetti
 		wipLimits: {},
 		columnPolicies: {},
 	};
+}
+
+/**
+ * The colour vocabularies a dated-axis bar can be keyed into, in the order their slots
+ * are assigned — the requirements workflow first, then the Deliverable one when it is
+ * genuinely a SECOND workflow.
+ *
+ * "Genuinely second" is `settings.deliverableStateKey !== ''`, the raw key rather than
+ * the resolved one: a Deliverable workflow FALLING BACK reads the same property, holds
+ * the same values and is the same workflow wearing another name, so a second section
+ * would key one vocabulary twice and invite the reader to look for a difference that is
+ * not there.
+ *
+ * Slots CONTINUE across the palettes rather than restarting, which is why this returns an
+ * ordered list and an offset rather than two independent vocabularies. Restarting would
+ * paint a Deliverable's first state the same colour as a PBI's first state, and the whole
+ * point of asking the item's own workflow is that those are different facts. Four slots
+ * still wrap (`STATE_COLOR_SLOTS`), so a long enough pair repeats — the same honest limit
+ * one vocabulary longer than the palette already has.
+ */
+export interface StatePalette {
+	/** Names the workflow in the legend; empty when there is only one and nothing to tell apart. */
+	label: string;
+	values: string[];
+	doneValues: string[];
+	/** Where this palette's first value sits in the continuing slot sequence. */
+	offset: number;
+}
+
+export function statePalettes(model: BacklogModel, settings: BacklogSettings): StatePalette[] {
+	const requirements = requirementsWorkflow(model, settings);
+	const separate = settings.deliverableStateKey !== '';
+	if (!separate) return [{ label: '', values: requirements.values, doneValues: settings.doneValues, offset: 0 }];
+	const deliverables = deliverablesWorkflow(model, settings);
+	return [
+		{ label: 'Work', values: requirements.values, doneValues: settings.doneValues, offset: 0 },
+		{
+			label: 'Deliverables',
+			values: deliverables.values,
+			doneValues: settings.deliverableDoneValues,
+			offset: requirements.values.length,
+		},
+	];
+}
+
+/**
+ * The palette an ITEM is keyed into — its own workflow, the rule `stateKeyFor` and
+ * `ownWorkflowReading` already state for the key and the value. Before this, a bar took
+ * its colour from the requirements vocabulary whatever the item was, so a Deliverable
+ * with its own workflow drew a colour naming a state it does not hold, and changing the
+ * state that IS its own moved nothing on the grid.
+ */
+export function paletteFor(palettes: StatePalette[], item: BacklogItem): StatePalette {
+	return palettes.length > 1 && isDeliverableType(item.typeName) ? palettes[1] : palettes[0];
+}
+
+/**
+ * Which palette slot a state value's bar takes on the roadmap's dated axis: its index in
+ * that palette's own vocabulary — the same list the workflow's columns and its Set state
+ * menu use, so a bar and a menu entry can never disagree about a state's colour — shifted
+ * by the palette's `offset` and wrapped modulo `STATE_COLOR_SLOTS` so a vocabulary longer
+ * than the palette repeats rather than running out. No state, or a value outside the
+ * vocabulary (an item's own unlisted value, most often), gets no slot: null, which is the
+ * bar's plain accent colour rather than a guess.
+ *
+ * The bar asks this of `paletteFor(item)` and the legend asks it of each palette in turn,
+ * which is the whole of why it takes a palette rather than settings: those two used to be
+ * one vocabulary read twice, and a legend that keys a colour no bar draws — or misses one
+ * every bar does — is the only failure this feature has ever had.
+ */
+export function paletteSlot(palette: StatePalette, state: string | null): number | null {
+	const index = palette.values.findIndex((value) => sameValue(value, state));
+	return index === -1 ? null : (palette.offset + index) % STATE_COLOR_SLOTS;
+}
+
+/**
+ * Done by THIS palette's own list, never `settings.doneValues`: the Deliverable workflow
+ * declares its own, so asking the requirements list would paint a finished Deliverable
+ * with a slot colour while its bar took the green override — the legend disagreeing with
+ * the only thing it exists to explain.
+ */
+export function paletteDone(palette: StatePalette, state: string): boolean {
+	return palette.doneValues.some((value) => sameValue(value, state));
 }
 
 /**

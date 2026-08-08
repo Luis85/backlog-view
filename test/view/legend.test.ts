@@ -367,3 +367,109 @@ describe('a milestone line is cyan whatever its own bar draws', () => {
 		expect(swatchLabels(containerEl)).not.toContain('Milestone');
 	});
 });
+
+describe('two workflows, two keyed vocabularies', () => {
+	const DELIVERABLE_WORKFLOW = {
+		deliverableStateProperty: 'note.deliverableStatus',
+		deliverableStateValues: 'Draft, Published',
+		deliverableDoneValues: 'Published',
+	};
+
+	/** A PBI and a Deliverable, each dated and each holding its own workflow's state. */
+	function twoWorkflowVault(deliverableState = 'Draft'): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, due: INSIDE_WINDOW_DUE, status: 'Active' } });
+		vault.addFile('D.md', {
+			frontmatter: {
+				type: 'Deliverable',
+				order: 20,
+				due: INSIDE_WINDOW_DUE,
+				status: 'New',
+				deliverableStatus: deliverableState,
+			},
+		});
+		return vault;
+	}
+
+	function groupLabels(containerEl: HTMLElement): string[] {
+		return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-legend-group')).map(
+			(el) => el.textContent ?? '',
+		);
+	}
+
+	function rowClasses(containerEl: HTMLElement, path: string): DOMTokenList {
+		const row = containerEl.querySelector<HTMLElement>(`.pbl-timeline-row[data-path="${path}"]`);
+		if (!row) throw new Error(`no timeline row for ${path}`);
+		return row.classList;
+	}
+
+	it('names each workflow and keys both vocabularies, in slot order', () => {
+		const { view, containerEl } = makeView(
+			twoWorkflowVault(),
+			{ ...DATE_AXIS, ...WORKFLOW, ...DELIVERABLE_WORKFLOW },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		expect(groupLabels(containerEl)).toEqual(['Work', 'Deliverables']);
+		// Both lists, in the order the slots run — `Published` is the Deliverable
+		// workflow's own done value and keys green rather than its slot.
+		expect(swatchLabels(containerEl)).toEqual(['New', 'Active', 'Done', 'Draft', 'Published', 'Today']);
+	});
+
+	it('names nothing where one workflow tracks everything', () => {
+		// The single-workflow base draws exactly the strip it drew before a second one
+		// existed — a group label with nothing to tell it apart from is furniture.
+		const { view, containerEl } = makeView(twoWorkflowVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		expect(groupLabels(containerEl)).toEqual([]);
+		expect(swatchLabels(containerEl)).toEqual(['New', 'Active', 'Done', 'Today']);
+	});
+
+	it('keys a Deliverable’s bar by its OWN state, in its own palette’s slot', () => {
+		const { view, containerEl } = makeView(
+			twoWorkflowVault(),
+			{ ...DATE_AXIS, ...WORKFLOW, ...DELIVERABLE_WORKFLOW },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		// `Active` is slot 1 of the requirements vocabulary; `Draft` is the fourth value
+		// overall, so slot 3. The Deliverable's own `status: New` — slot 0 — is what the
+		// bar drew before, a colour naming a state its workflow does not track.
+		expect(rowClasses(containerEl, 'P.md')).toContain('pbl-state-1');
+		expect(rowClasses(containerEl, 'D.md')).toContain('pbl-state-3');
+		expect(rowClasses(containerEl, 'D.md')).not.toContain('pbl-state-0');
+	});
+
+	it('takes the green done override from the Deliverable workflow’s own done list', () => {
+		const { view, containerEl } = makeView(
+			twoWorkflowVault('Published'),
+			{ ...DATE_AXIS, ...WORKFLOW, ...DELIVERABLE_WORKFLOW },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		// `Published` is done for a Deliverable and nothing at all for a PBI, whose own
+		// `status: New` leaves this row unfinished. Asking `item.done` here drew a slot
+		// colour under a legend keying green — the two disagreeing about one bar.
+		expect(rowClasses(containerEl, 'D.md')).toContain('pbl-done');
+		expect(rowClasses(containerEl, 'P.md')).not.toContain('pbl-done');
+	});
+
+	it('says a Deliverable’s own state in words, not the requirements one', () => {
+		const { view, containerEl } = makeView(
+			twoWorkflowVault(),
+			{ ...DATE_AXIS, ...WORKFLOW, ...DELIVERABLE_WORKFLOW },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		// The hidden words are what make the colour reachable without seeing it, so they
+		// have to name the same state the colour keys — `New` here is the requirements
+		// value sitting unused on the same note.
+		const note = containerEl.querySelector<HTMLElement>('.pbl-timeline-row[data-path="D.md"] .pbl-sr-only');
+		expect(note?.textContent).toBe('Draft');
+	});
+});

@@ -2,6 +2,7 @@ import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
+import { StatePalette } from '../domain/board';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
@@ -126,6 +127,14 @@ export interface RoadmapSnapshot {
 	 * precedence that missed the outside-window case.
 	 */
 	drawn: DrawnColors;
+	/**
+	 * The state vocabularies the bars were keyed into this pass, in slot order — empty on
+	 * the horizon axis, where nothing draws a bar. Carried out of the render rather than
+	 * rebuilt by the legend for the same reason `drawn` is: the legend exists only to
+	 * explain the colours on the grid, so it has to key the very list the grid used. Two
+	 * calls to `statePalettes` would agree today and are two places to change tomorrow.
+	 */
+	palettes: StatePalette[];
 }
 
 /**
