@@ -4,6 +4,7 @@ import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { flush, makeView, noOptionalProperties, rowByTitle } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
+import { renderToolbar, syncCountLabel } from '../../src/view/render/toolbar';
 
 /**
  * Which workflow tracks an item's state is a property of its TYPE, not of the
@@ -518,6 +519,33 @@ describe('the toolbar counts one population, not two', () => {
 
 		harness.view.setProjection('board');
 		expect(toggleLabel()).not.toContain('hidden');
+	});
+
+	it('paints the FIRST render’s count and tooltip from the same population syncCountLabel uses', () => {
+		// `renderToolbar` used to count `model.results` directly instead of calling
+		// `countedPopulation` like `syncCountLabel` and `renderCompletedToggle` — a second
+		// source of truth that painted an unscoped number the very next line corrected.
+		// Calling the two functions directly (instead of going through the full render
+		// pipeline) is what makes the first paint observable at all: `render()` calls
+		// `syncCountLabel` synchronously right after `renderToolbar`, so nothing ever
+		// shows the intermediate DOM otherwise.
+		const harness = makeView(doneDeliverable(), CONFIG);
+		harness.view.setProjection('board');
+
+		const scratch = document.createElement('div');
+		renderToolbar(harness.view, scratch);
+		const firstText = scratch.querySelector('.pbl-count-label')?.textContent;
+		const firstTooltip = (scratch.querySelector('.pbl-count-label') as HTMLElement | null)?.dataset.tooltip;
+
+		syncCountLabel(harness.view, scratch);
+		const syncedText = scratch.querySelector('.pbl-count-label')?.textContent;
+		const syncedTooltip = (scratch.querySelector('.pbl-count-label') as HTMLElement | null)?.dataset.tooltip;
+
+		// The requirements board excludes the Deliverable, so the correct answer is "1
+		// item" (the PBI alone) — a regression would paint "2 items" here first.
+		expect(firstText).toBe('1 item');
+		expect(firstText).toBe(syncedText);
+		expect(firstTooltip).toBe(syncedTooltip);
 	});
 });
 
