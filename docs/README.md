@@ -79,7 +79,7 @@ multiplied it: `Deliverable` items — concepts, designs, anything the team must
 rather than build — get a second board of their own, reached by a fourth toolbar
 toggle, with a workflow property, states and done values overridable independently of
 the requirements board's, or — left unconfigured — falling back to the requirements
-board's own as one unit, so a vault that never bothered to name a separate property
+board's own field by field, so a vault that never bothered to name a separate property
 still gets a working Deliverables board rather than an inert one. A later fix scoped the
 requirements board the other way in return: it now excludes every `Deliverable` from
 its cards, its count and its stray columns, so a design's review status never has to

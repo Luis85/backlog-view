@@ -11,9 +11,10 @@ created: 2026-08-06
 A second board, reserved for `Deliverable` items alone: its own toolbar toggle, and its
 own workflow — its own state property, ordered states and done values, overridable
 independently of the requirements board's — or, left unconfigured, falling back to the
-requirements board's own `stateKey`/`states`/`doneValues` as one unit, so a vault that
+requirements board's own `stateKey`/`states`/`doneValues` field by field, so a vault that
 never bothered to name a separate property still gets a working Deliverables board
-rather than an inert one. A Deliverable still shows up everywhere else exactly like any
+rather than an inert one. Field by field rather than as a unit: a list you fill in is this
+workflow's list whatever the property does, and only an empty one follows the key. A Deliverable still shows up everywhere else exactly like any
 other item — the tree and both roadmap axes — but never on the board above: that board
 is scoped to everything else, whatever either workflow's state says, though a
 Deliverable acting purely as an excluded ancestor still surfaces there as a context row

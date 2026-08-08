@@ -47,17 +47,20 @@ narrowed to one type.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Toggling the toolbar to the Deliverables board |
-| **Preconditions** | A Deliverable workflow resolves to some key — the Deliverable state property when it is configured, or (falling back, all three fields as one unit) the requirements board's own `stateKey`/`states`/`doneValues` when it is not (`resolvedDeliverableStateKey`, `deliverableKeyFallsBack` in `resolveSettings`) |
+| **Preconditions** | A Deliverable workflow resolves to some key — the Deliverable state property when it is configured, or (falling back) the requirements board's own `stateKey` when it is not (`resolvedDeliverableStateKey`, `deliverableKeyFallsBack` in `resolveSettings`). The two value lists follow that key only while they are EMPTY: a `deliverableStates`/`deliverableDoneValues` the user populated is used whatever the key does (2a) |
 | **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states — and a move here writes the *resolved* Deliverable state key: the Deliverable's own configured property when one is set, or (falling back) the requirements board's `stateKey` itself — in which case the two boards share one property rather than each owning a different one. |
 
 **Main flow**
 
 1. The toolbar toggle grows a fourth position: Tree, Board, Roadmap, Deliverables.
 2. Choosing it shows a board whose columns are the workflow the "Deliverables" settings
-   group defines — its own state property, states and done values when
-   `deliverableStateProperty` is configured, or (falling back, as one unit —
-   `deliverableKeyFallsBack` in `resolveSettings`) the requirements workflow's own
-   resolved key, declared states and *effective* done values when it is not. Either way:
+   group defines — its own state property when `deliverableStateProperty` is configured,
+   or (falling back — `deliverableKeyFallsBack` in `resolveSettings`) the requirements
+   workflow's own resolved key when it is not. The states and done values are NOT carried
+   along with that key: a list the user populated is this workflow's list either way, and
+   only an EMPTY one follows the key — to the requirements workflow's declared states and
+   *effective* done values while the key is falling back, to this board's own observed
+   values or the shipped default once the key is its own (2a). Either way the columns run:
    no-state first, then the configured states in order, then any observed value the
    configuration does not name.
 3. Its cards are every `Deliverable`-typed item in `model.deliverableResults` — read off
@@ -174,7 +177,8 @@ narrowed to one type.
   is either its own, configured independently from the requirements board's
   `stateValues`/`doneValues`, or — when no Deliverable state property is configured —
   the requirements workflow's own resolved key, declared states and effective done
-  values, falling back as one unit.
+  values. Field by field, never as a unit: the key falls back when no Deliverable state
+  property is set, each list only while it is itself empty.
 - A move — drag, Alt+arrow, or menu — writes the *resolved* Deliverable state key alone
   (`resolvedDeliverableStateKey`): its own configured property when one is set, in
   which case the requirements board's state is untouched by it and vice versa; or,
