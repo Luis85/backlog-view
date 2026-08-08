@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { collapsed, containerAt, headings, localLinks, prose, proseWithSpans, sectionBody, wikilinks } from "./docs-markdown.mjs";
+import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -432,7 +432,7 @@ for (const file of files) {
  * went unchecked while `npm run docs` stayed green. A rule that quietly does nothing on
  * input it cannot parse is worse than no rule, because it reads as a check.
  */
-const MARKER = /\*\*Checked by\*\*/g;
+const MARKER = "Checked by";
 /**
  * A CHECK, never an implementation. The first version reused the source-path rule's
  * `(?:src|test)` alternation without asking whether it meant anything here, so
@@ -452,11 +452,16 @@ for (const file of [...files, "README.md"]) {
 	// planted trees in `test/docs/` are exactly such a tree.
 	const text = texts.get(file) ?? ((await exists(file)) ? await readText(file) : "");
 	const spans = proseWithSpans(text);
-	const markers = [...prose(text).matchAll(MARKER)].map((m) => m.index);
-	for (const marker of prose(text).matchAll(MARKER)) {
-		const owner = containerAt(text, marker.index);
-		const from = marker.index + marker[0].length;
-		const next = markers.find((m) => m > marker.index);
+	// The markers are the PARSER's bold nodes, not a pattern over the source. Three
+	// constructs reached a text scan and each cost a patch — a code span naming the
+	// marker, an HTML comment parking a citation, a backslash escape showing it
+	// literally — and every one produced a failure on a correct document. A `strong`
+	// node is none of them by construction.
+	const found = markers(text, MARKER);
+	for (const marker of found) {
+		const owner = containerAt(text, marker.start);
+		const from = marker.end;
+		const next = found.map((m) => m.start).find((at) => at > marker.start);
 		// No container at all means the marker is somewhere this rule cannot bound — report
 		// it rather than scanning to the end of the file, which is how a malformed marker
 		// would reach forward and adopt the next citation's path and name.

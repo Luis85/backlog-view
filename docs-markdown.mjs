@@ -226,3 +226,25 @@ export function containerAt(text, index) {
 	}
 	return best;
 }
+
+/**
+ * Every **bold marker** with exactly this text, as `{ start, end }` offsets.
+ *
+ * Asked of the parser rather than matched in the source, which is the third answer to the
+ * same question and the only structural one. A text scan found the marker inside a code
+ * span (`docs/README.md` names it while documenting the convention), inside an HTML
+ * comment (a citation parked for later), and after a backslash escape (`\**Checked by**`,
+ * shown literally) — three separate patches, each masking one more construct, each found
+ * by review rather than by a test. A `strong` node is none of those by construction: the
+ * parser has already decided what is emphasis and what is only asterisks, so the whole
+ * category closes at once rather than one spelling at a time.
+ */
+export function markers(text, label) {
+	const found = [];
+	for (const node of nodes(text)) {
+		if (node.type !== "strong" || !node.position) continue;
+		if (node.children.length !== 1 || node.children[0].type !== "text" || node.children[0].value !== label) continue;
+		found.push({ start: node.position.start.offset, end: node.position.end.offset });
+	}
+	return found;
+}

@@ -199,6 +199,19 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts the marker shown literally with a backslash escape', async () => {
+		// `\\**Checked by**` renders as text, not emphasis, so it is a document showing the
+		// convention rather than using it. A text scan matched the asterisks anyway and
+		// failed a correct document — the third construct to reach the marker scan that way,
+		// after a code span and an HTML comment, and the one that made it a category.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\nWrite \\**Checked by** to cite a test.',
+		});
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a **Checked by** example inside a fence, which is documentation not a citation', async () => {
 		// `docs/README.md` documents the convention by showing it, naming a path that does
 		// not exist on purpose. Fenced, so it is an example being quoted rather than a
