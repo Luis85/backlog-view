@@ -156,6 +156,24 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a citation naming a table-driven case label — the limit, pinned', async () => {
+		// The cited name must be a whole quoted string in the file, and deliberately NOT an
+		// `it()` title: this register's own citations name `runRejections` case labels, whose
+		// titles are `reports %s` and whose text lives in an array. Review asked for titles
+		// specifically; green here is the answer, so anyone making that change has to come
+		// and decide it rather than discover it.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = [
+			"const cases = [['the thing works', () => {}]];",
+			"it.each(cases)('reports %s', (_name, run) => run());",
+		].join('\n');
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "the thing works".',
+		});
+
+		await expectAccepted(files);
+	});
+
 	it('resolves only the FIRST quoted name after a marker — the limit, pinned', async () => {
 		// Not a feature: a boundary, asserted so it cannot move by accident. A second name
 		// under one marker reads as covered and is not, which review caught in the first

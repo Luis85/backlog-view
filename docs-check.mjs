@@ -503,8 +503,21 @@ for (const file of [...files, "README.md"]) {
 			fail(file, `cites ${target} with an empty test name`);
 			continue;
 		}
-		if (!flat(await readText(target)).includes(wanted)) {
-			fail(file, `cites "${wanted}", which ${target} does not contain`);
+		// A WHOLE quoted string in the target, not a substring of it anywhere. Free-text
+		// `includes` matched an identifier and a comment as readily as a name — `"resolveSettings"`
+		// resolved against the import — and, worse, survived the rename it exists to catch:
+		// extending a title past the cited phrase left the citation reading as live.
+		//
+		// The delimiter is what makes it whole, and that is as far as this goes: it is NOT a
+		// check that the string is an `it()` title, deliberately. This repository's citations
+		// name table-driven case labels (`runRejections`, whose titles are `reports %s`) and a
+		// lint message in `eslint.config.mjs`, neither of which is a test title anywhere in its
+		// file — a rule that demanded one would refuse correct citations, which is the direction
+		// held more expensive here. So a `describe` name or a case label passes, and a phrase
+		// that is nobody's quoted string does not.
+		const source = flat(await readText(target));
+		if (!["'", '"', "`"].some((q) => source.includes(q + wanted + q))) {
+			fail(file, `cites "${wanted}", which ${target} does not name`);
 		}
 	}
 }

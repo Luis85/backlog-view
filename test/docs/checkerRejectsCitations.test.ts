@@ -136,7 +136,24 @@ describe('checked-claim citations', () => {
 					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "renamed away".',
 				});
 			},
-			'cites "renamed away", which test/thing.test.ts does not contain',
+			'cites "renamed away", which test/thing.test.ts does not name',
+		],
+		[
+			// The rename this rule is FOR, in the spelling a substring match cannot see: the
+			// title was not replaced, it was extended, so the old phrase is still in the file
+			// and the citation read as live while naming a test that no longer exists. Matching
+			// a whole quoted string is what tells the two apart — and it also stops a phrase
+			// resolving against an identifier or a comment, which is how `"resolveSettings"`
+			// passed against an import line.
+			'a citation whose test has been renamed by extending its old title',
+			(files) => {
+				files['test/thing.test.ts'] = "it('the thing works when it is wrapped', () => {});\n";
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives:
+						'`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "the thing works".',
+				});
+			},
+			'cites "the thing works", which test/thing.test.ts does not name',
 		],
 		[
 			// The failure mode this rule's FIRST version had, turned into a report. That
@@ -193,7 +210,7 @@ describe('checked-claim citations', () => {
 					].join('\n'),
 				});
 			},
-			'cites "the thing works when it is wrapped", which test/thing.test.ts does not contain',
+			'cites "the thing works when it is wrapped", which test/thing.test.ts does not name',
 		],
 		[
 			// The root README is fetched by name rather than reached by the walk, so it is

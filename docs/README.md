@@ -477,8 +477,9 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
   what `source` and the `Evidence` heading are for, and why a Task opens with a measurement
   rather than an opinion.
 - **A claim about behaviour may name the check that holds it**, and `docs-check.mjs`
-  verifies that citation resolves — the file is there and the test name is still inside
-  it. The form is a backticked path and a quoted test name on one line:
+  verifies that citation resolves — the file is there and the cited name is still one of
+  its quoted strings, whole. The form is a backticked path and a quoted test name on one
+  line:
 
   ```
   **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the shared list once configured"
@@ -486,7 +487,12 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
 
   The path is a `*.test.ts` file — the set `vitest.config.mts` runs — or `eslint.config.mjs`,
   since a lint rule at the forbidden thing is this repository's other kind of check. A helper
-  or a double under `test/` is neither, and the gate refuses it.
+  or a double under `test/` is neither, and the gate refuses it. Quote the name in FULL: the
+  match is against whole quoted strings, so a phrase from the middle of a title does not
+  resolve — which is what makes a title *extended* rather than replaced count as a rename.
+  It is not a check that the string is an `it()` title, and cannot be: a citation here may
+  legitimately name a table-driven case label or a lint message, neither of which is a title
+  anywhere in its file.
 
   **One marker, one citation.** Only the first quoted name after a `**Checked by**` is
   resolved, so a second check needs a second marker — two names under one marker leaves
