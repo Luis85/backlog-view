@@ -20,12 +20,13 @@ import process from "node:process";
 const DOCS = "docs";
 const ADRS = path.join(DOCS, "adrs");
 const LEGAL_CHILDREN = {
-	Epic: new Set(["Feature", "Issue", "Bug"]),
-	Feature: new Set(["PBI", "Issue", "Bug"]),
-	PBI: new Set(["Task", "Issue", "Bug"]),
+	Epic: new Set(["Feature", "Issue", "Bug", "Idea"]),
+	Feature: new Set(["PBI", "Issue", "Bug", "Idea"]),
+	PBI: new Set(["Task", "Issue", "Bug", "Idea"]),
 	Task: new Set(),
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
+	Idea: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
 };

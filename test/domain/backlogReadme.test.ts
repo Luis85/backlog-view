@@ -117,10 +117,14 @@ describe('backlogReadmeContent', () => {
 		// The clamp at the deepest rung: a Task holds a Task, which the ladder read
 		// literally would deny — and the + button on the row would then contradict it.
 		expect(typeRow(content, 'Task')).toContain('| `Task` |');
-		// An extra type hangs from any rung above the deepest and holds the deepest.
-		expect(typeRow(content, 'Bug')).toMatch(/\| `Epic`, `Feature`, `PBI` \| `Task` \|/);
-		// The ladder's top reads as a root, because that is what is offered with no parent.
-		expect(typeRow(content, 'Epic')).toContain('*(nothing — it is a root)*');
+		// An extra type hangs from any rung above the deepest and holds the deepest — the
+		// root marker leads the cell, since it may also hang from nothing.
+		expect(typeRow(content, 'Bug')).toMatch(/\| \*\(nothing — it is a root\)\*, `Epic`, `Feature`, `PBI` \| `Task` \|/);
+		// EVERY declared type reads as a root, because the toolbar creates any of them with
+		// no parent. Asked of the whole vocabulary rather than of Epic: the marker is
+		// derived from `childTypeChoices(null)`, so a branch that narrowed again would put
+		// a false parent requirement into the README this plugin writes into a vault.
+		for (const type of ALL_TYPES) expect(typeRow(content, type)).toContain('*(nothing — it is a root)*');
 	});
 
 	it('names the keys this view uses, not the shipped defaults', () => {

@@ -134,11 +134,12 @@ describe('childTypeChoices', () => {
 		expect(childTypeChoices(get('Bugfix'))).toEqual(['PBI']);
 	});
 
-	it('offers only the top level at the top level', () => {
-		// A Bug hangs from something; creating a parentless one would make an item whose
-		// own rule says it should have had a parent.
-		// CHANGED: the top level is the ladder's top *plus* the markers.
-		expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone']);
+	it('offers the whole vocabulary at the top level, because the toolbar does', () => {
+		// Not an opinion about what SHOULD be a root: `renderToolbar` iterates ALL_TYPES
+		// with no parent, so this is the one description of that path, and its only reader
+		// is the generated README's root marker. Narrowing it here published a parent
+		// requirement the view does not have.
+		expect(childTypeChoices(null)).toEqual(ALL_TYPES);
 	});
 
 	it('offers nothing under a marker — a point in time contains no work', () => {

@@ -138,7 +138,9 @@ built yet, and what it asks for applies to the board as much as to the tree.
 
 `Issue`, `Bug` and `Idea` hang from whichever requirement they concern, which is exactly
 what those types are for: they hold Tasks, they are never re-typed by a move, and they
-attach to an Epic, a Feature or a PBI alike — or to nothing at all.
+attach to an Epic, a Feature or a PBI alike. The plugin also lets one hang from nothing;
+this register does not, on purpose — a note recording a problem or a thought states which
+requirement it concerns, and `docs-check.mjs` holds it to that.
 
 `Milestone` is neither a rung nor a container: it hangs from nothing, holds nothing, and
 counts for nothing. It states a date rather than work, so it never enters a rollup — a
@@ -151,11 +153,11 @@ Every pair holds:
 
 | Type | Parent may be | Children may be |
 | --- | --- | --- |
-| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug` |
-| `Feature` | `Epic` | `PBI`, `Issue`, `Bug` |
-| `PBI` | `Feature` | `Task`, `Issue`, `Bug` |
-| `Task` | `PBI`, `Issue`, `Bug` | *(nothing)* |
-| `Issue` / `Bug` | `Epic`, `Feature` or `PBI` | `Task` |
+| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Idea` |
+| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Idea` |
+| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Idea` |
+| `Task` | `PBI`, `Issue`, `Bug`, `Idea` | *(nothing)* |
+| `Issue` / `Bug` / `Idea` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
 
 The plugin does not *enforce* this — the rules decide what is offered, never what is

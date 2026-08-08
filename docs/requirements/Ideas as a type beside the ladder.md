@@ -10,6 +10,7 @@ closed: 2026-08-08
 source: user request
 files:
   - src/domain/settings.ts
+  - src/domain/itemTypes.ts
   - src/domain/backlogReadme.ts
   - src/view/render/rows.ts
   - styles/badges.css
@@ -115,16 +116,29 @@ category, and both read as a list only while the category holds two; `Intl.ListF
 the stdlib answer and is out of reach, its typings arriving in `ES2021.Intl` where
 `tsconfig.json` sets `lib` to `ES2020`.
 
-## What is deliberately NOT here
+## Two things this PBI refused and then had to do
 
-`childTypeChoices(null)` still answers `Epic` and the markers, not the whole vocabulary.
-Making it agree with the toolbar — which creates any type at the root today — is a
-documentation-accuracy fix owned by [[Deliverables as a rootable extra type]], and it
-belongs to that PBI whether or not `Deliverable` is ever built. An `Idea` is already
-root-creatable through the toolbar without it.
+Both were declined as another note's scope, and both came back as a contradiction *this*
+change had created. Recorded rather than tidied away, because the reason they came back is
+the useful part: a refusal is only safe while nothing else in the same change asserts the
+opposite.
 
-`docs-check.mjs`'s `LEGAL_CHILDREN` does not name `Idea` either. That table is the
-schema of *this register*, and no note here is typed `Idea`; it grows when one is.
+**`childTypeChoices(null)` now answers the whole vocabulary.** It was `Epic` plus the
+markers — an opinion ("a Bug hangs from something") that nothing enforces and nothing acts
+on, since a `+` button needs a row. Its one caller is `parentsOf` in
+`domain/backlogReadme.ts`, so the only thing it ever did was tell the README this plugin
+writes **into the user's vault** that an extra type must hang from a rung, while
+`renderToolbar` was making parentless ones. Declining it was defensible until the repo
+README gained "they can also hang from nothing" — then two documents this change touched
+disagreed. [[Deliverables as a rootable extra type]] had already reasoned this out and
+called it not `Deliverable`-specific; that criterion is satisfied now, ahead of the PBI
+that owns it, and every declared type's row carries the root marker correctly.
+
+**`docs-check.mjs`'s `LEGAL_CHILDREN` names `Idea`.** Same shape: the table is the schema
+of *this register*, so leaving it was fine until the prose above it in `docs/README.md`
+listed `Idea` as attachable to an Epic, a Feature or a PBI. The table now says so too, and
+the register keeps its own stricter rule — an `Issue`, `Bug` or `Idea` **here** states the
+requirement it concerns, even though the plugin permits a parentless one.
 
 ## Verification
 

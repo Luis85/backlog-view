@@ -89,7 +89,11 @@ under a real parent — and that is where this PBI's one real behavioural additi
   [[The type palette has no unclaimed hue left]]. Everything else in this PBI is
   unaffected; the colour is the one part that cannot simply be picked.
 - A parentless Deliverable is never pruned by `hierarchyOnly`.
-- The generated README's hierarchy table describes `Deliverable` as able to have no
+- **Satisfied already, by [[Ideas as a type beside the ladder]].** `childTypeChoices(null)`
+  returns `ALL_TYPES` as of that PBI, so the root marker is correct for the whole
+  vocabulary and a `Deliverable` inherits it the moment it is declared. The reasoning below
+  is what that change was made on, kept because it is this note's and it was right.
+  The generated README's hierarchy table describes `Deliverable` as able to have no
   parent (`childTypeChoices(null)` includes it) — a documentation-accuracy criterion,
   not a functional one; nothing in the interactive UI depends on it. Traced against
   the toolbar (`renderToolbar` iterates the whole `ALL_TYPES` unconditionally, with no

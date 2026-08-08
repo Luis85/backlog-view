@@ -101,10 +101,16 @@ export function childTypeChoices(parent: LadderPosition | null): string[] {
 	// empty (the add button, `New <child>`); see `renderRowTrailing`.
 	if (parent !== null && isMarkerType(parent.typeName)) return [];
 	const ladderChild = LEVELS[childLevelIndex(parent)];
-	// Top level is the ladder's top plus the markers, and exactly those two: a milestone
-	// hangs from nothing, while a Bug hangs from something and creating one with no parent
-	// would make an item whose own rule says it should have had one.
-	if (!parent) return [ladderChild, ...MARKER_TYPES];
+	// The top level is the WHOLE vocabulary, because that is what the toolbar does:
+	// `renderToolbar` iterates `ALL_TYPES` unconditionally and writes a note with no
+	// `parent` for whichever is picked. This branch used to answer `Epic` and the markers
+	// — an opinion ("a Bug hangs from something") that nothing enforced and nothing acted
+	// on, since no `+` button exists without a row. Its one reader is the generated
+	// README's root marker (`parentsOf`), which was therefore publishing, into the user's
+	// own vault, that an Issue must hang from a rung while the toolbar was making
+	// parentless ones. A branch describing a creation path that does not exist is worth
+	// less than one describing the path that does.
+	if (!parent) return [...ALL_TYPES];
 	const onLadder = parent.levelIndex >= 0 && parent.levelIndex < LEVELS.length - 1;
 	return onLadder ? [ladderChild, ...EXTRA_TYPES] : [ladderChild];
 }
