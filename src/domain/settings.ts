@@ -550,22 +550,16 @@ function ownedProperties(settings: BacklogSettings): { label: string; key: strin
 
 /**
  * The one pair `configProblems` lets share a key: the requirements state and the
- * Deliverable state, explicitly configured to the same property. Sharing a key by
- * FALLBACK was already legitimate (`resolvedDeliverableStateKey`, and `ownedProperties`
- * reading `deliverableStateKey` RAW so that fallback resolves to '' and never reaches
- * this map at all) — this is the same "Deliverables don't need their own dedicated
- * status property; they can use the same one" idea, asked for explicitly rather than
- * arrived at by leaving a key unset. The two workflows do not share a vocabulary
- * (`deliverableStates`/`deliverableDoneValues` stay independent of `states`/`doneValues`
- * once the key IS explicit — see the Deliverable workflow's own resolution rules), so
- * one property silently overwriting the other's meaning — the usual reason a shared
- * key is a mistake — never applies to this pair.
+ * Deliverable state, explicitly configured to the same property. Sharing by FALLBACK is
+ * already legitimate and never reaches this map (`ownedProperties` reads
+ * `deliverableStateKey` RAW, so an unset one resolves to ''); this is the same
+ * "Deliverables can use the same status property" idea asked for explicitly. The two
+ * workflows keep independent vocabularies either way, so the usual reason a shared key is
+ * a mistake — one property silently overwriting the other's meaning — never applies here.
  *
- * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": a
- * third property landing on the same key is still every bit the mistake it always was,
- * so the exemption only fires when these two are the WHOLE group sharing the key —
- * one more label on it (order, tags, an axis key, anything) reports as a collision
- * again, state and deliverable state both named in it like any other clash.
+ * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": one
+ * more label on the key (order, tags, an axis key) reports as a collision again, these
+ * two named in it like any other clash.
  */
 const STATE_KEY_SHARING_EXEMPT: [string, string] = ['state', 'deliverable state'];
 
