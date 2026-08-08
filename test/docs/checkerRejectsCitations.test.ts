@@ -130,6 +130,19 @@ describe('checked-claim citations', () => {
 			'cites test/thing.test.ts with an empty test name',
 		],
 		[
+			// Flattening the source as well as the citation collapsed the difference this
+			// rule exists to see: a name is exactly the whitespace it holds, and a citation
+			// wraps only because Markdown wrapped it. One is normalized, the other is not.
+			'a citation whose spacing does not match the name in the file',
+			(files) => {
+				files['test/thing.test.ts'] = "it('the  thing works', () => {});\n";
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "the thing works".',
+				});
+			},
+			'cites "the thing works", which test/thing.test.ts does not name',
+		],
+		[
 			'a citation naming a test the file no longer contains',
 			(files) => {
 				files['docs/requirements/Doing the thing.md'] = useCase({

@@ -520,7 +520,12 @@ for (const file of [...files, "README.md"]) {
 		// the delimiter forced an escape the register has no reason to carry. Checking only
 		// the literal form fails a citation that is exactly right — the false-failure
 		// direction, and one nobody would suspect the CHECK of.
-		const source = flat(await readText(target));
+		// The CITATION is flattened, the SOURCE is not, and the asymmetry is the point: a
+		// citation wraps because Markdown wrapped it, and a quoted string in source means
+		// exactly the whitespace it holds. Flattening both let a file's `it("the  thing
+		// works")` be named by a citation saying `the thing works` — a false pass in a rule
+		// whose whole job is telling a live name from a renamed one.
+		const source = await readText(target);
 		const escaped = (q) => wanted.replaceAll("\\", "\\\\").replaceAll(q, "\\" + q);
 		if (!["'", '"', "`"].some((q) => source.includes(q + wanted + q) || source.includes(q + escaped(q) + q))) {
 			fail(file, `cites "${wanted}", which ${target} does not name`);
