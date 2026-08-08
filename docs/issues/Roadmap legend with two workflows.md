@@ -38,15 +38,24 @@ correctly, so there is nothing to fix there. Producing a second one is a deliber
    carry (`docStatus` is the name used throughout the tests).
 2. Set **Deliverable states** to a list that differs from the requirements one — e.g.
    `Concept, Draft, In review, Published` — and **Deliverable done values** to `Published`.
-3. The register holds no `Deliverable`-typed notes, and cannot: `docs-check.mjs` refuses
-   the type here, so the schema this backlog documents does not include it. Make two or
-   three scratch notes OUTSIDE `docs/` — `type: Deliverable`, a `docStatus`, and a
-   `start`/`due` pair so they draw — and point a scratch base at that folder.
+3. Two or three `Deliverable` notes carrying a `docStatus` and a `start`/`due` pair, so
+   they draw. They belong in `docs/deliverables/`, under an `Epic`, a `Feature` or a
+   `PBI` — the register admits the type and documents the folder as of this increment.
+   The gate wants what it wants of any note there: `type`, `order`, `status`, a `parent`
+   link, and a unique basename.
 
-That setup cost is itself worth recording as a finding: this projection has a
-configuration the register cannot demonstrate on itself, which is the one place `docs/`'s
-own "the folders are the feature demonstrating itself" claim (`docs/README.md`) does not
-reach.
+**This step used to say the opposite**, and anyone re-running the check before that
+increment was told to make scratch notes outside `docs/` because `docs-check.mjs` refused
+the type — true when it was written, false now, and found by review while the note itself
+was being closed. Worth leaving visible rather than quietly overwriting: a `cadence:
+release` note is a checklist to re-run, so its *setup* rots exactly like code and nothing
+gates it. The register's paths and links are checked; its instructions are prose.
+
+What survives of the old finding, in a narrower form: the register can now hold the notes
+but still does not demonstrate this configuration, because `docs/Product Backlog.base`
+names no `deliverableStateProperty` and register notes carry `status` rather than a
+second workflow's key. Both halves of step 1 and 2 are still a deliberate act — the
+difference is that they are now an act performed on `docs/` rather than beside it.
 
 ## How to check
 
