@@ -87,7 +87,7 @@ describe('the documented hierarchy and the gate agree', () => {
 			(files) => {
 				files['docs/README.md'] = `${hierarchyTable()}| Spike | Epic | *(nothing)* |\n`;
 			},
-			'names Spike outside a code span',
+			'has Spike outside a code span',
 		],
 		[
 			// ONE CASE PER COLUMN, because the first fix went in at the type column only and
@@ -99,18 +99,31 @@ describe('the documented hierarchy and the gate agree', () => {
 			(files) => {
 				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
 			},
-			'names Spike outside a code span',
+			'has Spike outside a code span',
 		],
 		[
 			'a parent cell naming a type in prose beside the code-formatted ones',
 			(files) => {
 				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |', '| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
 			},
-			'names Spike outside a code span',
+			'has Spike outside a code span',
 		],
 		[
-			// The claim the capitalisation rule does NOT subsume: a cell holding no name at
-			// all. No capital, nothing to report, and the row still disappears.
+			// The THIRD instance, and the one that turned the rule from "no capitals" into a
+			// whitelist. Struck through, GitHub and Obsidian both render the relation as
+			// removed — while the code span is still collected, so the documented set stayed
+			// equal to `LEGAL_CHILDREN` and the check passed. There is no `delete` node to skip
+			// either: this parser loads the table extension only, so the tildes are literal
+			// text that no capitalisation rule would look at.
+			'a hierarchy entry struck through, which renders as removed',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, ~~`Deliverable`~~ |');
+			},
+			'has ~ outside a code span',
+		],
+		[
+			// The claim the prose rule does NOT subsume: a cell holding no name at all. Nothing
+			// disallowed to report, and the row still disappears.
 			'a hierarchy row whose type cell is empty',
 			(files) => {
 				files['docs/README.md'] = `${hierarchyTable()}|  | \`Epic\` | *(nothing)* |\n`;

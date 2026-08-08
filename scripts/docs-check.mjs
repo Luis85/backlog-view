@@ -922,22 +922,36 @@ if (hierarchies.length === 0) {
 		// column over while the collected set still equalled `LEGAL_CHILDREN`. Both measured
 		// against the real register before being fixed; both passed.
 		//
-		// The rule is CAPITALISATION, which is as far as this can go without reading English:
-		// every type is a capitalised word, and every legitimate scrap of prose in this table
-		// is lowercase connective tissue — `(nothing — it is a root)`, `or`, the separators.
-		// So a capital outside a code span is a name someone forgot to format. A type spelled
-		// in lowercase prose would still slip through, and nothing here claims otherwise.
+		// The rule is a WHITELIST of what may stand outside a code span, which is as far as
+		// this can go without reading English: every legitimate scrap of prose in this table
+		// is lowercase connective tissue — `(nothing — it is a root)`, `or`, the separators —
+		// so anything else is a name someone forgot to format, or a syntax this check cannot
+		// see. A type spelled in all-lowercase prose would still slip through, and nothing
+		// here claims otherwise.
+		//
+		// A whitelist rather than "no capitals", because the THIRD instance of this defect was
+		// `~~`Deliverable`~~`: struck through, so GitHub and Obsidian both render the relation
+		// as removed, while `code` still collects the span and the tildes land in prose that a
+		// capitalisation rule has no reason to look at. This parser loads the TABLE extension
+		// only, so there is no `delete` node to exclude — the tildes are literal text, which is
+		// why the rule is about unknown syntax rather than about strikethrough. It fails
+		// closed: a legitimate new form of prose is a false ALARM that makes somebody look,
+		// which is the safe direction and the one this file argues for elsewhere.
 		//
 		// Checked HERE rather than in `tablesWith`, which is generic over any heading set:
-		// "this table's prose is lowercase" is this table's rule. What the helper owes is the
-		// prose itself, which it now returns — a caller cannot notice what it never receives,
-		// and that is exactly how this defect got a second life after the first fix.
-		for (const cell of cells) {
-			// The capitalised WORDS rather than the whole cell: the prose of a relation cell is
-			// mostly the separators between the code spans, so reporting it raw says
-			// `", , , , Spike"` and buries the one word a contributor has to go and fix.
-			const loose = cell.text.match(/\p{Lu}[\p{L}\p{M}]*/gu);
-			if (loose) fail("docs/README.md", `hierarchy table row ${index + 1} names ${loose.join(", ")} outside a code span`);
+		// "this table's prose is lowercase connective tissue" is this table's rule. What the
+		// helper owes is the prose itself, which it now returns — a caller cannot notice what
+		// it never receives, and that is exactly how this defect got a second life.
+		for (const [column, cell] of cells.entries()) {
+			// The capitalised WORDS rather than the offending letter, and the odd CHARACTERS
+			// deduped: the prose of a relation cell is mostly separators, so reporting it raw
+			// says `", , , , Spike"` and buries the one thing to go and fix.
+			const loose = cell.text.match(/\p{Lu}[\p{L}\p{M}]*/gu) ?? [];
+			const odd = [...new Set(cell.text.replace(/\p{Lu}[\p{L}\p{M}]*/gu, "").match(/[^\p{Ll}\p{M}\s,/()—]/gu) ?? [])];
+			const wrong = [...loose, ...odd];
+			if (wrong.length > 0) {
+				fail("docs/README.md", `hierarchy table row ${index + 1} column ${column + 1} has ${wrong.join(", ")} outside a code span`);
+			}
 		}
 		// Distinct from the rule above, and not covered by it: a cell holding no name at all.
 		if (types.code.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);
