@@ -1,4 +1,6 @@
-import { LinkEntry } from './noteFields';
+import type { TimelineBar } from './bars';
+import { CivilDate, LinkEntry } from './noteFields';
+import { daysBetween } from './timeline';
 
 /**
  * Turning what notes SAY about prerequisites into what the model KNOWS: which edges
@@ -258,4 +260,63 @@ export function dependentsClosure(path: string, prerequisites: Map<string, strin
 		}
 	}
 	return reached;
+}
+
+/** One drawable edge: the prerequisite's bar, the dependent's bar, and whether it conflicts. */
+export interface DependencyArrow {
+	from: TimelineBar;
+	to: TimelineBar;
+	conflict: boolean;
+}
+
+/**
+ * Which prerequisite edges have two ends to draw between, and which of those contradict
+ * their own dates — from [[Arrows between bars]] main flow steps 1-2.
+ *
+ * Takes the bars a placement pass already produced rather than the item set, because
+ * drawability is a question about what ended up ON SCREEN: an end that is shelved,
+ * hidden, collapsed or filtered out of the passed set simply has no bar here, and that
+ * alone is why it draws no arrow (1a, 1b) — nothing here re-derives placement. Nothing
+ * special is needed for 1c either: `deriveBars` routes an `outsideFilter` row to context
+ * before any span is computed for it, so such a row never has a bar in the passed set
+ * either — the same membership test that answers 1a/1b already answers 1c. A
+ * `brokenPrerequisites` entry is likewise never re-examined: `resolveDependencies`
+ * already kept it out of `prerequisites` (1d), so walking that list is the whole answer.
+ */
+export function dependencyArrows(bars: TimelineBar[]): DependencyArrow[] {
+	const byPath = new Map<string, TimelineBar>();
+	for (const bar of bars) byPath.set(bar.item.file.path, bar);
+	const arrows: DependencyArrow[] = [];
+	for (const to of bars) {
+		for (const prerequisite of to.item.prerequisites) {
+			const from = byPath.get(prerequisite.file.path);
+			if (!from) continue;
+			arrows.push({ from, to, conflict: conflicts(from, to) });
+		}
+	}
+	return arrows;
+}
+
+/**
+ * `dependent.start <= prerequisite.end`, on or before — an end is inclusive, so a
+ * dependent starting the same day occupies a day its prerequisite is still running
+ * ([[Bars from two dates]]'s own `clampedEnd - clampedStart + 1`).
+ *
+ * Judged per END, not per item, and only on a date the note itself states: an end this
+ * projection INFERRED (rolled up from a subtree) or never derived at all (absent — the
+ * open end a shelved dependent or a dateless bar leaves) suppresses the comparison on
+ * that side alone, so a prerequisite with a stated target and an inferred start still
+ * conflicts (2a). A milestone needs no case of its own — `placeMarker` already reduced
+ * it to its target at both ends before either bar reached this function (1e).
+ */
+function conflicts(from: TimelineBar, to: TimelineBar): boolean {
+	const dependentStart = statedDate(to.span.start, to.inferredStart);
+	const prerequisiteEnd = statedDate(from.span.target, from.inferredEnd);
+	if (dependentStart === null || prerequisiteEnd === null) return false;
+	return daysBetween(dependentStart, prerequisiteEnd) >= 0;
+}
+
+/** A bar's own end, or null when it is inferred or simply not there. */
+function statedDate(value: CivilDate | null, inferred: boolean): CivilDate | null {
+	return inferred ? null : value;
 }
