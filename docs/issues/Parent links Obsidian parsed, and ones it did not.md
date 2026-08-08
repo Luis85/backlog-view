@@ -2,7 +2,7 @@
 type: Issue
 order: 80
 parent: "[[Smoke test the tree]]"
-status: Open
+status: Done
 priority: P3
 area: verification
 cadence: release
@@ -71,16 +71,38 @@ off it into something a person could actually be asked to do and still learn not
 
 ## What a run has to record
 
-For the unresolved-link case, what the console printed — the `frontmatterLinks` value
-itself, not a summary of it. That answer decides one of two follow-ups, and neither
-should be taken before it:
+**2026-08-08, in a live vault.** With `parent: "[[No Such Note]]"` on an open note, the
+console printed nothing — `getFileCache(...)` returned a real cache object, since an error
+would have been loud, and `frontmatterLinks` was simply absent.
 
-- **Obsidian indexes unresolved links** → the bracket handling in `linkpathFromRawValue`
-  is dead. Delete it, teach `FakeVault.addFile` to index bracketed values, and move the
-  ten fixtures that write brackets by hand onto `parentLink`.
-- **It does not** → the fallback is load-bearing for exactly that case. Keep it, and add a
-  fixture that reaches it *honestly* — a bracketed value with no link entry, which is then
-  a cache Obsidian really does produce.
+**Obsidian does not index a link that resolves to nothing.** The unresolved case therefore
+takes path 2, and path 2 is live code rather than a leftover.
+
+## What that did not settle
+
+Both follow-ups this note offered were wrong, and finding out cost one test written and
+corrected in place.
+
+"It does not index them → the bracket handling is load-bearing for exactly that case" does
+not follow: *reaching* path 2 is not the same as the STRIPPING mattering once there. The
+test written to cover it passes with `linkpathFromRawValue`'s wiki branch deleted, because
+`[[No Such Note]]` and `No Such Note` are equally absent from the vault — the strip changes
+the linkpath and never the answer. Watched failing, as the rule requires; it did not fail,
+which is the whole finding.
+
+For the strip to change an outcome, a bracketed value would need no link entry AND a target
+that exists — and the measurement says that pair cannot occur, because a link that resolves
+is indexed and one that does not is not.
+
+So the position is narrower than either branch offered: **the bracket handling has no
+measurable effect in a real vault, and it is kept anyway.** Two lines, and deleting them
+would rest on a deduction about Obsidian's link parser rather than on a measurement — a
+value that parser declines to index while still naming a real note would regress in
+silence. That is a worse trade than two lines carrying a comment that says what they are.
+
+[[The fake vault can hold a cache Obsidian would not produce]] holds what is left: the
+fixtures pairing brackets with a resolvable target model a cache Obsidian does not hand
+out, and now provably so.
 
 ## Runs
 

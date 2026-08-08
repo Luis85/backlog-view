@@ -89,6 +89,37 @@ describe('buildModel', () => {
 		expect(names(model.roots[0].children).sort()).toEqual(['Alias', 'Plain', 'Wiki']);
 	});
 
+	// The one state that reaches the raw fallback in a REAL vault. Measured in Obsidian
+	// 2026-08-08: a note carrying `parent: "[[No Such Note]]"` has frontmatter and NO
+	// `frontmatterLinks` at all — a link resolving to nothing is not indexed — so path 1 has
+	// nothing to walk and the raw value is all there is.
+	//
+	// It does NOT cover the bracket stripping, and saying so is the point: this test was
+	// written believing it did, and it passes with `linkpathFromRawValue`'s wiki branch
+	// deleted. Both spellings fail to resolve — `[[No Such Note]]` and `No Such Note` are
+	// equally absent — so the strip changes the linkpath and never the answer. What it pins
+	// is the ORPHAN outcome on the path a vault actually takes, which is worth having and is
+	// less than it reads as.
+	//
+	// The bracketed fixtures above pair brackets with a target that EXISTS, which a real
+	// vault would have indexed, so they reach the strip through a cache Obsidian does not
+	// hand out. Between them and this, nothing measures the strip against a state a vault
+	// can produce — `docs/issues/The fake vault can hold a cache Obsidian would not
+	// produce.md` carries what is left of that question.
+	it('reports an unresolvable parent link as an orphan', () => {
+		const vault = new FakeVault();
+		vault.addFile('Child.md', { frontmatter: { parent: '[[No Such Note]]' } });
+
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(names(model.roots)).toEqual(['Child']);
+		// An ORPHAN — a parent that was named and did not resolve — never a root that never
+		// named one. The distinction is what `clearsStaleLink` acts on when the note is moved.
+		expect(model.roots[0].orphan).toBe(true);
+		expect(model.roots[0].hasParentValue).toBe(true);
+		expect(model.roots[0].parent).toBeNull();
+	});
+
 	it('uses the first entry of a list-valued parent property', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md');
