@@ -383,6 +383,10 @@ function renderBarRow(
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
 	renderBarLabel(track, bar, geometry, scale, window);
+	// Said in words on the row itself, because on this axis the state is otherwise a
+	// bar COLOUR and nothing else — see `stateNote`.
+	const state = stateNote(ctx.host.settings.stateKey, bar.item);
+	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
 	// The row is the timeline's one selection stop, so a MARKER'S row is where the
 	// line and the diamond's facts have to be readable (criterion 4a: neither is
 	// focusable, so nothing about a milestone may exist only under a hover). An
@@ -392,7 +396,11 @@ function renderBarRow(
 	// rather than `aria-label`: an explicit label REPLACES that name instead of
 	// adding to it, and would cost every dated row its type word for a fact the bar
 	// already states.
-	if (isMarkerType(bar.item.typeName)) row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
+	// A marker's explicit label REPLACES the row's content, the hidden state span
+	// above included, so the same words are folded into it rather than lost.
+	if (isMarkerType(bar.item.typeName)) {
+		row.setAttribute('aria-label', `${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}`);
+	}
 	wireCardActivation(ctx, row, bar.item);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
@@ -409,6 +417,30 @@ function renderBarRow(
 		accent: !bar.item.done && slot === null && !milestoneDrawn,
 	};
 	return { row, colors };
+}
+
+/**
+ * The row's workflow state in words, or '' where there is none to say.
+ *
+ * This axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
+ * site is the tree, and `chipProps` skips the state property, so without these words the
+ * five slot colours are the whole of it — unreadable to a screen reader, and colour alone
+ * for everyone else (WCAG 1.4.1). Done is spelt out for the same reason: `pbl-done` is a
+ * class and a green bar.
+ *
+ * Visually hidden text in the ROW's content, not an `aria-label` anywhere. `.pbl-bar` is
+ * a plain div — role `generic`, where ARIA prohibits an accessible name, so appending to
+ * the label it already carries may be announced by nobody — and a label on the row would
+ * REPLACE the badge and title the row derives its name from, which is exactly what
+ * `renderBarRow` avoids for an ordinary row. Content adds to that name instead. It stays
+ * out of the visible row on purpose: the layout is a lead column and a track, and a
+ * sixth thing in the lead is what the colour was chosen to avoid.
+ */
+function stateNote(stateKey: string, item: BacklogItem): string {
+	if (!stateKey) return '';
+	const value = item.stateValue;
+	if (item.done) return value === null ? 'Done' : `${value} — done`;
+	return value ?? '';
 }
 
 /**

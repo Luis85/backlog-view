@@ -148,3 +148,82 @@ describe('bar labels', () => {
 		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
 	});
 });
+
+/**
+ * A bar states its workflow state as a COLOUR: `pbl-state-N`, or green for done. No chip
+ * is rendered on this projection (`renderStateChip`'s only call site is the tree, and
+ * `chipProps` skips the state property), so before `stateNote` the colour was the whole
+ * of it — nothing at all for a screen reader, and colour alone for a reader who cannot
+ * separate the slots (WCAG 1.4.1). The words are hidden text in the row's own content,
+ * because the row's accessible name is content-derived and an `aria-label` would replace
+ * the badge and title rather than add to them.
+ */
+describe('workflow state on the dated axis', () => {
+	function statefulVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Rollout.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'Active', start: '2026-08-04', due: '2026-08-20' },
+		});
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'PBI', order: 20, status: 'Done', start: '2026-08-10', due: '2026-09-01' },
+		});
+		vault.addFile('Cutover.md', {
+			frontmatter: { type: 'Milestone', order: 30, status: 'Active', start: '2026-09-15', due: '2026-09-15' },
+		});
+		return vault;
+	}
+
+	function statefulRoadmap() {
+		const harness = makeView(statefulVault(), { ...DATE_AXIS, stateProperty: 'note.status' }, { collapsed: true });
+		harness.view.setProjection('roadmap');
+		return harness.containerEl;
+	}
+
+	function timelineRow(containerEl: HTMLElement, title: string): HTMLElement {
+		const row = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row')).find(
+			(r) => r.querySelector('.pbl-card-title')?.textContent === title,
+		);
+		if (!row) throw new Error(`no timeline row for ${title}`);
+		return row;
+	}
+
+	const words = (row: HTMLElement) => row.querySelector<HTMLElement>('.pbl-sr-only')?.textContent ?? null;
+
+	it('puts the state in each row, in words as well as in the bar colour', () => {
+		const containerEl = statefulRoadmap();
+		const row = timelineRow(containerEl, 'Rollout');
+
+		// The colour is still drawn — this adds a carrier, it does not replace one.
+		expect(row.className).toMatch(/pbl-state-\d/);
+		expect(words(row)).toBe('Active');
+		// And not as a visible chip: the row is a lead column and a track, deliberately.
+		expect(row.querySelector('.pbl-state-chip')).toBeNull();
+	});
+
+	it('says done in words too, which is otherwise a class and a green bar', () => {
+		const containerEl = statefulRoadmap();
+		const row = timelineRow(containerEl, 'Shipped');
+
+		expect(row.classList.contains('pbl-done')).toBe(true);
+		expect(words(row)).toBe('Done — done');
+	});
+
+	it('folds the state into a marker row, whose explicit label replaces its content', () => {
+		const containerEl = statefulRoadmap();
+
+		// The name is the whole of what a marker row announces, so hidden text inside it
+		// would be dropped: the words have to be in the label itself.
+		expect(timelineRow(containerEl, 'Cutover').getAttribute('aria-label')).toBe(
+			'Cutover — Milestone 2026-09-15 — Active',
+		);
+	});
+
+	it('says nothing where there is no workflow property to say anything about', () => {
+		const { view, containerEl } = makeView(statefulVault(), DATE_AXIS, { collapsed: true });
+		view.setProjection('roadmap');
+
+		// No `stateKey`: every `stateValue` is null and no bar carries a state colour, so
+		// there is no fact here that colour alone is carrying.
+		expect(words(timelineRow(containerEl, 'Rollout'))).toBeNull();
+	});
+});

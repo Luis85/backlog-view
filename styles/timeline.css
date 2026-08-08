@@ -131,8 +131,13 @@
 .pbl-timeline-lead-grip:focus-visible {
 	background-color: var(--interactive-accent);
 }
+/* The ring has to contrast with the strip it rings. Both were `--interactive-accent`,
+   which on a 6px strip filled with that same accent is an indicator drawn in the colour
+   of the thing it indicates — invisible, on the one control here that has to say where
+   the keyboard is. `--text-on-accent` is the token a theme guarantees legible against
+   the accent it fills with, which is exactly the question being asked. */
 .pbl-timeline-lead-grip:focus-visible {
-	outline: 2px solid var(--interactive-accent);
+	outline: 2px solid var(--text-on-accent);
 	outline-offset: -1px;
 }
 

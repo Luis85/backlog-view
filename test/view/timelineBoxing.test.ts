@@ -135,3 +135,35 @@ describe('the sticky lead column stays opaque under its tint', () => {
 		}
 	});
 });
+
+/**
+ * A focus indicator has to be visible against what it indicates. The grip is a 6px strip
+ * filled with `--interactive-accent` while focused, and its outline was that same token —
+ * a ring drawn in the colour of the thing it rings, on the one control in this pane that
+ * has to say where the keyboard is.
+ *
+ * Text again, and its reach is exactly that: it reads the two tokens the rules name and
+ * refuses them being the same one. It cannot tell you what either resolves to in a theme,
+ * nor measure the contrast between them — that stays the live-vault question in
+ * `docs/requirements/Smoke test the roadmap.md`.
+ */
+describe('the resize grip is ringed in a colour other than its own fill', () => {
+	const css = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
+
+	/** The colour tokens one property names, across every rule that styles the focused grip. */
+	function tokens(property: string): string[] {
+		return css
+			.split('}')
+			.filter((chunk) => chunk.includes('.pbl-timeline-lead-grip:focus-visible'))
+			.flatMap((chunk) => [...chunk.matchAll(new RegExp(`${property}[^;]*var\\(\\s*(--[\\w-]+)`, 'g'))])
+			.map((match) => match[1]);
+	}
+
+	it('never paints the outline in the token the strip itself is filled with', () => {
+		const fills = tokens('background-color');
+		const rings = tokens('outline');
+		expect(fills.length, 'nothing fills the focused grip').toBeGreaterThan(0);
+		expect(rings.length, 'the focused grip draws no outline').toBeGreaterThan(0);
+		for (const ring of rings) expect(fills, `the ring repeats its own fill: ${ring}`).not.toContain(ring);
+	});
+});

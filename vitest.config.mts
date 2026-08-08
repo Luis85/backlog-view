@@ -99,6 +99,12 @@ export default defineConfig({
 			// plus the sweep's new rows for a done bar off the grid and a base with no
 			// milestone at all) measured 98.11/93.87/99.43/99.30 — all four round down to
 			// the figures already recorded above, so none of the four move.
+			//
+			// The a11y fix wave (the toolbar's focus identity moved from `aria-label` to a
+			// per-control key, the lead grip refocusing only what actually held focus, and
+			// each timeline row saying its state in words) measured 98.11/93.87/99.43/99.30
+			// — the same four figures again: the increment is small and all of it is
+			// driven, so none of the four move.
 			thresholds: {
 				statements: 98.1,
 				branches: 93.8,

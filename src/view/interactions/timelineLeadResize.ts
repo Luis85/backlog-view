@@ -96,13 +96,21 @@ export function renderLeadResize(
 	};
 
 	const commit = (width: number): void => {
+		// Asked BEFORE the write below, which destroys this element and with it the
+		// answer: focus is restored only to a grip that actually held it. A pointer
+		// gesture never does — `pointerdown` calls `preventDefault()`, so the mouse
+		// never focuses the strip — and refocusing unconditionally handed the separator
+		// a focus the user had not given it, after which their next arrow key resized
+		// the column instead of moving the card selection (`handleRoadmapKeydown`
+		// bails on any event whose target is not the pane itself).
+		const held = document.activeElement === grip;
 		host.setLeadWidth(width === defaultWidth ? null : width);
 		// The write above re-renders the whole projection, destroying THIS element —
 		// the shelf header's own controls hit the identical wall (`shelfControls.ts`'s
 		// `refocus`), and the fix is the same: find the replacement and refocus it, or
 		// a keyboard user resizing by repeated presses is dropped back to the document
 		// body after the very first one.
-		host.roadmap?.scroller?.querySelector<HTMLElement>('.pbl-timeline-lead-grip')?.focus();
+		if (held) host.roadmap?.scroller?.querySelector<HTMLElement>('.pbl-timeline-lead-grip')?.focus();
 	};
 
 	// The pointer that owns the gesture in flight, or null between gestures. A column

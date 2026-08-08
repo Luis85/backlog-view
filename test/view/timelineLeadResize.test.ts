@@ -104,6 +104,28 @@ describe('the lead-column resize grip', () => {
 			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${TIMELINE_LEAD_PX}px`);
 		});
 
+		it('leaves the keyboard where it was: a pointer resize takes no focus', () => {
+			// `pointerdown` calls `preventDefault()`, so a mouse or a finger never focuses
+			// the strip — and the commit used to refocus its replacement regardless. That
+			// handed the separator a focus nobody gave it, after which the pane's own
+			// `evt.target !== evt.currentTarget` guard swallowed every key: the next arrow
+			// resized the column instead of moving the card selection.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			const pane = treeOf(containerEl);
+			pane.focus();
+
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 40));
+			el.dispatchEvent(pointer('pointerup', 40));
+
+			// The resize itself still lands — this withholds the focus, not the write.
+			expect(view.leadWidth).toBe(TIMELINE_LEAD_PX + 40);
+			expect(document.activeElement).not.toBe(grip(containerEl));
+			expect(document.activeElement).toBe(pane);
+		});
+
 		it('answers to one contact: a second finger neither starts nor ends the gesture', () => {
 			// A column boundary is dragged by ONE pointer. A second pointerdown used to
 			// install its own handlers with its own startX, after which every move fed both
