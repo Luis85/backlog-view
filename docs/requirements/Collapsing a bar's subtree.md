@@ -118,6 +118,9 @@ reading the plan move the reader's place in the tree (2026-08-08).
 - A row nobody has ruled on opens collapsed on the grid too: the two scopes are settled
   from one pass over the model, so the projection not on screen is never left unsettled
   and then opened whole the first time it is shown.
+- The scope is the PROJECTION's, so the shelf and context cards drawn beside the grid keep
+  their disclosures with the axis as its rows do — one working position per screen, rather
+  than one per control.
 - While the quick filter runs the chevron writes nothing and the menu offers no toggle.
 - The chevron opens nothing: neither a primary nor a middle click on it reaches the row's
   own open behaviour.

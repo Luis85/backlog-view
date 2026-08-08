@@ -418,7 +418,9 @@ free of runtime code so imports stay cycle-free.
   face; they are two bits and one register.** Both go through `isCollapsed`/`setCollapsed`,
   and `collapseKey` is the ONE place that decides which bit those land on: the dated axis
   keys under `TIMELINE_SCOPE`, everything else under the path. Add a caller, not a choice —
-  a surface that picks its own scope is how the two drift. The quick filter still overrides
+  a surface that picks its own scope is how the two drift, and the shelf and context cards
+  beside the grid take the axis's scope with it deliberately, since the working position
+  being kept is the SCREEN's rather than the control's. The quick filter still overrides
   whichever is being asked. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
   never "which projection is this" — which is what makes the toolbar's bulk controls and
   the row menu's section serve both without either asking what it is looking at.

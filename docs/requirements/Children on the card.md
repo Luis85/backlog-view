@@ -86,10 +86,12 @@ card — and a count is the half of it that cannot be acted on.
 - Activating an entry opens that child, and never the card's own note — by primary click
   and by middle click, which are separate events and separately guarded. The toggle
   opens nothing on either.
-- Expansion is the tree's own per-path collapse state: remembered per saved view and per
-  device, unchanged by a data update, and shared with the tree's row, so one bit means
-  "this node is open" wherever the item is a CARD. The dated axis's fold is not that bit
-  ([[Collapsing a bar's subtree]]). While the quick filter runs the toggle is disabled.
+- Expansion is per-path collapse state: remembered per saved view and per device, and
+  unchanged by a data update. It is the TREE's bit on the tree, the board and the horizon
+  axis, so one bit means "this node is open" across the three. On the dated axis it is
+  that axis's own — a card on the shelf beside a plan is on the plan's screen, and the
+  working position kept is the screen's ([[Collapsing a bar's subtree]]).
+  While the quick filter runs the toggle is disabled.
 - The card menu offers the same children, on a right-click and on the menu key, and does
   not offer them on a surface that drew no disclosure.
 - Nothing in the feature writes to a note.
