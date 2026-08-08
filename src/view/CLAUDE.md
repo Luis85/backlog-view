@@ -403,6 +403,18 @@ free of runtime code so imports stay cycle-free.
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
+- **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
+  face; they are one bit and one register.** The bit is the tree's `isCollapsed`, so a
+  row folded on the grid is folded in the tree, and the quick filter overrides both at
+  once. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
+  never "which projection is this" — which is what makes the toolbar's bulk controls and
+  the row menu's section serve both without either asking what it is looking at.
+  `domain/bars.ts`'s `timelineRows` decides which rows survive and which keep a chevron,
+  and it is asked of the bars derived BEFORE any were hidden: computed from what is
+  left, a collapsed row would have no children to have and would lose the very control
+  that reopens it. Unlike the tree's, this toggle takes the whole `render()` — the
+  window, the gridlines and every full-height mark are derived from the row set it
+  changes.
 - A bucket's New button runs the ordinary gated creation flow with the bucket's value as
   a `CreatePlacement`, written inside the same `createBacklogItem` call as the type and
   the rank. One write, so no note ever exists in a bucket its frontmatter does not claim.

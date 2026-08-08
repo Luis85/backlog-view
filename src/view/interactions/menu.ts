@@ -270,17 +270,36 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * buttons and this is their keyboard path — the same answer the tree gives for the add
  * button and the state chip.
  *
- * The gate is `cardChildrenShown`, filled by the render, and not the projection: a
- * dated-axis timeline row shares `wireCardActivation` with real cards but draws no body
- * and so no disclosure, and the axis cannot separate them either, since that axis also
- * draws a shelf of real cards. Reading what the render drew also survives the entry
- * point: the menu key arrives through `showContextMenuFor`, which calls `buildItemMenu`
- * directly and never touches the render's wiring, so a flag threaded through that wiring
- * would miss exactly the case this section exists for.
+ * The gate is `cardChildrenShown`, filled by the render, and not the projection: a card
+ * whose children have all hidden draws no disclosure and a dated-axis timeline row draws
+ * one over its own kind of list (the rows below it, rather than a list on its face), and
+ * the axis cannot separate those either, since it also draws a shelf of real cards.
+ * Reading what the render drew also survives the entry point: the menu key arrives
+ * through `showContextMenuFor`, which calls `buildItemMenu` directly and never touches
+ * the render's wiring, so a flag threaded through that wiring would miss exactly the case
+ * this section exists for.
+ *
+ * The toggle leads, because on the timeline it is the whole feature: that chevron hides
+ * ROWS, and the entries below open notes rather than standing in for it. It is withheld
+ * while the quick filter runs, exactly as the disclosure itself goes `disabled` there and
+ * for the same reason — `isCollapsed` reports false while it runs, so the write would
+ * look inert and then take effect once the filter cleared.
  */
 function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	if (!host.cardChildrenShown.has(item.file.path)) return;
 	menu.addSeparator();
+	const collapsed = host.isCollapsed(item.file.path);
+	if (!host.isFiltering()) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(collapsed ? 'Show children' : 'Hide children')
+				.setIcon(collapsed ? 'chevron-right' : 'chevron-down')
+				.onClick(() => {
+					host.setCollapsed(item.file.path, !collapsed);
+					host.render();
+				}),
+		);
+	}
 	for (const child of listedChildren(host, item)) {
 		menu.addItem((mi) =>
 			mi

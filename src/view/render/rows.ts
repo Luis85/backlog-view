@@ -165,19 +165,9 @@ function renderRowLead(
 	const grip = row.createDiv({ cls: 'pbl-grip', attr: { 'aria-hidden': 'true' } });
 	setIcon(grip, 'grip-vertical');
 
-	const chevron = row.createDiv({ cls: 'pbl-chevron' + (state.hasChildren ? '' : ' pbl-leaf') });
-	if (state.hasChildren) {
-		setIcon(chevron, 'chevron-right');
-		chevron.toggleClass('pbl-expanded', !state.collapsed);
-		chevron.addEventListener('click', (evt) => {
-			evt.stopPropagation();
-			// Collapse state is overridden while filtering; mutating it here
-			// would change nothing visibly until the filter clears.
-			if (host.isFiltering()) return;
-			host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
-			host.refreshSubtree(item);
-		});
-	}
+	// The tree refreshes the one subtree it changed; the dated axis's rows share this
+	// control and re-render whole, which is why what to redraw is the caller's.
+	renderChevron(host, row, item, state, () => host.refreshSubtree(item));
 
 	renderBadge(host, row, item);
 
@@ -207,6 +197,42 @@ function renderRowLead(
 		setIcon(marker, 'corner-left-down');
 		setTooltip(marker, "Not in this base's filter — shown to keep the hierarchy");
 	}
+}
+
+/**
+ * The disclosure a row draws — shared with the dated axis's rows, so there is one
+ * statement of what a chevron IS: an icon that rotates, a click that flips the tree's
+ * own collapse bit, and, where there is nothing below, the leaf placeholder that keeps
+ * every badge on the same x rather than an absence that shifts the row.
+ *
+ * What the flip REDRAWS is the caller's, and it is the one thing the two surfaces do not
+ * share: the tree refreshes the subtree it changed, while the grid's window, gridlines
+ * and full-height marks are all derived from its row set and have to be rebuilt with it.
+ * Everything else is one rule in one place — including the two guards, which had to be
+ * discovered twice before: the filter override, because `isCollapsed` reports false while
+ * a filter runs and a write here would look inert and then take effect once it cleared;
+ * and the middle click, which never fires `click` and so never meets the first guard,
+ * leaving the row's own `auxclick` to open a note from a control that means something
+ * else entirely.
+ */
+export function renderChevron(
+	host: BacklogViewHost,
+	rowEl: HTMLElement,
+	item: BacklogItem,
+	state: { hasChildren: boolean; collapsed: boolean },
+	redraw: () => void,
+): void {
+	const chevron = rowEl.createDiv({ cls: 'pbl-chevron' + (state.hasChildren ? '' : ' pbl-leaf') });
+	if (!state.hasChildren) return;
+	setIcon(chevron, 'chevron-right');
+	chevron.toggleClass('pbl-expanded', !state.collapsed);
+	chevron.addEventListener('click', (evt) => {
+		evt.stopPropagation();
+		if (host.isFiltering()) return;
+		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
+		redraw();
+	});
+	chevron.addEventListener('auxclick', (evt) => evt.stopPropagation());
 }
 
 /** While filtering, the matching substring lights up so hits are scannable. */

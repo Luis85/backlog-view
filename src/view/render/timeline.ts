@@ -1,12 +1,12 @@
 import { setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
-import { renderBadge, renderTitleText } from './rows';
+import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { CardDragController } from '../interactions/cardDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
-import { DrawnColors } from '../host';
+import { BacklogViewHost, DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { barHolds, TimelineBar } from '../../domain/bars';
+import { barHolds, TimelineBar, TimelineRow } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
 import { stateColorSlot } from '../../domain/settings';
 import {
@@ -123,10 +123,13 @@ export interface TimelineDrawing {
 export function renderTimeline(
 	ctx: RowContext,
 	containerEl: HTMLElement,
-	bars: TimelineBar[],
+	rows: TimelineRow[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
 	const { today, scale, dnd, observedStates, available } = drawing;
+	// What a collapsed row hides, it hides from the whole grid: the window is the drawn
+	// spans, exactly as it already is for the spans hiding completed work removes.
+	const bars = rows.map((row) => row.bar);
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
@@ -177,8 +180,8 @@ export function renderTimeline(
 	const tracks = new Map<string, HTMLElement>();
 	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
-	bars.forEach((bar, index) => {
-		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
+	rows.forEach((entry, index) => {
+		const { row, colors } = renderBarRow(ctx, mounts, window, entry, scale);
 		if (colors.done) drawn.done = true;
 		if (colors.milestone) drawn.milestone = true;
 		if (colors.accent) drawn.accent = true;
@@ -350,11 +353,15 @@ function renderBarRow(
 	ctx: RowContext,
 	mounts: BarRowMounts,
 	window: TimelineWindow,
-	bar: TimelineBar,
+	entry: TimelineRow,
 	scale: TimelineScale,
 ): { row: HTMLElement; colors: DrawnColors } {
+	const bar = entry.bar;
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
+	// The row IS the disclosure's element, the tree's own arrangement: the chevron is
+	// decoration of a state the row announces, never a control with a name of its own.
+	if (entry.hasChildren) row.setAttribute('aria-expanded', String(!entry.collapsed));
 	// The bar's colour, by the item's own state — never computed here: `stateColorSlot`
 	// is the one place that decides a slot, so a bar and the Set state menu cannot name
 	// a state a different colour. No slot (no state, or a value the vocabulary does not
@@ -364,6 +371,7 @@ function renderBarRow(
 	const slot = stateColorSlot(ctx.host.settings, mounts.observedStates, bar.item.stateValue);
 	if (slot !== null) row.addClass(`pbl-state-${slot}`);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
+	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(ctx.host, title, bar.item.title);
@@ -426,6 +434,27 @@ function renderBarRow(
 		accent: !bar.item.done && slot === null && !milestoneDrawn,
 	};
 	return { row, colors };
+}
+
+/**
+ * The row's disclosure — the tree's own chevron (`renderChevron`), in the lead column,
+ * folding the ROWS below this bar rather than listing anything on its face. A row with
+ * nothing below it on the grid draws that function's leaf placeholder instead.
+ *
+ * What is decided here is the two things the shared control cannot know: that a collapse
+ * on this axis re-renders the whole projection, since the window, the gridlines and every
+ * full-height mark are derived from the row set it changes; and that the path joins
+ * `ctx.cardKids`, the register of what actually drew a disclosure this pass, which is
+ * what makes the toolbar's bulk controls live and puts the same toggle in the row menu
+ * for a reader with no pointer.
+ */
+function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow): void {
+	// Annotated so fallow can see which host members this file uses — see the root
+	// CLAUDE.md on interface members resolved through a property access.
+	const host: BacklogViewHost = ctx.host;
+	const item = entry.bar.item;
+	if (entry.hasChildren) ctx.cardKids.add(item.file.path);
+	renderChevron(host, lead, item, entry, () => host.render());
 }
 
 /**

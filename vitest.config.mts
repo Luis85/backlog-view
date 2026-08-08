@@ -138,8 +138,18 @@ export default defineConfig({
 			// and test-instrument corrections) measured 98.13/93.97/99.43/99.30. Only
 			// branches moved at all, and it rounds down to the 93.9 already recorded, so
 			// none of the four move.
+			//
+			// The timeline-disclosure increment (`timelineRows` in the domain, the row's
+			// chevron and its menu path, and the two dated-axis stylesheet fixes) measured
+			// 98.21/93.99/99.46/99.37. Only statements rounds down to a new decimal (98.2);
+			// the other three round down to the figures already recorded above and stay put.
+			// Branches is worth a note: mid-increment it measured 94.0038, and taking the
+			// 94.0 that rounds down from would have failed the very next run — sharing the
+			// tree's chevron with the new timeline row deleted six branches along with the
+			// duplicate, which is a smaller denominator and a better codebase. The figure to
+			// record is the one the finished increment measures.
 			thresholds: {
-				statements: 98.1,
+				statements: 98.2,
 				branches: 93.9,
 				functions: 99.4,
 				lines: 99.3,

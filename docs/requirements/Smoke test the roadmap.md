@@ -86,3 +86,13 @@ and each stays open until they are, so a stale check is visible rather than assu
   **Layout checked 2026-08-07 in both schemes; opacity re-checked 2026-08-08 (lead
   rgb(255,255,255), and the column's pixels identical across a 420px scroll);
   appearance never checked.**
+- Nothing shows through the sticky lead column at a row BOUNDARY, and a selected row's
+  accent edges reach the column's left edge — the two symptoms of
+  [[Full-height marks struck through the sticky lead column]], which needs the grid
+  scrolled far enough for the today line to pass under the column before either is
+  visible at all. **Fixed and re-checked 2026-08-08 in the harness at a 700px viewport,
+  in dark; never checked in a vault, and never in light.**
+- The row's own disclosure ([[Collapsing a bar's subtree]]): the chevron is findable at
+  the size a lead column actually gives it, the leaf placeholder keeps every badge on one
+  x, and a fold does not leave the grid's scroll position somewhere the reader did not
+  ask for. **Never checked.**
