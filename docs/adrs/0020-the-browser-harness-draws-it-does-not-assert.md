@@ -69,12 +69,18 @@ which jsdom cannot do at all, since it returns zeros from `getBoundingClientRect
   other is narrower but was not distinguished from the first until it produced a real bug
   — a card-children disclosure rendered as a centred, boxed native `<button>` in a vault
   and as plain text here (2026-08-08), because the stub had no baseline at all for a bare
-  `button`, only for `.svg-icon` and `.clickable-icon`. That kind CAN close, one element
-  at a time, as a gap is found and a public source for the default is found or is
-  honestly reported missing (see `theme.css`'s own `button` rule and its comment on why it
-  sets no `justify-content`). Saying so in three places (the stub, the Feature note, here)
-  is the whole mitigation available for the theme; the element-default gap additionally
-  gets a baseline whenever someone notices one missing.
+  `button`, only for `.svg-icon` and `.clickable-icon`. Saying so in three places (the
+  stub, the Feature note, here) was the mitigation first tried for it. **Update
+  (2026-08-08, same day): superseded by a different close, not by a second guess.**
+  Rather than hand-writing a `button` baseline in `test/harness/theme.css` and living with
+  its drift forever, `test/harness/obsidian.css` — Obsidian's own real `app.css`, reduced
+  to what the harness exercises — now loads BEFORE the theme stub, so a bare `<button>`
+  gets Obsidian's own rule rather than a guessed one. `theme.css` carries no element
+  defaults at all now, `button` included: see `test/CLAUDE.md`'s "What it is faithful
+  about" for why a guessed baseline beside a real one was two answers to one question.
+  The element-default gap this bullet used to describe as narrower-but-open is what that
+  change closes, one Obsidian rule at a time as the reduction's coverage grows; the theme
+  half above is unaffected and stays open for the reason stated.
 - Icons render as their own names, because the module mock records an icon name and draws
   no SVG. Ugly and legible, which is the right trade for a control that would otherwise be
   an invisible zero-width box — but it means the harness cannot answer any question about

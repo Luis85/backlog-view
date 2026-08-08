@@ -21,8 +21,8 @@ files:
 
 ## What happened
 
-`test/harness/obsidian.css:7188` — Obsidian's own real `app.css`, vendored for the harness
-— carries:
+`test/harness/obsidian.css`'s `button:not(.clickable-icon)` rule — Obsidian's own real
+`app.css`, vendored for the harness — carries:
 
     button:not(.clickable-icon) { background-color: var(--interactive-normal); box-shadow: var(--input-shadow); }
     @media (hover: hover) { button:hover { background-color: var(--interactive-hover); box-shadow: var(--input-shadow-hover); } }
@@ -49,12 +49,15 @@ unfixed here:** `.pbl-state-chip` and `.pbl-horizon-chip` (`styles/columns.css`)
 `.pbl-tag-remove` (`styles/tags.css`) and `.pbl-card-match` (`styles/cards.css`) are all
 real `<button>`s carrying none of `.clickable-icon`, styled with the same bare-class
 shape, so the same `(0,1,0)` loss applies to each. Two controls that look like the same
-family are not affected, for two different reasons: `.pbl-add` (`styles/columns.css`) is a
-`<div>` (`header.createDiv({ cls: 'pbl-add clickable-icon' })` in
-`src/view/render/columns.ts`), so none of Obsidian's `button…` rules can match it at all;
-`.pbl-bucket-add` (`styles/roadmap.css`) is a real `<button>` but carries `.clickable-icon`
-itself, which the `:not()` excludes, leaving only the bare `button` rule at `(0,0,1)` —
-already beaten by the plugin's own `(0,1,0)`.
+family are not affected, for two different reasons — and `.pbl-add` is not even one shape:
+the column header's (`header.createDiv({ cls: 'pbl-add clickable-icon' })` in
+`src/view/render/columns.ts`) is a `<div>`, so none of Obsidian's `button…` rules can match
+it at all, while the tree row's own (`row.createEl('button', { cls: 'pbl-add
+clickable-icon' })`, `src/view/render/rows.ts:275`) is a real `<button>`, safe for the same
+reason as `.pbl-bucket-add` below rather than for being a div. `.pbl-bucket-add`
+(`styles/roadmap.css`) is a real `<button>` but carries `.clickable-icon` itself, which the
+`:not()` excludes, leaving only the bare `button` rule at `(0,0,1)` — already beaten by the
+plugin's own `(0,1,0)`.
 
 The reason the other four were not fixed alongside the disclosure: the right result is not
 obviously "make it transparent" the way it is for a disclosure that wants no button look at

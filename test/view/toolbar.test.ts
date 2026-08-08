@@ -356,6 +356,16 @@ describe('toolbar controls are reachable without a mouse', () => {
 		expect(collapseCtls(containerEl).some((b) => b.disabled)).toBe(false);
 	});
 
+	// `disabled` only stops a click dispatched at the button itself; one on a child still
+	// bubbles to the listener. The real icon is a child `<svg>`, but the mock only stamps
+	// `data-icon` on the button (`test/CLAUDE.md`), so a stand-in child reproduces the shape.
+	it('collapses nothing when a click lands on a descendant of a disabled collapse control', () => {
+		const { view, containerEl } = makeView(fixture());
+		view.setFilter('Feature'); collapseCtl(containerEl, 'Collapse all')?.createSpan().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		view.setFilter(''); // clearing is what would surface a stray write
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+	});
+
 	it('keeps the clear buttons out of the tab order until they apply', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);

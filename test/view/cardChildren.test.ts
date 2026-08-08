@@ -185,6 +185,33 @@ describe('children on the card', () => {
 		expect(kidTitles(card)).toEqual(['Feature B1', 'Feature B2']);
 	});
 
+	// `disabled` on a <button> stops a click dispatched at the button itself, but not one
+	// that lands on a CHILD element and bubbles — the chevron and count spans are both
+	// inside the toggle. Without the guard this write is invisible on screen (`isCollapsed`
+	// reads false under the filter regardless, whatever the write set), and only shows up
+	// once the filter clears — reproducing exactly that: expand for real first (a card
+	// opens collapsed by default, so an unguarded write from THAT state could land on the
+	// same value it started at and prove nothing), then let a filtered click try to flip it.
+	it('writes nothing when a click lands on the chevron inside a disabled toggle', () => {
+		const { containerEl, view } = makeBoard(boardVault());
+		disclosure(cardByTitle(containerEl, 'Epic B'))?.click();
+		expect(view.isCollapsed('Epic B.md')).toBe(false);
+
+		// Re-fetched: `setFilter` re-renders the board, so the card handle above is
+		// now detached.
+		view.setFilter('Feature B');
+		const toggle = disclosure(cardByTitle(containerEl, 'Epic B'));
+		expect(toggle?.disabled).toBe(true);
+		const chevron = toggle?.querySelector<HTMLElement>('.pbl-card-kids-chevron');
+
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.isCollapsed('Epic B.md')).toBe(false);
+		// Clearing the filter is what would surface a stray write — confirm none landed.
+		view.setFilter('');
+		expect(view.isCollapsed('Epic B.md')).toBe(false);
+	});
+
 	it('offers the same children in the card menu, on a right-click', () => {
 		const { containerEl } = makeBoard(boardVault());
 		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));

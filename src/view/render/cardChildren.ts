@@ -79,8 +79,15 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 
 	toggle.addEventListener('click', (evt) => {
 		// The card listens on itself. Without this the note opens AND the card expands
-		// underneath it, so a broken toggle looks like a working one.
+		// underneath it, so a broken toggle looks like a working one — even while the
+		// toggle itself is `disabled`, since a click on the chevron or count span inside
+		// it still reaches this listener in a real browser (and in jsdom).
 		evt.stopPropagation();
+		// `disabled` alone does not stop a click that lands on a CHILD element (the
+		// chevron/count spans) from bubbling to this listener. Mutating here while the
+		// quick filter runs would write collapse state that `isCollapsed` reports as
+		// false until the filter clears — a silent write with no visible effect.
+		if (toggle.disabled) return;
 		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 		draw();
 	});

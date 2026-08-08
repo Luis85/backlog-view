@@ -39,19 +39,18 @@ assembled from the real partials, and every interaction — the drags are the dr
 library's, the menu entries and the actions behind them are the view's, the toolbar is
 the toolbar.
 
-**Not:** colour, though the gap narrowed — and, since 2026-08-08, any layout a partial
-leans on an Obsidian element default to supply instead of writing itself. A
-card-children disclosure whose toggle and entries relied on Obsidian's own button styling
-(the partial resets `appearance`/`border`/`background` to compensate for chrome the
-harness never applied) shipped looking right here and wrong in a vault, because
+**Not:** colour. Layout leaning on an Obsidian element default used to be in this list too
+— a card-children disclosure whose toggle and entries relied on Obsidian's own button
+styling shipped looking right here and wrong in a vault (2026-08-08), because
 `test/harness/theme.css` carried no baseline at all for a bare `<button>` — only for
-`.svg-icon` and `.clickable-icon`. The stub now approximates the one piece that is
-publicly documented, a button's background colour (`--interactive-normal` /
-`--interactive-hover`), and deliberately leaves out what nothing public confirms — most
-notably the flex-centring the live report was diagnosed against; see the `button` rule's
-own comment for the sources checked and the ones that came back empty. This narrows the
-gap; it does not close it — an element default this file has not yet been asked to
-approximate is exactly as invisible as it always was.
+`.svg-icon` and `.clickable-icon`. The fix was not a guessed baseline: `test/harness/
+obsidian.css` — Obsidian's own real `app.css`, reduced to what the harness exercises —
+now loads BEFORE the theme stub, so a bare `<button>` gets Obsidian's own rule. The stub
+carries no hand-written element defaults at all now, `button` included: a guessed
+baseline beside a real one is two answers to one question. This narrows the gap; it does
+not close it — the reduced sheet keeps only what the harness was driven through, so an
+element default no driven state reached is still absent, and a themed vault still
+replaces the colours regardless of which sheet supplies the shape.
 
 The COLOUR half of the stub is built on Obsidian's documented base scale and named
 palette, in both a light and a dark scheme, switchable in the page (`?theme=light`, or

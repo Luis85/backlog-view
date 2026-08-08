@@ -203,8 +203,14 @@ free of runtime code so imports stay cycle-free.
   stops a mouse and nothing else. The collapse controls pause while the quick filter
   overrides collapse state, and go disabled on a card projection that drew no
   disclosure to collapse — both carry a real `disabled` flag, and `syncCollapseCtls`
-  (`render/toolbar.ts`) is their SOLE writer, called after the content render beside
-  `syncCountLabel` so it reads the frame that just drew rather than the one before it.
+  (`render/toolbar.ts`) is their only writer today, called after the content render
+  beside `syncCountLabel` so it reads the frame that just drew rather than the one
+  before it. Nothing enforces "only" mechanically — a lint rule for it was considered
+  and declined — so the guarantee is a fact about this code, not a checked invariant;
+  the click handler on `.pbl-collapse-ctl` (and the card disclosure's own toggle) READS
+  the flag to guard against a click that lands on a child element and bubbles past
+  `disabled`, which does not reopen the split `syncFilterUi` once caused, since a
+  reader cannot disagree with the writer about what the value is.
 
 ## The board projection
 

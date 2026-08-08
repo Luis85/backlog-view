@@ -186,9 +186,12 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
  * The bulk collapse controls, decided from what the render actually drew. It has to run
  * AFTER the content: `renderToolbar` goes first and the cards are drawn afterwards, so a
  * verdict taken during the toolbar pass would read the previous frame's set —
- * `syncCountLabel` above is the same shape for the same reason. It is the SOLE writer of
- * `btn.disabled` on `.pbl-collapse-ctl`: `syncFilterUi` used to also write it, which made
- * two functions own one property agreeing only by call order.
+ * `syncCountLabel` above is the same shape for the same reason. It is the only writer of
+ * `btn.disabled` on `.pbl-collapse-ctl` today — nothing enforces that, a lint rule for it
+ * was considered and declined — but `syncFilterUi` used to also write it, which made two
+ * functions own one property agreeing only by call order; `collapseButton`'s own click
+ * handler below READS `btn.disabled` to guard its mutation, which does not reopen that
+ * split — a read cannot disagree with the writer about what the value is.
  *
  * A card projection with no disclosure gets them disabled rather than removed. They
  * would otherwise write collapse state that changes nothing on screen and then surprises
@@ -423,6 +426,11 @@ function collapseButton(
 	const btn = iconButton(parent, icon, label);
 	btn.addClass('pbl-collapse-ctl');
 	btn.addEventListener('click', () => {
+		// A click on the icon `<svg>` inside a disabled button still reaches this
+		// listener (only `btn.click()` on the button itself is blocked by `disabled`),
+		// so the guard has to be read here rather than trusted from the DOM state —
+		// same shape as the card disclosure toggle in `render/cardChildren.ts`.
+		if (btn.disabled) return;
 		mutate();
 		host.render();
 	});
