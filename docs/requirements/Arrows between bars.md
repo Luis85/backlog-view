@@ -47,6 +47,12 @@ against one would report a date no note carries — a red mark on a fact that do
    contradiction is visible without hunting for the arrow that caused it. On or before,
    not before: an end is inclusive here, which is what makes a one-day span one day wide,
    so a dependent starting the same day occupies a day its prerequisite is still running.
+   The two dates compared are **the ones the projection derived for those two ends**, never
+   a fresh read of the frontmatter beside it. That one sentence is what keeps the mark and
+   the picture agreeing, and it is where three extensions below get their answers instead of
+   each carrying a guard: a marker is its target at both ends (1e), an end the projection
+   inferred is not compared at all (2a), and an end no projection derived — because the row
+   never reached the axis — is nothing to compare (1c).
 3. Every dependent row's accessible name names what it waits for, and says when one of
    those is in conflict — so the ordering is available to a reader who never sees a pixel
    of the arrow layer.
@@ -70,17 +76,30 @@ against one would report a date no note carries — a red mark on a fact that do
   fact about a hidden row already strikes. The case where the dependent *does* render but
   its bar does not — shelved for want of dates — is 1a's answer, from the other side: the
   shelf card is its row.
-- **1c — either end is outside the Base's filter.** No arrow. An arrow across the results
-  is a thing derived from the results, and a context row is never a source of one — the
-  same rule that keeps a context milestone from drawing a line. The dependent's row still
-  states it, because that is what its own note says.
+- **1c — either end is outside the Base's filter.** No arrow, **and no conflict**. An arrow
+  across the results is a thing derived from the results, and a context row is never a
+  source of one — the same rule that keeps a context milestone from drawing a line. The
+  conflict half needs saying because suppressing only the arrow would leave the verdict
+  computed from the excluded note's own dates and painted on a result, which is exactly what
+  the context-row rule forbids: it renders, it parents, and that is all. Nothing special is
+  needed to get this right — `deriveBars` routes an `outsideFilter` row to
+  `RoadmapModel.context` before any span is computed for it, so the projection never derived
+  an end there and step 2 has nothing to compare. The dependent's row still states the
+  dependency, because that is what its own note says.
 - **1d — the edge is marked broken.** Unresolvable, self-referential or part of a cycle
   ([[Dependencies as a property]], where a cycle marks **every** entry in it rather than
   picking one): no arrow, and the dependent's row carries the broken
   marker. An arrow drawn from a name that resolves to nothing would be a claim about a note
   that does not exist.
 - **1e — one end is a milestone.** The arrow meets the diamond at its date. A marker is a
-  point, so both of its ends are the same day; nothing else about the drawing changes.
+  point, so both of its ends are the same day; nothing else about the drawing changes — and
+  nothing about the **conflict** changes either, which is the half worth stating, because a
+  marker note may still carry a start. `placeMarker` reduces it to `{start: target, target:
+  target}` before any span rule runs ([[Milestones as their own type]] 2c: the type ignores
+  a stray start, in derivation and not in drawing), so step 2's "the ones the projection
+  derived" already compares the target at both ends. A milestone targeting the 10th is not
+  late against a prerequisite ending the 5th on the strength of a stale start dated August —
+  a date its own type refuses to draw must not be a date it can be marked by.
 - **1f — the two bars are on the same row, or so close the arrow has no room to route.**
   The arrow still draws, at the minimum geometry the grid allows — the dates are the fact
   and the pixels are the zoom's, the rule [[Bars from two dates]] already applies to a
@@ -128,7 +147,9 @@ against one would report a date no note carries — a red mark on a fact that do
   at all, or a start the reader refuses — there is no conflict, and that is the true reason:
   "unplanned" is not "late". The two remaining ways to shelve leave a **stated, readable
   start** on the note and shelve for what the *other* end says: an unreadable target, or a
-  target before the start ([[Bars from two dates]]). That start is as persisted as any date
+  target before the start ([[Bars from two dates]]) — neither of them reachable by a
+  **marker**, whose start is not a date this projection uses at all (1e), so a shelved
+  milestone contributes no start here however its frontmatter is spelled. That start is as persisted as any date
   on any bar, so a dated prerequisite running past it is the same contradiction between two
   written dates 2a is about, and it is stated — on the shelf card, which 1b already
   establishes is the dependent's row, and with no arrow, because there is still no bar for
@@ -163,6 +184,11 @@ against one would report a date no note carries — a red mark on a fact that do
   anchor implies a date, and an unstated endpoint never becomes a stated one by being
   pointed at. A clipped end is the same: some part of a bar in the window is enough to
   anchor one, and only a span with nothing in view suppresses an arrow.
+- A conflict is judged on the dates the projection derived for the two ends, never on a
+  re-read of the frontmatter: a milestone is its target at both ends, so a stale start on a
+  marker note can neither draw nor mark; an end that crosses the Base's filter was never
+  derived, so an excluded note's dates mark nothing on a result — the arrow and the verdict
+  are suppressed together, not one without the other.
 - No conflict verdict depends on the window. The comparison is between stated dates, not
   between the clamped coordinates a clipped bar draws at, so zooming or panning never
   creates a conflict and never clears one.
