@@ -134,7 +134,11 @@ free of runtime code so imports stay cycle-free.
   fixed-width, so values line
   up across rows regardless of title length and indent. Every configured column renders
   on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
-  after it would shift per row. Widths live on the tree element as `--pbl-prop-col` /
+  after it would shift per row. **That holds for the whole end-anchored strip, not only
+  for the columns**: the add button is last in it, and a row that can hold nothing
+  withholds the control but reserves its width (`renderAddSpacer`, which the header uses
+  for the same reason), because an element skipped from an end-anchored strip does not
+  leave a gap where it was — everything before it slides into its width. Widths live on the tree element as `--pbl-prop-col` /
   `--pbl-prop-count` (one set per render pass, inherited by targeted subtree refreshes),
   and `.pbl-cols` is the presentational (`aria-hidden`) header naming the columns; row
   cells carry the property name in their tooltip and `aria-label` instead of repeating
