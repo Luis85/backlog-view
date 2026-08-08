@@ -102,8 +102,15 @@ function applyDependsOnDelta(
 	// discards entirely, which is the only state with no line to offer and so the only
 	// one that could otherwise be left on disk with nothing able to clear it. Captured by
 	// `touchedKeys` rather than as a delta, so it emits no inverse here.
+	//
+	// Stale-refresh guarded like the `add` arm below, for the same reason: the picker
+	// offered this line against a value that read as no dependencies, and the pick can
+	// land after the note gained a real one. Deleting unconditionally would erase that
+	// arrival instead of the nothing the picker showed, so this only fires while the
+	// live value STILL reads as nothing nameable — the same test `textOf` states for
+	// every other entry here.
 	if (delta.removeKey) {
-		if (ownValue(fm, key) !== undefined) delete fm[key];
+		if (current.every((value) => textOf(value) === null)) delete fm[key];
 		return null;
 	}
 	// The matched text of an entry this delta would drop, or null to keep it untouched —

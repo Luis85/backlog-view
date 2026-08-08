@@ -166,7 +166,11 @@ goes. `applyDependsOnDelta` in `src/storage/dependsOnWrite.ts` is modelled on it
 inherits its reason exactly: a menu row can be a refresh behind the note. That includes the
 half easiest to drop — an add checks the live list first, so a prerequisite that arrived
 between the menu opening and the pick landing is not appended twice, and an add that
-changed nothing captures no inverse and spends no undo slot.
+changed nothing captures no inverse and spends no undo slot. `removeKey` keeps the same
+guard rather than an unconditional delete: 4d's picker line is offered against a value
+that reads as nothing, and the pick can land after the note gained a real dependency, so
+the key only goes while the live value still reads that way — a stale removal must find
+nothing changed, not erase what arrived in between.
 
 `setOwn` — the `__proto__`-safe key write every user-configured property goes through —
 moved to `src/storage/ownProperty.ts` in the same change, and that is a structural fix

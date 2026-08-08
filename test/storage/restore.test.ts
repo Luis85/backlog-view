@@ -250,6 +250,22 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toBe('[[A]]');
 	});
 
+	it('does not erase a dependency that arrived after removeKey was planned', async () => {
+		// The picker offered "Remove the empty property" against a value that read as
+		// no dependencies — then the note gained a real one before the pick landed.
+		const vault = new FakeVault();
+		vault.addFile('A.md');
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: '' } });
+		vault.fm('Item.md')['dependsOn'] = 'A';
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removeKey: true } }], linked);
+
+		// The stale removal must not erase what arrived in the meantime, and — because
+		// nothing changed — it must not spend the undo slot on a change nobody made.
+		expect(vault.fm('Item.md')['dependsOn']).toBe('A');
+		expect(inverses).toEqual([]);
+	});
+
 	it('still matches a live entry naming no note by its exact text — nothing to resolve, nothing to share', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: 'Ghost' } });

@@ -195,6 +195,23 @@ describe('the write', () => {
 		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('groups a broken cyclic entry by the note it names, so one removal clears every spelling', async () => {
+		// A and B name each other, so both entries are broken (a cycle) even though each
+		// names a real note. B repeats its entry under two spellings of A.
+		const vault = vaultWith({ A: { dependsOn: 'B' }, B: { dependsOn: ['A', '[[A]]'] } });
+		const { containerEl } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		// One line for the pair, reading as the note it names rather than as raw text.
+		expect(suggester().offered()).toEqual(['A A.md']);
+		suggester().choose('A');
+		await flush();
+
+		// Both spellings gone in one action — leaving the second behind is B still
+		// waiting on A, which is the defect a picker split by raw text would reintroduce.
+		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
+	});
+
 	it('removes a broken entry the same way, however many times it repeats', async () => {
 		const vault = vaultWith({ B: { dependsOn: ['[[Missing]]', '[[Missing]]'] } });
 		const { containerEl } = makeView(vault, withKey);

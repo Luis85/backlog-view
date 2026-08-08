@@ -31,7 +31,7 @@ export function addDependencyItems(host: BacklogViewHost, model: BacklogModel, m
 			mi
 				.setTitle('Remove dependency…')
 				.setIcon('unlink')
-				.onClick(() => promptRemoveDependency(host, item)),
+				.onClick(() => promptRemoveDependency(host, model, item)),
 		);
 	}
 }
@@ -51,6 +51,19 @@ export function dependenciesAvailable(host: BacklogViewHost): boolean {
 }
 
 /**
+ * The note one broken raw entry still names, or null when it names nothing this base
+ * can resolve — a self-reference and a cycle both resolve, since the entry is only
+ * "broken" as a dependency, not as a link. Factored out so the removal picker below can
+ * group by the same answer `declaredPrerequisitePaths` collects, rather than resolving
+ * a second time and risking the two disagreeing about what a broken entry names.
+ */
+function resolveBrokenEntry(app: App, item: BacklogItem, raw: string): string | null {
+	const linkpath = linkpathFromRawValue(raw);
+	if (linkpath.length === 0) return null;
+	return app.metadataCache.getFirstLinkpathDest(linkpath, item.file.path)?.path ?? null;
+}
+
+/**
  * Every note `item`'s OWN dependsOn list already names — resolved paths, whether the
  * entry became a real prerequisite or was marked broken (a self-reference, or part of a
  * cycle). A broken entry still names a note: offering it again would be a pick the
@@ -61,13 +74,9 @@ export function dependenciesAvailable(host: BacklogViewHost): boolean {
  */
 function declaredPrerequisitePaths(app: App, item: BacklogItem): string[] {
 	const resolved = item.prerequisites.map((p) => p.file.path);
-	const broken: string[] = [];
-	for (const raw of item.brokenPrerequisites) {
-		const linkpath = linkpathFromRawValue(raw);
-		if (linkpath.length === 0) continue;
-		const dest = app.metadataCache.getFirstLinkpathDest(linkpath, item.file.path);
-		if (dest) broken.push(dest.path);
-	}
+	const broken = item.brokenPrerequisites
+		.map((raw) => resolveBrokenEntry(app, item, raw))
+		.filter((path): path is string => path !== null);
 	return [...resolved, ...broken];
 }
 
@@ -118,23 +127,41 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 
 /**
  * Everything the list holds, offered as lines to remove: each prerequisite by name,
- * each entry that became no edge by the raw text the note holds — and, when the key is
- * there but holds nothing nameable, the one entry that removes the key.
+ * each broken entry grouped by the note it still names (or by its raw text when it
+ * names nothing at all) — and, when the key is there but holds nothing nameable, the
+ * one entry that removes the key.
  *
  * That last case is why this reads the key's presence rather than the parsed list. A
  * value the reader discards entirely still sits on disk, and without a line to pick it
  * would be reachable from nowhere.
  */
-function promptRemoveDependency(host: BacklogViewHost, item: BacklogItem): void {
+function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item: BacklogItem): void {
+	// A broken entry is grouped by the note it resolves to — a self-reference or a
+	// cyclic edge names something real, and `removePath` already collapses every live
+	// spelling of one note into a single write, so offering it once here and offering
+	// `removePath` is what makes one pick clear every repeat (4c's rule, over the
+	// broken path 4b asks for). An entry resolving to nothing has no note to group by,
+	// so it keeps `removeRaw`, deduped by its own text — raw text is the only identity
+	// it has.
+	const brokenPaths = new Set<string>();
+	const unresolved = new Set<string>();
+	for (const raw of new Set(item.brokenPrerequisites)) {
+		const path = resolveBrokenEntry(host.app, item, raw);
+		if (path !== null) brokenPaths.add(path);
+		else unresolved.add(raw);
+	}
 	const choices: SuggestChoice<DependsOnDelta>[] = [
 		...item.prerequisites.map((prerequisite) => ({
 			label: prerequisite.title,
 			detail: prerequisite.file.path,
 			value: { removePath: prerequisite.file.path },
 		})),
-		// Deduped by TEXT: one line stands for every repeat of it, so a list naming the
-		// same missing note twice is cleared in one action rather than looking unchanged.
-		...[...new Set(item.brokenPrerequisites)].map((raw) => ({
+		...[...brokenPaths].map((path) => ({
+			label: model.byPath.get(path)?.title ?? path,
+			detail: path,
+			value: { removePath: path },
+		})),
+		...[...unresolved].map((raw) => ({
 			label: raw,
 			detail: 'Does not resolve in this base',
 			value: { removeRaw: raw },
