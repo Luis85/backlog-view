@@ -104,11 +104,20 @@ const source = (text, node) => text.slice(node.position.start.offset, node.posit
  * `## Context` — cannot occur here: a heading's content is a parsed range, not a prefix
  * of a line, so the two are different strings rather than one containing the other.
  * Trailing whitespace after the heading is the parser's problem now too.
+ *
+ * ATX only — the `## ` spelling — which the source is asked for rather than the node type,
+ * because mdast makes no distinction. CommonMark has a second way to write a level-two
+ * heading: any paragraph with `---` under it. This register opens every note with YAML
+ * frontmatter and uses `---` as a rule inside prose, so without this the frontmatter of
+ * 161 notes parsed as a heading whose text was the whole block, and any paragraph above a
+ * horizontal rule became one too. Nothing downstream matched those labels, so nothing
+ * failed — a rule reading them as section boundaries would have been wrong quietly.
  */
 export function headings(text) {
 	const found = [];
 	for (const node of nodes(text)) {
 		if (node.type !== "heading" || node.depth !== 2 || !node.position) continue;
+		if (!source(text, node).startsWith("##")) continue;
 		const first = node.children[0];
 		const last = node.children.at(-1);
 		const label = first && last ? text.slice(first.position.start.offset, last.position.end.offset) : "";

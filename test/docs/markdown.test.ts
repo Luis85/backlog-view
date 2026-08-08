@@ -73,6 +73,18 @@ describe('headings', () => {
 		expect(headings('## Context\n\nBody.\n').map((h: { text: string }) => h.text)).toEqual(['Context']);
 	});
 
+	it('is ATX only — frontmatter and a horizontal rule are not headings', () => {
+		// CommonMark has a second spelling: any paragraph with `---` under it is a level-two
+		// heading, and mdast does not distinguish it from `## `. This register opens every
+		// note with YAML frontmatter and uses `---` as a rule in prose, so without the ATX
+		// restriction the frontmatter of 161 notes parsed as a heading whose text was the
+		// whole block. Nothing downstream matched those labels, so nothing failed — which is
+		// the quiet kind: a rule reading them as section boundaries would have been wrong.
+		const note = '---\ntype: Task\norder: 10\n---\n\n# Title\n\n## Real\n\nBody.\n\nA paragraph.\n\n---\n\nMore.\n';
+
+		expect(headings(note).map((h: { text: string }) => h.text)).toEqual(['Real']);
+	});
+
 	it('reads a heading with trailing whitespace, and one inside a fence as no heading', () => {
 		const text = '## Real  \n\nBody.\n\n```\n## Fake\n```\n';
 
