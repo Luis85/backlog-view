@@ -46,8 +46,13 @@ await esbuild.build({
 // The plugin's own stylesheet, assembled from the partials exactly as the build and the
 // vault install do — so what is on screen is the CSS being edited, never a stale copy.
 await writeFile(path.join(OUT, 'styles.css'), assembleStyles());
-// Obsidian's variables, which the partials read and do not define. Approximations: see
-// the file's own header, and do not read a colour here as a colour a user sees.
+// Obsidian's real app.css (see test/harness/obsidian.css's own header for provenance),
+// loaded BEFORE the stub so real element defaults — button chrome included — are what
+// the plugin's own resets have to strip, same as in a live vault.
+await copyFile('test/harness/obsidian.css', path.join(OUT, 'obsidian.css'));
+// Obsidian's variables the partials read and the real file does not define (or that
+// need a themed value rather than app.css's own unthemed one). Approximations: see the
+// file's own header, and do not read a colour here as a colour a user sees.
 await copyFile('test/harness/theme.css', path.join(OUT, 'theme.css'));
 
 await writeFile(
@@ -58,6 +63,7 @@ await writeFile(
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Product Backlog — harness</title>
+		<link rel="stylesheet" href="obsidian.css" />
 		<link rel="stylesheet" href="theme.css" />
 		<link rel="stylesheet" href="styles.css" />
 	</head>
