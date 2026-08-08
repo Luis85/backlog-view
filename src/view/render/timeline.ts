@@ -7,11 +7,13 @@ import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLe
 import { DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, TimelineBar } from '../../domain/bars';
+import { dependencyArrows } from '../../domain/dependencies';
 import { isMarkerType } from '../../domain/itemTypes';
 import { stateColorSlot } from '../../domain/settings';
 import {
 	BarGeometry,
 	barGeometry,
+	dependencyAnchor,
 	daysBetween,
 	formatCivil,
 	MIN_BAR_PX,
@@ -60,6 +62,13 @@ export const LABEL_RESERVE_PX = 160;
 /** `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css` — see `markWidth`. */
 const MILESTONE_MARK_PX = 12;
 const OUTSIDE_MARK_PX = 10;
+
+/**
+ * The narrowest an arrow may be drawn, in PIXELS — `MIN_BAR_PX`'s own reasoning (1f of
+ * [[Arrows between bars]]): two ends with almost no room to route still draw, and a
+ * length rounded to zero would report nothing.
+ */
+const MIN_ARROW_PX = 4;
 
 /** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {
@@ -186,6 +195,10 @@ export function renderTimeline(
 		// count the header, the lines and the layers interleaved in this container.
 		if (index % 2 === 1) row.addClass('pbl-row-even');
 	});
+	// After every row exists, never before: an edge's arrow anchors on the ROWS the
+	// prerequisite and the dependent actually drew, and its Y comes from where those
+	// rows really landed rather than a guessed row height — see `renderDependencyArrows`.
+	renderDependencyArrows({ content, tracks }, window, bars, { scale, leadWidth });
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -317,6 +330,81 @@ function renderMilestoneLines(
 		setTooltip(labelEl, label);
 	}
 	return byDay.size > 0;
+}
+
+/**
+ * One arrow per drawable dependency edge, from the prerequisite's end to the
+ * dependent's start — `Arrows between bars`' main flow. `dependencyArrows` has
+ * already decided WHICH pairs have two bars to draw between (1a-1d); this asks only
+ * where, and only of the edges its own window can still see — `dependencyAnchor`
+ * returns null for an edge lying wholly outside the drawn window (1a's other half,
+ * a render-time fact the domain layer never asked), and that edge draws nothing.
+ *
+ * The X axis is the grid's own day arithmetic, the established idiom. The Y axis is
+ * not: two different items' rows have no day-based answer, so it is read off the ROWS
+ * THEMSELVES once they exist, in the same coordinate space `content` positions
+ * everything else in — a guessed row height is exactly the kind of baseline
+ * `test/CLAUDE.md`'s card-children episode warns against, and jsdom cannot check
+ * either one (every `getBoundingClientRect` here is zeros; a real vault is what
+ * confirms the picture, `docs/requirements/Smoke test the roadmap.md`).
+ *
+ * One element per edge (4a), never one per pair of rows the window happens to draw —
+ * asked once, over `dependencyArrows`' own list, never a walk of `bars` squared.
+ * Nothing here is focusable and nothing is written; a conflicting edge (2, the
+ * dependent starting on or before its prerequisite's stated end — asked of `.conflict`
+ * exactly as `dependencyArrows` computed it, never re-derived here) marks its own
+ * arrow AND the dependent's row, OR'd across every prerequisite a row waits on, so the
+ * contradiction is findable without hunting the grid for the arrow that caused it.
+ */
+function renderDependencyArrows(
+	mounts: { content: HTMLElement; tracks: Map<string, HTMLElement> },
+	window: TimelineWindow,
+	bars: TimelineBar[],
+	ruler: { scale: TimelineScale; leadWidth: number },
+): void {
+	const { content, tracks } = mounts;
+	const { scale, leadWidth } = ruler;
+	const contentTop = content.getBoundingClientRect().top;
+	const conflicted = new Set<string>();
+	for (const arrow of dependencyArrows(bars)) {
+		const anchor = dependencyAnchor(window, arrow.from.span, arrow.to.span);
+		const fromRow = tracks.get(arrow.from.item.file.path)?.parentElement;
+		const toRow = tracks.get(arrow.to.item.file.path)?.parentElement;
+		if (!anchor || !fromRow || !toRow) continue;
+		drawArrow(content, arrow.conflict, { scale, leadWidth, contentTop }, anchor, [fromRow, toRow]);
+		if (arrow.conflict) conflicted.add(arrow.to.item.file.path);
+	}
+	for (const path of conflicted) tracks.get(path)?.parentElement?.addClass('pbl-row-conflict');
+}
+
+/** One arrow element, positioned from the day axis and the two rows' own rects. */
+function drawArrow(
+	content: HTMLElement,
+	conflict: boolean,
+	ruler: { scale: TimelineScale; leadWidth: number; contentTop: number },
+	anchor: { fromDay: number; toDay: number },
+	rows: [HTMLElement, HTMLElement],
+): void {
+	const { scale, leadWidth, contentTop } = ruler;
+	const [fromRow, toRow] = rows;
+	const fromRect = fromRow.getBoundingClientRect();
+	const toRect = toRow.getBoundingClientRect();
+	const fromX = leadWidth + anchor.fromDay * scale.dayPx;
+	const toX = leadWidth + anchor.toDay * scale.dayPx;
+	const fromY = fromRect.top - contentTop + fromRect.height / 2;
+	const toY = toRect.top - contentTop + toRect.height / 2;
+	const length = Math.max(Math.hypot(toX - fromX, toY - fromY), MIN_ARROW_PX);
+	const angle = (Math.atan2(toY - fromY, toX - fromX) * 180) / Math.PI;
+	const el = content.createDiv({
+		cls: `pbl-dependency-arrow${conflict ? ' pbl-dependency-arrow-conflict' : ''}`,
+		attr: { 'aria-hidden': 'true' },
+	});
+	el.setCssProps({
+		'--pbl-arrow-left': `${fromX}px`,
+		'--pbl-arrow-top': `${fromY}px`,
+		'--pbl-arrow-width': `${length}px`,
+		'--pbl-arrow-angle': `${angle}deg`,
+	});
 }
 
 /**

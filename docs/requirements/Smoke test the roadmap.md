@@ -86,3 +86,10 @@ and each stays open until they are, so a stale check is visible rather than assu
   **Layout checked 2026-08-07 in both schemes; opacity re-checked 2026-08-08 (lead
   rgb(255,255,255), and the column's pixels identical across a 420px scroll);
   appearance never checked.**
+- The dependency arrow layer ([[Arrows between bars]]): each arrow actually reaches the
+  two rows it names — jsdom draws no layout, so `renderDependencyArrows`'s Y is read off
+  real row rects only in a real vault, never in the suite — the angle points the right
+  way (backward when a conflict overlaps in time), the arrowhead sits at the dependent's
+  end, a conflict's red reads as distinct from the today line's red and the state
+  colours, and the row's own conflict mark (a left accent) is visible without hovering
+  the arrow. **Never checked.**

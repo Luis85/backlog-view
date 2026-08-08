@@ -138,11 +138,18 @@ export default defineConfig({
 			// and test-instrument corrections) measured 98.13/93.97/99.43/99.30. Only
 			// branches moved at all, and it rounds down to the 93.9 already recorded, so
 			// none of the four move.
+			//
+			// The arrows-between-bars increment (`dependencyAnchor` beside `barGeometry`,
+			// and the arrow layer drawn over the bars a placement pass already produced)
+			// measured 98.27/93.97/99.48/99.41 (5007/5095, 3122/3322, 1168/1174, 4218/4243)
+			// — statements and lines round down to new decimals (98.2, up from 98.1; 99.4,
+			// up from 99.3), branches and functions round down to the figures already
+			// recorded above (93.9, 99.4), so only two of the four move.
 			thresholds: {
-				statements: 98.1,
+				statements: 98.2,
 				branches: 93.9,
 				functions: 99.4,
-				lines: 99.3,
+				lines: 99.4,
 			},
 		},
 	},

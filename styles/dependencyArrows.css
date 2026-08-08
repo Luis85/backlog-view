@@ -1,0 +1,47 @@
+/* The dependency arrow layer on the dated axis — `renderDependencyArrows` in
+   `src/view/render/timeline.ts`. One element per drawable edge, positioned as a
+   rotated line from the prerequisite's end to the dependent's start; `--pbl-arrow-*`
+   are TypeScript's, this file only draws what they say. */
+
+.pbl-dependency-arrow {
+	position: absolute;
+	left: var(--pbl-arrow-left);
+	top: var(--pbl-arrow-top);
+	width: var(--pbl-arrow-width);
+	height: 0;
+	border-top: 1.5px solid var(--text-faint);
+	transform: rotate(var(--pbl-arrow-angle));
+	transform-origin: 0 0;
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* The arrowhead, at the far (dependent) end — drawn as a border triangle so the
+   layer stays one element per edge; it rotates with its parent, so it always points
+   the direction the line was drawn, conflict or not. */
+.pbl-dependency-arrow::after {
+	content: '';
+	position: absolute;
+	right: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+	border-style: solid;
+	border-width: 4px 0 4px 6px;
+	border-color: transparent transparent transparent var(--text-faint);
+	transform: translateY(-4px);
+}
+
+.pbl-dependency-arrow-conflict {
+	border-top-color: var(--color-red);
+}
+
+.pbl-dependency-arrow-conflict::after {
+	border-left-color: var(--color-red);
+}
+
+/* The dependent's own row, marked so the contradiction is findable without hunting
+   the grid for the arrow that caused it — `Arrows between bars` main flow step 2. */
+.pbl-timeline-row.pbl-row-conflict {
+	box-shadow: inset 3px 0 0 var(--color-red);
+}
