@@ -1387,6 +1387,31 @@ describe('the toolbar fit ladder', () => {
 	 * input, which does nothing and reports nothing. The flag therefore lives on the
 	 * toolbar, which `barEl.empty()` does not destroy.
 	 */
+	/**
+	 * Clearing is the third input to `revealFilter`, and the path that proves it: a filter
+	 * typed at a wide width is visible at a collapsing rung only through
+	 * `pbl-filter-active`, so emptying it removes the one class holding it open while the
+	 * cursor is still in it.
+	 */
+	it('keeps the filter open when it is cleared at a collapsing rung', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const bar = toolbarOf(containerEl);
+
+		view.setFilter('Epic'); // typed while the pane was wide
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		syncToolbarFit(bar);
+		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
+
+		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
+		input?.focus();
+		input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+		// The active class is gone with the text; the open flag has to have taken over.
+		expect(bar.hasClass('pbl-filter-open')).toBe(true);
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
+	});
+
 	it('keeps an empty revealed filter open across a full toolbar rebuild', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
@@ -1561,8 +1586,27 @@ the clear button:
 	});
 ```
 
+And change the `clear` closure already in `renderFilterBox` — the Escape key and the clear
+button both run it — so that clearing goes through `revealFilter` rather than calling
+`focus()` itself:
+
+```ts
+	// `setFilter` re-renders the tree and syncs this box's active state, which is what
+	// makes clearing a THIRD input to `revealFilter` rather than a focus call of its own.
+	// At a collapsing rung an input the user typed into is visible only through
+	// `pbl-filter-active`; emptying it strips that class synchronously, the rung hides the
+	// still-focused input, and the `input.focus()` that used to follow would focus a
+	// `display: none` element — no effect, no error, focus on the body. Establishing the
+	// open flag as part of clearing is also exactly what the design asks for: a cleared
+	// filter stays open until it is blurred.
+	const clear = () => {
+		host.setFilter('');
+		revealFilter(barEl);
+	};
+```
+
 Then add `revealFilter` beside `renderFilterBox` in `toolbar.ts` and export it — it is the
-one way the input is opened, because `/` has to reach it too:
+one way the input is opened, because `/` and the clear path have to reach it too:
 
 ```ts
 /**

@@ -248,7 +248,12 @@ render that rebuilds them:
 - `data-pbl-fit` — the ladder's verdict, on the bar.
 - `pbl-filter-open` — the revealed-empty filter, on the bar. Its sibling
   `pbl-filter-active` is re-derived by `renderFilterBox` from the input's value, so it may
-  stay on the box.
+  stay on the box. **Whatever empties the input has to establish the open flag as it
+  does**, because emptying is exactly what removes the other one: a filter typed at a wide
+  width is held open at a collapsing rung by `pbl-filter-active` alone, and clearing it
+  strips that class synchronously with the cursor still in the box. So `revealFilter` has
+  three inputs — the reveal button, `focusFilter()` (`/` and the no-match state), and the
+  `clear` closure that Escape and the clear button share.
 - The busy reservation — on a rebuilt element, and self-healing rather than persisted: the
   fresh label has no `pbl-busy-on`, so the next `syncBusy` reads a transition and sets the
   reservation and the step together. `render()` calls `syncBusyUi()` immediately after
