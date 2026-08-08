@@ -86,11 +86,18 @@ export default defineConfig({
 			// testable at all) measured 98.12/93.84/99.43/99.29 — statements and functions
 			// round up to new decimals (98.1 and 99.4), branches and lines round down to the
 			// figures already recorded above (93.8, 99.2), so only two of the four move.
+			//
+			// The accent-report fix (the timeline's bar render reporting its own colour
+			// fact instead of the legend rebuilding it from `results`, plus the sweep's two
+			// new rows for a marker outside the capped window) measured
+			// 98.11/93.83/99.43/99.30 — statements, branches and functions round down to the
+			// figures already recorded above, lines rounds down to a new decimal (99.3, up
+			// from 99.2), so only lines moves.
 			thresholds: {
 				statements: 98.1,
 				branches: 93.8,
 				functions: 99.4,
-				lines: 99.2,
+				lines: 99.3,
 			},
 		},
 	},

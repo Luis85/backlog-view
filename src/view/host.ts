@@ -103,6 +103,14 @@ export interface RoadmapSnapshot {
 	 * cannot leave one of them assuming room that is not there.
 	 */
 	leadWidth: number | null;
+	/**
+	 * Whether any bar just drawn on the dated axis takes the plain accent — see
+	 * `TimelineRender.hasUnkeyedAccent`, which this carries out unchanged. `false` on
+	 * the horizon axis, where nothing draws a bar at all. The legend reads this
+	 * instead of re-deciding a bar's colour from `results`, which is the copy of
+	 * `barClasses`'s precedence that missed the outside-window case.
+	 */
+	hasUnkeyedAccent: boolean;
 }
 
 /**

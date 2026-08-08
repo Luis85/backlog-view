@@ -3,11 +3,23 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
+import { readDate, todayStamp } from '../../src/domain/noteFields';
+import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
 
 useViewHarness();
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.due' };
 const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Active, Done' };
+
+/**
+ * Dates picked from `MAX_TIMELINE_DAYS` rather than guessed, and offset from the
+ * REAL clock so the test cannot drift: a hardcoded far-future date reads as safely
+ * outside the window today and stops being so once the clock reaches it.
+ */
+const TODAY = readDate(todayStamp()).value;
+if (TODAY === null) throw new Error('todayStamp() did not parse as a date');
+const OUTSIDE_WINDOW_DUE = formatCivil(addDays(TODAY, MAX_TIMELINE_DAYS));
+const INSIDE_WINDOW_DUE = formatCivil(addDays(TODAY, 10));
 
 function datedVault(): FakeVault {
 	const vault = new FakeVault();
@@ -134,7 +146,13 @@ describe('the legend keys exactly the colours the grid draws', () => {
 		);
 	}
 
-	const CASES: Array<{ name: string; options: Record<string, string>; states: Array<string | null> }> = [
+	const CASES: Array<{
+		name: string;
+		options: Record<string, string>;
+		states: Array<string | null>;
+		/** An extra, stateless Milestone note, its date picked to land on one side of the window. */
+		marker?: 'outside' | 'inside';
+	}> = [
 		{ name: 'a declared vocabulary, nothing done', options: { stateValues: 'New, Active' }, states: ['New', 'Active'] },
 		{ name: 'a declared vocabulary including a done value', options: { stateValues: 'New, Active, Done' }, states: ['New', 'Done'] },
 		{ name: 'no declared list — the vocabulary is what the notes observed', options: { stateValues: '' }, states: ['Alpha', 'Beta'] },
@@ -150,15 +168,29 @@ describe('the legend keys exactly the colours the grid draws', () => {
 		// and its bar goes green with nothing keying green.
 		{ name: 'a done value the configured vocabulary omits', options: { stateValues: 'New, Active' }, states: ['New', 'Done'] },
 		{ name: 'only done items, none of them listed', options: { stateValues: 'New, Active' }, states: ['Done', 'Done'] },
+		// `barClasses` returns EARLY for `geometry.outside`, before it ever adds
+		// `pbl-bar-milestone` — so a marker dated past the capped window draws
+		// `.pbl-bar-outside`, which paints the plain accent for a stateless item just
+		// like an ordinary bar would. A predicate over `results` that excludes every
+		// marker unconditionally misses exactly this case.
+		{ name: 'a stateless marker dated outside the window draws the plain accent', options: { stateValues: 'New, Active' }, states: ['New'], marker: 'outside' },
+		// The same marker, dated inside the window, draws the cyan diamond instead —
+		// the same rule failing the other way: keying the accent for THIS bar would be
+		// a swatch naming a colour nothing on the grid draws.
+		{ name: 'a stateless marker dated inside the window draws its own cyan, not the accent', options: { stateValues: 'New, Active' }, states: ['New'], marker: 'inside' },
 	];
 
-	it.each(CASES)('$name', ({ options, states }) => {
+	it.each(CASES)('$name', ({ options, states, marker }) => {
 		const vault = new FakeVault();
 		states.forEach((state, i) => {
 			const fm: Record<string, unknown> = { type: 'PBI', order: (i + 1) * 10, due: `2026-08-0${i + 1}` };
 			if (state !== null) fm.status = state;
 			vault.addFile(`Item ${i}.md`, { frontmatter: fm });
 		});
+		if (marker) {
+			const due = marker === 'outside' ? OUTSIDE_WINDOW_DUE : INSIDE_WINDOW_DUE;
+			vault.addFile('Marker.md', { frontmatter: { type: 'Milestone', order: 999, due } });
+		}
 		const workflow = 'stateValues' in options ? { stateProperty: 'note.status', ...options } : {};
 		const { view, containerEl } = makeView(vault, { ...DATE_AXIS, ...workflow }, { collapsed: true });
 		view.setProjection('roadmap');

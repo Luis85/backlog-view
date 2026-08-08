@@ -1,8 +1,7 @@
 import { BacklogViewHost } from '../host';
 import { activeAxis } from '../../domain/roadmap';
-import { isDoneValue, stateColorSlot, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
+import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
 import { BacklogItem } from '../../domain/model';
-import { isMarkerType } from '../../domain/itemTypes';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -19,12 +18,19 @@ import { isMarkerType } from '../../domain/itemTypes';
  * only after its own `if (!this.model) return` in `render()`, so a second null check
  * on this path would guard nothing reachable — the caller already holds the model this
  * vocabulary comes from.
+ *
+ * `hasUnkeyedAccent` is likewise reported by the render rather than recomputed here —
+ * see `TimelineRender.hasUnkeyedAccent`. A predicate over `results` alone cannot see
+ * what `barClasses` actually drew: it missed that `.pbl-bar-outside` (a marker dated
+ * outside the capped window) draws the plain accent too, which is what let a visible
+ * arrow on the grid go unkeyed.
  */
 export function renderLegend(
 	host: BacklogViewHost,
 	legendEl: HTMLElement,
 	observedStates: string[],
 	results: BacklogItem[],
+	hasUnkeyedAccent: boolean,
 ): void {
 	legendEl.empty();
 	const onDatedAxis = host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
@@ -59,13 +65,6 @@ export function renderLegend(
 			const slot = isDoneValue(host.settings, state) ? 'pbl-legend-done' : `pbl-state-${i % STATE_COLOR_SLOTS}`;
 			addSwatch(legendEl, slot, state);
 		});
-		// The other half of the same rule, in the other direction: a state the vocabulary
-		// does not list — an item's own unlisted value, which `Set state` deliberately
-		// offers — and an item with no state at all both take no slot, so their bars draw
-		// the plain accent. Unkeyed, that is a colour on the grid the key does not explain.
-		// Asked of the RESULTS rather than of the rendered rows: the answer is then a fact
-		// about what this base holds, so it does not flicker as scrolling or placement
-		// changes which bars happen to be on screen.
 		// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item
 		// can be done while its value is not in the configured list: its bar goes green and
 		// the loop above keyed no green. Asked of the results rather than the vocabulary,
@@ -74,24 +73,13 @@ export function renderLegend(
 			const done = results.find((item) => item.done);
 			if (done) addSwatch(legendEl, 'pbl-legend-done', done.stateValue ?? host.settings.doneValues[0]);
 		}
-		// The rule's other direction: a state the vocabulary does not list — an item's own
-		// unlisted value, which `Set state` deliberately offers — and an item with no state
-		// at all both take no slot, so their bars draw the plain accent. Unkeyed, that is a
-		// colour on the grid the key does not explain.
-		//
-		// A done item and a marker are excluded because they do not draw the accent: the
-		// done override and the diamond's own cyan outrank a slot, so counting them here
-		// would key `Other` for a colour nothing on the grid actually draws — the same rule
-		// failing in the opposite direction. Asked of the RESULTS rather than of the
-		// rendered rows, so the answer is a fact about what this base holds and does not
-		// flicker as scrolling or placement changes which bars are on screen.
-		const unkeyed = results.some(
-			(item) =>
-				!item.done &&
-				!isMarkerType(item.typeName) &&
-				stateColorSlot(host.settings, observedStates, item.stateValue) === null,
-		);
-		if (unkeyed) addSwatch(legendEl, 'pbl-legend-other', 'Other');
+		// The rule's other direction: a bar that draws the plain accent — no slot, no
+		// done override, no milestone cyan — is a colour on the grid the key does not
+		// explain. `hasUnkeyedAccent` is the RENDER's own report of that fact (see its
+		// doc on `TimelineRender`), never a predicate rebuilt here over `results`: that
+		// copy of `barClasses`'s precedence is exactly what missed a marker outside the
+		// window drawing the accent under `.pbl-bar-outside` instead of its own cyan.
+		if (hasUnkeyedAccent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
 	}
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
 	addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');

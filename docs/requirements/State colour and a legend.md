@@ -78,12 +78,14 @@ cannot name a state differently.
 
 ## How this one is checked
 
-Five defects, all one rule at a different point in the same two-dimensional space —
+Six defects now, all one rule at a different point in the same two-dimensional space —
 vocabulary by configuration. The done swatch keying its slot instead of the green its
 bars draw; the milestone swatch keying cyan while the diamond drew a state slot; state
 swatches rendered with no workflow configured; a state outside the configured list
-drawing an accent nothing keyed; and a DONE value outside that list drawing green
-nothing keyed. Every one passed the tests that existed, because those name cases.
+drawing an accent nothing keyed; a DONE value outside that list drawing green nothing
+keyed; and, sixth, a MARKER outside the capped timeline window drawing the plain accent
+under `.pbl-bar-outside` while the legend's own predicate excluded every marker
+unconditionally. Every one passed the tests that existed, because those name cases.
 
 So the suite states the rule both ways round and sweeps the space: for each of a table
 of vocabularies and configurations, every colour a rendered mark draws is keyed by a
@@ -99,6 +101,20 @@ to under a theme stays the live-vault question in [[Smoke test the roadmap]].
 The fifth defect was found by a reviewer AFTER the sweep existed, because the table had
 no row for "the configured vocabulary omits a done value some item carries". A sweep is
 only ever as good as the dimensions it spans, and the fix was a row, not a rewrite.
+
+The sixth was the same lesson on a SECOND missing dimension: the table varied vocabulary
+and configuration, but no row ever placed a marker outside the capped window, so nothing
+exercised `barClasses`'s early return for `geometry.outside` — the branch that drops
+`pbl-bar-milestone` before it is ever added. The legend had grown its own copy of the
+colour precedence to answer "is anything unkeyed", and the copy excluded every marker
+outright rather than asking what `barClasses` actually drew for THIS one. The fix does
+not patch the copy: `renderBarRow` now reports whether the bar it just drew took the
+plain accent, `renderTimeline` accumulates that across the bars it renders, and the
+legend reads the accumulated fact off `RoadmapSnapshot` instead of reconstructing it —
+so a future seventh branch in `barClasses` cannot silently create a seventh disagreement
+between what the grid draws and what the copy assumed it draws. The sweep's two new rows
+— a stateless marker dated outside the window, and the same marker dated inside it —
+state the rule in both directions the way the others do.
 
 ## Acceptance criteria
 
@@ -136,3 +152,13 @@ The colour rules — the five slots, the accent fallback via `--pbl-state-color`
 the done rule's specificity over a slot — are `styles/timeline.css`; the legend's own
 swatches and layout are `styles/legend.css`; the Today pill's rule is deleted from
 `styles/timelineFurniture.css`.
+
+Whether ANY bar draws the plain accent is decided once, in `renderBarRow`
+(`src/view/render/timeline.ts`), from the same `geometry` and `slot` it already holds —
+never recomputed from `results` anywhere downstream. `renderTimeline` accumulates that
+per-bar fact into `TimelineRender.hasUnkeyedAccent`; `renderRoadmap`
+(`src/view/render/roadmap.ts`) carries it unchanged into `RoadmapSnapshot`
+(`src/view/host.ts`); `render()` in `src/view/backlogView.ts` reads
+`this.roadmap?.hasUnkeyedAccent` after the tree has rendered (so the roadmap snapshot
+for THIS pass already exists) and passes it to `renderLegend`, which keys `Other` on it
+directly rather than asking `results` a question only the render can answer.

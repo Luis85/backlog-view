@@ -77,6 +77,16 @@ export interface TimelineRender {
 	tracks: Map<string, HTMLElement>;
 	/** The lead width THIS render actually drew — the resolved pick, or `TIMELINE_LEAD_PX`. */
 	leadWidth: number;
+	/**
+	 * Whether any bar just drawn takes the plain accent — no state slot, no done
+	 * override, no milestone cyan — which is the one colour the legend's `Other`
+	 * swatch keys. Reported from the render rather than recomputed from `results`
+	 * (see `renderBarRow`): `barClasses` decides a mark's actual colour, including the
+	 * early-return `.pbl-bar-outside` case that draws the accent for a marker whose
+	 * date lies outside the capped window — a fact a predicate over `results` alone
+	 * cannot see, since it never asks what geometry the bar drew.
+	 */
+	hasUnkeyedAccent: boolean;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -153,8 +163,10 @@ export function renderTimeline(
 	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
 	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
+	let hasUnkeyedAccent = false;
 	bars.forEach((bar, index) => {
-		const row = renderBarRow(ctx, mounts, window, bar, scale);
+		const { row, unkeyedAccent } = renderBarRow(ctx, mounts, window, bar, scale);
+		if (unkeyedAccent) hasUnkeyedAccent = true;
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
 		// count the header, the lines and the layers interleaved in this container.
 		if (index % 2 === 1) row.addClass('pbl-row-even');
@@ -177,7 +189,18 @@ export function renderTimeline(
 	// somewhere to land, out of the way until a drag needs it — reached by a second
 	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
 	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
-	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay, headerTrack, tracks, leadWidth };
+	return {
+		cards: bars.map((bar) => bar.item),
+		todayLeft,
+		scroller: grid,
+		content,
+		window,
+		overlay,
+		headerTrack,
+		tracks,
+		leadWidth,
+		hasUnkeyedAccent,
+	};
 }
 
 /**
@@ -316,7 +339,7 @@ function renderBarRow(
 	window: TimelineWindow,
 	bar: TimelineBar,
 	scale: TimelineScale,
-): HTMLElement {
+): { row: HTMLElement; unkeyedAccent: boolean } {
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
 	// The bar's colour, by the item's own state — never computed here: `stateColorSlot`
@@ -367,7 +390,13 @@ function renderBarRow(
 	// already states.
 	if (isMarkerType(bar.item.typeName)) row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
 	wireCardActivation(ctx, row, bar.item);
-	return row;
+	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
+	// order: done wins on the ROW class, a milestone diamond only where `barClasses`
+	// actually added `pbl-bar-milestone` — never for `geometry.milestone` alone, since
+	// the early return for `geometry.outside` withholds that class from a marker whose
+	// date lies outside the window, and that bar draws the plain accent like any other.
+	const unkeyedAccent = !bar.item.done && slot === null && !(geometry.milestone && !geometry.outside);
+	return { row, unkeyedAccent };
 }
 
 /**

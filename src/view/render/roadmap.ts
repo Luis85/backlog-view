@@ -51,6 +51,7 @@ export function renderRoadmap(
 			window: null,
 			scale: null,
 			leadWidth: null,
+			hasUnkeyedAccent: false,
 		};
 	}
 	const roadmap = buildRoadmap(model, host.settings, (item) => !host.isRowHidden(item), axis);
@@ -62,6 +63,7 @@ export function renderRoadmap(
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
+	let hasUnkeyedAccent = false;
 	if (axis === 'horizons') {
 		const bucketsEl = frameEl.createDiv({ cls: 'pbl-roadmap-buckets' });
 		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd));
@@ -87,6 +89,7 @@ export function renderRoadmap(
 		window = timeline.window;
 		scale = activeScale;
 		leadWidth = timeline.leadWidth;
+		hasUnkeyedAccent = timeline.hasUnkeyedAccent;
 		wireTimelineDrag(ctx, dnd, {
 			overlay: timeline.overlay,
 			scroller: timeline.scroller,
@@ -122,7 +125,7 @@ export function renderRoadmap(
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
-	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth };
+	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth, hasUnkeyedAccent };
 }
 
 /**
