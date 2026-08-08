@@ -121,6 +121,11 @@ reading the plan move the reader's place in the tree (2026-08-08).
 - The scope is the PROJECTION's, so the shelf and context cards drawn beside the grid keep
   their disclosures with the axis as its rows do — one working position per screen, rather
   than one per control.
+- An entry stored before the split holds one bit per note, and it is the bit both
+  projections were reading, so it is COPIED into the new scope on the first restore that
+  finds no scoped key. The upgrade leaves a reader's plan where they left it instead of
+  shutting every row on it, and running again cannot undo that, since the copy it made is
+  what stops it.
 - While the quick filter runs the chevron writes nothing and the menu offers no toggle.
 - The chevron opens nothing: neither a primary nor a middle click on it reaches the row's
   own open behaviour.
@@ -153,7 +158,10 @@ next caller choose again. `CollapseState` therefore holds KEYS rather than paths
 than about the question — pruning a key whose file is gone, and following a rename — and
 `collapseNewParents` settles both scopes in one pass over the model, since it runs on a
 data update rather than per projection and an unsettled scope would open a whole backlog
-the first time it was shown.
+the first time it was shown. `seedTimelineScope` is the upgrade: on a restore that finds
+no scoped key it mirrors the stored bits into the new scope, because a pre-split entry's
+one bit per note is the bit both projections were reading — and its own copy is what
+keeps it from firing twice.
 
 The control itself is the tree's, extracted rather than copied: `renderChevron` in
 `src/view/render/rows.ts` is now the one statement of what a chevron is — the icon, the

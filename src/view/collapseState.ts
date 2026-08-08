@@ -30,6 +30,26 @@ function notePath(key: string): string {
 }
 
 /**
+ * An entry stored before the dated axis had a scope of its own holds ONE bit per note —
+ * and it is the bit both projections were reading, so the split copies it across rather
+ * than starting the grid from nothing. Without this, the first open after the upgrade
+ * shuts every row a reader had left open on their plan: `collapseNewParents` finds the
+ * scope unsettled and applies the default to all of it.
+ *
+ * Fires only where the entry names no scoped key at all, which is what keeps it from
+ * touching a state this version wrote — and makes it idempotent, since the copy it
+ * makes is exactly what stops it running again.
+ */
+function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
+	const keys = [...settled];
+	if (keys.some((key) => key.startsWith(TIMELINE_SCOPE))) return;
+	for (const key of keys) {
+		settled.add(TIMELINE_SCOPE + key);
+		if (collapsed.has(key)) collapsed.add(TIMELINE_SCOPE + key);
+	}
+}
+
+/**
  * The view's working position, remembered across sessions: which rows are shut,
  * which projection — tree, board or roadmap — the view is showing, which roadmap
  * axis it shows when both are configured, and which type the tree is focused on.
@@ -250,6 +270,7 @@ export class CollapseState {
 		this.collapsed = snapshot.collapsed;
 		// Both sets settle a path; only the collapsed ones are shut.
 		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
+		seedTimelineScope(this.collapsed, this.settled);
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
 		this.zoom = snapshot.zoom ?? null;

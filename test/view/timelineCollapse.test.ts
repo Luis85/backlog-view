@@ -111,6 +111,21 @@ describe('collapsing a bar’s subtree', () => {
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature']);
 	});
 
+	it('carries a pre-split entry into the new scope rather than shutting the plan', () => {
+		// What an installed version stored: one bit per note, which is the bit BOTH
+		// projections were reading. Splitting them must copy it across — otherwise the
+		// first open after the upgrade finds the axis's scope unsettled and applies the
+		// default to all of it, shutting every row the reader had left open.
+		const vault = nestedVault();
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: ['Epic.md'] },
+		});
+
+		const { containerEl } = roadmapView(vault, { ...DATES }, { base: 'Backlog.base' });
+
+		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
+	});
+
 	it('draws no disclosure on a row with nothing below it on the grid', () => {
 		const { containerEl } = roadmapView(nestedVault(), { ...DATES });
 		click(chevronOf(containerEl, 'Epic')!);
