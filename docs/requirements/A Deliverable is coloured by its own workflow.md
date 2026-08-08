@@ -122,10 +122,11 @@ changed by editing a requirements state nothing on that board shows.
   **Checked by** `test/domain/statePalettes.test.ts` — "is TWO palettes where the key falls back but the value list is overridden"
 - A base declaring nothing is one palette, whatever the two observed lists happen to hold.
   **Checked by** `test/domain/statePalettes.test.ts` — "is ONE palette where nothing is declared and both lists are merely observed"
-- Every surface that draws an item as FINISHED asks its own workflow — the tree row and
-  the card's child list as much as the card and the bar.
+- Every surface that draws an item as FINISHED asks its own workflow — the tree row, the
+  card's child list, and every card on every projection, buckets and shelf included.
   **Checked by** `test/view/deliverablesBoard.test.ts` — "styles a TREE row by the item’s own workflow too, both directions"
   **Checked by** `test/view/cardChildren.test.ts` — "styles a done child by ITS OWN workflow, not the requirements one"
+  **Checked by** `test/view/roadmap.test.ts` — "styles a bucket card and a shelf card by the Deliverable workflow, both directions"
 
 ## Where it lives
 
@@ -139,10 +140,18 @@ fact about the palette rather than about a workflow.
 
 `ownWorkflowReading` is asked wherever something is drawn as finished: `renderRow`
 (`src/view/render/rows.ts`) for the tree row's `pbl-done`, `renderChildEntry`
-(`src/view/render/cardChildren.ts`) for a listed child's, and `createCard`'s `done`
-parameter for a card's, which the Deliverables board already passed. Found by review at
-the card list and fixed at every surface rather than the reported one — the same defect
-shape this note exists for.
+(`src/view/render/cardChildren.ts`) for a listed child's, and **inside `createCard`**
+(`src/view/render/board.ts`) for every card, on every projection that draws one.
+
+That last one took two passes, and the first is worth recording because this note claimed
+otherwise. `createCard` had a `done` PARAMETER, defaulting to `item.done`, with a per-board
+override — so the Deliverables board and the timeline passed the right workflow while the
+horizon buckets, the shelf and the context strip took the default and styled a Deliverable
+by a workflow that does not track it. Fixing the two reported call sites and writing "fixed
+at every surface" here was the same defect one level up: a category invariant satisfied at
+the places someone thought of. The parameter and its override are gone — the question is
+asked once, in the one function every card goes through, so a projection added later cannot
+answer it differently by omission.
 
 `renderBarRow` in `src/view/render/timeline.ts` reads the item's own workflow ONCE and
 threads it through all four things on the row that key a colour or say one in words: the

@@ -360,16 +360,15 @@ function renderBarRow(
 	bar: TimelineBar,
 	scale: TimelineScale,
 ): { row: HTMLElement; colors: DrawnColors } {
-	// The item's OWN workflow, read ONCE and threaded through all four things on this
-	// row that key a colour or say one in words: the `pbl-done` class the green override
-	// hangs on, the slot class, the hidden state words, and the `drawn` report the legend
-	// is built from. Reading `item.done` / `item.stateValue` here keyed a Deliverable into
-	// the REQUIREMENTS workflow — a colour naming a state it does not hold, and changing
-	// the state that IS its own moved nothing on the grid. Four surfaces of one rule, so
-	// one reading: three of them agreeing and the fourth not is the shape every past bug
-	// in this feature had.
+	// The item's OWN workflow, read ONCE and threaded through the three things on this row
+	// that key a colour or say one in words: the slot class, the hidden state words, and
+	// the `drawn` report the legend is built from. (`pbl-done` is the fourth and is no
+	// longer passed — `createCard` asks the same question itself now, for every projection
+	// that draws a card.) Reading `item.done` / `item.stateValue` here keyed a Deliverable
+	// into the REQUIREMENTS workflow — a colour naming a state it does not hold, and
+	// changing the state that IS its own moved nothing on the grid.
 	const own = ownWorkflowReading(bar.item);
-	const row = createCard(ctx, mounts.content, bar.item, own.done);
+	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
 	// Which vocabulary indexes that value is the same type decision, made by `paletteFor`.
 	// No slot (no state, or a value its own vocabulary does not carry) adds no class and
