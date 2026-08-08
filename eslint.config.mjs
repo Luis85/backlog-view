@@ -104,6 +104,22 @@ const OVERBY = {
 };
 
 /**
+ * `ALL_TYPES` is the whole type vocabulary; a projection offers only the types it can
+ * show (`offerableTypes`, src/view/interactions/menu.ts) — the requirements board
+ * withholds Deliverable, the Deliverables board withholds everything else. Reading
+ * `ALL_TYPES` straight anywhere else in view/ is how a sixth type-offering surface
+ * arrives at the same bug the first four did (see the doc comment on
+ * `offerableTypes`), so the ban sits on the import itself, caught where it enters the
+ * file rather than at each use. Scoped to view/, not domain/: `ALL_TYPES` is the
+ * correct thing for domain code (settings, shelf grouping, the README table) to name.
+ */
+const ALL_TYPES_IMPORT = {
+	selector: "ImportSpecifier[imported.name='ALL_TYPES']",
+	message:
+		'Route through offerableTypes (src/view/interactions/menu.ts) instead of importing ALL_TYPES — the whole type vocabulary is not what a given projection can show.',
+};
+
+/**
  * The tree element is the container; querying it is a walk of every rendered row to
  * find something the view already has by reference (`rowEls`, the selected row, the
  * drag source). A full-tree `querySelectorAll` on every `dragend` shipped once. The
@@ -140,8 +156,14 @@ const TREE_SCAN = {
  */
 const STORAGE = 'src/storage/**/*.ts';
 const MENU = 'src/view/interactions/menu.ts';
-const RANKING = ['src/domain/writePlan.ts', 'src/view/interactions/create.ts'];
+// Ranking code lives in one domain file and one view file; split so a view-only rule
+// (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
+const RANKING_DOMAIN = ['src/domain/writePlan.ts'];
+const RANKING_VIEW = ['src/view/interactions/create.ts'];
+const RANKING = [...RANKING_DOMAIN, ...RANKING_VIEW];
 const RENDER = 'src/view/render/**/*.ts';
+// The rest of view/, once menu.ts, render/ and create.ts are carved out below.
+const VIEW = 'src/view/**/*.ts';
 
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
@@ -185,11 +207,16 @@ export default defineConfig([
 	forbidden('ui', ['view', 'commands', 'domain', 'storage'], 'ui/ holds standalone dialogs; it must stay free of app structure.'),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
 	// -- invariants that are checked rather than described -----------------------
-	// Five disjoint regions of src/; see the note above `syntaxRules`.
+	// Six disjoint regions of src/; see the note above `syntaxRules`. Two of the six
+	// (the general region and RANKING) are themselves split in two below — one half
+	// inside view/, one outside it — because ALL_TYPES_IMPORT applies to the former
+	// and would be a false positive on the latter (domain code names ALL_TYPES on
+	// purpose: settings.ts, shelf.ts, itemTypes.ts, backlogReadme.ts, model.ts).
 	{
-		// Everything that is not one of the four special cases below.
+		// Everything that is not view/ and not one of the other special cases: domain/,
+		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
-		ignores: [STORAGE, MENU, RENDER, ...RANKING],
+		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN],
 		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
@@ -201,22 +228,42 @@ export default defineConfig([
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
 		// allowed to make it. It writes nothing and plans nothing, so both other rules hold.
+		// It is also the one place allowed to read ALL_TYPES straight — offerableTypes'
+		// own default parameter — which is why it is the exemption from ALL_TYPES_IMPORT
+		// rather than a fifth place carrying it.
 		files: [MENU],
 		rules: syntaxRules([...WRITE_BOUNDARY, OVERBY, TREE_SCAN]),
 	},
 	{
-		// Ranking code: what it writes is an order among real siblings, and a type is
-		// the rung its parent chain puts it on — never the depth it is drawn at. It plans
-		// writes, which is exactly what overBy must stay out of.
-		files: RANKING,
+		// Ranking code, domain half: what it writes is an order among real siblings, and
+		// a type is the rung its parent chain puts it on — never the depth it is drawn
+		// at. It plans writes, which is exactly what overBy must stay out of. No
+		// ALL_TYPES_IMPORT: this file is domain/, not view/.
+		files: RANKING_DOMAIN,
 		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
+	},
+	{
+		// Ranking code, view half: the same rules as the domain half, plus
+		// ALL_TYPES_IMPORT — this file offers types (`promptCreateItem`'s callers) like
+		// any other view/ module.
+		files: RANKING_VIEW,
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN, ALL_TYPES_IMPORT]),
 	},
 	{
 		// view/render/ is the one region allowed to import overBy: it draws the column,
 		// never plans a write. The write boundary and the menu-anchor rule still apply —
-		// nothing here is exempt from those, only from OVERBY.
+		// nothing here is exempt from those, only from OVERBY. It offers types on the
+		// toolbar, so ALL_TYPES_IMPORT applies here too.
 		files: [RENDER],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT]),
+	},
+	{
+		// The rest of view/ — everything under it once menu.ts, render/ and create.ts
+		// (handled above) are carved out. Same rules the general region has, plus
+		// ALL_TYPES_IMPORT: any of these files is a candidate sixth type-offering surface.
+		files: [VIEW],
+		ignores: [MENU, RENDER, ...RANKING_VIEW],
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN, ALL_TYPES_IMPORT]),
 	},
 	{
 		// Everything but `test/`, rather than `src/**` by name: a `files` pattern is
