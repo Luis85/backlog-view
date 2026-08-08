@@ -40,17 +40,18 @@ a different control.
 
 **Main flow**
 
-1. On a result, the menu offers **Depends on…** and, when the item already waits for
-   something, **Remove dependency…**.
+1. On a result, the menu offers **Depends on…** and, when the item's list holds anything at
+   all, **Remove dependency…**.
 2. **Depends on…** opens a suggester over the Base's results, offering only picks that
    would write something: not itself, not what it already waits for, not anything that
    would close a loop.
 3. Picking one plans a single write — the prerequisite appended to the dependent's own
    list — and applies it through the same gate every other write here goes through
    ([[Safe writes]]).
-4. **Remove dependency…** offers what the item currently waits for; picking one removes
-   that entry, and removing the last one removes the key rather than leaving an empty
-   list behind.
+4. **Remove dependency…** offers **everything the list holds** — each prerequisite by name,
+   and each entry that became no edge by the raw text it holds — and picking one removes
+   every entry that line stands for. Removing the last one removes the key rather than
+   leaving an empty list behind.
 
 **Extensions**
 
@@ -82,7 +83,18 @@ a different control.
 - **4a — the last prerequisite is removed.** The key is removed, not emptied. Absence is a
   value here as it is for every optional property, and an empty list left on disk is a
   value the reader would then have to be taught to ignore.
-- **4b — the stored list names the same prerequisite more than once.** Removing it removes
+- **4b — the entry to remove is a broken one.** Offered like any other, shown as the raw
+  text the note holds, and removed the same way. This is the whole cleanup path for a
+  mistyped name, a self-reference or a loop-closing link, and it has to exist here or the
+  marker the reader is being shown has no answer but hand-editing frontmatter — a marker
+  pointing at a repair the view refuses to make. The register already settled this
+  direction for the other link field: [[Broken links still render]] marks damage rather
+  than tidying it, *and* clears a stale `parent` on the drop that would otherwise appear to
+  do nothing. Marking is a refusal to repair **silently**, never a refusal to let the user
+  repair. An unresolvable entry is also the one case with no name to offer, which is why
+  step 4 is written about what the **list holds** rather than about what the item waits
+  for: the resolved reading has nothing to say about a name that resolves to nothing.
+- **4c — the stored list names the same prerequisite more than once.** Removing it removes
   **every** raw entry that resolves to it, not the first one found. The reading side
   collapses duplicates and differing spellings into one dependency
   ([[Dependencies as a property]]), so what the picker offers is one entry for a list that
@@ -104,9 +116,12 @@ a different control.
   never offered.
 - The write lands on the item the menu was opened on and on no other note, through the one
   gate, taken back by one undo.
-- Removing a dependency removes every raw entry that resolves to it — duplicates and
-  alternate spellings alike — so the dependency is gone after one removal rather than
-  reappearing on the next refresh; removing the last one removes the key.
+- **Remove dependency…** offers every entry the list holds, including the ones that became
+  no edge, so a broken dependency is removable here and needs no hand-edited frontmatter —
+  no marker the view shows is a repair only the file can make.
+- Removing a dependency removes every raw entry the offered line stands for — duplicates and
+  alternate spellings alike — so it is gone after one removal rather than reappearing on the
+  next refresh; removing the last one removes the key.
 - Every string this adds goes through the catalog like every other ([[The string catalog]]).
 
 ## Where it lives
@@ -123,9 +138,10 @@ shapes rather than once: the state key guards inline on `settings.stateKey` in `
 and the axis keys go through `axisEntries`, whose `key !== ''` test drops an unconfigured
 key and whose `null` value means delete. Neither shape takes a **list**, which is what this
 property is, and neither appends to or removes from one. So an implementer adds an
-operation — append one entry, drop **every** entry resolving to one dependency (4b), drop
-the key when the last goes, and write nothing when the key is unset — rather than a call to
-something already written; whether it
+operation — append one entry, drop **every** raw entry a single offered line stands for
+(4b and 4c: a resolved dependency however many times and however it is spelled, or one
+unresolvable entry as written), drop the key when the last goes, and write nothing when the
+key is unset — rather than a call to something already written; whether it
 also becomes the single statement of the rule for the other two is a refactor this note
 neither needs nor forbids. Which picks are legal is the loop question
 `src/domain/dropTargets.ts` already answers for the tree, asked of a second edge kind.

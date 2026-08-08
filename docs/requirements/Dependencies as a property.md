@@ -47,7 +47,9 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 3. Each entry resolves against the same item set `parent` resolves against, producing an
    edge from the prerequisite to the item that named it.
 4. Entries that cannot become an edge — unresolvable, self-referential, or the one that
-   closes a loop — are kept and **marked broken**, never dropped and never rewritten.
+   closes a loop — are kept and **marked broken**, never dropped and never rewritten by
+   the reader. Never *by the reader* is the whole of it: the user can still remove one
+   deliberately, and [[Linking two items]] is where that path lives.
 
 **Extensions**
 
