@@ -64,18 +64,18 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	undoBtn.addEventListener('click', () => {
 		void host.undoLast();
 	});
-	// Expand and collapse drive the tree's rows; the board and the roadmap have
-	// nothing collapsible yet, and a control that visibly does nothing is worse than none.
-	if (host.projection === 'tree') {
-		collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
-			for (const item of model.items) host.setCollapsed(item.file.path, false);
-		});
-		collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
-			for (const item of model.items) {
-				if (item.children.length > 0) host.setCollapsed(item.file.path, true);
-			}
-		});
-	}
+	// Expand and collapse drive the tree's rows and, since cards grew disclosures, the
+	// cards too. They are no longer gated on the projection — but they ARE gated on the
+	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
+	// content render because that is what fills the set it reads.
+	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
+		for (const item of model.items) host.setCollapsed(item.file.path, false);
+	});
+	collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
+		for (const item of model.items) {
+			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
+		}
+	});
 	renderCompletedToggle(host, barEl, model);
 
 	renderFilterBox(host, barEl);
@@ -180,19 +180,15 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: bo
 
 /**
  * The filter can be cleared from outside the toolbar (Escape in the tree, the
- * no-match state); keep the input and its clear affordance in sync. A filter change
- * re-renders only the content pane, so the collapse controls are updated here too:
- * they are focusable buttons, and while collapse state is overridden they have to
- * actually refuse the press, not just look dimmed.
+ * no-match state); keep the input and its clear affordance in sync. It does NOT
+ * touch the collapse controls — `syncCollapseCtls` is their sole writer, called
+ * after the content render along with `syncCountLabel`, and a filter change
+ * reaches it the same way any other content re-render does.
  */
 export function syncFilterUi(host: BacklogViewHost, barEl: HTMLElement): void {
 	const input = barEl.querySelector<HTMLInputElement>('.pbl-filter-input');
 	if (input && input.value !== host.filterText) input.value = host.filterText;
 	input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', host.filterText !== '');
-	const filtering = host.isFiltering();
-	barEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
-		btn.disabled = filtering;
-	});
 }
 
 /**
@@ -225,6 +221,30 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const shown = model.results.filter((item) => !host.isRowHidden(item)).length;
 	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
 	else label.setText(`${shown} of ${total}`);
+}
+
+/**
+ * The bulk collapse controls, decided from what the render actually drew. It has to run
+ * AFTER the content: `renderToolbar` goes first and the cards are drawn afterwards, so a
+ * verdict taken during the toolbar pass would read the previous frame's set —
+ * `syncCountLabel` above is the same shape for the same reason. It is the only writer of
+ * `btn.disabled` on `.pbl-collapse-ctl` today — nothing enforces that, a lint rule for it
+ * was considered and declined — but `syncFilterUi` used to also write it, which made two
+ * functions own one property agreeing only by call order; `collapseButton`'s own click
+ * handler below READS `btn.disabled` to guard its mutation, which does not reopen that
+ * split — a read cannot disagree with the writer about what the value is.
+ *
+ * A card projection with no disclosure gets them disabled rather than removed. They
+ * would otherwise write collapse state that changes nothing on screen and then surprises
+ * the tree later — inert to look at and not inert in effect, which is the worst pairing.
+ * The real `disabled` property, never CSS: `pointer-events: none` stops a mouse and
+ * nothing else.
+ */
+export function syncCollapseCtls(host: BacklogViewHost, barEl: HTMLElement): void {
+	const nothingToCollapse = host.projection !== 'tree' && host.cardChildrenShown.size === 0;
+	barEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
+		btn.disabled = host.isFiltering() || nothingToCollapse;
+	});
 }
 
 /**
@@ -454,7 +474,7 @@ function iconButton(parent: HTMLElement, icon: string, label: string, key: strin
  * Expand/collapse toolbar buttons. Collapse state is overridden while a filter is
  * active, so they are genuinely `disabled` then rather than only dimmed: a control
  * a keyboard user can reach has to refuse the press, not just look like it would.
- * The view re-syncs the flag on every filter change (`syncFilterUi`).
+ * The view re-syncs the flag after every content render (`syncCollapseCtls`).
  */
 function collapseButton(
 	host: BacklogViewHost,
@@ -465,8 +485,12 @@ function collapseButton(
 ): void {
 	const btn = iconButton(parent, icon, label);
 	btn.addClass('pbl-collapse-ctl');
-	btn.disabled = host.isFiltering();
 	btn.addEventListener('click', () => {
+		// A click on the icon `<svg>` inside a disabled button still reaches this
+		// listener (only `btn.click()` on the button itself is blocked by `disabled`),
+		// so the guard has to be read here rather than trusted from the DOM state —
+		// same shape as the card disclosure toggle in `render/cardChildren.ts`.
+		if (btn.disabled) return;
 		mutate();
 		host.render();
 	});

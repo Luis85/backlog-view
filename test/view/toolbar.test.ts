@@ -263,24 +263,6 @@ describe('toolbar controls are reachable without a mouse', () => {
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
 	});
 
-	it('really disables the collapse controls while a filter overrides them', () => {
-		const vault = fixture();
-		const { view, containerEl } = makeView(vault);
-		const collapseCtl = () =>
-			Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
-
-		expect(collapseCtl()).toHaveLength(2);
-		expect(collapseCtl().every((b) => b.disabled)).toBe(false);
-
-		// Dimming them with CSS was enough while they were unreachable divs; a
-		// focusable button has to refuse the press itself.
-		view.setFilter('Feature');
-		expect(collapseCtl().every((b) => b.disabled)).toBe(true);
-
-		view.setFilter('');
-		expect(collapseCtl().some((b) => b.disabled)).toBe(false);
-	});
-
 	it('keeps the clear buttons out of the tab order until they apply', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);

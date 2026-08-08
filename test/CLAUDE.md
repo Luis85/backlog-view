@@ -70,12 +70,28 @@ Obsidian's.
   stub still covers every `var(--x)` the partials read, and every icon name the view asks
   for across all three projections still resolves.
 
-**What it is faithful about:** markup, layout, the real assembled stylesheet, every
+**What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the
-partials style. **What it is not:** colour — `test/harness/theme.css` builds on Obsidian's
-documented base scale and palette in both schemes, which is close enough to judge contrast
-and hierarchy by and not close enough to read a colour off, since a themed vault replaces
-exactly those values. It therefore replaces NO live-vault verification,
-and asserting appearance from it is refused in
+partials style. **What it is not:** colour, and any layout a partial leans on an Obsidian
+element default to supply rather than writing itself. Two files answer that now, in
+order: `test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the
+harness exercises (its header states what was kept and why), and `test/harness/theme.css`
+fills what the app sheet leaves to a theme — the variable palette, `.svg-icon`,
+`.clickable-icon`, and the leaf frame. Loading the real sheet first is what makes an
+element default present at all rather than approximated: a card-children disclosure whose
+toggle rendered as a centred, boxed native button shipped looking right here and wrong in
+a vault (2026-08-08), because the stub then had no `button` rule and nothing had guessed
+one. That episode is also why the stub no longer carries hand-written element defaults —
+a guessed baseline beside a real one is two answers to one question.
+
+This narrows the gap; it does not close it. The reduced sheet keeps only what the
+harness was driven through, so an element default that no driven state reached is still
+absent, and a themed vault still replaces the colours. "Layout is faithful" remains true
+only of what a partial sets itself and of the app defaults the reduction happened to
+keep. The COLOUR half of
+the stub — `test/harness/theme.css`'s base scale and named palette, in both schemes — is
+close enough to judge contrast and hierarchy by and not close enough to read a colour off,
+since a themed vault replaces exactly those values. It therefore replaces NO live-vault
+verification, and asserting appearance from it is refused in
 [ADR 0020](../docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md): no
 baselines, no screenshot suite, no sixth step in `npm run check`.

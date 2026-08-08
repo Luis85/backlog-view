@@ -106,7 +106,23 @@
 	height: 12px;
 }
 
-.pbl-card-match {
+/* A single text node, no icon — `display: inline-block` rather than Obsidian's
+   own default `inline-flex` (bare `button`, (0,0,1), already loses to this bare
+   class at (0,1,0) with no qualification needed) sidesteps the `justify-content`
+   question entirely: nothing left to center the text against, and the ellipsis
+   truncates a plain inline box reliably, which a flex container's anonymous text
+   item does not promise.
+
+   Still a real `<button>`, so `color`, `background-color` and `box-shadow` below
+   lose to Obsidian's own `button:not(.clickable-icon)` at (0,1,1) — the bare class
+   alone is (0,1,0) and loses regardless of source order. Rather than a second rule
+   restating whichever property Obsidian is noticed contesting, the button-qualified
+   selector joins this rule's own selector list — the `button.pbl-card-kids-toggle`
+   precedent in cardChildren.css — which ties Obsidian's specificity and wins on
+   source order, carrying every declaration below with it. */
+.pbl-card-match,
+button.pbl-card-match {
+	display: inline-block;
 	padding: 0 var(--size-2-1);
 	height: auto;
 	line-height: 1.4;
@@ -123,6 +139,16 @@
 .pbl-card-match:hover {
 	color: var(--text-normal);
 	background-color: var(--background-modifier-active-hover);
+}
+
+/* The rule above also beats Obsidian's `button:focus-visible` ring at the same
+   (0,1,1) tie, so the link needs its own visible focus indicator — outline, not
+   box-shadow, matching every other control fixed this way. Nothing between this
+   button and the board column clips an outward ring the way the state/horizon
+   chips' own column does, so the offset stays outward rather than inset. */
+.pbl-card-match:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
 }
 
 /* Filtered, the count is a pair ("3 of 12") — wider than a bare number and no longer

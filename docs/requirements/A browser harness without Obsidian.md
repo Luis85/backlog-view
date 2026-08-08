@@ -34,17 +34,31 @@ limit of what looking proves is written down instead of assumed.
 
 ## What it is faithful about, and what it is not
 
-**Faithful:** the markup, the layout, the real stylesheet assembled from the real
-partials, and every interaction — the drags are the drag library's, the menu entries and
-the actions behind them are the view's, the toolbar is the toolbar.
+**Faithful:** the markup, the CSS the partials write for themselves, the real stylesheet
+assembled from the real partials, and every interaction — the drags are the drag
+library's, the menu entries and the actions behind them are the view's, the toolbar is
+the toolbar.
 
-**Not:** colour, though the gap narrowed. The stub is built on Obsidian's documented base
-scale and named palette, in both a light and a dark scheme, switchable in the page
-(`?theme=light`, or the harness's own corner toggle) — so contrast, hierarchy and the
-does-this-read-at-all question can be asked both ways, which is where the plugin's own
-choices show. It is still a stub: a themed vault replaces exactly those values, and most
-vaults have a theme, so a colour seen in the harness is not a colour a user sees; and the menu and dialog **widgets** are the harness's own,
-since the mock records them and renders nothing.
+**Not:** colour. Layout leaning on an Obsidian element default used to be in this list too
+— a card-children disclosure whose toggle and entries relied on Obsidian's own button
+styling shipped looking right here and wrong in a vault (2026-08-08), because
+`test/harness/theme.css` carried no baseline at all for a bare `<button>` — only for
+`.svg-icon` and `.clickable-icon`. The fix was not a guessed baseline: `test/harness/
+obsidian.css` — Obsidian's own real `app.css`, reduced to what the harness exercises —
+now loads BEFORE the theme stub, so a bare `<button>` gets Obsidian's own rule. The stub
+carries no hand-written element defaults at all now, `button` included: a guessed
+baseline beside a real one is two answers to one question. This narrows the gap; it does
+not close it — the reduced sheet keeps only what the harness was driven through, so an
+element default no driven state reached is still absent, and a themed vault still
+replaces the colours regardless of which sheet supplies the shape.
+
+The COLOUR half of the stub is built on Obsidian's documented base scale and named
+palette, in both a light and a dark scheme, switchable in the page (`?theme=light`, or
+the harness's own corner toggle) — so contrast, hierarchy and the does-this-read-at-all
+question can be asked both ways, which is where the plugin's own choices show. It is
+still a stub: a themed vault replaces exactly those values, and most vaults have a theme,
+so a colour seen in the harness is not a colour a user sees; and the menu and dialog
+**widgets** are the harness's own, since the mock records them and renders nothing.
 
 Icons moved from the second list to the first. They rendered as their own NAMES while
 the mock drew no SVG, and that was not a neutral stand-in: `chevron-down` is several

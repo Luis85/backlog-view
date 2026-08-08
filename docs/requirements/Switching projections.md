@@ -87,8 +87,14 @@ The mode is the `mode` field of the collapse store's per-view entry
 `src/view/collapseState.ts` with the collapse sets it lives beside — so base renames
 and view renames migrate it for free. The toolbar toggle (`renderModeToggle` in
 `src/view/render/toolbar.ts` — three positions since the roadmap joined,
-[[Three projections, one toggle]]) sets it through `setProjection` on the host, and
-`src/view/backlogView.ts` dispatches the render on the projection, swapping the
-scroller between tree and listbox roles over the same model, undo slot and filter
-state. Driven in `test/view/board.test.ts` (the store round-trip in
+[[Three projections, one toggle]]) sets it through `setProjection` on the host, which
+`src/view/uiState.ts`'s `UiStateController` implements — the read/write against the
+collapse store plus the render-depth choice, the same shape for the seven sibling
+accessors it also holds (the roadmap-axis pick, focus, the shelf's own
+collapse/sort/type-filter, and the dated axis's zoom, density and lead width; each is
+UI state by the same rule this PBI states). `src/view/backlogView.ts` still declares
+every one of them on `BacklogViewHost` and forwards to the controller in one line, and
+dispatches the render on the projection, swapping the scroller between tree and
+listbox roles over the same model, undo slot and filter state. Driven in
+`test/view/board.test.ts` (the store round-trip in
 `test/storage/collapseStore.test.ts`).

@@ -53,6 +53,24 @@ export default defineConfig({
 			// at a different commit, and quoting it as this increment's baseline would have
 			// invented a branches drop that never happened.
 			//
+			// The card-children-expansion increment measured 97.9951/93.6722/99.2285/99.2227
+			// once its closing task (context cards, the register's cross-links, this floor)
+			// landed — all four above the 97.66/93.25/98.19/97.06 this file had. Every branch
+			// the increment added got a test: the disclosure and its toggle, the card menu's
+			// children section on both the pointer and the keyboard path, the quick-filter
+			// dedup between the disclosure and the match list, the toolbar's bulk controls
+			// reaching cards and going disabled where no disclosure was drawn, and the
+			// context-card case this task adds, which is a read-only path and so proves the
+			// context-row rule holds by there being no write rather than by a check. Functions
+			// and lines happen to round to the same 99.22 here — 1029/1037 and 3702/3731 are
+			// not the same fraction, the display width is just too short to show it.
+			//
+			// Aligning `childrenLabel` with `displayType` (task 14, so the disclosure's count
+			// agrees with the badges beside it for untyped children) measured
+			// 97.9969/93.6807/99.2285/99.2231 (4403/4493, 2787/2975, 1029/1037, 3704/3733) —
+			// a real but sub-0.01 move on three of the four, indistinguishable from the figure
+			// above at the thresholds' own precision, so they stay rather than chasing noise.
+			//
 			// The gantt-reading-polish increment (grid furniture: header tiers, gridlines,
 			// weekend banding, the today label, row tracking, bar labels, the density
 			// toggle) measured 98.00/93.79/99.22/99.22, all four above their thresholds, so

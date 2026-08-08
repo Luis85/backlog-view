@@ -49,6 +49,7 @@
 /* The two other projections, each with its overrides after what they override */
 @import "./board.css";
 @import "./cards.css";
+@import "./cardChildren.css";
 @import "./roadmap.css";
 @import "./timeline.css";
 @import "./timelineFurniture.css";
