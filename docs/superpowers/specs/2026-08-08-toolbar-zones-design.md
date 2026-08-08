@@ -117,6 +117,15 @@ and focuses it; the input reverts on blur while it is empty, so a filter someone
 actually using is never taken away by a resize. Widening the pane relaxes the step and
 restores it anyway.
 
+**A filter with text in it is never collapsed at all**, whichever direction the pane moved.
+Revealing sets `pbl-filter-open`, but that class only describes the case where the *reveal
+button* was pressed — someone who typed a filter at step 0 and then narrowed the pane
+arrives at step 2 with a non-empty, possibly focused input and no such class, and the rung
+would hide it. The row would then be filtering, saying so nowhere, with the text gone from
+under a cursor still in it. The rung's exception is therefore `pbl-filter-open` **or**
+`pbl-filter-active` — the class the box already carries whenever its value is non-empty —
+so what the step collapses is only ever an empty filter.
+
 **Anything that changes a control's own width re-runs the ladder, not only a pane
 resize.** Revealing that input adds about 130px to a row already measured as full, and no
 resize, render or data update follows a click on the reveal — so it clips trailing
@@ -142,13 +151,23 @@ the one place a refit must NOT be the answer. `syncBusy` runs at the start of a 
 per file, and at the end, and `syncBusyUi` deliberately re-renders nothing — re-rendering
 per tick is the jank the deferred update exists to remove, and `scrollWidth` is a forced
 layout read, so measuring per file would put back a cost of the same shape. So the
-indicator **reserves its width instead of changing it**: `.pbl-busy-label` carries a
-`min-width` sized for its longest form, so "Updating…" and "Updating 12 of 340…" occupy the
-same box and no tick moves anything. That is the rule the row already keeps for its
-end-anchored strip — `renderAddSpacer` withholds the control and reserves its width,
-because an element skipped from such a strip does not leave a gap where it was. What is
-left is the visibility transition, idle → busy → idle, which happens twice per batch rather
-than once per file: the ladder re-runs on those two, and on nothing between them.
+indicator **reserves its width instead of changing it**: `.pbl-busy-label` gets a
+`min-width` so "Updating…" and "Updating 12 of 340…" occupy the same box and no tick moves
+anything. That is the rule the row already keeps for its end-anchored strip —
+`renderAddSpacer` withholds the control and reserves its width, because an element skipped
+from such a strip does not leave a gap where it was. What is left is the visibility
+transition, idle → busy → idle, which happens twice per batch rather than once per file:
+the ladder re-runs on those two, and on nothing between them.
+
+**The reservation is computed per batch, not written as a constant.** A fixed figure cannot
+be right: `BusyState.total` is `writes.length`, unbounded, so any number chosen in the
+stylesheet is one large backlog away from being too small — and the failure mode is
+precisely the one the reservation exists to prevent, a label outgrowing its box mid-batch
+with nothing re-measuring. What makes an exact answer available is that `total` is FIXED
+for the life of a batch while `done` only climbs toward it: the longest label the batch can
+ever show is `Updating {total} of {total}…`, known at the first tick. So the reservation is
+set from that string when the indicator appears and cleared when it goes — once per batch,
+at the transition that already re-runs the ladder, never per file.
 
 **The `/` shortcut has to keep working at a step that hides the input.** `focusFilter()`
 is what `/` in the tree and the no-match empty state both call, and it does
@@ -205,8 +224,19 @@ have no such structural backstop, which is why they are the two that matter.
 
 ### Accessibility
 
-- Labels shed **visually only**. Every control keeps its `aria-label`, so no control loses
-  its accessible name at a narrow step.
+- Labels shed **visually only** — but that guarantee had to be BUILT, not assumed. Two
+  controls take their accessible name from the very text the ladder hides: the primary New
+  button and the focus picker carry no `aria-label` at all, which
+  `test/view/toolbarFocus.test.ts` asserts today ("the two buttons their own text names").
+  Hiding their span would leave a screen reader with two unnamed primary controls from
+  step 1 on. So both get an explicit `aria-label` first, and the ladder hides the span
+  only after every control it can touch has a name independent of it.
+
+  The sentence to hold is the narrow one: *the ladder may hide a `.pbl-btn-label` only on
+  a control that is named without it.* That is checked where the toolbar's names are
+  already checked, by extending the focus test's whole-toolbar sweep — asked of the
+  rendered row rather than of a list, since the next control added is exactly the one a
+  list would omit.
 - Every new control carries a `data-pbl-key`. `test/view/toolbarFocus.test.ts` already
   asserts that every focusable element the toolbar renders carries one and that no two
   share it, so the new controls are covered by the existing invariant rather than by a new

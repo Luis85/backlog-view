@@ -608,26 +608,197 @@ import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 ```
 
-- [ ] **Step 6: Call the zone from `renderToolbar`**
+- [ ] **Step 6: Put the whole row in zone order**
 
-In `toolbar.ts`, replace the three calls
+This is a reordering of `renderToolbar`'s body, not a two-line swap — the row's meaning is
+its order, and leaving New at the head would keep today's sequence with a new zone dropped
+into it. Move the blocks; do not rewrite what they do.
+
+`renderToolbar` currently reads, after the `refocusKey` capture and `barEl.empty()`: New
+button → type chevron → focus picker → mode toggle → axis picker → timeline controls →
+separator → ✨ → undo → expand → collapse → completed toggle → filter → spacer → notes →
+warning → busy → count. Rearrange it to:
 
 ```ts
+	// 1 — where am I. The switcher leads: it is the control that says what the rest of
+	// the row is about.
 	renderModeToggle(host, barEl);
-	renderAxisPicker(host, barEl);
-	renderTimelineControls(host, barEl);
-```
 
-with
-
-```ts
-	renderModeToggle(host, barEl);
+	// 2 — what THIS projection owns, and nothing when it owns none. Draws its own
+	// leading separator, or neither.
 	renderProjectionZone(host, barEl);
+
+	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
+
+	// 3 — what is shown. The same controls in every projection.
+	renderFocusPicker(host, barEl, model);
+	collapseButton(host, barEl, { … expand … });
+	collapseButton(host, barEl, { … collapse … });
+	renderCompletedToggle(host, barEl, model);
+	renderFilterBox(host, barEl);
+
+	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
+
+	// 4 — what writes.
+	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing properties');
+	initBtn.addClass('pbl-write-ctl');
+	initBtn.addEventListener('click', () => {
+		void runInit(host);
+	});
+	const undoBtn = iconButton(barEl, 'undo-2', 'Undo last backlog change');
+	undoBtn.addClass('pbl-undo-btn');
+	undoBtn.disabled = !host.canUndo();
+	undoBtn.addEventListener('click', () => {
+		void host.undoLast();
+	});
+	renderOverflow(host, barEl);
+
+	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
+
+	// 5 — status: the notes, the warning, the busy indicator, the count. Unchanged
+	// blocks, moved as they are.
+	// … groupingIgnored note, renderIgnoredNote, configProblems warning,
+	//     renderBusyIndicator, the count label …
+
+	// 6 — the primary action, anchored at the end.
+	renderNewButton(host, barEl, model);
+
+	refocusByKey(barEl, refocusKey);
 ```
 
-and move `renderFocusPicker(host, barEl, model)` down so it sits with the view zone,
-after the collapse buttons and before `renderFilterBox`. Then delete the now-unused
-imports from `toolbar.ts`: `activeAxis`, `configuredAxes`, `RoadmapAxis`, `ScaleId`.
+`renderOverflow` arrives in Task 3; leave its call out until then. `renderNewButton` is
+the New button and its type chevron, lifted out of `renderToolbar`'s head into a function
+of their own so the block can move as one — the body is exactly today's, including the
+`onDeliverables` reasoning and the `primaryNewType` call:
+
+```ts
+/**
+ * The primary create button and the chevron beside it. Last in the row: the zones before
+ * it answer "what am I looking at" and "what is shown", and the action that adds to it is
+ * anchored at the end where it does not push everything else sideways when the type name
+ * it carries changes length.
+ */
+function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	// The Deliverables board only ever shows Deliverables, so the primary button is
+	// bound to that type unconditionally — never the focus-dependent `newItemType`,
+	// which would offer a type this board would not even display. With one sensible
+	// type there is nothing for a "New item of another type" picker to add, so it is
+	// absent rather than a chevron opening a one-entry menu.
+	const onDeliverables = host.projection === 'deliverables';
+	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
+	const newBtn = barEl.createEl('button', {
+		cls: 'pbl-new-btn',
+		attr: { [KEY_ATTR]: 'new', 'aria-label': `New ${newLevel}` },
+	});
+	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
+	newBtn.createSpan({ cls: 'pbl-btn-label', text: `New ${newLevel}` });
+	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
+	if (onDeliverables) return;
+	const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
+	pickBtn.addClass('pbl-new-pick');
+	pickBtn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		// Every declared type, extras included: this menu is the one place a top-level
+		// item of any type can be made, and an Issue raised against nothing in
+		// particular is a real thing to want. Except `Deliverable` on the requirements
+		// board, which excludes Deliverables by construction.
+		for (const type of offerableTypes(host)) {
+			menu.addItem((mi) =>
+				mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
+			);
+		}
+		showMenuForClick(menu, evt);
+	});
+}
+```
+
+Note the `aria-label` on `newBtn` — it is not cosmetic, and Step 6b below is why.
+
+Then delete the now-unused imports from `toolbar.ts`: `activeAxis`, `configuredAxes`,
+`RoadmapAxis`, `ScaleId`.
+
+- [ ] **Step 6b: Name the two buttons the ladder is about to strip**
+
+`renderToolbar`'s New button and the focus picker have **no `aria-label`** — their
+accessible name is the text the ladder will hide at step 1, so without this they become
+unnamed primary controls on a narrow pane. `test/view/toolbarFocus.test.ts` asserts that
+absence today ("the two buttons their own text names, which carry no aria-label at all"),
+which is exactly how it was found.
+
+The New button's label is in the block above. In `renderFocusPicker`, add one to each of
+its two buttons, and wrap their text:
+
+```ts
+	const btn = wrap.createEl('button', {
+		cls: 'pbl-focus-btn',
+		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}` },
+	});
+	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
+	btn.createSpan({ cls: 'pbl-btn-label', text: active || 'All types' });
+```
+
+and for the Deliverables board's fixed, disabled one:
+
+```ts
+	btn.setAttribute('aria-label', 'Deliverables');
+	btn.createSpan({ cls: 'pbl-btn-label', text: 'Deliverables' });
+```
+
+Then update `test/view/toolbarFocus.test.ts`'s second test: its two `expect(...aria-label
+).toBeNull()` lines are now wrong, and its comment explains a mechanism that still holds —
+the focus KEY is what restores these controls, and it always was. Rewrite those two lines
+as the reason the key exists rather than deleting them:
+
+```ts
+		// These two are named by their own text, which the fit ladder hides on a narrow
+		// pane — so they carry an explicit `aria-label` as well, and NEITHER name is what
+		// focus is restored by. The key is, which is the whole point of the mechanism:
+		// `New Epic` becomes `New Feature` when the focus changes, and the label with it.
+		expect(newBtn.getAttribute('aria-label')).toBe('New Epic');
+		expect(newBtn.getAttribute('data-pbl-key')).toBe('new');
+```
+
+- [ ] **Step 6c: Check the guarantee, at the ladder rather than at a list**
+
+Add to `test/view/toolbarFocus.test.ts`, inside the existing describe — it is the file
+that already sweeps the whole rendered toolbar, and this is the same sweep asking about
+names:
+
+```ts
+	// The rule: the ladder may hide a `.pbl-btn-label` only on a control that is named
+	// without it. Asked of every label the toolbar renders, so a control added later
+	// with a bare text name fails here rather than going quiet on a narrow pane.
+	it('never lets a hidden label be the only name a control has', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {
+			stateProperty: 'note.status',
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+		const check = () => {
+			const toolbar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
+			if (!toolbar) throw new Error('toolbar not rendered');
+			const labels = Array.from(toolbar.querySelectorAll<HTMLElement>('.pbl-btn-label'));
+			expect(labels.length).toBeGreaterThan(0);
+			const unnamed = labels
+				.map((el) => el.closest('button'))
+				.filter((btn) => (btn?.getAttribute('aria-label') ?? '') === '')
+				.map((btn) => btn?.className);
+			expect(unnamed, `hiding these labels leaves the control unnamed`).toEqual([]);
+		};
+		view.setProjection('tree');
+		check();
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		check();
+		view.setProjection('deliverables');
+		check();
+	});
+```
+
+Run it, then delete one of the `aria-label`s added in Step 6b and watch it fail naming
+that button. Restore.
 
 - [ ] **Step 7: Run the tests to verify they pass**
 
@@ -1194,8 +1365,14 @@ describe('the toolbar fit ladder', () => {
 		syncBusy(bar, { done: 1, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
-		// A tick. Even if the row claimed it had grown, nothing re-measures: the label
-		// reserves its width in CSS precisely so a tick cannot change the geometry.
+		// The reservation is this batch's own longest label, not a constant: 340 files
+		// means "Updating 340 of 340…", and `writes.length` has no ceiling for a figure
+		// in the stylesheet to have been written against.
+		const label = bar.querySelector<HTMLElement>('.pbl-busy-label');
+		expect(label?.style.minWidth).toBe(`${'Updating 340 of 340…'.length}ch`);
+
+		// A tick. Even if the row claimed it had grown, nothing re-measures — which is
+		// only safe BECAUSE of the reservation above.
 		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 840 });
 		syncBusy(bar, { done: 2, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
@@ -1414,12 +1591,21 @@ Create `styles/toolbarFit.css`:
 	display: inline-flex;
 }
 
-/* …and back again while it is open: the reveal swaps itself for the input in place. */
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-open .pbl-filter-input {
+/* …and back again in two cases, not one. `pbl-filter-open` is the reveal button having
+   been pressed. `pbl-filter-active` is the box's existing class for "this input has text
+   in it" — and without it, someone who typed a filter at step 0 and then narrowed the
+   pane would arrive here with a non-empty, possibly focused input and watch the rung
+   hide it: a row that is filtering, says so nowhere, and has taken the text out from
+   under a cursor still in it. What a step collapses is only ever an EMPTY filter. */
+.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3'])
+	:is(.pbl-filter-open, .pbl-filter-active)
+	.pbl-filter-input {
 	display: inline-block;
 }
 
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-open .pbl-filter-reveal {
+.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3'])
+	:is(.pbl-filter-open, .pbl-filter-active)
+	.pbl-filter-reveal {
 	display: none;
 }
 
@@ -1487,18 +1673,19 @@ In the `ResizeObserver` callback in the constructor:
 Two changes, and they are two halves of one rule: the indicator must not move the row per
 tick, and the twice-per-batch appearance it *does* cause must be measured.
 
-In `styles/toolbar.css`, give the label a reserved box. The width is stated in `ch` against
-the longest form the label can take, so it does not have to be re-guessed when a count
-grows a digit:
+In `styles/toolbar.css`, make the label a box that CAN be reserved. The size is not written
+here, because no constant can be right — `BusyState.total` is `writes.length`, unbounded,
+so any figure in the stylesheet is one large backlog away from being too small, and the
+failure it produces is exactly the one the reservation exists to prevent:
 
 ```css
-/* The label's text changes once per file while a batch runs, and `syncBusy` deliberately
-   re-renders nothing — so the box is reserved rather than fitted, and a tick moves
-   nothing. Sized for the longest form, "Updating 999 of 999…"; the row's end-anchored
-   strip already keeps this rule for the add button (`renderAddSpacer`). */
+/* Reserved rather than fitted: the text changes once per file while a batch runs, and
+   `syncBusy` deliberately re-renders nothing, so a box that grew with the count would
+   move the row on ticks nothing re-measures. The WIDTH is set per batch by `syncBusy` —
+   see there for why it cannot be a constant. The row's end-anchored strip already keeps
+   this rule for the add button (`renderAddSpacer`). */
 .pbl-busy-label {
 	display: inline-block;
-	min-width: 18ch;
 }
 ```
 
@@ -1506,6 +1693,17 @@ In `src/view/render/toolbar.ts`, `syncBusy` re-runs the ladder on the visibility
 transition only:
 
 ```ts
+/**
+ * The longest label this batch can ever show. `total` is fixed for the life of a batch
+ * and `done` only climbs toward it, so the widest form is known at the first tick — which
+ * is what makes an exact reservation possible where a constant could not be right.
+ * Measured in `ch`, the width of a "0": an over-estimate for a proportional font, which
+ * is the safe direction for a box whose whole job is not to grow.
+ */
+function busyReservation(total: number): string {
+	return `${total > 1 ? `Updating ${total} of ${total}…` : 'Updating…'}`.length + 'ch';
+}
+
 export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
 	if (el) {
@@ -1513,13 +1711,18 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: bo
 		// which happen twice per batch, and NOT on the ticks between them. `scrollWidth`
 		// is a forced layout read, so measuring per file would put back a cost of the
 		// same shape as the per-file re-render the deferred update removed. What makes
-		// that safe is the reserved label width in `styles/toolbar.css` — the geometry
-		// does not change between the two transitions.
+		// that safe is the reservation set on the SAME transition, two lines down.
 		const wasOn = el.hasClass('pbl-busy-on');
 		el.toggleClass('pbl-busy-on', busy !== null);
 		const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
-		el.querySelector<HTMLElement>('.pbl-busy-label')?.setText(busy ? label : '');
-		if (wasOn !== (busy !== null)) syncToolbarFit(barEl);
+		const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
+		labelEl?.setText(busy ? label : '');
+		if (wasOn !== (busy !== null)) {
+			// Sized from THIS batch's total, once, at the transition — never from a
+			// figure in the stylesheet, which `writes.length` can always exceed.
+			labelEl?.setCssProps({ 'min-width': busy ? busyReservation(busy.total) : '0' });
+			syncToolbarFit(barEl);
+		}
 	}
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
 		btn.disabled = busy !== null;
@@ -1709,9 +1912,13 @@ Append to `docs/issues/Smoke test the visual changes.md` a checklist for this ch
 - The row does not clip anything at the last rung in a genuinely narrow split pane.
 - `/` opens the collapsed filter and focuses it at a narrow width — jsdom asserts the
   class and the active element, not that a real browser can focus what CSS just revealed.
-- The busy label's reserved `18ch` actually holds "Updating 999 of 999…" without the row
-  shifting when a long batch runs. jsdom loads no CSS, so nothing in the suite can see
-  this; run a backfill (✨) over a few hundred notes and watch whether the row moves.
+- The busy label's per-batch reservation actually holds its longest form. jsdom loads no
+  CSS, so the suite can see that a `min-width` is SET and not that it is wide enough —
+  `ch` is the width of a "0" and the label is mixed text, so the estimate is generous but
+  unverified here. Run a backfill (✨) over a few hundred notes and watch whether the row
+  moves as the count climbs.
+- A filter typed at a wide width survives the pane narrowing into a collapsing rung: the
+  input stays, with its text and its cursor.
 
 - [ ] **Step 5: Commit and push**
 
@@ -1740,7 +1947,13 @@ Checked against the spec:
 - `.pbl-mode-btn.is-active` → Task 2, Step 8.
 - The `calendar-range` collision → Task 2, Steps 1 and 5 (the test asks the menus, so it
   holds for the next pick too).
-- Labels shed visually only → Task 4, Step 5; names stay on the buttons.
+- Labels shed visually only → Task 2, Steps 6b and 6c. This was NOT true as first written:
+  the New button and the focus picker take their accessible name from the very text the
+  ladder hides, and `test/view/toolbarFocus.test.ts` asserts that absence today. Both get
+  an explicit `aria-label`, and the sweep in 6c checks the rule at every `.pbl-btn-label`
+  rather than at a list of two.
+- A non-empty filter is never collapsed → Task 4, Step 8; the rung's exception is
+  `pbl-filter-open` OR `pbl-filter-active`.
 - Focus keys → new controls carry `overflow` and `filter-reveal`;
   `test/view/toolbarFocus.test.ts` is the check, run in Task 4, Step 10.
 - Register → Task 5.
