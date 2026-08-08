@@ -898,6 +898,12 @@ if (hierarchy === null) {
 	const documentedParents = new Map();
 	for (const [types, parents, children] of hierarchy) {
 		for (const type of types) {
+			// A second row for a type is not a merge, it is a contradiction — and flattening
+			// with `set` would keep the last one and call the table consistent. Found in
+			// review: a stale `Deliverable` row left above the grouped
+			// `Issue` / `Bug` / `Deliverable` row would have passed this check silently,
+			// which is the false pass this whole rule exists to remove.
+			if (documented.has(type)) fail("docs/README.md", `the hierarchy table gives ${type} more than one row`);
 			documented.set(type, new Set(children));
 			documentedParents.set(type, new Set(parents));
 		}

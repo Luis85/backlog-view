@@ -525,6 +525,15 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 			'Task may hang from Bug, Deliverable, Issue, PBI, and the hierarchy table says PBI',
 		],
 		[
+			// Flattening with `set` would keep the LAST row and call a contradictory table
+			// consistent — a false pass inside the rule written to remove false passes.
+			'a type given two rows, which is a contradiction rather than a merge',
+			(files) => {
+				files['docs/README.md'] = `${hierarchyTable()}| \`Deliverable\` | \`Epic\` | *(nothing)* |\n`;
+			},
+			'the hierarchy table gives Deliverable more than one row',
+		],
+		[
 			'a directory entry whose name ends in a dot',
 			(files) => {
 				files['docs/issues/A trailing thought.md.'] = 'Not a note, and not a name Windows can hold.\n';
@@ -550,6 +559,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('scripts/docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(57);
+		expect(sites.length).toBe(58);
 	});
 });
