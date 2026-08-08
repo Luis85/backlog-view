@@ -83,7 +83,13 @@ cap. No behaviour changes; the existing suite is the check.
   - `expandAll(host: BacklogViewHost): void`
   - `collapseAll(host: BacklogViewHost): void`
   - `collapseCtlsDisabled(host: BacklogViewHost): boolean`
-  - `collapseButton(host: BacklogViewHost, parent: HTMLElement, icon: string, label: string, mutate: () => void): void`
+  - `collapseButton(host: BacklogViewHost, parent: HTMLElement, spec: { icon, label, cls, mutate }): void`
+  - `refocusByKey(barEl: HTMLElement, key: string | null): void`
+  - `pickAndRefocus(barEl: HTMLElement, key: string, act: () => void): void`
+
+Also move `capturedFocusKey` out of `toolbar.ts` into this module, unchanged, and import
+it back — it and `refocusByKey` are two halves of one mechanism over `KEY_ATTR`, and
+splitting them across files is one edit from the halves disagreeing about the attribute.
 
 - [ ] **Step 1: Create the new module with the moved code**
 
@@ -98,6 +104,42 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 
 /** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
 export const KEY_ATTR = 'data-pbl-key';
+
+/**
+ * The other half of {@link KEY_ATTR}: find the rebuilt control wearing that key and
+ * focus it. Moved here from `toolbar.ts` with the attribute it reads, because it has a
+ * SECOND caller now — a menu pick, which is a rebuild the render-pass mechanism cannot
+ * see. `capturedFocusKey` moves with it: a mechanism split across two files is one edit
+ * from the halves disagreeing about the attribute they share.
+ */
+export function refocusByKey(barEl: HTMLElement, key: string | null): void {
+	if (!key) return;
+	barEl.querySelector<HTMLElement>(`[${KEY_ATTR}="${key}"]`)?.focus();
+}
+
+/**
+ * Run a menu pick and put focus back on the control that opened the menu.
+ *
+ * **A menu pick is a rebuild the focus mechanism cannot see.** `capturedFocusKey` asks
+ * whether the focused element is inside the toolbar, and while a `Menu` is open it is
+ * not — Obsidian attaches the menu to the body — so the pick re-renders, `barEl.empty()`
+ * destroys the button that opened it, and focus lands on the document. A keyboard user
+ * loses their place in the toolbar on every pick, and nothing about it is visible to
+ * whoever wrote the picker.
+ *
+ * `render/shelfControls.ts` already answers this exact path with its own `refocus`
+ * callback; this is that answer, keyed rather than selector-based because the toolbar
+ * already has keys. `barEl` outlives the rebuild, so the lookup finds the replacement.
+ *
+ * Every toolbar menu goes through it, including the two that predate this change — the
+ * focus picker and the New-type chevron — because "every menu on this row restores
+ * focus" is a rule, and fixing two of four would leave the other two broken in a way
+ * nobody would think to look for.
+ */
+export function pickAndRefocus(barEl: HTMLElement, key: string, act: () => void): void {
+	act();
+	refocusByKey(barEl, key);
+}
 
 /**
  * A toolbar icon control. A real `<button>`, not a div: the toolbar sits outside
@@ -498,8 +540,8 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 	const zone = barEl.createDiv({ cls: 'pbl-zone pbl-zone-projection' });
 	switch (host.projection) {
 		case 'roadmap':
-			renderAxisPicker(host, zone);
-			renderTimelineControls(host, zone);
+			renderAxisPicker(host, zone, barEl);
+			renderTimelineControls(host, zone, barEl);
 			break;
 		default:
 			// The tree, the board and the Deliverables board own no toolbar controls of
@@ -541,7 +583,7 @@ const ZOOM_LABEL: Record<ScaleId, { icon: string; text: string }> = {
  * pick persists the way the mode itself does, and it is retained when its axis loses its
  * configuration, so restoring the cleared property restores the saved choice with it.
  */
-function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement): void {
+function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	if (configuredAxes(host.settings).length < 2) return;
 	const active = activeAxis(host.settings, host.axisPick);
 	const btn = menuButton(zone, AXIS_LABEL[active].icon, AXIS_LABEL[active].text, 'axis');
@@ -554,7 +596,9 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement): void {
 					.setTitle(AXIS_LABEL[axis].text)
 					.setIcon(AXIS_LABEL[axis].icon)
 					.setChecked(active === axis)
-					.onClick(() => host.setAxisPick(axis)),
+					// `barEl`, not `zone`: the zone is destroyed by the rebuild this pick
+					// causes, and the bar is what survives it.
+					.onClick(() => pickAndRefocus(barEl, 'axis', () => host.setAxisPick(axis))),
 			);
 		choice('horizons');
 		choice('dates');
@@ -566,7 +610,7 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement): void {
  * The zoom picker, jump-to-today and the density toggle, on the dated axis alone — the
  * horizon axis has no density to choose and no today to return to.
  */
-function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement): void {
+function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	if (activeAxis(host.settings, host.axisPick) !== 'dates') return;
 	const btn = menuButton(zone, ZOOM_LABEL[host.zoom].icon, ZOOM_LABEL[host.zoom].text, 'zoom');
 	setTooltip(btn, 'Timeline zoom');
@@ -578,7 +622,7 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement): void 
 					.setTitle(ZOOM_LABEL[id].text)
 					.setIcon(ZOOM_LABEL[id].icon)
 					.setChecked(host.zoom === id)
-					.onClick(() => host.setZoom(id)),
+					.onClick(() => pickAndRefocus(barEl, 'zoom', () => host.setZoom(id))),
 			);
 		}
 		showMenuForClick(menu, evt);
@@ -717,6 +761,34 @@ Note the `aria-label` on `newBtn` — it is not cosmetic, and Step 6b below is w
 Then delete the now-unused imports from `toolbar.ts`: `activeAxis`, `configuredAxes`,
 `RoadmapAxis`, `ScaleId`.
 
+- [ ] **Step 6a: Route the two PRE-EXISTING toolbar menus through `pickAndRefocus` too**
+
+The focus picker and the New-type chevron open menus today and lose focus on the pick for
+the same reason — this is not a defect the zone introduces, and fixing two of four menus
+would leave the other two broken in a way nobody would think to look for.
+
+In `renderFocusPicker`, the `setLevel` closure is the one place its entries act, so it is
+the only edit needed:
+
+```ts
+	// Working position, not configuration: the collapse store persists it and the view
+	// rebuilds itself, because no Bases refresh follows a change it was not told about.
+	// Through `pickAndRefocus` because that rebuild happens while focus is in the menu,
+	// where `capturedFocusKey` cannot see it.
+	const setLevel = (level: string) => pickAndRefocus(barEl, 'focus', () => host.setFocusLevel(level));
+```
+
+In `renderNewButton`, the chevron's entries open a modal rather than re-rendering, so
+focus does not fall to the document the same way — leave it alone rather than adding a
+call that would fight the modal for focus. State that in one line where the menu is built,
+so the next reader does not "fix" the inconsistency:
+
+```ts
+		// No `pickAndRefocus` here: this entry opens the creation prompt, which takes
+		// focus deliberately. The rebuild-loses-focus problem belongs to picks that
+		// re-render behind the menu.
+```
+
 - [ ] **Step 6b: Name the two buttons the ladder is about to strip**
 
 `renderToolbar`'s New button and the focus picker have **no `aria-label`** — their
@@ -765,6 +837,42 @@ that already sweeps the whole rendered toolbar, and this is the same sweep askin
 names:
 
 ```ts
+	/**
+	 * A menu pick is a rebuild the render-pass mechanism cannot see: while a `Menu` is
+	 * open, focus is on the body, so `capturedFocusKey` finds nothing inside the toolbar
+	 * and the button that opened the menu is destroyed with nothing to restore. Driven
+	 * per control, through the menu, so it asserts the path a keyboard user takes.
+	 */
+	it('puts focus back on the control whose menu was just used', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+
+		const pickFrom = (key: string, title: string) => {
+			const btn = containerEl.querySelector<HTMLElement>(`[data-pbl-key="${key}"]`);
+			if (!btn) throw new Error(`no toolbar control keyed ${key}`);
+			btn.focus();
+			btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			// Obsidian parks focus on the menu, which lives outside the toolbar.
+			(document.activeElement as HTMLElement | null)?.blur();
+			Menu.lastShown?.items.find((i) => i.titleText === title)?.onClickCallback?.();
+			expect(
+				containerEl.querySelector(`[data-pbl-key="${key}"]`),
+				`${key} lost focus to the document after its own menu`,
+			).toBe(document.activeElement);
+		};
+
+		pickFrom('zoom', 'Weeks');
+		pickFrom('axis', 'Horizons');
+		view.setAxisPick('dates');
+		pickFrom('focus', 'Feature');
+	});
+
 	// The rule: the ladder may hide a `.pbl-btn-label` only on a control that is named
 	// without it. Asked of every label the toolbar renders, so a control added later
 	// with a bare text name fails here rather than going quiet on a narrow pane.
@@ -1173,7 +1281,10 @@ export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void 
 					// kind of entry where omitting the state inverts the meaning.
 					.setDisabled(mirrored?.disabled === true)
 					.setChecked(mirrored?.getAttribute('aria-pressed') === 'true')
-					.onClick(entry.run),
+					// Every entry here re-renders, and focus is in the menu while it
+					// does — so the `⋯` gets its own key back, not the shed button's,
+					// which may not exist at the resulting step.
+					.onClick(() => pickAndRefocus(barEl, 'overflow', entry.run)),
 			);
 		}
 		showMenuForClick(menu, evt);

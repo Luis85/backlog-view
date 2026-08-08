@@ -260,6 +260,19 @@ render that rebuilds them:
   `renderToolbar` for exactly this reason, which is why a rebuild mid-batch does not strand
   it.
 
+**A menu pick is a third case, and it is the one the mechanism cannot see at all.** While
+a `Menu` is open, focus is on the body rather than inside the toolbar, so
+`capturedFocusKey` finds nothing, the pick re-renders, and the button that opened the menu
+is destroyed with no key captured to restore. Turning the axis and zoom into menu buttons
+is what makes this reachable here — a segmented position keeps focus on itself — so the
+design creates the problem and owes the answer. `render/shelfControls.ts` already solves
+the same path with an explicit `refocus` callback; the toolbar's version is keyed, since it
+has keys. Every menu on the row goes through it, **including the focus picker, which has
+had this defect since before this change** — "every menu on this row restores focus" is a
+rule, and fixing only the new ones would leave the old one broken where nobody would look.
+The one exception is stated where it lives: the New-type chevron opens a creation prompt,
+which takes focus on purpose.
+
 Focus is the fourth thing that must survive, and it already has its own mechanism
 (`data-pbl-key`, `capturedFocusKey` / `refocusByKey`) — which is worth naming here because
 the filter bug was a case of the two questions interacting: the state was lost, so the
