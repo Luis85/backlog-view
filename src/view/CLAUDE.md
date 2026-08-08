@@ -201,9 +201,10 @@ free of runtime code so imports stay cycle-free.
   `interactions/menu.ts`, where the anchoring decision is made.
 - Once a control is focusable, disabling it in CSS is a lie — `pointer-events: none`
   stops a mouse and nothing else. The collapse controls pause while the quick filter
-  overrides collapse state, so they carry a real `disabled` flag, set in
-  `syncFilterUi` because a filter change re-renders only the tree and leaves the
-  toolbar's DOM in place.
+  overrides collapse state, and go disabled on a card projection that drew no
+  disclosure to collapse — both carry a real `disabled` flag, and `syncCollapseCtls`
+  (`render/toolbar.ts`) is their SOLE writer, called after the content render beside
+  `syncCountLabel` so it reads the frame that just drew rather than the one before it.
 
 ## The board projection
 

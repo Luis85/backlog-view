@@ -86,9 +86,13 @@ describe('the three-position projection toggle', () => {
 		expect(containerEl.querySelectorAll('.pbl-bucket-cards .pbl-card')).toHaveLength(0);
 	});
 
-	it('drops the tree-only collapse controls, keeping creation, undo and the filter', () => {
+	it('keeps the collapse controls present but disabled — this fixture has nothing to collapse — beside creation, undo and the filter', () => {
+		// Neither epic here is a parent, so no card draws a disclosure: present, not
+		// absent (the projection can still gain one), but with nothing to drive.
 		const { containerEl } = roadmapView(roadmapVault());
-		expect(containerEl.querySelector('.pbl-collapse-ctl')).toBeNull();
+		const ctls = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
+		expect(ctls).toHaveLength(2);
+		expect(ctls.every((b) => b.disabled)).toBe(true);
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-filter-input')).not.toBeNull();

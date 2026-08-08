@@ -24,7 +24,14 @@ import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId, scaleFor } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { SelectionController } from './selection';
-import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
+import {
+	detectIgnoredGrouping,
+	renderToolbar,
+	syncBusy,
+	syncCollapseCtls,
+	syncCountLabel,
+	syncFilterUi,
+} from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
@@ -520,6 +527,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
+		syncCollapseCtls(this, this.toolbarEl);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
