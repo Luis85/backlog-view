@@ -275,7 +275,7 @@ describe('the projection toggle', () => {
 		const { containerEl } = boardView(boardVault());
 		const ctls = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
 		expect(ctls).toHaveLength(2);
-		expect(ctls.every((b) => b.disabled)).toBe(false);
+		expect(ctls.some((b) => b.disabled)).toBe(false);
 		// The rest of the toolbar survives the projection: creation, undo, the filter.
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();

@@ -422,7 +422,6 @@ function collapseButton(
 ): void {
 	const btn = iconButton(parent, icon, label);
 	btn.addClass('pbl-collapse-ctl');
-	btn.disabled = host.isFiltering();
 	btn.addEventListener('click', () => {
 		mutate();
 		host.render();
