@@ -514,7 +514,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// The toolbar was just rebuilt; a batch may still be running behind it.
 		this.syncBusyUi();
 		this.renderTreeContent();
-		renderLegend(this, this.legendEl, model.observedStates, model.results, this.roadmap?.hasUnkeyedAccent ?? false);
 	}
 
 	/** Re-render only the content pane — used by the filter so the toolbar input keeps focus. */
@@ -566,6 +565,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
+		// Rendered HERE rather than in `render()`: the legend keys what the grid just drew,
+		// and `hasUnkeyedAccent` comes off the snapshot this pass produced. Every path that
+		// redraws content has to refresh it, not only a full render — a filter re-renders
+		// content ALONE, and it can hide the last bar drawing the accent (or reveal the
+		// first), which changes what the key must say. Above the early return below,
+		// because that return is the tree's and this is the roadmap's.
+		renderLegend(this, this.legendEl, model.observedStates, model.results, this.roadmap?.hasUnkeyedAccent ?? false);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one

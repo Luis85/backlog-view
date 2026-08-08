@@ -116,6 +116,12 @@ between what the grid draws and what the copy assumed it draws. The sweep's two 
 — a stateless marker dated outside the window, and the same marker dated inside it —
 state the rule in both directions the way the others do.
 
+- **A filter, which redraws content without a full render.** `hasUnkeyedAccent` is
+  reported by the render, so the legend is only as fresh as the pass that produced it —
+  and `setFilter` re-renders content ALONE. The legend is therefore rendered by the
+  content pass rather than by `render()`, so a filter that hides the last bar drawing
+  the accent takes its swatch with it, and clearing the filter brings both back.
+
 ## Acceptance criteria
 
 - A bar's `pbl-state-N` class agrees with `stateColorSlot`'s answer for that state,
