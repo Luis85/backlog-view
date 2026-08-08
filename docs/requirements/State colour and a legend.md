@@ -42,7 +42,7 @@ cannot name a state differently.
 **Main flow**
 
 1. Each bar's row takes a `pbl-state-N` class, `N` being its state's index in
-   `stateMenuValues` wrapped modulo five palette slots. An item with no state, or a
+   `stateMenuValues` wrapped modulo four palette slots. An item with no state, or a
    value the vocabulary does not carry, takes no slot and keeps the bar's plain accent.
 2. A done state still gets a slot, but the existing done rule wins: green is a meaning
    the user already relies on everywhere else in the plugin, a slot colour is only
@@ -60,7 +60,7 @@ cannot name a state differently.
 
 **Extensions**
 
-- **1a — a vocabulary longer than five states.** Slots repeat rather than run out; two
+- **1a — a vocabulary longer than four states.** Slots repeat rather than run out; two
   states can share a colour once the vocabulary passes the palette's length, the same
   tradeoff a rotating scheme always makes.
 - **3a — no workflow property configured.** `stateMenuValues` does NOT reliably return
@@ -111,7 +111,7 @@ completed items") with the vocabulary omitting its value, keyed neither there no
 vocabulary loop, and the same item once it actually lands on the grid.
 
 Beside it, a text check on the stylesheets: each swatch names the same palette colour as
-the mark it keys, the five slots are distinct, and none of them is the red, cyan or green
+the mark it keys, the four slots are distinct, and none of them is the red, cyan or green
 that already mean today, a milestone and done — a claim `STATE_COLOR_SLOTS` makes in a
 comment and nothing checked. Its reach is the variable each rule names; what those resolve
 to under a theme stays the live-vault question in [[Smoke test the roadmap]].
@@ -190,7 +190,7 @@ what got drawn.
 
 ## Where it lives
 
-`stateColorSlot` and its five-slot constant are `src/domain/settings.ts`, beside
+`stateColorSlot` and its four-slot constant are `src/domain/settings.ts`, beside
 `stateMenuValues` — the vocabulary both index into. `renderBarRow` in
 `src/view/render/timeline.ts` adds the slot class to a bar's row; the same file's
 `renderCellHeader` lost the empty header band the Today pill used to mount in, now
@@ -201,7 +201,7 @@ projection and axis-pick gates it shares with `renderTimelineControls` stay in s
 `renderLegend` gates the state swatches specifically on `host.settings.stateKey`, right
 beside where it builds them — never on `stateMenuValues(...)`'s own return, which still
 answers `[doneValues[0]]` with no workflow configured (see extension 3a).
-The colour rules — the five slots, the accent fallback via `--pbl-state-color`, and
+The colour rules — the four slots, the accent fallback via `--pbl-state-color`, and
 the done rule's specificity over a slot — are `styles/timeline.css`; the legend's own
 swatches and layout are `styles/legend.css`; the Today pill's rule is deleted from
 `styles/timelineFurniture.css`.

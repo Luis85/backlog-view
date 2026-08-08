@@ -23,19 +23,32 @@
 
 /* `--pbl-state-color` is the same token `timeline.css`'s `pbl-state-N` classes set on
    a bar's row; a swatch carries the identical class, so this reads the identical value
-   rather than a second copy of the mapping. Its own default (the accent) never actually
-   shows — every swatch this file draws is either a state slot or one of the two classes
-   below that always set their own colour — but it keeps this rule meaningful on its own
-   rather than depending on a class always being paired with it. */
+   rather than a second copy of the mapping. No fallback: every swatch `legend.ts` builds
+   carries either a slot class or one of the four modifiers below, which set their own
+   colour — a fallback here only ever painted a case that cannot occur.
+
+   `flex: 0 0 auto` because `.pbl-legend-item` is a flex container: without it the
+   swatch's `min-width: auto` resolves to 0 for an empty span and the colour patch is
+   what a narrow pane takes the space out of, leaving a key with no colour in it. */
 .pbl-legend-swatch {
 	display: inline-block;
+	flex: 0 0 auto;
 	width: 10px;
 	height: 10px;
 	border-radius: var(--radius-s);
-	background-color: var(--pbl-state-color, var(--interactive-accent));
+	background-color: var(--pbl-state-color);
 }
 
-/* The today and milestone lines' own colours (`timeline.css`), at full strength rather
+/* ORDER IS BEHAVIOUR from here down: these four and `.pbl-legend-swatch` above are all
+   one class, all setting `background-color`, so each wins only by standing LATER in this
+   file. Moved above the base rule they lose silently — every swatch would take
+   `--pbl-state-color` instead, which is the wrong colour for a done swatch (the slot its
+   state occupies, not the green its bars draw — a defect `render/legend.ts`'s preamble
+   already records) and no colour at all for today, milestone and other, whose elements
+   never carry a slot class. (The file's POSITION in `index.css` is a separate question,
+   and is not load-bearing — see the note there.)
+
+   The today and milestone lines' own colours (`timeline.css`), at full strength rather
    than the lines' 0.55 opacity — a key is read at a glance, not overlaid on content. */
 .pbl-legend-today { background-color: var(--color-red); }
 .pbl-legend-milestone { background-color: var(--color-cyan); }

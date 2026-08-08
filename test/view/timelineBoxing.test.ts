@@ -78,15 +78,55 @@ describe('the legend keys the same palette colours the marks draw', () => {
 		expect(paletteColour(legendCss, swatch)).toBe(paletteColour(timelineCss, mark));
 	});
 
-	it('keeps every state slot clear of the three colours that already mean something', () => {
-		// `STATE_COLOR_SLOTS` says this in a comment — five rather than the palette's eight,
-		// so no state's bar can be mistaken for the today line, a milestone or a done item.
-		// A sixth slot added without reading that comment is what this catches.
+	it('keeps every state slot clear of the four colours that already mean something', () => {
+		// `STATE_COLOR_SLOTS` says this in a comment — four rather than the palette's eight,
+		// so no state's bar can be mistaken for the today line, a milestone, a done item or
+		// the plain accent an unslotted bar draws. A fifth slot added without reading that
+		// comment is what this catches.
+		//
+		// PURPLE is in the list for the accent: Obsidian's default `--interactive-accent`
+		// is a purple, and `.pbl-legend-other` keys it, so a purple slot drew the second
+		// state and `Other` in one indistinguishable pair. The reach of that entry is
+		// exactly the DEFAULT — the accent is a user setting, and no text check here can
+		// see what a reader has set it to.
 		const slots = Array.from({ length: STATE_COLOR_SLOTS }, (_, i) => paletteColour(timelineCss, `.pbl-state-${i}`));
 		expect(new Set(slots).size, `slots repeat a colour: ${slots.join(', ')}`).toBe(STATE_COLOR_SLOTS);
-		for (const reserved of ['red', 'cyan', 'green']) {
+		for (const reserved of ['red', 'cyan', 'green', 'purple']) {
 			expect(slots, `slot palette must stay clear of ${reserved}`).not.toContain(reserved);
 		}
+	});
+
+	it('draws no slot rule past the last slot the constant declares', () => {
+		// The pair to the loop above: it reads exactly `STATE_COLOR_SLOTS` rules and so
+		// cannot see a stale `.pbl-state-N` left behind when the count came DOWN. That
+		// stale rule is live CSS — `stateColorSlot` never emits the class, but a reader
+		// dropping a colour from the rotation and only editing the constant leaves the
+		// removed hue one edit away from coming back.
+		expect(timelineCss).not.toContain(`.pbl-state-${STATE_COLOR_SLOTS} `);
+	});
+});
+
+/**
+ * A colour key whose colour patch has been squeezed away is not a key. `.pbl-legend-item`
+ * is a flex container, so the swatch is a flex item: `flex-shrink` defaults to 1 and its
+ * `min-width: auto` resolves to the min-content size of an empty span, which is 0. In a
+ * pane narrower than the swatch plus the longest word of a state's name, the 10px square
+ * gets whatever is left — which is the narrow split where the colour is doing more work
+ * than the label beside it.
+ *
+ * Text again, and its reach is exactly that: it reads the declaration that refuses the
+ * shrink. jsdom computes no layout, so nothing here measures the rendered square; a
+ * narrow pane in a real vault, or `npm run harness` at a narrow viewport, is what does.
+ */
+describe('the legend swatch keeps its size in a narrow pane', () => {
+	const css = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+
+	it('refuses to shrink, rather than relying on there being room', () => {
+		const body = css.slice(css.indexOf('.pbl-legend-swatch {'), css.indexOf('}', css.indexOf('.pbl-legend-swatch {')));
+		expect(body, 'the swatch declares no size at all').toContain('width: 10px;');
+		expect(body, 'the swatch is a flex item with nothing stopping it shrinking to 0').toMatch(
+			/flex(-shrink)?\s*:\s*0/,
+		);
 	});
 });
 

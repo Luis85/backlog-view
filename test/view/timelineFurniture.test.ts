@@ -131,10 +131,57 @@ describe('bar labels', () => {
 		const bar = containerEl.querySelector<HTMLElement>('.pbl-bar-milestone');
 		const label = containerEl.querySelector<HTMLElement>('.pbl-bar-label-after');
 		if (!bar || !label) throw new Error('no milestone diamond, or no after-label');
+		// SIX, not twelve: `.pbl-bar.pbl-bar-milestone` carries `translateX(-50%)`, so the
+		// 12px diamond drawn at `--pbl-bar-left` occupies [left − 6, left + 6] and its
+		// right edge — the thing a label has to clear — is 6px past that number, not 12.
+		// Placing from `--pbl-bar-left` plus the full width left the label a diamond's
+		// width further out than the reserve intends.
 		const gap =
 			parseFloat(label.style.getPropertyValue('--pbl-label-left')) -
 			parseFloat(bar.style.getPropertyValue('--pbl-bar-left'));
-		expect(gap).toBe(12);
+		expect(gap).toBe(6);
+	});
+
+	it('flips a milestone label to the diamond\'s own left edge, not across its left half', () => {
+		const vault = new FakeVault();
+		// Dated late enough in the window that no reserve fits after it, so the label
+		// flips — and far enough from the left edge that it is not dropped instead.
+		// `--pbl-label-right` is measured from the track's right edge, so the label's
+		// right edge lands at trackWidth − right: taking `--pbl-bar-left` there put it
+		// at the diamond's CENTRE, i.e. across the left half of the mark it labels.
+		vault.addFile('Cutover.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-15', due: '2030-06-15' } });
+		const { view, containerEl } = datedRoadmap(vault);
+		view.setZoom('quarter');
+		const bar = containerEl.querySelector<HTMLElement>('.pbl-bar-milestone');
+		const label = containerEl.querySelector<HTMLElement>('.pbl-bar-label-before');
+		if (!bar || !label) throw new Error('no milestone diamond, or no before-label');
+		const window = view.roadmap?.window;
+		if (!window) throw new Error('no window on the snapshot');
+		const labelRightEdge = window.days * 2 - parseFloat(label.style.getPropertyValue('--pbl-label-right'));
+		expect(labelRightEdge).toBe(parseFloat(bar.style.getPropertyValue('--pbl-bar-left')) - 6);
+	});
+
+	it('draws no bar label at all on a track shorter than twice the reserve', () => {
+		// The case `renderBarLabel`'s comment used to omit, and the one that needs no
+		// clipping and no `MAX_TIMELINE_DAYS` clamp to reach: `LABEL_RESERVE_PX` is a
+		// PIXEL budget and the track is days × dayPx. A backlog spanning days around
+		// today pads to ~3 months, which at quarter zoom (2px/day) is under 200px wide —
+		// narrower than the 160px reserve on either side — so every bar in it fails both
+		// halves of the test and the feature is simply absent at that zoom.
+		const vault = new FakeVault();
+		const soon = new Date();
+		soon.setDate(soon.getDate() + 3);
+		const due = soon.toISOString().slice(0, 10);
+		vault.addFile('Near term.md', { frontmatter: { type: 'PBI', order: 10, due } });
+		const { view, containerEl } = datedRoadmap(vault);
+		// The same bar in the same window DOES get its label at month zoom, so what the
+		// quarter case loses is the zoom and not the fixture.
+		expect(containerEl.querySelector('.pbl-bar-label')).not.toBeNull();
+		view.setZoom('quarter');
+		const window = view.roadmap?.window;
+		if (!window) throw new Error('no window on the snapshot');
+		expect(window.days * 2).toBeLessThan(320); // 2 × LABEL_RESERVE_PX
+		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
 	});
 
 	it('drops the label rather than placing it off the track', () => {
