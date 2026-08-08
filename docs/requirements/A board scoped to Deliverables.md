@@ -197,7 +197,13 @@ narrowed to one type.
   every Deliverable regardless of any active focus level, never only the ones a
   focused subtree would still reach (3b).
 - Neither the requirements workflow's completion state nor "Show completed items" hides
-  a card here; only the quick filter narrows this board's population.
+  a card here, **nor anything a card draws** — a card's child disclosure lists a
+  requirements-done child like any other. Only the quick filter narrows this board.
+  That is one rule inside `isRowHidden` rather than a second predicate call sites choose
+  between: three surfaces chose the narrower one and the fourth did not, so a setting
+  flipped on another projection emptied a Deliverable's child list here, on a board with
+  no toggle to put it back.
+  **Checked by** `test/view/deliverablesBoard.test.ts` — "lists a requirements-done child on a Deliverable card whatever the completed toggle says"
 - A card's finished styling here follows the Deliverable workflow's own done values,
   never the requirements board's — the two can disagree about one card and each board
   shows its own answer.
@@ -446,10 +452,14 @@ lands bytes even when no Deliverable-specific property is configured, and undo
 (`touchedKeys`) captures the very key `applyInto` wrote.
 `src/view/host.ts` — `projection` gains `'deliverables'`, `performDeliverablesBoardMove`
 is declared on `BacklogViewHost` as a one-line delegation to `CardMoveController`,
-mirroring `performBoardMove`'s own delegation exactly, and `isRowHiddenByFilterOnly(item)`
-is declared beside `isRowHidden`/`isRowHiddenUnfiltered` — the quick filter alone, never
-"Show completed items": the predicate this board's population needs and the one
-`syncCountLabel` (below) is missing today.
+mirroring `performBoardMove`'s own delegation exactly. `isRowHidden` stays the ONE
+visibility question every projection asks; this board's exception — no completion concept
+of its own, so the toggle describing the requirements rollup cannot reach it — lives
+inside that answer as `VisibilityRule.hideCompleted` (`src/view/rowVisibility.ts`),
+including inside the context-row recursion. It was briefly a second method
+(`isRowHiddenByFilterOnly`) that callers picked between, which is a category invariant
+asked at the places someone thought of: the board, the count label and the completed
+toggle asked it and `listedChildren` did not.
 `src/view/cardMoves.ts` — `CardMoveController` gains `performDeliverablesBoardMove` as a
 fourth sibling to `performBoardMove`/`performHorizonMove`/`performScheduleMove`,
 delegating to the same private `applyCardMove` (pending class, no-op check, announcement)
@@ -467,15 +477,15 @@ all.
 class condition widens to `projection === 'board' || projection === 'deliverables'`
 (`backlogView.ts:468`) — the two are shaped alike and share the class, rather than the
 Deliverables board inheriting the tree's overflow and root drop zone by omission — and
-`isRowHiddenByFilterOnly` is implemented beside `isRowHidden`/`isRowHiddenUnfiltered`
-(`backlogView.ts:307-343`), reusing the same `filter.active`/`filter.keeps` check
-`hidden()` already makes on its first branch, never reaching `hidingCompleted()`.
+the view's private `visibility()` assembles the one `VisibilityRule` its three public
+predicates share, which is where `hideCompleted: this.projection !== 'deliverables'` is
+stated — once, for every reader.
 `src/view/render/toolbar.ts` — the fourth toggle; `renderCompletedToggle`'s gate adds
 `&& host.projection !== 'deliverables'`; and `syncCountLabel`, which runs every render
-regardless of projection, picks `isRowHiddenByFilterOnly` over `isRowHidden` when
-`host.projection === 'deliverables'` — found by review: unfixed, a Deliverable done only
-in the requirements workflow renders as a visible card here while the toolbar
-simultaneously reports the base as "0 of 1". Extended by the later board-scoping change,
+regardless of projection, asks the one `isRowHidden` — found by review: before the
+predicate answered per projection, a Deliverable done only in the requirements workflow
+rendered as a visible card here while the toolbar simultaneously reported the base as
+"0 of 1". Extended by the later board-scoping change,
 covered in `test/view/deliverablesToolbar.test.ts` rather than folded into
 `test/view/toolbar.test.ts`: `renderToolbar`'s `onDeliverables` flag binds the primary
 New button to `DELIVERABLE_TYPE` unconditionally — never the focus-dependent

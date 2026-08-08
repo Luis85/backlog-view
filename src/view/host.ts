@@ -165,6 +165,12 @@ export interface BacklogViewHost {
 	 * while completed items are hidden, part of a fully-done subtree. Rendering,
 	 * keyboard navigation and menus consult this; data operations never do —
 	 * order math always runs over the full sibling lists.
+	 *
+	 * ONE method, for every projection. The Deliverables board's exception — no
+	 * completion concept of its own, so the toggle cannot reach it — is inside this
+	 * answer (`VisibilityRule.hideCompleted`), never a second method a caller picks
+	 * between: three surfaces picked the narrower one and the fourth did not, which
+	 * emptied a Deliverable card's child disclosure from a setting flipped elsewhere.
 	 */
 	isRowHidden(item: BacklogItem): boolean;
 	/**
@@ -173,14 +179,6 @@ export interface BacklogViewHost {
 	 * is the work in it, not the work in it plus what another setting is hiding.
 	 */
 	isRowHiddenUnfiltered(item: BacklogItem): boolean;
-	/**
-	 * The Deliverables board's own visibility rule: the quick filter alone, never
-	 * "Show completed items" — that toggle describes the requirements workflow's own
-	 * rollup (`item.subtreeDone`), and the Deliverables board has no completion concept
-	 * of its own (Scope). Found by review: `syncCountLabel` needs this too, or the
-	 * toolbar's count and the board's own visible cards can disagree.
-	 */
-	isRowHiddenByFilterOnly(item: BacklogItem): boolean;
 	/**
 	 * True when the quick filter matched this item ITSELF, rather than keeping it on
 	 * screen for a relative that matched. The distinction is what lets a card say

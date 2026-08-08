@@ -151,7 +151,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	const board = boardColumns(
 		deliverablesWorkflow(model, host.settings),
 		model.deliverableResults,
-		(item) => !host.isRowHiddenByFilterOnly(item),
+		(item) => !host.isRowHidden(item),
 		() => true,
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {

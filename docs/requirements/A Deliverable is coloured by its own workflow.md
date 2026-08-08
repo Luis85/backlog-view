@@ -124,7 +124,7 @@ changed by editing a requirements state nothing on that board shows.
   **Checked by** `test/domain/statePalettes.test.ts` — "is ONE palette where nothing is declared and both lists are merely observed"
 - Every surface that draws an item as FINISHED asks its own workflow — the tree row and
   the card's child list as much as the card and the bar.
-  **Checked by** `test/view/board.test.ts` — "styles a TREE row by the item’s own workflow too, both directions"
+  **Checked by** `test/view/deliverablesBoard.test.ts` — "styles a TREE row by the item’s own workflow too, both directions"
   **Checked by** `test/view/cardChildren.test.ts` — "styles a done child by ITS OWN workflow, not the requirements one"
 
 ## Where it lives
