@@ -160,10 +160,14 @@ export function renderTimeline(
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
-	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
+	// Reported, because a milestone's LINE is cyan whatever its bar does: the done
+	// override repaints the diamond green and leaves the line alone, so a grid whose only
+	// marker is done draws cyan that no diamond accounts for. Asking the bars alone left
+	// that line unkeyed.
+	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
 	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
-	const drawn: DrawnColors = { done: false, milestone: false, accent: false };
+	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
 	bars.forEach((bar, index) => {
 		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
 		if (colors.done) drawn.done = true;
@@ -268,7 +272,7 @@ function renderMilestoneLines(
 	// `scale` and `leadWidth` grouped into one param — both are "how a day converts to a
 	// pixel here", and the pair is what keeps this under the five-parameter budget.
 	ruler: { scale: TimelineScale; leadWidth: number },
-): void {
+): boolean {
 	const { grid, headerTrack } = mounts;
 	const { scale, leadWidth } = ruler;
 	// Insertion order is bar order, which is row order — so a shared line names its
@@ -303,6 +307,7 @@ function renderMilestoneLines(
 		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
 	}
+	return byDay.size > 0;
 }
 
 /**

@@ -155,6 +155,14 @@ what got drawn.
   takes its swatch with it, and clearing the filter brings it back — done and milestone
   included, exactly like `Other` already was.
 
+- **A milestone whose own bar is done.** The full-height milestone LINE is cyan for
+  every in-window marker and never asks whether the item is done — only the diamond is
+  repainted green by the done override. So a grid whose only marker is done still draws
+  cyan, and asking the BARS alone reported no milestone and left that line unkeyed. The
+  line is reported from `renderMilestoneLines`, where it is drawn, rather than inferred
+  from the marks beside it — the same move that took the accent question out of the
+  legend, applied to the one cyan mark the bars do not account for.
+
 ## Acceptance criteria
 
 - A bar's `pbl-state-N` class agrees with `stateColorSlot`'s answer for that state,

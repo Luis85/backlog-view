@@ -312,3 +312,32 @@ describe('the legend follows a filter, which redraws content without a full rend
 		expect(swatchLabels(containerEl)).toContain('Other');
 	});
 });
+
+describe('a milestone line is cyan whatever its own bar draws', () => {
+	it('keys the milestone when the only marker on the grid is done', () => {
+		// `renderMilestoneLines` draws its full-height cyan line for every in-window
+		// marker and never asks whether the item is done — only the DIAMOND is repainted
+		// green by the done override. So a grid whose only marker is done still has cyan
+		// on it, and asking the bars alone reported `milestone: false` and left it unkeyed.
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'Milestone', order: 10, start: INSIDE_WINDOW_DUE, due: INSIDE_WINDOW_DUE, status: 'Done' },
+		});
+		const { view, containerEl } = makeView(vault, { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		// The cyan line really is on the grid, and its bar really did go green.
+		expect(containerEl.querySelector('.pbl-milestone-line')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-timeline-row.pbl-done .pbl-bar')).not.toBeNull();
+		expect(swatchLabels(containerEl)).toContain('Milestone');
+	});
+
+	it('still keys no milestone where the grid draws no marker at all', () => {
+		// The other direction, so the fix above cannot become "always key it again".
+		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelector('.pbl-milestone-line')).toBeNull();
+		expect(swatchLabels(containerEl)).not.toContain('Milestone');
+	});
+});
