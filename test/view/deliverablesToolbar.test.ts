@@ -191,3 +191,60 @@ describe('the focus control on the Deliverables board', () => {
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 	});
 });
+
+describe('the collapse buttons reach the Deliverables board’s own population', () => {
+	/** `iconButton` puts the label in `aria-label`; the button's own text is an icon. */
+	function collapseCtl(containerEl: HTMLElement, label: string): HTMLButtonElement | undefined {
+		return Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl')).find(
+			(b) => b.getAttribute('aria-label') === label,
+		);
+	}
+
+	/**
+	 * A Deliverable with a child, and a FEATURE focus that does not contain it. The level
+	 * matters: under a PBI focus a Deliverable is promoted to a focus root, because it is
+	 * an extra type and `EXTRA_TYPE_RANK` is the PBI rung — so it lands in `model.items`
+	 * after all and the old code worked by accident. The first version of this case used
+	 * PBI focus and passed against the bug, which is the vacuous-green this repository's
+	 * own accept corpus warns about. The workflow
+	 * is configured because without one this board draws its no-workflow guidance instead
+	 * of cards — no cards, no disclosures, and the buttons are disabled for that reason
+	 * rather than this one. The first version of this fixture omitted it and made the
+	 * case unprovable while looking like a failing check.
+	 */
+	const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Done' };
+
+	function outsideTheFocus(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 10, status: 'New' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 20, status: 'New' } });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'D' });
+		return vault;
+	}
+
+	it('expands a Deliverable card the focus level excludes', () => {
+		// `deliverableResults` is read off the WHOLE unfocused tree so a focus set on another
+		// projection can never hide a Deliverable — while `model.items` is the focused render
+		// set. Iterating the latter left every card outside the focus untouched, and the
+		// buttons did nothing at all when no Deliverable was inside it.
+		const { containerEl, view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
+		view.setProjection('deliverables');
+		view.setFocusLevel('Feature');
+		expect(view.isCollapsed('D.md')).toBe(true);
+
+		collapseCtl(containerEl, 'Expand all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.isCollapsed('D.md')).toBe(false);
+	});
+
+	it('collapses it again, so both buttons answer for the same population', () => {
+		const { containerEl, view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
+		view.setProjection('deliverables');
+		view.setFocusLevel('Feature');
+		collapseCtl(containerEl, 'Expand all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		collapseCtl(containerEl, 'Collapse all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.isCollapsed('D.md')).toBe(true);
+	});
+});

@@ -79,10 +79,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
 	// content render because that is what fills the set it reads.
 	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
-		for (const item of model.items) host.setCollapsed(item.file.path, false);
+		for (const item of collapsiblePopulation(host, model)) host.setCollapsed(item.file.path, false);
 	});
 	collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
-		for (const item of model.items) {
+		for (const item of collapsiblePopulation(host, model)) {
 			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
 		}
 	});
@@ -522,6 +522,23 @@ function countedPopulation(host: BacklogViewHost, model: BacklogModel): BacklogI
 	if (host.projection === 'deliverables') return model.deliverableResults;
 	if (host.projection === 'board') return model.results.filter((item) => !isDeliverableType(item.typeName));
 	return model.results;
+}
+
+/**
+ * What these two buttons can collapse — a DIFFERENT question from `countedPopulation`
+ * beside it, which is why it is a second function rather than a reuse: counting asks for
+ * the Base's rows, and collapsing asks for everything on screen that owns a disclosure,
+ * context rows included.
+ *
+ * The Deliverables board is the one projection where `model.items` is the wrong answer.
+ * It draws `model.deliverableResults`, read off the WHOLE unfocused tree so a focus set
+ * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
+ * So with a focus active, Expand all and Collapse all reached none of the cards outside
+ * that subtree, and were a complete no-op when no Deliverable was inside it: two buttons
+ * doing nothing, on a screen full of things to collapse.
+ */
+function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
+	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
 }
 
 /**
