@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { settingsWith } from '../helpers/settings';
 import {
 	configProblems,
 	DEFAULT_DONE_VALUES,
@@ -58,7 +59,7 @@ describe('the Deliverable workflow', () => {
 		// PAIR is exempt. State colliding with a third property (order, here) is
 		// still exactly the mistake `configProblems` exists to catch — an exemption
 		// keyed on "an entry named state" rather than on the pair would swallow this.
-		const s = { ...defaultSettings(), stateKey: 'status', orderKey: 'status' };
+		const s = settingsWith({ stateKey: 'status', orderKey: 'status' });
 		const problems = configProblems(s);
 		expect(problems).toHaveLength(1);
 		expect(problems[0]).toContain('order and state');
@@ -67,7 +68,7 @@ describe('the Deliverable workflow', () => {
 	it('still reports a collision when a third property joins the exempt pair on one key', () => {
 		// Exactly the pair is exempt, not "at least the pair": a third label sharing
 		// the same key makes it a real collision again, naming all three.
-		const s = { ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'status', orderKey: 'status' };
+		const s = settingsWith({ stateKey: 'status', deliverableStateKey: 'status', orderKey: 'status' });
 		const problems = configProblems(s);
 		expect(problems).toHaveLength(1);
 		expect(problems[0]).toContain('order');
@@ -78,12 +79,12 @@ describe('the Deliverable workflow', () => {
 
 describe('the Deliverable workflow falls back to the shared one', () => {
 	it("reads and writes the requirements workflow's key when its own is unset", () => {
-		const s = { ...defaultSettings(), stateKey: 'status' };
+		const s = settingsWith({ stateKey: 'status' });
 		expect(resolvedDeliverableStateKey(s)).toBe('status');
 	});
 
 	it('keeps its own key over the shared one once a Deliverable state property is configured', () => {
-		const s = { ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'deliverableStatus' };
+		const s = settingsWith({ stateKey: 'status', deliverableStateKey: 'deliverableStatus' });
 		expect(resolvedDeliverableStateKey(s)).toBe('deliverableStatus');
 	});
 

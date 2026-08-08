@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
 import { organizeShelf } from '../../src/domain/shelf';
-import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
+import { BacklogSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 function shelfFrom(vault: FakeVault, overrides: Partial<BacklogSettings> = {}) {
-	const settings = { ...defaultSettings(), horizonKey: 'horizon', horizonValues: ['Now', 'Next', 'Later'], ...overrides };
+	const settings = settingsWith({ horizonKey: 'horizon', horizonValues: ['Now', 'Next', 'Later'], ...overrides });
 	const model = buildModel(vault.app, vault.entries(), settings);
 	return buildRoadmap(model, settings, () => true, 'horizons').shelf;
 }

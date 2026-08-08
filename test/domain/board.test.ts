@@ -10,16 +10,18 @@ import {
 } from '../../src/domain/board';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
-import { BacklogSettings, defaultSettings, resolveSettings } from '../../src/domain/settings';
+import { BacklogSettings, resolveSettings } from '../../src/domain/settings';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
-/** Progress tracking on, with a configured workflow — the board's home ground. */
-const settings = {
-	...defaultSettings(),
-	stateKey: 'status',
-	states: ['New', 'Active', 'Done'],
-	doneValues: ['Done'],
-};
+/**
+ * Progress tracking on, with a configured workflow — the board's home ground. Resolved
+ * from view options rather than spread from `defaultSettings()`: the resolver is where
+ * the Deliverable lists FOLLOW a falling-back key, so the literal expressed a
+ * configuration nobody could set. `assertResolvedSettings` rejects it now.
+ */
+const settings = resolveSettings(
+	new FakeViewConfig({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' }) as never,
+);
 
 const everything = () => true;
 
@@ -463,7 +465,13 @@ describe('boardColumns with the Deliverables workflow', () => {
 		// The requirements workflow's OWN limit/policy for the same state name, so this
 		// fails if deliverablesWorkflow ever forwards settings.wipLimits/columnPolicies
 		// instead of {} — a fixture with both already empty cannot tell the two apart.
+		//
+		// `states` carries `Draft` too, and has to: the resolver builds `wipLimits` over the
+		// CONFIGURED states, so a limit on a state the requirements workflow does not have
+		// is one no user could set. Without it this fixture was staging the collision it
+		// claims to test rather than reproducing it.
 		const s = deliverablesSettings({
+			states: ['Draft'],
 			deliverableStates: ['Draft'],
 			wipLimits: { draft: 2 },
 			columnPolicies: { draft: 'x' },

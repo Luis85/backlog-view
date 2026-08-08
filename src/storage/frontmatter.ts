@@ -267,7 +267,11 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 	}
 }
 
-/** Whether a write carries a Deliverable-state change, set or removed. */
+/**
+ * Whether a write carries a Deliverable-state change, set or removed. Its own function
+ * to keep `touchedKeys` inside the complexity budget — inlined, the pair of branches
+ * puts it at 17 against a cap of 16.
+ */
 function deliverableStateWritten(write: ItemWrite): boolean {
 	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
 }
@@ -275,19 +279,15 @@ function deliverableStateWritten(write: ItemWrite): boolean {
 /**
  * The frontmatter keys this write will touch, in the order they are written.
  *
- * Deduped before it returns: the requirements state and the Deliverable state may now
+ * Deduped before it returns: the requirements state and the Deliverable state may
  * explicitly share one key (`configProblems`' `STATE_KEY_SHARING_EXEMPT`), and a
- * Deliverable item missing that key entirely gets it named twice by
- * `missingKeyStubs` — once for each field's own gap-check — so `write.stubs` can carry
- * both `state` and `deliverableState` resolving to the identical raw key. An
- * ordinary (non-exempt) collision never reaches here at all, because `configProblems`
- * gates every write while one is reported, so this dedupe only ever fires for the
- * one legitimate pair it was written for. Without it, `captureInverse` records the
- * same key twice with the same before/after pair, and the second, redundant entry
- * reads on `applyRestores` as a conflict — the note already matches what undo would
- * write, because the FIRST entry just restored it, so the compare-and-swap on the
- * second sees a value that no longer matches what THIS write wrote and skips it,
- * inflating `RestoreOutcome.conflicts` for a restore that in truth fully succeeded.
+ * Deliverable item missing that key gets it named twice by `missingKeyStubs`, once for
+ * each field's own gap-check. A duplicate key makes `captureInverse` record the same
+ * before/after pair twice, and the second entry reads on `applyRestores` as a conflict —
+ * the first has already restored the value, so the compare-and-swap on the second sees
+ * something other than what the write wrote — inflating `RestoreOutcome.conflicts` for a
+ * restore that fully succeeded. Ordinary (non-exempt) collisions never reach here at
+ * all: `configProblems` gates every write while one is reported.
  */
 function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	const keys: string[] = [];

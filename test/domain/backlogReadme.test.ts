@@ -3,14 +3,13 @@ import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogRead
 import { README_MARKER_PREFIX, readmeMarker } from '../../src/domain/readmeMarker';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
+import { settingsWith } from '../helpers/settings';
 
 /**
  * The generated README is documentation the plugin promises is true, so these tests
  * ask what it SAYS rather than how it is built: every type explained, every key the
  * one this view uses, every state the view actually offers.
  */
-
-const settingsWith = (over: Partial<BacklogSettings> = {}): BacklogSettings => ({ ...defaultSettings(), ...over });
 
 /** Which view generated the document — the identity its marker carries. */
 const SOURCE = 'work/Product Backlog.base › Backlog';

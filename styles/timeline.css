@@ -177,7 +177,6 @@
 	border: none;
 	border-radius: 0;
 	background-color: transparent;
-	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .pbl-timeline-row .pbl-timeline-track {

@@ -403,6 +403,34 @@ free of runtime code so imports stay cycle-free.
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
+- **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
+  face; they are one bit and one register.** The bit is the tree's `isCollapsed`, so a
+  row folded on the grid is folded in the tree, and the quick filter overrides both at
+  once. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
+  never "which projection is this" — which is what makes the toolbar's bulk controls and
+  the row menu's section serve both without either asking what it is looking at.
+  **Which element says "expanded" is decided by the ROW's role, not by preference**: a
+  `treeitem` carries `aria-expanded` itself, so the tree's chevron is a plain div, while
+  a card row is `role="option"` — which does not support that state — so the timeline's
+  is a real `tabindex="-1"` button carrying it, the card disclosure's own answer to the
+  same problem, and `button.pbl-chevron` in `styles/tree.css` strips the Obsidian chrome
+  that arrives with it. `renderChevron` takes a label exactly to make that choice. **The
+  button is the better placement and not a settled one**: `option` also has
+  presentational children, so a user agent may flatten it and drop the role and state
+  with it. What holds either way is the row's content-derived NAME — which the label
+  joins and flips — and the row menu's identical entry as the action's path. Claim that
+  and no more; the two redesigns that would settle it are in
+  `docs/issues/A disclosure nested in an option role.md`. And because that toggle
+  rebuilds the projection, the shelf controls' focus rule applies to it too: the pressed
+  button is gone with the frame, so `renderChevron` reports whether it HELD focus and the
+  caller puts focus on the PANE — never on the replacement control, which would look
+  right and silently kill the arrow keys.
+  `domain/bars.ts`'s `timelineRows` decides which rows survive and which keep a chevron,
+  and it is asked of the bars derived BEFORE any were hidden: computed from what is
+  left, a collapsed row would have no children to have and would lose the very control
+  that reopens it. Unlike the tree's, this toggle takes the whole `render()` — the
+  window, the gridlines and every full-height mark are derived from the row set it
+  changes.
 - A bucket's New button runs the ordinary gated creation flow with the bucket's value as
   a `CreatePlacement`, written inside the same `createBacklogItem` call as the type and
   the rank. One write, so no note ever exists in a bucket its frontmatter does not claim.

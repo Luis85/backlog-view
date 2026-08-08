@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
-import { configProblems, defaultSettings } from '../../src/domain/settings';
+import { configProblems, resolveSettings } from '../../src/domain/settings';
 import { dateStamp, todayStamp } from '../../src/domain/noteFields';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /**
  * The stamps a state change writes. Every rule here is about a transition, so each
@@ -13,16 +13,22 @@ import { FakeVault } from '../helpers/vault';
 
 const TODAY = '2026-08-02';
 
-/** Stamping fully configured: both properties named, one state counting as started. */
-const stamped = {
-	...defaultSettings(),
-	stateKey: 'status',
-	states: ['New', 'Active', 'Done'],
-	doneValues: ['Done'],
-	startedStates: ['Active'],
-	startedDateKey: 'started',
-	finishedDateKey: 'finished',
-};
+/**
+ * Stamping fully configured: both properties named, one state counting as started.
+ * Resolved from view options rather than spread from `defaultSettings()` — the resolver
+ * is where the Deliverable lists FOLLOW a falling-back key, so the literal expressed a
+ * configuration nobody could set, and `assertResolvedSettings` rejects it now.
+ */
+const stamped = resolveSettings(
+	new FakeViewConfig({
+		stateProperty: 'note.status',
+		stateValues: 'New, Active, Done',
+		doneValues: 'Done',
+		startedStates: 'Active',
+		startedDateProperty: 'note.started',
+		finishedDateProperty: 'note.finished',
+	}) as never,
+);
 
 /** An item holding `state`, plus whatever else its note already says. */
 function item(state: string | null, extra: Record<string, unknown> = {}) {

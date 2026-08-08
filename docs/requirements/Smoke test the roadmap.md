@@ -27,6 +27,9 @@ and each stays open until they are, so a stale check is visible rather than assu
 - [[Roadmap inferred bar appearance]] — solid vs. dashed, the done green override, and
   whether an unclosed dashed edge reads as open. **Seen once, 2026-08-02; no per-point
   record yet.**
+- [[Roadmap legend with two workflows]] — the second state vocabulary's own section, the
+  three colour pairs four slots force on it, and the two greens. Layout and structure were
+  measured in Chromium; the colour is the half no harness can answer. **Never checked.**
 - [[Roadmap milestone appearance]] — the cyan badge, the diamond, the full-height line
   and its label, two milestones on one date, today's collision, label truncation, and a
   milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
@@ -86,3 +89,20 @@ and each stays open until they are, so a stale check is visible rather than assu
   **Layout checked 2026-08-07 in both schemes; opacity re-checked 2026-08-08 (lead
   rgb(255,255,255), and the column's pixels identical across a 420px scroll);
   appearance never checked.**
+- Nothing shows through the sticky lead column at a row BOUNDARY, and a selected row's
+  accent edges reach the column's left edge — the two symptoms of
+  [[Full-height marks struck through the sticky lead column]], which needs the grid
+  scrolled far enough for the today line to pass under the column before either is
+  visible at all. **Fixed and re-checked 2026-08-08 in the harness at a 700px viewport,
+  in dark; never checked in a vault, and never in light.**
+- The row's own disclosure ([[Collapsing a bar's subtree]]): the chevron is findable at
+  the size a lead column actually gives it, the leaf placeholder keeps every badge on one
+  x, and a fold does not leave the grid's scroll position somewhere the reader did not
+  ask for. **Never checked.**
+- Then the part only a screen reader can answer, and the reason
+  [[A disclosure nested in an option role]] is open: what a row with a disclosure
+  actually announces. `option` has presentational children, so the nested button's role
+  and `aria-expanded` may be flattened away — does the reader get "Show children" /
+  "Hide children" from the row's name, is the button reachable and activatable at all,
+  and does the row menu's identical entry read as the same act? **Never checked**, and
+  the same question applies to the card disclosure on the board.

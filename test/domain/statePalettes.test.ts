@@ -1,19 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { paletteDone, paletteFor, paletteSlot, statePalettes } from '../../src/domain/board';
 import { buildModel } from '../../src/domain/model';
-import { BacklogSettings, resolveSettings, STATE_COLOR_SLOTS } from '../../src/domain/settings';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
-
-/**
- * Settings resolved from view options, never hand-built: `resolveSettings` is where the
- * Deliverable lists FOLLOW a falling-back key, and a `{ ...defaultSettings(), ... }`
- * literal skips exactly that. It cost this file four wrong expectations the moment the
- * palettes started asking about vocabularies rather than keys — the fixture was modelling
- * a configuration the resolver cannot produce.
- */
-function settingsFrom(options: Record<string, unknown>): BacklogSettings {
-	return resolveSettings(new FakeViewConfig(options) as never);
-}
+import { BacklogSettings, STATE_COLOR_SLOTS } from '../../src/domain/settings';
+import { FakeVault } from '../helpers/vault';
+import { settingsFrom } from '../helpers/settings';
 
 /** One workflow, the ordinary base: a state property and a list. */
 const oneWorkflow = settingsFrom({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' });

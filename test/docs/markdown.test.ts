@@ -275,7 +275,16 @@ describe('the property every caller depends on', () => {
 		expect(files.length).toBeGreaterThan(200);
 		// Parses every note in the register, and coverage instrumentation roughly doubles
 		// that — so the budget is stated rather than left to the 5s default it sits beside.
-	}, 30_000);
+		//
+		// The number tracks the REGISTER's size, not this module's, which is why it has to
+		// be generous rather than tight: every note added anywhere in `docs/` costs another
+		// parse here. 30s held on Linux and timed out on Windows (CI, 2026-08-08) at ~245
+		// notes, where the same run takes about 4s uninstrumented on Linux — so the platform
+		// spread is several-fold and the headroom has to cover it. Raise this again rather
+		// than sampling the corpus: the assertion is total on purpose, and a sampled version
+		// would stop being the thing that catches an offset bug in the one note nobody
+		// picked.
+	}, 120_000);
 
 	it('reads a table cell’s code span, rather than pairing backticks across rows', () => {
 		// GFM tables are not CommonMark. Without them a table is one paragraph and backticks

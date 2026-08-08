@@ -417,6 +417,38 @@ describe('two workflows, two keyed vocabularies', () => {
 		expect(swatchLabels(containerEl)).toEqual(['New', 'Active', 'Done', 'Draft', 'Published', 'Today']);
 	});
 
+	it('keeps each workflow’s heading with its own swatches when the strip wraps', () => {
+		// Found by LOOKING (`npm run harness`, 560px): the strip is a wrapping flex row, and
+		// a flat row breaks at whatever item reaches the edge — the "Deliverables" heading
+		// ended one line while its swatches carried onto the next, leaving a row of colours
+		// belonging to nothing. jsdom lays nothing out, so what is checked here is the
+		// STRUCTURE the fix rests on, not the wrap itself: each named palette's heading and
+		// swatches share one box, so a break between lines cannot fall between them.
+		const { view, containerEl } = makeView(
+			twoWorkflowVault(),
+			{ ...DATE_AXIS, ...WORKFLOW, ...DELIVERABLE_WORKFLOW },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		const sections = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-legend-section'));
+		expect(sections).toHaveLength(2);
+		for (const section of sections) {
+			expect(section.querySelector('.pbl-legend-group')).not.toBeNull();
+			expect(section.querySelectorAll('.pbl-legend-item').length).toBeGreaterThan(0);
+		}
+		// Today is furniture, not a workflow, so it stays outside every section.
+		expect(containerEl.querySelector('.pbl-legend-section .pbl-legend-today')).toBeNull();
+	});
+
+	it('draws no section box for a lone workflow, which has no group to hold together', () => {
+		const { view, containerEl } = makeView(twoWorkflowVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelectorAll('.pbl-legend-section')).toHaveLength(0);
+		expect(containerEl.querySelectorAll('.pbl-legend-item').length).toBeGreaterThan(0);
+	});
+
 	it('names nothing where one workflow tracks everything', () => {
 		// The single-workflow base draws exactly the strip it drew before a second one
 		// existed — a group label with nothing to tell it apart from is furniture.
