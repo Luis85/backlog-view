@@ -110,6 +110,15 @@ a type takes an unclaimed hue" has run out of hues to take. That is
 [[The type palette has no unclaimed hue left]], and it blocks a ninth type rather than
 this one.
 
+**Both halves of that paragraph were overtaken within the day, and the shipped state is
+the opposite of each.** `Deliverable` was not "never built" — it landed on a branch that
+could not see this one and reached for the same green, so `Idea` moved to **yellow** and
+`Deliverable` kept green. There is therefore no hue "clear of the four levels" here: Idea
+shares yellow with Task, which `styles/badges.css` argues for as the smallest available
+collision. And the ninth type was not blocked; it shipped, by sharing. The paragraph is
+kept because it is what this PBI was decided on, and corrected because
+`requirements/` describes the code as it is now.
+
 `src/domain/backlogReadme.ts` — `andList` joins a category's names as English rather than
 with ` and ` between every pair. Two sentences in the generated README name a whole
 category, and both read as a list only while the category holds two; `Intl.ListFormat` is

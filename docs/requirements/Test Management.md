@@ -56,13 +56,17 @@ reads frontmatter, as it does for every other item. A case is read by opening it
 
 ## The blocker it inherits
 
-Two new declared types need two badge slots and there are none:
-[[The type palette has no unclaimed hue left]] records that the eight declared types wear
-Obsidian's eight chromatic families, and that the Ladder Rule forbids answering a ninth
-with a rotation. That issue says the shape to build depends on what the ninth type is for.
-This epic is the answer to that question, and [[A badge when the palette is full]] is
-where it gets resolved — before either type ships, since a type with no badge is a row the
-reader cannot classify.
+Two new declared types need two badge slots and there are none. `ALL_TYPES` holds **nine**
+declared types against Obsidian's **eight** chromatic families, so the Ladder Rule has
+already run out and been bent once: `styles/badges.css` puts Idea and Task on the same
+yellow, deliberately and with the pairing written down, and `Deliverable` wears green.
+Tests are the tenth and eleventh, and the question is whether each new type takes its own
+sharing decision — which is how Idea and Deliverable both reached for green on branches
+that could not see each other — or whether one rule covers them.
+[[A badge when the palette is full]] is where that is answered, before either type ships,
+since a type with no badge is a row the reader cannot classify. It also corrects
+[[The type palette has no unclaimed hue left]], whose stated arithmetic predates
+`Deliverable` and disagrees with the CSS.
 
 ## Features
 

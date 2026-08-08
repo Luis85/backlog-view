@@ -24,8 +24,8 @@ document a stranger could execute.
 
 - [[Test suite and test case as a ladder of their own]] — the two types, their rungs,
   their roots, and what a move may and may not do to them.
-- [[A badge when the palette is full]] — the ninth and tenth types on an eight-hue
-  palette, and the second axis that answers it.
+- [[A badge when the palette is full]] — the tenth and eleventh types on an eight-hue
+  palette that nine types already share, and the second axis that answers it.
 - [[A template for a test case]] — the instruction skeleton, from the templates machinery
   that already exists.
 
