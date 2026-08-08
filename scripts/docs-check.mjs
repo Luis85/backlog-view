@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, rawHtml, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
+import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -900,38 +900,7 @@ for (const file of sources) {
  * column first and an inverse nobody derives is a second place to be wrong.
  */
 const HIERARCHY_HEADINGS = ["Type", "Parent may be", "Children may be"];
-/**
- * The only prose a hierarchy cell naming NO types may hold, byte for byte. Deliberately an
- * enumeration of the three the table already uses rather than a pattern: the position is
- * the one place a sentence can sit in that table, so it is the one place a relation can
- * hide in prose while the extracted set stays empty and agrees with the gate.
- *
- * It duplicates three strings of `docs/README.md` and that is the point — a fourth way to
- * write "nothing" has to be declared here, loudly, rather than admitted because it looked
- * like the others.
- */
-const NOTHING_ANNOTATIONS = new Set(["(nothing)", "(nothing — it is a root)", "(nothing — a root by nature)"]);
-/**
- * Everything a hierarchy cell may be BUILT from. Whitelisted for the same reason its prose
- * is: the two readers below see `text` and `inlineCode`, so any other node passes both of
- * them unseen — raw `<del>` around a type is collected as a live relation while it renders
- * as a deleted one. Refusing the node type rather than the element is what stops this
- * needing a new rule for `<b>`, an image, a link, or whatever is reached for next.
- */
-const CELL_NODES = new Set(["text", "inlineCode", "emphasis"]);
 const readme = await readFile(path.join(DOCS, "README.md"), "utf8");
-/**
- * NO RAW HTML in the register's index page — the one rule here that is about the whole
- * file rather than about the table. `<del>` on the lines either side of the table leaves
- * an ordinary table node with ordinary cells, so everything below agrees with the gate
- * while the document renders the authoritative statement as deleted. Nothing inside the
- * table can see what is wrapped around it, and "check the nodes beside it" is one more
- * positional heuristic with a gap next to it — the shape that has failed five times in a
- * row here. This has no gap: the file uses no raw HTML today, and a reason to start is a
- * reason to say so here first.
- */
-const html = rawHtml(readme);
-if (html.length > 0) fail("docs/README.md", `raw HTML, which the register's index page does not use: ${html.map((tag) => tag.trim()).join(" ")}`);
 const hierarchies = tablesWith(readme, HIERARCHY_HEADINGS);
 if (hierarchies.length === 0) {
 	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
@@ -947,34 +916,6 @@ if (hierarchies.length === 0) {
 	const documentedParents = new Map();
 	for (const [index, cells] of hierarchy.entries()) {
 		const [types, parents, children] = cells;
-		// A name written WITHOUT backticks disappears: `code` reports the spans a cell holds
-		// and the prose is not compared, so a loop over it never sees the name and the cell
-		// reads as agreeing with the gate. `| Spike | Epic | *(nothing)* |` left the table
-		// advertising a type the gate refuses, and `` `Feature`, …, Spike `` did the same one
-		// column over while the collected set still equalled `LEGAL_CHILDREN`. Both measured
-		// against the real register before being fixed; both passed.
-		//
-		// **A cell's meaning is exactly the code spans it holds.** That is the rule, and the
-		// prose is checked against it rather than around it, because four rounds of review
-		// found four different ways for a cell to READ as something other than its spans:
-		// a type in prose (twice, in different columns), a span struck through, and prose
-		// that negates the spans beside it (`` `Bug`, but not `Deliverable` ``). Each fix
-		// closed its own instance and the next round walked through the gap beside it.
-		//
-		// So beside a code span the ONLY prose allowed is separators and `or` — nothing that
-		// can carry meaning. A free-form parenthetical is legal exactly where it says the cell
-		// names nothing (`*(nothing — it is a root)*`), which is the one thing it is ever used
-		// for and is only sayable when there is nothing to contradict.
-		//
-		// Deliberately failing CLOSED, and deliberately not reading English. A legitimate new
-		// turn of phrase is a false ALARM that makes somebody look — the safe direction, and
-		// the one this file already argues for at the report-site count. What it cannot see:
-		// a misleading arrangement of `or` and the separators themselves.
-		//
-		// Checked HERE rather than in `tablesWith`, which is generic over any heading set:
-		// "this cell means its code spans" is this table's rule. What the helper owes is the
-		// prose itself, which it now returns — a caller cannot notice what it never receives,
-		// and that is exactly how this defect got a second life.
 		// A short row does NOT get padded — mdast reports the cells that are there — so the
 		// destructuring above binds `undefined` and the read below threw a TypeError, taking
 		// the whole gate down with no report at all. Measured: `| \`Feature\` | \`Epic\` |`
@@ -986,39 +927,24 @@ if (hierarchies.length === 0) {
 			continue;
 		}
 		for (const [column, cell] of cells.entries()) {
-			const where = `hierarchy table row ${index + 1} column ${column + 1}`;
-			// The last unconstrained region, and the one that survived four fixes: `text` sees
-			// text nodes and `code` sees code spans, so anything ELSE in the cell is invisible
-			// to both rules below. `<del>` around a code span proved it — the type collected,
-			// the tags dropped, the cell reading as agreement while it renders as deleted.
-			// Whitelisting the node types is what makes that a closed question rather than one
-			// more element to think of: an image, a link, a footnote and every future spelling
-			// are refused unread.
-			const strange = cell.kinds.filter((kind) => !CELL_NODES.has(kind));
-			if (strange.length > 0) fail("docs/README.md", `${where} holds ${strange.join(", ")}, and a cell may hold only ${[...CELL_NODES].join(", ")}`);
-			// A cell that names nothing is the ONE free-form position, so it is not free-form:
-			// it must be one of the three annotations the table already uses, byte for byte.
-			// Anything else is a sentence, and a sentence in a cell that reports no types is
-			// exactly where a relation can hide — `*(nothing — except Feature)*` says an Epic
-			// hangs from a Feature while the extracted set stays empty and matches the gate.
-			// Found in review one round after the rule above, in the exemption written FOR the
-			// rule above: "arbitrary text is fine here" was the same mistake one position over.
-			if (cell.code.length === 0) {
-				// Named cause first: a cell reaching this branch is usually a contributor who
-				// forgot the backticks, not one writing an annotation, and "that is not one of
-				// the nothing annotations" answers a question they were not asking.
-				if (!NOTHING_ANNOTATIONS.has(cell.text.trim())) {
-					fail("docs/README.md", `${where} names nothing in code, and "${cell.text.trim()}" is not one of the documented "nothing" annotations`);
-				}
-				continue;
+			// A name written WITHOUT backticks disappears: `code` reports the spans a cell holds,
+			// so a loop over them never sees it and the cell reads as agreeing with the gate.
+			// `| Spike | Epic | *(nothing)* |` left the table advertising a type the gate refuses,
+			// and `` `Feature`, …, Spike `` did the same one column over. Both measured against the
+			// real register before being fixed; both passed.
+			//
+			// CAPITALISATION is the rule, which is as far as this goes without reading English:
+			// every type is a capitalised word and the prose here is lowercase connective tissue.
+			// A type spelled in all-lowercase prose still slips through, and so does a name hidden
+			// in markup — struck through, wrapped in `<del>`, quoted in a blockquote. Those were
+			// each closed and then deliberately REMOVED: they defend against a maintainer
+			// obfuscating the register rather than mistyping it, which is not what this table is
+			// for, and the tighter rules would have false-alarmed on the first legitimate sentence
+			// anyone added to it. `docs/issues/A rule chased past the mistakes it prevents.md`.
+			const loose = cell.text.match(/\p{Lu}[\p{L}\p{M}]*/gu);
+			if (loose) {
+				fail("docs/README.md", `hierarchy table row ${index + 1} column ${column + 1} has ${loose.join(", ")} outside a code span`);
 			}
-			// Reported as WORDS and deduped CHARACTERS rather than raw: the prose of a relation
-			// cell is mostly separators, so the whole cell reads `", , , , Spike"` and buries
-			// the one thing to go and fix.
-			const named = cell.text.match(/[\p{L}\p{M}]+/gu) ?? [];
-			const odd = [...new Set(cell.text.replace(/[\p{L}\p{M}]+/gu, "").match(/[^\s,/]/gu) ?? [])];
-			const wrong = [...named.filter((word) => word !== "or"), ...odd];
-			if (wrong.length > 0) fail("docs/README.md", `${where} has ${wrong.join(", ")} outside a code span`);
 		}
 		// Distinct from the rule above, and not covered by it: a cell holding no name at all.
 		if (types.code.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);

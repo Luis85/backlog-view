@@ -4,7 +4,7 @@ import { hierarchyTable, runRejections, withoutHierarchyRow } from '../helpers/r
 /**
  * **Does the documented hierarchy disagreeing with the gate fail?**
  *
- * One rule, seven report sites, and its own file — split out of `checkerRejects.test.ts`
+ * One rule and its own file — split out of `checkerRejects.test.ts`
  * when that file reached its lint budget, the same way the ADR and citation groups were.
  * The direction it guards is the one that actually rotted: `LEGAL_CHILDREN` learned
  * `Deliverable` and `docs/README.md`'s table did not, for a whole increment, because
@@ -83,23 +83,17 @@ describe('the documented hierarchy and the gate agree', () => {
 			// The row that DISAPPEARS rather than disagreeing — the table visibly says something
 			// the gate refuses while the gate calls it consistent. Found by review; measured in
 			// the real register before it was closed, where the planted row passed.
-			//
-			// Now reported by the code-free branch rather than the prose one, since a cell with
-			// no span at all is what this is. The case is unchanged; which rule catches it moved
-			// as the rules were tightened, which is the point of asserting the message and not
-			// the site.
 			'a hierarchy row naming its type in prose rather than code',
 			(files) => {
 				files['docs/README.md'] = `${hierarchyTable()}| Spike | Epic | *(nothing)* |\n`;
 			},
-			'"Spike" is not one of the documented "nothing" annotations',
+			'has Spike outside a code span',
 		],
 		[
 			// ONE CASE PER COLUMN, because the first fix went in at the type column only and
 			// review immediately found the same hole in the other two: a prose name beside the
 			// code-formatted ones leaves the collected set equal to `LEGAL_CHILDREN`, so the
-			// row does not even vanish — it reads as agreeing. The next time this rule is
-			// widened, these three are what say the rule is about a TABLE and not a column.
+			// row does not even vanish — it reads as agreeing.
 			'a children cell naming a type in prose beside the code-formatted ones',
 			(files) => {
 				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
@@ -112,65 +106,6 @@ describe('the documented hierarchy and the gate agree', () => {
 				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |', '| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
 			},
 			'has Spike outside a code span',
-		],
-		[
-			// The THIRD instance, and the one that turned the rule from "no capitals" into a
-			// whitelist. Struck through, GitHub and Obsidian both render the relation as
-			// removed — while the code span is still collected, so the documented set stayed
-			// equal to `LEGAL_CHILDREN` and the check passed. There is no `delete` node to skip
-			// either: this parser loads the table extension only, so the tildes are literal
-			// text that no capitalisation rule would look at.
-			'a hierarchy entry struck through, which renders as removed',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, ~~`Deliverable`~~ |');
-			},
-			'has ~ outside a code span',
-		],
-		[
-			// The FOURTH, and the one that moved the rule from "what may the prose look like"
-			// to "a cell means its code spans". Every type here is correctly formatted and the
-			// collected set matches the gate exactly — it is the lowercase words between them
-			// that reverse the reading, which no rule about formatting could ever have caught.
-			'a relation cell whose prose negates the types beside it',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, but not `Deliverable` |');
-			},
-			'has but, not outside a code span',
-		],
-		[
-			// The parenthetical is legal where it says the cell names NOTHING, and nowhere
-			// else — beside a code span it is free-form text that can say anything at all.
-			'a parenthetical aside beside the types it would qualify',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug` (and never `Deliverable`) |');
-			},
-			'outside a code span',
-		],
-		[
-			// The FIFTH, and it was in the exemption written for the fourth: "a parenthetical is
-			// free-form where the cell names nothing" reopened the bypass one position over.
-			// The extracted set stays empty and matches the gate while the table says an Epic
-			// hangs from a Feature. The cell that reports no types is the one place a sentence
-			// can sit, so it is the one place a relation can hide.
-			'a nothing-annotation carrying a relation in its prose',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('(nothing — it is a root)', '(nothing — except Feature)');
-			},
-			'is not one of the documented "nothing" annotations',
-		],
-		[
-			// Raw HTML is the same defect as `~~`, arrived at from the other side: `text` reads
-			// text nodes and `code` reads code spans, so an `html` node passes BOTH unseen —
-			// the type collected as a live relation while GitHub and Obsidian render it
-			// deleted. Fixed by whitelisting the node types a cell may be built from, which is
-			// why there is no case here for `<b>`, an image or a link: they are refused unread
-			// by the same rule, and a case per element would be the enumeration this whole
-			// sequence of findings argues against.
-			'a type wrapped in raw HTML that renders as deleted',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, <del>`Deliverable`</del> |');
-			},
-			'holds html, and a cell may hold only',
 		],
 		[
 			// A FOURTH COLUMN, which the prefix header match selected and the three-way
@@ -186,45 +121,16 @@ describe('the documented hierarchy and the gate agree', () => {
 			'the hierarchy is documented nowhere',
 		],
 		[
-			// WRAPPED, which nothing inside the table can see: `<del>` on the lines either side
-			// leaves an ordinary table with ordinary cells, so every rule below agrees with the
-			// gate while the document renders the authoritative statement as deleted. Caught by
-			// a rule about the whole FILE — the index page uses no raw HTML — because "inspect
-			// the nodes beside the table" is one more positional heuristic with a gap next to
-			// it, and that shape is what these findings have been walking through all along.
-			'a hierarchy table wrapped in raw HTML that renders it deleted',
-			(files) => {
-				files['docs/README.md'] = `<del>\n\n${hierarchyTable()}\n</del>\n`;
-			},
-			"raw HTML, which the register's index page does not use",
-		],
-		[
-			// NOT reported by review — predicted from the shape of the four that were, and then
-			// confirmed. Every one of those was a gap in what `tablesWith` hands back rather
-			// than in the rules over it, so the question became what it still does not hand
-			// back: where the table SITS. A table inside a blockquote renders as a quotation —
-			// an aside, an example, someone else's words — and was read as the register's own
-			// authoritative statement. The helper takes top-level tables only now, and the
-			// docstring line calling the opposite a feature is gone.
+			// A table inside a blockquote renders as a quotation and is not the document's own
+			// statement — the rule `headings` in the same file already applies, extended to
+			// tables. Kept when the rest of this round's markup hardening was cut, because it
+			// is one line and matches a decision that file had already taken.
 			'a hierarchy table quoted inside a blockquote',
 			(files) => {
 				files['docs/README.md'] = hierarchyTable()
 					.split('\n')
 					.map((line) => (line.startsWith('|') ? `> ${line}` : line))
 					.join('\n');
-			},
-			'the hierarchy is documented nowhere',
-		],
-		[
-			// The header, which no caller-side rule could reach: the head cells are not in what
-			// `tablesWith` returns, so the node whitelist that closed the BODY case could never
-			// have applied here. `words` reads text nodes and ignores the rest, so a header
-			// wrapped in `<del>` still read as the heading it claims to be while the document
-			// marked that column deleted. The headings must be plain text now, and a decorated
-			// one means this is no longer the hierarchy table at all.
-			'a hierarchy header struck through with raw HTML',
-			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| Type | Parent may be |', '| Type | <del>Parent may be</del> |');
 			},
 			'the hierarchy is documented nowhere',
 		],
@@ -239,8 +145,8 @@ describe('the documented hierarchy and the gate agree', () => {
 			'has 2 cells, not 3',
 		],
 		[
-			// The claim the prose rule does NOT subsume: a cell holding no name at all. Nothing
-			// disallowed to report, and the row still disappears.
+			// The claim the capitalisation rule does NOT subsume: a cell holding no name at all.
+			// No capital to report, and the row still disappears.
 			'a hierarchy row whose type cell is empty',
 			(files) => {
 				files['docs/README.md'] = `${hierarchyTable()}|  | \`Epic\` | *(nothing)* |\n`;

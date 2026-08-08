@@ -251,21 +251,6 @@ export function containerAt(text, index) {
  * parser has already decided what is emphasis and what is only asterisks, so the whole
  * category closes at once rather than one spelling at a time.
  */
-/**
- * Every raw HTML node's source, anywhere in the document.
- *
- * For the one question a structural rule cannot answer from a node's own subtree: what is
- * WRAPPED around it. `<del>` on the lines either side of a table leaves an ordinary table
- * node with ordinary cells — nothing inside it is unusual, and every rule that reads it
- * agrees with the gate while GitHub and Obsidian render the whole thing deleted. Asking
- * "what is beside this table" is one more positional heuristic with a gap next to it;
- * asking "does this document contain raw HTML at all" has no gap, and is the form a caller
- * can actually hold a file to.
- */
-export function rawHtml(text) {
-	return [...nodes(text)].filter((n) => n.type === "html").map((n) => n.value);
-}
-
 export function markers(text, label) {
 	const found = [];
 	for (const node of nodes(text)) {
@@ -278,8 +263,8 @@ export function markers(text, label) {
 
 /**
  * EVERY GFM table whose header row IS `headings` — each table as its rows, each row as its
- * cells, each cell as `{ code, text, kinds }`: the `code` spans it holds, the prose around
- * them, and the node types it is built from.
+ * cells, each cell as `{ code, text }`: the `code` spans it holds and the prose around
+ * them.
  *
  * EXACTLY those headings, not a prefix. A prefix match selects a table that grew a fourth
  * column, and a caller destructuring three of them reads a document with more in it — a
@@ -298,22 +283,12 @@ export function markers(text, label) {
  * notice what it never receives, so the prose comes back and each caller says what its own
  * table allows to be in it.
  *
- * `kinds` is that argument taken to its end. `text` sees `text` nodes and `code` sees
- * `inlineCode`, so ANY other node is invisible to both — and `<del>` around a code span is
- * exactly that: the type is collected, the tags are dropped, and the cell reads as
- * agreeing while GitHub and Obsidian render the relation as deleted. Reporting the node
- * types present is the only form of this that does not need a new rule per element,
- * because a caller can whitelist what it understands and refuse the rest unread.
- *
  * Asked of the parser, so a pipe inside a code span cannot split a cell.
  *
- * TOP LEVEL only, and this line used to say the opposite — "a table indented inside a list
- * item is still a table" was written as a feature. It is the same defect as the struck-out
- * heading, one container out: a table inside a blockquote RENDERS as a quotation, an aside
- * or an example, and was read as the document's own authoritative statement. Measured
- * after four rounds of review all found gaps in what this helper hands back rather than in
- * the rules over it — this one was predicted from that pattern and then confirmed, rather
- * than reported.
+ * TOP LEVEL only, for the reason `headings` above is: a table inside a blockquote renders
+ * as a quotation and is not the document's own statement. Kept when the rest of this
+ * round's hardening was removed, because it is one line and it matches a decision this
+ * file had already taken for the same reason.
  *
  * PLURAL deliberately. The first version returned the first match, which answers a
  * question nobody asked: with two tables under one heading set — a merge leaves one, an
@@ -328,7 +303,6 @@ export function tablesWith(text, headings) {
 	// more parser to get wrong. Walking the node the parser already built asks nothing.
 	const words = (cell) => [...walk(cell)].filter((n) => n.type === "text").map((n) => n.value).join("").trim();
 	const codes = (cell) => [...walk(cell)].filter((n) => n.type === "inlineCode").map((n) => n.value);
-	const kinds = (cell) => [...new Set([...walk(cell)].filter((n) => n !== cell).map((n) => n.type))];
 	const found = [];
 	for (const node of tree(text).children) {
 		if (node.type !== "table" || node.children.length === 0) continue;
@@ -339,8 +313,8 @@ export function tablesWith(text, headings) {
 		// document marking that column deleted while the check went on comparing it. The
 		// header cells are not in what this returns, so no caller-side whitelist could ever
 		// have reached them: it has to be here, where the table is identified.
-		if (!headings.every((want, i) => words(head[i]) === want && kinds(head[i]).every((kind) => kind === "text"))) continue;
-		found.push(node.children.slice(1).map((row) => row.children.map((cell) => ({ code: codes(cell), text: words(cell), kinds: kinds(cell) }))));
+		if (!headings.every((want, i) => words(head[i]) === want)) continue;
+		found.push(node.children.slice(1).map((row) => row.children.map((cell) => ({ code: codes(cell), text: words(cell) }))));
 	}
 	return found;
 }
