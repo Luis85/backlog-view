@@ -89,7 +89,8 @@ describe('buildModel', () => {
 		expect(names(model.roots[0].children).sort()).toEqual(['Alias', 'Plain', 'Wiki']);
 	});
 
-	// The one state that reaches the raw fallback in a REAL vault. Measured in Obsidian
+	// The one BRACKETED state that reaches the raw fallback in a real vault — a bare name
+	// reaches it too, always, and `Plain.md` above is that case. Measured in Obsidian
 	// 2026-08-08: a note carrying `parent: "[[No Such Note]]"` has frontmatter and NO
 	// `frontmatterLinks` at all — a link resolving to nothing is not indexed — so path 1 has
 	// nothing to walk and the raw value is all there is.
@@ -101,11 +102,11 @@ describe('buildModel', () => {
 	// is the ORPHAN outcome on the path a vault actually takes, which is worth having and is
 	// less than it reads as.
 	//
-	// The bracketed fixtures above pair brackets with a target that EXISTS, which a real
-	// vault would have indexed, so they reach the strip through a cache Obsidian does not
-	// hand out. Between them and this, nothing measures the strip against a state a vault
-	// can produce — `docs/issues/The fake vault can hold a cache Obsidian would not
-	// produce.md` carries what is left of that question.
+	// The bracketed fixtures above pair brackets with a target that EXISTS, which a vault
+	// would have indexed IF it indexes resolvable links at all — the half nobody has looked
+	// at, and the one that decides whether those fixtures are faithful or impossible.
+	// `docs/issues/The fake vault can hold a cache Obsidian would not produce.md` is Open
+	// for exactly that, with the console line that settles it.
 	it('reports an unresolvable parent link as an orphan', () => {
 		const vault = new FakeVault();
 		vault.addFile('Child.md', { frontmatter: { parent: '[[No Such Note]]' } });

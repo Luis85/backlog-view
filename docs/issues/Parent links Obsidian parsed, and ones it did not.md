@@ -95,18 +95,22 @@ the linkpath and never the answer. Watched failing, as the rule requires; it did
 which is the whole finding.
 
 For the strip to change an outcome, a bracketed value would need no link entry AND a target
-that exists — and the measurement says that pair cannot occur, because a link that resolves
-is indexed and one that does not is not.
+that exists. Whether that pair can occur is **not settled**: it needs a resolvable link to
+be indexed, which is `resolveParent`'s premise and was never checked — the resolvable cases
+in this run were watched in the tree, where both paths parent correctly and neither can be
+told from the other. The measurement rules out one direction and says nothing about the
+other.
 
-So the position is narrower than either branch offered: **the bracket handling has no
-measurable effect in a real vault, and it is kept anyway.** Two lines, and deleting them
+So the position is narrower than either branch offered: **no state is known in which the
+bracket handling changes an outcome, and it is kept anyway.** Two lines, and deleting them
 would rest on a deduction about Obsidian's link parser rather than on a measurement — a
 value that parser declines to index while still naming a real note would regress in
-silence. That is a worse trade than two lines carrying a comment that says what they are.
+silence, and that is exactly the state the unmeasured half leaves open. A worse trade than
+two lines carrying a comment that says what they are.
 
-[[The fake vault can hold a cache Obsidian would not produce]] holds what is left: the
-fixtures pairing brackets with a resolvable target model a cache Obsidian does not hand
-out, and now provably so.
+[[The fake vault can hold a cache Obsidian would not produce]] holds what is left, and is
+Open for it: whether those fixtures — brackets paired with a resolvable target — model a
+cache Obsidian hands out depends entirely on the half nobody has looked at.
 
 ## Runs
 
