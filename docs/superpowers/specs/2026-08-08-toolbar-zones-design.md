@@ -117,12 +117,25 @@ and focuses it; the input reverts on blur while it is empty, so a filter someone
 actually using is never taken away by a resize. Widening the pane relaxes the step and
 restores it anyway.
 
-Two things re-run the ladder besides a pane resize: a **projection switch**, because the
-zone that just changed is part of what is being measured, and any render that changes a
-label — the primary New button names the focused type, so a focus change alone can move
-the row across a step. The attribute lives on the toolbar element itself, which
-`renderToolbar`'s `barEl.empty()` does not destroy, so the step survives a toolbar rebuild
-and is re-decided after it rather than flickering through step 0.
+**Anything that changes a control's own width re-runs the ladder, not only a pane
+resize.** Revealing that input adds about 130px to a row already measured as full, and no
+resize, render or data update follows a click on the reveal — so it clips trailing
+controls under `overflow: hidden` until something unrelated happens to re-render. The
+reveal and the empty-blur that collapses it both re-run `syncToolbarFit`.
+
+`.pbl-filter-input:focus`'s width growth — 130px to 170px, "a little room to breathe while
+actually typing" — is **deleted** with this change. It is the same hazard in miniature and
+it fires on every focus at every step, including step 0: with `nowrap; overflow: hidden`
+the row can no longer absorb a control that grows under the user. Two lines of nicety are
+not worth a refit on every focus event, and the input's fixed width is the one the ladder
+measures.
+
+Two more things re-run it: a **projection switch**, because the zone that just changed is
+part of what is being measured, and any render that changes a label — the primary New
+button names the focused type, so a focus change alone can move the row across a step. The
+attribute lives on the toolbar element itself, which `renderToolbar`'s `barEl.empty()` does
+not destroy, so the step survives a toolbar rebuild and is re-decided after it rather than
+flickering through step 0.
 
 **Nothing shed becomes unreachable.** A `⋯` button holds density, jump-to-today, ✨,
 expand all and collapse all — *always those five, whatever the step*. The button itself is
@@ -134,6 +147,21 @@ while the chip is on screen.
 
 This follows the rule the register already states about the column ladder: the responsive
 `pbl-hide-*` classes are a space decision, and no command is withheld for them.
+
+**A menu entry is disabled exactly when the button it duplicates is** — read off that
+button's own `disabled` property when the menu is built, never re-derived from the
+conditions behind it. Two of the five are genuinely conditional: expand and collapse pause
+while a quick filter overrides collapse state or the projection drew no disclosure
+(`syncCollapseCtls`), and ✨ pauses while a batch is in flight (`syncBusy`, via
+`.pbl-write-ctl`). Re-deriving either would put a second opinion beside `syncCollapseCtls`,
+which the register already names as its sole writer — and a menu that got it wrong would
+write collapse state the filter is overriding, from a narrow pane, with the buttons that
+refuse it sitting hidden three pixels away. Reading the control cannot disagree with the
+control. The menu is built at click time, so what it reads is the live frame.
+
+The `⋯` is UX truth rather than the safety mechanism: `runExclusively` already refuses a
+second batch, so a mis-enabled ✨ would be refused rather than obeyed. Expand and collapse
+have no such structural backstop, which is why they are the two that matter.
 
 ### Styling
 
@@ -162,8 +190,11 @@ This follows the rule the register already states about the column ladder: the r
 
 ## Testing
 
-- `test/view/toolbarFit.test.ts` — the step chosen from stubbed widths, and that a control
-  shed at each step still has its command in the `⋯` menu.
+- `test/view/toolbarFit.test.ts` — the step chosen from stubbed widths; that a control shed
+  at each step still has its command in the `⋯` menu; that revealing the collapsed filter
+  re-runs the ladder; and that a `⋯` entry is disabled whenever the button it duplicates
+  is — driven by putting the view into the state that disables the button (a running quick
+  filter for expand/collapse) rather than by asserting the condition twice.
 - `test/view/toolbar.test.ts` — extended: the projection zone renders the roadmap's
   controls and nothing at all on the tree, the board and the Deliverables board; the
   zone's separator is absent with the zone.
