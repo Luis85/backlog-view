@@ -533,6 +533,22 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		);
 	});
 
+	it('rejects a vocabulary the resolver would have deduplicated, and only a vocabulary', () => {
+		// Raised in review with the consequence named: `states: ['Active', 'active']` gives
+		// the board two configured columns for one state, which no user can reach —
+		// `resolveSettings` applies `dedupe(list(...))` case-insensitively.
+		const base = defaultSettings();
+		expect(settingsInconsistency({ ...base, states: ['Active', 'active'], deliverableStates: ['Active', 'active'] }))
+			.toContain('states repeats');
+		expect(settingsInconsistency({ ...base, horizonValues: ['Now', 'NOW'] })).toContain('horizonValues repeats');
+		expect(settingsInconsistency({ ...base, startedStates: ['A', 'a'] })).toContain('startedStates repeats');
+		// The two DONE lists are deliberately exempt: they take `list()` without `dedupe()`,
+		// so a repeat there is a configuration a user can actually set, and rejecting it
+		// would refuse a real vault. This is the half of the rule that keeps it honest.
+		expect(settingsInconsistency({ ...base, doneValues: ['Done', 'done'] })).toBeNull();
+		expect(settingsInconsistency({ ...base, deliverableDoneValues: ['Done', 'done'] })).toBeNull();
+	});
+
 	it('accepts what the resolver would have produced for that same fixture', () => {
 		// The pair to the case above, so "rejects" cannot quietly become "rejects everything".
 		const base = defaultSettings();

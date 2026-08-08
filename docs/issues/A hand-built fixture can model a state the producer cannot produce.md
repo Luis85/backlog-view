@@ -138,17 +138,22 @@ resolver would have left empty. Correct, and taken — a key rule that ignores i
 reads as covering both.
 
 Scanning `resolveSettings` for the rest turned up six more constraints it enforces that this
-predicate does not: list entries are trimmed and non-empty; the four VOCABULARIES (but not
+predicate did not: list entries are trimmed and non-empty; the four VOCABULARIES (but not
 the two done lists) are deduped case-insensitively; `propColumnWidth` is a whole number
 clamped to [80, 280]; `typeFolders` is keyed by declared type. All six were implemented and
-measured: **they catch nothing in the suite**, and they pushed `settingsInconsistency` past
-its complexity budget and `settings.ts` past its 400-line cap — which would have bought a
-module split and an ADR to specify it.
+measured: they catch nothing in the suite, and TOGETHER they pushed `settingsInconsistency`
+past its complexity budget and `settings.ts` past its 400-line cap — which would have bought
+a module split and an ADR to specify it. So they were declined.
 
-So they are out, on the same evidence standard the lint rule was declined on. The predicate
-covers the relationships that have actually produced a defect plus the ones review named,
-and it does not claim to be every constraint the resolver enforces. If one of the six ever
-produces a wrong expectation, it goes in then, with the case that justified it.
+Review then re-raised the dedupe one with a consequence attached: `states: ['Active',
+'active']` gives the board two configured columns for one state. That reopened the decision
+honestly, because the cost half of the objection was about all six at once — the dedupe
+check ALONE is one small helper and fits both budgets untouched. It is in. Cost was the
+argument, so when the cost went away the argument did.
+
+The other four stay out on the evidence alone: no fixture violates them and none has a named
+consequence. The predicate covers the relationships that have produced a defect plus the ones
+review named, and it does not claim to be every constraint the resolver enforces.
 
 ## What is still not caught
 

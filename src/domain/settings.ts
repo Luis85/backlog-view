@@ -462,8 +462,27 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
 	// `str(...).trim()` and then `|| null`, so a policy is stored trimmed or not at all —
 	// surrounding whitespace is as unproducible as an empty string. Review caught the first
 	// version rejecting only the empty case, which is the same half-a-job shape twice.
+	const repeated = repeatIn(settings);
+	if (repeated !== null) return repeated;
 	const badPolicy = Object.entries(settings.columnPolicies).find(([, text]) => text.trim() !== text || text === '');
 	if (badPolicy) return `columnPolicies sets ${badPolicy[0]} to ${JSON.stringify(badPolicy[1])}, which the resolver would trim or drop`;
+	return null;
+}
+
+/**
+ * The four VOCABULARIES, against `dedupe()`. Not the two done lists: they take `list()`
+ * alone, so a repeat there is reachable and rejecting it would refuse a real vault.
+ * Its own function to keep `settingsInconsistency` inside its complexity budget.
+ */
+function repeatIn(settings: BacklogSettings): string | null {
+	for (const field of ['states', 'deliverableStates', 'startedStates', 'horizonValues'] as const) {
+		const seen = new Set<string>();
+		for (const value of settings[field]) {
+			const key = value.toLowerCase();
+			if (seen.has(key)) return `${field} repeats ${JSON.stringify(value)}, which dedupe() would have dropped`;
+			seen.add(key);
+		}
+	}
 	return null;
 }
 
