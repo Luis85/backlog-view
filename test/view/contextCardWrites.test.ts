@@ -112,6 +112,30 @@ describe('write safety with context rows, across the board’s entry points', ()
 		expect(vault.writeLog).toEqual([]);
 		expect(Notice.messages.some((m) => m.includes('outside this base’s filter'))).toBe(true);
 	});
+
+	// The disclosure is a READ affordance, which is the whole reason a context card may
+	// have one: the feature has no drag source, no drop target and no writing menu
+	// entry, so the context-row rule holds by there being no write rather than by a
+	// check. Driven anyway — a future edit that gives the list a write is caught here,
+	// in the suite that exists for exactly that.
+	it('gives a context card a disclosure that lists, opens and writes nothing', () => {
+		const { containerEl, vault } = boardStressView();
+		const card = cardByTitle(containerEl, 'Mid');
+		const toggle = card.querySelector<HTMLButtonElement>('.pbl-card-kids-toggle');
+		expect(toggle).not.toBeNull();
+
+		toggle?.click();
+
+		expect(
+			Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid-title')).map((el) => el.textContent),
+		).toEqual(['Task']);
+
+		card.querySelectorAll<HTMLElement>('.pbl-card-kid')[0].click();
+
+		// It opened the child, and the whole interaction wrote nothing.
+		expect(vault.opened.map((o) => o.path)).toEqual(['Task.md']);
+		expect(vault.writeLog).toEqual([]);
+	});
 });
 
 describe('write safety with context rows, across the roadmap’s entry points', () => {

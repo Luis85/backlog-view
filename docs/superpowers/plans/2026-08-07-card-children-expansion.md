@@ -48,7 +48,7 @@ partials assembled by `styles-assemble.mjs`.
 
 **Files:**
 - Create: `src/view/render/cardChildren.ts`
-- Create: `styles/card-children.css`
+- Create: `styles/cardChildren.css`
 - Create: `docs/requirements/Children on the card.md`
 - Create: `test/view/cardChildren.test.ts`
 - Modify: `styles/index.css` (import list)
@@ -374,7 +374,11 @@ Expected: PASS, all four cases.
 
 - [ ] **Step 8: Write the stylesheet partial**
 
-Create `styles/card-children.css`:
+Create `styles/cardChildren.css` (camelCase, not kebab-case: `styles-assemble.mjs`'s import
+parser matches `[\w.]+\.css`, a class with no hyphen, so a kebab-case `@import` line never
+matches at all — the partial then never reaches the assembled output, and since the file
+still exists on disk, the parser's own "does not import" check catches the gap as a loud
+build failure, not a silent one):
 
 ```css
 /* ==========================================================================
@@ -486,7 +490,7 @@ Add the import to `styles/index.css`, immediately after `cards.css`:
 ```css
 @import "./board.css";
 @import "./cards.css";
-@import "./card-children.css";
+@import "./cardChildren.css";
 @import "./roadmap.css";
 ```
 
@@ -786,6 +790,8 @@ git commit -m "test: the disclosure's guards, watched failing"
 ### Task 3: The card menu offers the same children
 
 **Files:**
+- Create: `src/view/childrenList.ts`
+- Modify: `src/view/render/cardChildren.ts` (`listedChildren` and `childrenLabel` move out)
 - Modify: `src/view/interactions/menu.ts`
 - Modify: `src/view/host.ts` (add `BacklogViewHost.cardChildrenShown`)
 - Modify: `src/view/backlogView.ts` (add the getter over Task 1's private `cardKids`)
@@ -794,6 +800,17 @@ git commit -m "test: the disclosure's guards, watched failing"
 **Interfaces:**
 - Consumes: `listedChildren` from Task 1, and Task 1's private `ProductBacklogView.cardKids`.
 - Produces: `BacklogViewHost.cardChildrenShown: ReadonlySet<string>`.
+
+**This task also extracts `listedChildren` and `childrenLabel` out of
+`render/cardChildren.ts` and into a new `src/view/childrenList.ts`.** `menu.ts` needs
+`listedChildren` too, and importing it straight from `render/cardChildren.ts` closes a real
+cycle: `menu.ts → render/cardChildren.ts → render/columns.ts → menu.ts` (`render/columns.ts`
+imports `menu.ts` for the row's own context-menu wiring, and `render/rows.ts` imports
+`menu.ts` the same way). `childrenList.ts` sits below both — pure, DOM-free, importing
+neither render module nor `menu.ts` — so it is what lets the render module and `menu.ts`
+share one answer without the cycle either import direction would close. Move
+`listedChildren` and `childrenLabel` there verbatim; `render/cardChildren.ts` imports them
+back for `renderCardChildren` to keep using.
 
 **This task exposes the set Task 1 filled.** Task 1 kept it private because nothing read
 it yet, and `fallow`'s `unused-class-members` rule fails a member with no consumer. Add
@@ -885,9 +902,22 @@ import { Menu } from '../helpers/obsidian-mock';
 Run: `npx vitest run test/view/cardChildren.test.ts -t 'menu'`
 Expected: FAIL — no menu item titled `Open child "Feature B1"`.
 
-- [ ] **Step 3: Add the section**
+- [ ] **Step 3: Extract, then add the section**
 
-In `src/view/interactions/menu.ts`, add the function beside `addMatchSection`:
+First, the extraction this task's cycle forces. Create `src/view/childrenList.ts` holding
+`listedChildren` and `childrenLabel`, moved out of `src/view/render/cardChildren.ts`
+verbatim (same bodies, same doc comments). Update `render/cardChildren.ts` to import both
+back:
+
+```ts
+import { listedChildren, childrenLabel } from '../childrenList';
+```
+
+and remove its own copies of the two functions — `renderCardChildren` keeps calling them
+exactly as before.
+
+Now the menu section. In `src/view/interactions/menu.ts`, add the function beside
+`addMatchSection`:
 
 ```ts
 /**
@@ -926,10 +956,12 @@ Call it in `buildItemMenu`, immediately after `addMatchSection`:
 	addShelfSection(host, menu);
 ```
 
-Add the import:
+Add the import — from `../childrenList`, not `../render/cardChildren`, which is the whole
+point of the extraction above: importing the render module from `menu.ts` is what closes
+the cycle:
 
 ```ts
-import { listedChildren } from '../render/cardChildren';
+import { listedChildren } from '../childrenList';
 ```
 
 - [ ] **Step 4: Run to verify it passes**
@@ -1005,8 +1037,12 @@ register note's `## Where it lives` gains its name.
 ```bash
 # host.ts and backlogView.ts carry the getter and interface member this task adds —
 # without them a clean checkout has the menu reading a host member that does not exist,
-# and TypeScript fails at that access.
-git add src/view/interactions/menu.ts src/view/host.ts src/view/backlogView.ts \
+# and TypeScript fails at that access. childrenList.ts is the extraction the cycle
+# forced, and cardChildren.ts is its other half — without both a clean checkout has
+# menu.ts and cardChildren.ts either duplicating listedChildren or reaching for a
+# module that does not exist yet.
+git add src/view/childrenList.ts src/view/render/cardChildren.ts \
+  src/view/interactions/menu.ts src/view/host.ts src/view/backlogView.ts \
   test/view/cardChildren.test.ts
 git commit -m "feat: the card menu offers the children the card lists"
 ```
@@ -1016,14 +1052,16 @@ git commit -m "feat: the card menu offers the children the card lists"
 ### Task 4: One card never names the same child twice
 
 **Files:**
-- Modify: `src/view/render/cardChildren.ts`
+- Modify: `src/view/childrenList.ts`
 - Modify: `src/view/render/board.ts` (`renderCardMatches`)
 - Modify: `src/view/interactions/menu.ts` (`addMatchSection`)
 - Modify: `test/view/cardChildren.test.ts`
 
 **Interfaces:**
 - Produces: `undisclosedMatches(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[]`
-  in `cardChildren.ts`, used by both the card face and the menu.
+  in `childrenList.ts` — not `render/cardChildren.ts`, and for the same reason Task 3's
+  extraction exists: `menu.ts` needs this function too, and `menu.ts → render/cardChildren.ts`
+  is the cycle. Used by both the card face and the menu.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1075,7 +1113,8 @@ task. A green test at this step proves nothing and must be fixed before continui
 
 - [ ] **Step 3: State the rule once**
 
-Add to `src/view/render/cardChildren.ts`:
+Add to `src/view/childrenList.ts` (beside `listedChildren`, which it calls directly — no
+import needed, the two now live in the same file):
 
 ```ts
 /**
@@ -1116,11 +1155,12 @@ call:
 	const matches = undisclosedMatches(host, item, carded);
 ```
 
-and swap the import of `hiddenMatches` for `undisclosedMatches` from `./cardChildren`
+and swap the import of `hiddenMatches` for `undisclosedMatches` from `../childrenList`
 (leave `cardPaths` and the rest of the `domain/board` import alone).
 
-In `src/view/interactions/menu.ts`, inside `addMatchSection`, make the same replacement,
-so the menu and the card face cannot disagree about which matches are worth naming.
+In `src/view/interactions/menu.ts`, inside `addMatchSection`, make the same replacement —
+`undisclosedMatches` from `../childrenList` — so the menu and the card face cannot
+disagree about which matches are worth naming.
 
 - [ ] **Step 5: Run to verify both pass**
 
@@ -1138,7 +1178,7 @@ commit message, do not weaken the dedup.
 
 ```bash
 npm run check
-git add src/view/render/cardChildren.ts src/view/render/board.ts \
+git add src/view/childrenList.ts src/view/render/board.ts \
   src/view/interactions/menu.ts test/view/cardChildren.test.ts
 git commit -m "fix: a card names a matched child once, not twice"
 ```

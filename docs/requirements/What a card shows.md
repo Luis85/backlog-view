@@ -49,7 +49,9 @@ on a board, the hierarchy has to travel on the card.
   in the context forms the epic names.
 - **4b — the item has children the board is not showing.** Its card carries its rollup, so
   descendants surface as progress rather than disappearing — the answer the tree already
-  gives a collapsed parent.
+  gives a collapsed parent. A rollup is a number, though, and
+  [[Children on the card]] is what says *which* of them: one level, on the card,
+  expandable.
 - **5a — the item is done.** The card is styled done and stays a card. Styling is not
   hiding; what hides finished work is the option that says so
   ([[Done columns stay lean]]).
