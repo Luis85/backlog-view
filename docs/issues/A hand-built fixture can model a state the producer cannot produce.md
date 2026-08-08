@@ -69,7 +69,7 @@ unreachable: `resolveSettings` is the only producer, and its one spread in
 `view/backlogView.ts` touches none of the checked fields. That claim is a CHECK rather than
 an argument — a sweep resolves fourteen option shapes and asserts every result is
 consistent, and breaking the resolver's own copy rule reddens it.
-**Checked by** `test/domain/settings.test.ts` — "names each relationship it can see broken, so the message points at the fixture"
+**Checked by** `test/domain/settingsShape.test.ts` — "names each relationship it can see broken, so the message points at the fixture"
 
 Three suites had to change for that alone: `statePalettes`, `board` and `stamps`.
 
@@ -128,7 +128,7 @@ relationships by hand, so it can fall behind — and the way that shows is a fix
 missing a derivation, not a failure. A table of `{ fields, options }` pairs now asserts the
 two constructors agree in full, so a derivation the resolver has and the helper lacks makes
 the pair disagree.
-**Checked by** `test/domain/settings.test.ts` — "a workflow, so the Deliverable lists follow it"
+**Checked by** `test/domain/settingsShape.test.ts` — "a workflow, so the Deliverable lists follow it"
 
 ## What the predicate covers, and what it deliberately does not
 

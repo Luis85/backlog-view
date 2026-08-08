@@ -462,26 +462,37 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
 	// `str(...).trim()` and then `|| null`, so a policy is stored trimmed or not at all —
 	// surrounding whitespace is as unproducible as an empty string. Review caught the first
 	// version rejecting only the empty case, which is the same half-a-job shape twice.
-	const repeated = repeatIn(settings);
-	if (repeated !== null) return repeated;
+	const listed = listProblem(settings);
+	if (listed !== null) return listed;
 	const badPolicy = Object.entries(settings.columnPolicies).find(([, text]) => text.trim() !== text || text === '');
 	if (badPolicy) return `columnPolicies sets ${badPolicy[0]} to ${JSON.stringify(badPolicy[1])}, which the resolver would trim or drop`;
 	return null;
 }
 
 /**
- * The four VOCABULARIES, against `dedupe()`. Not the two done lists: they take `list()`
- * alone, so a repeat there is reachable and rejecting it would refuse a real vault.
+ * The list-shaped fields, against what `list()` and `dedupe()` guarantee between them —
+ * and they do NOT guarantee the same set, which is the whole reason this reads as two
+ * loops rather than one.
+ *
+ * `list()` splits, trims and drops empties, and EVERY list goes through it. `dedupe()`
+ * runs case-insensitively over the four VOCABULARIES only; the two done lists take
+ * `list()` alone, so a repeat there is a configuration a user can actually set and
+ * rejecting it would refuse a real vault. Checking the narrower set against the wider
+ * rule was this predicate's recurring mistake, so the two spans are written out.
+ *
  * Its own function to keep `settingsInconsistency` inside its complexity budget.
  */
-function repeatIn(settings: BacklogSettings): string | null {
-	for (const field of ['states', 'deliverableStates', 'startedStates', 'horizonValues'] as const) {
-		const seen = new Set<string>();
-		for (const value of settings[field]) {
-			const key = value.toLowerCase();
-			if (seen.has(key)) return `${field} repeats ${JSON.stringify(value)}, which dedupe() would have dropped`;
-			seen.add(key);
+function listProblem(settings: BacklogSettings): string | null {
+	const vocabularies = ['states', 'deliverableStates', 'startedStates', 'horizonValues'] as const;
+	for (const field of [...vocabularies, 'doneValues', 'deliverableDoneValues'] as const) {
+		const untrimmed = settings[field].find((value) => value.trim() !== value || value === '');
+		if (untrimmed !== undefined) {
+			return `${field} holds ${JSON.stringify(untrimmed)}, which list() would have trimmed or dropped`;
 		}
+	}
+	for (const field of vocabularies) {
+		const repeat = settings[field].find((v, i, all) => all.findIndex((o) => o.toLowerCase() === v.toLowerCase()) !== i);
+		if (repeat !== undefined) return `${field} repeats ${JSON.stringify(repeat)}, which dedupe() would have dropped`;
 	}
 	return null;
 }
