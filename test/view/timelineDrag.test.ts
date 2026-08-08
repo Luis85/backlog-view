@@ -12,9 +12,11 @@ useViewHarness();
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.target' };
 
-/** The header's own day track — where a placement's preview belongs. */
+/** The header's own CELL-tier day track — where a placement's preview belongs. The
+ * header now stacks two tracks (a coarser super tier above the cells), so the
+ * selector excludes the super tier explicitly rather than relying on DOM order. */
 function headerTrackOf(containerEl: HTMLElement): HTMLElement {
-	const track = containerEl.querySelector<HTMLElement>('.pbl-timeline-header .pbl-timeline-track');
+	const track = containerEl.querySelector<HTMLElement>('.pbl-timeline-header .pbl-timeline-track:not(.pbl-timeline-super)');
 	if (!track) throw new Error('no header track');
 	return track;
 }
@@ -179,6 +181,52 @@ describe('dragging a shelf card onto the grid', () => {
 		await flush();
 
 		expect(vault.writeLog).toHaveLength(0);
+	});
+
+	describe('the boundary that refusal is measured from is the drawn lead width', () => {
+		// `overLeadColumn` reads `parts.leadWidth` — what THIS render drew — and never
+		// `TIMELINE_LEAD_PX`. Both halves are needed: pinning the constant back in refuses
+		// every drop between the old boundary and a widened one, and admits every drop
+		// between a narrowed one and the old boundary, where the reader is looking at grid.
+		// The scroller's own rect sits at viewport 0 under `datedView`'s geometry
+		// (`rectLeft - TIMELINE_LEAD_PX`), so a `clientX` IS its distance past that edge.
+
+		/** Re-stub after `setLeadWidth`: the write re-renders, so the grid is new. */
+		function resizedTo(width: number, harness: ReturnType<typeof datedView>) {
+			harness.view.setLeadWidth(width);
+			return pannedGrid(harness.containerEl, { rectLeft: 220, scrollLeft: 640 });
+		}
+
+		it('refuses a drop the WIDENED column now covers, which the default width would have taken', async () => {
+			const vault = scheduleVault();
+			const harness = datedView(vault);
+			const at = resizedTo(300, harness);
+
+			// Grid offset 680 is viewport X 260 — past the default 220 boundary and inside
+			// the 300px column actually on screen.
+			expect(at(680)).toBe(260);
+			gridDrag(cardByTitle(harness.containerEl, 'Unplanned'), overlayOf(harness.containerEl), { clientX: at(680) });
+			await flush();
+
+			expect(vault.writeLog).toHaveLength(0);
+		});
+
+		it('takes a drop the NARROWED column no longer covers, which the default width would have refused', async () => {
+			const vault = scheduleVault();
+			const harness = datedView(vault);
+			const at = resizedTo(160, harness);
+			const window = harness.view.roadmap?.window;
+			if (!window) throw new Error('no window');
+
+			// Viewport X 200: inside the default 220px column, past the 160px one drawn.
+			expect(at(620)).toBe(200);
+			gridDrag(cardByTitle(harness.containerEl, 'Unplanned'), overlayOf(harness.containerEl), { clientX: at(620) });
+			await flush();
+
+			// It lands, and it lands on the day the pointer named rather than anywhere the
+			// refusal path would have left it.
+			expect(vault.fm('Unplanned.md').start).toBe(iso(dayAt(window, scaleFor('month'), 620)));
+		});
 	});
 });
 

@@ -15,6 +15,7 @@ import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
 import { buildColumnMenu, buildItemMenu } from './interactions/menu';
+import { effectiveLeadWidth } from './interactions/timelineLeadResize';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
@@ -27,8 +28,10 @@ import { SelectionController } from './selection';
 import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
+import { renderLegend } from './render/legend';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
+import { TIMELINE_LEAD_PX } from './render/timeline';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
 
@@ -50,6 +53,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	readonly viewEl: HTMLElement;
 	private toolbarEl: HTMLElement;
+	private legendEl: HTMLElement;
 	private treeEl: HTMLElement;
 	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
@@ -59,7 +63,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
 	/** What the scroller last drew and where today sat — see `restoreScroll`. */
-	private scroll: ScrollAnchor = { content: '', todayLeft: null, scale: null, offsets: {}, leadingDate: null };
+	private scroll: ScrollAnchor = { content: '', todayTrackLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -82,13 +86,23 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** The Base's visible properties as columns, resolved once per data update. */
 	chips: ChipProp[] = [];
 
-	/** Guards the one re-render a changed fit may ask for, so it cannot recurse. */
+	/**
+	 * Guards the one re-render a changed column verdict may ask for, so it cannot
+	 * recurse. The TREE's alone, and set around a synchronous call only — restored in a
+	 * `finally`, because a render that throws while it is set would otherwise leave the
+	 * ladder's second pass switched off for the life of the view.
+	 */
 	private refitting = false;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view' });
 		this.toolbarEl = this.viewEl.createDiv({ cls: 'pbl-toolbar' });
+		// Below the toolbar, above the tree, so a legend rendered into it never scrolls
+		// away with the timeline it keys — the class it draws under is toggled by
+		// `renderLegend` itself, which is also what makes it absent (not merely hidden)
+		// off the dated axis.
+		this.legendEl = this.viewEl.createDiv();
 		this.treeEl = this.viewEl.createDiv({
 			cls: 'pbl-tree',
 			attr: { role: 'tree', tabindex: '0' },
@@ -222,19 +236,65 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.render();
 	}
 
-	jumpToToday(): void {
-		const roadmap = this.roadmap;
-		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
-		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth);
+	get density(): string | null {
+		return this.collapse.densityPick();
 	}
 
-	/** Re-measure after a resize, and rebuild only if a column came or went. */
+	setDensity(value: string | null): void {
+		if (value === this.density) return;
+		this.collapse.setDensity(value);
+		// UI state like the zoom: no config was set, so this render is the change.
+		this.render();
+	}
+
+	get leadWidth(): number | null {
+		return this.collapse.leadWidthPick();
+	}
+
+	setLeadWidth(value: number | null): void {
+		if (value === this.leadWidth) return;
+		this.collapse.setLeadWidth(value);
+		// UI state like the density: no config was set, so this render is the change.
+		this.render();
+	}
+
+	jumpToToday(): void {
+		const roadmap = this.roadmap;
+		// `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
+		// `renderRoadmap` sets both in the dated branch and neither anywhere else, so the
+		// term costs nothing and it is what narrows `leadWidth` to a number.
+		if (!roadmap?.scroller || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
+		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth);
+	}
+
+	/**
+	 * Re-measure after a resize, and rebuild only if a column came or went — or, on the
+	 * dated axis, only if the lead column's EFFECTIVE width would actually change.
+	 */
 	private onResize(): void {
-		// The COLUMN ladder is the tree's alone — board columns and the timeline scroll
-		// rather than dropping columns, and the shelf answers to a stored pick rather
-		// than to a width.
-		if (this.projection !== 'tree') return;
-		if (this.refit()) this.renderTreeContent();
+		if (this.projection === 'tree') {
+			if (this.refit()) this.renderTreeContent();
+			return;
+		}
+		// The COLUMN ladder is the tree's alone — board columns and the horizon axis's
+		// buckets scroll rather than dropping columns, and the shelf answers to a stored
+		// pick rather than to a width. The dated axis is the one other case a resize can
+		// starve: its lead column is sized against the pane, not its own content, so a
+		// narrowed split can leave a stale render covering the whole grid until something
+		// else happens to re-render it.
+		if (this.projection !== 'roadmap' || !this.roadmap) return;
+		if (activeAxis(this.settings, this.axisPick) !== 'dates') return;
+		const stored = this.leadWidth ?? TIMELINE_LEAD_PX;
+		const effective = effectiveLeadWidth(stored, this.treeEl.clientWidth);
+		// No `refitting` guard here, and `refit`'s reasoning does not carry: that one
+		// brackets a SYNCHRONOUS recursive call, while this branch is only ever entered
+		// from the observer, which is delivered asynchronously — a flag set and cleared
+		// around the render below would always read false on arrival. The line that
+		// actually stops a loop is this one, and it guarantees idempotence rather than
+		// non-recursion: the render sets `roadmap.leadWidth` to `effective`, so the next
+		// notification about the same pane returns here.
+		if (effective === this.roadmap.leadWidth) return;
+		this.renderTreeContent();
 	}
 
 	onDataUpdated(): void {
@@ -452,7 +512,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	// ------------------------------------------------------------------- render
 
 	render(): void {
-		if (!this.model) return;
+		const model = this.model;
+		if (!model) return;
 		renderToolbar(this, this.toolbarEl);
 		// The toolbar was just rebuilt; a batch may still be running behind it.
 		this.syncBusyUi();
@@ -508,14 +569,25 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
+		// Rendered HERE rather than in `render()`: the legend keys what the grid just drew,
+		// and `drawn` comes off the snapshot this pass produced. Every path that redraws
+		// content has to refresh it, not only a full render — a filter re-renders content
+		// ALONE, and it can hide the last bar drawing a colour (or reveal the first), which
+		// changes what the key must say. Above the early return below, because that return
+		// is the tree's and this is the roadmap's.
+		const drawn = this.roadmap?.drawn ?? { done: false, milestone: false, accent: false };
+		renderLegend(this, this.legendEl, model.observedStates, drawn);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.
 		if (this.refit() && !this.refitting) {
 			this.refitting = true;
-			this.renderTreeContent();
-			this.refitting = false;
+			try {
+				this.renderTreeContent();
+			} finally {
+				this.refitting = false;
+			}
 		}
 	}
 

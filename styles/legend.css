@@ -1,0 +1,65 @@
+/* The roadmap legend: a colour key for the dated axis's bars, rendered under the
+   toolbar and above the timeline scroller — `src/view/render/legend.ts`. It restates
+   colour and nothing else (every fact a swatch stands for is already in a row's
+   state, its chip, or a line's own tooltip), which is why it carries no interactive
+   rule of any kind here — aria-hidden and tabindex are set in TS, not CSS. */
+
+.pbl-legend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-3);
+	padding: var(--size-4-1) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pbl-legend-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+}
+
+/* `--pbl-state-color` is the same token `timeline.css`'s `pbl-state-N` classes set on
+   a bar's row; a swatch carries the identical class, so this reads the identical value
+   rather than a second copy of the mapping. No fallback: every swatch `legend.ts` builds
+   carries either a slot class or one of the four modifiers below, which set their own
+   colour — a fallback here only ever painted a case that cannot occur.
+
+   `flex: 0 0 auto` because `.pbl-legend-item` is a flex container: without it the
+   swatch's `min-width: auto` resolves to 0 for an empty span and the colour patch is
+   what a narrow pane takes the space out of, leaving a key with no colour in it. */
+.pbl-legend-swatch {
+	display: inline-block;
+	flex: 0 0 auto;
+	width: 10px;
+	height: 10px;
+	border-radius: var(--radius-s);
+	background-color: var(--pbl-state-color);
+}
+
+/* ORDER IS BEHAVIOUR from here down: these four and `.pbl-legend-swatch` above are all
+   one class, all setting `background-color`, so each wins only by standing LATER in this
+   file. Moved above the base rule they lose silently — every swatch would take
+   `--pbl-state-color` instead, which is the wrong colour for a done swatch (the slot its
+   state occupies, not the green its bars draw — a defect `render/legend.ts`'s preamble
+   already records) and no colour at all for today, milestone and other, whose elements
+   never carry a slot class. (The file's POSITION in `index.css` is a separate question,
+   and is not load-bearing — see the note there.)
+
+   The today and milestone lines' own colours (`timeline.css`), at full strength rather
+   than the lines' 0.55 opacity — a key is read at a glance, not overlaid on content. */
+.pbl-legend-today { background-color: var(--color-red); }
+.pbl-legend-milestone { background-color: var(--color-cyan); }
+
+/* The done override in `timeline.css`, keyed rather than the slot the state also holds:
+   a done row's bar is green whatever its position in the vocabulary, so a swatch showing
+   that position would key a colour no bar draws. `legend.ts` picks this class by the same
+   `isDoneValue` the override is written for. */
+.pbl-legend-done { background-color: var(--color-green); }
+
+/* The bar's own default (`--pbl-bar-color`'s fallback in `timeline.css`), keyed only
+   where something actually draws it: a state the vocabulary does not list, or no state
+   at all. */
+.pbl-legend-other { background-color: var(--interactive-accent); }

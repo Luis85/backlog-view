@@ -13,8 +13,10 @@ import {
 	MAX_TIMELINE_DAYS,
 	SCALES,
 	scaleFor,
+	superCells,
 	timelineCells,
 	timelineWindow,
+	weekendOffsetDays,
 } from '../../src/domain/timeline';
 
 const d = (year: number, month: number, day: number): CivilDate => ({ year, month, day });
@@ -40,7 +42,7 @@ describe('the timeline window', () => {
 		const window = timelineWindow([], d(2026, 8, 15));
 
 		expect(window.start).toEqual(d(2026, 7, 1));
-		expect(timelineCells(window, scaleFor('month')).map((c) => c.label)).toEqual(['Jul 2026', 'Aug 2026', 'Sep 2026']);
+		expect(timelineCells(window, scaleFor('month')).map((c) => c.label)).toEqual(['Jul', 'Aug', 'Sep']);
 		expect(window.days).toBe(31 + 31 + 30);
 	});
 
@@ -52,13 +54,13 @@ describe('the timeline window', () => {
 		const window = timelineWindow(spans, d(2026, 8, 15));
 		const cells = timelineCells(window, scaleFor('month'));
 
-		expect(cells[0].label).toBe('Apr 2026');
-		expect(cells[cells.length - 1].label).toBe('Dec 2026');
+		expect(cells[0].label).toBe('Apr');
+		expect(cells[cells.length - 1].label).toBe('Dec');
 	});
 
 	it('knows a leap February from a plain one', () => {
 		const window = timelineWindow([], d(2028, 2, 10));
-		const february = timelineCells(window, scaleFor('month')).find((c) => c.label === 'Feb 2028');
+		const february = timelineCells(window, scaleFor('month')).find((c) => c.label === 'Feb');
 		expect(february?.days).toBe(29);
 	});
 
@@ -68,7 +70,7 @@ describe('the timeline window', () => {
 
 		expect(window.days).toBe(MAX_TIMELINE_DAYS);
 		const labels = timelineCells(window, scaleFor('month')).map((c) => c.label);
-		expect(labels).toContain('Aug 2026');
+		expect(labels).toContain('Aug');
 	});
 });
 
@@ -262,5 +264,42 @@ describe('the window and its header cells', () => {
 		expect(window.days).toBeLessThanOrEqual(MAX_TIMELINE_DAYS);
 		expect(daysBetween(window.start, TODAY)).toBeGreaterThanOrEqual(0);
 		expect(daysBetween(TODAY, addDays(window.start, window.days - 1))).toBeGreaterThanOrEqual(0);
+	});
+});
+
+describe('the header tiers', () => {
+	it('draws months above weeks and years above months and quarters', () => {
+		const window = timelineWindow([], d(2026, 8, 15)); // Jul 1 – Sep 30 2026
+		expect(superCells(window, scaleFor('week')).map((c) => c.label)).toEqual(['Jul 2026', 'Aug 2026', 'Sep 2026']);
+		expect(superCells(window, scaleFor('month')).map((c) => c.label)).toEqual(['2026']);
+		expect(superCells(window, scaleFor('quarter')).map((c) => c.label)).toEqual(['2026']);
+	});
+
+	it('covers exactly the window at every scale, clipped edges included', () => {
+		const spans = [{ start: d(2026, 11, 20), target: d(2027, 2, 2) }];
+		const window = timelineWindow(spans, d(2026, 8, 15)); // Jul 1 2026 – Mar 31 2027
+		for (const scale of SCALES) {
+			const total = superCells(window, scale).reduce((sum, c) => sum + c.days, 0);
+			expect(total, scale.id).toBe(window.days);
+		}
+		// A year clipped by the window edge still names itself from its own first day.
+		expect(superCells(window, scaleFor('month')).map((c) => c.label)).toEqual(['2026', '2027']);
+	});
+
+	it('drops the year from the bottom tier once the top tier carries it', () => {
+		const window = timelineWindow([], d(2026, 8, 15));
+		expect(timelineCells(window, scaleFor('month')).map((c) => c.label)).toEqual(['Jul', 'Aug', 'Sep']);
+		expect(timelineCells(window, scaleFor('quarter')).map((c) => c.label)).toEqual(['Q3']);
+		// A week can straddle two months, so its label keeps naming both parts itself.
+		expect(timelineCells(window, scaleFor('week'))[0].label).toBe('29 Jun');
+	});
+});
+
+describe('the weekend phase', () => {
+	it('counts days to the first Saturday, zero when the window opens on one', () => {
+		// timelineWindow([], 2026-08-15) starts 2026-07-01, a Wednesday; first Saturday is Jul 4.
+		expect(weekendOffsetDays(timelineWindow([], d(2026, 8, 15)))).toBe(3);
+		// timelineWindow([], 2026-09-15) starts 2026-08-01, itself a Saturday.
+		expect(weekendOffsetDays(timelineWindow([], d(2026, 9, 15)))).toBe(0);
 	});
 });

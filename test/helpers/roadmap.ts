@@ -46,6 +46,20 @@ export function makeRoadmap(
 	return harness;
 }
 
+/**
+ * `makeRoadmap`'s sibling for the suites that configure their own axis rather than
+ * taking the horizon one: everything about the view comes from `cfg`, and nothing is
+ * merged in behind it. The shelf is always opened — no caller of this one asserts on
+ * the collapsed state, and `makeRoadmap`'s `shelfCollapsed` is where that escape
+ * hatch already lives.
+ */
+export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { base }: { base?: string } = {}): Harness {
+	const harness = makeView(vault, cfg, { collapsed: true, base });
+	harness.view.setProjection('roadmap');
+	harness.view.setShelfCollapsed(false);
+	return harness;
+}
+
 export function bucketsOf(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-bucket'));
 }
@@ -134,7 +148,7 @@ export function labelTexts(containerEl: HTMLElement): string[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label')).map((l) => l.textContent ?? '');
 }
 
-/** Every header cell's text, in drawn order — months, weeks or quarters by zoom. */
+/** Every header cell's text across BOTH tiers, in drawn order — super tier first. */
 export function cellLabels(containerEl: HTMLElement): string[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-cell')).map((c) => c.textContent ?? '');
 }

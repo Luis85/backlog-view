@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadCollapseState, rekeyBase, saveCollapseState } from '../../src/storage/collapseStore';
+import {
+	loadCollapseState,
+	MAX_TIMELINE_LEAD_PX,
+	MIN_TIMELINE_LEAD_PX,
+	rekeyBase,
+	saveCollapseState,
+} from '../../src/storage/collapseStore';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 
@@ -240,6 +246,71 @@ describe('the persisted view mode', () => {
 		const app = vault.app;
 		saveCollapseState(app, id, { collapsed: new Set(), expanded: new Set(), focus: null });
 		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
+});
+
+describe('the persisted timeline row density', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+
+	it('round-trips a density on its own, with nothing else in the entry to keep it alive', () => {
+		// Density ALONE, which is what makes this a check on `entryHasContent`'s own
+		// density clause rather than on whatever else the view happens to store beside
+		// it: the roadmap's reopen test stores `mode` too, so the entry survives that
+		// round trip whether or not this pick is counted as content.
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, density: 'compact' });
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ density: 'compact' });
+		expect(loadCollapseState(app, id).density).toBe('compact');
+	});
+});
+
+describe('the persisted timeline lead-column width', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+
+	it('round-trips a width inside the allowed range', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, leadWidth: 300 });
+		expect(loadCollapseState(app, id).leadWidth).toBe(300);
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ leadWidth: 300 });
+	});
+
+	it('needs no entry for a view at the default width', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, leadWidth: null });
+		expect(loadCollapseState(app, id).leadWidth).toBeNull();
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
+
+	it('accepts the width exactly at each clamp boundary', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, leadWidth: MIN_TIMELINE_LEAD_PX });
+		expect(loadCollapseState(app, id).leadWidth).toBe(MIN_TIMELINE_LEAD_PX);
+
+		saveCollapseState(app, id, { ...none, leadWidth: MAX_TIMELINE_LEAD_PX });
+		expect(loadCollapseState(app, id).leadWidth).toBe(MAX_TIMELINE_LEAD_PX);
+	});
+
+	it('drops a stored width outside the clamp range rather than trusting it', () => {
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], leadWidth: MIN_TIMELINE_LEAD_PX - 1 },
+		});
+		expect(loadCollapseState(vault.app, id).leadWidth).toBeNull();
+
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], leadWidth: MAX_TIMELINE_LEAD_PX + 1 },
+		});
+		expect(loadCollapseState(vault.app, id).leadWidth).toBeNull();
+	});
+
+	it('drops a stored width that is not a finite number', () => {
+		for (const junk of ['300', null, NaN, Infinity, { px: 300 }]) {
+			vault.localStorage.set(STORE_KEY, {
+				'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], leadWidth: junk },
+			});
+			expect(loadCollapseState(vault.app, id).leadWidth).toBeNull();
+		}
 	});
 });
 

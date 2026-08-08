@@ -52,11 +52,79 @@ export default defineConfig({
 			// deltas here are taken from. Nothing regressed; the older pair was simply taken
 			// at a different commit, and quoting it as this increment's baseline would have
 			// invented a branches drop that never happened.
+			//
+			// The gantt-reading-polish increment (grid furniture: header tiers, gridlines,
+			// weekend banding, the today label, row tracking, bar labels, the density
+			// toggle) measured 98.00/93.79/99.22/99.22, all four above their thresholds, so
+			// all four move to the actual rounded down to one decimal.
+			//
+			// The whole-branch review's fix wave (toolbar refocus-after-rebuild, the two
+			// new watched-failing tests it required) measured 98.01/93.81/99.23/99.23.
+			// Only branches rounds down to a new decimal (93.8, up from 93.7); the other
+			// three round down to the figure already recorded above and stay put.
+			//
+			// The per-state bar colour and legend increment (a domain slot function, the
+			// legend's own render module, the Today pill's removal) measured
+			// 98.01/93.82/99.23/99.23 — statements, functions and lines exactly repeat the
+			// figure above and branches ticks up 0.01, which still rounds down to the same
+			// 93.8, so none of the four move.
+			//
+			// The resizable-lead-column increment (the drag grip and its keyboard path, the
+			// `leadWidth` collapse-store pick, the resolved-width threading through the
+			// today/milestone/gridline math and the drag's own lead-column hit test)
+			// measured 98.04/93.81/99.24/99.24 — all four round down to the figures already
+			// recorded above, so none of the four move.
+			//
+			// The lead-resize fix pass (the scroll-anchor's today term made track-relative
+			// so a resize stops panning the grid, and the grip moved from mouse to pointer
+			// events for touch) measured 98.04/93.82/99.24/99.24 — the same figures again,
+			// so none of the four move.
+			//
+			// The pane-clamp review pass (the legend gated on a configured workflow, the
+			// lead column's effective width clamped against the pane it is actually drawn
+			// in, and the mock `ResizeObserver` that made the resize-driven re-render
+			// testable at all) measured 98.12/93.84/99.43/99.29 — statements and functions
+			// round up to new decimals (98.1 and 99.4), branches and lines round down to the
+			// figures already recorded above (93.8, 99.2), so only two of the four move.
+			//
+			// The accent-report fix (the timeline's bar render reporting its own colour
+			// fact instead of the legend rebuilding it from `results`, plus the sweep's two
+			// new rows for a marker outside the capped window) measured
+			// 98.11/93.83/99.43/99.30 — statements, branches and functions round down to the
+			// figures already recorded above, lines rounds down to a new decimal (99.3, up
+			// from 99.2), so only lines moves.
+			//
+			// The drawn-colours increment (the done and milestone swatches gated on
+			// `DrawnColors`, the same reported-by-the-render shape `hasUnkeyedAccent` used,
+			// plus the sweep's new rows for a done bar off the grid and a base with no
+			// milestone at all) measured 98.11/93.87/99.43/99.30 — all four round down to
+			// the figures already recorded above, so none of the four move.
+			//
+			// The a11y fix wave (the toolbar's focus identity moved from `aria-label` to a
+			// per-control key, the lead grip refocusing only what actually held focus, and
+			// each timeline row saying its state in words) measured 98.11/93.87/99.43/99.30
+			// — the same four figures again: the increment is small and all of it is
+			// driven, so none of the four move.
+			//
+			// The stale-comment-and-deletion pass (three unreachable or duplicated pieces
+			// cut — the gesture's second copy of the effective-width clamp, `jumpToToday`'s
+			// dead lead-width fallback, the mock observer's uncalled `unobserve` — plus one
+			// watched-failing test for the second-pass guard's `finally`) measured
+			// 98.13/93.93/99.43/99.30 against a 98.11/93.87/99.43/99.30 baseline at the
+			// commit before it. Cutting code nothing drove is what moves branches, and it
+			// rounds down to a new decimal (93.9, up from 93.8); the other three round down
+			// to the figures already recorded above and stay put.
+			//
+			// The final-review fix pass (one watched-failing test for the roadmap keydown
+			// guard the lead grip's whole tab-stop deviation rests on, plus comment, doc
+			// and test-instrument corrections) measured 98.13/93.97/99.43/99.30. Only
+			// branches moved at all, and it rounds down to the 93.9 already recorded, so
+			// none of the four move.
 			thresholds: {
-				statements: 97.66,
-				branches: 93.25,
-				functions: 98.19,
-				lines: 97.06,
+				statements: 98.1,
+				branches: 93.9,
+				functions: 99.4,
+				lines: 99.3,
 			},
 		},
 	},

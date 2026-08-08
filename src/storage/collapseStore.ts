@@ -41,6 +41,18 @@ const AXIS_VALUES = ['horizons', 'dates'];
  * defensively, not trusted as a type.
  */
 const ZOOM_VALUES = ['week', 'month', 'quarter'];
+/** The values the `density` field may hold; absent means comfortable rows, the default. */
+const DENSITY_VALUES = ['compact'];
+/**
+ * Bounds on the `leadWidth` field, in pixels. Below the minimum the badge and its
+ * padding alone would fill the column, leaving no room for a title at all; above the
+ * maximum a fat-fingered drag would push most of the grid off screen. Unlike every
+ * other stored pick this one is a NUMBER rather than an enum, so `readEntry` cannot
+ * check it against a fixed vocabulary — a value outside this range reads back as
+ * absent instead, never trusted into a layout.
+ */
+export const MIN_TIMELINE_LEAD_PX = 160;
+export const MAX_TIMELINE_LEAD_PX = 480;
 /** The values the `shelfSort` field may hold. Mirrors `ShelfSort` in `domain/shelf.ts`. */
 const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 
@@ -54,6 +66,14 @@ export interface CollapseSnapshot {
 	axis?: string | null;
 	/** The retained timeline zoom; null or absent means the user never picked. */
 	zoom?: string | null;
+	/** The retained timeline row density; null or absent means comfortable, the default. */
+	density?: string | null;
+	/**
+	 * The retained timeline lead-column width, in pixels; null or absent means
+	 * `TIMELINE_LEAD_PX`, the default. A number, not an enum — see
+	 * `MIN_TIMELINE_LEAD_PX`/`MAX_TIMELINE_LEAD_PX` for how it is validated on read.
+	 */
+	leadWidth?: number | null;
 	/** The focused type name; null or absent means the whole tree, the default. */
 	focus?: string | null;
 	/** True only once the user has explicitly expanded the shelf; absent means collapsed, the default. */
@@ -88,6 +108,13 @@ interface StoredEntry {
 	axis?: string;
 	/** Absent until the user picks a timeline zoom; retained even while unused. */
 	zoom?: string;
+	/** Absent means comfortable rows, the default. */
+	density?: string;
+	/**
+	 * Absent means `TIMELINE_LEAD_PX`, the default. Validated against
+	 * `MIN_TIMELINE_LEAD_PX`/`MAX_TIMELINE_LEAD_PX` on the way in — see `readLeadWidth`.
+	 */
+	leadWidth?: number;
 	/**
 	 * Absent means the whole tree, the default. Stored as the type name the user picked
 	 * and NOT checked against the vocabulary here: `focusTarget` already answers a name
@@ -201,6 +228,24 @@ function defaultShelf(entry: StoredEntry | undefined): Pick<CollapseSnapshot, 's
 	};
 }
 
+/**
+ * The six picks whose default is simply absence, read back off a stored entry — split
+ * out of {@link loadCollapseState} so that function's own complexity stays readable as
+ * the picks grow; this one is nothing but `??` chains.
+ */
+function defaultPicks(
+	entry: StoredEntry | undefined,
+): Pick<CollapseSnapshot, 'mode' | 'axis' | 'zoom' | 'density' | 'leadWidth' | 'focus'> {
+	return {
+		mode: entry?.mode ?? null,
+		axis: entry?.axis ?? null,
+		zoom: entry?.zoom ?? null,
+		density: entry?.density ?? null,
+		leadWidth: entry?.leadWidth ?? null,
+		focus: entry?.focus ?? null,
+	};
+}
+
 function writeShelf(entry: StoredEntry, expanded: boolean, sort: string | null, types: string[]): void {
 	if (expanded) entry.shelfExpanded = true;
 	if (sort !== null) entry.shelfSort = sort;
@@ -208,14 +253,19 @@ function writeShelf(entry: StoredEntry, expanded: boolean, sort: string | null, 
 }
 
 /**
- * The four picks whose default is simply absence — the tree, no axis pick, no zoom, the
- * whole tree. Empty and null are the same thing here, which is what makes clearing a
- * focus remove the field rather than store a name meaning "none".
+ * The six picks whose default is simply absence — the tree, no axis pick, no zoom, no
+ * density, the default lead width, the whole tree. Empty and null are the same thing
+ * here, which is what makes clearing a focus remove the field rather than store a name
+ * meaning "none". `leadWidth` fits the same truthy check as the others despite being a
+ * number: every value this module ever WRITES is already clamped to
+ * `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX`, so it is never zero.
  */
 function writePicks(entry: StoredEntry, snapshot: CollapseSnapshot): void {
 	if (snapshot.mode) entry.mode = snapshot.mode;
 	if (snapshot.axis) entry.axis = snapshot.axis;
 	if (snapshot.zoom) entry.zoom = snapshot.zoom;
+	if (snapshot.density) entry.density = snapshot.density;
+	if (snapshot.leadWidth) entry.leadWidth = snapshot.leadWidth;
 	if (snapshot.focus) entry.focus = snapshot.focus;
 }
 
@@ -224,10 +274,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 	return {
 		collapsed: new Set(entry?.collapsed ?? []),
 		expanded: new Set(entry?.expanded ?? []),
-		mode: entry?.mode ?? null,
-		axis: entry?.axis ?? null,
-		zoom: entry?.zoom ?? null,
-		focus: entry?.focus ?? null,
+		...defaultPicks(entry),
 		...defaultShelf(entry),
 	};
 }
@@ -311,6 +358,19 @@ function readEnum<T extends string>(value: unknown, allowed: readonly T[]): T | 
 	return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
 }
 
+/**
+ * `leadWidth`'s own version of {@link readEnum} — a NUMBER rather than an enum, so there
+ * is no fixed vocabulary to check it against. Finite and inside the allowed range is the
+ * whole of the check: a value failing either test reads back as absent (the default)
+ * rather than clamped to the nearest bound, because a clamp would still trust a
+ * corrupt-but-plausible number into the layout, and this is user-writable state another
+ * version of the plugin — or a hand-edited localStorage entry — may have written.
+ */
+function readLeadWidth(value: unknown): number | undefined {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+	return value >= MIN_TIMELINE_LEAD_PX && value <= MAX_TIMELINE_LEAD_PX ? value : undefined;
+}
+
 function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): void {
 	if (typeof record.shelfExpanded === 'boolean' && record.shelfExpanded) entry.shelfExpanded = true;
 	const sort = readEnum(record.shelfSort, SHELF_SORT_VALUES);
@@ -326,6 +386,8 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.mode !== undefined ||
 		entry.axis !== undefined ||
 		entry.zoom !== undefined ||
+		entry.density !== undefined ||
+		entry.leadWidth !== undefined ||
 		entry.focus !== undefined ||
 		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
@@ -347,6 +409,10 @@ function readEntry(value: unknown): StoredEntry | null {
 	if (axis !== undefined) entry.axis = axis;
 	const zoom = readEnum(record.zoom, ZOOM_VALUES);
 	if (zoom !== undefined) entry.zoom = zoom;
+	const density = readEnum(record.density, DENSITY_VALUES);
+	if (density !== undefined) entry.density = density;
+	const leadWidth = readLeadWidth(record.leadWidth);
+	if (leadWidth !== undefined) entry.leadWidth = leadWidth;
 	// Not an enum: the vocabulary this is matched against lives in `domain/settings.ts`
 	// and a name outside it already reads as no focus, so the only check here is shape.
 	if (typeof record.focus === 'string' && record.focus.length > 0) entry.focus = record.focus;

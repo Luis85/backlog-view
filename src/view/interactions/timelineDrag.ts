@@ -1,6 +1,6 @@
 import { CardDragController, CardSource } from './cardDrag';
 import { RowContext } from '../render/columns';
-import { spanText, TIMELINE_LEAD_PX } from '../render/timeline';
+import { spanText } from '../render/timeline';
 import { BacklogViewHost } from '../host';
 import { BarHold, placeItem, statedEnds, StatedEnds } from '../../domain/bars';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
@@ -51,6 +51,8 @@ export interface TimelineParts {
 	headerTrack: HTMLElement;
 	/** Where a MOVE previews — the dragged item's own row. See `previewMount`. */
 	tracks: Map<string, HTMLElement>;
+	/** The lead width THIS render actually drew — see `overLeadColumn`. */
+	leadWidth: number;
 }
 
 export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
@@ -123,16 +125,20 @@ function dropDay(parts: TimelineParts): (clientX: number) => CivilDate {
  * `.pbl-timeline-drop` is positioned in CONTENT coordinates (`left: var(--pbl-tl-lead)`
  * inside the scrolling `.pbl-timeline-content`), so its own rect drifts left with the
  * pan; `.pbl-timeline-lead` is `position: sticky; left: 0` against the SCROLLER and never
- * moves. Past `TIMELINE_LEAD_PX` of scroll the overlay's rect has drifted under the lead
+ * moves. Past `parts.leadWidth` of scroll the overlay's rect has drifted under the lead
  * column, and — later in the row's markup, same z-index — it wins hit-testing there: a
  * release physically over a row's title would otherwise resolve through `dropDay` to
  * whatever day the overlay's drifted geometry names, a coordinate the reader never
  * pointed at the grid to choose. Checked against the SCROLLER's own rect, which — unlike
  * the overlay's — does not move with its own internal scroll, exactly as a sticky
  * sibling's position does not.
+ *
+ * `parts.leadWidth` — the width THIS render actually drew, resized or not — never
+ * `TIMELINE_LEAD_PX` directly: a reader who has widened the column would otherwise have
+ * every drop between the old boundary and the new one silently refused.
  */
 function overLeadColumn(parts: TimelineParts, clientX: number): boolean {
-	return clientX < parts.scroller.getBoundingClientRect().left + TIMELINE_LEAD_PX;
+	return clientX < parts.scroller.getBoundingClientRect().left + parts.leadWidth;
 }
 
 /**
