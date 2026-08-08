@@ -350,7 +350,7 @@ already asks its three questions of each card projection; this adds the disclosu
 what it drives, so a future edit that gives the list a write is caught by the suite that
 exists for exactly that.
 
-### 7. `styles/card-children.css` — new partial
+### 7. `styles/cardChildren.css` — new partial
 
 Imported after `cards.css`, since it styles a part of a card and the import **order**
 decides which of two equal-specificity rules wins. One partial per concern, under the

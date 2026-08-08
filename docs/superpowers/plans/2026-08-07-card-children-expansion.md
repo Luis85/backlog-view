@@ -586,8 +586,17 @@ card — and a count is the half of it that cannot be acted on.
 
 ## Where it lives
 
-`src/view/render/cardChildren.ts` — `listedChildren` (the visible direct children),
-`childrenLabel` (what to call them) and `renderCardChildren` (the disclosure, and the
+**Written here as Task 1 first lands it — `src/view/render/cardChildren.ts` alone, holding
+`listedChildren`, `childrenLabel` and `renderCardChildren`. Task 3 has to revise this
+section** (and re-stage the note in its own commit) once its cycle forces
+`listedChildren` and `childrenLabel` out into `src/view/childrenList.ts`: leaving this
+paragraph naming only `render/cardChildren.ts` after that extraction is exactly the
+failure Fix B exists to close — `docs-check.mjs` rule 7 requires every module in `src/`
+to be named in some note's `## Where it lives` or an ADR's `## Decision`, and a clean
+run of this plan would otherwise create `childrenList.ts` in Task 3 and never name it
+anywhere, failing `npm run check`'s docs step at Task 3's own Step 6.
+
+`src/view/render/cardChildren.ts` — `renderCardChildren` (the disclosure, and the
 list when it is open), called from `renderCardBody` in `src/view/render/board.ts` so
 every card projection gets one implementation and timeline rows, which use the card
 shell without the body, get none. The module also records which paths it drew a
@@ -811,6 +820,13 @@ neither render module nor `menu.ts` — so it is what lets the render module and
 share one answer without the cycle either import direction would close. Move
 `listedChildren` and `childrenLabel` there verbatim; `render/cardChildren.ts` imports them
 back for `renderCardChildren` to keep using.
+
+**This task also amends `docs/requirements/Children on the card.md`'s `## Where it
+lives`**, which Task 1 wrote naming only `render/cardChildren.ts`: add a sentence naming
+`src/view/childrenList.ts` and what it now holds (`listedChildren`, `childrenLabel`).
+Without this edit `childrenList.ts` is a module nothing specifies, which is `docs-check.mjs`
+rule 7's failure — the same defect class Fix A's stylesheet name and this extraction both
+are. Stage the note's edit in this task's own commit, not Task 1's.
 
 **This task exposes the set Task 1 filled.** Task 1 kept it private because nothing read
 it yet, and `fallow`'s `unused-class-members` rule fails a member with no consumer. Add
@@ -1040,10 +1056,12 @@ register note's `## Where it lives` gains its name.
 # and TypeScript fails at that access. childrenList.ts is the extraction the cycle
 # forced, and cardChildren.ts is its other half — without both a clean checkout has
 # menu.ts and cardChildren.ts either duplicating listedChildren or reaching for a
-# module that does not exist yet.
+# module that does not exist yet. The register note's edit rides this commit too — an
+# unstaged `## Where it lives` leaves childrenList.ts a module nothing specifies, which
+# fails npm run check's docs step at THIS task's own Step 6, not later.
 git add src/view/childrenList.ts src/view/render/cardChildren.ts \
   src/view/interactions/menu.ts src/view/host.ts src/view/backlogView.ts \
-  test/view/cardChildren.test.ts
+  test/view/cardChildren.test.ts "docs/requirements/Children on the card.md"
 git commit -m "feat: the card menu offers the children the card lists"
 ```
 
