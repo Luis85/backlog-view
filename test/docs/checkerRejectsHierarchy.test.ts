@@ -186,6 +186,36 @@ describe('the documented hierarchy and the gate agree', () => {
 			'the hierarchy is documented nowhere',
 		],
 		[
+			// WRAPPED, which nothing inside the table can see: `<del>` on the lines either side
+			// leaves an ordinary table with ordinary cells, so every rule below agrees with the
+			// gate while the document renders the authoritative statement as deleted. Caught by
+			// a rule about the whole FILE — the index page uses no raw HTML — because "inspect
+			// the nodes beside the table" is one more positional heuristic with a gap next to
+			// it, and that shape is what these findings have been walking through all along.
+			'a hierarchy table wrapped in raw HTML that renders it deleted',
+			(files) => {
+				files['docs/README.md'] = `<del>\n\n${hierarchyTable()}\n</del>\n`;
+			},
+			"raw HTML, which the register's index page does not use",
+		],
+		[
+			// NOT reported by review — predicted from the shape of the four that were, and then
+			// confirmed. Every one of those was a gap in what `tablesWith` hands back rather
+			// than in the rules over it, so the question became what it still does not hand
+			// back: where the table SITS. A table inside a blockquote renders as a quotation —
+			// an aside, an example, someone else's words — and was read as the register's own
+			// authoritative statement. The helper takes top-level tables only now, and the
+			// docstring line calling the opposite a feature is gone.
+			'a hierarchy table quoted inside a blockquote',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable()
+					.split('\n')
+					.map((line) => (line.startsWith('|') ? `> ${line}` : line))
+					.join('\n');
+			},
+			'the hierarchy is documented nowhere',
+		],
+		[
 			// The header, which no caller-side rule could reach: the head cells are not in what
 			// `tablesWith` returns, so the node whitelist that closed the BODY case could never
 			// have applied here. `words` reads text nodes and ignores the rest, so a header

@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
+import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, rawHtml, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -919,7 +919,20 @@ const NOTHING_ANNOTATIONS = new Set(["(nothing)", "(nothing — it is a root)", 
  * needing a new rule for `<b>`, an image, a link, or whatever is reached for next.
  */
 const CELL_NODES = new Set(["text", "inlineCode", "emphasis"]);
-const hierarchies = tablesWith(await readFile(path.join(DOCS, "README.md"), "utf8"), HIERARCHY_HEADINGS);
+const readme = await readFile(path.join(DOCS, "README.md"), "utf8");
+/**
+ * NO RAW HTML in the register's index page — the one rule here that is about the whole
+ * file rather than about the table. `<del>` on the lines either side of the table leaves
+ * an ordinary table node with ordinary cells, so everything below agrees with the gate
+ * while the document renders the authoritative statement as deleted. Nothing inside the
+ * table can see what is wrapped around it, and "check the nodes beside it" is one more
+ * positional heuristic with a gap next to it — the shape that has failed five times in a
+ * row here. This has no gap: the file uses no raw HTML today, and a reason to start is a
+ * reason to say so here first.
+ */
+const html = rawHtml(readme);
+if (html.length > 0) fail("docs/README.md", `raw HTML, which the register's index page does not use: ${html.map((tag) => tag.trim()).join(" ")}`);
+const hierarchies = tablesWith(readme, HIERARCHY_HEADINGS);
 if (hierarchies.length === 0) {
 	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
 } else if (hierarchies.length > 1) {

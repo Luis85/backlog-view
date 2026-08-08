@@ -251,6 +251,21 @@ export function containerAt(text, index) {
  * parser has already decided what is emphasis and what is only asterisks, so the whole
  * category closes at once rather than one spelling at a time.
  */
+/**
+ * Every raw HTML node's source, anywhere in the document.
+ *
+ * For the one question a structural rule cannot answer from a node's own subtree: what is
+ * WRAPPED around it. `<del>` on the lines either side of a table leaves an ordinary table
+ * node with ordinary cells — nothing inside it is unusual, and every rule that reads it
+ * agrees with the gate while GitHub and Obsidian render the whole thing deleted. Asking
+ * "what is beside this table" is one more positional heuristic with a gap next to it;
+ * asking "does this document contain raw HTML at all" has no gap, and is the form a caller
+ * can actually hold a file to.
+ */
+export function rawHtml(text) {
+	return [...nodes(text)].filter((n) => n.type === "html").map((n) => n.value);
+}
+
 export function markers(text, label) {
 	const found = [];
 	for (const node of nodes(text)) {
@@ -290,8 +305,15 @@ export function markers(text, label) {
  * types present is the only form of this that does not need a new rule per element,
  * because a caller can whitelist what it understands and refuse the rest unread.
  *
- * Asked of the parser, so a pipe inside a code span cannot split a cell and a table
- * indented inside a list item is still a table.
+ * Asked of the parser, so a pipe inside a code span cannot split a cell.
+ *
+ * TOP LEVEL only, and this line used to say the opposite — "a table indented inside a list
+ * item is still a table" was written as a feature. It is the same defect as the struck-out
+ * heading, one container out: a table inside a blockquote RENDERS as a quotation, an aside
+ * or an example, and was read as the document's own authoritative statement. Measured
+ * after four rounds of review all found gaps in what this helper hands back rather than in
+ * the rules over it — this one was predicted from that pattern and then confirmed, rather
+ * than reported.
  *
  * PLURAL deliberately. The first version returned the first match, which answers a
  * question nobody asked: with two tables under one heading set — a merge leaves one, an
@@ -308,7 +330,7 @@ export function tablesWith(text, headings) {
 	const codes = (cell) => [...walk(cell)].filter((n) => n.type === "inlineCode").map((n) => n.value);
 	const kinds = (cell) => [...new Set([...walk(cell)].filter((n) => n !== cell).map((n) => n.type))];
 	const found = [];
-	for (const node of nodes(text)) {
+	for (const node of tree(text).children) {
 		if (node.type !== "table" || node.children.length === 0) continue;
 		const head = node.children[0].children;
 		if (head.length !== headings.length) continue;

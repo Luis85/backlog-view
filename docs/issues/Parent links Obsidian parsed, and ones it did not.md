@@ -41,8 +41,13 @@ In a vault with the plugin installed, in the folder your base points at.
   and ask the cache directly:
 
   ```js
-  app.metadataCache.getFileCache(app.vault.getAbstractFileByPath('Child.md')).frontmatterLinks
+  app.metadataCache.getFileCache(app.vault.getMarkdownFiles().find((f) => f.basename === 'Child')).frontmatterLinks
   ```
+
+  By BASENAME rather than by path, because a base points at a folder and the note is
+  `docs/Child.md` or deeper — `getAbstractFileByPath('Child.md')` returns null there and
+  the expression throws instead of answering. Found by review, on the version of this note
+  that had just been rewritten to be answerable at all.
 
   An entry `{ key: 'parent', link: 'No Such Note' }` means Obsidian indexes unresolved
   links and path 1 handled it. `undefined` or an empty array means it does not, and the
