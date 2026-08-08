@@ -117,6 +117,15 @@ and focuses it; the input reverts on blur while it is empty, so a filter someone
 actually using is never taken away by a resize. Widening the pane relaxes the step and
 restores it anyway.
 
+**Where the revealed state lives is load-bearing.** It goes on the toolbar element, beside
+`data-pbl-fit` and for the same reason: `renderToolbar` calls `barEl.empty()`, so a flag on
+the `.pbl-filter` box inside it does not survive a full render. An empty filter opened by
+`/` would come back from the next data refresh with the rung hiding it again, and
+`refocusByKey` would then focus a `display: none` input — which does nothing, reports
+nothing, and drops focus to the body. A filter with TEXT in it is safe without this,
+because `renderFilterBox` re-derives its class from the input's value on every render;
+empty-and-revealed is the one state nothing else recomputes.
+
 **A filter with text in it is never collapsed at all**, whichever direction the pane moved.
 Revealing sets `pbl-filter-open`, but that class only describes the case where the *reveal
 button* was pressed — someone who typed a filter at step 0 and then narrowed the pane

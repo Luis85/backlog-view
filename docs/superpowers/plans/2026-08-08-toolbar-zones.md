@@ -1373,9 +1373,34 @@ describe('the toolbar fit ladder', () => {
 
 		key(treeOf(containerEl), '/');
 
-		expect(containerEl.querySelector('.pbl-filter')?.hasClass('pbl-filter-open')).toBe(true);
+		expect(bar.hasClass('pbl-filter-open')).toBe(true);
 		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
 		void view;
+	});
+
+	/**
+	 * The rebuild path the test above cannot see. An EMPTY revealed filter is the one
+	 * state nothing re-derives: `renderFilterBox` recomputes `pbl-filter-active` from the
+	 * input's value on every render, so a filter with text in it survives a refresh by
+	 * itself — but an empty one that `/` just opened would come back from a data update
+	 * with the rung hiding it again, and `refocusByKey` would then focus a `display: none`
+	 * input, which does nothing and reports nothing. The flag therefore lives on the
+	 * toolbar, which `barEl.empty()` does not destroy.
+	 */
+	it('keeps an empty revealed filter open across a full toolbar rebuild', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const bar = toolbarOf(containerEl);
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		syncToolbarFit(bar);
+
+		key(treeOf(containerEl), '/');
+		expect(bar.hasClass('pbl-filter-open')).toBe(true);
+
+		refresh(view, vault); // any data update rebuilds the toolbar
+
+		expect(bar.hasClass('pbl-filter-open')).toBe(true);
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
 	});
 
 	/**
@@ -1528,9 +1553,10 @@ the clear button:
 	reveal.addEventListener('click', () => revealFilter(barEl));
 	input.addEventListener('blur', () => {
 		// A filter someone is still using is never taken away: only an EMPTY input
-		// collapses back.
-		if (input.value !== '' || !filterEl.hasClass('pbl-filter-open')) return;
-		filterEl.removeClass('pbl-filter-open');
+		// collapses back. The flag is read and cleared on the toolbar, where
+		// `revealFilter` put it and where it survives a rebuild.
+		if (input.value !== '' || !barEl.hasClass('pbl-filter-open')) return;
+		barEl.removeClass('pbl-filter-open');
 		syncToolbarFit(barEl);
 	});
 ```
@@ -1552,7 +1578,16 @@ one way the input is opened, because `/` has to reach it too:
  * measured as full, and no render follows either caller.
  */
 export function revealFilter(barEl: HTMLElement): void {
-	barEl.querySelector('.pbl-filter')?.addClass('pbl-filter-open');
+	// On the TOOLBAR, not on the `.pbl-filter` box — the same element `data-pbl-fit`
+	// lives on, for the same reason. `renderToolbar` calls `barEl.empty()`, so a class
+	// on the box is destroyed by any full render while the fit attribute beside it
+	// survives: an empty filter revealed by `/` would come back from a data refresh
+	// with the rung still hiding it, and `refocusByKey` would then "restore" focus to a
+	// `display: none` input, which silently focuses nothing. The non-empty case is
+	// already safe without this — `renderFilterBox` re-derives `pbl-filter-active` from
+	// the input's value on every render — so this is the empty-but-revealed state
+	// alone, and it is exactly the one nothing else re-derives.
+	barEl.addClass('pbl-filter-open');
 	syncToolbarFit(barEl);
 	barEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
 }
@@ -1638,21 +1673,26 @@ Create `styles/toolbarFit.css`:
 	display: inline-flex;
 }
 
-/* …and back again in two cases, not one. `pbl-filter-open` is the reveal button having
-   been pressed. `pbl-filter-active` is the box's existing class for "this input has text
-   in it" — and without it, someone who typed a filter at step 0 and then narrowed the
-   pane would arrive here with a non-empty, possibly focused input and watch the rung
-   hide it: a row that is filtering, says so nowhere, and has taken the text out from
-   under a cursor still in it. What a step collapses is only ever an EMPTY filter. */
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3'])
-	:is(.pbl-filter-open, .pbl-filter-active)
-	.pbl-filter-input {
+/* …and back again in two cases, not one, and the two live on different elements on
+   purpose.
+
+   `pbl-filter-open` is the reveal having been used, and it sits on the TOOLBAR beside
+   `data-pbl-fit` — `renderToolbar` empties the bar on every full render, so a flag on
+   the `.pbl-filter` box would not survive a data refresh and the input would come back
+   hidden with focus pointing at it.
+
+   `pbl-filter-active` is the box's existing class for "this input has text in it", and
+   it stays on the box because `renderFilterBox` re-derives it from the value every
+   render. Without it, someone who typed a filter at step 0 and then narrowed the pane
+   would arrive here with a non-empty, possibly focused input and watch the rung hide
+   it. What a step collapses is only ever an EMPTY filter. */
+.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']).pbl-filter-open .pbl-filter-input,
+.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-active .pbl-filter-input {
 	display: inline-block;
 }
 
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3'])
-	:is(.pbl-filter-open, .pbl-filter-active)
-	.pbl-filter-reveal {
+.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']).pbl-filter-open .pbl-filter-reveal,
+.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-active .pbl-filter-reveal {
 	display: none;
 }
 
