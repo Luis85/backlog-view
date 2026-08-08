@@ -46,7 +46,8 @@ data, since several of its epics carry children a card can list.
 
 | Date | Against | Outcome |
 | --- | --- | --- |
-| — | — | Not yet run. |
+| 2026-08-08 | `83050b7`~1 (pre-fix) | **Failed.** Three real defects: button chrome on the toggle and on each entry (a filled, boxed `<button>` look Obsidian paints underneath the plugin's own reset), too little spacing around the disclosure, and centre-aligned entries. Root cause: [[Obsidian's button rule outranks the plugin's chrome-stripping]] — the plugin's class-only selectors lost to Obsidian's own `button:not(.clickable-icon)` on specificity, regardless of source order. |
+| — | — | Needs re-running against `a686c3d`. The fix is verified in the harness, against the real vendored `app.css` — not in a vault; see the Bug note above and [[The disclosure's hover still painted a button fill]] for the hover regression `83050b7` introduced along the way. |
 
 ## Acceptance criteria
 
@@ -54,3 +55,5 @@ data, since several of its epics carry children a card can list.
   adjusted landing in `styles/cardChildren.css` or a recorded follow-up — a behaviour
   change found here means [[Children on the card]] was wrong and gets corrected, not
   patched around.
+- The re-run against `a686c3d` records button chrome, spacing and alignment as fixed, or
+  reopens whichever is not.
