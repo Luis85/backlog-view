@@ -1,5 +1,6 @@
 import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
+import { hiddenMatches } from '../domain/board';
 
 /**
  * The direct children a card may list: the ones the view is showing anyway.
@@ -7,12 +8,16 @@ import { BacklogItem } from '../domain/model';
  * share, so a done child hidden from the tree is absent here too — while the card's
  * rollup goes on counting it. The two numbers differ on purpose.
  *
- * Pure and DOM-free on purpose: `render/cardChildren.ts` (the disclosure) and
- * `interactions/menu.ts` (its keyboard path) both need this exact list, and either
- * importing the other would close a cycle — `render/cardChildren.ts` already reaches
- * `render/columns.ts` and `render/rows.ts`, which reach back into `menu.ts`. Living
- * here, with no import of its own into either, is what lets both share one answer
- * without one.
+ * This lives in `view/`, not `domain/`, because both functions here take a
+ * `BacklogViewHost` — a view type `domain/` can never import, so the layering rule
+ * rules `domain/` out regardless of any cycle. It is its OWN file, rather than living
+ * inside `render/cardChildren.ts`, because of the cycle that would otherwise close:
+ * `render/cardChildren.ts` already reaches `render/columns.ts` and `render/rows.ts`,
+ * which reach back into `interactions/menu.ts`, so `menu.ts` importing from
+ * `cardChildren.ts` directly would close it. Pure and DOM-free, with no import of its
+ * own into either, is what lets `render/cardChildren.ts` (the disclosure) and
+ * `interactions/menu.ts` (its keyboard path, and the match-list dedup beside it)
+ * share one answer without one.
  */
 export function listedChildren(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
 	return item.children.filter((child) => !host.isRowHidden(child));
@@ -32,4 +37,26 @@ export function childrenLabel(children: BacklogItem[]): string {
 		return `${count} ${type.toLowerCase()}${count === 1 ? '' : 's'}`;
 	}
 	return `${count} child${count === 1 ? '' : 'ren'}`;
+}
+
+/**
+ * The matches a card should name on its face: everything `hiddenMatches` found beneath
+ * it, minus anything its own disclosure already lists. One card cannot say the same
+ * thing twice — and the walk itself is untouched, so a match three levels down still
+ * surfaces where nothing else can reach it.
+ *
+ * Unconditional, not conditional on the card being expanded: a collapsed disclosure
+ * still says "3 tasks" and is one click from the child, so the match stays reachable,
+ * and making this depend on expansion state would mean a toggle had to rebuild the
+ * match list too.
+ */
+export function undisclosedMatches(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	carded: Set<string>,
+): BacklogItem[] {
+	const listed = new Set(listedChildren(host, item).map((child) => child.file.path));
+	return hiddenMatches(item, (child) => host.isFilterMatch(child), carded).filter(
+		(match) => !listed.has(match.file.path),
+	);
 }

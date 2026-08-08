@@ -7,9 +7,10 @@ import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showColumnMenu, showItemMenu } from '../interactions/menu';
-import { boardColumns, BoardColumn, BoardModel, cardPaths, hiddenMatches, overBy } from '../../domain/board';
+import { boardColumns, BoardColumn, BoardModel, cardPaths, overBy } from '../../domain/board';
 import { childTypeChoices } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
+import { undisclosedMatches } from '../childrenList';
 
 /**
  * The board projection: the same model the tree renders, projected onto the
@@ -314,7 +315,7 @@ export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: Bac
 function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem, carded: Set<string>): void {
 	const host: BacklogViewHost = ctx.host;
 	if (!host.isFiltering()) return;
-	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	const matches = undisclosedMatches(host, item, carded);
 	if (matches.length === 0) return;
 	const list = card.createDiv({ cls: 'pbl-card-matches' });
 	setIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');

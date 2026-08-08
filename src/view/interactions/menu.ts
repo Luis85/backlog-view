@@ -6,7 +6,7 @@ import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
-import { cardPaths, hiddenMatches } from '../../domain/board';
+import { cardPaths } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -14,7 +14,7 @@ import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
-import { listedChildren } from '../childrenList';
+import { listedChildren, undisclosedMatches } from '../childrenList';
 
 /**
  * The column's menu. A policy is text, not an action, so its one entry is disabled:
@@ -251,7 +251,7 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	const board = host.projection === 'board' ? host.board?.board : null;
 	if (!board || !host.isFiltering()) return;
 	const carded = cardPaths(board);
-	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	const matches = undisclosedMatches(host, item, carded);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {

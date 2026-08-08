@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
 import { refresh, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
-import { childrenLabel, listedChildren } from '../../src/view/render/cardChildren';
+import { childrenLabel, listedChildren } from '../../src/view/childrenList';
 import { Menu } from '../helpers/obsidian-mock';
 import { makeRoadmap, rowFor } from '../helpers/roadmap';
 
@@ -226,6 +226,40 @@ describe('children on the card', () => {
 
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(titles.some((t) => t.startsWith('Open child'))).toBe(false);
+	});
+
+	// FOCUSED on Epic, and that is load-bearing rather than incidental. On an unfocused
+	// board `Feature B1` has a card of its own, and `hiddenMatches` already skips every
+	// path in `cardPaths` — so the match list would omit it before this change, and the
+	// test would pass green against the unfixed code while appearing to prove the
+	// dedup. Focus removes the child's card, which is the only state where the
+	// disclosure and the match list can both reach for the same item.
+	it('does not name a matched child twice on one card', () => {
+		const { containerEl, view } = makeBoard(boardVault(), {}, { focus: 'Epic' });
+		view.setFilter('Feature B1');
+		const card = cardByTitle(containerEl, 'Epic B');
+
+		// The disclosure lists it (the filter forces every card open) …
+		expect(kidTitles(card)).toContain('Feature B1');
+		// … so the match list must not name it as well.
+		const matches = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-match')).map(
+			(el) => el.textContent,
+		);
+		expect(matches).not.toContain('Feature B1');
+	});
+
+	it('still names a match the disclosure cannot reach', () => {
+		const { containerEl, view } = makeBoard(nestedVault(), {}, { focus: 'Epic' });
+		view.setFilter('Task B1a');
+		const card = cardByTitle(containerEl, 'Epic B');
+
+		// A grandchild: one level down is not what the disclosure shows, and with the
+		// board focused on Epics it has no card of its own either. The match list is the
+		// only thing that can reach it, so the dedup must not have taken it.
+		const matches = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-match')).map(
+			(el) => el.textContent,
+		);
+		expect(matches).toContain('Task B1a');
 	});
 
 	/**

@@ -83,16 +83,23 @@ card — and a count is the half of it that cannot be acted on.
 
 ## Where it lives
 
-`src/view/childrenList.ts` — `listedChildren` (the visible direct children) and
-`childrenLabel` (what to call them), pure and DOM-free so both readers below can share
-them without an import cycle. `src/view/render/cardChildren.ts` re-exports both and adds
-`renderCardChildren` (the disclosure, and the list when it is open), called from
-`renderCardBody` in `src/view/render/board.ts` so every card projection gets one
-implementation and timeline rows, which use the card shell without the body, get none.
-The render module also records which paths it drew a disclosure for; the view publishes
-that set as `BacklogViewHost.cardChildrenShown` and `src/view/interactions/menu.ts`'s
-`addChildrenSection` reads it — the same list and the same gate, reached through
-`buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
+`src/view/childrenList.ts` holds three functions, pure and DOM-free: `listedChildren`
+(the visible direct children), `childrenLabel` (what to call them), and
+`undisclosedMatches` (the quick-filter matches a card should still name once its
+disclosure already lists some of them — one card cannot say the same thing twice).
+Living here, rather than in `src/view/render/cardChildren.ts` below, is what lets that
+render module and `src/view/interactions/menu.ts` share one answer without the cycle
+that importing from each other would close. `src/view/render/cardChildren.ts` imports
+`listedChildren` and `childrenLabel` and adds `renderCardChildren` (the disclosure, and
+the list when it is open), called from `renderCardBody` in `src/view/render/board.ts`
+so every card projection gets one implementation and timeline rows, which use the card
+shell without the body, get none. The render module also records which paths it drew a
+disclosure for; the view publishes that set as `BacklogViewHost.cardChildrenShown` and
+`menu.ts`'s `addChildrenSection` reads it — the same list and the same gate, reached
+through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
 (`showContextMenuFor`) — so neither re-derives an answer the screen already has.
+`undisclosedMatches` is read the same way, by `renderCardMatches` in
+`src/view/render/board.ts` for the card face and by `addMatchSection` in `menu.ts` for
+its menu, so the two surfaces cannot both name a match the disclosure already listed.
 Driven in `test/view/cardChildren.test.ts`, and against context cards in
 `test/view/contextCardWrites.test.ts`.

@@ -12,13 +12,6 @@ import { childrenLabel, listedChildren } from '../childrenList';
  * a board inside a board.
  */
 
-// Re-exported from `../childrenList`, which is where they actually live: that module
-// is pure and DOM-free so it can be shared with `interactions/menu.ts` without closing
-// a cycle back through this file's own `RowContext`/row-helper imports. Re-exporting
-// keeps this the one import path every existing consumer (the render below, the tests)
-// already uses.
-export { childrenLabel, listedChildren };
-
 /**
  * The disclosure, and the list when it is open. Nothing here writes frontmatter — that
  * is what makes the context-row rule hold by construction rather than by a check, so a
