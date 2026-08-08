@@ -78,19 +78,37 @@ cannot name a state differently.
 
 ## How this one is checked
 
-Six defects now, all one rule at a different point in the same two-dimensional space —
+Eight defects now, all one rule at a different point in the same two-dimensional space —
 vocabulary by configuration. The done swatch keying its slot instead of the green its
 bars draw; the milestone swatch keying cyan while the diamond drew a state slot; state
 swatches rendered with no workflow configured; a state outside the configured list
 drawing an accent nothing keyed; a DONE value outside that list drawing green nothing
-keyed; and, sixth, a MARKER outside the capped timeline window drawing the plain accent
-under `.pbl-bar-outside` while the legend's own predicate excluded every marker
-unconditionally. Every one passed the tests that existed, because those name cases.
+keyed; a MARKER outside the capped timeline window drawing the plain accent under
+`.pbl-bar-outside` while the legend's own predicate excluded every marker
+unconditionally; a done swatch keyed from `model.results`, which counts an item as done
+whether or not anything on the grid actually draws it green (shelved with no date,
+excluded by a filter, or hidden by "Show completed items"); and, eighth, the milestone
+swatch rendered unconditionally, keying cyan for a base with no milestone anywhere in
+the window. Every one passed the tests that existed, because those name cases.
+
+The seventh and eighth are the same new dimension: **a colour whose carrier is not on
+the grid at all**, which is a different failure from the sixth's "the wrong branch of
+`barClasses` for a carrier that IS on the grid". The first six defects varied vocabulary
+and configuration over items already drawn; these two varied whether the done or
+milestone item was drawn in the first place. `model.results` cannot answer that — it is
+the Base's rows, not the render's — so both are decided the same way the seventh's own
+predecessor was fixed: reported by the render itself (`DrawnColors`, replacing the
+narrower `hasUnkeyedAccent`) and read by the legend rather than reconstructed from data
+the render has already filtered, shelved or hidden.
 
 So the suite states the rule both ways round and sweeps the space: for each of a table
 of vocabularies and configurations, every colour a rendered mark draws is keyed by a
 swatch, and no swatch keys a colour nothing draws. Two swatches may share a colour only
 where the vocabulary outruns `STATE_COLOR_SLOTS`, which is that constant's stated limit.
+Two more cases sit outside that table, because they vary GRID MEMBERSHIP rather than
+vocabulary or configuration: a done item taken off the grid (shelved, or hidden by "Show
+completed items") with the vocabulary omitting its value, keyed neither there nor by the
+vocabulary loop, and the same item once it actually lands on the grid.
 
 Beside it, a text check on the stylesheets: each swatch names the same palette colour as
 the mark it keys, the five slots are distinct, and none of them is the red, cyan or green
@@ -116,11 +134,26 @@ between what the grid draws and what the copy assumed it draws. The sweep's two 
 — a stateless marker dated outside the window, and the same marker dated inside it —
 state the rule in both directions the way the others do.
 
-- **A filter, which redraws content without a full render.** `hasUnkeyedAccent` is
-  reported by the render, so the legend is only as fresh as the pass that produced it —
-  and `setFilter` re-renders content ALONE. The legend is therefore rendered by the
-  content pass rather than by `render()`, so a filter that hides the last bar drawing
-  the accent takes its swatch with it, and clearing the filter brings both back.
+The seventh and eighth were the sixth's own fix outrunning its own name: `hasUnkeyedAccent`
+reported one colour's presence, decided from the geometry and slot `renderBarRow` already
+holds, and the done and milestone swatches went on trusting `model.results` and an
+unconditional render respectively — the exact mistake the sixth's fix had just retired for
+`Other`. `DrawnColors` generalises the shape to the three override colours at once (done,
+milestone, accent), still decided in `renderBarRow` from the same `geometry`, `slot` and
+`bar.item.done` it already holds — a coincident start and target draws the milestone
+diamond whatever the item's TYPE (`timelineFurniture.test.ts`'s "Ship it", an ordinary
+PBI), so this is asked of the geometry alone, never narrowed to markers. The done and
+milestone swatches now render exactly when their field of the record is true, the same
+way `Other` already did; the state-slot swatches are deliberately untouched (see the
+acceptance criteria below) because they come from the configured vocabulary, not from
+what got drawn.
+
+- **A filter, which redraws content without a full render.** `DrawnColors` is reported
+  by the render, so the legend is only as fresh as the pass that produced it — and
+  `setFilter` re-renders content ALONE. The legend is therefore rendered by the content
+  pass rather than by `render()`, so a filter that hides the last bar drawing a colour
+  takes its swatch with it, and clearing the filter brings it back — done and milestone
+  included, exactly like `Other` already was.
 
 ## Acceptance criteria
 
@@ -132,8 +165,14 @@ state the rule in both directions the way the others do.
 - The legend renders only where `renderTimelineControls` also renders (roadmap mode,
   dated axis) — never on the horizon axis, the board, or the tree.
 - With no workflow property configured (`settings.stateKey === ''`), the legend shows
-  exactly Today and Milestone and no state swatch — never a "Done" swatch keying a
-  colour no bar on that grid can draw.
+  Today and no state swatch — never a "Done" swatch keying a colour no bar on that grid
+  can draw.
+- Every configured state's swatch renders regardless of whether anything currently
+  carries it — the vocabulary is assignable, not a report of what is drawn — but the
+  done and milestone swatches render only when `DrawnColors` says the grid actually drew
+  that colour THIS pass: a done item that is shelved, filtered out, or hidden by "Show
+  completed items" must not key green, and a base with no milestone anywhere in the
+  window must not key cyan.
 - The legend sits outside `.pbl-timeline` (the scroller) and under the toolbar, so
   scrolling the grid never scrolls the legend with it.
 - The legend carries `aria-hidden` and nothing inside it is a `button` or otherwise
@@ -159,12 +198,16 @@ the done rule's specificity over a slot — are `styles/timeline.css`; the legen
 swatches and layout are `styles/legend.css`; the Today pill's rule is deleted from
 `styles/timelineFurniture.css`.
 
-Whether ANY bar draws the plain accent is decided once, in `renderBarRow`
-(`src/view/render/timeline.ts`), from the same `geometry` and `slot` it already holds —
-never recomputed from `results` anywhere downstream. `renderTimeline` accumulates that
-per-bar fact into `TimelineRender.hasUnkeyedAccent`; `renderRoadmap`
-(`src/view/render/roadmap.ts`) carries it unchanged into `RoadmapSnapshot`
-(`src/view/host.ts`); `render()` in `src/view/backlogView.ts` reads
-`this.roadmap?.hasUnkeyedAccent` after the tree has rendered (so the roadmap snapshot
-for THIS pass already exists) and passes it to `renderLegend`, which keys `Other` on it
-directly rather than asking `results` a question only the render can answer.
+Which of the three override colours (done, milestone, accent) ANY bar draws is decided
+once, in `renderBarRow` (`src/view/render/timeline.ts`), from the same `geometry`,
+`slot` and `bar.item.done` it already holds — never recomputed from `results` anywhere
+downstream. The `DrawnColors` record (declared in `src/view/host.ts`, beside
+`RoadmapSnapshot`, so `renderBarRow`'s own module can import it without the reverse
+direction cycling through `RowContext`) is what replaced the narrower
+`hasUnkeyedAccent`. `renderTimeline` OR's each bar's colours into one `TimelineRender.drawn`;
+`renderRoadmap` (`src/view/render/roadmap.ts`) carries it unchanged into
+`RoadmapSnapshot.drawn`; `render()` in `src/view/backlogView.ts` reads
+`this.roadmap?.drawn` after the tree has rendered (so the roadmap snapshot for THIS pass
+already exists) and passes it to `renderLegend`, which keys `Other`, `Done` (the
+vocabulary-omits-it fallback only) and `Milestone` on it directly rather than asking
+`results` or an unconditional render a question only the render can answer.

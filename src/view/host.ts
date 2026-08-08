@@ -55,6 +55,21 @@ export interface ScrollBox {
 }
 
 /**
+ * Which override colours the dated axis actually drew this pass — see
+ * `TimelineRender.drawn` (`render/timeline.ts`) for where each is decided. Declared
+ * here, beside `RoadmapSnapshot`, rather than imported from `render/timeline.ts`: that
+ * module reaches `host.ts` (through `RowContext`), so the other direction would cycle.
+ */
+export interface DrawnColors {
+	/** A bar overridden green by `.pbl-timeline-row.pbl-done .pbl-bar` — wins outright. */
+	done: boolean;
+	/** A bar drawing the cyan diamond (`.pbl-bar-milestone`) — beats a state slot too. */
+	milestone: boolean;
+	/** A bar with none of the above: no slot, no done override, no milestone cyan. */
+	accent: boolean;
+}
+
+/**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
  * the order the keyboard walks.
@@ -104,13 +119,13 @@ export interface RoadmapSnapshot {
 	 */
 	leadWidth: number | null;
 	/**
-	 * Whether any bar just drawn on the dated axis takes the plain accent — see
-	 * `TimelineRender.hasUnkeyedAccent`, which this carries out unchanged. `false` on
-	 * the horizon axis, where nothing draws a bar at all. The legend reads this
-	 * instead of re-deciding a bar's colour from `results`, which is the copy of
-	 * `barClasses`'s precedence that missed the outside-window case.
+	 * Which override colours were actually drawn on the dated axis this pass — see
+	 * `TimelineRender.drawn`, which this carries out unchanged. All `false` on the
+	 * horizon axis, where nothing draws a bar at all. The legend reads this instead of
+	 * re-deciding a bar's colour from `results`, which is the copy of `barClasses`'s
+	 * precedence that missed the outside-window case.
 	 */
-	hasUnkeyedAccent: boolean;
+	drawn: DrawnColors;
 }
 
 /**

@@ -4,6 +4,7 @@ import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderTitleText } from './rows';
 import { CardDragController } from '../interactions/cardDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
+import { DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
@@ -78,15 +79,14 @@ export interface TimelineRender {
 	/** The lead width THIS render actually drew — the resolved pick, or `TIMELINE_LEAD_PX`. */
 	leadWidth: number;
 	/**
-	 * Whether any bar just drawn takes the plain accent — no state slot, no done
-	 * override, no milestone cyan — which is the one colour the legend's `Other`
-	 * swatch keys. Reported from the render rather than recomputed from `results`
-	 * (see `renderBarRow`): `barClasses` decides a mark's actual colour, including the
-	 * early-return `.pbl-bar-outside` case that draws the accent for a marker whose
-	 * date lies outside the capped window — a fact a predicate over `results` alone
-	 * cannot see, since it never asks what geometry the bar drew.
+	 * Which override colours this pass actually drew, OR'd across every bar — reported
+	 * from the render rather than recomputed from `results` (see `renderBarRow`):
+	 * `barClasses` decides a mark's actual colour, including the early-return
+	 * `.pbl-bar-outside` case that draws the plain accent for a marker whose date lies
+	 * outside the capped window — a fact a predicate over `results` alone cannot see,
+	 * since it never asks what geometry the bar drew.
 	 */
-	hasUnkeyedAccent: boolean;
+	drawn: DrawnColors;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -163,10 +163,12 @@ export function renderTimeline(
 	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
 	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
-	let hasUnkeyedAccent = false;
+	const drawn: DrawnColors = { done: false, milestone: false, accent: false };
 	bars.forEach((bar, index) => {
-		const { row, unkeyedAccent } = renderBarRow(ctx, mounts, window, bar, scale);
-		if (unkeyedAccent) hasUnkeyedAccent = true;
+		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
+		if (colors.done) drawn.done = true;
+		if (colors.milestone) drawn.milestone = true;
+		if (colors.accent) drawn.accent = true;
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
 		// count the header, the lines and the layers interleaved in this container.
 		if (index % 2 === 1) row.addClass('pbl-row-even');
@@ -199,7 +201,7 @@ export function renderTimeline(
 		headerTrack,
 		tracks,
 		leadWidth,
-		hasUnkeyedAccent,
+		drawn,
 	};
 }
 
@@ -339,7 +341,7 @@ function renderBarRow(
 	window: TimelineWindow,
 	bar: TimelineBar,
 	scale: TimelineScale,
-): { row: HTMLElement; unkeyedAccent: boolean } {
+): { row: HTMLElement; colors: DrawnColors } {
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
 	// The bar's colour, by the item's own state — never computed here: `stateColorSlot`
@@ -391,12 +393,20 @@ function renderBarRow(
 	if (isMarkerType(bar.item.typeName)) row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
 	wireCardActivation(ctx, row, bar.item);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
-	// order: done wins on the ROW class, a milestone diamond only where `barClasses`
-	// actually added `pbl-bar-milestone` — never for `geometry.milestone` alone, since
-	// the early return for `geometry.outside` withholds that class from a marker whose
-	// date lies outside the window, and that bar draws the plain accent like any other.
-	const unkeyedAccent = !bar.item.done && slot === null && !(geometry.milestone && !geometry.outside);
-	return { row, unkeyedAccent };
+	// order: done wins outright (the row class overrides regardless of geometry), then
+	// a milestone diamond only where `barClasses` actually added `pbl-bar-milestone` —
+	// never for `geometry.milestone` alone, since the early return for `geometry.outside`
+	// withholds that class from a marker whose date lies outside the window, and that
+	// bar draws the plain accent like any other. A bar can draw an ordinary PBI's own
+	// coincident start/target as the same diamond (`timelineFurniture.test.ts`'s "Ship
+	// it"), so this is asked of the geometry alone, never narrowed to marker items.
+	const milestoneDrawn = geometry.milestone && !geometry.outside;
+	const colors: DrawnColors = {
+		done: bar.item.done,
+		milestone: !bar.item.done && milestoneDrawn,
+		accent: !bar.item.done && slot === null && !milestoneDrawn,
+	};
+	return { row, colors };
 }
 
 /**

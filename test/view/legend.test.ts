@@ -50,23 +50,28 @@ describe('the roadmap legend', () => {
 		expect(legendEl(containerEl)).toBeNull(); // board
 	});
 
-	it('shows Today and Milestone but no state swatch when no workflow property is configured', () => {
+	it('shows Today but no state or milestone swatch when no workflow property is configured', () => {
 		// `stateMenuValues` still returns a done value even with `stateKey === ''` (it
 		// falls back to `observedStates` plus a done default), but `domain/model.ts` sets
 		// every `stateValue` to null in that configuration, so no bar can carry a state
-		// colour — the legend must not key one nothing on the grid draws.
+		// colour — the legend must not key one nothing on the grid draws. `datedVault`'s
+		// one item has a due date and no start, so it draws an ordinary open-ended bar,
+		// never the milestone diamond — the milestone swatch is conditional now (defect 2
+		// of this pass) and this fixture draws none.
 		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS }, { collapsed: true });
 		view.setProjection('roadmap');
 
 		expect(legendEl(containerEl)).not.toBeNull();
-		expect(swatchLabels(containerEl)).toEqual(['Today', 'Milestone']);
+		expect(swatchLabels(containerEl)).toEqual(['Today']);
 	});
 
-	it('keys one swatch per vocabulary state, in the same slot classes the bars carry, then today, then the milestone', () => {
+	it('keys one swatch per vocabulary state, in the same slot classes the bars carry, then today', () => {
+		// `datedVault`'s item has a due date and no start, so it draws an ordinary bar —
+		// the milestone swatch is conditional now, and nothing here draws that diamond.
 		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
 		view.setProjection('roadmap');
 
-		expect(swatchLabels(containerEl)).toEqual(['New', 'Active', 'Done', 'Today', 'Milestone']);
+		expect(swatchLabels(containerEl)).toEqual(['New', 'Active', 'Done', 'Today']);
 		const items = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-legend-item'));
 		const swatchClasses = (i: number) => [...(items[i].querySelector('.pbl-legend-swatch')?.classList ?? [])];
 		expect(swatchClasses(0)).toContain('pbl-state-0');
@@ -211,9 +216,72 @@ describe('the legend keys exactly the colours the grid draws', () => {
 		if (stateSwatches.length <= STATE_COLOR_SLOTS) {
 			expect(swatchKeys(containerEl)).toHaveLength(keyed.size);
 		}
-		// The two lines are always drawn, so they are always keyed.
+		// Today is always drawn, so it is always keyed.
 		expect(keyed).toContain('pbl-legend-today');
-		expect(keyed).toContain('pbl-legend-milestone');
+		// Milestone is NOT: most of these cases carry no marker at all, so nothing draws
+		// the cyan diamond and the swatch must not claim a colour absent from every row —
+		// defect 2 of this pass, keyed unconditionally before this fix. Asked of the rows
+		// rather than of the case's own `marker` field, so this states the rule rather
+		// than restating the fixture.
+		const milestoneDrawn = rows.some((row) => barColourKey(row) === 'pbl-legend-milestone');
+		expect(keyed.has('pbl-legend-milestone')).toBe(milestoneDrawn);
+	});
+});
+
+describe('the legend keys a done bar only where one is actually on the grid', () => {
+	// Both use a vocabulary that OMITS `Done`, so the swatch comes from the fallback
+	// branch (`drawn.done` in `renderLegend`), never the vocabulary loop above — that
+	// loop's own case is `keys a done state green` and is untouched by this rule.
+	const OMITS_DONE = { stateProperty: 'note.status', stateValues: 'New, Active' };
+
+	it('keys no green for a done item shelved with no date at all', () => {
+		// No start, no due: `deriveBars` shelves it before any bar exists. `model.results`
+		// still calls it done — that predicate was defect 1 of this pass.
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' } });
+		const { view, containerEl } = makeView(vault, { ...DATE_AXIS, ...OMITS_DONE }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelector('.pbl-timeline-row')).toBeNull(); // on the shelf, not the grid
+		expect(swatchLabels(containerEl)).not.toContain('Done');
+	});
+
+	it('keys green once that same done item actually lands on the grid', () => {
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done', due: '2026-08-05' } });
+		const { view, containerEl } = makeView(vault, { ...DATE_AXIS, ...OMITS_DONE }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelector('.pbl-timeline-row')).not.toBeNull();
+		expect(swatchLabels(containerEl)).toContain('Done');
+	});
+
+	it('keys no green for a done item with a bar, hidden by "Show completed items"', () => {
+		// This one WOULD draw a bar (it has a due date) — it is hidden, not shelved.
+		// `buildRoadmap` filters rows through `host.isRowHidden` before `deriveBars` ever
+		// runs, so a completed leaf hidden this way never reaches the grid either, and
+		// the green swatch has to follow it off screen the same way.
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done', due: '2026-08-05' } });
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, ...OMITS_DONE, showCompleted: false },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelector('.pbl-timeline-row')).toBeNull();
+		expect(swatchLabels(containerEl)).not.toContain('Done');
+	});
+});
+
+describe('the legend keys a milestone only where the grid draws its cyan', () => {
+	it('keys no milestone swatch when no item on the grid is a milestone', () => {
+		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		expect(containerEl.querySelector('.pbl-bar-milestone')).toBeNull();
+		expect(swatchLabels(containerEl)).not.toContain('Milestone');
 	});
 });
 

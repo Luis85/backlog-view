@@ -93,6 +93,12 @@ export default defineConfig({
 			// 98.11/93.83/99.43/99.30 — statements, branches and functions round down to the
 			// figures already recorded above, lines rounds down to a new decimal (99.3, up
 			// from 99.2), so only lines moves.
+			//
+			// The drawn-colours increment (the done and milestone swatches gated on
+			// `DrawnColors`, the same reported-by-the-render shape `hasUnkeyedAccent` used,
+			// plus the sweep's new rows for a done bar off the grid and a base with no
+			// milestone at all) measured 98.11/93.87/99.43/99.30 — all four round down to
+			// the figures already recorded above, so none of the four move.
 			thresholds: {
 				statements: 98.1,
 				branches: 93.8,

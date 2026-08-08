@@ -1,7 +1,6 @@
-import { BacklogViewHost } from '../host';
+import { BacklogViewHost, DrawnColors } from '../host';
 import { activeAxis } from '../../domain/roadmap';
 import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
-import { BacklogItem } from '../../domain/model';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -19,18 +18,22 @@ import { BacklogItem } from '../../domain/model';
  * on this path would guard nothing reachable — the caller already holds the model this
  * vocabulary comes from.
  *
- * `hasUnkeyedAccent` is likewise reported by the render rather than recomputed here —
- * see `TimelineRender.hasUnkeyedAccent`. A predicate over `results` alone cannot see
- * what `barClasses` actually drew: it missed that `.pbl-bar-outside` (a marker dated
- * outside the capped window) draws the plain accent too, which is what let a visible
- * arrow on the grid go unkeyed.
+ * `drawn` is likewise reported by the render rather than recomputed here — see
+ * `TimelineRender.drawn`. A predicate over `model.results` alone cannot see what the
+ * grid actually drew: `model.results` includes items with no bar at all (unscheduled on
+ * the shelf, excluded by a quick filter, or hidden by "Show completed items", which
+ * hides done subtrees specifically), so it can call a colour keyed that nothing visible
+ * draws — the done swatch keying green with every done item off screen, or the
+ * milestone swatch keying cyan for a base with no milestone at all, are both that same
+ * mistake. And a predicate over `results` alone still cannot see precedence within what
+ * IS on screen, which is what let a marker dated outside the capped window (drawing the
+ * plain accent under `.pbl-bar-outside`) go unkeyed.
  */
 export function renderLegend(
 	host: BacklogViewHost,
 	legendEl: HTMLElement,
 	observedStates: string[],
-	results: BacklogItem[],
-	hasUnkeyedAccent: boolean,
+	drawn: DrawnColors,
 ): void {
 	legendEl.empty();
 	const onDatedAxis = host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
@@ -67,22 +70,26 @@ export function renderLegend(
 		});
 		// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item
 		// can be done while its value is not in the configured list: its bar goes green and
-		// the loop above keyed no green. Asked of the results rather than the vocabulary,
-		// because the bar's colour is.
-		if (!states.some((state) => isDoneValue(host.settings, state))) {
-			const done = results.find((item) => item.done);
-			if (done) addSwatch(legendEl, 'pbl-legend-done', done.stateValue ?? host.settings.doneValues[0]);
+		// the loop above keyed no green. Asked of `drawn.done` — the render's own report of
+		// whether a bar actually took the override — rather than of `results`: a done item
+		// with no bar at all (shelved, filtered out, or hidden by "Show completed items")
+		// must not put a green swatch beside a grid drawing none.
+		if (!states.some((state) => isDoneValue(host.settings, state)) && drawn.done) {
+			addSwatch(legendEl, 'pbl-legend-done', host.settings.doneValues[0]);
 		}
 		// The rule's other direction: a bar that draws the plain accent — no slot, no
 		// done override, no milestone cyan — is a colour on the grid the key does not
-		// explain. `hasUnkeyedAccent` is the RENDER's own report of that fact (see its
-		// doc on `TimelineRender`), never a predicate rebuilt here over `results`: that
-		// copy of `barClasses`'s precedence is exactly what missed a marker outside the
-		// window drawing the accent under `.pbl-bar-outside` instead of its own cyan.
-		if (hasUnkeyedAccent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
+		// explain. `drawn.accent` is the RENDER's own report of that fact (see its doc on
+		// `TimelineRender`), never a predicate rebuilt here over `results`: that copy of
+		// `barClasses`'s precedence is exactly what missed a marker outside the window
+		// drawing the accent under `.pbl-bar-outside` instead of its own cyan.
+		if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
 	}
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
-	addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
+	// Milestone is likewise the render's own report (`drawn.milestone`): a base with no
+	// milestone in the window draws no cyan mark at all, and a swatch left unconditional
+	// here is defect 2 of this pass — the same rule failing the same way as `Other` did.
+	if (drawn.milestone) addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
 }
 
 function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string): void {
