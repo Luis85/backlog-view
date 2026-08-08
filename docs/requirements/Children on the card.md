@@ -47,7 +47,9 @@ card — and a count is the half of it that cannot be acted on.
   the card *shell* in a bar-grid layout, and a list of children inside that geometry is
   its own question; the row grew a different answer to it —
   [[Collapsing a bar's subtree]] folds the rows below it instead of listing them on its
-  face, off the same collapse bit. What the two share is the register of what was drawn
+  face, off a collapse bit of its own — what a plan shows and what a card lists are two
+  questions, and one bit answering both moved the reader's place in one projection every
+  time they read the other. What the two share is the register of what was drawn
   (`cardChildrenShown`) and therefore the row menu's section, which is why that gate is
   the render's own record rather than the projection's name.
 - **1c — the quick filter is running.** It overrides collapse state, so every listed
@@ -85,8 +87,9 @@ card — and a count is the half of it that cannot be acted on.
   and by middle click, which are separate events and separately guarded. The toggle
   opens nothing on either.
 - Expansion is the tree's own per-path collapse state: remembered per saved view and per
-  device, unchanged by a data update, and shared with the row, so one bit means "this
-  node is open" in both projections. While the quick filter runs the toggle is disabled.
+  device, unchanged by a data update, and shared with the tree's row, so one bit means
+  "this node is open" wherever the item is a CARD. The dated axis's fold is not that bit
+  ([[Collapsing a bar's subtree]]). While the quick filter runs the toggle is disabled.
 - The card menu offers the same children, on a right-click and on the menu key, and does
   not offer them on a surface that drew no disclosure.
 - Nothing in the feature writes to a note.

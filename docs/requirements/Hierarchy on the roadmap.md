@@ -23,5 +23,6 @@ where a roadmap row is an ordinary card, [[Children on the card]] is the shared
 implementation this feature and the board draw on to list it. A dated-axis timeline row
 uses the card shell without the body, so it draws a disclosure of its own kind instead —
 [[Collapsing a bar's subtree]] folds the rows beneath it rather than listing them on its
-face, off the same collapse bit. Neither is lanes: both fold one item's own subtree,
+face, off a collapse bit of its own, since a fold on the plan is not a statement about
+where the reader is in the backlog. Neither is lanes: both fold one item's own subtree,
 while a lane is a REGION naming a parent, which is still design.
