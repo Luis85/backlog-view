@@ -95,6 +95,16 @@ describe('headings', () => {
 		expect(headings(note).map((h: { text: string }) => h.text)).toEqual(['Real']);
 	});
 
+	it('is root-level only — a quoted or nested heading is not a section', () => {
+		// mdast reports `> ## Context` and an indented `## Context` as depth-two headings
+		// like any other, but the line-anchored scan this replaced could match neither, and
+		// neither is a section of the document. A quoted heading satisfying the structural
+		// rules, or truncating a section early, is a malformed note passing.
+		const text = '## Real\n\n> ## Quoted\n\n- item\n  ## Nested\n\nBody.\n';
+
+		expect(headings(text).map((h: { text: string }) => h.text)).toEqual(['Real']);
+	});
+
 	it('reads a heading with trailing whitespace, and one inside a fence as no heading', () => {
 		const text = '## Real  \n\nBody.\n\n```\n## Fake\n```\n';
 
@@ -108,6 +118,19 @@ describe('headings', () => {
 		expect(sectionBody(text, 'One')).not.toContain('second');
 		expect(sectionBody(text, 'Two')).toContain('second');
 		expect(sectionBody(text, 'Missing')).toBe('');
+	});
+
+	it('excludes a fenced example from a section, but keeps its inline paths', () => {
+		// The source-coverage rule reads paths out of a section, and this register writes
+		// every path in backticks — so an inline one is what the section SAYS, and one
+		// inside a fenced example is a block describing nothing. Crediting a module as
+		// specified by a fence is a false pass in the rule that exists to prevent exactly
+		// that.
+		const text = '## Where it lives\n\nLives in `src/real.ts`.\n\n```\n`src/example.ts`\n```\n';
+		const body = sectionBody(text, 'Where it lives');
+
+		expect(body).toContain('src/real.ts');
+		expect(body).not.toContain('src/example.ts');
 	});
 });
 
@@ -157,6 +180,11 @@ describe('wikilinks', () => {
 		// contributor met "unresolved wikilink" for a link that resolves.
 		expect(wikilinks('See [[A slice]].')).toEqual(['A slice']);
 		expect(wikilinks('See [[A\nslice]].')).toEqual(['A slice']);
+		expect(wikilinks('See [[A\n  slice]].')).toEqual(['A slice']);
+		// ...and ONLY the wrap: `[[A  slice]]` is a legal note name, and the lookup against
+		// the vault's stems is exact, so flattening it would report a resolving link as
+		// unresolved — one false failure traded for another.
+		expect(wikilinks('See [[A  slice]].')).toEqual(['A  slice']);
 	});
 
 	it('ignores an example inside a code span or a fence', () => {

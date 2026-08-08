@@ -116,6 +116,12 @@ const source = (text, node) => text.slice(node.position.start.offset, node.posit
  * of a line, so the two are different strings rather than one containing the other.
  * Trailing whitespace after the heading is the parser's problem now too.
  *
+ * ROOT-LEVEL only. mdast reports `> ## Context` inside a blockquote, and `## Context`
+ * indented under a list item, as depth-two headings like any other — but the line-anchored
+ * scan this replaced could not match either, and neither is a section of the document. A
+ * quoted heading satisfying `checkSections`, or truncating `sectionBody` early, is a
+ * malformed note passing the structural rules.
+ *
  * ATX only — the `## ` spelling — which the source is asked for rather than the node type,
  * because mdast makes no distinction. CommonMark has a second way to write a level-two
  * heading: any paragraph with `---` under it. This register opens every note with YAML
@@ -126,7 +132,7 @@ const source = (text, node) => text.slice(node.position.start.offset, node.posit
  */
 export function headings(text) {
 	const found = [];
-	for (const node of nodes(text)) {
+	for (const node of tree(text).children) {
 		if (node.type !== "heading" || node.depth !== 2 || !node.position) continue;
 		if (!source(text, node).startsWith("##")) continue;
 		const first = node.children[0];
@@ -137,12 +143,21 @@ export function headings(text) {
 	return found;
 }
 
-/** What one `## ` section says: to the next `## `, or to the end of the note. */
+/**
+ * What one `## ` section says: to the next `## `, or to the end of the note.
+ *
+ * Sliced from `proseWithSpans`, so a FENCED example inside the section is not part of what
+ * it says while an inline `path.ts` still is. Both halves matter to the one caller: the
+ * source-coverage rule reads paths out of `## Where it lives` and `## Decision`, this
+ * register writes every path in backticks, and a path appearing only inside a fenced
+ * example would otherwise credit a module as specified by a block that describes nothing.
+ * Offsets survive the blanking, so the heading indexes still address this string.
+ */
 export function sectionBody(text, title) {
 	const all = headings(text);
 	const at = all.findIndex((h) => h.text === title);
 	if (at === -1) return "";
-	return text.slice(all[at].index, all[at + 1]?.index ?? text.length);
+	return proseWithSpans(text).slice(all[at].index, all[at + 1]?.index ?? text.length);
 }
 
 /**
@@ -172,12 +187,17 @@ export function localLinks(text) {
 /**
  * Wikilink targets. Not Markdown — Obsidian's own syntax — so this stays a pattern, but
  * it runs over the document with code blanked rather than over raw text, and it flattens
- * a NEWLINE inside the brackets on purpose: a link the 100-column wrap breaks across two
- * lines is the same link, and refusing to see it was a documented limitation with no
- * detection, so a contributor met "unresolved wikilink" for a link that resolves.
+ * a NEWLINE and the indentation after it on purpose: a link the 100-column wrap breaks
+ * across two lines is the same link, and refusing to see it was a documented limitation
+ * with no detection, so a contributor met "unresolved wikilink" for a link that resolves.
+ *
+ * The WRAP only. Collapsing every run of whitespace also rewrites `[[A  slice]]`, which is
+ * a legal note name — the lookup against `stems` is exact, so flattening a name the vault
+ * really holds reports a resolving link as unresolved. The fix for one false failure must
+ * not introduce another.
  */
 export function wikilinks(text) {
-	return [...prose(text).matchAll(/\[\[([^\]|#]+)/g)].map(([, target]) => target.replace(/\s+/g, " ").trim());
+	return [...prose(text).matchAll(/\[\[([^\]|#]+)/g)].map(([, target]) => target.replace(/\n[ \t]*/g, " ").trim());
 }
 
 /**
