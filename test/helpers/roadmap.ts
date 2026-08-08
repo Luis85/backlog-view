@@ -46,6 +46,23 @@ export function makeRoadmap(
 	return harness;
 }
 
+/**
+ * `makeRoadmap`'s sibling for the suites that configure their own axis rather than
+ * taking the horizon one: everything about the view comes from `cfg`, and nothing is
+ * merged in behind it. Same shelf rule — open unless the caller asks for the collapsed
+ * state itself.
+ */
+export function roadmapView(
+	vault: FakeVault,
+	cfg: Record<string, unknown>,
+	{ base, shelfCollapsed = false }: { base?: string; shelfCollapsed?: boolean } = {},
+): Harness {
+	const harness = makeView(vault, cfg, { collapsed: true, base });
+	harness.view.setProjection('roadmap');
+	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
+	return harness;
+}
+
 export function bucketsOf(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-bucket'));
 }

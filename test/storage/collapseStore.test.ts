@@ -249,6 +249,22 @@ describe('the persisted view mode', () => {
 	});
 });
 
+describe('the persisted timeline row density', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+
+	it('round-trips a density on its own, with nothing else in the entry to keep it alive', () => {
+		// Density ALONE, which is what makes this a check on `entryHasContent`'s own
+		// density clause rather than on whatever else the view happens to store beside
+		// it: the roadmap's reopen test stores `mode` too, so the entry survives that
+		// round trip whether or not this pick is counted as content.
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, density: 'compact' });
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ density: 'compact' });
+		expect(loadCollapseState(app, id).density).toBe('compact');
+	});
+});
+
 describe('the persisted timeline lead-column width', () => {
 	const id = { base: 'Backlog.base', view: 'Backlog' };
 	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };

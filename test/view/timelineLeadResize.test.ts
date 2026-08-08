@@ -47,9 +47,25 @@ describe('the lead-column resize grip', () => {
 		expect(el.getAttribute('aria-valuenow')).toBe(String(TIMELINE_LEAD_PX));
 	});
 
-	it('is absent off the dated axis and in tree mode', () => {
-		const { containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
-		expect(containerEl.querySelector('.pbl-timeline-lead-grip')).toBeNull(); // tree mode
+	it('is absent in tree mode, on the board and on the horizon axis, and drawn on the dated one', () => {
+		// All four positions, because the grip belongs to ONE of them: the fixture
+		// configures both axes so 'horizons' is a real pick rather than one `activeAxis`
+		// resolves straight back to 'dates'.
+		const { view, containerEl } = makeView(
+			datedVault(),
+			{ ...DATE_AXIS, horizonProperty: 'note.horizon', horizonValues: 'Now, Later' },
+			{ collapsed: true },
+		);
+		const gripRendered = () => containerEl.querySelector('.pbl-timeline-lead-grip') !== null;
+
+		expect(gripRendered()).toBe(false); // tree mode
+		view.setProjection('board');
+		expect(gripRendered()).toBe(false);
+		view.setProjection('roadmap');
+		view.setAxisPick('horizons');
+		expect(gripRendered()).toBe(false); // a roadmap, but no grid to lead
+		view.setAxisPick('dates');
+		expect(gripRendered()).toBe(true);
 	});
 
 	describe('dragging', () => {

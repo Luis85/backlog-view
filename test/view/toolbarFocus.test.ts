@@ -55,6 +55,27 @@ describe('focus survives the toolbar rebuilding itself', () => {
 		expect(document.activeElement).toBe(control(containerEl, 'pbl-focus-btn'));
 	});
 
+	it('never TAKES focus that was outside the toolbar doing the rebuilding', () => {
+		// The other direction of the same mechanism, and the one three restore tests
+		// cannot see: `capturedFocusKey` asks whether the focused element is inside THIS
+		// bar before reading its key. One base open in two split panes is two views over
+		// one set of keys — `new` names a button in each — so without that containment
+		// question the second view's rebuild reads the first view's focused control and
+		// pulls focus across the pane divider, out of the toolbar the user was in.
+		const vault = fixture();
+		const first = makeView(vault);
+		const second = makeView(vault);
+
+		const held = control(first.containerEl, 'pbl-new-btn');
+		held.focus();
+		expect(document.activeElement).toBe(held);
+
+		refresh(second.view, vault); // any data update rebuilds the second view's toolbar
+
+		expect(document.activeElement).toBe(held);
+		expect(document.activeElement).not.toBe(control(second.containerEl, 'pbl-new-btn'));
+	});
+
 	it('gives every focusable toolbar control a key, and no two the same, in every projection', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(
