@@ -462,7 +462,17 @@ for (const file of files) {
  * compared with whitespace flattened on both sides.
  */
 const MARKER = /\*\*Checked by\*\*/g;
-const CITATION = /^[^`]*`((?:src|test)\/[\w./-]+\.ts)`[^`"“]*["“]([^"”]+)["”]/;
+/**
+ * A CHECK, never an implementation. The first version reused the source-path rule's
+ * `(?:src|test)` alternation without asking whether it meant anything here, so
+ * ``**Checked by** `src/domain/settings.ts` — "resolveSettings"`` resolved: the file
+ * exists and contains that string, and a citation to the code a claim describes is the
+ * claim restated, not evidence for it. `eslint.config.mjs` is admitted beside `test/`
+ * because this repository's own answer to a category invariant is a lint rule rather than
+ * a test — "checked at the forbidden thing", in the root `CLAUDE.md` — so refusing it
+ * would make the convention unusable for exactly the checks it most wants cited.
+ */
+const CITATION = /^[^`]*`(test\/[\w./-]+\.ts|eslint\.config\.mjs)`[^`"“]*["“]([^"”]+)["”]/;
 const flat = (s) => s.replace(/\s+/g, " ");
 for (const file of [...files, "README.md"]) {
 	// The root README is reached by name rather than by the walk, so its absence is a

@@ -27,6 +27,18 @@ import { note, runRejections, useCase } from '../helpers/register';
 describe('checked-claim citations', () => {
 	runRejections([
 		[
+			// A citation must name a CHECK. Pointing at the implementation a claim
+			// describes is the claim restated, and it resolves trivially — the file exists
+			// and contains the symbol — while skipping the one step this rule is for.
+			'a citation naming an implementation file instead of a check',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `src/thing.ts` — "thing".',
+				});
+			},
+			'has a **Checked by** with no `path.ts` and "test name" after it',
+		],
+		[
 			'a citation naming a test file that does not exist',
 			(files) => {
 				files['docs/issues/A limitation.md'] = note(

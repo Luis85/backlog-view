@@ -143,6 +143,19 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a citation naming a lint rule, which is this repo’s other kind of check', async () => {
+		// `eslint.config.mjs` is admitted beside `test/` deliberately: the root CLAUDE.md's
+		// answer to a category invariant is a lint rule at the forbidden thing, not a test,
+		// so a rule that took only test files would refuse the checks most worth citing.
+		const files = baseRegister();
+		files['eslint.config.mjs'] = 'export const RULE = { selector: "Nope", message: "no raw reads" };\n';
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `eslint.config.mjs` — "no raw reads".',
+		});
+
+		await expectAccepted(files);
+	});
+
 	it('resolves only the FIRST quoted name after a marker — the limit, pinned', async () => {
 		// Not a feature: a boundary, asserted so it cannot move by accident. A second name
 		// under one marker reads as covered and is not, which review caught in the first

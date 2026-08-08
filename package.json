@@ -35,6 +35,7 @@
     "fallow": "^3.10.0",
     "jsdom": "^30.0.1",
     "lucide-static": "^1.28.0",
+    "marked": "^18.0.9",
     "obsidian": "^1.13.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.65.0",
