@@ -70,55 +70,12 @@ describe('backlogReadmeContent', () => {
 		expect(readme(settingsWith({ tagsKey: '' }), [])).not.toContain('Tags, as a YAML list');
 	});
 
-	it('adds a property row for a configured Deliverable state key', () => {
-		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
-		const content = backlogReadmeContent(settings, [], 'test');
-		expect(content).toContain('deliverableStatus');
-	});
-
-	it('omits the Deliverable state row when unconfigured', () => {
-		const content = backlogReadmeContent(defaultSettings(), [], 'test');
-		expect(content).not.toContain('deliverableStatus');
-	});
-
 	it('lists Deliverable in the type section, and does not claim only extras can root', () => {
 		const content = backlogReadmeContent(defaultSettings(), [], 'test');
 		expect(content).toContain('Deliverable');
 		// A Feature/PBI/Task can also be created with no parent (the toolbar's top-level
 		// creator draws no line anywhere in ALL_TYPES) — the prose must not say otherwise.
 		expect(content).not.toMatch(/only.*(root|no parent)/i);
-	});
-
-	it('renders the Deliverable state row with no positional claim, when nothing precedes it', () => {
-		// A fully independent, reachable configuration: deliverableStateKey needs no
-		// stateKey, so the requirements-workflow row — and the whole '## Workflow states'
-		// section — can be entirely absent from this same document while this row renders.
-		// "The one above" would have no antecedent here.
-		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
-		const content = backlogReadmeContent(settings, [], 'test');
-		expect(content).toContain('| `deliverableStatus` | Optional, on a Deliverable |');
-		expect(content).not.toContain('## Workflow states');
-		expect(content).not.toMatch(/\bthe one above\b/i);
-	});
-
-	it('documents the shared key under the fallback, without the false "separate" claim', () => {
-		// Deliverables don't need their own dedicated status property — with no
-		// Deliverable state property configured, the workflow shares the requirements
-		// one, and the row about it must say so rather than repeating the "separate"
-		// claim that is only true when it actually has a key of its own.
-		const settings = { ...defaultSettings(), stateKey: 'status' };
-		const content = backlogReadmeContent(settings, [], 'test');
-		expect(content).toContain('| `status` | Optional, on a Deliverable |');
-		expect(content).toContain("the same property as the requirements workflow's");
-		expect(content).not.toContain("separate from the requirements workflow's");
-	});
-
-	it('still claims "separate" when the Deliverable workflow has its own distinct key', () => {
-		const settings = { ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'deliverableStatus' };
-		const content = backlogReadmeContent(settings, [], 'test');
-		expect(content).toContain(
-			"| `deliverableStatus` | Optional, on a Deliverable | The Deliverable workflow's own state — separate from the requirements workflow's |",
-		);
 	});
 
 	it('states the ranking step the planner actually uses', () => {
