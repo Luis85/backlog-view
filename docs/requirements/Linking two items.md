@@ -79,6 +79,12 @@ a different control.
   never written to here — the write lands on the dependent — but offering it would make an
   excluded note part of this base's vocabulary, which is the same rule that keeps its state
   out of the Set menu.
+- **2d — the candidate stops being legal before the pick lands.** The suggester is built from
+  a moment, and the model can be rebuilt while it sits open, so choosing a candidate re-asks
+  `candidates` of the LIVE model — the same rule that built the offer — rather than trusting
+  the list the menu opened with. A pick that would now repeat a prerequisite or close a loop
+  writes nothing, and a `Notice` says so: "every offer would change something" is a promise
+  about the write, and it is only true at write time if it is checked again at write time.
 - **3a — the write takes the note out of the Base's filter.** Nothing reports it, and that
   is deliberate rather than forgotten: a filter can name the very property being written,
   so the row can leave in silence. [[The outcome report was built from one sentence]]
