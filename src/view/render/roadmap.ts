@@ -9,6 +9,7 @@ import { DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { wireTimelineDrag } from '../interactions/timelineDrag';
+import { timelineRows } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { buildRoadmap, HorizonBucket, RoadmapAxis } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
@@ -72,7 +73,12 @@ export function renderRoadmap(
 		dnd.wireScroller(treeEl);
 	} else {
 		const activeScale = scaleFor(host.zoom);
-		const timeline = renderTimeline(ctx, frameEl, roadmap.bars, {
+		// The rows the grid draws, which is the bars minus whatever a collapsed bar above
+		// them is holding shut. Asked here rather than inside `buildRoadmap`: collapse is
+		// the view's own state, and the shelf beside the grid is a statement about what the
+		// axis could not place — a row hidden by a disclosure has not become unplaced.
+		const rows = timelineRows(roadmap.bars, (path) => host.isCollapsed(path));
+		const timeline = renderTimeline(ctx, frameEl, rows, {
 			today,
 			scale: activeScale,
 			dnd,

@@ -165,19 +165,9 @@ function renderRowLead(
 	const grip = row.createDiv({ cls: 'pbl-grip', attr: { 'aria-hidden': 'true' } });
 	setIcon(grip, 'grip-vertical');
 
-	const chevron = row.createDiv({ cls: 'pbl-chevron' + (state.hasChildren ? '' : ' pbl-leaf') });
-	if (state.hasChildren) {
-		setIcon(chevron, 'chevron-right');
-		chevron.toggleClass('pbl-expanded', !state.collapsed);
-		chevron.addEventListener('click', (evt) => {
-			evt.stopPropagation();
-			// Collapse state is overridden while filtering; mutating it here
-			// would change nothing visibly until the filter clears.
-			if (host.isFiltering()) return;
-			host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
-			host.refreshSubtree(item);
-		});
-	}
+	// The tree refreshes the one subtree it changed; the dated axis's rows share this
+	// control and re-render whole, which is why what to redraw is the caller's.
+	renderChevron(host, row, item, state, () => host.refreshSubtree(item));
 
 	renderBadge(host, row, item);
 
@@ -207,6 +197,102 @@ function renderRowLead(
 		setIcon(marker, 'corner-left-down');
 		setTooltip(marker, "Not in this base's filter — shown to keep the hierarchy");
 	}
+}
+
+/**
+ * The disclosure a row draws — shared with the dated axis's rows, so there is one
+ * statement of what a chevron IS: an icon that rotates, a click that flips the tree's
+ * own collapse bit, and, where there is nothing below, the leaf placeholder that keeps
+ * every badge on the same x rather than an absence that shifts the row.
+ *
+ * Two things are the caller's, and they are the only two the surfaces do not share:
+ *
+ * - what the flip REDRAWS — the tree refreshes the subtree it changed, while the grid's
+ *   window, gridlines and full-height marks are all derived from its row set and have to
+ *   be rebuilt with it;
+ * - **who says the row is expanded**, which is decided by the ROW's role and not by
+ *   preference. A `treeitem` carries `aria-expanded` itself, so the tree passes no
+ *   `label` and this draws a plain div — decoration of a state the row already announces.
+ *   A card projection's row is `role="option"`, which does NOT support `aria-expanded`
+ *   (ARIA 1.2), so a state put there is discarded: passing a `label` makes the chevron a
+ *   real `<button>` carrying the state and that name, the same answer
+ *   `render/cardChildren.ts`'s toggle already gives on the same role.
+ *
+ *   **That is better, not settled**, and the claim is narrowed to what can be checked
+ *   here: `option` also has PRESENTATIONAL CHILDREN, so a user agent may flatten this
+ *   button and drop its role and state with it — a focusable node is generally read as
+ *   surviving that rule, and nothing in this repository can run a screen reader to find
+ *   out. What survives either way is the row's content-derived NAME, which this label
+ *   joins and, being worded "Show children"/"Hide children", flips with the state; the
+ *   ACTION's guaranteed path is the row menu's identical entry. Do not write "the state
+ *   is announced" here until a device has said so —
+ *   `docs/issues/A disclosure nested in an option role.md` holds the two redesigns that
+ *   would settle it.
+ *
+ * Everything else is one rule in one place — including the three guards, each of which
+ * had to be discovered twice before: the filter override, because `isCollapsed` reports
+ * false while a filter runs and a write here would look inert and then take effect once it
+ * cleared; the real `disabled` flag that says so on a control assistive tech can actually
+ * activate, since `pointer-events: none` stops a mouse and nothing else; and the middle
+ * click, which never fires `click` and so never meets the first guard, leaving the row's
+ * own `auxclick` to open a note from a control that means something else entirely.
+ */
+export function renderChevron(
+	host: BacklogViewHost,
+	rowEl: HTMLElement,
+	item: BacklogItem,
+	state: { hasChildren: boolean; collapsed: boolean; label?: string },
+	redraw: (heldFocus: boolean) => void,
+): void {
+	const cls = 'pbl-chevron' + (state.hasChildren ? '' : ' pbl-leaf');
+	// The leaf is a spacer and never a control, whichever form the disclosure takes.
+	if (!state.hasChildren) {
+		rowEl.createDiv({ cls });
+		return;
+	}
+	const { label } = state;
+	const chevron: HTMLElement =
+		label === undefined
+			? rowEl.createDiv({ cls })
+			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label, disabled: host.isFiltering() });
+	setIcon(chevron, 'chevron-right');
+	chevron.toggleClass('pbl-expanded', !state.collapsed);
+	chevron.addEventListener('click', (evt) => {
+		evt.stopPropagation();
+		// Read here rather than trusted from `disabled`: a click landing on the icon
+		// inside a disabled button still reaches this listener, and the div form has no
+		// `disabled` to read at all.
+		if (host.isFiltering()) return;
+		// Whether this control HELD focus, captured before the redraw that may destroy it —
+		// a caller rebuilding the whole projection has to put focus somewhere, and only
+		// this side knows whether there was any to put. Asked of the element rather than
+		// assumed from the input: a mouse click does not focus a button in every browser,
+		// and focus already elsewhere must not be dragged away from it.
+		const heldFocus = chevron.ownerDocument.activeElement === chevron;
+		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
+		redraw(heldFocus);
+	});
+	chevron.addEventListener('auxclick', (evt) => evt.stopPropagation());
+}
+
+/**
+ * The button form of the disclosure: a real control, off the tab order like every other
+ * per-row control, carrying the state its row's role cannot. `tabindex="-1"` keeps the
+ * pane's single tab stop while leaving it activatable by assistive tech, with the row
+ * menu as the documented keyboard path. `styles/tree.css` strips Obsidian's button
+ * chrome from `button.pbl-chevron`.
+ */
+function disclosureButton(
+	rowEl: HTMLElement,
+	cls: string,
+	said: { expanded: boolean; label: string; disabled: boolean },
+): HTMLElement {
+	const btn = rowEl.createEl('button', {
+		cls,
+		attr: { type: 'button', tabindex: '-1', 'aria-expanded': String(said.expanded), 'aria-label': said.label },
+	});
+	btn.disabled = said.disabled;
+	return btn;
 }
 
 /** While filtering, the matching substring lights up so hits are scannable. */

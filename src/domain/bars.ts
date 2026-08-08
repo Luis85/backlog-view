@@ -109,6 +109,57 @@ export function deriveBars(rows: BacklogItem[]): DatedAxis {
 	return axis;
 }
 
+/** One drawn row of the dated axis: a bar, and what it says about the bars below it. */
+export interface TimelineRow {
+	bar: TimelineBar;
+	/**
+	 * True when another bar of this axis hangs below this one — the chevron's whole
+	 * condition, asked of the DESCENDANTS rather than the children: a dateless Feature
+	 * between an Epic and its dated PBIs is on the shelf, not on the grid, and the Epic
+	 * still has something down there to hide.
+	 */
+	hasChildren: boolean;
+	collapsed: boolean;
+}
+
+/**
+ * The rows the grid actually draws, and the state of each one's disclosure. A bar under
+ * a collapsed bar does not draw; the collapsed bar keeps its chevron, because
+ * `hasChildren` is asked of the bars derived BEFORE any of them were hidden — the
+ * alternative is a chevron that vanishes the moment it is used.
+ *
+ * The bit is the TREE's own collapse state, reached through the predicate rather than
+ * read here: one node, one answer, whichever projection asked — and the quick filter
+ * already overrides that answer for all of them at once.
+ */
+export function timelineRows(bars: TimelineBar[], collapsed: (path: string) => boolean): TimelineRow[] {
+	const drawn = new Set(bars.map((bar) => bar.item.file.path));
+	const parents = new Set<string>();
+	for (const bar of bars) {
+		for (const path of barAncestors(bar.item, drawn)) parents.add(path);
+	}
+	return bars
+		.filter((bar) => !barAncestors(bar.item, drawn).some(collapsed))
+		.map((bar) => ({
+			bar,
+			hasChildren: parents.has(bar.item.file.path),
+			collapsed: collapsed(bar.item.file.path),
+		}));
+}
+
+/**
+ * The item's ancestors that are themselves drawn as bars. A context row or a shelved
+ * parent is stepped THROUGH rather than stopped at — it draws no bar, so it has no
+ * chevron to answer for, and the hierarchy it stands in is still the hierarchy.
+ */
+function barAncestors(item: BacklogItem, drawn: ReadonlySet<string>): string[] {
+	const found: string[] = [];
+	for (let at = item.parent; at !== null; at = at.parent) {
+		if (drawn.has(at.file.path)) found.push(at.file.path);
+	}
+	return found;
+}
+
 function placeMarker(item: BacklogItem, target: FieldReading<CivilDate>): Placement {
 	if (target.invalid) return { kind: 'shelf', reason: 'Unreadable target date' };
 	if (target.value === null) return { kind: 'shelf', reason: null };
