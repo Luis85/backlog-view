@@ -27,6 +27,10 @@ So the fallback's bracket handling is either dead code in production or a real s
 and this repository cannot tell which. [[The fake vault can hold a cache Obsidian would not
 produce]] holds the analysis; this note is the ninety seconds that settles it.
 
+**Settled below**, and the answer is neither of the two this paragraph anticipated — which
+is why the paragraph is left standing rather than rewritten. What a question looked like
+before it was answered is the part a reader cannot reconstruct.
+
 ## How to check
 
 In a vault with the plugin installed, in the folder your base points at.
@@ -69,7 +73,7 @@ distinguish. [[The fake vault can hold a cache Obsidian would not produce]] had 
 first ("a look at whether the link resolves *through the cache*") and this note drifted
 off it into something a person could actually be asked to do and still learn nothing.
 
-## What a run has to record
+## What the run found
 
 **2026-08-08, in a live vault.** With `parent: "[[No Such Note]]"` on an open note, the
 console printed nothing — `getFileCache(...)` returned a real cache object, since an error
@@ -106,9 +110,20 @@ out, and now provably so.
 
 ## Runs
 
-**2026-08-08.** The three tree-visible cases were run and passed: a resolvable link, an
-alias, and a plain unbracketed name all parent correctly. The console was not opened, so
-the deciding case is **not** answered and this note stays Open — which is the outcome the
-first version of it would have hidden, since the tree half looks like a complete pass.
-Neither follow-up is taken: `linkpathFromRawValue` keeps its bracket handling and the ten
-hand-written fixtures stay where they are, on a question rather than on a guess.
+Two runs, and the gap between them is the point rather than an accident of scheduling.
+
+**2026-08-08, first run — the tree only.** The three tree-visible cases passed: a
+resolvable link, an alias, and a plain unbracketed name all parent correctly. The console
+was not opened, so the deciding case was unanswered and the note stayed Open. Recorded at
+the time because the tree half looks like a complete pass, and a run that stopped there
+would have read as one — which is the failure mode the first version of this check would
+have hidden entirely.
+
+**2026-08-08, second run — the cache.** The console answered, and the analysis above is
+what it settled and what it did not. This is what closes the note.
+
+The first run is kept rather than overwritten. It is the evidence for
+[[A verification's instructions are prose nothing gates]]: between the two runs this check
+was rewritten twice for being unanswerable and then unrunnable, and a record showing only
+the successful run would make that look like one clean verification instead of three
+attempts.
