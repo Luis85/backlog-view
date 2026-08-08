@@ -37,21 +37,43 @@ In a vault with the plugin installed, in the folder your base points at.
   parented, still under the same note. Expected: yes, through path 1 — Obsidian resolved
   the alias, so nothing had to strip it.
 - **The deciding one: a link to a note that does not exist.** Set
-  `parent: "[[No Such Note]]"`. The child should render as an **orphan** — a parent value
-  that resolves to nothing — rather than as a root with no parent value at all. What is
-  being watched is not the outcome so much as *how it got there*: if Obsidian still
-  indexes an unresolved link in `frontmatterLinks`, path 1 handled it and the hand-rolled
-  stripper is unreachable; if it does not, the stripper is what produced this answer and
-  it stays.
+  `parent: "[[No Such Note]]"`, and then open the developer console (Ctrl/Cmd+Shift+I)
+  and ask the cache directly:
+
+  ```js
+  app.metadataCache.getFileCache(app.workspace.getActiveFile()).frontmatterLinks
+  ```
+
+  With `Child.md` OPEN, which is where you already are after editing it — and which is why
+  this asks the workspace rather than naming a file. Two earlier versions named one: by
+  path (`Child.md`), which is null the moment the base points at a folder, and by basename,
+  which picks whichever match comes first if the vault holds two. Both found by review, and
+  the third version is shorter than either.
+
+  An entry `{ key: 'parent', link: 'No Such Note' }` means Obsidian indexes unresolved
+  links and path 1 handled it. `undefined` or an empty array means it does not, and the
+  hand-rolled stripper is what produced the answer on screen.
 - **A plain name, no brackets.** `parent: Some Existing Note`. Should parent correctly.
   This one is path 2's stated purpose and is expected to keep working either way — it is
   the control, and it is why the fallback exists at all.
 
+**Why the console and not the tree.** The first version of this check asked a runner to
+watch the unresolved case *in the UI* and report "how it got there". That was
+unanswerable, and provably so: both paths return
+`{ file: null, hasValue: true, explicitRoot: false }` for a bracketed value that resolves
+to nothing, so the note renders as an orphan either way and no rendered difference exists
+to see. A run against that instruction can only ever report the outcome both branches
+share — which is the same defect as a passing test that would pass with the code deleted,
+one layer out: an instrument that cannot distinguish the two states it was written to
+distinguish. [[The fake vault can hold a cache Obsidian would not produce]] had it right
+first ("a look at whether the link resolves *through the cache*") and this note drifted
+off it into something a person could actually be asked to do and still learn nothing.
+
 ## What a run has to record
 
-For the unresolved-link case, one sentence: whether the note still ended up parented to
-nothing *and* whether anything in the UI distinguishes it from a note with no parent at
-all. That answer decides one of two follow-ups, and neither should be taken before it:
+For the unresolved-link case, what the console printed — the `frontmatterLinks` value
+itself, not a summary of it. That answer decides one of two follow-ups, and neither
+should be taken before it:
 
 - **Obsidian indexes unresolved links** → the bracket handling in `linkpathFromRawValue`
   is dead. Delete it, teach `FakeVault.addFile` to index bracketed values, and move the
@@ -59,3 +81,12 @@ all. That answer decides one of two follow-ups, and neither should be taken befo
 - **It does not** → the fallback is load-bearing for exactly that case. Keep it, and add a
   fixture that reaches it *honestly* — a bracketed value with no link entry, which is then
   a cache Obsidian really does produce.
+
+## Runs
+
+**2026-08-08.** The three tree-visible cases were run and passed: a resolvable link, an
+alias, and a plain unbracketed name all parent correctly. The console was not opened, so
+the deciding case is **not** answered and this note stays Open — which is the outcome the
+first version of it would have hidden, since the tree half looks like a complete pass.
+Neither follow-up is taken: `linkpathFromRawValue` keeps its bracket handling and the ten
+hand-written fixtures stay where they are, on a question rather than on a guess.

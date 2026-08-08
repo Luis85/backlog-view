@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, wikilinks } from "./docs-markdown.mjs";
+import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -20,16 +20,43 @@ import { collapsed, containerAt, headings, localLinks, markers, prose, proseWith
 
 const DOCS = "docs";
 const ADRS = path.join(DOCS, "adrs");
-const LEGAL_CHILDREN = {
-	Epic: new Set(["Feature", "Issue", "Bug"]),
-	Feature: new Set(["PBI", "Issue", "Bug"]),
-	PBI: new Set(["Task", "Issue", "Bug"]),
+/**
+ * The plugin's OWN rule, applied to the register that documents it — so this table has to
+ * track `childTypeChoices` (`src/domain/itemTypes.ts`), which answers
+ * `[ladderChild, ...EXTRA_TYPES]` for any parent on the ladder. The three extra types are
+ * therefore one set repeated at each rung, and each of them takes Tasks: an extra type's
+ * rank is pinned at `EXTRA_TYPE_RANK`, the rung whose children are the deepest level.
+ *
+ * `Deliverable` was missing here for the whole of the increment that introduced it, which
+ * is why the register could not hold the very type the plugin had just started shipping —
+ * and `docs/README.md` went on calling the folders "the feature demonstrating itself"
+ * while the layout was the plugin's minus one. Adding a type to `EXTRA_TYPES` means adding
+ * it here too.
+ */
+const EXTRA = ["Issue", "Bug", "Deliverable"];
+/**
+ * NULL-PROTOTYPE, because every key read against it is user data — a `type:` a note
+ * declares, or a type name written into the README's hierarchy table. A plain object
+ * literal answers `LEGAL_CHILDREN["toString"]` with an inherited FUNCTION, which is
+ * truthy: a note typed `toString` sailed past the `unknown type` check for as long as this
+ * table has existed, and the table-versus-gate rule added beside it would have gone one
+ * worse and crashed the run trying to spread that function.
+ *
+ * The plugin already learned this three times over on three different tables — `byName`
+ * (`src/domain/settings.ts`) exists for exactly it — and the gate that checks the register
+ * had not. Same defect, one directory over.
+ */
+const LEGAL_CHILDREN = Object.assign(Object.create(null), {
+	Epic: new Set(["Feature", ...EXTRA]),
+	Feature: new Set(["PBI", ...EXTRA]),
+	PBI: new Set(["Task", ...EXTRA]),
 	Task: new Set(),
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
+	Deliverable: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
-};
+});
 /**
  * The types that legitimately have no parent. An `Epic` is a root by POSITION — the top
  * of the ladder — and a `Milestone` is a root by NATURE: a release date is owned by the
@@ -853,6 +880,103 @@ for (const file of sources) {
 	// Notes write `/`; `collectTs` returns the platform separator. The old substring check
 	// had the same split and nobody had run this on Windows to find out.
 	if (!specified.has(file.split(path.sep).join("/"))) fail("docs", `no use case or ADR specifies ${file}`);
+}
+
+// ------------------------------------------------- the documented hierarchy IS the gate's
+/**
+ * `docs/README.md`'s hierarchy table against `LEGAL_CHILDREN`, in both directions.
+ *
+ * The README calls that table the authoritative statement of every legal pair and says
+ * this script enforces it — and until now it enforced the register against
+ * `LEGAL_CHILDREN` while nothing held `LEGAL_CHILDREN` to the table. So `Deliverable`
+ * reached the plugin, then reached this gate, and reached the table only when a reviewer
+ * read both: three surfaces, each complete on its own. The rule was written as prose
+ * saying "add it in all three places", which is the shape this register keeps proving does
+ * not hold — a comment stating a rule is not a check.
+ *
+ * Now it is one. A type in the table and not in the gate fails; a type in the gate and not
+ * in the table fails; a children list that differs either way fails. The table's PARENT
+ * column is checked as the inverse of the same map, because a contributor reads that
+ * column first and an inverse nobody derives is a second place to be wrong.
+ */
+const HIERARCHY_HEADINGS = ["Type", "Parent may be", "Children may be"];
+const readme = await readFile(path.join(DOCS, "README.md"), "utf8");
+const hierarchies = tablesWith(readme, HIERARCHY_HEADINGS);
+if (hierarchies.length === 0) {
+	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
+} else if (hierarchies.length > 1) {
+	// Checking the first would validate one document while a reader sees two — the
+	// duplicate-ROW defect one level up, found in the same review.
+	fail("docs/README.md", `${hierarchies.length} tables headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented twice`);
+} else {
+	const hierarchy = hierarchies[0];
+	// A row may name several types at once (`Issue` / `Bug` / `Deliverable` share one), so
+	// the table is flattened to the same type → children shape the gate holds.
+	const documented = new Map();
+	const documentedParents = new Map();
+	for (const [index, cells] of hierarchy.entries()) {
+		const [types, parents, children] = cells;
+		// A short row does NOT get padded — mdast reports the cells that are there — so the
+		// destructuring above binds `undefined` and the read below threw a TypeError, taking
+		// the whole gate down with no report at all. Measured: `| \`Feature\` | \`Epic\` |`
+		// crashed `npm run docs` rather than failing it, which is the shape
+		// `docs/issues/A gate that did not run looks like one that passed.md` is about. The
+		// row is reported and then ABANDONED, because everything after this reads three cells.
+		if (cells.length !== HIERARCHY_HEADINGS.length) {
+			fail("docs/README.md", `hierarchy table row ${index + 1} has ${cells.length} cells, not ${HIERARCHY_HEADINGS.length}`);
+			continue;
+		}
+		for (const [column, cell] of cells.entries()) {
+			// A name written WITHOUT backticks disappears: `code` reports the spans a cell holds,
+			// so a loop over them never sees it and the cell reads as agreeing with the gate.
+			// `| Spike | Epic | *(nothing)* |` left the table advertising a type the gate refuses,
+			// and `` `Feature`, …, Spike `` did the same one column over. Both measured against the
+			// real register before being fixed; both passed.
+			//
+			// CAPITALISATION is the rule, which is as far as this goes without reading English:
+			// every type is a capitalised word and the prose here is lowercase connective tissue.
+			// A type spelled in all-lowercase prose still slips through, and so does a name hidden
+			// in markup — struck through, wrapped in `<del>`, quoted in a blockquote. Those were
+			// each closed and then deliberately REMOVED: they defend against a maintainer
+			// obfuscating the register rather than mistyping it, which is not what this table is
+			// for, and the tighter rules would have false-alarmed on the first legitimate sentence
+			// anyone added to it. `docs/issues/A rule chased past the mistakes it prevents.md`.
+			const loose = cell.text.match(/\p{Lu}[\p{L}\p{M}]*/gu);
+			if (loose) {
+				fail("docs/README.md", `hierarchy table row ${index + 1} column ${column + 1} has ${loose.join(", ")} outside a code span`);
+			}
+		}
+		// Distinct from the rule above, and not covered by it: a cell holding no name at all.
+		if (types.code.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);
+		for (const type of types.code) {
+			// A second row for a type is not a merge, it is a contradiction — and flattening
+			// with `set` would keep the last one and call the table consistent. Found in
+			// review: a stale `Deliverable` row left above the grouped
+			// `Issue` / `Bug` / `Deliverable` row would have passed this check silently,
+			// which is the false pass this whole rule exists to remove.
+			if (documented.has(type)) fail("docs/README.md", `the hierarchy table gives ${type} more than one row`);
+			documented.set(type, new Set(children.code));
+			documentedParents.set(type, new Set(parents.code));
+		}
+	}
+	const named = (set) => [...set].sort().join(", ") || "(nothing)";
+	for (const type of new Set([...documented.keys(), ...Object.keys(LEGAL_CHILDREN)])) {
+		const table = documented.get(type);
+		const gate = LEGAL_CHILDREN[type];
+		if (!table) fail("docs/README.md", `the hierarchy table omits ${type}, which LEGAL_CHILDREN allows`);
+		else if (!gate) fail("docs/README.md", `the hierarchy table names ${type}, which LEGAL_CHILDREN does not allow at all`);
+		else if (named(table) !== named(gate)) {
+			fail("docs/README.md", `${type} may hold ${named(gate)}, and the hierarchy table says ${named(table)}`);
+		}
+	}
+	// The inverse: X may parent Y exactly when Y is one of X's legal children.
+	for (const [type, parents] of documentedParents) {
+		if (!LEGAL_CHILDREN[type]) continue;
+		const real = new Set(Object.keys(LEGAL_CHILDREN).filter((p) => LEGAL_CHILDREN[p].has(type)));
+		if (named(parents) !== named(real)) {
+			fail("docs/README.md", `${type} may hang from ${named(real)}, and the hierarchy table says ${named(parents)}`);
+		}
+	}
 }
 
 // --------------------------------------------------------------------------- report

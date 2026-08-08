@@ -13,6 +13,7 @@ demonstrating itself:
 | `tasks/` | Engineering work done to keep it maintainable | `Task` |
 | `issues/` | Open questions, verifications and recorded decisions | `Issue` |
 | `bugs/` | Defects, with what was learned from them | `Bug` |
+| `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
@@ -170,12 +171,24 @@ Every pair holds:
 
 | Type | Parent may be | Children may be |
 | --- | --- | --- |
-| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug` |
-| `Feature` | `Epic` | `PBI`, `Issue`, `Bug` |
-| `PBI` | `Feature` | `Task`, `Issue`, `Bug` |
-| `Task` | `PBI`, `Issue`, `Bug` | *(nothing)* |
-| `Issue` / `Bug` | `Epic`, `Feature` or `PBI` | `Task` |
+| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Deliverable` |
+| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Deliverable` |
+| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Deliverable` |
+| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` | *(nothing)* |
+| `Issue` / `Bug` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
+
+The three EXTRA types travel together — `Issue`, `Bug` and `Deliverable` are one set
+repeated at each rung, which is what `childTypeChoices` answers as
+`[ladderChild, ...EXTRA_TYPES]` and what `docs-check.mjs` spells as its own `EXTRA`.
+
+**This table is checked against that map, both ways.** `docs-check.mjs` reads the table out
+of this file and compares it to `LEGAL_CHILDREN`: a type in one and not the other fails, a
+children list that differs fails, and the parent column is checked as the inverse of the
+same map. So the table cannot quietly fall behind the gate — which it did, for the whole
+increment that introduced `Deliverable`, while this section went on calling itself
+authoritative. What is still only prose is the FOLDER table above: nothing ties a type to
+its folder, because nothing in the register depends on one.
 
 The plugin does not *enforce* this — the rules decide what is offered, never what is
 refused — which is exactly why the register has to hold to it by hand.

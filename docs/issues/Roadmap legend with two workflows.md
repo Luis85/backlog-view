@@ -2,7 +2,7 @@
 type: Issue
 order: 50
 parent: "[[Smoke test the roadmap]]"
-status: Open
+status: Done
 priority: P2
 area: verification
 cadence: release
@@ -38,15 +38,24 @@ correctly, so there is nothing to fix there. Producing a second one is a deliber
    carry (`docStatus` is the name used throughout the tests).
 2. Set **Deliverable states** to a list that differs from the requirements one — e.g.
    `Concept, Draft, In review, Published` — and **Deliverable done values** to `Published`.
-3. The register holds no `Deliverable`-typed notes, and cannot: `docs-check.mjs` refuses
-   the type here, so the schema this backlog documents does not include it. Make two or
-   three scratch notes OUTSIDE `docs/` — `type: Deliverable`, a `docStatus`, and a
-   `start`/`due` pair so they draw — and point a scratch base at that folder.
+3. Two or three `Deliverable` notes carrying a `docStatus` and a `start`/`due` pair, so
+   they draw. They belong in `docs/deliverables/`, under an `Epic`, a `Feature` or a
+   `PBI` — the register admits the type and documents the folder as of this increment.
+   The gate wants what it wants of any note there: `type`, `order`, `status`, a `parent`
+   link, and a unique basename.
 
-That setup cost is itself worth recording as a finding: this projection has a
-configuration the register cannot demonstrate on itself, which is the one place `docs/`'s
-own "the folders are the feature demonstrating itself" claim (`docs/README.md`) does not
-reach.
+**This step used to say the opposite**, and anyone re-running the check before that
+increment was told to make scratch notes outside `docs/` because `docs-check.mjs` refused
+the type — true when it was written, false now, and found by review while the note itself
+was being closed. Worth leaving visible rather than quietly overwriting: a `cadence:
+release` note is a checklist to re-run, so its *setup* rots exactly like code and nothing
+gates it. The register's paths and links are checked; its instructions are prose.
+
+What survives of the old finding, in a narrower form: the register can now hold the notes
+but still does not demonstrate this configuration, because `docs/Product Backlog.base`
+names no `deliverableStateProperty` and register notes carry `status` rather than a
+second workflow's key. Both halves of step 1 and 2 are still a deliberate act — the
+difference is that they are now an act performed on `docs/` rather than beside it.
 
 ## How to check
 
@@ -86,3 +95,25 @@ Switch to the roadmap's dated axis, with both workflows configured as above.
 
 Each point above, pass or fail, in this note. A run that reports "looked fine" leaves the
 colour-pair question exactly as open as it is now — that one wants a sentence, not a tick.
+
+## Runs
+
+**2026-08-08.** Reported as passing with nothing flagged. That settles the six bullets
+that are genuinely yes/no — the two labelled sections and their weight, both done values
+drawing the same green, a bar matching its own swatch, the narrow pane breaking between
+sections rather than inside one, and both single-workflow configurations. Those were the
+feature's structural risk and they are answered under a real theme now, which is what no
+harness could do.
+
+**The colour pairs, asked separately and answered.** `Ready`/`Concept`, `Active`/`Draft`
+and `Review`/`In review` each share a palette slot, and the runner reported that none of
+the three made them look twice: the section headings carry enough context that a repeated
+colour never reads as the wrong workflow. That is the judgement this note existed to
+collect, and it had to be asked for on its own — a run reporting no defects says nothing
+about it, since the pairs are expected rather than broken.
+
+So the four-slot limit is **accepted rather than merely documented**, and a redesign of
+`STATE_COLOR_SLOTS` is not owed. What would reopen it: a vocabulary long enough to wrap a
+slot twice within ONE workflow, where no heading separates the repeat.
+
+Closed.

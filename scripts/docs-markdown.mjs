@@ -260,3 +260,67 @@ export function markers(text, label) {
 	}
 	return found;
 }
+
+/**
+ * EVERY GFM table whose header row IS `headings` — each table as its rows, each row as its
+ * cells, each cell as `{ code, text }`: the `code` spans it holds and the prose around
+ * them.
+ *
+ * EXACTLY those headings, not a prefix. A prefix match selects a table that grew a fourth
+ * column, and a caller destructuring three of them reads a document with more in it — a
+ * `Children may not be` column, correctly formatted, invisible to every rule. Found in
+ * review.
+ *
+ * Code spans are what a rule compares, because that is how this register writes a type or
+ * a key — `` `Deliverable` ``. Prose around them (`*(nothing — it is a root)*`, "or") is a
+ * human's connective tissue and no rule should try to understand it, which would be
+ * reading English — the thing `docs/issues/Tests do not read English.md` says not to
+ * build.
+ *
+ * It is REPORTED rather than understood, and that is the difference. Dropping it silently
+ * is how a name written without backticks disappeared from a cell twice — once in the type
+ * column, then again in the relation columns after the first was fixed. A caller cannot
+ * notice what it never receives, so the prose comes back and each caller says what its own
+ * table allows to be in it.
+ *
+ * Asked of the parser, so a pipe inside a code span cannot split a cell.
+ *
+ * TOP LEVEL only, for the reason `headings` above is: a table inside a blockquote renders
+ * as a quotation and is not the document's own statement. Kept when the rest of this
+ * round's hardening was removed, because it is one line and it matches a decision this
+ * file had already taken for the same reason.
+ *
+ * PLURAL deliberately. The first version returned the first match, which answers a
+ * question nobody asked: with two tables under one heading set — a merge leaves one, an
+ * unfenced example leaves one — "the rows of the table" has no single answer, and picking
+ * the first validates one document while a reader sees two. Found in review, as the same
+ * defect one level up from duplicate ROWS. An empty array is a real answer (no such
+ * table) and a caller has to tell it from a table that is empty.
+ */
+export function tablesWith(text, headings) {
+	// The cell's own descendants, never a source slice: mdast gives a table cell a position
+	// that INCLUDES its leading pipe, so slicing yields "| Type" and re-parsing that is one
+	// more parser to get wrong. Walking the node the parser already built asks nothing.
+	const words = (cell) => [...walk(cell)].filter((n) => n.type === "text").map((n) => n.value).join("").trim();
+	const codes = (cell) => [...walk(cell)].filter((n) => n.type === "inlineCode").map((n) => n.value);
+	const found = [];
+	for (const node of tree(text).children) {
+		if (node.type !== "table" || node.children.length === 0) continue;
+		const head = node.children[0].children;
+		if (head.length !== headings.length) continue;
+		// PLAIN TEXT, not merely the right words. `words` reads text nodes and ignores the
+		// rest, so `<del>Parent may be</del>` reads as `Parent may be` and matched — the
+		// document marking that column deleted while the check went on comparing it. The
+		// header cells are not in what this returns, so no caller-side whitelist could ever
+		// have reached them: it has to be here, where the table is identified.
+		if (!headings.every((want, i) => words(head[i]) === want)) continue;
+		found.push(node.children.slice(1).map((row) => row.children.map((cell) => ({ code: codes(cell), text: words(cell) }))));
+	}
+	return found;
+}
+
+/** Every node beneath one, itself included — `nodes` over a subtree rather than a document. */
+function* walk(node) {
+	yield node;
+	for (const child of node.children ?? []) yield* walk(child);
+}

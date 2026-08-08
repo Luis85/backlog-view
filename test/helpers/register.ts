@@ -134,9 +134,44 @@ export function runRejections(cases: RejectionCase[]): void {
  * genuinely green is therefore load-bearing rather than incidental, and
  * `checkerAccepts.test.ts` asserts it before asserting anything about a variation of it.
  */
+/**
+ * The hierarchy the register documents, which `docs-check.mjs` now checks against its own
+ * `LEGAL_CHILDREN` rather than trusting. A valid register states it, so the corpus states
+ * it: without this every planted tree fails as "the hierarchy is documented nowhere",
+ * which is the checker being right about a fixture that was not a register.
+ *
+ * It is a LITERAL, deliberately, though it duplicates the gate's map. The test cannot
+ * import `docs-check.mjs` — a script with top-level await and `process.exit` — and
+ * generating it from the same source the check compares against would make the check
+ * compare a thing with itself. The cost is that adding a type means editing here too; the
+ * corpus fails loudly and by name when someone forgets, which is exactly the enforcement
+ * this whole change is about.
+ */
+export function hierarchyTable(): string {
+	return HIERARCHY_TABLE;
+}
+
+/** The same table with one type's row taken out, for the "the table omits it" case. */
+export function withoutHierarchyRow(type: string): string {
+	return HIERARCHY_TABLE.split('\n')
+		.filter((line) => !line.startsWith(`| \`${type}\``))
+		.join('\n');
+}
+
+const HIERARCHY_TABLE = [
+	'| Type | Parent may be | Children may be |',
+	'| --- | --- | --- |',
+	'| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Deliverable` |',
+	'| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Deliverable` |',
+	'| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Deliverable` |',
+	'| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` | *(nothing)* |',
+	'| `Issue` / `Bug` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |',
+	'| `Milestone` | *(nothing — a root by nature)* | *(nothing)* |',
+].join('\n') + '\n';
+
 export function baseRegister(): Register {
 	return {
-		'docs/README.md': '# docs\n\nThe register.\n',
+		'docs/README.md': `# docs\n\nThe register.\n\n${HIERARCHY_TABLE}`,
 		'docs/adrs/README.md': '# ADRs\n\n- [0001](0001-the-first-decision.md)\n',
 		'docs/adrs/0001-the-first-decision.md': adr(1, 'the-first-decision'),
 		'docs/requirements/Thing.md': note('Epic', 10, null, '# Thing\n\nWhy this exists.\n'),

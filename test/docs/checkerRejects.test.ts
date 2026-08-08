@@ -11,13 +11,13 @@ import { adr, note, runRejections, useCase } from '../helpers/register';
  * and recorded in prose, so each tightening re-derived the evidence or did without it.
  *
  * These are those plantings, executable. Each case is **one edit** to the valid corpus in
- * `checkerAccepts.test.ts`, so a failure names a rule rather than a document. Two sibling
- * files hold the groups that outgrew this one — the ADR rules, and the `**Checked by**`
- * citations; the accept direction is `checkerAccepts.test.ts`, and none of the four is
- * worth much alone.
+ * `checkerAccepts.test.ts`, so a failure names a rule rather than a document. Three
+ * sibling files hold the groups that outgrew this one — the ADR rules, the `**Checked
+ * by**` citations, and the hierarchy table against `LEGAL_CHILDREN`; the accept direction
+ * is `checkerAccepts.test.ts`, and none of the five is worth much alone.
  *
  * **The guarantee, stated exactly.** Every place the gate can report a problem has at
- * least one planted case across the three rejection files, so a rule deleted from
+ * least one planted case across the four rejection files, so a rule deleted from
  * `docs-check.mjs` turns one of them red.
  *
  * That was **measured, not read**: each of the 45 report sites was neutered in turn and
@@ -89,11 +89,32 @@ describe('the backlog tree', () => {
 			'unknown type "Spike"',
 		],
 		[
+			// The same prototype hazard at the OLDER call site: a note declaring
+			// `type: toString` read the inherited function as its rule and slipped past
+			// `unknown type` entirely, for as long as this table has been a plain object.
+			'a note typed after an Object.prototype member',
+			(files) => {
+				files['docs/issues/Odd.md'] = note('toString', 20, 'Thing', '# Odd\n\n## The decision\n\nWe did it.\n');
+			},
+			'unknown type "toString"',
+		],
+		[
 			'a parent/child pair the hierarchy does not allow',
 			(files) => {
 				files['docs/tasks/Straight to the epic.md'] = note('Task', 20, 'Thing', '# Straight to the epic\n\nWork.\n');
 			},
 			'Task under Epic is not a legal pair',
+		],
+		[
+			// The extra types are one set repeated at each rung, so a Deliverable is legal
+			// wherever an Issue or a Bug is and illegal wherever they are — under a Task,
+			// which is the deepest level and holds nothing at all.
+			'a Deliverable under a Task, which holds nothing',
+			(files) => {
+				files['docs/tasks/The work.md'] = note('Task', 10, 'Doing the thing', '# The work\n\nWork.\n');
+				files['docs/deliverables/The handout.md'] = note('Deliverable', 10, 'The work', '# The handout\n\nA thing.\n');
+			},
+			'Deliverable under Task is not a legal pair',
 		],
 		[
 			'a root that is not an Epic',
@@ -486,7 +507,7 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 
 describe('the corpus covers every rule', () => {
 	it('is built against every place the gate can report a problem', async () => {
-		// The two rejection files were written by enumerating the gate's report sites and
+		// The rejection files were written by enumerating the gate's report sites and
 		// planting one violation per site. That mapping is hand-made and would rot the
 		// moment a rule was added — the exact drift this register removed hand-maintained
 		// counts to avoid — so it is pinned rather than described. A new `fail(` moves this
@@ -500,6 +521,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('scripts/docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(52);
+		expect(sites.length).toBe(62);
 	});
 });
