@@ -96,11 +96,11 @@ which is the whole finding.
 
 For the strip to change an outcome, a bracketed value would need no link entry AND a target
 that exists. **That pair cannot occur**, measured in both directions: a resolvable link has
-an entry (second run) and an unresolvable one has none (first run). Every bracketed value
+an entry (third run) and an unresolvable one has none (second run). Every bracketed value
 therefore either takes path 1 or resolves to nothing on path 2, and in neither case does
 removing the brackets change the answer.
 
-Stated in two runs rather than one because the first version of this paragraph asserted the
+Split across two console runs rather than one because the first version of this paragraph asserted the
 biconditional off half the evidence, and review caught it. The resolvable cases had been
 watched in the TREE, where both paths parent correctly and neither can be told from the
 other — the same mistake this note was rewritten to stop making, made again one section
@@ -110,7 +110,7 @@ So the position is narrower than either branch offered: **the bracket handling c
 change an outcome for the form that was measured, and it is kept anyway.** Two lines, in a
 pure function, and what would justify deleting them is measurement of the spellings nobody
 read the cache for — the alias `[[Epic|The Epic]]` and the heading ref `[[Epic#Section]]`.
-Those were watched parenting correctly and no more. Asking for a third vault session to
+Those were watched parenting correctly and no more. Asking for a fourth vault session to
 retire two lines is a worse trade than the two lines, and the comment beside them says what
 they are.
 
@@ -120,20 +120,25 @@ out, which is now measured rather than deduced.
 
 ## Runs
 
-Two runs, and the gap between them is the point rather than an accident of scheduling.
+Three runs, and the gaps between them are the point rather than an accident of scheduling.
+Each is numbered here and referred to by number above, so which observation established
+which half is never a matter of reading order.
 
-**2026-08-08, first run — the tree only.** The three tree-visible cases passed: a
-resolvable link, an alias, and a plain unbracketed name all parent correctly. The console
-was not opened, so the deciding case was unanswered and the note stayed Open. Recorded at
-the time because the tree half looks like a complete pass, and a run that stopped there
-would have read as one — which is the failure mode the first version of this check would
-have hidden entirely.
+**First run — the tree only.** The three tree-visible cases passed: a resolvable link, an
+alias, and a plain unbracketed name all parent correctly. The console was not opened, so
+the deciding case was unanswered and the note stayed Open. Recorded at the time because the
+tree half looks like a complete pass, and a run that stopped there would have read as one.
 
-**2026-08-08, second run — the cache.** The console answered, and the analysis above is
-what it settled and what it did not. This is what closes the note.
+**Second run — the cache, unresolved.** `parent: "[[No Such Note]]"` has no
+`frontmatterLinks` entry. Half the question, and the note briefly claimed the whole of it.
 
-The first run is kept rather than overwritten. It is the evidence for
-[[A verification's instructions are prose nothing gates]]: between the two runs this check
-was rewritten twice for being unanswerable and then unrunnable, and a record showing only
-the successful run would make that look like one clean verification instead of three
-attempts.
+**Third run — the cache, resolvable.** `parent: "[[Epic]]"` beside a real `Epic.md` **has**
+an entry. This is what closes the note, and it is a separate run because review caught the
+conclusion being written from the second alone.
+
+All three are kept rather than collapsed into the one that worked. Between them this check
+was rewritten twice — for asking an observation that does not exist, and for a console
+expression that could not run — and its conclusion was narrowed once for outrunning its
+evidence. A record showing only the successful run would make that look like one clean
+verification instead of four attempts, and it is the evidence
+[[A verification's instructions are prose nothing gates]] rests on.

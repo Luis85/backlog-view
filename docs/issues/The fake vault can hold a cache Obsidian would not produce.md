@@ -54,8 +54,8 @@ than the path a vault actually takes.
 
 ## What the vault answered
 
-**2026-08-08.** [[Parent links Obsidian parsed, and ones it did not]] asked the metadata
-cache directly: a note whose parent link resolves to nothing has **no `frontmatterLinks`
+**2026-08-08, second run.** [[Parent links Obsidian parsed, and ones it did not]] asked the
+metadata cache directly: a note whose parent link resolves to nothing has **no `frontmatterLinks`
 entry at all**.
 
 That is ONE half of a biconditional, and this note first said "so Obsidian indexes a link
@@ -64,7 +64,7 @@ cases had been watched in the TREE, and a correctly parented note is an outcome 
 fallback produces just as well; nothing looked at their cache. Caught in review, one commit
 after the same claim had been written into `test/CLAUDE.md` as a fixture rule.
 
-**Second run, same day.** The console was run again on a note whose parent link resolves,
+**Third run, same day.** The console was run again on a note whose parent link resolves,
 and `frontmatterLinks` **has an entry**. Both directions are now measured, and the
 biconditional that was asserted early is true: Obsidian indexes a frontmatter link exactly
 when it resolves.
@@ -91,7 +91,7 @@ than on a measurement. A value that parser declines to index while still naming 
 would make them load-bearing again, silently. Kept, with the comment in `model.test.ts`
 saying what the tests around it do and do not cover.
 
-## What the second run settled
+## What the third run settled
 
 Every consequence that was hanging on it:
 
