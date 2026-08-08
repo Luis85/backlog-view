@@ -142,6 +142,29 @@ export function stateKeyFor(settings: BacklogSettings, item: BacklogItem): strin
 }
 
 /**
+ * Both halves of an item's own workflow reading — its state value and whether that
+ * value counts as done — taken together, so a caller cannot take half of the pair (the
+ * same argument `HorizonSource` in `domain/roadmap.ts` already makes for the
+ * placement). The same "an item's workflow follows its TYPE" rule `stateKeyFor` states
+ * for the KEY, stated once more for the VALUE: a Deliverable's own reading is the
+ * Deliverable workflow's value and done flag, never the requirements pair sitting on
+ * the same note. Before this existed, the chip and the menu each hand-wrote the same
+ * `isDeliverableType(item) ? deliverable : requirements` ternary — two copies of one
+ * rule is how they came to disagree in the first place.
+ */
+export interface WorkflowReading {
+	value: string | null;
+	done: boolean;
+}
+
+/** An item's own workflow reading, by its type — never a value from the other workflow. */
+export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
+	return isDeliverableType(item.typeName)
+		? { value: item.deliverableStateValue, done: item.deliverableDone }
+		: { value: item.stateValue, done: item.done };
+}
+
+/**
  * Whether this base has a state column at all: EITHER workflow having a key is enough,
  * because a vault that configures only the Deliverable one still has Deliverable rows
  * with a state to show. Rows whose own workflow has no key render an empty cell — every

@@ -3,8 +3,7 @@ import { BacklogViewHost, ChipProp } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
-import { hasStateColumn, stateKeyFor } from '../../domain/board';
-import { isDeliverableType } from '../../domain/itemTypes';
+import { hasStateColumn, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings, resolvedDeliverableStateKey } from '../../domain/settings';
@@ -410,9 +409,7 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
  */
 function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
 	if (!stateKeyFor(host.settings, item)) return;
-	const deliverable = isDeliverableType(item.typeName);
-	const value = deliverable ? item.deliverableStateValue : item.stateValue;
-	const done = deliverable ? item.deliverableDone : item.done;
+	const { value, done } = ownWorkflowReading(item);
 	const cls = 'pbl-state-chip' + (done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
 
 	// A note the Base excluded is context: show the state it has, never offer to

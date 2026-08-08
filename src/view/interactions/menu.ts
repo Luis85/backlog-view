@@ -7,7 +7,7 @@ import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
-import { BoardModel, cardPaths, deliverablesWorkflow, hiddenMatches, stateKeyFor } from '../../domain/board';
+import { BoardModel, cardPaths, deliverablesWorkflow, hiddenMatches, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -373,7 +373,7 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 		deliverable && model
 			? deliverablesWorkflow(model, host.settings).values
 			: stateMenuValues(host.settings, model?.observedStates ?? []);
-	const current = deliverable ? item.deliverableStateValue : item.stateValue;
+	const current = ownWorkflowReading(item).value;
 	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
 	return all.map((state) => ({ state, label: state }));
