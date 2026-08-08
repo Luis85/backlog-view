@@ -91,11 +91,19 @@ one write gate, one undo history. On top of them:
   header, a breadcrumb, or an inert context row when focus lands on its level. Never
   counted, never written, never a source of buckets, spans or vocabulary.
 
-Two neighbouring ideas are deliberately out of scope, so they are re-decided knowingly
-rather than rediscovered: dependency arrows (the schema has no dependency field, and
-this epic adds no data model) and a computed health signal (the surveyed trackers treat
-health as a hand-set judgement; a hand-set property already renders as a chip through
-the property columns, so it needs no feature here).
+Two neighbouring ideas were deliberately out of scope, so they would be re-decided
+knowingly rather than rediscovered. One of them has been: **dependency arrows** were
+refused because the schema had no dependency field and this epic adds no data model, and
+on 2026-08-08 [[Dependencies]] took the question up and found the second clause did not
+apply — a prerequisite list is one more user-named optional property, resolved like
+`parent` and written through the same gate, so nothing about it is a second graph. The
+refusal it keeps is the stronger one that was never stated as a scope boundary: no
+dependency ever moves a bar or writes a date, because that would write to notes the user
+did not touch on the strength of a drawing.
+
+The other stands: a computed health signal (the surveyed trackers treat health as a
+hand-set judgement; a hand-set property already renders as a chip through the property
+columns, so it needs no feature here).
 
 ## Shape in the codebase
 
