@@ -219,6 +219,12 @@ change to `styles.css` or to the toolbar's markup still needs eyes. `npm run tes
 is now the one-command path to those eyes, and this note stands as the checklist to
 re-run — reopen it, don't rewrite it.
 
+**Reopened again 2026-08-08 (the `Idea` badge).** One line to check, and it is the one
+kind this repository can never see: the new extra type's badge — a `lightbulb` icon and
+`--color-green-rgb` — reading as distinct from `Issue` (pink) and `Bug` (red) in both
+schemes, and its icon resolving at 11px rather than drawing a blank. The browser harness
+shows the shape and the layout; the colour is the stub's, not a vault's.
+
 **Reopened 2026-08-02**, exactly that way: the roadmap section above is new and nothing
 in it has been looked at. Two increments of layout — the buckets, the timeline, the
 shelf's sticky trick — plus the horizon writes' own affordances shipped on tests that

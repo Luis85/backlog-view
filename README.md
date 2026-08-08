@@ -27,9 +27,9 @@ Azure DevOps Boards.
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
-  - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue` and
-    `Bug` that sit beside it rather than on it, or `Milestone` — a marker on neither, which
-    states a date rather than work.
+  - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
+    `Bug` and `Idea` that sit beside it rather than on it, or `Milestone` — a marker on
+    neither, which states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
@@ -303,29 +303,35 @@ parent done in a base that hides done items): taking that change back is exactly
 undo is for. Tags are undone as an add/remove of the same tags rather than as a
 snapshot, so tags you added yourself in between stay.
 
-### Issues and bugs sit beside the ladder
+### Issues, bugs and ideas sit beside the ladder
 
 `Epic → Feature → PBI → Task` is a ladder: each level's children are the level below.
 Some work does not fit a rung. A **Bug** breaks down into Tasks whether it was raised
 against an Epic, a Feature or a PBI — its position says nothing about what it contains.
 
-So `Issue` and `Bug` are **extra types** rather than a fifth level, and two things follow:
+The same is true of an **Idea**: a thought about the portal and a thought about one
+screen of it are the same kind of thing, and neither is a Feature.
+
+So `Issue`, `Bug` and `Idea` are **extra types** rather than a fifth level, and two things
+follow:
 
 - **They hang from any level above the lowest.** Add one under an Epic, a Feature or a
   PBI. Their own children are always Tasks, so nothing is offered under a Bug but a Task.
+  They can also hang from *nothing*: the toolbar's type picker creates one at the top
+  level, which is where an idea usually starts.
 - **A move never re-types them.** Dropping a Bug under an Epic leaves a Bug — where
   dropping a *PBI* there would make it a Feature. Their Tasks stay Tasks too, because the
   subtree follows the Bug rather than the rung it landed on.
 
 Where a row can hold more than one kind of thing, **the + button asks**: the new-item
 modal offers a type, defaulting to the ladder's own child. The context menu lists the
-choices directly (`New PBI`, `New Issue`, `New Bug`), and `Set type` offers every
-declared type. A row with only one option — a Task, or a Bug, which holds only Tasks —
-asks nothing and creates it straight away.
+choices directly (`New PBI`, `New Issue`, `New Bug`, `New Idea`), and `Set type` offers
+every declared type. A row with only one option — a Task, or a Bug, which holds only
+Tasks — asks nothing and creates it straight away.
 
-`Issue` and `Bug` each get their own badge icon and colour — an alert in pink and a bug in
-red, distinct from the four level colours. They rank with `PBI`, so focusing that level
-shows them beside it rather than hiding them.
+`Issue`, `Bug` and `Idea` each get their own badge icon and colour — an alert in pink, a
+bug in red and a lightbulb in green, distinct from the four level colours. They rank with
+`PBI`, so focusing that level shows them beside it rather than hiding them.
 
 **The type vocabulary is fixed.** That is deliberate: a configurable vocabulary means every
 rule about levels has to hold for any list someone can type, and the reward is a rename.
@@ -646,7 +652,7 @@ Open the view options in the Bases toolbar to configure:
 | Start date property / Target date property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
 | Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
 | Show completed items | on | Off hides fully-done subtrees from every projection (only while a state property is set); nothing about ranking or rollups changes |
-| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/ideas`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |

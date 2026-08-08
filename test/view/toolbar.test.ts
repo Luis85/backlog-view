@@ -196,6 +196,7 @@ describe('toolbar controls', () => {
 			'New Task',
 			'New Issue',
 			'New Bug',
+			'New Idea',
 			'New Milestone',
 		]);
 

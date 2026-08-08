@@ -44,6 +44,9 @@ function fixture() {
 	vault.addFile('Bug.md', { frontmatter: { type: 'Bug', order: 20 }, parentLink: 'Epic' });
 	vault.addFile('Bugfix.md', { frontmatter: { type: 'Bugfix', order: 30 }, parentLink: 'Epic' });
 	vault.addFile('Issue.md', { frontmatter: { type: 'Issue', order: 25 }, parentLink: 'Epic' });
+	// An Idea under the DEEPEST legal parent, where the Bug above sits under the shallowest:
+	// between them the pinned rank is asked at both ends of the ladder.
+	vault.addFile('Idea.md', { frontmatter: { type: 'Idea', order: 10 }, parentLink: 'PBI' });
 	// A marker hangs from nothing — a root by nature, not by ladder position.
 	vault.addFile('Milestone.md', { frontmatter: { type: 'Milestone', order: 40 } });
 	const model = buildModel(vault.app, vault.entries(), settings);
@@ -64,6 +67,19 @@ describe('extra types on the ladder', () => {
 		// It is not a rung, so nothing may re-type it by position.
 		expect(get('Bug').levelIndex).toBe(-1);
 		expect(get('Bug').impliedType).toBe(false);
+	});
+
+	it('pins every declared extra type at the same rank, whatever rung it hangs from', () => {
+		const { get } = fixture();
+		// Asked of the category rather than of one name: the Bug hangs from the Epic and
+		// the Idea from the PBI, two rungs apart, and they rank identically because the
+		// rank belongs to the type. A name joining EXTRA_TYPES without a fixture row of
+		// its own throws here rather than passing quietly.
+		for (const type of EXTRA_TYPES) {
+			expect(get(type).effectiveLevelIndex).toBe(EXTRA_TYPE_RANK);
+			expect(get(type).levelIndex).toBe(-1);
+			expect(isExtraType(type.toLowerCase())).toBe(true);
+		}
 	});
 
 	it('leaves an unknown custom type inheriting its parent slot, as before', () => {
@@ -96,9 +112,9 @@ describe('extra types on the ladder', () => {
 describe('childTypeChoices', () => {
 	it('offers the extra types under every rung above the deepest', () => {
 		const { get } = fixture();
-		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug']);
-		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug']);
-		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug']);
+		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Idea']);
+		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug', 'Idea']);
+		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug', 'Idea']);
 	});
 
 	it('offers no extras under a Task or under an extra type', () => {
@@ -106,6 +122,7 @@ describe('childTypeChoices', () => {
 		// Nothing hangs below a Task, and an extra type holds only the deepest level.
 		expect(childTypeChoices(get('Task'))).toEqual(['Task']);
 		expect(childTypeChoices(get('Bug'))).toEqual(['Task']);
+		expect(childTypeChoices(get('Idea'))).toEqual(['Task']);
 	});
 
 	it('lets an unknown custom type carry on down the ladder, without extras', () => {
@@ -117,11 +134,12 @@ describe('childTypeChoices', () => {
 		expect(childTypeChoices(get('Bugfix'))).toEqual(['PBI']);
 	});
 
-	it('offers only the top level at the top level', () => {
-		// A Bug hangs from something; creating a parentless one would make an item whose
-		// own rule says it should have had a parent.
-		// CHANGED: the top level is the ladder's top *plus* the markers.
-		expect(childTypeChoices(null)).toEqual(['Epic', 'Milestone']);
+	it('offers the whole vocabulary at the top level, because the toolbar does', () => {
+		// Not an opinion about what SHOULD be a root: `renderToolbar` iterates ALL_TYPES
+		// with no parent, so this is the one description of that path, and its only reader
+		// is the generated README's root marker. Narrowing it here published a parent
+		// requirement the view does not have.
+		expect(childTypeChoices(null)).toEqual(ALL_TYPES);
 	});
 
 	it('offers nothing under a marker — a point in time contains no work', () => {
@@ -141,14 +159,14 @@ describe('childTypeChoices', () => {
 	it('offers the ladder then the extras for assignment by hand', () => {
 		// The marker joins as a third category, after the extras — ALL_TYPES is the
 		// whole vocabulary, not just the ladder and the pinned container.
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Milestone']);
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Milestone']);
 	});
 
 	it('is a fixed vocabulary, matched case-insensitively', () => {
 		// Not configurable on purpose: every level rule would otherwise have to hold for
 		// any list a user can type, and the reward was a rename.
 		expect(LEVELS).toEqual(['Epic', 'Feature', 'PBI', 'Task']);
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Milestone']);
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Milestone']);
 		expect(isExtraType('bug')).toBe(true);
 		expect(isExtraType('Bugfix')).toBe(false);
 		expect(isExtraType(null)).toBe(false);
@@ -160,9 +178,11 @@ describe('childTypeChoices', () => {
 		// No parent, no parent value: it belongs only if its type is recognised. Both
 		// "Set type → Bug" on a leaf and a drag to the top level produce exactly this,
 		// and counting only the ladder as supported made the note disappear instead.
-		vault.addFile('Loose Bug.md', { frontmatter: { type: 'Bug' } });
+		// Every extra type, not one of them: the pruning rule reads the vocabulary, so
+		// the check reads it too and a new name cannot join without being asked.
+		for (const type of EXTRA_TYPES) vault.addFile(`Loose ${type}.md`, { frontmatter: { type } });
 		const model = buildModel(vault.app, vault.entries(), settings);
-		expect(model.items.map((i) => i.title).sort()).toEqual(['Epic', 'Loose Bug']);
+		expect(model.items.map((i) => i.title).sort()).toEqual(['Epic', ...EXTRA_TYPES.map((t) => `Loose ${t}`).sort()]);
 		expect(model.ignoredCount).toBe(0);
 	});
 
@@ -184,6 +204,7 @@ describe('folders by type', () => {
 		expect(folderForType('Task', settings)).toBe('docs/tasks');
 		expect(folderForType('Issue', settings)).toBe('docs/issues');
 		expect(folderForType('Bug', settings)).toBe('docs/bugs');
+		expect(folderForType('Idea', settings)).toBe('docs/ideas');
 		// Type names are matched case-insensitively, like every other type lookup.
 		expect(folderForType('bug', settings)).toBe('docs/bugs');
 	});

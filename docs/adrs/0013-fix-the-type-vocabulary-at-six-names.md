@@ -24,7 +24,7 @@ The vocabulary is **fixed**, as constants, not options:
 
 ```
 LEVELS       = Epic · Feature · PBI · Task
-EXTRA_TYPES  = Issue · Bug
+EXTRA_TYPES  = Issue · Bug · Idea
 MARKER_TYPES = Milestone
 ```
 
@@ -61,6 +61,15 @@ an asymmetry nobody chose, recorded in [[Assigning type on a move]].)
   case-insensitively, and every one of the seven still gets a shipped opinion. What grew
   is the count, which is exactly the kind of staleness a record absorbs rather than is
   superseded by.
+- **Amended 2026-08-08 (`Idea`).** An eighth name, a third extra type
+  ([[Ideas as a type beside the ladder]]). The same absorption as the amendment above,
+  and it is now worth saying plainly: **this record fixes the vocabulary against being
+  a user OPTION, not against growing.** Adding a name costs one line plus its shipped
+  opinion — a folder, an icon, a badge colour — precisely because nothing is generated
+  per view; that cheapness is what the decision bought, so spending it is not eroding
+  it. What would supersede this ADR is a name a *user* supplies, not one this plugin
+  ships. Every count in the title, the filename and the prose above is left as written,
+  for the reason the previous amendment gives.
 
 ## Alternatives
 
