@@ -183,6 +183,15 @@ function applyDependsOnDelta(
  * behaviour rather than a looser one. The counted KEY changed; the counted QUANTITY (one
  * per captured line, multiplicity and all) did not.
  *
+ * The `remove` arm additionally prefers an EXACT-TEXT occurrence over a resolved-path
+ * one: an undo owns the exact line ITS OWN write put there, not merely a live entry that
+ * happens to name the same note. Without that preference, a user who hand-adds their own
+ * spelling of a note the plugin already depends on (`[[A]]` written by a prior add, `A`
+ * inserted by hand alongside it) can have their own line consumed by an undo that was
+ * only ever entitled to the plugin's — resolved-path matching is correct only as the
+ * FALLBACK for an entry genuinely respelled since the write, which is the case the
+ * multiset paragraph above describes and which stays intact.
+ *
  * **Known limitation, deliberate:** a restored entry is appended, never reinserted at
  * the position it was removed from, so undoing a removal from `[B, A]` hands back
  * `[A, B]` — the row's own text visibly reorders even though nothing about which
@@ -199,26 +208,33 @@ export function restoreDependsOn(
 	restore: DependsOnRestore,
 ): DependsOnRestore | null {
 	const identityOf = (text: string): string => resolvedPathOf(app, file, text) ?? text;
-	const toRemove = countOf(restore.remove.map(identityOf));
+	const live = liveEntries(fm, restore.key);
+	const consumed = new Array<boolean>(live.length).fill(false);
 	const removed: string[] = [];
-	const next: unknown[] = [];
-	for (const value of liveEntries(fm, restore.key)) {
-		const text = textOf(value);
-		const key = text !== null ? identityOf(text) : null;
-		const remaining = key !== null ? (toRemove.get(key) ?? 0) : 0;
-		if (key !== null && remaining > 0) {
-			toRemove.set(key, remaining - 1);
-			// Matched on `key` (the TRIMMED, resolved identity), captured for the redo as
-			// the ORIGINAL `value` — the same split `applyDependsOnDelta`'s own capture
-			// keeps above, and for the same reason: `key !== null` already means `value`
-			// is a string, so restoring `value` itself rather than the matched text is
-			// what carries a hand-added respelling (padding, or any other edit) into the
-			// redo instead of normalizing it away.
-			removed.push(value as string);
-			continue;
+	for (const wanted of restore.remove) {
+		// Prefer the exact line this entry captured — an undo owns the line its own
+		// write put there, not merely a live entry naming the same note.
+		let index = live.findIndex((value, i) => !consumed[i] && value === wanted);
+		if (index === -1) {
+			// Fallback: no exact spelling survives, so match by resolved note instead —
+			// the case a genuine hand-respelling (`A` rewritten `[[A]]`) needs.
+			const wantedKey = identityOf(textOf(wanted) ?? wanted);
+			index = live.findIndex((value, i) => {
+				if (consumed[i]) return false;
+				const text = textOf(value);
+				return text !== null && identityOf(text) === wantedKey;
+			});
 		}
-		next.push(value);
+		if (index === -1) continue; // already gone — nothing left for this entry to take
+		consumed[index] = true;
+		// Captured for the redo as the ORIGINAL `value` — the same split
+		// `applyDependsOnDelta`'s own capture keeps above, and for the same reason:
+		// restoring `value` itself rather than the matched text is what carries a
+		// hand-added respelling (padding, or any other edit) into the redo instead of
+		// normalizing it away.
+		removed.push(live[index] as string);
 	}
+	const next: unknown[] = live.filter((_, i) => !consumed[i]);
 	const already = countOf(
 		next
 			.map((value) => textOf(value))

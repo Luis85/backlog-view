@@ -305,6 +305,26 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toEqual([' [[A]] ']);
 	});
 
+	it('takes back its own exact line, not a differently-spelled entry the user added themselves', async () => {
+		const vault = new FakeVault();
+		const a = vault.addFile('A.md');
+		const item = vault.addFile('Item.md');
+
+		// The plugin adds [[A]]...
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: a } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+
+		// ...then the user inserts their OWN "A" ahead of it by hand, so the note holds
+		// both spellings of the same note.
+		vault.fm('Item.md')['dependsOn'] = ['A', '[[A]]'];
+
+		await applyRestores(vault.app, inverses);
+
+		// Undo owns the exact line its own write put there. A resolved-path match would
+		// find "A" first and take the user's entry instead, leaving the plugin's behind.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['A']);
+	});
+
 	it('still matches a live entry naming no note by its exact text — nothing to resolve, nothing to share', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: 'Ghost' } });
