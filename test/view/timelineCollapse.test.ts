@@ -111,6 +111,37 @@ describe('collapsing a bar’s subtree', () => {
 		expect(vault.opened).toEqual([]);
 	});
 
+	it('hands focus to the PANE when the fold destroys the button that held it', () => {
+		// The rebuild throws away the pressed control, and a browser drops focus to the
+		// body — where the pane's arrows and menu keys do nothing. The pane and never the
+		// replacement chevron: `handleRoadmapKeydown` returns on any event whose target is
+		// not the pane itself, so focusing a control inside the composite would look right
+		// and kill the arrows.
+		const { containerEl } = roadmapView(nestedVault(), { ...DATES });
+		const chevron = chevronOf(containerEl, 'Epic')!;
+		chevron.focus();
+
+		click(chevron);
+
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-tree'));
+	});
+
+	it('leaves focus alone when the disclosure did not hold it', () => {
+		// A mouse click does not focus a button in every browser, and focus already
+		// somewhere else — the toolbar's filter box, say — must not be dragged into the
+		// pane by a click that never took it.
+		const { containerEl } = roadmapView(nestedVault(), { ...DATES });
+		containerEl.querySelector<HTMLElement>('.pbl-filter-input')!.focus();
+
+		click(chevronOf(containerEl, 'Epic')!);
+
+		// By WHAT holds focus, not by node identity: the toolbar is rebuilt too and
+		// restores focus to the pressed control's replacement (`refocusByKey`), so the
+		// input in hand is detached by now. What this refuses is focus being dragged into
+		// the pane by a click that never took it.
+		expect(document.activeElement?.classList.contains('pbl-filter-input')).toBe(true);
+	});
+
 	it('opens nothing when it is middle-clicked either', () => {
 		// A middle click never fires `click`, so the guard on that one never runs for it
 		// and the row's own `auxclick` would open the note in a new tab from a control

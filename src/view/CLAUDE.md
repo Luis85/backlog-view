@@ -420,7 +420,11 @@ free of runtime code so imports stay cycle-free.
   with it. What holds either way is the row's content-derived NAME — which the label
   joins and flips — and the row menu's identical entry as the action's path. Claim that
   and no more; the two redesigns that would settle it are in
-  `docs/issues/A disclosure nested in an option role.md`.
+  `docs/issues/A disclosure nested in an option role.md`. And because that toggle
+  rebuilds the projection, the shelf controls' focus rule applies to it too: the pressed
+  button is gone with the frame, so `renderChevron` reports whether it HELD focus and the
+  caller puts focus on the PANE — never on the replacement control, which would look
+  right and silently kill the arrow keys.
   `domain/bars.ts`'s `timelineRows` decides which rows survive and which keep a chevron,
   and it is asked of the bars derived BEFORE any were hidden: computed from what is
   left, a collapsed row would have no children to have and would lose the very control

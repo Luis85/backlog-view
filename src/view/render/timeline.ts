@@ -456,7 +456,26 @@ function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow
 	// exactly as the row menu's own entry, because the row's NAME is the part a screen
 	// reader gets either way and the two surfaces must not describe one act differently.
 	const label = entry.collapsed ? 'Show children' : 'Hide children';
-	renderChevron(host, lead, item, { ...entry, label }, () => host.render());
+	renderChevron(host, lead, item, { ...entry, label }, (heldFocus) => {
+		host.render();
+		if (heldFocus) refocusPane(host);
+	});
+}
+
+/**
+ * Focus after a fold, for the one case that loses it: the button that was pressed is gone
+ * with the frame it was drawn in, and a browser drops focus to the body — where the
+ * pane's arrows and menu keys do nothing until the reader finds their own way back.
+ *
+ * The PANE, never the replacement chevron, which is `render/shelfControls.ts`'s rule for
+ * the same situation and not a preference: `handleRoadmapKeydown` returns on any event
+ * whose target is not the pane itself, so focusing a `tabindex="-1"` control inside the
+ * composite would look right and silently kill the arrow keys. Read off the snapshot the
+ * render just published, because every element this function could have closed over
+ * belongs to the frame that was just thrown away.
+ */
+function refocusPane(host: BacklogViewHost): void {
+	host.roadmap?.scroller?.closest<HTMLElement>('.pbl-tree')?.focus();
 }
 
 /**

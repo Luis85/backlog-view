@@ -73,6 +73,12 @@ projection, and this is the third surface reading it.
 - **2c — the quick filter is running.** It overrides collapse state, so the chevron
   writes nothing and the menu offers no toggle at all: a write there would read back as
   expanded and then take effect once the filter cleared.
+- **2d — the disclosure held focus when it was pressed.** The rebuild destroys it, and a
+  browser drops focus to the document body — where the pane's arrows and menu keys do
+  nothing until the reader finds their own way back. Focus goes to the PANE, never to the
+  replacement chevron: the pane's key handler ignores any event whose target is not the
+  pane itself, so focusing a `tabindex="-1"` control inside the composite would look
+  right and silently kill the arrows. Focus that was somewhere else is left there.
 - **3a — the hidden rows were what stretched the grid.** The window is the drawn spans,
   so it narrows to what is left, exactly as it already does when hiding completed work
   removes a bar. A collapse is a change of what is on the grid, not a change of scale.
@@ -105,6 +111,8 @@ projection, and this is the third surface reading it.
 - While the quick filter runs the chevron writes nothing and the menu offers no toggle.
 - The chevron opens nothing: neither a primary nor a middle click on it reaches the row's
   own open behaviour.
+- A fold that destroys the control holding focus hands focus to the PANE, so the arrows
+  and menu keys keep working; a fold pressed while focus was elsewhere leaves it there.
 - The row menu offers the toggle wherever the row drew one, and offers it on no row that
   drew none.
 - The toolbar's Expand all and Collapse all are live on a dated axis that drew a

@@ -242,7 +242,7 @@ export function renderChevron(
 	rowEl: HTMLElement,
 	item: BacklogItem,
 	state: { hasChildren: boolean; collapsed: boolean; label?: string },
-	redraw: () => void,
+	redraw: (heldFocus: boolean) => void,
 ): void {
 	const cls = 'pbl-chevron' + (state.hasChildren ? '' : ' pbl-leaf');
 	// The leaf is a spacer and never a control, whichever form the disclosure takes.
@@ -263,8 +263,14 @@ export function renderChevron(
 		// inside a disabled button still reaches this listener, and the div form has no
 		// `disabled` to read at all.
 		if (host.isFiltering()) return;
+		// Whether this control HELD focus, captured before the redraw that may destroy it —
+		// a caller rebuilding the whole projection has to put focus somewhere, and only
+		// this side knows whether there was any to put. Asked of the element rather than
+		// assumed from the input: a mouse click does not focus a button in every browser,
+		// and focus already elsewhere must not be dragged away from it.
+		const heldFocus = chevron.ownerDocument.activeElement === chevron;
 		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
-		redraw();
+		redraw(heldFocus);
 	});
 	chevron.addEventListener('auxclick', (evt) => evt.stopPropagation());
 }
