@@ -3,19 +3,32 @@ import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderTitleText } from './rows';
 import { CardDragController } from '../interactions/cardDrag';
+import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
+import { DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
+import {
+	ownWorkflowReading,
+	paletteFor,
+	paletteSlot,
+	stateKeyFor,
+	StatePalette,
+	WorkflowReading,
+} from '../../domain/board';
 import {
 	BarGeometry,
 	barGeometry,
 	daysBetween,
 	formatCivil,
 	MIN_BAR_PX,
+	superCells,
 	timelineCells,
+	TimelineCell,
 	timelineWindow,
 	TimelineScale,
 	TimelineWindow,
+	weekendOffsetDays,
 } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -31,12 +44,29 @@ import { CivilDate } from '../../domain/noteFields';
  */
 
 /**
- * Width of the sticky lead column naming each row. Published to CSS below, and
- * exported for `jumpToToday`'s centring math — the visible band it centres today in
- * is the scroller's width minus this column, which covers the same pixels at every
- * scroll position.
+ * DEFAULT width of the sticky lead column naming each row — drawn until a reader
+ * drags the resize grip (`interactions/timelineLeadResize.ts`) or the Base is opened
+ * for the first time, and what the grip's Home key returns to. The width actually
+ * drawn is resolved ONCE per render, in `renderTimeline`, from the user's own pick
+ * (`host.leadWidth`) or this default, and threaded everywhere this constant used to
+ * be read directly — see that resolution's own comment for why: the CSS width and
+ * the TS arithmetic that places the today line, the milestone lines and the
+ * gridlines must never diverge, which is precisely the bug commit 791e1da fixed.
  */
 export const TIMELINE_LEAD_PX = 220;
+
+/**
+ * Room reserved for a title beside its bar, in PIXELS — matches the label's CSS
+ * budget (max-width 144px + 2×8px padding). Short of this at the window's right
+ * edge, the label flips to the bar's left rather than truncating against nothing.
+ * Exported for `test/view/timelineBoxing.test.ts`, which reads that budget out of
+ * `styles/timelineFurniture.css` and refuses the two drifting apart.
+ */
+export const LABEL_RESERVE_PX = 160;
+
+/** `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css` — see `markWidth`. */
+const MILESTONE_MARK_PX = 12;
+const OUTSIDE_MARK_PX = 10;
 
 /** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {
@@ -55,6 +85,17 @@ export interface TimelineRender {
 	headerTrack: HTMLElement;
 	/** Each drawn row's day track, by path — where a MOVE's preview is drawn, in its own row. */
 	tracks: Map<string, HTMLElement>;
+	/** The lead width THIS render actually drew — the resolved pick, or `TIMELINE_LEAD_PX`. */
+	leadWidth: number;
+	/**
+	 * Which override colours this pass actually drew, OR'd across every bar — reported
+	 * from the render rather than recomputed from `results` (see `renderBarRow`):
+	 * `barClasses` decides a mark's actual colour, including the early-return
+	 * `.pbl-bar-outside` case that draws the plain accent for a marker whose date lies
+	 * outside the capped window — a fact a predicate over `results` alone cannot see,
+	 * since it never asks what geometry the bar drew.
+	 */
+	drawn: DrawnColors;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -63,6 +104,27 @@ export interface TimelineDrawing {
 	scale: TimelineScale;
 	/** The controller every bar's grips are wired through — the same one the shelf uses. */
 	dnd: CardDragController;
+	/**
+	 * The vocabularies `paletteSlot` indexes a bar's colour into — passed down by
+	 * `renderRoadmap`, which already holds the non-null model this axis draws from,
+	 * rather than re-read here off `ctx.host.model`: a bar exists only because a model
+	 * did, so a second null check here would guard nothing reachable.
+	 */
+	palettes: StatePalette[];
+	/**
+	 * The pane's own measured width, in pixels — `renderRoadmap`'s `treeEl.clientWidth`,
+	 * the same element and the same property `backlogView.ts`'s `ResizeObserver` branch
+	 * measures, so the two normally read the same number for "the space available".
+	 *
+	 * Normally, not always: `renderRoadmap` measures AFTER `treeEl.empty()`, so a
+	 * vertical scrollbar the pane had at resize time is gone at render time and the two
+	 * differ by its width. `.pbl-roadmap-dates .pbl-tree` is `overflow-y: auto` as a
+	 * deliberate fallback (a floor plus four maxima can exceed a short or embedded pane),
+	 * so this is confined to that case, and it costs at most one extra rebuild — the
+	 * resize branch's idempotence check fails once — and a day track reserved a scrollbar
+	 * too narrow. 0 or less reads as "not measured" — see `effectiveLeadWidth`.
+	 */
+	available: number;
 }
 
 export function renderTimeline(
@@ -71,8 +133,16 @@ export function renderTimeline(
 	bars: TimelineBar[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
-	const { today, scale, dnd } = drawing;
+	const { today, scale, dnd, palettes, available } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
+	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
+	// directly: the CSS width below and the TS arithmetic that places the today line,
+	// the milestone lines and the gridlines all have to agree on the same number, or a
+	// resize reopens the 17px mismatch commit 791e1da fixed. Clamped against the pane
+	// (`effectiveLeadWidth`) so a wide stored pick cannot cover a narrow one edge to
+	// edge — the STORED pick itself is untouched, only what this render draws.
+	const stored = ctx.host.leadWidth ?? TIMELINE_LEAD_PX;
+	const leadWidth = effectiveLeadWidth(stored, available);
 	// TWO elements, not one. The scroll box is the outer one; the positioned layer is
 	// the inner. Full-height marks — the today line, the milestone lines, and the drop
 	// overlay that joins them — resolve `top: 0; bottom: 0` against their containing
@@ -82,24 +152,48 @@ export function renderTimeline(
 	// nothing. A line that stops partway down is worse than no line: it says the plan
 	// divides there.
 	const grid = containerEl.createDiv({ cls: 'pbl-timeline' });
+	grid.toggleClass('pbl-density-compact', ctx.host.density === 'compact');
 	const content = grid.createDiv({ cls: 'pbl-timeline-content' });
 	content.setCssProps({
-		'--pbl-tl-lead': `${TIMELINE_LEAD_PX}px`,
+		'--pbl-tl-lead': `${leadWidth}px`,
 		'--pbl-tl-days': `${window.days * scale.dayPx}px`,
 		// The stylesheet stops hard-coding 2px: the width is the scale's, because
 		// `dayPx >= 2 * lineWidth` is what lets today's line and a coincident
 		// milestone's both draw inside one day instead of one erasing the other.
 		'--pbl-tl-line': `${scale.lineWidth}px`,
+		'--pbl-day-px': `${scale.dayPx}px`,
 	});
-	const headerTrack = renderCellHeader(content, window, scale);
+	// One layer, not one band per weekend: weekends are exactly 7-day periodic, so
+	// the stylesheet repeats a 2-on/5-off gradient and TS publishes only the phase.
+	// Week zoom alone — at 4px and 2px per day the stripes are noise, which is where
+	// the surveyed tools stop shading too.
+	if (scale.id === 'week') {
+		const weekend = content.createDiv({ cls: 'pbl-weekend-layer', attr: { 'aria-hidden': 'true' } });
+		weekend.setCssProps({ '--pbl-weekend-offset': `${weekendOffsetDays(window) * scale.dayPx}px` });
+	}
+	const headerTrack = renderCellHeader(ctx, content, window, scale, { width: leadWidth, available });
+	renderGridLines(content, window, scale, leadWidth);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
 	// about, and must not be obscured by the question.
-	renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, scale);
+	// Reported, because a milestone's LINE is cyan whatever its bar does: the done
+	// override repaints the diamond green and leaves the line alone, so a grid whose only
+	// marker is done draws cyan that no diamond accounts for. Asking the bars alone left
+	// that line unkeyed.
+	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
-	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks };
-	for (const bar of bars) renderBarRow(ctx, mounts, window, bar, scale);
-	const todayLeft = TIMELINE_LEAD_PX + todayOffset(window, today, scale);
+	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, palettes };
+	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
+	bars.forEach((bar, index) => {
+		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
+		if (colors.done) drawn.done = true;
+		if (colors.milestone) drawn.milestone = true;
+		if (colors.accent) drawn.accent = true;
+		// Assigned at render because CSS has no nth-of-class, and nth-child would
+		// count the header, the lines and the layers interleaved in this container.
+		if (index % 2 === 1) row.addClass('pbl-row-even');
+	});
+	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
 	setTooltip(line, `Today — ${formatCivil(today)}`);
@@ -114,16 +208,61 @@ export function renderTimeline(
 	// somewhere to land, out of the way until a drag needs it — reached by a second
 	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
 	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
-	return { cards: bars.map((bar) => bar.item), todayLeft, scroller: grid, content, window, overlay, headerTrack, tracks };
+	return {
+		cards: bars.map((bar) => bar.item),
+		todayLeft,
+		scroller: grid,
+		content,
+		window,
+		overlay,
+		headerTrack,
+		tracks,
+		leadWidth,
+		drawn,
+	};
 }
 
-/** Presentational, like the tree's column header: every row carries its own dates. */
-function renderCellHeader(grid: HTMLElement, window: TimelineWindow, scale: TimelineScale): HTMLElement {
-	const header = grid.createDiv({ cls: 'pbl-timeline-header', attr: { 'aria-hidden': 'true' } });
-	header.createDiv({ cls: 'pbl-timeline-lead' });
-	const track = header.createDiv({ cls: 'pbl-timeline-track' });
-	for (const cell of timelineCells(window, scale)) {
-		const cellEl = track.createDiv({ cls: 'pbl-timeline-cell', text: cell.label });
+/**
+ * The cell tiers are presentational, like the tree's column header: every row
+ * carries its own dates, so the month/quarter labels add nothing a screen reader
+ * needs. The LEAD cell is not: it now carries the resize grip, a real control, so
+ * `aria-hidden` sits on the tiers alone rather than the whole header — an
+ * `aria-hidden` ancestor removes every focusable descendant from the accessibility
+ * tree along with the decoration, and this cell is no longer only decoration.
+ *
+ * Returns the cell tier alone — `TimelineRender.headerTrack`, where the milestone
+ * labels and the drop ghost mount. It once also handed back an empty band reserved
+ * for the Today pill; the legend strip above the grid took over naming the today
+ * line's colour, so the pill and its band are gone and this is a plain track again.
+ */
+function renderCellHeader(
+	ctx: RowContext,
+	content: HTMLElement,
+	window: TimelineWindow,
+	scale: TimelineScale,
+	// `available` rides along only so the grip can state a real `aria-valuemax` — see
+	// `renderLeadResize`.
+	lead: { width: number; available: number },
+): HTMLElement {
+	const header = content.createDiv({ cls: 'pbl-timeline-header' });
+	const leadEl = header.createDiv({ cls: 'pbl-timeline-lead' });
+	renderLeadResize(ctx.host, leadEl, content, { current: lead.width, defaultWidth: TIMELINE_LEAD_PX, available: lead.available });
+	// Two stacked tiers in the track slot: the coarser orientation tier, then the cells.
+	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers', attr: { 'aria-hidden': 'true' } });
+	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
+	return renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
+}
+
+function renderHeaderTier(
+	tiers: HTMLElement,
+	cells: TimelineCell[],
+	scale: TimelineScale,
+	trackCls: string,
+	cellCls: string,
+): HTMLElement {
+	const track = tiers.createDiv({ cls: `pbl-timeline-track${trackCls ? ' ' + trackCls : ''}` });
+	for (const cell of cells) {
+		const cellEl = track.createDiv({ cls: cellCls, text: cell.label });
 		cellEl.setCssProps({ '--pbl-cell-w': `${cell.days * scale.dayPx}px` });
 	}
 	return track;
@@ -146,9 +285,12 @@ function renderMilestoneLines(
 	window: TimelineWindow,
 	bars: TimelineBar[],
 	today: CivilDate,
-	scale: TimelineScale,
-): void {
+	// `scale` and `leadWidth` grouped into one param — both are "how a day converts to a
+	// pixel here", and the pair is what keeps this under the five-parameter budget.
+	ruler: { scale: TimelineScale; leadWidth: number },
+): boolean {
 	const { grid, headerTrack } = mounts;
+	const { scale, leadWidth } = ruler;
 	// Insertion order is bar order, which is row order — so a shared line names its
 	// milestones the way the rows read.
 	const byDay = new Map<number, string[]>();
@@ -170,7 +312,7 @@ function renderMilestoneLines(
 		// lineWidth` is what guarantees the step still fits inside the day it steps in.
 		const nudge = day === todayDay ? scale.lineWidth : 0;
 		const line = grid.createDiv({ cls: 'pbl-milestone-line', attr: { 'aria-hidden': 'true' } });
-		line.setCssProps({ '--pbl-milestone-left': `${TIMELINE_LEAD_PX + day * scale.dayPx + nudge}px` });
+		line.setCssProps({ '--pbl-milestone-left': `${leadWidth + day * scale.dayPx + nudge}px` });
 		// The label sits in the header band, where the month header already is, and the
 		// full name stays in the tooltip: horizontal space is the scarce resource in an
 		// Obsidian pane, so the line survives the narrowing and the text is what gives way.
@@ -180,6 +322,22 @@ function renderMilestoneLines(
 		const labelEl = headerTrack.createDiv({ cls: 'pbl-milestone-label', text: label });
 		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
+	}
+	return byDay.size > 0;
+}
+
+/**
+ * The header's cell boundaries, extended down the grid body — decoration only,
+ * drawn before the milestone lines so a boundary never paints over a mark that
+ * means something. No line at day 0: that boundary is the lead column's border.
+ */
+function renderGridLines(content: HTMLElement, window: TimelineWindow, scale: TimelineScale, leadWidth: number): void {
+	let day = 0;
+	for (const cell of timelineCells(window, scale)) {
+		day += cell.days;
+		if (day >= window.days) break;
+		const line = content.createDiv({ cls: 'pbl-grid-line', attr: { 'aria-hidden': 'true' } });
+		line.setCssProps({ '--pbl-grid-left': `${leadWidth + day * scale.dayPx}px` });
 	}
 }
 
@@ -191,6 +349,8 @@ interface BarRowMounts {
 	dnd: CardDragController;
 	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
 	tracks: Map<string, HTMLElement>;
+	/** See `TimelineDrawing.palettes`. */
+	palettes: StatePalette[];
 }
 
 function renderBarRow(
@@ -199,9 +359,27 @@ function renderBarRow(
 	window: TimelineWindow,
 	bar: TimelineBar,
 	scale: TimelineScale,
-): void {
-	const row = createCard(ctx, mounts.content, bar.item);
+): { row: HTMLElement; colors: DrawnColors } {
+	// The item's OWN workflow, read ONCE and threaded through all four things on this
+	// row that key a colour or say one in words: the `pbl-done` class the green override
+	// hangs on, the slot class, the hidden state words, and the `drawn` report the legend
+	// is built from. Reading `item.done` / `item.stateValue` here keyed a Deliverable into
+	// the REQUIREMENTS workflow — a colour naming a state it does not hold, and changing
+	// the state that IS its own moved nothing on the grid. Four surfaces of one rule, so
+	// one reading: three of them agreeing and the fourth not is the shape every past bug
+	// in this feature had.
+	const own = ownWorkflowReading(bar.item);
+	const row = createCard(ctx, mounts.content, bar.item, own.done);
 	row.addClass('pbl-timeline-row');
+	// Which vocabulary indexes that value is the same type decision, made by `paletteFor`.
+	// No slot (no state, or a value its own vocabulary does not carry) adds no class and
+	// the bar keeps its plain accent — `styles/timeline.css` owns what a slot paints, the
+	// level badge's TS-adds-the-class, CSS-owns-the-colour split.
+	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
+	// the same answer `paletteSlot` gives a state outside one: the plain accent.
+	const palette = paletteFor(mounts.palettes, bar.item);
+	const slot = palette ? paletteSlot(palette, own.value) : null;
+	if (slot !== null) row.addClass(`pbl-state-${slot}`);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderBadge(ctx.host, lead, bar.item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
@@ -230,6 +408,11 @@ function renderBarRow(
 		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
+	renderBarLabel(track, bar, geometry, scale, window);
+	// Said in words on the row itself, because on this axis the state is otherwise a
+	// bar COLOUR and nothing else — see `stateNote`.
+	const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), own);
+	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
 	// The row is the timeline's one selection stop, so a MARKER'S row is where the
 	// line and the diamond's facts have to be readable (criterion 4a: neither is
 	// focusable, so nothing about a milestone may exist only under a hover). An
@@ -239,8 +422,126 @@ function renderBarRow(
 	// rather than `aria-label`: an explicit label REPLACES that name instead of
 	// adding to it, and would cost every dated row its type word for a fact the bar
 	// already states.
-	if (isMarkerType(bar.item.typeName)) row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
+	// A marker's explicit label REPLACES the row's content, the hidden state span
+	// above included, so the same words are folded into it rather than lost.
+	if (isMarkerType(bar.item.typeName)) {
+		row.setAttribute('aria-label', `${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}`);
+	}
 	wireCardActivation(ctx, row, bar.item);
+	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
+	// order: done wins outright (the row class overrides regardless of geometry), then
+	// a milestone diamond only where `barClasses` actually added `pbl-bar-milestone` —
+	// never for `geometry.milestone` alone, since the early return for `geometry.outside`
+	// withholds that class from a marker whose date lies outside the window, and that
+	// bar draws the plain accent like any other. A bar can draw an ordinary PBI's own
+	// coincident start/target as the same diamond (`timelineFurniture.test.ts`'s "Ship
+	// it"), so this is asked of the geometry alone, never narrowed to marker items.
+	const milestoneDrawn = geometry.milestone && !geometry.outside;
+	const colors: DrawnColors = {
+		done: own.done,
+		milestone: !own.done && milestoneDrawn,
+		accent: !own.done && slot === null && !milestoneDrawn,
+	};
+	return { row, colors };
+}
+
+/**
+ * The row's workflow state in words, or '' where there is none to say.
+ *
+ * This axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
+ * site is the tree, and `chipProps` skips the state property, so without these words the
+ * slot colours are the whole of it — unreadable to a screen reader, and colour alone
+ * for everyone else (WCAG 1.4.1). Done is spelt out for the same reason: `pbl-done` is a
+ * class and a green bar.
+ *
+ * Visually hidden text in the ROW's content, not an `aria-label` anywhere. `.pbl-bar` is
+ * a plain div — role `generic`, where ARIA prohibits an accessible name, so appending to
+ * the label it already carries may be announced by nobody — and a label on the row would
+ * REPLACE the badge and title the row derives its name from, which is exactly what
+ * `renderBarRow` avoids for an ordinary row. Content adds to that name instead. It stays
+ * out of the visible row on purpose: the layout is a lead column and a track, and a
+ * sixth thing in the lead is what the colour was chosen to avoid.
+ */
+function stateNote(stateKey: string, reading: WorkflowReading): string {
+	if (!stateKey) return '';
+	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
+	return reading.value ?? '';
+}
+
+/**
+ * How wide the mark actually DRAWS, which is what a label beside it has to clear.
+ * `--pbl-bar-width` is not that number for two of the three shapes: `.pbl-bar-milestone`
+ * is a 12px diamond and `.pbl-bar-outside` a 10px arrow whatever the span, so a
+ * one-day milestone at quarter zoom measures 4px here and would have its title
+ * painted across it. Same order of tests as `barClasses`, which is what decides
+ * which shape is drawn — keep the two in step, and both in step with
+ * `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css`.
+ *
+ * A WIDTH only: where that width starts is the caller's business, because the two
+ * marks do not share an origin. `.pbl-bar-outside` sits at `--pbl-bar-left`, while
+ * `.pbl-bar.pbl-bar-milestone` carries `translateX(-50%)` and is centred on it —
+ * `markLeft` in `renderBarLabel` is where that difference is applied. The diamond's
+ * 45° rotation puts its tips ~2.5px outside this box on each side; the label's own
+ * 8px of padding is the clearance, so this stays the CSS width rather than a
+ * bounding-box calculation nothing else in the file does.
+ */
+function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
+	if (geometry.outside) return OUTSIDE_MARK_PX;
+	if (geometry.milestone) return MILESTONE_MARK_PX;
+	return Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
+}
+
+/**
+ * The title where the reader's eye already is — decoration only. The row's
+ * accessible name carries the title and the bar's aria-label the dates, so this
+ * is aria-hidden; pointer-events die in CSS so the grips never lose a hit.
+ */
+function renderBarLabel(
+	track: HTMLElement,
+	bar: TimelineBar,
+	geometry: BarGeometry,
+	scale: TimelineScale,
+	window: TimelineWindow,
+): void {
+	const left = geometry.startDay * scale.dayPx;
+	const width = markWidth(geometry, scale);
+	// The mark's own left edge, which is NOT `--pbl-bar-left` for the diamond: the
+	// milestone rule in `styles/timeline.css` carries `translateX(-50%)`, so a 12px
+	// diamond drawn at `left` occupies `[left - 6, left + 6]`. Placing the label from
+	// `left` instead left the `after` label 6px further out than the reserve intends and
+	// put the `before` label's right edge across the diamond's own left half. Both
+	// offsets below take this edge, so what the label clears is the mark as DRAWN.
+	const markLeft = geometry.milestone && !geometry.outside ? left - width / 2 : left;
+	const trackWidth = window.days * scale.dayPx;
+	const after = markLeft + width + LABEL_RESERVE_PX <= trackWidth;
+	// Dropped whenever there is no room after the mark's right edge AND the mark begins
+	// within the reserve of the track's own left edge, since flipping the label before
+	// such a mark would put it off the track behind the sticky lead column. Three ways
+	// to reach that, and `MAX_TIMELINE_DAYS` is required for none of them:
+	//   - a bar clipped at BOTH window edges;
+	//   - a bar clipped at the right alone that merely BEGINS within `LABEL_RESERVE_PX`
+	//     of the left edge without being clipped there itself;
+	//   - a SHORT TRACK, with no clipping anywhere in it. The reserve is a pixel budget
+	//     while the track is days times `dayPx`, so a backlog whose dates sit near today
+	//     pads out to ~92 days, which at quarter zoom (2px/day) is a 184px track — under
+	//     one reserve plus the other. All that still labels there is the first ~12 days
+	//     (room after) and anything starting past 160px (room before), and both of those
+	//     lie in the padding months `timelineWindow` adds either side, where no bar of
+	//     such a backlog begins. At that zoom the feature is effectively absent, which is
+	//     what `timelineFurniture.test.ts` drives with one bar rather than claiming of
+	//     every position on the track.
+	// Nothing is lost by dropping it — the row's lead carries the same title, which is
+	// what makes this decoration rather than content, and squeezing it over the bar would
+	// only trade a hidden label for an unreadable one.
+	if (!after && markLeft < LABEL_RESERVE_PX) return;
+	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
+	if (after) {
+		label.addClass('pbl-bar-label-after');
+		label.setCssProps({ '--pbl-label-left': `${markLeft + width}px` });
+	} else {
+		label.addClass('pbl-bar-label-before');
+		label.setCssProps({ '--pbl-label-right': `${trackWidth - markLeft}px` });
+	}
 }
 
 /**
@@ -255,13 +556,6 @@ function renderBarRow(
  * ponytail: one class covers "inferred" and "inferred, some children undated" —
  * an inferred end is uncertain by construction. Split them when someone can
  * describe the two pixels apart.
- *
- * `hasBodyHold` is asked of `barHolds`, never re-derived here: a fully inferred bar,
- * a half-inferred one, and a marker with no writable target all withhold the body
- * hold, and a class computed independently from geometry alone would drift from
- * that list the moment a fourth case joined it. The class is what lets the
- * stylesheet scope the grab cursor to a bar that actually registers a drag —
- * `pbl-bar` alone would advertise a hold on every one of those.
  */
 function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolean): string {
 	const holdable = hasBodyHold ? ' pbl-bar-holdable' : '';

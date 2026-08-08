@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
-import { barFor, gripNames, labelTexts, rowFor, timelineRows } from '../helpers/roadmap';
+import { useViewHarness } from '../helpers/view';
+import { barFor, gripNames, labelTexts, roadmapView, rowFor, timelineRows } from '../helpers/roadmap';
 
 /**
  * Markers on the dated axis: a milestone's own bar (reduced to a point, drawn
@@ -18,12 +18,6 @@ useViewHarness();
 const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
 /** `todayCivil()` reads the same live clock, so this always names its date. */
 const TODAY_ISO = todayStamp();
-
-function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { base?: string } = {}) {
-	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
-	harness.view.setProjection('roadmap');
-	return harness;
-}
 
 describe('a marker on the dated axis', () => {
 	it('draws no diamond for a milestone past the window edge, only the direction it lies past', () => {
@@ -61,6 +55,46 @@ describe('a marker on the dated axis', () => {
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
+	});
+});
+
+describe('per-state bar colour', () => {
+	it('slots a row by its state\'s index in the same vocabulary the board and Set state use', () => {
+		const vault = new FakeVault();
+		vault.addFile('First.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'New' } });
+		vault.addFile('Second.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-08-06', status: 'Active' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		expect(rowFor(containerEl, 'First')?.classList.contains('pbl-state-0')).toBe(true);
+		expect(rowFor(containerEl, 'Second')?.classList.contains('pbl-state-1')).toBe(true);
+	});
+
+	it('leaves an unstated item with no slot class', () => {
+		const vault = new FakeVault();
+		vault.addFile('No state.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		const classes = [...(rowFor(containerEl, 'No state')?.classList ?? [])];
+		expect(classes.some((c) => c.startsWith('pbl-state-'))).toBe(false);
+	});
+
+	it('leaves a value outside the vocabulary with no slot class', () => {
+		const vault = new FakeVault();
+		vault.addFile('Odd.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'Blocked' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		const classes = [...(rowFor(containerEl, 'Odd')?.classList ?? [])];
+		expect(classes.some((c) => c.startsWith('pbl-state-'))).toBe(false);
+	});
+
+	it('carries both its slot and pbl-done on a done state, leaving the CSS to pick the winner', () => {
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'Done' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', stateValues: 'New, Active, Done' });
+
+		const row = rowFor(containerEl, 'Shipped');
+		expect(row?.classList.contains('pbl-done')).toBe(true);
+		expect(row?.classList.contains('pbl-state-2')).toBe(true);
 	});
 });
 

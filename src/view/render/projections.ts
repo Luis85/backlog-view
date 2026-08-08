@@ -30,7 +30,15 @@ export interface ProjectionContent {
 /** The scroller's memory across renders: what it drew, at what scale, and where each band sat. */
 export interface ScrollAnchor {
 	content: string;
-	todayLeft: number | null;
+	/**
+	 * Today's offset WITHIN THE DAY TRACK — `todayLeft` minus the lead width it was drawn
+	 * under — never the lead-inclusive pixel. The day track starts at `leadWidth` in
+	 * content coordinates and the sticky lead covers exactly that much of the viewport, so
+	 * the date at the visible leading edge is a function of `scrollLeft` alone; a lead
+	 * resize changes `todayLeft` without the window moving at all, and the lead term has
+	 * to cancel out of the comparison rather than being read as a shift to correct for.
+	 */
+	todayTrackLeft: number | null;
 	/** The scale the offsets were measured at; null off the dated axis. */
 	scale: string | null;
 	/** Each band's own offsets, by identity — never by position in a collection. */
@@ -63,12 +71,13 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 	// `scrollLeft` IS the day-track offset of the first visible date, and no lead-column
 	// term belongs here. The lead is `position: sticky; left: 0`, so it stays pinned at
 	// the scrollport's edge and covers the track beneath it: the first day a reader can
-	// actually see sits at viewport x = 220, which is content x = scrollLeft + 220, which
-	// is day-track offset scrollLeft. Subtracting the lead names a date hidden underneath
-	// it — at 4px/day and scrollLeft 620 that is day 100 while the reader is looking at
-	// day 155 — and it was doing so in an earlier revision of this plan, together with a
-	// guard for the negative offsets it produced near zero. Both are gone: a sticky
-	// element shifts what is painted, not where the content is.
+	// actually see sits at viewport x = the lead's own width, which is content x =
+	// scrollLeft + that width, which is day-track offset scrollLeft — for every lead,
+	// including the ones a reader has dragged. Subtracting it names a date hidden
+	// underneath — at 4px/day, scrollLeft 620 and the DEFAULT 220px lead, day 100 while
+	// the reader is looking at day 155 — and it was doing so in an earlier revision of
+	// this plan, together with a guard for the negative offsets it produced near zero.
+	// Both are gone: a sticky element shifts what is painted, not where the content is.
 	const leadingDate =
 		scroller && roadmap?.window && roadmap.scale ? dayAt(roadmap.window, roadmap.scale, scroller.scrollLeft) : null;
 	return { ...anchor, offsets, leadingDate };
@@ -76,8 +85,10 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 
 /**
  * Where the scroller must sit for today to be centred in the part of it a reader can
- * SEE. The lead column is `position: sticky; left: 0`, so it covers viewport 0…220 at
- * every scroll position and the day area is the band from 220 to the right edge.
+ * SEE. The lead column is `position: sticky; left: 0`, so it covers viewport 0…`leadWidth`
+ * at every scroll position and the day area is the band from `leadWidth` to the right
+ * edge — the width a reader has actually resized it to, never the default alone, or the
+ * band this centres in would disagree with the column that is really covering the view.
  * Centring on `clientWidth / 2` therefore hides today behind the labels in any pane
  * narrower than twice the lead — a 320px split puts it at viewport 160, under an opaque
  * column — which defeats both the opening scroll and Jump to today in exactly the narrow
@@ -85,9 +96,24 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
  * than the lead itself, where the best available answer is the first visible pixel of
  * day.
  */
-export function centreOnToday(todayLeft: number, viewport: number): number {
-	const band = Math.max(viewport - TIMELINE_LEAD_PX, 0);
-	return Math.max(todayLeft - TIMELINE_LEAD_PX - band / 2, 0);
+export function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
+	const band = Math.max(viewport - leadWidth, 0);
+	return Math.max(todayLeft - leadWidth - band / 2, 0);
+}
+
+/**
+ * The width THIS render drew, or the default off the dated axis. Kept as a function
+ * rather than inlined at its two callers because `anchorScrollLeft` is at 16 of ESLint's
+ * `complexity` 16 without it: the `??` is the seventeenth branch and inlining it fails
+ * lint. That is the whole reason, and it is checked rather than argued.
+ */
+function resolvedLeadWidth(roadmap: RoadmapSnapshot | null): number {
+	return roadmap?.leadWidth ?? TIMELINE_LEAD_PX;
+}
+
+/** `todayLeft` minus the lead width it was drawn under — see `ScrollAnchor.todayTrackLeft`. */
+function todayTrackLeft(todayLeft: number | null, roadmap: RoadmapSnapshot | null): number | null {
+	return todayLeft == null ? null : todayLeft - resolvedLeadWidth(roadmap);
 }
 
 /** What the render just drew, named finer than the projection: the roadmap's two axes are different content on one frame. */
@@ -123,7 +149,7 @@ export function restoreScroll(
 	const scroller = roadmap?.scroller ?? treeEl;
 	for (const box of scrollBoxes(treeEl, roadmap)) restoreBox(box, scroller, same, anchor);
 	scroller.scrollLeft = anchorScrollLeft(anchor, same, todayLeft, roadmap, scroller.clientWidth);
-	return { content: drawn, todayLeft, scale, offsets: {}, leadingDate: null };
+	return { content: drawn, todayTrackLeft: todayTrackLeft(todayLeft, roadmap), scale, offsets: {}, leadingDate: null };
 }
 
 /**
@@ -150,7 +176,9 @@ function scaleChangeScrollLeft(anchor: ScrollAnchor, roadmap: RoadmapSnapshot): 
  * - the same content at a different scale keeps the date at the leading edge
  *   (`scaleChangeScrollLeft`);
  * - the same content at the same scale keeps the pixel carry, corrected by how far
- *   today moved — exact for that case, which is every ordinary refresh.
+ *   today moved WITHIN THE DAY TRACK — a lead resize changes `todayLeft` without the
+ *   window moving, and comparing track-relative offsets is what cancels the lead term
+ *   out rather than reading a widen as a pan.
  */
 function anchorScrollLeft(
 	anchor: ScrollAnchor,
@@ -159,14 +187,15 @@ function anchorScrollLeft(
 	roadmap: RoadmapSnapshot | null,
 	viewport: number,
 ): number {
-	if (!same) return todayLeft == null ? 0 : centreOnToday(todayLeft, viewport);
+	if (!same) return todayLeft == null ? 0 : centreOnToday(todayLeft, viewport, resolvedLeadWidth(roadmap));
 	const scale = roadmap?.scale?.id ?? null;
 	if (scale !== anchor.scale && roadmap) {
 		const zoomed = scaleChangeScrollLeft(anchor, roadmap);
 		if (zoomed !== null) return zoomed;
 	}
 	const saved = anchor.offsets['timeline']?.left ?? anchor.offsets['pane']?.left ?? 0;
-	if (todayLeft != null && anchor.todayLeft != null) return Math.max(saved + (todayLeft - anchor.todayLeft), 0);
+	const track = todayTrackLeft(todayLeft, roadmap);
+	if (track != null && anchor.todayTrackLeft != null) return Math.max(saved + (track - anchor.todayTrackLeft), 0);
 	return saved;
 }
 

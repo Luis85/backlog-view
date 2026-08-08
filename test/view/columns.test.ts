@@ -95,6 +95,47 @@ describe('property columns', () => {
 		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(true);
 	});
 
+	it('keeps the second pass alive after a render throws inside it', () => {
+		// The ladder's second pass runs with `refitting` set, and every later pass CHECKS
+		// that flag without ever resetting it. Cleared outside a `finally`, one thrown
+		// render strands it true for the life of the view and the second pass is silently
+		// gone from then on — a column that came or went never reaching the rows.
+		const vault = fixture();
+		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280, stateProperty: 'note.status' });
+		config.order = ['note.points', 'note.owner'];
+		const tree = treeOf(containerEl);
+		const paneWidth = (px: number) => Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
+
+		// Each render pass empties the tree exactly once, so counting that counts passes.
+		let passes = 0;
+		let throwAt = 0;
+		const realEmpty = HTMLElement.prototype.empty;
+		Object.defineProperty(tree, 'empty', {
+			configurable: true,
+			value: function (this: HTMLElement): void {
+				passes += 1;
+				if (passes === throwAt) throw new Error('render blew up');
+				realEmpty.call(this);
+			},
+		});
+
+		paneWidth(1400);
+		view.onDataUpdated();
+
+		// Narrow enough that the property columns have to go: the tail refit changes its
+		// verdict and asks for a second pass — which is the pass made to throw.
+		paneWidth(700);
+		throwAt = passes + 2;
+		expect(() => view.onDataUpdated()).toThrow('render blew up');
+		throwAt = 0;
+
+		// Widen again: the verdict changes back, so a second pass is owed once more.
+		paneWidth(1400);
+		const before = passes;
+		view.onDataUpdated();
+		expect(passes - before).toBe(2);
+	});
+
 	it('counts the indent of the deepest rendered row', () => {
 		// A chain deep enough that its indent alone eats a column's worth of room.
 		const vault = new FakeVault();

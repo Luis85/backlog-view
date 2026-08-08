@@ -7,7 +7,7 @@ import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
 import { stateMenuValues } from '../../domain/settings';
-import { BoardModel, cardPaths, deliverablesWorkflow, hiddenMatches, ownWorkflowReading, stateKeyFor } from '../../domain/board';
+import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -15,6 +15,7 @@ import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
+import { listedChildren, undisclosedMatches } from '../childrenList';
 
 /**
  * Whichever board-shaped projection is active, or null off both. `host.board` is
@@ -158,6 +159,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	if (host.projection === 'tree') addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
 	addMatchSection(host, menu, item);
+	addChildrenSection(host, menu, item);
 	addShelfSection(host, menu);
 	menu.addSeparator();
 	menu.addItem((mi) =>
@@ -322,7 +324,7 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	const board = activeBoard(host);
 	if (!board || !host.isFiltering()) return;
 	const carded = cardPaths(board);
-	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	const matches = undisclosedMatches(host, item, carded);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {
@@ -331,6 +333,33 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 				.setTitle(`Open match "${match.title}"`)
 				.setIcon('search')
 				.onClick((evt) => host.openItem(match, evt)),
+		);
+	}
+}
+
+/**
+ * The children this card is showing, offered where a pointer is not available. Each
+ * card projection is one tab stop, so the disclosure's entries are `tabindex="-1"`
+ * buttons and this is their keyboard path — the same answer the tree gives for the add
+ * button and the state chip.
+ *
+ * The gate is `cardChildrenShown`, filled by the render, and not the projection: a
+ * dated-axis timeline row shares `wireCardActivation` with real cards but draws no body
+ * and so no disclosure, and the axis cannot separate them either, since that axis also
+ * draws a shelf of real cards. Reading what the render drew also survives the entry
+ * point: the menu key arrives through `showContextMenuFor`, which calls `buildItemMenu`
+ * directly and never touches the render's wiring, so a flag threaded through that wiring
+ * would miss exactly the case this section exists for.
+ */
+function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	if (!host.cardChildrenShown.has(item.file.path)) return;
+	menu.addSeparator();
+	for (const child of listedChildren(host, item)) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(`Open child "${child.title}"`)
+				.setIcon('corner-left-down')
+				.onClick((evt) => host.openItem(child, evt)),
 		);
 	}
 }

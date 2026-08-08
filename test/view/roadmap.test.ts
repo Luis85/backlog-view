@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { flush, key, makeView, noOptionalProperties, projectionButton, refresh, treeOf, useViewHarness } from '../helpers/view';
-import { bucketNames, bucketsOf, shelfTitles } from '../helpers/roadmap';
+import { bucketNames, bucketsOf, roadmapView, shelfTitles } from '../helpers/roadmap';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 useViewHarness();
@@ -14,17 +14,6 @@ const AXES = {
 	startProperty: 'note.start',
 	targetProperty: 'note.due',
 };
-
-/**
- * A view flipped to the roadmap through the host, the way the toolbar does it.
- * The mode is UI state in the collapse store, never a config key.
- */
-function roadmapView(vault: FakeVault, cfg: Record<string, unknown> = { ...AXES }, opts: { base?: string } = {}) {
-	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
-	harness.view.setProjection('roadmap');
-	harness.view.setShelfCollapsed(false);
-	return harness;
-}
 
 function roadmapVault(): FakeVault {
 	const vault = new FakeVault();
@@ -86,21 +75,25 @@ describe('the three-position projection toggle', () => {
 		expect(containerEl.querySelectorAll('.pbl-bucket-cards .pbl-card')).toHaveLength(0);
 	});
 
-	it('drops the tree-only collapse controls, keeping creation, undo and the filter', () => {
-		const { containerEl } = roadmapView(roadmapVault());
-		expect(containerEl.querySelector('.pbl-collapse-ctl')).toBeNull();
+	it('keeps the collapse controls present but disabled — this fixture has nothing to collapse — beside creation, undo and the filter', () => {
+		// Neither epic here is a parent, so no card draws a disclosure: present, not
+		// absent (the projection can still gain one), but with nothing to drive.
+		const { containerEl } = roadmapView(roadmapVault(), { ...AXES });
+		const ctls = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
+		expect(ctls).toHaveLength(2);
+		expect(ctls.every((b) => b.disabled)).toBe(true);
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-filter-input')).not.toBeNull();
 	});
 
 	it('marks the pane as a listbox while cards render, a labelled region otherwise', () => {
-		const withCards = roadmapView(roadmapVault());
+		const withCards = roadmapView(roadmapVault(), { ...AXES });
 		expect(treeOf(withCards.containerEl).getAttribute('role')).toBe('listbox');
 		expect(treeOf(withCards.containerEl).getAttribute('aria-label')).toBe('Product backlog roadmap');
 
 		document.body.empty();
-		const empty = roadmapView(new FakeVault());
+		const empty = roadmapView(new FakeVault(), { ...AXES });
 		expect(treeOf(empty.containerEl).getAttribute('role')).toBe('region');
 	});
 });
@@ -203,7 +196,7 @@ describe('the axis is declared, never guessed', () => {
 describe('roadmap keyboard support', () => {
 	it('walks the cards with arrows, opens with Enter, and reaches the edges', () => {
 		const vault = roadmapVault();
-		const { containerEl } = roadmapView(vault);
+		const { containerEl } = roadmapView(vault, { ...AXES });
 		const tree = treeOf(containerEl);
 
 		// Reading order: the placed card, then the shelf.
@@ -221,7 +214,7 @@ describe('roadmap keyboard support', () => {
 	});
 
 	it('opens the card menu from the keyboard: ContextMenu, and Shift+F10', () => {
-		const { containerEl } = roadmapView(roadmapVault());
+		const { containerEl } = roadmapView(roadmapVault(), { ...AXES });
 		const tree = treeOf(containerEl);
 		key(tree, 'ArrowDown');
 
@@ -235,7 +228,7 @@ describe('roadmap keyboard support', () => {
 	});
 
 	it('keeps the chords: Escape clears the selection, / reaches the filter', () => {
-		const { containerEl } = roadmapView(roadmapVault());
+		const { containerEl } = roadmapView(roadmapVault(), { ...AXES });
 		const tree = treeOf(containerEl);
 
 		key(tree, 'ArrowDown');

@@ -18,6 +18,12 @@ export interface RowContext {
 	dnd: DragDropController;
 	/** Rendered rows by path — the view's O(1) lookup for selection and subtree updates. */
 	rows: Map<string, HTMLElement>;
+	/**
+	 * Paths whose card drew a child disclosure this pass. Filled by the render and read
+	 * by the card menu and the toolbar's bulk controls, so both answer from what is on
+	 * screen rather than re-deriving it and hoping the two agree.
+	 */
+	cardKids: Set<string>;
 	chips: ChipProp[];
 }
 
@@ -25,8 +31,9 @@ export function rowContext(
 	host: BacklogViewHost,
 	dnd: DragDropController,
 	rows: Map<string, HTMLElement>,
+	cardKids: Set<string>,
 ): RowContext {
-	return { host, dnd, rows, chips: host.chips };
+	return { host, dnd, rows, cardKids, chips: host.chips };
 }
 
 /**

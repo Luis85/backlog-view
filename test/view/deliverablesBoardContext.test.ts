@@ -60,8 +60,12 @@ describe('an excluded Deliverable still carries a matching descendant', () => {
 		// (only PBI-rank roots are candidates), so this card is the only way to reach it.
 		const card = cardByTitle(containerEl, 'D');
 		expect(card.hasClass('pbl-card-context')).toBe(true);
-		const matches = card.querySelector('.pbl-card-matches');
-		expect(matches?.textContent).toContain('Widget');
+		// Named by the disclosure rather than the match list: the match is a DIRECT
+		// child, so the card lists it there and `undisclosedMatches` refuses to say the
+		// same thing twice. What this test is about is that the excluded Deliverable
+		// names it at all — either list is that.
+		expect(card.querySelector('.pbl-card-kids-list')?.textContent).toContain('Widget');
+		expect(card.querySelector('.pbl-card-matches')).toBeNull();
 	});
 
 	it('never counts the exempted Deliverable — the rule the fix must not break', () => {

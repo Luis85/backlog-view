@@ -30,6 +30,13 @@
 	min-width: 0;
 	height: 100%;
 	min-height: 0;
+	/* No top gutter on this axis. The `padding-block-start` below buys the horizon
+	   axis's buckets somewhere to scroll under the pinned header; the timeline pins its
+	   OWN header inside its own scroller, so here the same 8px is dead space between
+	   the toolbar and the grid — a strip where the lead column's border and the first
+	   gridline simply stop, which reads as the grid having come loose from the chrome
+	   above it. */
+	padding-block-start: 0;
 }
 
 /* THE BAND RULE, and it has no exceptions. The timeline takes what is left; every

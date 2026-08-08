@@ -1,10 +1,23 @@
 /*
- * The Obsidian variables `styles/` reads and does not define.
+ * The Obsidian variables `styles/` reads and this file defines instead of the real
+ * `test/harness/obsidian.css` (Obsidian's own app.css, linked BEFORE this file — see
+ * `harness.mjs`). That file supplies real element defaults now — a bare `<button>`
+ * included, which is what closed the 2026-08-08 gap this comment used to describe
+ * (see `docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md`) — so this
+ * stub's job narrowed to the one thing app.css cannot supply on its own: a THEME.
+ * app.css defines hundreds of variables in terms of a handful of others
+ * (`--color-base-00`, `--accent-h`, …) that only a theme (Obsidian ships none by
+ * default outside the app shell) or this stub gives concrete values. Every selector
+ * below is more specific than app.css's own (`body.theme-dark` beats `.theme-dark`),
+ * which is what makes this the effective palette even though it loads after
+ * `obsidian.css` in the link order — not by accident, by design: those two files
+ * disagreeing on `--color-base-*` would still be Obsidian's own published defaults
+ * either way (Task 9 sourced them the same place), so the two coinciding is not a
+ * coincidence worth relying on for a value this file does NOT also define.
  *
- * APPROXIMATIONS, not Obsidian's theme. Close enough that layout, spacing, hierarchy and
+ * APPROXIMATIONS, not Obsidian's theme. Close enough that spacing, hierarchy and
  * interaction read the way they do in the app; NOT close enough that a colour seen here
- * is a colour a user sees. The harness is faithful about structure and approximate about
- * appearance — see ADR 0020, and keep the live-vault checks.
+ * is a colour a user sees. See ADR 0020, and keep the live-vault checks.
  *
  * The set is checked, not remembered: `test/harness/harness.test.ts` scans every partial
  * for `var(--x)` and fails if one is missing here. Add a variable to a partial and that
@@ -32,6 +45,7 @@
 
 	/* Type */
 	--font-medium: 500;
+	--font-semibold: 600;
 	--font-ui-smaller: 12px;
 	--font-ui-small: 13px;
 	--font-ui-medium: 15px;
@@ -73,6 +87,9 @@ body {
 	--interactive-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
 	--interactive-accent-hsl: var(--accent-h), var(--accent-s), var(--accent-l);
 	--text-accent: var(--interactive-accent);
+	/* What a theme guarantees legible ON that accent — white in Obsidian's own default,
+	   in both schemes, because the accent is a mid-lightness hue in both. */
+	--text-on-accent: #ffffff;
 }
 
 /*
@@ -187,6 +204,18 @@ body.theme-light {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
+
+/*
+ * A bare `<button>`'s chrome — background, box-shadow, hover fill, padding, height,
+ * `justify-content: center` — used to be approximated here (a colour-only rule, added
+ * after the 2026-08-08 card-children bug this replaced). It is gone because
+ * `test/harness/obsidian.css` (Obsidian's real app.css, linked before this file — see
+ * `harness.mjs`) now supplies the real rule, so a partial's own reset has real chrome
+ * to strip rather than the browser's unstyled default OR a guess at Obsidian's. That is
+ * also what made the centring bug (`justify-content: center`, real app.css line ~7168)
+ * confirmable at all — this stub deliberately never asserted it, for lack of a source;
+ * see `styles/cardChildren.css`'s header for the fix and the specificity it beats.
+ */
 
 /*
  * The plugin renders into a Bases view inside a workspace leaf, which is what gives it a

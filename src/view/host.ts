@@ -2,6 +2,7 @@ import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
+import { StatePalette } from '../domain/board';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
@@ -55,6 +56,21 @@ export interface ScrollBox {
 }
 
 /**
+ * Which override colours the dated axis actually drew this pass — see
+ * `TimelineRender.drawn` (`render/timeline.ts`) for where each is decided. Declared
+ * here, beside `RoadmapSnapshot`, rather than imported from `render/timeline.ts`: that
+ * module reaches `host.ts` (through `RowContext`), so the other direction would cycle.
+ */
+export interface DrawnColors {
+	/** A bar overridden green by `.pbl-timeline-row.pbl-done .pbl-bar` — wins outright. */
+	done: boolean;
+	/** A bar drawing the cyan diamond (`.pbl-bar-milestone`) — beats a state slot too. */
+	milestone: boolean;
+	/** A bar with none of the above: no slot, no done override, no milestone cyan. */
+	accent: boolean;
+}
+
+/**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
  * the order the keyboard walks.
@@ -93,6 +109,32 @@ export interface RoadmapSnapshot {
 	window: TimelineWindow | null;
 	/** The density the grid drew at; null on the horizon axis. */
 	scale: TimelineScale | null;
+	/**
+	 * The lead-column width this render actually drew, resolved once from the user's
+	 * pick or `TIMELINE_LEAD_PX` and then clamped to what the pane can actually give
+	 * (`effectiveLeadWidth`); null on the horizon axis. Everything downstream that used
+	 * to read `TIMELINE_LEAD_PX` directly — the scroll-centring math, the drag's
+	 * lead-column hit test — reads this instead, so a resize cannot leave one of them
+	 * disagreeing with what is actually drawn, and a pane too narrow for the stored pick
+	 * cannot leave one of them assuming room that is not there.
+	 */
+	leadWidth: number | null;
+	/**
+	 * Which override colours were actually drawn on the dated axis this pass — see
+	 * `TimelineRender.drawn`, which this carries out unchanged. All `false` on the
+	 * horizon axis, where nothing draws a bar at all. The legend reads this instead of
+	 * re-deciding a bar's colour from `results`, which is the copy of `barClasses`'s
+	 * precedence that missed the outside-window case.
+	 */
+	drawn: DrawnColors;
+	/**
+	 * The state vocabularies the bars were keyed into this pass, in slot order — empty on
+	 * the horizon axis, where nothing draws a bar. Carried out of the render rather than
+	 * rebuilt by the legend for the same reason `drawn` is: the legend exists only to
+	 * explain the colours on the grid, so it has to key the very list the grid used. Two
+	 * calls to `statePalettes` would agree today and are two places to change tomorrow.
+	 */
+	palettes: StatePalette[];
 }
 
 /**
@@ -173,6 +215,17 @@ export interface BacklogViewHost {
 	/** The roadmap of the last render, or null while the view is not a roadmap (or has no axis). */
 	readonly roadmap: RoadmapSnapshot | null;
 	/**
+	 * Paths whose card drew a child disclosure in the last render pass — rebuilt per
+	 * pass exactly as `board` and `roadmap` are. The menu offers children where the
+	 * screen shows them; a surface that drew no body (a timeline row, a tree row) is
+	 * absent, so the discriminator is what happened rather than which projection it is.
+	 *
+	 * Readonly, and not the write path: the render fills the view's own set through
+	 * `RowContext.cardKids`. A renderer adding through this member would need a cast,
+	 * which is how a readonly boundary becomes decorative.
+	 */
+	readonly cardChildrenShown: ReadonlySet<string>;
+	/**
 	 * The retained roadmap-axis pick for this saved view, or null before the user
 	 * ever picks. Retained even while its axis is unconfigured — restoring the
 	 * configuration restores the choice — so read the axis to draw through
@@ -205,6 +258,20 @@ export interface BacklogViewHost {
 	readonly zoom: ScaleId;
 	/** Pick a density and re-render; the collapse store persists it. */
 	setZoom(id: ScaleId): void;
+	/**
+	 * The retained row density for the dated axis — 'compact', or null for
+	 * comfortable, the default. UI state exactly like the zoom beside it.
+	 */
+	readonly density: string | null;
+	/** Toggle compact rows and re-render; the collapse store persists the pick. */
+	setDensity(value: string | null): void;
+	/**
+	 * The retained timeline lead-column width in pixels, or null for
+	 * `TIMELINE_LEAD_PX`, the default. UI state exactly like the density beside it.
+	 */
+	readonly leadWidth: number | null;
+	/** Resize the lead column and re-render; the collapse store persists the pick. */
+	setLeadWidth(value: number | null): void;
 	/** Put today back in the middle of the timeline's scroller, from any position. */
 	jumpToToday(): void;
 	/**

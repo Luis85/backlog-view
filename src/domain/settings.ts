@@ -466,6 +466,22 @@ export function stateMenuValues(settings: BacklogSettings, observedStates: strin
 }
 
 /**
+ * Palette slots the roadmap's dated axis rotates a state's bar colour through — see
+ * `paletteSlot` (`domain/board.ts`). Four, not eight, because FOUR palette colours
+ * already mean something fixed on this grid and a slot that repeated one would key two
+ * things at once: red is the today line's, cyan the milestone line's, green the done rule's
+ * (`styles/timeline.css`), and PURPLE is Obsidian's default `--interactive-accent` —
+ * what `.pbl-bar` falls back to for an item with no slot and what `.pbl-legend-other`
+ * keys as `Other`. Purple was a slot until the legend drew it twice in one strip.
+ *
+ * The accent is the one of the four that cannot be fully reserved: it is a user
+ * setting, so a reader who picks one of the remaining slot colours reopens the
+ * collision against that slot instead. Dropping purple removes the collision every
+ * DEFAULT install has, which is the only one a constant here can reach.
+ */
+export const STATE_COLOR_SLOTS = 4;
+
+/**
  * Whether a state value counts as done, by the same case-insensitive match the model
  * and the board's columns already use. Takes a VALUE rather than an item because the
  * stamps ask it of a state being written, which no item holds yet.

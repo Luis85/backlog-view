@@ -330,9 +330,11 @@ describe('the projection toggle', () => {
 		expect(containerEl.querySelectorAll('.pbl-row').length).toBeGreaterThan(0);
 	});
 
-	it('drops the tree-only collapse controls in board mode', () => {
+	it('offers the collapse controls in board mode, since Epic B has cards to collapse', () => {
 		const { containerEl } = boardView(boardVault());
-		expect(containerEl.querySelector('.pbl-collapse-ctl')).toBeNull();
+		const ctls = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
+		expect(ctls).toHaveLength(2);
+		expect(ctls.some((b) => b.disabled)).toBe(false);
 		// The rest of the toolbar survives the projection: creation, undo, the filter.
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();
@@ -517,6 +519,34 @@ describe('the Deliverables board', () => {
 		const { containerEl } = harness;
 
 		expect(cardByTitle(containerEl, 'D').classList.contains('pbl-done')).toBe(true);
+	});
+
+	it('styles a TREE row by the item’s own workflow too, both directions', () => {
+		// The board card, the card's child list and the timeline bar all take an item's
+		// own workflow; the tree row was the one surface still asking `item.done`, so a
+		// Deliverable finished in its own workflow read as unfinished in the tree and one
+		// carrying a stale requirements `Done` read as finished. Found by review on the
+		// card list, fixed at every surface rather than the reported one.
+		const vault = boardVault();
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Open', deliverableStatus: 'Published' },
+		});
+		vault.addFile('Open.md', {
+			frontmatter: { type: 'Deliverable', order: 20, status: 'Done', deliverableStatus: 'Draft' },
+		});
+		const { containerEl } = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableDoneValues: 'Published',
+		});
+
+		const rowFor = (path: string) => {
+			const el = containerEl.querySelector<HTMLElement>(`.pbl-row[data-path="${path}"]`);
+			if (!el) throw new Error(`no tree row for ${path}`);
+			return el;
+		};
+		expect(rowFor('Shipped.md').classList.contains('pbl-done')).toBe(true);
+		expect(rowFor('Open.md').classList.contains('pbl-done')).toBe(false);
 	});
 
 	it('ignores "Show completed items": a Deliverable done in the requirements workflow still renders here', () => {

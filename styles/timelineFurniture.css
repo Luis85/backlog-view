@@ -1,0 +1,137 @@
+/* The dated axis's reading furniture — the header tiers, gridlines, weekend banding,
+   row tracking, bar labels and the density class — `src/view/render/timeline.ts`.
+   Position in index.css is NOT load-bearing: everything here that overrides
+   `timeline.css` outranks it by specificity, never by order. */
+
+/* The track slot of the header, holding two stacked tracks. Block layout: each track
+   keeps its own `width: var(--pbl-tl-days)`, and the flex-basis the track class
+   declares is inert outside a flex parent. */
+.pbl-timeline-tiers {
+	flex: 0 0 var(--pbl-tl-days);
+	width: var(--pbl-tl-days);
+}
+
+.pbl-timeline-super {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-timeline-cell-super {
+	font-weight: 600;
+}
+
+/* The header's cell rhythm, extended down the body. Positioned, so it paints above
+   row backgrounds and below the bars (positioned later in the DOM) — a 1px dashed
+   line over a hover tint is the normal gantt look. */
+.pbl-grid-line {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-grid-left);
+	border-left: 1px dashed var(--background-modifier-border);
+	pointer-events: none;
+}
+
+/* Saturdays and Sundays, one gradient: 2 days of tint, 5 of nothing, repeating —
+   phased by --pbl-weekend-offset (days to the first Saturday, in px). Translucent,
+   so it composes with the zebra tint and the hover in either paint order.
+
+   The background-size is what makes the phase survive the repeat, and is not
+   cosmetic: left at its default a gradient tiles at the LAYER's width, so shifting
+   it exposes a copy phased to that width rather than to the week, and any window
+   that is not a whole number of weeks — the 92-day Jul–Sep default among them —
+   grows a stray band at its left edge. Sized to exactly one seven-day period, the
+   tile IS the period and every copy lands on a Saturday. */
+.pbl-weekend-layer {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-tl-lead);
+	/* The WINDOW's width, not the wrapper's right edge: `.pbl-timeline-content` carries
+	   `min-width: 100%`, so in a pane wider than the dated track it runs on past the
+	   last cell — and `right: 0` would band blank space no header dates explain. */
+	width: var(--pbl-tl-days);
+	pointer-events: none;
+	background-image: linear-gradient(
+		to right,
+		var(--background-modifier-hover) 0,
+		var(--background-modifier-hover) calc(var(--pbl-day-px) * 2),
+		transparent calc(var(--pbl-day-px) * 2)
+	);
+	background-size: calc(var(--pbl-day-px) * 7) 100%;
+	background-position-x: var(--pbl-weekend-offset);
+}
+
+/* Ordered faint-to-strong: zebra under hover, both translucent so the weekend
+   banding reads through them. Each outranks timeline.css's transparent
+   `.pbl-card.pbl-timeline-row` background by specificity, not by order — but
+   hover and zebra tie with each other, so WITHIN this block order is behaviour
+   and hover has to stay last. */
+.pbl-card.pbl-timeline-row.pbl-row-even {
+	--pbl-row-tint: color-mix(in srgb, var(--background-modifier-hover) 35%, transparent);
+	background-color: var(--pbl-row-tint);
+}
+
+/* Hover ties with zebra on specificity, so it has to stay LATER in this file: a hovered
+   even row otherwise keeps the zebra tint. It redefines the same custom property, which
+   is what lets the lead rule below serve both states with one declaration instead of
+   repeating each percentage in two places that can drift. */
+.pbl-card.pbl-timeline-row:hover {
+	--pbl-row-tint: color-mix(in srgb, var(--background-modifier-hover) 80%, transparent);
+	background-color: var(--pbl-row-tint);
+}
+
+/* The row's background does not reach its lead cell: `.pbl-timeline-lead` paints an
+   opaque `--background-primary` so the day track can scroll under the sticky column, and
+   an opaque child never shows its parent's background through. So the lead carries the
+   tint itself — as a LAYER over that opaque colour, never as the colour.
+
+   That distinction is the whole rule. Setting `background-color` here instead REPLACES
+   the opaque one, and `--background-modifier-hover` is itself translucent in Obsidian's
+   themes, so `color-mix(hover, primary)` came out at alpha 0.67: the sticky column went
+   see-through and the grid scrolled visibly underneath it, on every tinted row. A
+   translucent layer over an opaque colour composes to exactly the tint the track shows,
+   and stays opaque. */
+.pbl-card.pbl-timeline-row.pbl-row-even .pbl-timeline-lead,
+.pbl-card.pbl-timeline-row:hover .pbl-timeline-lead {
+	background-image: linear-gradient(var(--pbl-row-tint), var(--pbl-row-tint));
+}
+
+/* max-width + 2×padding = LABEL_RESERVE_PX in render/timeline.ts — the reserve the
+   side flip is decided against. Change them together. */
+.pbl-bar-label {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	max-width: 144px;
+	padding: 0 var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+}
+
+.pbl-bar-label-after {
+	left: var(--pbl-label-left);
+}
+
+.pbl-bar-label-before {
+	right: var(--pbl-label-right);
+}
+
+/* The grid declutters exactly while the user is aiming a drop. */
+.pbl-dragging .pbl-bar-label {
+	visibility: hidden;
+}
+
+/* Compact rows: the 14px bar still fits a 24px row. Outranks timeline.css's
+   min-height and the lead's padding by specificity. */
+.pbl-density-compact .pbl-timeline-row .pbl-timeline-track {
+	min-height: 24px;
+}
+
+.pbl-density-compact .pbl-timeline-lead {
+	padding-top: 0;
+	padding-bottom: 0;
+}

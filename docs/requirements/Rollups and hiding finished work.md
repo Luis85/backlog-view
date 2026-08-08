@@ -75,7 +75,9 @@ left rather than everything that ever was.
 
 `src/domain/viewOptions.ts` (`showCompleted`, `showCounts`) ·
 `src/domain/model.ts` (`assignAll`, `subtreeDone`) ·
-`src/view/backlogView.ts` (`isRowHidden`) · `src/view/render/columns.ts` (the rollup cell) ·
+`src/view/rowVisibility.ts` (`rowHidden` — the predicate; `src/view/backlogView.ts`'s
+`isRowHidden`/`isRowHiddenUnfiltered` are the `applyFilter` true/false calls into it) ·
+`src/view/render/columns.ts` (the rollup cell) ·
 `src/view/render/emptyStates.ts` (the all-done state).
 Tests: `test/view/visibility.test.ts`, `test/domain/modelContextRows.test.ts`,
 `test/view/contextRowWrites.test.ts` (the rollup invariant).

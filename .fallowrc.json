@@ -1,7 +1,10 @@
 {
 	"$schema": "./node_modules/fallow/schema.json",
 	"entry": ["src/main.ts", "test/harness/page.ts"],
-	"dynamicallyLoaded": ["styles/**/*.css", "test/harness/theme.css"],
+	"dynamicallyLoaded": ["styles/**/*.css", "test/harness/theme.css", "test/harness/obsidian.css"],
+	"duplicates": {
+		"ignore": ["test/harness/obsidian.css"]
+	},
 	"usedClassMembers": [
 		{ "extends": "BasesView", "members": ["type"] },
 		{

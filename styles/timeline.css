@@ -83,7 +83,14 @@
 	pointer-events: none;
 }
 
+/* Border-box for the reason `.pbl-timeline-cell` is, and one more: `--pbl-tl-lead` is
+   the RESOLVED lead width (the user's own pick, or `TIMELINE_LEAD_PX`), and the same
+   number is added in TS to place the today line, the milestone lines and the gridlines.
+   Let the padding and border grow the box and the column is wider than the number those
+   marks were positioned with, so every one of them lands left of the label naming it —
+   the bug commit 791e1da fixed, at a fixed 220px, and a resize can reopen at any width. */
 .pbl-timeline-lead {
+	box-sizing: border-box;
 	flex: 0 0 var(--pbl-tl-lead);
 	width: var(--pbl-tl-lead);
 	min-width: 0;
@@ -104,6 +111,36 @@
 	white-space: nowrap;
 }
 
+/* The lead column's own resize grip — a thin strip pinned to the column's right edge,
+   `.pbl-bar-grip`'s pattern over a column boundary instead of a bar's. `position: sticky`
+   on `.pbl-timeline-lead` establishes its containing block, so `right` resolves against
+   that column's own box regardless of scroll. */
+.pbl-timeline-lead-grip {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: -3px;
+	width: 6px;
+	cursor: col-resize;
+	z-index: 1;
+	/* Otherwise the browser reads a touch drag here as a pan of the scroller beneath
+	   it and the pointermove stream this grip needs never arrives. */
+	touch-action: none;
+}
+.pbl-timeline-lead-grip:hover,
+.pbl-timeline-lead-grip:focus-visible {
+	background-color: var(--interactive-accent);
+}
+/* The ring has to contrast with the strip it rings. Both were `--interactive-accent`,
+   which on a 6px strip filled with that same accent is an indicator drawn in the colour
+   of the thing it indicates — invisible, on the one control here that has to say where
+   the keyboard is. `--text-on-accent` is the token a theme guarantees legible against
+   the accent it fills with, which is exactly the question being asked. */
+.pbl-timeline-lead-grip:focus-visible {
+	outline: 2px solid var(--text-on-accent);
+	outline-offset: -1px;
+}
+
 .pbl-timeline-track {
 	position: relative;
 	flex: 0 0 var(--pbl-tl-days);
@@ -111,7 +148,15 @@
 	display: flex;
 }
 
+/* `--pbl-cell-w` is a number of DAYS times `dayPx`, the same arithmetic that places every
+   bar, line and gridline in the track below. So the cell's box has to BE that width:
+   under the default `content-box` its padding and its 1px border are added to it, each
+   cell renders 17px wide of its own date range, and the error compounds — nine month
+   cells came out 153px wider than the days they name, dragging every header label right
+   of the mark it labels and shearing the two tiers apart (the year tier has fewer cells,
+   so it accumulates less). Border-box is load-bearing here, not housekeeping. */
 .pbl-timeline-cell {
+	box-sizing: border-box;
 	flex: 0 0 var(--pbl-cell-w);
 	width: var(--pbl-cell-w);
 	padding: var(--size-4-1) var(--size-4-2);
@@ -147,12 +192,41 @@
 	width: var(--pbl-bar-width);
 	height: 14px;
 	border-radius: var(--radius-s);
-	/* One color for solid/open bars: states override the variable, never the background. */
-	--pbl-bar-color: var(--interactive-accent);
+	/* One color for solid/open bars: states override the variable, never the background.
+	   `--pbl-state-color` is set below by whichever `pbl-state-N` class the row carries
+	   (`paletteSlot`, domain/board.ts) and inherits down unset when it does not, so
+	   the fallback is what an item with no slot still draws: the plain accent it always had. */
+	--pbl-bar-color: var(--pbl-state-color, var(--interactive-accent));
 	background-color: var(--pbl-bar-color);
 }
 .pbl-bar-holdable { cursor: grab; } /* only where barHolds registers the body hold — barClasses, timeline.ts */
 
+/* Per-state bar colour: `pbl-state-N` — N is the state's index in its own workflow's
+   vocabulary, offset past any earlier workflow's and wrapped modulo `STATE_COLOR_SLOTS`
+   palette slots by `paletteSlot` (domain/board.ts) — mirrors badges.css: TS adds the index class, this file owns
+   the colour. `--pbl-state-color` is declared here on the class itself, not on
+   `.pbl-bar`, so both consumers read the same token off the same class: the bar above
+   inherits it into `--pbl-bar-color` (falling back to the accent where no slot class is
+   present), and the legend's swatch (`legend.css`) is simply an element that carries the
+   class directly. One mapping, never two to keep in step.
+
+   No purple: it is Obsidian's DEFAULT accent, which is the fallback right above and the
+   colour `.pbl-legend-other` keys — a slot painting it drew two swatches alike in the one
+   strip that exists to tell colours apart. See `STATE_COLOR_SLOTS`, which counts the four
+   reserved colours and says why a user-set accent still escapes that reservation. */
+.pbl-state-0 { --pbl-state-color: rgb(var(--color-orange-rgb)); }
+.pbl-state-1 { --pbl-state-color: rgb(var(--color-blue-rgb)); }
+.pbl-state-2 { --pbl-state-color: rgb(var(--color-yellow-rgb)); }
+.pbl-state-3 { --pbl-state-color: rgb(var(--color-pink-rgb)); }
+
+/* Done outranks a slot colour: green is a meaning the user already relies on, a slot
+   colour is only positional — an item can carry both classes at once (a done state
+   still occupies a slot, per `paletteSlot`), and this is the rule for what happens
+   when it does. Explicit by SPECIFICITY, not by being declared last: this selector
+   names `.pbl-bar` directly (three classes) rather than through the inherited
+   `--pbl-state-color` token the base `.pbl-bar` rule above merely falls back to, so it
+   always wins regardless of source order — the same reasoning that already decided
+   `.pbl-bar-open-start.pbl-bar-open-end.pbl-bar-inferred` further down this file. */
 .pbl-timeline-row.pbl-done .pbl-bar {
 	--pbl-bar-color: var(--color-green);
 	opacity: 0.7;
@@ -221,12 +295,30 @@
 	border-right: none;
 }
 
-/* A point in time is not a span: an equal pair, stated or inferred, renders as the Gantt diamond. */
-.pbl-bar-milestone {
+/* A point in time is not a span: an equal pair the note states renders as the Gantt diamond.
+   CENTRED on its DATE, not started at it: `--pbl-bar-left` is the left edge a span wants,
+   but a point has no width to spend, so a 12px diamond hung off that edge sat 6px right of
+   the date it names. `translateX` precedes the rotation so it moves the diamond along the
+   track rather than along its own rotated axis. Its date, not its line: the full-height
+   `.pbl-milestone-line` is drawn from that same day's left edge and is `--pbl-tl-line`
+   wide, and it steps aside by another line width where the milestone falls on today
+   (`renderMilestoneLines`'s `nudge`) — so the two agree on the day and differ by up to 3px
+   within it. `renderBarLabel` reads the shift back off `translateX` to place a label
+   beside the diamond as drawn; keep the two in step.
+
+   Cyan, like the badge and like the full-height line drawn for the same date, and NOT
+   the state slot its row would otherwise give it: a milestone is keyed in the legend as
+   one thing with one colour, so a diamond wearing its workflow state instead would leave
+   the legend keying a colour the mark it names does not draw. Specificity, not order —
+   two classes here against the one `.pbl-bar` carries, so the state slot loses wherever
+   this rule sits in the file. A DONE milestone still goes green: that override names
+   three classes and outranks this, which is the same precedence every other bar has. */
+.pbl-bar.pbl-bar-milestone {
 	width: 12px;
 	height: 12px;
 	border-radius: var(--radius-s);
-	transform: translateY(-50%) rotate(45deg);
+	--pbl-bar-color: var(--color-cyan);
+	transform: translateY(-50%) translateX(-50%) rotate(45deg);
 }
 
 /* Wholly past an edge: a direction, not a date. Half the bar height and no fill of its

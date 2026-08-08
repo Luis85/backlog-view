@@ -33,6 +33,24 @@ describe('the zoom control', () => {
 		expect(view.zoom).toBe('quarter');
 	});
 
+	it('keeps keyboard focus on itself across the rebuild its own click causes', () => {
+		// Same claim as the density toggle's case, over a control the fix must not be
+		// specific to: renderToolbar's rebuild loses focus for any control in the bar,
+		// not only a state-independent one.
+		const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+		view.setProjection('roadmap');
+
+		const before = zoomButton(containerEl, 'Zoom to quarters');
+		before.focus();
+		expect(document.activeElement).toBe(before);
+		before.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const after = zoomButton(containerEl, 'Zoom to quarters');
+		expect(after).not.toBe(before);
+		expect(document.activeElement).toBe(after);
+		expect(document.activeElement).not.toBe(document.body);
+	});
+
 	it('is absent in tree mode, on the board, and on the horizon axis', () => {
 		const vault = datedVault();
 		vault.addFile('Triaged.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Now' } });
@@ -82,7 +100,7 @@ describe('the zoom control', () => {
 		view.setProjection('roadmap');
 
 		view.setZoom('quarter');
-		expect(cellLabels(containerEl).some((l) => /^Q[1-4] \d{4}$/.test(l))).toBe(true);
+		expect(cellLabels(containerEl).some((l) => /^Q[1-4]$/.test(l))).toBe(true);
 		expect(vault.writeLog).toHaveLength(0);
 		expect(scaleFor(view.zoom).dayPx).toBe(2);
 	});
@@ -108,6 +126,75 @@ describe('jump to today', () => {
 		// scrollport, whose left 220px the lead column covers at every scroll position.
 		const todayLeft = view.roadmap?.todayLeft ?? 0;
 		expect(scroller.scrollLeft).toBe(Math.max(todayLeft - TIMELINE_LEAD_PX - 50, 0));
+	});
+});
+
+describe('the density toggle', () => {
+	function densityButton(containerEl: HTMLElement): HTMLButtonElement {
+		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-density-toggle');
+		if (!btn) throw new Error('density toggle not found');
+		return btn;
+	}
+
+	it('compacts the grid from the toolbar without touching a note or the base', () => {
+		const vault = datedVault();
+		const { view, containerEl, config } = makeView(vault, DATE_AXIS, { collapsed: true });
+		expect(containerEl.querySelector('.pbl-density-toggle')).toBeNull(); // tree mode
+		view.setProjection('roadmap');
+
+		expect(densityButton(containerEl).getAttribute('aria-pressed')).toBe('false');
+		densityButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(densityButton(containerEl).getAttribute('aria-pressed')).toBe('true');
+		// The name is the setting, not the next action: it must NOT flip with the
+		// state, or the pressed toggle announces the mode it is not in.
+		expect(densityButton(containerEl).getAttribute('aria-label')).toBe('Compact rows');
+		expect(containerEl.querySelector('.pbl-timeline')?.classList.contains('pbl-density-compact')).toBe(true);
+		expect(vault.writeLog).toHaveLength(0);
+		expect(config.setCalls).toEqual([]);
+
+		// Toggling back clears the class and the pick.
+		densityButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-timeline')?.classList.contains('pbl-density-compact')).toBe(false);
+		expect(view.density).toBeNull();
+	});
+
+	it('keeps keyboard focus on itself across the rebuild its own click causes', () => {
+		// renderToolbar's barEl.empty() would otherwise drop focus to document.body,
+		// forcing a keyboard/screen-reader user to tab back through the toolbar to
+		// press it again — the density toggle's label is state-independent for
+		// exactly this reason.
+		const vault = datedVault();
+		const { view, containerEl } = makeView(vault, DATE_AXIS, { collapsed: true });
+		view.setProjection('roadmap');
+
+		densityButton(containerEl).focus();
+		const before = densityButton(containerEl);
+		expect(document.activeElement).toBe(before);
+		before.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const after = densityButton(containerEl);
+		expect(after).not.toBe(before);
+		expect(document.activeElement).toBe(after);
+		expect(document.activeElement).not.toBe(document.body);
+	});
+
+	it('comes back compact across a reopen, and reads a foreign value as comfortable', () => {
+		const vault = datedVault();
+		const first = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
+		first.view.setProjection('roadmap');
+		first.view.setDensity('compact');
+		first.view.onunload();
+
+		const second = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
+		expect(second.view.density).toBe('compact');
+		second.view.onunload();
+
+		// Stored state is user-writable data another version may have written: an
+		// unknown density reads back as the default, never trusted into the class.
+		const map = vault.localStorage.get('product-backlog:collapse') as Record<string, { density?: string }>;
+		map['Plan.base#Roadmap'].density = 'cozy';
+		const third = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
+		expect(third.view.density).toBeNull();
 	});
 });
 
