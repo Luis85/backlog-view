@@ -45,8 +45,9 @@ context row when a visible descendant needs a parent to hang from.
    inferred span moves because a test exists. That half is a **model** rule rather than a
    projection one, and it has to be — the counts are computed while the tree is built, so a
    predicate applied at draw time would hide the row and leave the number it changed. The
-   toolbar's **advisory** is the deliberate exception and keeps counting the base's raw
-   results (3a).
+   toolbar's count label and its completed toggle read the projection's own population and
+   subtract tests with everything else; its ignored-notes advisory is about a different
+   question and is untouched (3a, 3d).
 4. The state and tag vocabularies those projections derive from the results skip tests
    too, so a test's own `status` never becomes a column or an assignable value in the plan.
 5. The test catalog draws the other population ([[A projection for the tests]]), from the
@@ -83,13 +84,27 @@ context row when a visible descendant needs a parent to hang from.
   cost for a number this epic never promised — it records no results, so a case's `done` is
   its `status` and nothing else. If a run ever becomes an item, that increment can revisit
   this; naming the cost here is what keeps it from being rediscovered as a bug.
-- **3a — the toolbar's advisory counts notes the tree did not draw.** It keeps counting the
-  base's own results honestly, tests included, exactly as it already counts the ADRs that
-  are not work items. That advisory is a statement about the *base*, not about the plan, and
-  narrowing it would make the one number that reports the raw result set stop doing so. So
-  the advisory and the counts in step 3 report **different populations on purpose**, and a
-  reader comparing them will see them disagree the day the first suite is written — which is
-  the advisory working, since that gap is exactly what it exists to show.
+- **3a — the toolbar's two numbers.** They answer different questions and only one of them
+  moves, which an earlier draft of this note got wrong in both directions by treating them
+  as one "advisory".
+  The **count label** ("*12 of 30 items*", with the level breakdown behind it) reports
+  `countedPopulation` — already projection-scoped, since the requirements board subtracts
+  `Deliverable`s from it — so the plan's projections subtract tests there too, and the
+  catalog's own label counts tests and nothing else.
+  The **ignored-notes advisory** (`model.ignoredCount`) counts what the Base returned that
+  is *not a work item*. A test **is** a work item, so it was never in that number and
+  nothing about it changes. The earlier draft's "keeps counting raw results, tests
+  included" was describing the ignored advisory while pointing at the label, and it was
+  false of both.
+- **3d — "Show completed items" advertises hidden work.** `renderCompletedToggle` derives
+  its "*N hidden*" from the same `countedPopulation`, so a test whose state reads done
+  would be offered for revealing on a screen that cannot draw it. Subtracting tests from
+  that population is the whole fix, and it is the same fix for the same reason the code
+  already gives one projection over: *on the requirements board a done Deliverable is not
+  a hidden card, it is not a card at all, so counting it offered to reveal something
+  pressing the button cannot show.* In the catalog the toggle is withheld entirely, as it
+  already is on the Deliverables board — this epic gives tests no workflow, so there is no
+  completion for it to hide.
 - **4a — a test carries a state the plan's workflow also uses.** Irrelevant: its state is
   never read by a projection it is excluded from, so it cannot create a column, cannot fill
   one, and cannot appear in a Set state menu.
@@ -114,11 +129,13 @@ context row when a visible descendant needs a parent to hang from.
   between "the Base excluded it" and "this projection excludes it" is asserted, since
   reusing the context-row mechanism is the plausible implementation that breaks this note.
 - A `Task` under a `Test case` follows its parent into the catalog and out of the plan.
-- The toolbar's advisory still reports the base's raw results, tests included, while the
-  counts, rollups and level breakdown report the plan's population — the two are asserted
-  together, on one result set holding both families, because the pair is a deliberate
-  disagreement and a reader who found only one of these assertions would be right to
-  call the other a bug.
+- The toolbar's count label, its level breakdown and its "*N hidden*" completed toggle all
+  read the projection's population, so none of them counts a test in the plan and the
+  catalog's label counts nothing else. The completed toggle is asserted specifically, with
+  a test whose state reads done: it is the number that offers to *reveal* something, so it
+  is the one where a wrong population becomes a button that does nothing.
+- The ignored-notes advisory is unchanged, and the reason is asserted rather than assumed:
+  a test is a work item, so it never entered that count.
 - One predicate decides membership, read from both directions, so the catalog and the plan
   cannot both claim an item or both disown one.
 
@@ -130,7 +147,10 @@ is the correction this note needed most.
 
 **In the projections**, for what is drawn: the tree in `src/view/rowVisibility.ts`, the
 boards in `src/domain/board.ts`, the roadmap in `src/domain/roadmap.ts` and
-`src/domain/shelf.ts`, with the derived vocabularies in `src/domain/vocabulary.ts`.
+`src/domain/shelf.ts`, with the derived vocabularies in `src/domain/vocabulary.ts` — and in
+`countedPopulation` (`src/view/render/toolbar.ts`), which is a projection question wearing
+a toolbar's clothes: it already branches per projection, two consumers read it (the count
+label and the completed toggle), and both are wrong together or right together.
 
 **In `assignAll` (`src/domain/model.ts`)**, for what is counted — because the rollup is not
 a projection. That walk gathers descendant counts, done counts and date evidence while the

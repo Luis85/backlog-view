@@ -35,8 +35,12 @@ design: the relationship between a test and the work it checks is
 **Main flow**
 
 1. The user opens the toolbar's "pick another type" menu with no row selected and picks
-   `Test suite`. That menu iterates the whole vocabulary already, so the type appears
-   there the moment it is declared, with no code of its own.
+   `Test suite`. That menu iterates the vocabulary `offerableTypes` hands it, which is
+   **scoped by projection** — the requirements board drops `Deliverable`, the Deliverables
+   board offers nothing else — so the catalog needs a branch of its own there: test types
+   in the catalog, and no test type in the plan's projections. Without it the picker would
+   offer an `Epic` from the catalog and file a note that vanishes from the screen that
+   created it, which is the failure `offerableTypes` exists to prevent.
 2. The view writes `type` and `order` — and no `parent`, a suite being a root — filing the
    note in the `Test suite` folder ([[Where new items are filed]]).
 3. The user opens the **+** on that suite. `childTypeChoices` answers `Test case` alone,
@@ -47,6 +51,11 @@ design: the relationship between a test and the work it checks is
 
 **Extensions**
 
+- **1b — the user is in the backlog tree, the board or the roadmap.** Neither test type is
+  offered by the top-level creator there, for the same reason the catalog offers no `Epic`:
+  a creator that files a note the current projection cannot show is a button that makes
+  work disappear. The types are still creatable — from the catalog, which is where they
+  are visible.
 - **1a — the user picks `Test case` at the top level instead.** It is created with no
   `parent`, exactly as the toolbar's root creator does for every declared type, and it
   stays in the model: a recognised type is enough to belong
@@ -89,8 +98,12 @@ design: the relationship between a test and the work it checks is
 - Neither type is offered by `childTypeChoices` under an `Epic`, `Feature` or `PBI`, and
   the extra types are not offered under a suite or a case. Both directions are asserted;
   the second is the one an implementation that "adds a rung" gets wrong for free.
-- Both are offered by the toolbar's top-level creator, which needs no change to do it, and
-  the assertion covers that rather than assuming it from the vocabulary.
+- Both are offered by the toolbar's top-level creator **in the catalog and nowhere else**,
+  and no plan type is offered in the catalog — `offerableTypes` gains the branch, and both
+  directions are asserted. An earlier draft of this note claimed that creator needed no
+  change because it iterates the whole vocabulary; it iterates whatever `offerableTypes`
+  scopes for the projection, which is the function that already stops the requirements
+  board offering a `Deliverable`.
 - No move re-types either, at the root of a moved subtree or nested inside one — the rule
   [[Types beside the ladder]] learned twice, asked of these types at both depths.
 - A `Test case` that lands under a `PBI` keeps its type, and a `PBI` that lands under a
@@ -117,6 +130,11 @@ PBI: `LEVELS` is one ladder today and `childLevelIndex`/`nextLevelIndex` read it
 ladder, so a second one means those functions ask which ladder an item is on before they
 ask which rung. `childTypeChoices` gains the two branches above, and its top-level branch
 already answers `ALL_TYPES` in full, which is correct for a suite and wrong for nothing.
+
+`src/view/interactions/menu.ts` — `offerableTypes` gains the catalog branch, beside the two
+projection branches it already carries. That is where "a projection offers only what it can
+show" is stated once for both toolbar creators, so the rule is kept by extending it rather
+than by a second test written beside it.
 
 `src/domain/model.ts` — `computeLevel` and `pruneOutsideHierarchy` read type membership
 rather than the four levels already, so a test belongs by being declared;

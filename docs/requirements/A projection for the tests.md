@@ -42,7 +42,9 @@ base settings are saved on the view, working position on the device.
 2. The view draws the test items from the model it already built, as a tree rooted at the
    suites.
 3. Collapse, the quick filter and every write path behave as they do in the backlog tree,
-   over this population.
+   over this population — including the toolbar's count label, which counts tests here and
+   only tests. Its **completed toggle** is withheld, as it already is on the Deliverables
+   board: this epic gives tests no workflow, so there is no completion to hide.
 4. Switching back restores the plan, and the catalog's own collapse state is remembered
    separately, keyed as the other projections' are.
 
@@ -81,6 +83,12 @@ base settings are saved on the view, working position on the device.
 - The projection is reachable whether or not the base returns tests, and its empty state
   offers creation rather than configuration.
 - Collapse state is stored per projection, so collapsing a suite does not collapse an Epic.
+- The catalog's count label counts test items only, and its completed toggle is not
+  rendered — the toolbar reads this projection's population like every other, and both
+  consumers of that population are asserted, not just the visible one.
+- The top-level creator offers the test types here and no plan type
+  ([[Test suite and test case as a ladder of their own]] 1b), so nothing created from this
+  toolbar lands outside the projection that created it.
 - The focus level is ignored here and is left intact for the projections that use it —
   both halves asserted, since the second is the part [[A Deliverables board]] had to
   correct after shipping.
