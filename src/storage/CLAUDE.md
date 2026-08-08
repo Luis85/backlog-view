@@ -162,7 +162,9 @@ can be checked by reading one directory.
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
   session they still want. `flushCollapseState` is the only place that forgets a path,
-  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`.
+  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`, which
+  counts KEYS rather than notes — a parent settles once per scope — so a scope added is a
+  cap to raise with it, or the headroom it promises in notes quietly halves.
 - Saves are debounced (`scheduleCollapseSave`); "Collapse all" settles every parent in
   one loop and a write per row would be quadratic. `onunload` flushes a pending write,
   since closing the view is when it matters most.
