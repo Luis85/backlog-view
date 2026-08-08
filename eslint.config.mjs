@@ -108,15 +108,45 @@ const OVERBY = {
  * show (`offerableTypes`, src/view/interactions/menu.ts) — the requirements board
  * withholds Deliverable, the Deliverables board withholds everything else. Reading
  * `ALL_TYPES` straight anywhere else in view/ is how a sixth type-offering surface
- * arrives at the same bug the first four did (see the doc comment on
- * `offerableTypes`), so the ban sits on the import itself, caught where it enters the
- * file rather than at each use. Scoped to view/, not domain/: `ALL_TYPES` is the
- * correct thing for domain code (settings, shelf grouping, the README table) to name.
+ * arrives at the same bug the first four did (see the doc comment on `offerableTypes`).
+ * Scoped to view/, not domain/: `ALL_TYPES` is the correct thing for domain code
+ * (settings, shelf grouping, the README table, `childTypeChoices` itself) to name.
+ *
+ * This selector sees the name `ALL_TYPES` entering a file as a named import —
+ * including a renamed one (`import { ALL_TYPES as AT }`, since it is `imported.name`
+ * being matched, not `local.name`) — but not a namespace import: `import * as settings
+ * from '../../domain/settings'; settings.ALL_TYPES` never creates an `ImportSpecifier`
+ * at all, and closing that needs type information (is `settings` really that module?)
+ * this invariant is not worth building, the same trade `TREE_SCAN` states for its own
+ * receiver. `childTypeChoices(null)` (`src/domain/itemTypes.ts`) is a second, narrower
+ * route to the exact same array with no import to catch — `CHILD_TYPE_CHOICES_NULL`,
+ * below, bans that call directly rather than trying to trace a return value back to
+ * the name it came from.
  */
 const ALL_TYPES_IMPORT = {
 	selector: "ImportSpecifier[imported.name='ALL_TYPES']",
 	message:
 		'Route through offerableTypes (src/view/interactions/menu.ts) instead of importing ALL_TYPES — the whole type vocabulary is not what a given projection can show.',
+};
+
+/**
+ * `childTypeChoices(null)` — the "what may go at top level" case in
+ * `src/domain/itemTypes.ts` — returns `ALL_TYPES` itself, unfiltered, so it is a second
+ * way for a view file to reach the whole vocabulary without ever importing that name
+ * (see `ALL_TYPES_IMPORT`, above, which this selector sits beside rather than replaces
+ * — an import of the name is still worth catching at the point it enters a file). Every
+ * view/ call site passes the item whose children are being offered
+ * (`buildItemMenu`/`showItemMenu`'s `childTypes`, `renderRow`'s add button); none has a
+ * reason to ask the top-level question, which is the toolbar's own and already goes
+ * through `offerableTypes` instead. `backlogReadme.ts` calls it with `null` on purpose
+ * (a type with no declared parent reads as a root in the generated table) and is
+ * domain/, not view/, so it is out of this selector's scope the same way `settings.ts`
+ * is out of `ALL_TYPES_IMPORT`'s.
+ */
+const CHILD_TYPE_CHOICES_NULL = {
+	selector: "CallExpression[callee.name='childTypeChoices'][arguments.0.value=null]",
+	message:
+		'childTypeChoices(null) returns the unfiltered ALL_TYPES vocabulary. Pass the item whose children are being offered, or route through offerableTypes (src/view/interactions/menu.ts) for the top-level case.',
 };
 
 /**
@@ -209,9 +239,11 @@ export default defineConfig([
 	// -- invariants that are checked rather than described -----------------------
 	// Six disjoint regions of src/; see the note above `syntaxRules`. Two of the six
 	// (the general region and RANKING) are themselves split in two below — one half
-	// inside view/, one outside it — because ALL_TYPES_IMPORT applies to the former
-	// and would be a false positive on the latter (domain code names ALL_TYPES on
-	// purpose: settings.ts, shelf.ts, itemTypes.ts, backlogReadme.ts, model.ts).
+	// inside view/, one outside it — because ALL_TYPES_IMPORT and
+	// CHILD_TYPE_CHOICES_NULL apply to the former and would be false positives on the
+	// latter (domain code legitimately names ALL_TYPES — settings.ts, shelf.ts,
+	// itemTypes.ts, backlogReadme.ts, model.ts — and backlogReadme.ts legitimately
+	// calls childTypeChoices(null)).
 	{
 		// Everything that is not view/ and not one of the other special cases: domain/,
 		// storage/, ui/, commands/, main.ts.
@@ -244,26 +276,43 @@ export default defineConfig([
 	},
 	{
 		// Ranking code, view half: the same rules as the domain half, plus
-		// ALL_TYPES_IMPORT — this file offers types (`promptCreateItem`'s callers) like
-		// any other view/ module.
+		// ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL — this file offers types
+		// (`promptCreateItem`'s callers) like any other view/ module.
 		files: RANKING_VIEW,
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN, ALL_TYPES_IMPORT]),
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			RENDERED_ROOTS,
+			VISUAL_DEPTH,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+		]),
 	},
 	{
 		// view/render/ is the one region allowed to import overBy: it draws the column,
 		// never plans a write. The write boundary and the menu-anchor rule still apply —
 		// nothing here is exempt from those, only from OVERBY. It offers types on the
-		// toolbar, so ALL_TYPES_IMPORT applies here too.
+		// toolbar, so ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL apply here too.
 		files: [RENDER],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT]),
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
 	},
 	{
 		// The rest of view/ — everything under it once menu.ts, render/ and create.ts
 		// (handled above) are carved out. Same rules the general region has, plus
-		// ALL_TYPES_IMPORT: any of these files is a candidate sixth type-offering surface.
+		// ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL: any of these files is a
+		// candidate sixth type-offering surface.
 		files: [VIEW],
 		ignores: [MENU, RENDER, ...RANKING_VIEW],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN, ALL_TYPES_IMPORT]),
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+		]),
 	},
 	{
 		// Everything but `test/`, rather than `src/**` by name: a `files` pattern is
