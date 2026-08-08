@@ -9,30 +9,52 @@
 .pbl-card-kids {
 	display: flex;
 	flex-direction: column;
-	gap: var(--size-2-1);
+	gap: var(--size-4-1);
+	/* Beyond `.pbl-card`'s own gap (--size-4-1) between it and the content above —
+	   that alone read as cramped, so the toggle gets a second helping of the same
+	   step rather than a one-off number. */
+	margin-top: var(--size-4-1);
 }
 
+/* Real `<button>`s (see `cardChildren.ts`), minus the button chrome — the same shape
+   `.pbl-tag-remove` (tags.css) and `.pbl-state-chip` (columns.css) already use:
+   `appearance: none` plus a zeroed border/margin/background, because those alone are
+   what Obsidian's own button defaults fill in behind an otherwise-untouched button. */
 .pbl-card-kids-toggle {
 	display: flex;
 	align-items: center;
+	justify-content: flex-start;
 	gap: var(--size-2-1);
 	align-self: flex-start;
-	padding: 0 var(--size-2-1);
+	appearance: none;
+	border: none;
+	margin: 0;
+	padding: var(--size-2-2) var(--size-2-1);
 	height: auto;
 	line-height: 1.4;
 	box-shadow: none;
-	background-color: transparent;
+	background: transparent;
+	font-family: inherit;
+	font-weight: inherit;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
+	cursor: pointer;
 }
 
+/* A colour shift, not a filled rectangle — a hover background here is exactly the
+   button chrome this file exists to strip. */
 .pbl-card-kids-toggle:hover:not(:disabled) {
-	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
+}
+
+.pbl-card-kids-toggle:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
 }
 
 .pbl-card-kids-toggle:disabled {
 	opacity: 0.5;
+	cursor: default;
 }
 
 .pbl-card-kids-chevron {
@@ -69,25 +91,42 @@
 	display: none;
 }
 
+/* `text-align: left` alone cannot left-align this: the button is a flex container
+   (below) and text-align has no effect on flex ITEMS, only inline content —
+   `justify-content` is the property that positions them, and Obsidian's own button
+   default sets it to `center`. Kept here anyway because the icon and title are still
+   inline content inside their own boxes. */
 .pbl-card-kid {
 	display: flex;
 	align-items: center;
+	justify-content: flex-start;
 	gap: var(--size-2-2);
 	width: 100%;
+	appearance: none;
+	border: none;
+	margin: 0;
 	/* The left value is the list's indent, carried by the button so it is clickable. */
 	padding: var(--size-2-1) var(--size-2-1) var(--size-2-1) var(--size-4-3);
 	height: auto;
 	line-height: 1.4;
 	box-shadow: none;
-	background-color: transparent;
+	background: transparent;
+	font-family: inherit;
+	font-weight: inherit;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	text-align: left;
+	cursor: pointer;
 }
 
+/* A colour shift, not a filled rectangle — see the toggle's own hover rule above. */
 .pbl-card-kid:hover {
-	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
+}
+
+.pbl-card-kid:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
 }
 
 .pbl-card-kid-title {
