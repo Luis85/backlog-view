@@ -67,6 +67,14 @@ touched, on evidence that is a drawing. What it does instead is make the contrad
 visible ([[Arrows between bars]]), which is the information a reader needs and the
 decision they get to make.
 
+**It marks damage in one place.** A prerequisite can be stated from a tree row, a board
+card or a bucket card ([[Linking two items]]), and a broken one is *shown* only on the
+dated timeline ([[Arrows between bars]]) or by opening Remove dependency… — the fact is
+reachable everywhere and visible in one projection. Badging the other three is three
+display decisions inside notes that own those rows, and no one has asked for them; what is
+refused here is the promise, not the feature, so this stays a named gap rather than a
+guarantee nothing keeps.
+
 **It has one kind of edge.** Finish-to-start, the only one every surveyed tracker draws
 by default. Start-to-start, finish-to-finish and lags are a vocabulary on the edge, and
 nothing here has asked for one.

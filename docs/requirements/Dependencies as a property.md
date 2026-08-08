@@ -51,7 +51,8 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
    that named it.
 4. Entries that cannot become an edge — unresolvable, self-referential, or part of a
    cycle — are kept and **marked broken**, never dropped and never rewritten by
-   the reader. Never *by the reader* is the whole of it: the user can still remove one
+   the reader. Marked in the **model**: a field on the item, per "Where it lives". Which
+   surfaces show it is each surface's own question, and 4d says how few answer it today. Never *by the reader* is the whole of it: the user can still remove one
    deliberately, and [[Linking two items]] is where that path lives.
 
 **Extensions**
@@ -125,6 +126,17 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   ([[Arrows between bars]] 1d), which is the same picture whichever way the walk went.
 - **4c — the loop is entirely between context rows.** It is not read, per 3c, so there
   is no loop to mark.
+- **4d — the item is on a tree row, a board card or a bucket card.** Nothing there says an
+  entry is broken. Two surfaces read the mark today and no others: the **dated timeline**,
+  where the dependent's row carries the marker ([[Arrows between bars]] 1d), and **Remove
+  dependency…**, which lists every entry that became no edge by the raw text it holds
+  ([[Linking two items]] 4b) and opens wherever a work item's menu opens. So the fact is
+  *reachable* from every projection and *visible* in one. That is a deliberate narrowing
+  rather than a hole to be filled here: a badge on a tree row, a card and a bucket card is
+  three display decisions inside notes that own those rows, while this note owns the
+  property and the reading. What it must not do is quietly promise the wider thing — which
+  is what the word "marked" did until this extension was written, since a use case saying
+  "marked" reads as something on a screen.
 
 ## Acceptance criteria
 
@@ -145,9 +157,12 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   finished model and no non-work-item is offered as a prerequisite anywhere. Checkable by
   building a model whose base returns a meeting note the prune drops and asserting the edge
   that names it is marked broken — no ordering claim needed about which pass ran first.
-- An unresolvable, self-referential or cycle-participating entry is marked, never dropped:
-  no item is hidden, re-parented, re-ranked or re-levelled by any edge, and the tree's own
-  shape is identical with the property configured and without it.
+- An unresolvable, self-referential or cycle-participating entry is marked **in the model**,
+  never dropped: no item is hidden, re-parented, re-ranked or re-levelled by any edge, and
+  the tree's own shape is identical with the property configured and without it. Nothing
+  here claims the mark is drawn anywhere — the dated timeline and the removal picker are
+  the two surfaces that read it, each in its own note, and the tree row, the board card and
+  the bucket card show nothing.
 - Which entries a cycle marks does not depend on presentation: every entry in the cycle is
   marked, so the same stored data produces the same marks under any Bases sort. Checkable
   by building `A → B → A` twice with the entries in either order and asserting both edges
