@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
-import { flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { FuzzySuggestModal, Menu, Modal, Notice } from '../helpers/obsidian-mock';
+import { flush, makeView, refresh, rowByTitle, useViewHarness } from '../helpers/view';
 
 /**
  * The menu path that states and clears a prerequisite, from the acceptance criteria of
@@ -260,6 +260,25 @@ describe('the write', () => {
 		// And it costs nothing: a write that changed nothing emits no inverse, so it must
 		// not spend the single undo slot on a change the user cannot see.
 		expect(view.canUndo()).toBe(false);
+	});
+
+	it('refuses a pick that would close a loop after the model refreshed while the picker was open', async () => {
+		// A stale pick, not a stale write: the offer excluded nothing at open time, then
+		// B gains a dependency on A before the choice lands — picking B for A now would
+		// close the very loop the offer was built to keep out.
+		const vault = vaultWith();
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'A'), 'Depends on…');
+		expect(suggester().offered()).toContain('B B.md');
+		vault.fm('B.md')['dependsOn'] = 'A';
+		refresh(view, vault);
+		suggester().choose('B');
+		await flush();
+
+		expect(vault.fm('A.md')['dependsOn']).toBeUndefined();
+		expect(view.canUndo()).toBe(false);
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
 	});
 
 	it('leaves the other entries alone when one of several goes', async () => {

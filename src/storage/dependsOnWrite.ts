@@ -125,8 +125,12 @@ function applyDependsOnDelta(
 	const removed: string[] = [];
 	const next: unknown[] = [];
 	for (const value of current) {
-		const dropped = dropText(value);
-		if (dropped !== null) removed.push(dropped);
+		// Matched on the TRIMMED text (`dropText`), captured for the inverse as the
+		// ORIGINAL value: `dropText` returning non-null already means `value` is a
+		// string (that is what `textOf` requires), so restoring `value` itself rather
+		// than the matched text is what puts back a line with significant surrounding
+		// whitespace exactly as it was, not trimmed.
+		if (dropText(value) !== null) removed.push(value as string);
 		else next.push(value);
 	}
 	const added: string[] = [];

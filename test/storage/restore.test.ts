@@ -266,6 +266,21 @@ describe('dependency inverses', () => {
 		expect(inverses).toEqual([]);
 	});
 
+	it('restores a removed entry with its original spelling, whitespace and all', async () => {
+		const vault = new FakeVault();
+		const a = vault.addFile('A.md');
+		// Significant surrounding whitespace: trimmed is what the reader sees, but undo's
+		// promise is to put back what the write took out, not what the reader made of it.
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: [' [[A]] '] } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: a.path } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('Item.md')['dependsOn']).toEqual([' [[A]] ']);
+	});
+
 	it('still matches a live entry naming no note by its exact text — nothing to resolve, nothing to share', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: 'Ghost' } });

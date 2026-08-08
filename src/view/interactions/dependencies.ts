@@ -127,7 +127,22 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 	new ItemSuggestModal(host.app, {
 		placeholder: `What must come before ${item.title}?`,
 		choices,
-		onChoose: (choice) => applyDependencyWrite(host, item, { add: choice.file }),
+		onChoose: (choice) => {
+			// The row that built this list can be a refresh behind the note: the graph may
+			// have changed while the suggester was open, so legality is asked again of the
+			// CURRENT model rather than trusted from when the menu opened — `host.model` may
+			// have been rebuilt since, and reusing `candidates` here is what keeps this one
+			// rule rather than a second opinion of it (the same rule `dependsOnWrite.ts`'s
+			// own `add` arm keeps at the write boundary).
+			const current = host.model;
+			const stillLegal =
+				current !== null && candidates(host.app, current, item).some((c) => c.file.path === choice.file.path);
+			if (!stillLegal) {
+				new Notice('That note changed while the picker was open, so nothing was written.');
+				return;
+			}
+			applyDependencyWrite(host, item, { add: choice.file });
+		},
 	}).open();
 }
 
