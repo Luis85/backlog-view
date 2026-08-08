@@ -922,33 +922,35 @@ if (hierarchies.length === 0) {
 		// column over while the collected set still equalled `LEGAL_CHILDREN`. Both measured
 		// against the real register before being fixed; both passed.
 		//
-		// The rule is a WHITELIST of what may stand outside a code span, which is as far as
-		// this can go without reading English: every legitimate scrap of prose in this table
-		// is lowercase connective tissue — `(nothing — it is a root)`, `or`, the separators —
-		// so anything else is a name someone forgot to format, or a syntax this check cannot
-		// see. A type spelled in all-lowercase prose would still slip through, and nothing
-		// here claims otherwise.
+		// **A cell's meaning is exactly the code spans it holds.** That is the rule, and the
+		// prose is checked against it rather than around it, because four rounds of review
+		// found four different ways for a cell to READ as something other than its spans:
+		// a type in prose (twice, in different columns), a span struck through, and prose
+		// that negates the spans beside it (`` `Bug`, but not `Deliverable` ``). Each fix
+		// closed its own instance and the next round walked through the gap beside it.
 		//
-		// A whitelist rather than "no capitals", because the THIRD instance of this defect was
-		// `~~`Deliverable`~~`: struck through, so GitHub and Obsidian both render the relation
-		// as removed, while `code` still collects the span and the tildes land in prose that a
-		// capitalisation rule has no reason to look at. This parser loads the TABLE extension
-		// only, so there is no `delete` node to exclude — the tildes are literal text, which is
-		// why the rule is about unknown syntax rather than about strikethrough. It fails
-		// closed: a legitimate new form of prose is a false ALARM that makes somebody look,
-		// which is the safe direction and the one this file argues for elsewhere.
+		// So beside a code span the ONLY prose allowed is separators and `or` — nothing that
+		// can carry meaning. A free-form parenthetical is legal exactly where it says the cell
+		// names nothing (`*(nothing — it is a root)*`), which is the one thing it is ever used
+		// for and is only sayable when there is nothing to contradict.
+		//
+		// Deliberately failing CLOSED, and deliberately not reading English. A legitimate new
+		// turn of phrase is a false ALARM that makes somebody look — the safe direction, and
+		// the one this file already argues for at the report-site count. What it cannot see:
+		// a misleading arrangement of `or` and the separators themselves.
 		//
 		// Checked HERE rather than in `tablesWith`, which is generic over any heading set:
-		// "this table's prose is lowercase connective tissue" is this table's rule. What the
-		// helper owes is the prose itself, which it now returns — a caller cannot notice what
-		// it never receives, and that is exactly how this defect got a second life.
+		// "this cell means its code spans" is this table's rule. What the helper owes is the
+		// prose itself, which it now returns — a caller cannot notice what it never receives,
+		// and that is exactly how this defect got a second life.
 		for (const [column, cell] of cells.entries()) {
-			// The capitalised WORDS rather than the offending letter, and the odd CHARACTERS
-			// deduped: the prose of a relation cell is mostly separators, so reporting it raw
-			// says `", , , , Spike"` and buries the one thing to go and fix.
-			const loose = cell.text.match(/\p{Lu}[\p{L}\p{M}]*/gu) ?? [];
-			const odd = [...new Set(cell.text.replace(/\p{Lu}[\p{L}\p{M}]*/gu, "").match(/[^\p{Ll}\p{M}\s,/()—]/gu) ?? [])];
-			const wrong = [...loose, ...odd];
+			const aside = cell.code.length === 0 ? cell.text.replace(/\([^)]*\)/gu, "") : cell.text;
+			// Reported as WORDS and deduped CHARACTERS rather than raw: the prose of a relation
+			// cell is mostly separators, so the whole cell reads `", , , , Spike"` and buries
+			// the one thing to go and fix.
+			const named = aside.match(/[\p{L}\p{M}]+/gu) ?? [];
+			const odd = [...new Set(aside.replace(/[\p{L}\p{M}]+/gu, "").match(/[^\s,/]/gu) ?? [])];
+			const wrong = [...named.filter((word) => word !== "or"), ...odd];
 			if (wrong.length > 0) {
 				fail("docs/README.md", `hierarchy table row ${index + 1} column ${column + 1} has ${wrong.join(", ")} outside a code span`);
 			}

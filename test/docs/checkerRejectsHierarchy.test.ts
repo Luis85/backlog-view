@@ -122,6 +122,26 @@ describe('the documented hierarchy and the gate agree', () => {
 			'has ~ outside a code span',
 		],
 		[
+			// The FOURTH, and the one that moved the rule from "what may the prose look like"
+			// to "a cell means its code spans". Every type here is correctly formatted and the
+			// collected set matches the gate exactly — it is the lowercase words between them
+			// that reverse the reading, which no rule about formatting could ever have caught.
+			'a relation cell whose prose negates the types beside it',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, but not `Deliverable` |');
+			},
+			'has but, not outside a code span',
+		],
+		[
+			// The parenthetical is legal where it says the cell names NOTHING, and nowhere
+			// else — beside a code span it is free-form text that can say anything at all.
+			'a parenthetical aside beside the types it would qualify',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug` (and never `Deliverable`) |');
+			},
+			'outside a code span',
+		],
+		[
 			// The claim the prose rule does NOT subsume: a cell holding no name at all. Nothing
 			// disallowed to report, and the row still disappears.
 			'a hierarchy row whose type cell is empty',
