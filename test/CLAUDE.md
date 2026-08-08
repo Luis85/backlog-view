@@ -41,13 +41,21 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   in tests.
 - `addFile` fills `frontmatterLinks` only through its `parentLink` option, and a faithful
   parent fixture is decided by TWO questions, not one — is the value bracketed, and does it
-  resolve. Measured in a vault (2026-08-08): Obsidian indexes a frontmatter link exactly
-  when it is a link AND it resolves.
+  resolve. **One half of that is measured and one half is assumed**, and the difference
+  decides which fixtures below are faithful, so it is stated rather than blurred: measured
+  in a vault (2026-08-08), a bracketed link that resolves to NOTHING has no
+  `frontmatterLinks` entry. That a resolvable one *does* have an entry is
+  `resolveParent`'s premise and has not been checked — `docs/issues/The fake vault can
+  hold a cache Obsidian would not produce.md` carries the one-line console check that
+  would settle it, and what it would change.
   - **`parent: Epic`, a bare name.** Never a link, so never indexed, whether or not an
     `Epic.md` exists. Write it into `frontmatter` — always. This is the raw fallback's
     stated purpose and the shape `resolveParent`'s own comment names.
-  - **`[[Epic]]` where `Epic.md` exists.** Indexed, so `parentLink: 'Epic'`. Writing the
-    brackets into `frontmatter` beside a real `Epic.md` builds a cache no vault hands out.
+  - **`[[Epic]]` where `Epic.md` exists.** Assumed indexed, so `parentLink: 'Epic'` — and
+    writing the brackets into `frontmatter` beside a real `Epic.md` is then a cache no
+    vault hands out. This is the shape resting on the unmeasured half: if Obsidian turns
+    out not to index frontmatter links at all, every `parentLink` fixture is the
+    unfaithful one and this line inverts.
   - **`[[No Such Note]]`.** A link that resolves to nothing has no entry at all, so a raw
     bracketed value with no such file added is exactly what a vault produces.
 

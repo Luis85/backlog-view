@@ -2,7 +2,7 @@
 type: Issue
 order: 160
 parent: "[[Invariants as checks, not conventions]]"
-status: Done
+status: Open
 priority: P3
 area: verification
 created: 2026-08-08
@@ -56,7 +56,16 @@ than the path a vault actually takes.
 
 **2026-08-08.** [[Parent links Obsidian parsed, and ones it did not]] asked the metadata
 cache directly: a note whose parent link resolves to nothing has **no `frontmatterLinks`
-entry at all**. So Obsidian indexes a link exactly when it resolves.
+entry at all**.
+
+That is ONE half of a biconditional, and this note said "so Obsidian indexes a link exactly
+when it resolves" — which the run did not establish. The resolvable and alias cases were
+watched in the TREE, and a correctly parented note is an outcome the raw fallback produces
+just as well; nothing looked at their cache. Caught in review, one commit after the same
+claim had been written into `test/CLAUDE.md` as a fixture rule. The repository's own
+sentence for this is *write the guarantee to the check, never ahead of it*, and this is
+the second time in one branch that a rule about instructions was broken while writing the
+note about instructions.
 
 That settles the divergence and sharpens it rather than removing it. Brackets with no link
 entry IS a cache Obsidian produces — for an unresolved link. What it never produces is
@@ -74,6 +83,27 @@ Deleting the two lines therefore rests on a deduction about Obsidian's link pars
 than on a measurement. A value that parser declines to index while still naming a real note
 would make them load-bearing again, silently. Kept, with the comment in `model.test.ts`
 saying what the tests around it do and do not cover.
+
+## The half still unmeasured
+
+**Does Obsidian populate `frontmatterLinks` for a bracketed link that RESOLVES?**
+
+It is `resolveParent`'s premise — path 1 exists for it — and it has never been checked
+here. No vault session can settle it by looking at the tree, for the same reason the
+unresolved case could not be: both paths parent the note correctly.
+
+The check is the same console line as before, on a note whose parent link resolves:
+
+```js
+app.metadataCache.getFileCache(app.workspace.getActiveFile()).frontmatterLinks
+```
+
+- **An entry** → the premise holds, `parentLink` is the faithful fixture for a resolvable
+  link, and the fixture guidance in [`test/CLAUDE.md`](../../test/CLAUDE.md) stands as
+  written.
+- **Nothing** → Obsidian does not index frontmatter links at all. Path 1 is dead in
+  production, every `parentLink` fixture in the suite is the unfaithful one, and the
+  guidance inverts. That is a large enough consequence to be worth thirty seconds.
 
 ## What is left
 
