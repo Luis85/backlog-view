@@ -5,6 +5,7 @@ import { BacklogViewHost } from '../host';
 import { uniqueElementId } from '../selection';
 import { BacklogItem } from '../../domain/model';
 import { childrenLabel, listedChildren } from '../childrenList';
+import { ownWorkflowReading } from '../../domain/board';
 
 /**
  * One level of the tree, on the card. A rollup says three of eight are done and never
@@ -101,7 +102,10 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 function renderChildEntry(host: BacklogViewHost, list: HTMLElement, child: BacklogItem): void {
 	const li = list.createEl('li');
 	const entry = li.createEl('button', {
-		cls: 'pbl-card-kid' + (child.done ? ' pbl-done' : ''),
+		// The child's OWN workflow, never `child.done` — a Deliverable is offered as a child
+		// under an Epic, a Feature and a PBI, and it is tracked by its own states
+		// everywhere else it appears. `ownWorkflowReading` is that rule stated once.
+		cls: 'pbl-card-kid' + (ownWorkflowReading(child).done ? ' pbl-done' : ''),
 		attr: { type: 'button', tabindex: '-1' },
 	});
 	renderBadge(host, entry, child);

@@ -231,22 +231,34 @@ export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSetti
 
 /**
  * The colour vocabularies a dated-axis bar can be keyed into, in the order their slots
- * are assigned — only the workflows that can actually key something, so the list has two
- * entries only where the base really runs two.
+ * are assigned — only the workflows that can actually key something, and only where they
+ * are genuinely two vocabularies, so the list has two entries only where the base really
+ * shows two.
  *
- * A workflow is here when it has a KEY. Without one `domain/model.ts` sets its every
- * state value to null, so no bar it tracks can carry a colour, and a vocabulary in this
- * list that nothing can draw is exactly the defect the legend's own rule names — a swatch
- * exists only where a bar can draw the thing it keys. The Deliverable one is asked of the
- * RAW `deliverableStateKey` rather than the resolved one: a workflow FALLING BACK reads
- * the same property, holds the same values and is the same workflow wearing another name,
- * so a second entry would key one vocabulary twice and invite the reader to look for a
- * difference that is not there. Configuring only the Deliverable key is therefore ONE
- * workflow too, and the one it is — found by review, which is also the shape it failed in:
- * the question was written as "is there a second key?" when it is "which workflows can
- * draw?", and the two differ exactly where the first key is the missing one.
+ * A palette is a VOCABULARY, not a property, and both halves of that matter:
  *
- * Both present, and: the label names each so two vocabularies in one strip say which is
+ * - **It can draw** when its RESOLVED key is non-empty. Without a key `domain/model.ts`
+ *   sets that workflow's every state value to null, so no bar it tracks can carry a
+ *   colour, and a vocabulary in this list that nothing can draw is exactly the defect the
+ *   legend's own rule names — a swatch exists only where a bar can draw the thing it
+ *   keys. Resolved, not raw: a Deliverable workflow falling back reads the requirements
+ *   property, which is a real property, so it draws.
+ * - **It is a SECOND one** when the user DECLARED a second — its own property, or its own
+ *   list of values or done values. Splitting on the key alone was wrong in both
+ *   directions, and review found both: a base configuring only the Deliverable key built
+ *   two palettes where one workflow exists, and a base whose key falls back while
+ *   `deliverableStates` is populated built one where two do. `resolveSettings` keeps a
+ *   populated list whatever the key does — the lists follow the key only while they are
+ *   EMPTY — so one property can legitimately be read through two vocabularies.
+ *
+ *   Asked of the DECLARATIONS rather than of the two computed lists, which is the same
+ *   question and a different answer: with no list configured each workflow falls back to
+ *   the states its own results were OBSERVED to hold, and those populations are disjoint
+ *   by construction (`requirementsWorkflow` excludes Deliverables), so the computed lists
+ *   differ in a base that declared nothing at all. Comparing them split one workflow in
+ *   two and drew `Done` twice in one strip.
+ *
+ * Two of them, and: the label names each so two vocabularies in one strip say which is
  * which, and slots CONTINUE across them rather than restarting — which is why this returns
  * an ordered list and an offset rather than two independent vocabularies. Restarting would
  * paint a Deliverable's first state the same colour as a PBI's first state, and the whole
@@ -254,11 +266,11 @@ export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSetti
  * still wrap (`STATE_COLOR_SLOTS`), so a long enough pair repeats — the same honest limit
  * one vocabulary longer than the palette already has.
  *
- * A lone workflow is unlabelled and starts at slot 0 whichever of the two it is: there is
- * nothing to tell it apart from, and there is no earlier vocabulary for its slots to
- * continue from. NEITHER key configured returns an empty list — no palette, rather than a
- * palette of nothing — so a caller has to say what it does with no vocabulary at all
- * instead of being handed one that silently keys nothing.
+ * A lone one is unlabelled and starts at slot 0 whichever it is: nothing to tell it apart
+ * from, and no earlier vocabulary for its slots to continue from. NEITHER able to draw
+ * returns an empty list — no palette, rather than a palette of nothing — so a caller has
+ * to say what it does with no vocabulary at all instead of being handed one that silently
+ * keys nothing.
  */
 export interface StatePalette {
 	/** Names the workflow in the legend; empty when there is only one and nothing to tell apart. */
@@ -279,7 +291,9 @@ export function statePalettes(model: BacklogModel, settings: BacklogSettings): S
 			offset: 0,
 		});
 	}
-	if (settings.deliverableStateKey !== '') {
+	// `drawable.length === 0` is the requirements workflow having no key at all: whatever
+	// was declared, there is no first vocabulary for this one to be the same AS.
+	if (resolvedDeliverableStateKey(settings) !== '' && (drawable.length === 0 || declaresOwnWorkflow(settings))) {
 		drawable.push({
 			label: 'Deliverables',
 			values: deliverablesWorkflow(model, settings).values,
@@ -290,6 +304,22 @@ export function statePalettes(model: BacklogModel, settings: BacklogSettings): S
 		});
 	}
 	return drawable.length === 1 ? [{ ...drawable[0], label: '', offset: 0 }] : drawable;
+}
+
+/**
+ * Whether the Deliverable settings declare a workflow of their own rather than following
+ * the requirements one: its own property, its own states, or its own done values. Any of
+ * the three is enough — two workflows agreeing on the states while disagreeing on which of
+ * them is finished paint the same value differently, since done outranks a slot.
+ */
+function declaresOwnWorkflow(settings: BacklogSettings): boolean {
+	const alike = (x: string[], y: string[]): boolean =>
+		x.length === y.length && x.every((value, i) => sameValue(value, y[i]));
+	return (
+		settings.deliverableStateKey !== '' ||
+		!alike(settings.deliverableStates, settings.states) ||
+		!alike(settings.deliverableDoneValues, settings.doneValues)
+	);
 }
 
 /**

@@ -14,6 +14,8 @@ files:
   - src/view/render/roadmap.ts
   - src/view/render/timeline.ts
   - src/view/render/legend.ts
+  - src/view/render/rows.ts
+  - src/view/render/cardChildren.ts
   - styles/legend.css
   - styles/timeline.css
 ---
@@ -39,7 +41,7 @@ changed by editing a requirements state nothing on that board shows.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Opening the roadmap's dated axis in a base that configures a Deliverable state property |
-| **Preconditions** | Both state properties are configured. The Deliverable one is read as the RAW option, since a workflow falling back to `stateKey` reads the same property and holds the same values, and is the same workflow wearing another name |
+| **Preconditions** | The Deliverable settings DECLARE a workflow of their own — its own property, its own states, or its own done values. A key alone is not the test and neither is a key alone the absence of one: `resolveSettings` keeps a populated list whatever the key does, so one property can be read through two vocabularies |
 | **Guarantee** | Every colour a bar draws is keyed by exactly one swatch, and every swatch keys a colour something on the grid draws — the rule [[State colour and a legend]] already states, now holding across two vocabularies rather than one |
 
 **Main flow**
@@ -55,14 +57,26 @@ changed by editing a requirements state nothing on that board shows.
 
 **Extensions**
 
-- **1a — only one workflow has a key.** `statePalettes` returns that one alone, unlabelled
+- **1a — only one workflow can draw.** `statePalettes` returns that one alone, unlabelled
   and at offset 0, WHICHEVER of the two it is: there is nothing to tell it apart from, and
   no earlier vocabulary for its slots to continue from. That covers the Deliverable
   workflow falling back to `stateKey` and, found in review, the base that configures the
   Deliverable property and leaves the requirements one unset — a case the first version got
-  wrong by asking "is there a second key?" instead of "which workflows can draw?". Without
-  a key, `domain/model.ts` sets that workflow's every state value to null, so its
-  vocabulary can key nothing and must not appear.
+  wrong by asking "is there a second key?" instead of "which workflows can draw?". Drawing
+  is the RESOLVED key: a Deliverable workflow falling back reads the requirements property,
+  which is a real property. Without any key, `domain/model.ts` sets that workflow's every
+  state value to null, so its vocabulary can key nothing and must not appear.
+- **1c — the key falls back but the list is overridden.** TWO palettes over one property.
+  `resolveSettings` keeps a populated `deliverableStates`/`deliverableDoneValues` whatever
+  the key does — the lists follow the key only while they are EMPTY — so a Deliverable
+  reads the shared property against its own vocabulary. Splitting on the key alone drew
+  those states nowhere and coloured such a bar with the plain accent.
+- **1d — nothing declared at all.** ONE palette. The question is what the settings
+  DECLARE, not whether the two computed lists differ: with no list configured each
+  workflow falls back to the states its own results were observed to hold, and those
+  populations are disjoint by construction (`requirementsWorkflow` excludes Deliverables),
+  so comparing the computed lists split one workflow in two and drew `Done` twice in one
+  strip.
 - **1b — neither workflow has a key.** An empty list, so `paletteFor` answers undefined and
   the bar draws its plain accent: no palette, rather than a palette of nothing that would
   key silently. The legend renders Today alone, exactly as it did before this change.
@@ -104,6 +118,14 @@ changed by editing a requirements state nothing on that board shows.
   **Checked by** `test/domain/statePalettes.test.ts` — "wraps the OFFSET too, so a second workflow keeps running through the palette"
 - Done-ness is asked of the palette's own list, never `settings.doneValues`.
   **Checked by** `test/domain/statePalettes.test.ts` — "asks the palette’s OWN done list, not the requirements one"
+- A falling-back key with an overridden value list is two palettes.
+  **Checked by** `test/domain/statePalettes.test.ts` — "is TWO palettes where the key falls back but the value list is overridden"
+- A base declaring nothing is one palette, whatever the two observed lists happen to hold.
+  **Checked by** `test/domain/statePalettes.test.ts` — "is ONE palette where nothing is declared and both lists are merely observed"
+- Every surface that draws an item as FINISHED asks its own workflow — the tree row and
+  the card's child list as much as the card and the bar.
+  **Checked by** `test/view/board.test.ts` — "styles a TREE row by the item’s own workflow too, both directions"
+  **Checked by** `test/view/cardChildren.test.ts` — "styles a done child by ITS OWN workflow, not the requirements one"
 
 ## Where it lives
 
@@ -114,6 +136,13 @@ workflows they are built from — and beside `stateKeyFor` and `ownWorkflowReadi
 `stateColorSlot`, which lived in `src/domain/settings.ts` and could only ever answer for
 one vocabulary; `STATE_COLOR_SLOTS` stays there, since the count of reserved colours is a
 fact about the palette rather than about a workflow.
+
+`ownWorkflowReading` is asked wherever something is drawn as finished: `renderRow`
+(`src/view/render/rows.ts`) for the tree row's `pbl-done`, `renderChildEntry`
+(`src/view/render/cardChildren.ts`) for a listed child's, and `createCard`'s `done`
+parameter for a card's, which the Deliverables board already passed. Found by review at
+the card list and fixed at every surface rather than the reported one — the same defect
+shape this note exists for.
 
 `renderBarRow` in `src/view/render/timeline.ts` reads the item's own workflow ONCE and
 threads it through all four things on the row that key a colour or say one in words: the

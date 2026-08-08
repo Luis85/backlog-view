@@ -1,24 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { paletteDone, paletteFor, paletteSlot, statePalettes } from '../../src/domain/board';
 import { buildModel } from '../../src/domain/model';
-import { BacklogSettings, defaultSettings, STATE_COLOR_SLOTS } from '../../src/domain/settings';
-import { FakeVault } from '../helpers/vault';
+import { BacklogSettings, resolveSettings, STATE_COLOR_SLOTS } from '../../src/domain/settings';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
+
+/**
+ * Settings resolved from view options, never hand-built: `resolveSettings` is where the
+ * Deliverable lists FOLLOW a falling-back key, and a `{ ...defaultSettings(), ... }`
+ * literal skips exactly that. It cost this file four wrong expectations the moment the
+ * palettes started asking about vocabularies rather than keys — the fixture was modelling
+ * a configuration the resolver cannot produce.
+ */
+function settingsFrom(options: Record<string, unknown>): BacklogSettings {
+	return resolveSettings(new FakeViewConfig(options) as never);
+}
 
 /** One workflow, the ordinary base: a state property and a list. */
-const oneWorkflow: BacklogSettings = {
-	...defaultSettings(),
-	stateKey: 'status',
-	states: ['New', 'Active', 'Done'],
-	doneValues: ['Done'],
-};
+const oneWorkflow = settingsFrom({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' });
 
 /** Two workflows: the Deliverable one declares its own property, values and done list. */
-const twoWorkflows: BacklogSettings = {
-	...oneWorkflow,
-	deliverableStateKey: 'deliverableStatus',
-	deliverableStates: ['Draft', 'Published'],
-	deliverableDoneValues: ['Published'],
-};
+const twoWorkflows = settingsFrom({
+	stateProperty: 'note.status',
+	stateValues: 'New, Active, Done',
+	doneValues: 'Done',
+	deliverableStateProperty: 'note.deliverableStatus',
+	deliverableStateValues: 'Draft, Published',
+	deliverableDoneValues: 'Published',
+});
 
 function modelOf(settings: BacklogSettings) {
 	const vault = new FakeVault();
@@ -45,7 +53,7 @@ describe('statePalettes', () => {
 		// `resolvedDeliverableStateKey` falls back to the requirements key, which is the
 		// SAME property holding the SAME values — a second section there would key one
 		// vocabulary twice and invite the reader to look for a difference that is not there.
-		const fallsBack = { ...oneWorkflow, deliverableStateKey: '' };
+		const fallsBack = settingsFrom({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' });
 
 		expect(statePalettes(modelOf(fallsBack), fallsBack)).toHaveLength(1);
 	});
@@ -57,7 +65,11 @@ describe('statePalettes', () => {
 		// so that vocabulary can key nothing: heading the surviving section "Deliverables"
 		// tells it apart from nothing, and offsetting its slots past a list no bar can use
 		// starts the only palette on the grid at slot 1.
-		const lone = { ...twoWorkflows, stateKey: '', states: [] };
+		const lone = settingsFrom({
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Published',
+			deliverableDoneValues: 'Published',
+		});
 		const palettes = statePalettes(modelOf(lone), lone);
 
 		expect(palettes).toHaveLength(1);
@@ -70,9 +82,43 @@ describe('statePalettes', () => {
 	it('is NO palette where neither workflow has a key', () => {
 		// An empty list rather than a palette of nothing, so a caller has to say what it
 		// draws with no vocabulary at all instead of being handed one that keys nothing.
-		const none = { ...defaultSettings(), stateKey: '', deliverableStateKey: '' };
+		const none = settingsFrom({});
 
 		expect(statePalettes(modelOf(none), none)).toEqual([]);
+	});
+
+	it('is TWO palettes where the key falls back but the value list is overridden', () => {
+		// Found by review. `resolveSettings` keeps a populated `deliverableStates` whatever
+		// the key does — the two lists follow the key only while they are EMPTY — so this
+		// configuration reads one property through two vocabularies. Splitting on the key
+		// alone missed it: a Deliverable holding `Draft` was indexed against the
+		// requirements list, found nothing, and drew the plain accent under a legend that
+		// never mentioned its states.
+		const overridden = settingsFrom({
+			stateProperty: 'note.status',
+			stateValues: 'New, Active, Done',
+			doneValues: 'Done',
+			deliverableStateValues: 'Draft, Published',
+			deliverableDoneValues: 'Published',
+		});
+		const palettes = statePalettes(modelOf(overridden), overridden);
+
+		expect(palettes.map((p) => p.label)).toEqual(['Work', 'Deliverables']);
+		expect(paletteSlot(palettes[1], 'Draft')).toBe(3);
+	});
+
+	it('is ONE palette where nothing is declared and both lists are merely observed', () => {
+		// The trap the fix above walked into. With no list configured each workflow falls
+		// back to the states its own results were OBSERVED to hold, and those populations
+		// are disjoint by construction — `requirementsWorkflow` excludes Deliverables — so
+		// the two COMPUTED lists differ in a base that declared nothing at all. Comparing
+		// them split one workflow in two and drew `Done` twice in one strip; the question
+		// is what the user declared.
+		const observedOnly = settingsFrom({ stateProperty: 'note.status' });
+		const palettes = statePalettes(modelOf(observedOnly), observedOnly);
+
+		expect(palettes).toHaveLength(1);
+		expect(palettes[0].label).toBe('');
 	});
 
 	it('carries each workflow’s own values and its own done list', () => {
@@ -107,7 +153,7 @@ describe('paletteFor', () => {
 	});
 
 	it('has no palette to name where no workflow has a key', () => {
-		const none = { ...defaultSettings(), stateKey: '', deliverableStateKey: '' };
+		const none = settingsFrom({});
 		const model = modelOf(none);
 
 		// Undefined rather than a stand-in: the bar decides what no vocabulary draws.
@@ -142,7 +188,7 @@ describe('paletteSlot', () => {
 	});
 
 	it('agrees with the board and the Set state menu: same vocabulary, observed included', () => {
-		const observed = { ...defaultSettings(), stateKey: 'status' };
+		const observed = settingsFrom({ stateProperty: 'note.status' });
 		const palette = statePalettes(modelOf(observed), observed)[0];
 
 		// No configured list, so the vocabulary is what the results hold plus a done value
@@ -156,7 +202,7 @@ describe('paletteSlot', () => {
 
 	it('wraps modulo the slot count for a vocabulary longer than the palette', () => {
 		const states = Array.from({ length: STATE_COLOR_SLOTS + 2 }, (_, i) => `State ${i}`);
-		const long = { ...oneWorkflow, states };
+		const long = settingsFrom({ stateProperty: 'note.status', stateValues: states.join(', '), doneValues: 'Done' });
 		const palette = statePalettes(modelOf(long), long)[0];
 
 		expect(paletteSlot(palette, `State ${STATE_COLOR_SLOTS}`)).toBe(0);
