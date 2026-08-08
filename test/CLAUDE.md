@@ -70,12 +70,22 @@ Obsidian's.
   stub still covers every `var(--x)` the partials read, and every icon name the view asks
   for across all three projections still resolves.
 
-**What it is faithful about:** markup, layout, the real assembled stylesheet, every
+**What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the
-partials style. **What it is not:** colour — `test/harness/theme.css` builds on Obsidian's
-documented base scale and palette in both schemes, which is close enough to judge contrast
-and hierarchy by and not close enough to read a colour off, since a themed vault replaces
-exactly those values. It therefore replaces NO live-vault verification,
-and asserting appearance from it is refused in
+partials style. **What it is not:** colour, and any layout a partial leans on an Obsidian
+element default to supply rather than writing itself. `test/harness/theme.css` gives a
+handful of those elements a baseline — `.svg-icon`, `.clickable-icon`, and a bare
+`button`'s background colour — each one labelled with what it is sourced from, and a
+property left OUT where nothing public confirms it rather than guessed (the `button`
+rule's own comment says why it sets no `justify-content`). That baseline is not
+exhaustive: a card-children disclosure whose toggle rendered as a centred, boxed native
+button shipped looking right here and wrong in a vault (2026-08-08), because the stub had
+no rule for `button` at all yet. The gap narrows one element at a time and stays real for
+every element not yet asked about — "layout is faithful" is true only of what a partial
+sets itself, never of what it assumes an Obsidian default will supply. The COLOUR half of
+the stub — `test/harness/theme.css`'s base scale and named palette, in both schemes — is
+close enough to judge contrast and hierarchy by and not close enough to read a colour off,
+since a themed vault replaces exactly those values. It therefore replaces NO live-vault
+verification, and asserting appearance from it is refused in
 [ADR 0020](../docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md): no
 baselines, no screenshot suite, no sixth step in `npm run check`.

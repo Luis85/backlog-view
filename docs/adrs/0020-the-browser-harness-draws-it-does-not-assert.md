@@ -63,10 +63,18 @@ which jsdom cannot do at all, since it returns zeros from `getBoundingClientRect
   and it is most of the value.
 - The gap [ADR 0006](0006-jsdom-is-the-substitute-for-obsidian.md) knowingly left open
   stays open, deliberately. Appearance still ships on a hand check.
-- The harness will drift from the app in one specific way — the theme — and that drift is
-  invisible from inside the harness. Saying so in three places (the stub, the Feature
-  note, here) is the whole mitigation available, because no check here can compare a
-  colour to Obsidian's.
+- The harness will drift from the app in (at least) two ways, and both are invisible from
+  inside the harness. The theme is the one that cannot close: no check here can compare a
+  colour to Obsidian's, so `test/harness/theme.css` stays an approximation forever. The
+  other is narrower but was not distinguished from the first until it produced a real bug
+  — a card-children disclosure rendered as a centred, boxed native `<button>` in a vault
+  and as plain text here (2026-08-08), because the stub had no baseline at all for a bare
+  `button`, only for `.svg-icon` and `.clickable-icon`. That kind CAN close, one element
+  at a time, as a gap is found and a public source for the default is found or is
+  honestly reported missing (see `theme.css`'s own `button` rule and its comment on why it
+  sets no `justify-content`). Saying so in three places (the stub, the Feature note, here)
+  is the whole mitigation available for the theme; the element-default gap additionally
+  gets a baseline whenever someone notices one missing.
 - Icons render as their own names, because the module mock records an icon name and draws
   no SVG. Ugly and legible, which is the right trade for a control that would otherwise be
   an invisible zero-width box — but it means the harness cannot answer any question about

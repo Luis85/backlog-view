@@ -1,10 +1,12 @@
 /*
  * The Obsidian variables `styles/` reads and does not define.
  *
- * APPROXIMATIONS, not Obsidian's theme. Close enough that layout, spacing, hierarchy and
+ * APPROXIMATIONS, not Obsidian's theme. Close enough that spacing, hierarchy and
  * interaction read the way they do in the app; NOT close enough that a colour seen here
- * is a colour a user sees. The harness is faithful about structure and approximate about
- * appearance — see ADR 0020, and keep the live-vault checks.
+ * is a colour a user sees, and not a guarantee for layout that leans on an Obsidian
+ * element default this file has not been asked to approximate — see the `button` rule
+ * below, added after exactly that gap shipped a bug (2026-08-08). See ADR 0020, and keep
+ * the live-vault checks.
  *
  * The set is checked, not remembered: `test/harness/harness.test.ts` scans every partial
  * for `var(--x)` and fails if one is missing here. Add a variable to a partial and that
@@ -102,6 +104,14 @@ body.theme-dark {
 	--color-green: #44cf6e;
 	--color-cyan: #53dfdd;
 
+	/*
+	 * Standard (non-accent) interactive background, e.g. a plain button — Obsidian's
+	 * documented defaults, not this stub's invention. See the `button` rule below for
+	 * where these are used and cited.
+	 */
+	--interactive-normal: #2a2a2a;
+	--interactive-hover: #303030;
+
 	--color-red-rgb: 251, 70, 76;
 	--color-orange-rgb: 233, 151, 63;
 	--color-yellow-rgb: 224, 222, 113;
@@ -137,6 +147,10 @@ body.theme-light {
 	--color-orange: #ec7500;
 	--color-green: #08b94e;
 	--color-cyan: #00bfbc;
+
+	/* See the dark scheme's own comment above these two — same source, other value. */
+	--interactive-normal: #f2f3f5;
+	--interactive-hover: #e9e9e9;
 
 	--color-red-rgb: 233, 49, 71;
 	--color-orange-rgb: 236, 117, 0;
@@ -186,6 +200,61 @@ body.theme-light {
 .clickable-icon:hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
+}
+
+/*
+ * Obsidian's own baseline COLOUR for a bare `<button>` — what `.pbl-card-kids-toggle`
+ * and `.pbl-card-kid` (`styles/cardChildren.css`), `.pbl-tag-remove` (`tags.css`) and
+ * `.pbl-state-chip` (`columns.css`) all reset away from their own background. Without a
+ * rule here every button in the harness sits on the browser's OWN unstyled default —
+ * `ButtonFace` grey, an outset 3-D border — which is not Obsidian's chrome either, but
+ * it is at least real chrome the partials' resets have something to strip, which is the
+ * gap that let a card-children disclosure ship looking fine here and ugly in a vault
+ * (2026-08-08, see `docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md`).
+ *
+ * Deliberately ONLY colour: no `border`, no `appearance`, no `border-radius`, no
+ * `padding`. Setting those here would strip the browser's own chrome ITSELF, which
+ * would make a partial's own `appearance: none; border: none;` reset invisible again —
+ * the same blind spot this rule exists to close, just moved one file over. Leaving the
+ * browser default in place for everything but colour is what makes `git show 83050b7`
+ * visible in the harness: the outset border and `ButtonFace` background disappear only
+ * when the PARTIAL'S OWN reset is present, which is the thing worth being able to see.
+ *
+ * Sourced from docs.obsidian.md's CSS variables reference:
+ * https://docs.obsidian.md/Reference/CSS+variables/CSS+variables (Foundations → Colors
+ * → Interactive colors) names `--interactive-normal` / `--interactive-hover` as "the
+ * background for standard interactive elements" and its hover state — a plain button is
+ * the standard case that section describes; their hex defaults come from
+ * `obsidian-default-theme.css` in mgmeyers' (the Style Settings plugin's author)
+ * community-maintained `obsidian-style-settings` repository, a published record of
+ * Obsidian's own default variable values kept for exactly this purpose:
+ * https://github.com/obsidian-community/obsidian-style-settings/blob/main/obsidian-default-theme.css
+ * `--button-radius` is also documented
+ * (https://docs.obsidian.md/Reference/CSS+variables/Components/Button) but with no
+ * published pixel value and, per the paragraph above, deliberately left unset here.
+ *
+ * Deliberately NOT here at all: `justify-content: center`, or any flex/`display`
+ * default. The bug this rule exists to help catch was diagnosed as "Obsidian's button
+ * default centres flex content" from a human's live-vault report, not confirmed against
+ * a source — and nothing found while writing this confirms it. It is not even a browser
+ * default to fall back on: Chromium's own UA stylesheet renders a bare `<button>` as
+ * `display: inline-block` with `text-align: center`, not flex, so its `justify-content`
+ * is moot the moment a page's own CSS switches the button to `display: flex` (as this
+ * plugin's own CSS always does) — see
+ * https://chromium.googlesource.com/chromium/blink/+/master/Source/core/css/html.css.
+ * Confirming Obsidian's real default needs a live-vault inspection — DevTools on an
+ * actual Obsidian window, the computed `justify-content` of a plain, unstyled `<button>`
+ * — not a search. Leaving it out keeps the harness's verdict on that symptom an honest
+ * "cannot reproduce" instead of a fabricated "reproduces," which would send the next
+ * person chasing a centring bug that exists only in this stub.
+ */
+button {
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+}
+
+button:hover {
+	background-color: var(--interactive-hover);
 }
 
 /*
