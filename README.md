@@ -334,9 +334,10 @@ choices directly (`New PBI`, `New Issue`, `New Bug`, `New Idea`, `New Deliverabl
 and `Set type` offers every declared type. A row with only one option — a Task, or an
 extra type, which holds only Tasks — asks nothing and creates it straight away.
 
-`Issue`, `Bug`, `Idea` and `Deliverable` each get their own badge icon, distinct from the
-four level colours — an alert in pink, a bug in red, and a lightbulb and a package that
-currently share one green. They rank with `PBI`, so focusing that level shows them
+`Issue`, `Bug`, `Idea` and `Deliverable` each get their own badge icon and colour — an
+alert in pink, a bug in red, a lightbulb in yellow and a package in green. Nine badges
+share the theme's eight colours, so one pair does overlap: an Idea and a Task read the
+same yellow, told apart by the name on the badge. They rank with `PBI`, so focusing that level shows them
 beside it rather than hiding them. `Deliverable` also has its own board with its own
 workflow — see [The Deliverables board](#the-deliverables-board) below.
 

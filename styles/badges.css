@@ -48,15 +48,28 @@
 
 /*
  * The extra types get colours of their own rather than a slot after the ladder: a Bug
- * should read as a problem, not as whatever came after Task. All are clear of the
- * four levels (orange, purple, blue, yellow).
+ * should read as a problem, not as whatever came after Task.
+ *
+ * NINE badges, EIGHT theme tokens. Obsidian defines red, orange, yellow, green, cyan,
+ * blue, purple and pink, and nothing here may invent a ninth without giving up theme
+ * adaptation — so one pair has to share, and which pair is a decision rather than an
+ * oversight. It used to be Idea and Deliverable, which is the worst pair available: two
+ * extra types at the same rung, side by side under the same parent, told apart only by
+ * their icons. That happened because `Idea` and `Deliverable` were built on branches that
+ * could not see each other, and both reached for green.
+ *
+ * Idea takes YELLOW instead, which costs the rule this comment used to state — that every
+ * extra type is clear of the four levels — and buys the lightbulb the colour a lightbulb
+ * is. The pair is now Idea and Task (level 3). They can still be siblings under a PBI, so
+ * this is a smaller collision rather than none: what separates them is the type NAME the
+ * badge carries and the ladder's own indentation, neither of which separated two greens.
  */
 .pbl-lvl-issue { --pbl-badge-rgb: var(--color-pink-rgb); }
 .pbl-lvl-bug { --pbl-badge-rgb: var(--color-red-rgb); }
-.pbl-lvl-idea { --pbl-badge-rgb: var(--color-green-rgb); }
-/* A marker is not work, so it takes a colour no rung and no container uses. */
+.pbl-lvl-idea { --pbl-badge-rgb: var(--color-yellow-rgb); }
+/* A marker is not work, so it takes the one colour no rung and no other type uses. */
 .pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
-/* Green is otherwise unused across the four levels and the other extra types. */
+/* Green, which no level uses and no extra type shares now that Idea has moved off it. */
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 
 .pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
