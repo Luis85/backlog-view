@@ -45,3 +45,8 @@
    that position would key a colour no bar draws. `legend.ts` picks this class by the same
    `isDoneValue` the override is written for. */
 .pbl-legend-done { background-color: var(--color-green); }
+
+/* The bar's own default (`--pbl-bar-color`'s fallback in `timeline.css`), keyed only
+   where something actually draws it: a state the vocabulary does not list, or no state
+   at all. */
+.pbl-legend-other { background-color: var(--interactive-accent); }

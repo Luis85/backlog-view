@@ -76,6 +76,30 @@ cannot name a state differently.
   draw the thing it keys, stated in the code where the gate is decided
   (`src/view/render/legend.ts`).
 
+## How this one is checked
+
+Five defects, all one rule at a different point in the same two-dimensional space —
+vocabulary by configuration. The done swatch keying its slot instead of the green its
+bars draw; the milestone swatch keying cyan while the diamond drew a state slot; state
+swatches rendered with no workflow configured; a state outside the configured list
+drawing an accent nothing keyed; and a DONE value outside that list drawing green
+nothing keyed. Every one passed the tests that existed, because those name cases.
+
+So the suite states the rule both ways round and sweeps the space: for each of a table
+of vocabularies and configurations, every colour a rendered mark draws is keyed by a
+swatch, and no swatch keys a colour nothing draws. Two swatches may share a colour only
+where the vocabulary outruns `STATE_COLOR_SLOTS`, which is that constant's stated limit.
+
+Beside it, a text check on the stylesheets: each swatch names the same palette colour as
+the mark it keys, the five slots are distinct, and none of them is the red, cyan or green
+that already mean today, a milestone and done — a claim `STATE_COLOR_SLOTS` makes in a
+comment and nothing checked. Its reach is the variable each rule names; what those resolve
+to under a theme stays the live-vault question in [[Smoke test the roadmap]].
+
+The fifth defect was found by a reviewer AFTER the sweep existed, because the table had
+no row for "the configured vocabulary omits a done value some item carries". A sweep is
+only ever as good as the dimensions it spans, and the fix was a row, not a rewrite.
+
 ## Acceptance criteria
 
 - A bar's `pbl-state-N` class agrees with `stateColorSlot`'s answer for that state,

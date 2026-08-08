@@ -1,6 +1,8 @@
 import { BacklogViewHost } from '../host';
 import { activeAxis } from '../../domain/roadmap';
-import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
+import { isDoneValue, stateColorSlot, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
+import { BacklogItem } from '../../domain/model';
+import { isMarkerType } from '../../domain/itemTypes';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -18,7 +20,12 @@ import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/se
  * on this path would guard nothing reachable — the caller already holds the model this
  * vocabulary comes from.
  */
-export function renderLegend(host: BacklogViewHost, legendEl: HTMLElement, observedStates: string[]): void {
+export function renderLegend(
+	host: BacklogViewHost,
+	legendEl: HTMLElement,
+	observedStates: string[],
+	results: BacklogItem[],
+): void {
 	legendEl.empty();
 	const onDatedAxis = host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
 	// The class itself is the gate, not a hidden variant of it: a rule that hid an
@@ -52,6 +59,39 @@ export function renderLegend(host: BacklogViewHost, legendEl: HTMLElement, obser
 			const slot = isDoneValue(host.settings, state) ? 'pbl-legend-done' : `pbl-state-${i % STATE_COLOR_SLOTS}`;
 			addSwatch(legendEl, slot, state);
 		});
+		// The other half of the same rule, in the other direction: a state the vocabulary
+		// does not list — an item's own unlisted value, which `Set state` deliberately
+		// offers — and an item with no state at all both take no slot, so their bars draw
+		// the plain accent. Unkeyed, that is a colour on the grid the key does not explain.
+		// Asked of the RESULTS rather than of the rendered rows: the answer is then a fact
+		// about what this base holds, so it does not flicker as scrolling or placement
+		// changes which bars happen to be on screen.
+		// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item
+		// can be done while its value is not in the configured list: its bar goes green and
+		// the loop above keyed no green. Asked of the results rather than the vocabulary,
+		// because the bar's colour is.
+		if (!states.some((state) => isDoneValue(host.settings, state))) {
+			const done = results.find((item) => item.done);
+			if (done) addSwatch(legendEl, 'pbl-legend-done', done.stateValue ?? host.settings.doneValues[0]);
+		}
+		// The rule's other direction: a state the vocabulary does not list — an item's own
+		// unlisted value, which `Set state` deliberately offers — and an item with no state
+		// at all both take no slot, so their bars draw the plain accent. Unkeyed, that is a
+		// colour on the grid the key does not explain.
+		//
+		// A done item and a marker are excluded because they do not draw the accent: the
+		// done override and the diamond's own cyan outrank a slot, so counting them here
+		// would key `Other` for a colour nothing on the grid actually draws — the same rule
+		// failing in the opposite direction. Asked of the RESULTS rather than of the
+		// rendered rows, so the answer is a fact about what this base holds and does not
+		// flicker as scrolling or placement changes which bars are on screen.
+		const unkeyed = results.some(
+			(item) =>
+				!item.done &&
+				!isMarkerType(item.typeName) &&
+				stateColorSlot(host.settings, observedStates, item.stateValue) === null,
+		);
+		if (unkeyed) addSwatch(legendEl, 'pbl-legend-other', 'Other');
 	}
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
 	addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');

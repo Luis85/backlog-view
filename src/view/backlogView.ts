@@ -513,7 +513,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		renderToolbar(this, this.toolbarEl);
 		// The toolbar was just rebuilt; a batch may still be running behind it.
 		this.syncBusyUi();
-		renderLegend(this, this.legendEl, model.observedStates);
+		renderLegend(this, this.legendEl, model.observedStates, model.results);
 		this.renderTreeContent();
 	}
 

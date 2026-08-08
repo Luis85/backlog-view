@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
+import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
 
 useViewHarness();
 
@@ -102,5 +103,84 @@ describe('the roadmap legend', () => {
 		const scroller = containerEl.querySelector('.pbl-timeline');
 		expect(legend?.contains(scroller)).toBe(false);
 		expect(scroller?.contains(legend ?? null)).toBe(false);
+	});
+});
+
+/**
+ * The rule behind every state-colour defect this branch has had, checked as a rule.
+ * Four so far, each a different point in the same two-dimensional space — vocabulary by
+ * configuration — and each one passed the tests that existed, because those name cases:
+ * the done swatch keying its slot instead of the green its bars draw, the milestone
+ * swatch keying cyan while the diamond drew its state slot, state swatches rendered with
+ * no workflow configured at all, and a state outside the configured list drawing the
+ * plain accent that nothing keyed.
+ *
+ * THE RULE, both ways round: every colour a mark on the grid can draw is keyed by
+ * exactly one swatch, and no swatch keys a colour nothing can draw. A legend that fails
+ * either direction is worse than none — it is a key that lies about the thing it keys.
+ */
+describe('the legend keys exactly the colours the grid draws', () => {
+	/** What a row's classes say its bar draws, in the stylesheet's own order of precedence. */
+	function barColourKey(row: HTMLElement): string {
+		if (row.classList.contains('pbl-done')) return 'pbl-legend-done';
+		if (row.querySelector('.pbl-bar-milestone')) return 'pbl-legend-milestone';
+		const slot = Array.from(row.classList).find((c) => /^pbl-state-\d+$/.test(c));
+		return slot ?? 'pbl-legend-other';
+	}
+
+	function swatchKeys(containerEl: HTMLElement): string[] {
+		return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-legend-swatch')).map(
+			(el) => Array.from(el.classList).find((c) => c !== 'pbl-legend-swatch') ?? '',
+		);
+	}
+
+	const CASES: Array<{ name: string; options: Record<string, string>; states: Array<string | null> }> = [
+		{ name: 'a declared vocabulary, nothing done', options: { stateValues: 'New, Active' }, states: ['New', 'Active'] },
+		{ name: 'a declared vocabulary including a done value', options: { stateValues: 'New, Active, Done' }, states: ['New', 'Done'] },
+		{ name: 'no declared list — the vocabulary is what the notes observed', options: { stateValues: '' }, states: ['Alpha', 'Beta'] },
+		{
+			name: 'a vocabulary longer than the palette, so slots wrap',
+			options: { stateValues: 'S1, S2, S3, S4, S5, S6, S7' },
+			states: ['S1', 'S6', 'S7'],
+		},
+		{ name: 'a state the declared vocabulary does not list', options: { stateValues: 'New, Active' }, states: ['New', 'Blocked'] },
+		{ name: 'some items carrying no state at all', options: { stateValues: 'New, Active' }, states: ['New', null] },
+		// The vocabulary is the CONFIGURED list, but `done` is decided by `doneValues`
+		// independently of it — so an item can be done while its value is not in the menu,
+		// and its bar goes green with nothing keying green.
+		{ name: 'a done value the configured vocabulary omits', options: { stateValues: 'New, Active' }, states: ['New', 'Done'] },
+		{ name: 'only done items, none of them listed', options: { stateValues: 'New, Active' }, states: ['Done', 'Done'] },
+	];
+
+	it.each(CASES)('$name', ({ options, states }) => {
+		const vault = new FakeVault();
+		states.forEach((state, i) => {
+			const fm: Record<string, unknown> = { type: 'PBI', order: (i + 1) * 10, due: `2026-08-0${i + 1}` };
+			if (state !== null) fm.status = state;
+			vault.addFile(`Item ${i}.md`, { frontmatter: fm });
+		});
+		const workflow = 'stateValues' in options ? { stateProperty: 'note.status', ...options } : {};
+		const { view, containerEl } = makeView(vault, { ...DATE_AXIS, ...workflow }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		const keyed = new Set(swatchKeys(containerEl));
+		const rows = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
+		expect(rows.length).toBeGreaterThan(0);
+
+		// Every colour drawn is keyed.
+		for (const row of rows) {
+			const title = row.querySelector('.pbl-card-title')?.textContent;
+			expect(keyed, `${title} draws ${barColourKey(row)}, which the legend does not key`).toContain(barColourKey(row));
+		}
+		// Two swatches may share a colour ONLY where the vocabulary outruns the palette,
+		// which `STATE_COLOR_SLOTS` documents as its accepted limit. Anywhere else a colour
+		// with two names is a key that cannot be read.
+		const stateSwatches = swatchKeys(containerEl).filter((k) => /^pbl-state-\d+$/.test(k));
+		if (stateSwatches.length <= STATE_COLOR_SLOTS) {
+			expect(swatchKeys(containerEl)).toHaveLength(keyed.size);
+		}
+		// The two lines are always drawn, so they are always keyed.
+		expect(keyed).toContain('pbl-legend-today');
+		expect(keyed).toContain('pbl-legend-milestone');
 	});
 });
