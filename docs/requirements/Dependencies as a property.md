@@ -49,8 +49,8 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
    walk already loaded, less the notes "Ignore notes outside the hierarchy" dropped as not
    work items, and nothing further — producing an edge from the prerequisite to the item
    that named it.
-4. Entries that cannot become an edge — unresolvable, self-referential, or the one that
-   closes a loop — are kept and **marked broken**, never dropped and never rewritten by
+4. Entries that cannot become an edge — unresolvable, self-referential, or part of a
+   cycle — are kept and **marked broken**, never dropped and never rewritten by
    the reader. Never *by the reader* is the whole of it: the user can still remove one
    deliberately, and [[Linking two items]] is where that path lives.
 
@@ -111,11 +111,18 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 - **4a — an item names itself.** Marked broken. Nothing precedes itself, and silently
   dropping the entry would leave a user staring at frontmatter the view is ignoring
   without saying so.
-- **4b — the entries close a loop.** The edge that closes it is marked broken and the
-  items render unchanged. [[Broken links still render]] settles the direction — mark, do
-  not tidy — and the difference from a `parent` loop is worth stating: there the cut is
-  what makes the tree renderable at all, so the link is cut in the model; here nothing
-  needs cutting to draw anything, so only the mark exists.
+- **4b — the entries close a loop.** **Every** entry in the cycle is marked broken — not
+  the one that closes it — and the items render unchanged. [[Broken links still render]]
+  settles the direction (mark, do not tidy); what settles the *arity* is that there is no
+  order to appeal to. A `parent` loop must pick a link, because a tree with a cycle in it
+  cannot be rendered at all, and `breakCycles` picks `cycleEntry`'s — a choice that falls
+  out of the order the items were loaded in, and is acceptable only because something has
+  to give. Here nothing needs cutting to draw anything, so nothing has to be chosen, and
+  choosing anyway would be the worse answer: "the edge that closes it" is a fact about the
+  traversal that found it, so with `A → B → A` the red mark would sit on whichever entry
+  was reached second, and re-sorting the Base would move it to the other note. Both entries
+  say the same wrong thing. Both are marked, and no arrow is drawn for either
+  ([[Arrows between bars]] 1d), which is the same picture whichever way the walk went.
 - **4c — the loop is entirely between context rows.** It is not read, per 3c, so there
   is no loop to mark.
 
@@ -138,9 +145,13 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   finished model and no non-work-item is offered as a prerequisite anywhere. Checkable by
   building a model whose base returns a meeting note the prune drops and asserting the edge
   that names it is marked broken — no ordering claim needed about which pass ran first.
-- An unresolvable, self-referential or loop-closing entry is marked, never dropped: no
-  item is hidden, re-parented, re-ranked or re-levelled by any edge, and the tree's own
+- An unresolvable, self-referential or cycle-participating entry is marked, never dropped:
+  no item is hidden, re-parented, re-ranked or re-levelled by any edge, and the tree's own
   shape is identical with the property configured and without it.
+- Which entries a cycle marks does not depend on presentation: every entry in the cycle is
+  marked, so the same stored data produces the same marks under any Bases sort. Checkable
+  by building `A → B → A` twice with the entries in either order and asserting both edges
+  broken both times — the assertion a "which one closed it" rule could not make.
 - A context row's own list is never read, so no edge is ever declared by one, and it is
   never written to. A result naming an **already-loaded** excluded note as a prerequisite is
   the allowed direction and produces an edge that is never counted and never drawn.

@@ -32,7 +32,7 @@ against one would report a date no note carries — a red mark on a fact that do
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | The dated timeline renders with the dependency key configured and at least one edge whose ends both have bars |
+| **Trigger** | The dated timeline renders with the dependency key configured and at least one edge whose dependent renders — with two bars it draws, with one it is still stated on the dependent's row |
 | **Preconditions** | Roadmap mode is on with the dated axis ([[Horizons or dates]]), and the dependency property is bound ([[Dependencies as a property]]) |
 | **Guarantee** | Every arrow drawn has two bars on screen, and every dependency of a **rendered** dependent is stated by its own row whether or not an arrow is drawn. A dependent the reader's own controls removed from the roadmap has no row, and nothing is promised on its behalf. Nothing about an arrow is written, inferred onto a note, or reachable only under a pointer, and no arrow adds a place the keyboard has to stop. |
 
@@ -72,8 +72,9 @@ against one would report a date no note carries — a red mark on a fact that do
   is a thing derived from the results, and a context row is never a source of one — the
   same rule that keeps a context milestone from drawing a line. The dependent's row still
   states it, because that is what its own note says.
-- **1d — the edge is marked broken.** Unresolvable, self-referential or loop-closing
-  ([[Dependencies as a property]]): no arrow, and the dependent's row carries the broken
+- **1d — the edge is marked broken.** Unresolvable, self-referential or part of a cycle
+  ([[Dependencies as a property]], where a cycle marks **every** entry in it rather than
+  picking one): no arrow, and the dependent's row carries the broken
   marker. An arrow drawn from a name that resolves to nothing would be a claim about a note
   that does not exist.
 - **1e — one end is a milestone.** The arrow meets the diamond at its date. A marker is a
@@ -104,8 +105,20 @@ against one would report a date no note carries — a red mark on a fact that do
   open at all, so a parent with a stated target and a rolled-up start has a perfectly real
   end to be late against. Judging the item rather than the two ends would hide a
   contradiction between two persisted dates on the strength of a third nobody compared.
-- **2b — the dependent is shelved and the prerequisite is dated.** No conflict either: with
-  no start there is nothing to compare, and "unplanned" is not "late".
+- **2b — the dependent is shelved and the prerequisite is dated.** Decided at the start it
+  states, not at the fact that it shelved — saying "shelved" here would undo 2a one
+  extension after writing it, because *shelved* is a verdict on the whole span and a
+  conflict rests on one end of it. Where the shelf came with no start to compare — no dates
+  at all, or a start the reader refuses — there is no conflict, and that is the true reason:
+  "unplanned" is not "late". The two remaining ways to shelve leave a **stated, readable
+  start** on the note and shelve for what the *other* end says: an unreadable target, or a
+  target before the start ([[Bars from two dates]]). That start is as persisted as any date
+  on any bar, so a dated prerequisite running past it is the same contradiction between two
+  written dates 2a is about, and it is stated — on the shelf card, which 1b already
+  establishes is the dependent's row, and with no arrow, because there is still no bar for
+  one to reach. Suppressing it would hide a contradiction on the strength of the very date
+  the card is already complaining about, and would hide it exactly when the user is looking
+  at those two dates to fix them.
 - **3a — the reader cannot use a pointer.** Neither an arrow nor its head is focusable. The
   timeline's selectable unit is the row, and the milestone line already settled why: adding
   a stop to carry information the row can carry itself breaks the single-stop model for
@@ -127,7 +140,9 @@ against one would report a date no note carries — a red mark on a fact that do
   on or before, because an end is inclusive. A conflict rests only on dates the two notes
   state: an end that is rolled up, and an end that is absent, both suppress it, judged at
   each of the two ends the comparison uses rather than at the whole span. A shelved
-  dependent is never in conflict.
+  dependent is judged by that same rule and not by having shelved: exempt when it has no
+  readable stated start, in conflict when it has one and its prerequisite runs past it,
+  stated on the shelf card with no arrow drawn.
 - An arrow whose anchor is an open end still draws, anchored at that open end; no arrow
   anchor implies a date, and an unstated endpoint never becomes a stated one by being
   pointed at.

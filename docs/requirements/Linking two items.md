@@ -89,7 +89,7 @@ a different control.
   `["[[Missing]]", "[[Missing]]"]` is gone in one action rather than leaving the identical
   marker on screen. The collapsing that makes a picker line stand for several entries is
   the reading side's, and it does not care whether the entry resolved. This is the whole cleanup path for a
-  mistyped name, a self-reference or a loop-closing link, and it has to exist here or the
+  mistyped name, a self-reference or a link in a cycle, and it has to exist here or the
   marker the reader is being shown has no answer but hand-editing frontmatter — a marker
   pointing at a repair the view refuses to make. The register already settled this
   direction for the other link field: [[Broken links still render]] marks damage rather
