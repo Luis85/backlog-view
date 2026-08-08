@@ -490,6 +490,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(51);
+		expect(sites.length).toBe(52);
 	});
 });

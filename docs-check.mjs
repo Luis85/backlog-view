@@ -487,8 +487,17 @@ for (const file of [...files, "README.md"]) {
 			fail(file, `cites ${target}, which does not exist`);
 			continue;
 		}
-		if (!flat(await readText(target)).includes(flat(name).trim())) {
-			fail(file, `cites "${flat(name).trim()}", which ${target} does not contain`);
+		// An EMPTY normalized name resolves against every file, because `includes("")` is
+		// always true — so `— "   "` read as a citation that checks out. The one false PASS
+		// this rule has had, and the shape is worth naming: a check whose comparison has a
+		// vacuous case reports success loudest exactly where it knows least.
+		const wanted = flat(name).trim();
+		if (wanted === "") {
+			fail(file, `cites ${target} with an empty test name`);
+			continue;
+		}
+		if (!flat(await readText(target)).includes(wanted)) {
+			fail(file, `cites "${wanted}", which ${target} does not contain`);
 		}
 	}
 }

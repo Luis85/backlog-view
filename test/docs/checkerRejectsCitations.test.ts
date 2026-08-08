@@ -99,6 +99,18 @@ describe('checked-claim citations', () => {
 			'cites test/gone.test.ts, which does not exist',
 		],
 		[
+			// The rule's one false PASS: `includes("")` is true of every file, so a citation
+			// quoting nothing resolved against whatever it pointed at. A comparison with a
+			// vacuous case reports success loudest exactly where it knows least.
+			'a citation whose quoted name is only whitespace',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "   ".',
+				});
+			},
+			'cites test/thing.test.ts with an empty test name',
+		],
+		[
 			'a citation naming a test the file no longer contains',
 			(files) => {
 				files['docs/requirements/Doing the thing.md'] = useCase({
