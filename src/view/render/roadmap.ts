@@ -64,6 +64,9 @@ export function renderRoadmap(
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
 	let drawn: DrawnColors = { done: false, milestone: false, accent: false };
+	// The dated axis's own 2b conflicts (see `TimelineRender.shelfConflicts`) — empty on
+	// the horizon axis, where a shelved dependent's stated START has no meaning at all.
+	let shelfConflicts: ReadonlySet<string> = new Set();
 	if (axis === 'horizons') {
 		const bucketsEl = frameEl.createDiv({ cls: 'pbl-roadmap-buckets' });
 		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd));
@@ -92,6 +95,7 @@ export function renderRoadmap(
 		scale = activeScale;
 		leadWidth = timeline.leadWidth;
 		drawn = timeline.drawn;
+		shelfConflicts = timeline.shelfConflicts;
 		wireTimelineDrag(ctx, dnd, {
 			overlay: timeline.overlay,
 			scroller: timeline.scroller,
@@ -108,7 +112,7 @@ export function renderRoadmap(
 	// a bucket, which no domain-model counter answers on its own.
 	const axisCardCount = cards.length;
 	const removal = shelfRemoval(host, axis);
-	const shelf = renderShelf(ctx, frameEl, roadmap.shelf, dnd, removal);
+	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: shelfConflicts }, dnd, removal);
 	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);

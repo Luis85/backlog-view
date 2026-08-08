@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
-import { roadmapView, rowFor, timelineRows } from '../helpers/roadmap';
+import { roadmapView, rowFor, shelfOf, shelfTitles, timelineRows } from '../helpers/roadmap';
 
 /**
  * The arrow layer on the dated axis — `renderDependencyArrows` in
@@ -11,6 +11,12 @@ import { roadmapView, rowFor, timelineRows } from '../helpers/roadmap';
  * that module's own suite (`test/domain/dependencyArrows.test.ts`); this asks only
  * whether the layer draws one element per edge, marks a conflict on both ends, adds
  * nothing focusable, and writes nothing — `docs/requirements/Arrows between bars.md`.
+ *
+ * The row's own STATEMENT of a dependency (main flow step 3, Task 3) is a separate
+ * concern from the picture: it must hold whether or not an arrow drew, so several
+ * suites below deliberately construct an edge the arrow layer draws NOTHING for
+ * (1a's no-bar prerequisite, an edge wholly outside the drawn window) and assert the
+ * row states it anyway.
  */
 
 useViewHarness();
@@ -19,6 +25,11 @@ const DATES = { startProperty: 'note.start', targetProperty: 'note.due', depends
 
 function arrows(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-dependency-arrow'));
+}
+
+/** What a row's accessible name says it waits for, or null where it says nothing. */
+function waitsFor(row: HTMLElement): string | null {
+	return row.querySelector<HTMLElement>('.pbl-dependency-note')?.textContent ?? null;
 }
 
 describe('one element per edge', () => {
@@ -85,6 +96,150 @@ describe('a conflict is marked on the arrow and the dependent row, and only thos
 		expect(arrows(containerEl).filter((a) => a.hasClass('pbl-dependency-arrow-conflict'))).toHaveLength(1);
 		expect(rowFor(containerEl, 'Clear')?.hasClass('pbl-row-conflict')).toBe(false);
 		expect(rowFor(containerEl, 'Overlap')?.hasClass('pbl-row-conflict')).toBe(true);
+	});
+});
+
+/**
+ * Main flow step 3: every dependent row's accessible name states what it waits for,
+ * marking the conflict on the specific prerequisite it concerns — not a blanket "in
+ * conflict" that rounds a multi-prerequisite row down to the picture's coarsest bit.
+ */
+describe("the row's accessible name states what it waits for", () => {
+	it('names a single prerequisite with no conflict', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-05' } });
+		vault.addFile('B.md', {
+			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-10', due: '2026-08-20' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(waitsFor(rowFor(containerEl, 'B')!)).toBe('Waits for A');
+	});
+
+	it('names both prerequisites of a row waiting on two, marking only the one that conflicts', () => {
+		const vault = new FakeVault();
+		vault.addFile('Clear.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-07-01', due: '2026-07-05' } });
+		vault.addFile('Late.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('Waiter.md', {
+			frontmatter: { type: 'PBI', order: 30, dependsOn: ['Clear', 'Late'], start: '2026-08-10', due: '2026-08-25' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const row = rowFor(containerEl, 'Waiter')!;
+		expect(waitsFor(row)).toBe('Waits for Clear, Late (conflict)');
+		expect(row.hasClass('pbl-row-conflict')).toBe(true);
+	});
+
+	it('still states the dependency when the prerequisite has no bar at all (1a) — no arrow, no comparison, just the name', () => {
+		const vault = new FakeVault();
+		vault.addFile('Undated.md', { frontmatter: { type: 'PBI', order: 10 } }); // shelved: no bar
+		vault.addFile('Waiter.md', {
+			frontmatter: { type: 'PBI', order: 20, dependsOn: 'Undated', start: '2026-08-10', due: '2026-08-20' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(arrows(containerEl)).toHaveLength(0);
+		const row = rowFor(containerEl, 'Waiter')!;
+		expect(waitsFor(row)).toBe('Waits for Undated');
+		expect(row.hasClass('pbl-row-conflict')).toBe(false);
+	});
+
+	it('folds the dependency into a marker row, whose explicit label replaces its content', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, dependsOn: 'A', due: '2026-08-05' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(rowFor(containerEl, 'Ship')?.getAttribute('aria-label')).toBe(
+			'Ship — Milestone 2026-08-05 — Waits for A (conflict)',
+		);
+	});
+
+	it('says nothing where the row waits for nothing', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-05' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(waitsFor(rowFor(containerEl, 'A')!)).toBeNull();
+	});
+});
+
+/**
+ * Concern 2 of Task 3: the guarantee is window-independent. The visual mark used to
+ * be applied only where `renderDependencyArrows`' own anchor+row lookups survived —
+ * which the drawn WINDOW filters — so an edge clear outside it went unmarked despite
+ * being a real, domain-computed conflict. Both the class and the name have to come
+ * from the same source an arrow's presence does not gate.
+ */
+describe('the conflict mark is independent of the drawn window', () => {
+	it('marks the row even when the edge lies wholly outside the window and no arrow draws', () => {
+		const vault = new FakeVault();
+		// Both centuries out, so `timelineWindow` clamps around today and neither bar
+		// has any part of itself in the drawn range — `dependencyAnchor` returns null
+		// and `renderDependencyArrows` draws nothing, exactly as the 1a/1b window test
+		// above already establishes for a NON-conflicting edge.
+		vault.addFile('Anchor.md', { frontmatter: { type: 'PBI', order: 10, start: '2200-01-01', due: '2200-01-10' } });
+		vault.addFile('Far.md', {
+			frontmatter: { type: 'PBI', order: 20, dependsOn: 'Anchor', start: '2200-01-05', due: '2200-01-20' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(arrows(containerEl)).toHaveLength(0);
+		const row = rowFor(containerEl, 'Far')!;
+		expect(row.hasClass('pbl-row-conflict')).toBe(true);
+		expect(waitsFor(row)).toBe('Waits for Anchor (conflict)');
+	});
+});
+
+/**
+ * Concern 3 of Task 3: `dependencyArrows`' `shelfConflicts` (2b) is computed by the
+ * domain and, until now, rendered nowhere — the shelf card is that dependent's row
+ * (1b), and no arrow ever reaches it, so the card itself is the only place left to
+ * state the contradiction.
+ */
+describe('the shelf card states a 2b conflict the domain computed, with no arrow drawn', () => {
+	it('marks the shelf card when its own stated start conflicts with a dated prerequisite', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		vault.addFile('B.md', {
+			// A stated, readable start, shelved for an unreadable target — 2b.
+			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-05', due: 'not-a-date' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(arrows(containerEl)).toHaveLength(0);
+		expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-conflict')).not.toBeNull();
+	});
+
+	it('marks nothing once the same stated start no longer conflicts', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		vault.addFile('B.md', {
+			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-11', due: 'not-a-date' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-conflict')).toBeNull();
+	});
+
+	it('marks nothing on the horizon axis, even with the same dates that conflict on the dated axis', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {
+			frontmatter: { type: 'PBI', order: 10, horizon: 'Now', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('B.md', {
+			// No horizon: shelved on this axis, regardless of what its dates say.
+			frontmatter: { type: 'PBI', order: 20, dependsOn: 'A', start: '2026-08-05', due: 'not-a-date' },
+		});
+		const harness = roadmapView(vault, {
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+			dependsOnProperty: 'note.dependsOn',
+		});
+
+		expect(shelfTitles(harness.containerEl)).toContain('B');
+		expect(harness.containerEl.querySelector('.pbl-shelf-conflict')).toBeNull();
 	});
 });
 

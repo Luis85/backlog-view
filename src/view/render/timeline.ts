@@ -98,6 +98,13 @@ export interface TimelineRender {
 	 * since it never asks what geometry the bar drew.
 	 */
 	drawn: DrawnColors;
+	/**
+	 * File paths of shelved dependents whose own stated start conflicts with a dated
+	 * prerequisite (2b) — computed here (nothing on this grid draws one, since a
+	 * shelved item has no bar) and read by `renderRoadmap` to mark the shelf card,
+	 * which is that dependent's row (1b). See `dependencyArrows`.
+	 */
+	shelfConflicts: ReadonlySet<string>;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -191,7 +198,19 @@ export function renderTimeline(
 	// that line unkeyed.
 	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
-	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
+	// Computed ONCE, before any row exists, and from `bars`/`shelf` alone — never from
+	// what the arrow layer below goes on to draw. That is what makes both consumers
+	// window-independent: `dependencyArrows` never filters by the drawn window, so an
+	// edge clear across the plan from where the reader is scrolled still names its
+	// dependent's row and still marks it, exactly as one on screen does (1a/1b's "the
+	// row is where the dependency still lives" — the guarantee a window-derived mark
+	// would silently narrow). `shelfConflicts` is not read here: nothing on THIS grid
+	// draws a shelved dependent — it has no bar — so there is nothing for this pass to
+	// mark with it. It is the shelf's own card that states 2b's conflict
+	// (`TimelineRender.shelfConflicts`, read by `renderRoadmap`), not this one's.
+	const dependencies = dependencyArrows(bars, shelf);
+	const conflictedPrereqs = conflictsByDependent(dependencies.arrows);
+	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates, conflictedPrereqs };
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
 	bars.forEach((bar, index) => {
 		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
@@ -204,11 +223,9 @@ export function renderTimeline(
 	});
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
-	// rows really landed rather than a guessed row height — see `renderDependencyArrows`.
-	// `shelfConflicts` is not read here: nothing on THIS grid draws a shelved dependent —
-	// it has no bar — so there is nothing for this pass to mark with it. It is the shelf's
-	// own card that states 2b's conflict, which is `renderShelf`'s concern, not this one's.
-	renderDependencyArrows({ content, tracks }, window, dependencyArrows(bars, shelf).arrows, { scale, leadWidth });
+	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
+	// which draws from the same `dependencies.arrows` list computed above.
+	renderDependencyArrows({ content, tracks }, window, dependencies.arrows, { scale, leadWidth });
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -235,6 +252,7 @@ export function renderTimeline(
 		tracks,
 		leadWidth,
 		drawn,
+		shelfConflicts: dependencies.shelfConflicts,
 	};
 }
 
@@ -360,11 +378,13 @@ function renderMilestoneLines(
  *
  * One element per edge (4a), never one per pair of rows the window happens to draw —
  * asked once, over `dependencyArrows`' own list, never a walk of `bars` squared.
- * Nothing here is focusable and nothing is written; a conflicting edge (2, the
- * dependent starting on or before its prerequisite's stated end — asked of `.conflict`
- * exactly as `dependencyArrows` computed it, never re-derived here) marks its own
- * arrow AND the dependent's row, OR'd across every prerequisite a row waits on, so the
- * contradiction is findable without hunting the grid for the arrow that caused it.
+ * Nothing here is focusable and nothing is written. The arrow's OWN conflict styling
+ * is asked of `.conflict` exactly as `dependencyArrows` computed it, never re-derived
+ * here — but the dependent's ROW is no longer marked from this loop: `renderBarRow`
+ * marks it from `conflictedPrereqs`, the same map this function's own `arrows` came
+ * from, so the row states the conflict whether or not this loop found room to draw
+ * it (concern 2 of `Arrows between bars`' Task 3 — a mark this loop applied only
+ * survived the window; the row's own class must not).
  */
 function renderDependencyArrows(
 	mounts: { content: HTMLElement; tracks: Map<string, HTMLElement> },
@@ -375,16 +395,51 @@ function renderDependencyArrows(
 	const { content, tracks } = mounts;
 	const { scale, leadWidth } = ruler;
 	const contentTop = content.getBoundingClientRect().top;
-	const conflicted = new Set<string>();
 	for (const arrow of arrows) {
 		const anchor = dependencyAnchor(window, arrow.from.span, arrow.to.span);
 		const fromRow = tracks.get(arrow.from.item.file.path)?.parentElement;
 		const toRow = tracks.get(arrow.to.item.file.path)?.parentElement;
 		if (!anchor || !fromRow || !toRow) continue;
 		drawArrow(content, arrow.conflict, { scale, leadWidth, contentTop }, anchor, [fromRow, toRow]);
-		if (arrow.conflict) conflicted.add(arrow.to.item.file.path);
 	}
-	for (const path of conflicted) tracks.get(path)?.parentElement?.addClass('pbl-row-conflict');
+}
+
+/**
+ * Which of a dependent's prerequisites conflict, keyed by the DEPENDENT's own path —
+ * built once from `dependencyArrows`' own edge list, which never filters by the drawn
+ * window, so this is the single window-independent source both the row's accessible
+ * name (`dependencyNote`) and its `pbl-row-conflict` class read, rather than either
+ * one asking the arrow-drawing loop what it happened to draw.
+ */
+function conflictsByDependent(arrows: DependencyArrow[]): Map<string, Set<string>> {
+	const byDependent = new Map<string, Set<string>>();
+	for (const arrow of arrows) {
+		if (!arrow.conflict) continue;
+		const path = arrow.to.item.file.path;
+		const set = byDependent.get(path);
+		if (set) set.add(arrow.from.item.file.path);
+		else byDependent.set(path, new Set([arrow.from.item.file.path]));
+	}
+	return byDependent;
+}
+
+/** Shared by every row with no conflicting prerequisite, so `renderBarRow` allocates nothing for the common case. */
+const NO_CONFLICTS: ReadonlySet<string> = new Set();
+
+/**
+ * Every dependent row's accessible name states what it waits for, and marks the
+ * conflict on the prerequisite it concerns — `Arrows between bars` main flow step 3.
+ * Built from `item.prerequisites` alone, which is model data rather than anything the
+ * arrow layer drew: a prerequisite with no bar at all (shelved, hidden, collapsed,
+ * filtered — 1a) is still named here, simply never a member of `conflicted`, because
+ * nothing was derived for it to compare (main flow step 2's own rule, read from the
+ * other side). '' where the item waits for nothing, so callers can skip the span
+ * (and the marker's aria-label join) with a plain truthiness check.
+ */
+function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string>): string {
+	if (item.prerequisites.length === 0) return '';
+	const names = item.prerequisites.map((p) => (conflicted.has(p.file.path) ? `${p.title} (conflict)` : p.title));
+	return `Waits for ${names.join(', ')}`;
 }
 
 /** One arrow element, positioned from the day axis and the two rows' own rects. */
@@ -442,6 +497,8 @@ interface BarRowMounts {
 	tracks: Map<string, HTMLElement>;
 	/** See `TimelineDrawing.observedStates`. */
 	observedStates: string[];
+	/** Which of a dependent's prerequisites conflict, by the dependent's path — see `conflictsByDependent`. */
+	conflictedPrereqs: Map<string, Set<string>>;
 }
 
 function renderBarRow(
@@ -490,24 +547,7 @@ function renderBarRow(
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
 	renderBarLabel(track, bar, geometry, scale, window);
-	// Said in words on the row itself, because on this axis the state is otherwise a
-	// bar COLOUR and nothing else — see `stateNote`.
-	const state = stateNote(ctx.host.settings.stateKey, bar.item);
-	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
-	// The row is the timeline's one selection stop, so a MARKER'S row is where the
-	// line and the diamond's facts have to be readable (criterion 4a: neither is
-	// focusable, so nothing about a milestone may exist only under a hover). An
-	// ordinary row is left to its content-derived name — badge, title, and the bar's
-	// own `aria-label` above, which the accessible-name computation already folds
-	// in — the same reason `createCard`'s outside marker uses `aria-description`
-	// rather than `aria-label`: an explicit label REPLACES that name instead of
-	// adding to it, and would cost every dated row its type word for a fact the bar
-	// already states.
-	// A marker's explicit label REPLACES the row's content, the hidden state span
-	// above included, so the same words are folded into it rather than lost.
-	if (isMarkerType(bar.item.typeName)) {
-		row.setAttribute('aria-label', `${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}`);
-	}
+	renderRowFacts(row, ctx, bar, dates, mounts.conflictedPrereqs);
 	wireCardActivation(ctx, row, bar.item);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
@@ -524,6 +564,51 @@ function renderBarRow(
 		accent: !bar.item.done && slot === null && !milestoneDrawn,
 	};
 	return { row, colors };
+}
+
+/**
+ * Every fact this row states beyond the bar's own colour and shape: its workflow
+ * state, what it waits for, and which of that conflicts — extracted out of
+ * `renderBarRow` to keep that function's own branching under budget, since these
+ * four guards are independent of everything else it does.
+ *
+ * The row is the timeline's one selection stop, so a MARKER'S row is where the line
+ * and the diamond's facts have to be readable (criterion 4a: neither is focusable,
+ * so nothing about a milestone may exist only under a hover). An ordinary row is
+ * left to its content-derived name — badge, title, and the bar's own `aria-label`
+ * (`dates`), which the accessible-name computation already folds in — the same
+ * reason `createCard`'s outside marker uses `aria-description` rather than
+ * `aria-label`: an explicit label REPLACES that name instead of adding to it, and
+ * would cost every dated row its type word for a fact the bar already states. A
+ * marker's explicit label therefore REPLACES the row's content, the hidden state
+ * and dependency spans included, so the same words are folded into it instead.
+ */
+function renderRowFacts(
+	row: HTMLElement,
+	ctx: RowContext,
+	bar: TimelineBar,
+	dates: string,
+	conflictedPrereqs: Map<string, Set<string>>,
+): void {
+	// Said in words on the row itself, because on this axis the state is otherwise a
+	// bar COLOUR and nothing else — see `stateNote`.
+	const state = stateNote(ctx.host.settings.stateKey, bar.item);
+	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
+	// What this row waits for, and which of those conflicts — `dependencyNote`, read
+	// from `conflictedPrereqs` (window-independent, see `renderTimeline`) rather than
+	// from anything the arrow layer drew. The class is the same fact for sighted
+	// users: both come from this one map, so neither can say something the other
+	// does not (`Arrows between bars` Task 3, concerns 1 and 2).
+	const conflicted = conflictedPrereqs.get(bar.item.file.path) ?? NO_CONFLICTS;
+	if (conflicted.size > 0) row.addClass('pbl-row-conflict');
+	const waits = dependencyNote(bar.item, conflicted);
+	if (waits) row.createSpan({ cls: 'pbl-sr-only pbl-dependency-note', text: waits });
+	if (isMarkerType(bar.item.typeName)) {
+		row.setAttribute(
+			'aria-label',
+			`${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}${waits ? ` — ${waits}` : ''}`,
+		);
+	}
 }
 
 /**

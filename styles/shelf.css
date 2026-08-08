@@ -118,6 +118,30 @@
 	height: 12px;
 }
 
+/* 2b: this card's own stated start conflicts with a dated prerequisite — no bar
+   exists for an arrow to reach, so this card is where the contradiction is stated
+   (`Arrows between bars` extension 2b). Red, like `.pbl-dependency-arrow-conflict`
+   and `.pbl-row-conflict` on the dated axis proper: one colour for one meaning,
+   kept apart from `.pbl-shelf-reason`'s warning amber, which is a different fact
+   (an unreadable or reversed date) that can be true of the same card at once. */
+.pbl-shelf-conflict {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--color-red);
+}
+
+.pbl-shelf-conflict-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-shelf-conflict-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
 /* The shelf's own controls, in its own header. The disclosure carries the icon, the
    name and the count, so it is a text-bearing button rather than the lone glyph
    `clickable-icon` sizes for — the padding and the auto width are what stop it

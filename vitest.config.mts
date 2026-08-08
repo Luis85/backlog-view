@@ -145,9 +145,18 @@ export default defineConfig({
 			// — statements and lines round down to new decimals (98.2, up from 98.1; 99.4,
 			// up from 99.3), branches and functions round down to the figures already
 			// recorded above (93.9, 99.4), so only two of the four move.
+			//
+			// The row-and-card-state-the-dependency increment (Task 3 of
+			// `Arrows between bars`: the timeline row's accessible name states what it
+			// waits for and marks the specific conflicting prerequisite, independent of
+			// the drawn window; the shelf card states a 2b conflict with no arrow to
+			// carry it) measured 98.2685/94.0036/99.4928/99.4161 (5051/5140, 3151/3352,
+			// 1177/1183, 4257/4282) — only branches rounds down to a new decimal (94.0,
+			// up from 93.9), the other three round down to the figures already recorded
+			// above, so only branches moves.
 			thresholds: {
 				statements: 98.2,
-				branches: 93.9,
+				branches: 94,
 				functions: 99.4,
 				lines: 99.4,
 			},
