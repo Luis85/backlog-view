@@ -24,9 +24,11 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 
 1. The user presses ✨.
 2. Every optional property the view options do not name yet — the state, the two date
-   stamps, and the roadmap's horizon and dates ([[Horizons or dates]]) — is bound to
-   the key this view suggests, which is the key its picker already shows as a
-   placeholder. Without this the features that need a property cannot be reached at
+   stamps, the roadmap's horizon and dates ([[Horizons or dates]]) and the risk level
+   ([[Setting the risk on an item]]) — is bound to the key this view suggests, which is
+   the key its picker already shows as a placeholder. The list is stated once, in the
+   optional-property table, so a property added there joins this button without anything
+   here changing but this sentence. Without this the features that need a property cannot be reached at
    all: Obsidian's own property picker offers the properties a vault HAS, so a
    property no note carries cannot be picked, and a property nothing names cannot be
    written to a note.

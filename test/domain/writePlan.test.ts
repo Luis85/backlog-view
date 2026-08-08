@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { BacklogItem } from '../../src/domain/model';
 import { buildModel } from '../../src/domain/model';
-import { computeDropWrites, computeInitWrites, computeTypeChanges, DropTarget, ORDER_SPACING } from '../../src/domain/writePlan';
+import {
+	computeDropWrites,
+	computeInitWrites,
+	computeRiskWrites,
+	computeTypeChanges,
+	DropTarget,
+	ORDER_SPACING,
+} from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -528,5 +535,52 @@ describe('computeInitWrites', () => {
 		expect(byPath.get('Bare Epic.md')?.order).toBe(20);
 		expect(byPath.get('Story.md')?.typeName).toBe('PBI');
 		expect(byPath.get('Story.md')?.order).toBe(ORDER_SPACING);
+	});
+});
+
+describe('computeRiskWrites', () => {
+	const risky = { ...settings, riskKey: 'risk' };
+
+	/** One note with whatever risk frontmatter the case needs. */
+	function item(frontmatter: Record<string, unknown>): BacklogItem {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, ...frontmatter } });
+		const model = buildModel(vault.app, vault.entries(), risky);
+		const found = model.items[0];
+		if (!found) throw new Error('fixture item missing');
+		return found;
+	}
+
+	it('writes the level picked', () => {
+		expect(computeRiskWrites(item({}), '2 - Normal')).toEqual([
+			{ file: expect.objectContaining({ path: 'Item.md' }), risk: '2 - Normal' },
+		]);
+	});
+
+	it('plans nothing for a re-pick of the level the item holds, whatever its case', () => {
+		// The one undo slot is not spent on a change nobody made — and the menu's
+		// checkmark is this same answer, so the two cannot disagree.
+		expect(computeRiskWrites(item({ risk: '1 - high' }), '1 - High')).toEqual([]);
+	});
+
+	it('removes the key only where there is one to remove', () => {
+		// Presence, not value: the empty key the backfill leaves is a real thing to clear.
+		expect(computeRiskWrites(item({ risk: '' }), null)).toEqual([
+			{ file: expect.objectContaining({ path: 'Item.md' }), risk: null },
+		]);
+		expect(computeRiskWrites(item({}), null)).toEqual([]);
+	});
+
+	it('plans nothing at all when no risk property is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, risk: '1 - High' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const unconfigured = model.items[0];
+		if (!unconfigured) throw new Error('fixture item missing');
+
+		// The note's value is invisible without a property naming it, so a clear has
+		// nothing to take away and a pick is not a re-pick of anything.
+		expect(computeRiskWrites(unconfigured, null)).toEqual([]);
+		expect(computeRiskWrites(unconfigured, '1 - High')).toHaveLength(1);
 	});
 });

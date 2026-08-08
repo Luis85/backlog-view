@@ -97,6 +97,16 @@ export interface BacklogSettings {
 	startKey: string;
 	/** Frontmatter key holding the planned target date, or '' when unset. */
 	targetKey: string;
+	/** Frontmatter key holding the item's risk, or '' when no risk property is named. */
+	riskKey: string;
+	/**
+	 * Declared risk levels, in the order the menu offers them. Ships prefilled with the
+	 * numbered High/Normal/Low triple — a default vocabulary, not a fixed one — and
+	 * clearing it withdraws the Set risk menu, which is the only thing the list feeds.
+	 * The property stays backfillable either way: unlike the horizon's, a named risk
+	 * property with no levels is still a property worth creating on a note.
+	 */
+	riskValues: string[];
 }
 
 /**
@@ -231,6 +241,12 @@ export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
  * placements, exactly as the workflow states are.
  */
 export const DEFAULT_HORIZON_VALUES = ['Now', 'Next', 'Later'];
+/**
+ * The shipped risk vocabulary. Numbered because risk is read as a ranking far more
+ * often than as a label, and a list that sorts the way it reads costs nothing to
+ * write down. A default the user edits freely, never a fixed list.
+ */
+export const DEFAULT_RISK_VALUES = ['1 - High', '2 - Normal', '3 - Low'];
 /** Property columns are fixed-width so values line up across rows; this is that width. */
 export const DEFAULT_PROP_COLUMN_WIDTH = 132;
 export const MIN_PROP_COLUMN_WIDTH = 80;
@@ -265,6 +281,8 @@ export function defaultSettings(): BacklogSettings {
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
 		startKey: '',
 		targetKey: '',
+		riskKey: '',
+		riskValues: [...DEFAULT_RISK_VALUES],
 	};
 }
 
@@ -279,14 +297,21 @@ export function defaultSettings(): BacklogSettings {
  * the model's presence test and the backfill would otherwise each spell out the same
  * switch.
  */
-export type OptionalField = 'state' | 'startedDate' | 'finishedDate' | 'horizon' | 'start' | 'target';
+export type OptionalField = 'state' | 'startedDate' | 'finishedDate' | 'horizon' | 'start' | 'target' | 'risk';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
  * rather than `keyof BacklogSettings` so the table below can only name a string-valued
  * key: `keyof` would let a boolean option through and `optionalKeyFor` would return one.
  */
-type OptionalSettingsKey = 'stateKey' | 'startedDateKey' | 'finishedDateKey' | 'horizonKey' | 'startKey' | 'targetKey';
+type OptionalSettingsKey =
+	| 'stateKey'
+	| 'startedDateKey'
+	| 'finishedDateKey'
+	| 'horizonKey'
+	| 'startKey'
+	| 'targetKey'
+	| 'riskKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -324,6 +349,7 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon', settingsKey: 'horizonKey' },
 	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
 	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
+	risk: { option: 'riskProperty', suggested: 'risk', label: 'risk', settingsKey: 'riskKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */
@@ -459,6 +485,21 @@ export function isStartedValue(settings: BacklogSettings, state: string | null):
 export function horizonMenuValues(settings: BacklogSettings, observedHorizons: string[]): string[] {
 	const declared = new Set(settings.horizonValues.map((v) => v.toLowerCase()));
 	return [...settings.horizonValues, ...observedHorizons.filter((v) => !declared.has(v.toLowerCase()))];
+}
+
+/**
+ * Whether risk is configured enough to be SET from the view: a property to write and a
+ * vocabulary to offer. One predicate, so the menu and the options cannot drift — the
+ * shape `hasHorizonAxis` has, in this layer rather than the roadmap's because risk feeds
+ * no projection.
+ *
+ * It deliberately does NOT gate the backfill. An unconfigured bucket axis skips its stub
+ * because writing that key would be the one write on an axis nothing else acknowledges;
+ * risk has no axis to be incoherent with, so a named property with no declared levels is
+ * still a property worth creating on a note — which is what the ✨ button is for.
+ */
+export function hasRiskLevels(settings: BacklogSettings): boolean {
+	return settings.riskKey !== '' && settings.riskValues.length > 0;
 }
 
 /**
@@ -684,5 +725,10 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
 		startKey: propKey('startProperty', fallback.startKey),
 		targetKey: propKey('targetProperty', fallback.targetKey),
+		riskKey: propKey('riskProperty', fallback.riskKey),
+		// Clearable for the horizon values' reason: a real default that has to be
+		// switchable off, and an emptied list means "no levels" rather than the three
+		// this plugin shipped.
+		riskValues: clearable('riskValues', fallback.riskValues, () => dedupe(list('riskValues'))),
 	};
 }

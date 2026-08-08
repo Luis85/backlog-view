@@ -82,6 +82,13 @@ interface RawItem {
 	/** The planned target date the note states, if a target property is configured. */
 	plannedTarget: FieldReading<CivilDate>;
 	/**
+	 * The risk level the note declares, if a risk property is configured. A plain value
+	 * rather than a `FieldReading`: risk is a label the user picked from their own list,
+	 * so there is no reading for it to refuse — the shape `stateValue` has, for the same
+	 * reason. Absence means nobody has judged it, which is a different fact from any level.
+	 */
+	riskValue: string | null;
+	/**
 	 * Which configured optional keys the note CARRIES — presence, not value, and the
 	 * two are different questions here: an empty horizon reads as absent (untriaged)
 	 * while the key is still on the note. Removal actions offer themselves on presence,
@@ -286,6 +293,7 @@ function addItem(
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
+		riskValue: settings.riskKey ? readString(ownValue(fm, settings.riskKey)) : null,
 		ownKeys: readOwnKeys(fm, settings),
 	};
 	store.byPath.set(file.path, item);
