@@ -1,0 +1,134 @@
+import { describe } from 'vitest';
+import { note, runRejections, useCase } from '../helpers/register';
+
+/**
+ * **Planted violations: the `**Checked by**` citation rule.**
+ *
+ * Split from `checkerRejects.test.ts` by subject when that file hit its line budget, the
+ * split the budget exists to force — these are one rule's cases, and they are here rather
+ * than among the cross-references because a citation is a different act from a reference.
+ * Naming a path says where something lives; citing a check says the check is live, which
+ * is why this rule holds in a closed note where the source-path rule waves a historical
+ * path through.
+ *
+ * The rule verifies a citation RESOLVES; it cannot verify the claim beside it, and
+ * [[A claim in four notes and nothing to check it]] holds why the candidates that try are
+ * worse than the problem. So what these cases pin is narrow and worth stating: a rotted
+ * citation fails, and a marker the gate cannot parse fails rather than passing silently.
+ *
+ * That second one is the whole reason this rule has three report sites instead of two.
+ * Its first version matched marker, path and name in a single regex that excluded `\n`
+ * to stay bounded — so the register's own first citation, which Markdown wrapped across
+ * two lines, matched nothing and went unchecked while the run stayed green. A rule that
+ * quietly does nothing on input it cannot parse reads exactly like a rule that works,
+ * which is the defect the citation rule was built to catch, committed by the rule itself.
+ */
+
+describe('checked-claim citations', () => {
+	runRejections([
+		[
+			'a citation naming a test file that does not exist',
+			(files) => {
+				files['docs/issues/A limitation.md'] = note(
+					'Issue',
+					10,
+					'A slice',
+					'# A limitation\n\nIt behaves.\n\n**Checked by** `test/gone.test.ts` — "the thing works".\n',
+				);
+			},
+			'cites test/gone.test.ts, which does not exist',
+		],
+		[
+			// The half the source-path rule above cannot give: an `issues/` note is not
+			// living, so a path it merely NAMES is allowed to be historical. A citation is
+			// a stronger act — it says the check is live — so it fails here where the same
+			// path in ordinary prose would be waved through.
+			'a citation in a closed-note directory, where a named path would be allowed',
+			(files) => {
+				files['docs/issues/A limitation.md'] = note(
+					'Issue',
+					10,
+					'A slice',
+					'# A limitation\n\nOnce lived in `src/gone.ts`.\n\n**Checked by** `test/gone.test.ts` — "the thing works".\n',
+				);
+			},
+			'cites test/gone.test.ts, which does not exist',
+		],
+		[
+			'a citation naming a test the file no longer contains',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "renamed away".',
+				});
+			},
+			'cites "renamed away", which test/thing.test.ts does not contain',
+		],
+		[
+			// The failure mode this rule's FIRST version had, turned into a report. That
+			// version matched marker, path and name in one regex that excluded `\n` to stay
+			// bounded — so the first real citation written into the register, which Markdown
+			// wrapped across two lines, matched nothing and went unchecked while the run
+			// stayed green. A rule that quietly does nothing on input it cannot parse reads
+			// exactly like a rule that works.
+			'a **Checked by** marker the gate cannot parse a citation out of',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** the tests, obviously.',
+				});
+			},
+			'has a **Checked by** with no `path.ts` and "test name" after it',
+		],
+		[
+			// Review asked whether the paragraph boundary (`\n[ \t]*\n`) misses `\r\n\r\n` on
+			// the Windows leg of CI, letting a malformed marker reach forward and adopt a
+			// path and a quoted name from a later paragraph. It does not: `readText`
+			// normalizes CRLF before any pattern in this file sees a document, so the
+			// boundary only ever meets `\n`. That is one line away from being untrue — a
+			// rule reading a file any other way would reintroduce it — so the case is kept
+			// rather than the reasoning. It fails on the malformed marker, never silently
+			// resolving the citation two paragraphs down.
+			'a malformed marker on a CRLF checkout, with a resolvable citation further down',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: [
+						'`src/thing.ts` and `test/thing.test.ts`.',
+						'',
+						'**Checked by** the tests, obviously.',
+						'',
+						'Later paragraph naming `test/thing.test.ts` and "the thing works".',
+					].join('\n'),
+				});
+				for (const [path, text] of Object.entries(files)) files[path] = text.replaceAll('\n', '\r\n');
+			},
+			'has a **Checked by** with no `path.ts` and "test name" after it',
+		],
+		[
+			// The other half of that lesson, in the accept direction's shape: a citation
+			// Markdown has wrapped is a legal citation and must resolve. Without this, the
+			// rule could be "fixed" back into the broken version and only this case would
+			// notice — the reject cases above all fit on one line.
+			'a wrapped citation whose test name is genuinely absent',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: [
+						'`src/thing.ts` and `test/thing.test.ts`.',
+						'',
+						'**Checked by** `test/thing.test.ts` — "the thing works',
+						'when it is wrapped".',
+					].join('\n'),
+				});
+			},
+			'cites "the thing works when it is wrapped", which test/thing.test.ts does not contain',
+		],
+		[
+			// The root README is fetched by name rather than reached by the walk, so it is
+			// a second code path and needs its own planting — a rule that covered only the
+			// walk would pass every case above and still miss the file the wrong sentence
+			// this convention exists for was actually read in.
+			'a rotted citation in the root README, which is not in the register at all',
+			(files) => {
+				files['README.md'] = '# The plugin\n\n**Checked by** `test/gone.test.ts` — "the thing works".\n';
+			},
+			'cites test/gone.test.ts, which does not exist',
+		],	]);
+});

@@ -123,8 +123,14 @@ closed note as loudly as a living one, since a citation claims the check is live
 
 So the honest summary is that the gate now catches a **rotted** citation and nothing else,
 and the value is mostly in the habit the form makes cheap rather than in the rule.
-**Checked by** `test/docs/checkerRejects.test.ts` — "a citation naming a test the file no
-longer contains".
+**Checked by** `test/docs/checkerRejectsCitations.test.ts` — "a citation naming a test the
+file no longer contains".
+
+It caught its own author within the hour, which is the only field evidence this note has
+for it: the citation above first named `checkerRejects.test.ts`, that file hit its line
+budget, the citation cases moved to a file of their own, and the run went red on a
+reference nobody would have thought to re-check. A rename is the ordinary way a citation
+rots, and it rotted on the first one.
 
 ## Acceptance criteria
 
