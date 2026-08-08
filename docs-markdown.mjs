@@ -185,7 +185,11 @@ export function localLinks(text) {
 	const out = [];
 	for (const node of nodes(text)) {
 		if (!LINKING.has(node.type)) continue;
-		if (/^[a-z][a-z0-9+.-]*:/i.test(node.url) || node.url.startsWith("#")) continue;
+		// `//cdn.example.com/x.md` is EXTERNAL: a protocol-relative reference borrows the
+		// page's scheme and names no scheme of its own, so a test for `scheme:` does not see
+		// one and the destination reads as a path. The gate would then look for a directory
+		// called `cdn.example.com` beneath the note and reject a working link.
+		if (/^[a-z][a-z0-9+.-]*:/i.test(node.url) || node.url.startsWith("//") || node.url.startsWith("#")) continue;
 		const [target] = node.url.split("#");
 		if (target) out.push({ href: node.url, target: decodeURIComponent(target) });
 	}

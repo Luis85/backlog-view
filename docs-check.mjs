@@ -515,8 +515,14 @@ for (const file of [...files, "README.md"]) {
 		// file — a rule that demanded one would refuse correct citations, which is the direction
 		// held more expensive here. So a `describe` name or a case label passes, and a phrase
 		// that is nobody's quoted string does not.
+		// Compared against BOTH spellings, because a name is written in prose and read out of
+		// source: a citation of `doesn't retry` is looking for `it('doesn\'t retry', …)`, where
+		// the delimiter forced an escape the register has no reason to carry. Checking only
+		// the literal form fails a citation that is exactly right — the false-failure
+		// direction, and one nobody would suspect the CHECK of.
 		const source = flat(await readText(target));
-		if (!["'", '"', "`"].some((q) => source.includes(q + wanted + q))) {
+		const escaped = (q) => wanted.replaceAll("\\", "\\\\").replaceAll(q, "\\" + q);
+		if (!["'", '"', "`"].some((q) => source.includes(q + wanted + q) || source.includes(q + escaped(q) + q))) {
 			fail(file, `cites "${wanted}", which ${target} does not name`);
 		}
 	}

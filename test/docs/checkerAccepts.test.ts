@@ -230,6 +230,32 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a cited name the test source had to escape', async () => {
+		// A name is written in prose and read out of source. `doesn't retry` is spelled
+		// `it('doesn\\'t retry', …)` because the delimiter forced an escape the register has
+		// no reason to carry — so comparing only the literal form fails a citation that is
+		// exactly right, and nobody would suspect the CHECK of it.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = "it('doesn\\'t retry', () => {});\n";
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "doesn\'t retry".',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a protocol-relative destination, which is external', async () => {
+		// `//cdn.example.com/x.md` borrows the page's scheme and names none of its own, so a
+		// test for `scheme:` does not see one and the destination reads as a path — the gate
+		// would look for a directory called `cdn.example.com` beneath the note.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\nSee [the guide](//cdn.example.com/guide.md).',
+		});
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a **Checked by** example inside a fence, which is documentation not a citation', async () => {
 		// `docs/README.md` documents the convention by showing it, naming a path that does
 		// not exist on purpose. Fenced, so it is an example being quoted rather than a
