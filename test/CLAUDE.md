@@ -39,13 +39,22 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   is the real exception: the cache never gets an object for it, so writes to it stay
   invisible to the model. `entry.getValue()` returns null, so property chips render empty
   in tests.
-- `addFile` fills `frontmatterLinks` only through its `parentLink` option, so writing a
-  bracketed value straight into `frontmatter` (`parent: '[[Epic]]'`) builds a cache
-  Obsidian would not hand out — brackets with no parsed link — and sends `resolveParent`
-  down its raw fallback instead of the path a vault takes. Reach for `parentLink` when the
-  test is about a parent LINK. Measured as latent, not live, and open because the deciding
-  question needs a vault: `docs/issues/The fake vault can hold a cache Obsidian would not
-  produce.md`.
+- `addFile` fills `frontmatterLinks` only through its `parentLink` option, and which of the
+  two spellings is faithful depends on whether the link RESOLVES. Measured in a vault
+  (2026-08-08): Obsidian indexes a frontmatter link exactly when it resolves, so
+  - a link to a note that **exists** always has an entry — `parentLink: 'Epic'`, and
+    writing `parent: '[[Epic]]'` into `frontmatter` beside an `Epic.md` builds a cache no
+    vault hands out;
+  - a link to a note that **does not** has no entry at all — so `parent: '[[No Such
+    Note]]'` written straight into `frontmatter`, with no such file added, is exactly what
+    a vault produces, and is the only shape that reaches `resolveParent`'s raw fallback
+    honestly.
+
+  Reach for `parentLink` when the test is about a link that resolves, and for a raw
+  bracketed value when it is about one that does not. Neither shape measures the fallback's
+  bracket STRIPPING, which has no observable effect in a vault — the reasoning is in
+  `docs/issues/The fake vault can hold a cache Obsidian would not produce.md` and beside
+  the test in `test/domain/model.test.ts`.
 
 ## Looking at it
 
