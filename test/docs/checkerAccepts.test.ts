@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adr, baseRegister, checkRegister, note, useCase } from '../helpers/register';
+import { adr, baseRegister, checkRegister, hierarchyTable, note, useCase } from '../helpers/register';
 
 /**
  * **Does a valid document pass?**
@@ -77,6 +77,11 @@ describe('the gate accepts valid documents', () => {
 		const files = baseRegister();
 		files['docs/deliverables/The one-pager.md'] = note('Deliverable', 40, 'Thing', '# The one-pager\n\nA thing to produce.\n');
 		files['docs/deliverables/The deck.md'] = note('Deliverable', 50, 'A slice', '# The deck\n\nA thing to produce.\n');
+		// The PBI rung too, or the name outruns the test: with only the Epic and Feature
+		// parents driven, `PBI` could drop `...EXTRA` and this would still pass. Found in
+		// review, and it is the rule this repo states about its own claims — write the
+		// guarantee to the check.
+		files['docs/deliverables/The runbook.md'] = note('Deliverable', 60, 'Doing the thing', '# The runbook\n\nA thing to produce.\n');
 		files['docs/tasks/Draft the deck.md'] = note('Task', 30, 'The deck', '# Draft the deck\n\nWork.\n');
 
 		await expectAccepted(files);
@@ -215,7 +220,9 @@ describe('the gate accepts valid documents', () => {
 		// gate reported its own convention page as a malformed citation. Naming a thing is
 		// not doing it — the same rule code spans already carry for wikilinks and paths.
 		const files = baseRegister();
-		files['docs/README.md'] = '# docs\n\nA claim may carry a `**Checked by**` citation naming its test.\n';
+		// Keeps the hierarchy table: a register that documents no hierarchy is a different
+		// failure, and this case is about citations.
+		files['docs/README.md'] = `# docs\n\nA claim may carry a \`**Checked by**\` citation naming its test.\n\n${hierarchyTable()}`;
 
 		await expectAccepted(files);
 	});
@@ -311,6 +318,8 @@ describe('the gate accepts valid documents', () => {
 			'```',
 			'**Checked by** `test/nothing/here.test.ts` — "a name no file holds"',
 			'```',
+			'',
+			hierarchyTable(),
 		].join('\n');
 
 		await expectAccepted(files);

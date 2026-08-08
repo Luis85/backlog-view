@@ -260,3 +260,38 @@ export function markers(text, label) {
 	}
 	return found;
 }
+
+/**
+ * The rows of the GFM table whose header row begins with `headings`, each row as an array
+ * of cells, each cell as the list of `code` spans it holds.
+ *
+ * Code spans rather than cell text, because that is how this register writes a type or a
+ * key — `` `Deliverable` `` — and it is the part a rule can compare. Prose around them
+ * (`*(nothing — it is a root)*`, "or") is a human's connective tissue and is deliberately
+ * dropped: a check that had to understand it would be reading English, which is the thing
+ * `docs/issues/Tests do not read English.md` says not to build.
+ *
+ * Asked of the parser, so a pipe inside a code span cannot split a cell and a table
+ * indented inside a list item is still a table. Returns null when no such table exists,
+ * which a caller has to handle — a missing table is a different failure from an empty one.
+ */
+export function tableRows(text, headings) {
+	// The cell's own descendants, never a source slice: mdast gives a table cell a position
+	// that INCLUDES its leading pipe, so slicing yields "| Type" and re-parsing that is one
+	// more parser to get wrong. Walking the node the parser already built asks nothing.
+	const words = (cell) => [...walk(cell)].filter((n) => n.type === "text").map((n) => n.value).join("").trim();
+	const codes = (cell) => [...walk(cell)].filter((n) => n.type === "inlineCode").map((n) => n.value);
+	for (const node of nodes(text)) {
+		if (node.type !== "table" || node.children.length === 0) continue;
+		const head = node.children[0].children;
+		if (!headings.every((want, i) => head[i] !== undefined && words(head[i]) === want)) continue;
+		return node.children.slice(1).map((row) => row.children.map(codes));
+	}
+	return null;
+}
+
+/** Every node beneath one, itself included — `nodes` over a subtree rather than a document. */
+function* walk(node) {
+	yield node;
+	for (const child of node.children ?? []) yield* walk(child);
+}

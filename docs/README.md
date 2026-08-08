@@ -180,10 +180,15 @@ Every pair holds:
 
 The three EXTRA types travel together — `Issue`, `Bug` and `Deliverable` are one set
 repeated at each rung, which is what `childTypeChoices` answers as
-`[ladderChild, ...EXTRA_TYPES]` and what `docs-check.mjs` spells as its own `EXTRA`. A
-type added to that list belongs in this table, in `LEGAL_CHILDREN`, and in the folder
-table above, all three: `Deliverable` reached the plugin and none of them, and the gap
-survived a whole increment because each surface looked complete on its own.
+`[ladderChild, ...EXTRA_TYPES]` and what `docs-check.mjs` spells as its own `EXTRA`.
+
+**This table is checked against that map, both ways.** `docs-check.mjs` reads the table out
+of this file and compares it to `LEGAL_CHILDREN`: a type in one and not the other fails, a
+children list that differs fails, and the parent column is checked as the inverse of the
+same map. So the table cannot quietly fall behind the gate — which it did, for the whole
+increment that introduced `Deliverable`, while this section went on calling itself
+authoritative. What is still only prose is the FOLDER table above: nothing ties a type to
+its folder, because nothing in the register depends on one.
 
 The plugin does not *enforce* this — the rules decide what is offered, never what is
 refused — which is exactly why the register has to hold to it by hand.

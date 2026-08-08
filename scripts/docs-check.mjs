@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, wikilinks } from "./docs-markdown.mjs";
+import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tableRows, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -868,6 +868,58 @@ for (const file of sources) {
 	// Notes write `/`; `collectTs` returns the platform separator. The old substring check
 	// had the same split and nobody had run this on Windows to find out.
 	if (!specified.has(file.split(path.sep).join("/"))) fail("docs", `no use case or ADR specifies ${file}`);
+}
+
+// ------------------------------------------------- the documented hierarchy IS the gate's
+/**
+ * `docs/README.md`'s hierarchy table against `LEGAL_CHILDREN`, in both directions.
+ *
+ * The README calls that table the authoritative statement of every legal pair and says
+ * this script enforces it — and until now it enforced the register against
+ * `LEGAL_CHILDREN` while nothing held `LEGAL_CHILDREN` to the table. So `Deliverable`
+ * reached the plugin, then reached this gate, and reached the table only when a reviewer
+ * read both: three surfaces, each complete on its own. The rule was written as prose
+ * saying "add it in all three places", which is the shape this register keeps proving does
+ * not hold — a comment stating a rule is not a check.
+ *
+ * Now it is one. A type in the table and not in the gate fails; a type in the gate and not
+ * in the table fails; a children list that differs either way fails. The table's PARENT
+ * column is checked as the inverse of the same map, because a contributor reads that
+ * column first and an inverse nobody derives is a second place to be wrong.
+ */
+const HIERARCHY_HEADINGS = ["Type", "Parent may be", "Children may be"];
+const hierarchy = tableRows(await readFile(path.join(DOCS, "README.md"), "utf8"), HIERARCHY_HEADINGS);
+if (hierarchy === null) {
+	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
+} else {
+	// A row may name several types at once (`Issue` / `Bug` / `Deliverable` share one), so
+	// the table is flattened to the same type → children shape the gate holds.
+	const documented = new Map();
+	const documentedParents = new Map();
+	for (const [types, parents, children] of hierarchy) {
+		for (const type of types) {
+			documented.set(type, new Set(children));
+			documentedParents.set(type, new Set(parents));
+		}
+	}
+	const named = (set) => [...set].sort().join(", ") || "(nothing)";
+	for (const type of new Set([...documented.keys(), ...Object.keys(LEGAL_CHILDREN)])) {
+		const table = documented.get(type);
+		const gate = LEGAL_CHILDREN[type];
+		if (!table) fail("docs/README.md", `the hierarchy table omits ${type}, which LEGAL_CHILDREN allows`);
+		else if (!gate) fail("docs/README.md", `the hierarchy table names ${type}, which LEGAL_CHILDREN does not allow at all`);
+		else if (named(table) !== named(gate)) {
+			fail("docs/README.md", `${type} may hold ${named(gate)}, and the hierarchy table says ${named(table)}`);
+		}
+	}
+	// The inverse: X may parent Y exactly when Y is one of X's legal children.
+	for (const [type, parents] of documentedParents) {
+		if (!LEGAL_CHILDREN[type]) continue;
+		const real = new Set(Object.keys(LEGAL_CHILDREN).filter((p) => LEGAL_CHILDREN[p].has(type)));
+		if (named(parents) !== named(real)) {
+			fail("docs/README.md", `${type} may hang from ${named(real)}, and the hierarchy table says ${named(parents)}`);
+		}
+	}
 }
 
 // --------------------------------------------------------------------------- report

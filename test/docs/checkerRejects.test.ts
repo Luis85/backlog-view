@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { adr, note, runRejections, useCase } from '../helpers/register';
+import { adr, hierarchyTable, note, runRejections, useCase, withoutHierarchyRow } from '../helpers/register';
 
 /**
  * **Does an invalid document fail?**
@@ -486,6 +486,45 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 			// this case planted `A trailing thought..md` instead, which is a perfectly legal
 			// Windows name ending in `d`, and passed against a rule that was reading a
 			// stripped stem. It asserted a false positive and read like a check.
+			// The five sites of the hierarchy-table rule. `LEGAL_CHILDREN` lives in the gate's
+			// own source and no fixture can edit it, so each of these plants the drift on the
+			// TABLE's side — which is the side that actually rotted: the gate learned
+			// `Deliverable` and the table did not, for a whole increment.
+			'a register that documents no hierarchy at all',
+			(files) => {
+				files['docs/README.md'] = '# docs\n\nThe register.\n';
+			},
+			'the hierarchy is documented nowhere',
+		],
+		[
+			'a hierarchy table missing a type the gate allows',
+			(files) => {
+				files['docs/README.md'] = withoutHierarchyRow('Milestone');
+			},
+			'the hierarchy table omits Milestone, which LEGAL_CHILDREN allows',
+		],
+		[
+			'a hierarchy table naming a type the gate does not know',
+			(files) => {
+				files['docs/README.md'] = `${hierarchyTable()}| \`Spike\` | \`PBI\` | *(nothing)* |\n`;
+			},
+			'the hierarchy table names Spike, which LEGAL_CHILDREN does not allow at all',
+		],
+		[
+			'a children list the gate disagrees with',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue` |');
+			},
+			'and the hierarchy table says Issue, PBI',
+		],
+		[
+			'a parent column that is not the inverse of the children',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |', '| `Task` | `PBI` |');
+			},
+			'Task may hang from Bug, Deliverable, Issue, PBI, and the hierarchy table says PBI',
+		],
+		[
 			'a directory entry whose name ends in a dot',
 			(files) => {
 				files['docs/issues/A trailing thought.md.'] = 'Not a note, and not a name Windows can hold.\n';
@@ -511,6 +550,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('scripts/docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(52);
+		expect(sites.length).toBe(57);
 	});
 });
