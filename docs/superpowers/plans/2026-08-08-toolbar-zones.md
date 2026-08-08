@@ -978,6 +978,31 @@ describe('the toolbar overflow menu', () => {
 		]);
 	});
 
+	/**
+	 * A toggle is the one entry where omitting the state inverts the meaning: at the
+	 * steps where this menu is the only copy of the density control, an unchecked
+	 * "Compact rows" whose click turns compact rows OFF says the opposite of what it
+	 * does. Mirrored from the button's `aria-pressed`, like `disabled` is from its flag.
+	 */
+	it('checks the density entry exactly when the toggle it duplicates is pressed', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+
+		const off = openOverflow(containerEl);
+		expect(off.find((i) => i.titleText === 'Compact rows')?.checked).toBe(false);
+
+		view.setDensity('compact');
+
+		const on = openOverflow(containerEl);
+		expect(on.find((i) => i.titleText === 'Compact rows')?.checked).toBe(true);
+	});
+
 	it('disables an entry exactly when the button it duplicates is disabled', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
@@ -1140,7 +1165,14 @@ export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void 
 				mi
 					.setTitle(entry.title)
 					.setIcon(entry.icon)
+					// Both of the button's states, not just one. `disabled` says whether
+					// the entry can be picked; `aria-pressed` says whether it is ON — and
+					// at the steps where this menu is the only copy of the density
+					// toggle, an unchecked "Compact rows" that turns compact rows OFF is
+					// the entry stating the opposite of what it does. A toggle is the one
+					// kind of entry where omitting the state inverts the meaning.
 					.setDisabled(mirrored?.disabled === true)
+					.setChecked(mirrored?.getAttribute('aria-pressed') === 'true')
 					.onClick(entry.run),
 			);
 		}
@@ -1571,6 +1603,21 @@ Create `styles/toolbarFit.css`:
 	overflow: hidden;
 }
 
+/* `nowrap` alone does NOT make the row measurable. A flex item keeps the default
+   `flex-shrink: 1`, and text inside it wraps — so near a threshold the algorithm
+   absorbs the overflow by making an item narrower and TALLER instead of pushing
+   `scrollWidth` past `clientWidth`. The ladder would then read "fits" while the
+   one-row toolbar quietly became two rows: the instrument defeated by the very
+   layout it measures.
+
+   Stated over every child rather than over the three that carry text today, because
+   the next label added is exactly the one a list would miss. The spacer is the sole
+   exception — absorbing space is its whole job. */
+.pbl-toolbar > *:not(.pbl-toolbar-spacer) {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
 /* Step 1 — the words go, the icons and chevrons stay. The accessible name is on the
    button, never in this span, so nothing loses its name here. */
 .pbl-toolbar[data-pbl-fit] .pbl-btn-label {
@@ -1909,7 +1956,10 @@ Append to `docs/issues/Smoke test the visual changes.md` a checklist for this ch
 - `gantt-chart` renders a glyph in Obsidian, which bundles its own older lucide — a name
   absent from that release draws nothing at all.
 - The `⋯` and the collapsed filter at a narrow pane width, on a real split.
-- The row does not clip anything at the last rung in a genuinely narrow split pane.
+- The row does not clip anything at the last rung in a genuinely narrow split pane, and
+  it never grows a second line on the way there — the `flex: 0 0 auto` rule is what keeps
+  the measurement honest, and jsdom lays out nothing, so only a browser can show it
+  holding.
 - `/` opens the collapsed filter and focuses it at a narrow width — jsdom asserts the
   class and the active element, not that a real browser can focus what CSS just revealed.
 - The busy label's per-batch reservation actually holds its longest form. jsdom loads no
