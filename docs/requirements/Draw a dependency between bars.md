@@ -60,10 +60,15 @@ mistaken for the resize grip it sits beside.
 - **1d — the bar is narrower than its own handles.** The connector still sits outside the
   bar's end rather than inside it, so a one-day bar keeps both its resize grip and its
   connector instead of trading one for the other.
-- **2a — the pointer is over an illegal target.** Itself, something it already waits for, a
-  context row, or a target that would close a loop: marked as illegal **while the drag is
-  held**, not refused after release. A refusal that arrives after the gesture ends is a
-  gesture the user has already committed to.
+- **2a — the pointer is over an illegal target.** The source bar itself, a context row, a
+  target that would close a loop, or **a target that already waits for the source** —
+  marked as illegal **while the drag is held**, not refused after release. A refusal that
+  arrives after the gesture ends is a gesture the user has already committed to.
+  That fourth case is the duplicate one, and it is the *target's* list that decides it,
+  not the source's: dragging A onto B writes to B, so the pick that would change nothing is
+  a B already waiting for A. Stating it as "something it already waits for" is the menu's
+  sentence, where the item under the cursor is the dependent; here the dependent is the one
+  dropped onto, and the same words name the wrong end.
 - **2b — the target lies beyond the visible grid.** The grid scrolls at the edge exactly as
   the existing bar drag does; where a pointer still cannot reach it, [[Linking two items]]
   always can, which is why that path ships first rather than as a fallback bolted on here.
@@ -84,7 +89,9 @@ mistaken for the resize grip it sits beside.
 - The connector appears only on a result's bar, only with the key bound, and sits outside
   the bar's end so it never displaces the resize grip — including on a bar one day wide.
 - Legality is shown during the drag: an illegal target is visibly illegal before release,
-  and releasing on one writes nothing.
+  and releasing on one writes nothing. Every legal target would change something — a bar
+  already waiting for the source is illegal, decided from the **target's** prerequisites,
+  since the target is the note the drop writes to.
 - A completed drag produces the same batch, refusals, announcement and undo as the menu
   path, because it calls the same method — there is no second plan for a dependency write.
 - The write lands on the bar dropped onto and on no other note; no drop changes a date.

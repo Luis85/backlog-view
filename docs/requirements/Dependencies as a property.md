@@ -36,7 +36,7 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 | **Actor** | Backlog owner |
 | **Trigger** | The model is built over a result set with the dependency property configured |
 | **Preconditions** | The dependency key is bound in the view options; without it the feature is off everywhere |
-| **Guarantee** | Reading dependencies writes nothing, repairs nothing and moves nothing. No item is hidden, re-parented, re-ranked or re-levelled by an edge — broken or otherwise — and a note the Base excluded is never written to and never a source of an edge. |
+| **Guarantee** | Reading dependencies writes nothing, repairs nothing and moves nothing. No item is hidden, re-parented, re-ranked or re-levelled by an edge — broken or otherwise. A note the Base excluded is never written to and never **declares** an edge: no edge comes from reading a context row's own list. Being *named* by a result is a different thing and is allowed, because that statement belongs to the result that made it. |
 
 **Main flow**
 
@@ -59,10 +59,14 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   would make the user's YAML the user's problem.
 - **2b — the value repeats a name, or holds a blank entry.** Collapsed to one edge, and
   blanks are ignored. A duplicate is a typo, not a stronger dependency.
-- **3a — the entry resolves to a note the Base excluded.** The edge exists and the
-  dependent row states it, but it is never counted, never drawn ([[Arrows between bars]]
-  owns that) and never written to. This is the context-row rule with nothing new added:
-  it renders, it parents, and that is all.
+- **3a — the entry resolves to a note the Base excluded.** The edge exists and the dependent
+  row states it, but it is never counted, never drawn ([[Arrows between bars]] owns that)
+  and never written to. This is the context-row rule with nothing new added, and it is worth
+  being exact about which direction it governs: **an excluded note may be named, and may not
+  do the naming.** The statement here was made by a result, on its own note, exactly as a
+  result naming an excluded `parent` is the case that puts a context row on screen in the
+  first place — it renders, it parents, and that is all. What the rule forbids is the other
+  direction, 3b's.
 - **3b — the item declaring the dependency is itself outside the filter.** Its list is
   not read at all. An excluded note's prerequisites are not this base's facts, the same
   reason its state is not this base's vocabulary.
@@ -87,8 +91,9 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 - An unresolvable, self-referential or loop-closing entry is marked, never dropped: no
   item is hidden, re-parented, re-ranked or re-levelled by any edge, and the tree's own
   shape is identical with the property configured and without it.
-- A context row is never written to and never a source of an edge, and its own list is
-  never read.
+- A context row's own list is never read, so no edge is ever declared by one, and it is
+  never written to. A result naming an excluded note as a prerequisite is the allowed
+  direction and produces an edge that is never counted and never drawn.
 - Dependencies do not roll up: an item's prerequisites are its own, and no ancestor
   acquires them.
 - Resolution adds no second superlinear step beside `sortSiblingsDeep`: it is one pass over

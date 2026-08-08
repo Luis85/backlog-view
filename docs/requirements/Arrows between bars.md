@@ -82,14 +82,28 @@ against one would report a date no note carries — a red mark on a fact that do
   The arrow still draws, at the minimum geometry the grid allows — the dates are the fact
   and the pixels are the zoom's, the rule [[Bars from two dates]] already applies to a
   narrow span.
-- **2a — one of the two dates being compared is inferred.** Not flagged, because the
-  conflict would be between a real date and a drawing: a rolled-up span exists on screen
-  and is stated on no note. But the suppression is **per end, not per item**. Only two
-  dates take part — the prerequisite's end and the dependent's start — and a bar carries
-  `inferredStart` and `inferredEnd` independently, so a parent with a stated target and a
-  rolled-up start has a perfectly real end to be late against. Suppressing the whole edge
-  because *some* endpoint was inferred would hide a contradiction between two persisted
-  dates on the strength of a third nobody compared.
+- **1g — the end the arrow leaves from, or arrives at, is open.** An item with one date
+  renders one cell wide with its dateless end styled open ([[Bars from two dates]]), so a
+  prerequisite with only a start has no stated finish and a dependent with only a target has
+  no stated beginning. The arrow still draws — the ordering is a fact somebody wrote, and
+  suppressing it would hide a stated dependency to protect an unstated date — and it
+  anchors **at the open end itself**, which already carries the vocabulary that says *no
+  date here*. Nothing about the anchor claims a coordinate: the open end is the one place on
+  a bar that is already drawn as a gap. What such an edge never does is produce a conflict,
+  which is 2a's rule and the reason 2a is written about **stated** dates rather than about
+  rollups.
+- **2a — one of the two dates being compared is not one its note states.** Not flagged. A
+  conflict is a contradiction between two things somebody wrote, so both dates it rests on
+  have to be written down, and an endpoint can fail that in two different ways: **rolled up**
+  from a subtree ([[Spans roll up the tree]]), which exists on screen and on no note, or
+  **absent**, which is the open end 1g draws. Neither is a date to be late against — one is
+  a drawing and the other is a gap.
+  The suppression is **per end, not per item**. Only two dates take part — the
+  prerequisite's end and the dependent's start — and a bar carries `inferredStart` and
+  `inferredEnd` independently of each other and independently of whether the opposite end is
+  open at all, so a parent with a stated target and a rolled-up start has a perfectly real
+  end to be late against. Judging the item rather than the two ends would hide a
+  contradiction between two persisted dates on the strength of a third nobody compared.
 - **2b — the dependent is shelved and the prerequisite is dated.** No conflict either: with
   no start there is nothing to compare, and "unplanned" is not "late".
 - **3a — the reader cannot use a pointer.** Neither an arrow nor its head is focusable. The
@@ -110,9 +124,13 @@ against one would report a date no note carries — a red mark on a fact that do
   looking at, or hovering, the arrow layer. A dependent the reader's controls have hidden is
   outside this criterion: it has no row, and restoring the control restores both.
 - A dependent starting on or before the day its prerequisite ends is marked as a conflict —
-  on or before, because an end is inclusive. A conflict is never computed from an inferred
-  date, judged at each of the two ends the comparison uses rather than at the whole span,
-  and a shelved dependent is never in conflict.
+  on or before, because an end is inclusive. A conflict rests only on dates the two notes
+  state: an end that is rolled up, and an end that is absent, both suppress it, judged at
+  each of the two ends the comparison uses rather than at the whole span. A shelved
+  dependent is never in conflict.
+- An arrow whose anchor is an open end still draws, anchored at that open end; no arrow
+  anchor implies a date, and an unstated endpoint never becomes a stated one by being
+  pointed at.
 - No arrow moves a bar, writes a date, or changes what any note says — rendering the
   roadmap with the dependency key bound writes nothing at all.
 - Neither an arrow nor its head is focusable: the timeline keeps one selection stop per
