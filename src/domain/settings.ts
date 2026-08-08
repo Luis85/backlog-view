@@ -109,7 +109,7 @@ export interface BacklogSettings {
  * `LEVELS` is the ladder, top to bottom; `EXTRA_TYPES` sit beside it (see `itemTypes.ts`).
  */
 export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
-export const EXTRA_TYPES = ['Issue', 'Bug'];
+export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea'];
 /**
  * The third category: a declared **marker**. It occupies no rung, holds nothing, and
  * hangs from nothing — the opposite of an extra type on all three counts, which is why
@@ -138,6 +138,7 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	task: 'tasks',
 	issue: 'issues',
 	bug: 'bugs',
+	idea: 'ideas',
 	milestone: 'milestones',
 });
 

@@ -94,13 +94,24 @@ function parentsOf(typeName: string): string[] {
 	return childTypeChoices(null).includes(typeName) ? ['*(nothing — it is a root)*', ...parents] : parents;
 }
 
+/**
+ * Names in a sentence: `A`, `A and B`, `A, B and C`. A category of the vocabulary is a
+ * list whose length is nobody's business but `settings.ts`'s, so joining one with ` and `
+ * reads as English only while it holds two — a third name shipped "Issue and Bug and
+ * Idea" into the document this module exists to keep correct. `Intl.ListFormat` is the
+ * stdlib answer and is not reachable: its typings arrived in `ES2021.Intl` and the
+ * `lib` here is `ES2020`.
+ */
+const andList = (names: string[]): string =>
+	names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
 function typeSection(settings: BacklogSettings): string[] {
 	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
 	return [
 		`## ${TYPES_HEADING}`,
 		'',
 		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
-			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
+			`${andList(EXTRA_TYPES)} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
 			`${MARKER_TYPES.join(' and ')} is neither: a ` +
@@ -116,7 +127,7 @@ function typeSection(settings: BacklogSettings): string[] {
 			(settings.autoType
 				? ' With one exception, and it belongs to this view: assigning types on a move ' +
 					`rewrites what you drag into a **new parent**, a name of your own included. ` +
-					`Reordering among siblings rewrites nothing, ${EXTRA_TYPES.map(code).join(' and ')} ` +
+					`Reordering among siblings rewrites nothing, ${andList(EXTRA_TYPES.map(code))} ` +
 					'keep their type wherever they land, and the same custom name deeper in the ' +
 					'subtree you dragged is left alone.'
 				: ' Nothing rewrites it into one of these.'),

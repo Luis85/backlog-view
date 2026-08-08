@@ -64,6 +64,9 @@ export function demoVault(): FakeVault {
 	add('Invoicing', { type: 'Feature', order: 10, status: 'New', horizon: 'Later' }, 'Billing');
 	add('Monthly statement', { type: 'PBI', order: 10, status: 'New' }, 'Invoicing');
 	add('Dunning emails', { type: 'PBI', order: 20 }, 'Invoicing');
+	// An extra type under a Feature, ranked as though it were the PBI beside it — and the
+	// only thing here that asks the harness to draw an `Idea` badge.
+	add('Usage-based pricing', { type: 'Idea', order: 30, status: 'New', horizon: 'Later' }, 'Invoicing');
 	add('Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.

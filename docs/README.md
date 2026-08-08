@@ -136,9 +136,9 @@ they meet at the layout: translated text is longer, shorter and sometimes right-
 and the stylesheet is what absorbs it. Specification only — nothing under this epic is
 built yet, and what it asks for applies to the board as much as to the tree.
 
-`Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
-types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
-Epic, a Feature or a PBI alike.
+`Issue`, `Bug` and `Idea` hang from whichever requirement they concern, which is exactly
+what those types are for: they hold Tasks, they are never re-typed by a move, and they
+attach to an Epic, a Feature or a PBI alike — or to nothing at all.
 
 `Milestone` is neither a rung nor a container: it hangs from nothing, holds nothing, and
 counts for nothing. It states a date rather than work, so it never enters a rollup — a

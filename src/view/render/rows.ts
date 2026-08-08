@@ -24,11 +24,13 @@ const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
  * fallback for a declared type, because there is no declared type this file has not been
  * told about. A test renders one of each and asserts every badge got an icon and a colour
  * the stylesheet defines, which is what makes that safe to rely on rather than something
- * to remember — and is the reason a seventh name could not ship here unnoticed.
+ * to remember — and is the reason a name added to the vocabulary cannot ship here
+ * unnoticed, whatever the count happens to be.
  */
 const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
+	idea: { icon: 'lightbulb', badge: 'pbl-lvl-idea' },
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
 };
 
