@@ -409,18 +409,20 @@ for (const file of files) {
  * refused. So the honest statement of what this delivers is narrow: **a citation that
  * has rotted fails the build; a claim nobody cited is exactly as unchecked as before.**
  *
- * Read from `proseWithSpans`, not `prose`: the path lives in a code span by design, so
- * blanking spans would blind the rule to every real citation — while a citation inside a
- * FENCE is an example being documented (`docs/README.md` has one) and must not resolve.
- * The marker NAMED in a span is the third case, and it is why the marker is looked for in
- * `prose` while the citation is read out of `proseWithSpans`: `docs/README.md` writes
- * `**Checked by**` inside backticks to name the convention, and naming a thing is not
- * doing it. Both are offset-preserving, so one index reads into either.
+ * The MARKER is a parsed `strong` node (`markers`), never a pattern over the source, and
+ * that is what makes a document showing the convention different from one using it — in a
+ * code span, in an HTML comment, behind a backslash escape, all at once. The CITATION
+ * after it is read from `proseWithSpans`, because its path lives in a code span by design
+ * and blanking spans would blind the rule to every real one, while a citation inside a
+ * FENCE is an example (`docs/README.md` has one) and must not resolve. Offsets survive
+ * the blanking, so a marker's offset addresses that string directly.
  *
- * A citation is bounded by its PARAGRAPH **and by the next marker**, so a malformed one
- * cannot reach forward and adopt a path and a quoted phrase belonging to something else.
- * The paragraph half was a blank-line scan once; it is the parser's answer now, which is
- * what a paragraph is. The marker half was missing, and the register found it immediately:
+ * A citation is bounded by its BLOCK **and by the next marker**, so a malformed one cannot
+ * reach forward and adopt a path and a quoted phrase belonging to something else. The
+ * block half was a blank-line scan once, then a paragraph — which a marker in a GFM table
+ * cell does not have, so the scan ran to the end of the file from the most natural place
+ * to write a claim. `containerAt` answers it for any block that can hold one. The marker
+ * half was missing, and the register found it immediately:
  * "one marker, one citation" put two of them in ONE paragraph, so mangling the first was
  * not reported — its scan ran on to the second and resolved that instead, leaving the
  * first claim reading as covered. Two citations in a row is the ordinary shape of the
