@@ -5,8 +5,8 @@ import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
-import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
-import { stateMenuValues } from '../../domain/settings';
+import { computeDeliverableStateWrites, computeRiskWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { hasRiskLevels, stateMenuValues } from '../../domain/settings';
 import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
@@ -120,6 +120,10 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		// (`render/columns.ts`), so a chip drawn where this menu offers nothing — or the
 		// reverse — is not a mistake either side can make alone.
 		if (stateKeyFor(host.settings, item)) addSetStateMenu(host, menu, item);
+		// Both halves or nothing: a property with no levels has nothing to offer and
+		// levels with no property have nowhere to go, so the entry is absent rather
+		// than inert — the state chip's rule, and the horizon's above.
+		if (hasRiskLevels(host.settings)) addSetRiskMenu(host, menu, item);
 		// Per axis, and absent rather than inert when one is not configured — the state
 		// chip's own rule.
 		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
@@ -451,6 +455,55 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 }
 
 /**
+ * What Set risk offers: the DECLARED levels, plus the item's own value when that list
+ * does not name it, so the current one can always render checked.
+ *
+ * Declared alone, deliberately — not the horizon's declared ∪ observed union. That union
+ * exists because an undeclared horizon is a bucket a drag can already drop into, so a
+ * menu offering less than the roadmap could reach would be the one input that goes quiet.
+ * Risk feeds no projection, so it has no second surface to fall short of, and an
+ * unexpected value on one note is not a vocabulary this base recommends to the rest.
+ */
+function riskChoices(host: BacklogViewHost, item: BacklogItem): string[] {
+	const values = host.settings.riskValues;
+	const current = item.riskValue;
+	// The empty key the ✨ backfill leaves behind adds no nameless entry here, and that
+	// is `readString`'s doing rather than this line's: it answers null for a blank, so
+	// `riskValue` is a level or nothing and never the empty string. Guarding for `''`
+	// beside this would be a second, unreachable statement of a rule the reader already
+	// keeps — the shape `stateChoices` has, for the same reason.
+	if (current === null || values.some((v) => sameValue(v, current))) return values;
+	return [...values, current];
+}
+
+/**
+ * Render Set risk's offers, checking the one the item already holds, and the way back
+ * out of them.
+ *
+ * Checked is asked of the PLAN, for the reason `addStateItems` above gives. The Clear
+ * entry appears only while the note carries the key (`ownKeys`, presence not value), so
+ * no entry here can write nothing, and it removes the key rather than blanking it:
+ * unjudged is a state a note returns to, and a blank value would read as a level with no
+ * name.
+ */
+function addRiskItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	for (const value of riskChoices(host, item)) {
+		menu.addItem((si) => {
+			si.setTitle(value).onClick(() => void host.applySafely(computeRiskWrites(item, value)));
+			if (computeRiskWrites(item, value).length === 0) si.setChecked(true);
+		});
+	}
+	if (!item.ownKeys.risk) return;
+	menu.addSeparator();
+	menu.addItem((si) =>
+		si
+			.setTitle('Clear risk')
+			.setIcon('eraser')
+			.onClick(() => void host.applySafely(computeRiskWrites(item, null))),
+	);
+}
+
+/**
  * `setSubmenu` is missing from the published obsidian typings, not from the app:
  * submenus predate the 1.10.2 this plugin requires, so the cast asserts what is
  * always there rather than guarding against its absence.
@@ -553,6 +606,13 @@ function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	menu.addItem((mi) => {
 		mi.setTitle('Set state').setIcon('circle-check');
 		addStateItems(host, submenuOf(mi), item);
+	});
+}
+
+function addSetRiskMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set risk').setIcon('shield-alert');
+		addRiskItems(host, submenuOf(mi), item);
 	});
 }
 

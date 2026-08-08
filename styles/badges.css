@@ -48,11 +48,12 @@
 
 /*
  * The extra types get colours of their own rather than a slot after the ladder: a Bug
- * should read as a problem, not as whatever came after Task. Both are clear of the
+ * should read as a problem, not as whatever came after Task. All are clear of the
  * four levels (orange, purple, blue, yellow).
  */
 .pbl-lvl-issue { --pbl-badge-rgb: var(--color-pink-rgb); }
 .pbl-lvl-bug { --pbl-badge-rgb: var(--color-red-rgb); }
+.pbl-lvl-idea { --pbl-badge-rgb: var(--color-green-rgb); }
 /* A marker is not work, so it takes a colour no rung and no container uses. */
 .pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
 /* Green is otherwise unused across the four levels and the other extra types. */

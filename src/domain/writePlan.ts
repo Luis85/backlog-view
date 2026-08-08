@@ -86,6 +86,13 @@ export interface ItemWrite {
 	/** The roadmap's placement properties; fields left out are not touched. */
 	axis?: AxisWrite;
 	/**
+	 * The item's risk level, or **null to remove the key**. Absence is a value here as
+	 * it is on both roadmap axes: a note with no risk property has not been judged, which
+	 * is a different fact from any level it could carry — so clearing deletes the key
+	 * rather than blanking it, and a blank would read as a level named nothing.
+	 */
+	risk?: string | null;
+	/**
 	 * Optional properties to CREATE, empty, where the note does not carry them — the
 	 * backfill's whole vocabulary for "this feature needs a property and the note has
 	 * none". Named by field rather than by key, like every other write here, so the
@@ -366,6 +373,21 @@ export function computeHorizonWrites(item: BacklogItem, value: string | null): I
 	}
 	if (sameValue(item.horizon.value, value)) return [];
 	return [{ file: item.file, axis: { horizon: value } }];
+}
+
+/**
+ * The write a risk pick means, by the horizon pick's two rules exactly: re-picking the
+ * level the item already holds plans nothing — through `sameValue`, so the menu's
+ * checkmark and this plan answer one question rather than two that must agree — and a
+ * removal is offered only where there is a key to take away.
+ *
+ * Presence, not value, decides the removal (`ownKeys`), which is what makes the empty
+ * stub the backfill leaves a real thing to clear rather than something already absent.
+ */
+export function computeRiskWrites(item: BacklogItem, value: string | null): ItemWrite[] {
+	if (value === null) return item.ownKeys.risk ? [{ file: item.file, risk: null }] : [];
+	if (sameValue(item.riskValue, value)) return [];
+	return [{ file: item.file, risk: value }];
 }
 
 /** What a schedule entry asks for: a date per end, null to unschedule that end. */

@@ -245,10 +245,22 @@ states the capture rule: the vocabulary that will NAME the move is read before t
 await, because the batch's own refresh rebuilds `board`/`roadmap` before it resolves
 and the column or bucket just vacated may be gone with its last card.
 
-The two removal writes are the same shape twice — `removeStateKey` and
-`removeHorizonKey`, both on keys that may not be configured at all — so
-`writeOptional` in `storage/frontmatter.ts` is the single statement of "absence is a
-value, and never write to an empty key". A third such property adds a call, not a rule.
+**Absence is a value, and an unconfigured key is never written to** — a rule
+`storage/frontmatter.ts` now keeps in three different shapes, which is the fact to know
+before adding a fourth optional property. The state key guards inline
+(`write.removeStateKey && settings.stateKey` in `applyInto`); the axis keys go through
+`axisEntries`, where `key !== ''` drops an unconfigured one and a `null` value means
+delete; the risk level restates both in `applyRisk`, four lines that read the same rule
+straight through. There is no single helper stating it, and the third property took the
+advice this paragraph gave — a **statement of the rule**, not a call — because a helper
+general enough to cover all three would have to carry the axis's civil-date equality and
+datetime merge past the two properties that must not have them. That is the argument to
+re-examine at a fourth, not a settled answer: three restatements are near where the
+balance tips, and a fourth that needs no date handling is the case that would tip it. If
+extraction happens, this paragraph is what has to change with it. It said the opposite
+until 2026-08-08, naming a `writeOptional` and a `removeHorizonKey` that have never
+existed: a guide enumerating symbols goes stale exactly the way the table rule below says,
+and here it sent a specification off to promise an implementer a call they would not find.
 
 A Set menu's **checkmark is asked of the PLAN** — an entry is checked exactly when
 picking it would write nothing — never by a comparison written beside the plan and

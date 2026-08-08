@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { README_MARKER_PREFIX, readmeMarker } from '../../src/domain/readmeMarker';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 import { settingsWith } from '../helpers/settings';
@@ -24,21 +23,22 @@ function typeRow(content: string, typeName: string): string {
 }
 
 describe('backlogReadmeContent', () => {
-	it('opens with the marker that identifies its own output', () => {
-		expect(readme(settingsWith()).startsWith(readmeMarker(SOURCE))).toBe(true);
-		// The line names the view, so a second view over the same folder cannot mistake
-		// this file for its own — and whoever opens it can see where it came from.
-		expect(readme(settingsWith())).toContain(`${README_MARKER_PREFIX} from "${SOURCE}"`);
-	});
-
-	// The readmeMarker/readmeSource round-trip (escaping, refusing a foreign or truncated
-	// line, joining and displaying a source) is `readmeMarker.ts`'s own question and lives
-	// in `readmeMarker.test.ts` now — split out under the same rule its module states:
-	// `backlogReadme.ts` decides what the document SAYS, `readmeMarker.ts` what it IS.
-
 	it('explains every type in the vocabulary', () => {
 		const content = readme(settingsWith(), []);
 		for (const type of ALL_TYPES) expect(typeRow(content, type)).toContain(type);
+	});
+
+	it('names each category as a list a person would write, at one name and at three', () => {
+		const content = readme(settingsWith(), []);
+		// The prose above the table names two categories whose lengths are `settings.ts`'s
+		// business, and joining either with ` and ` between every pair reads as English
+		// only at two: three shipped "Issue and Bug and Idea", and there are four now that
+		// `Idea` and `Deliverable` were merged into one vocabulary. Both lengths are
+		// asserted because both have a live caller — the one-name form is the markers'
+		// today, and it is the arm that would otherwise be reachable code nothing checks.
+		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
+		expect(content).toContain('Milestone is neither');
+		expect(content).not.toContain('and Bug and');
 	});
 
 	it('reads the type table off childTypeChoices, not off the ladder', () => {
@@ -46,11 +46,14 @@ describe('backlogReadmeContent', () => {
 		// The clamp at the deepest rung: a Task holds a Task, which the ladder read
 		// literally would deny — and the + button on the row would then contradict it.
 		expect(typeRow(content, 'Task')).toContain('| `Task` |');
-		// An extra type hangs from any rung above the deepest and holds the deepest — and
-		// is also offered as a root, since the toolbar's top-level creator names it too.
+		// An extra type hangs from any rung above the deepest and holds the deepest — the
+		// root marker leads the cell, since it may also hang from nothing.
 		expect(typeRow(content, 'Bug')).toMatch(/\| \*\(nothing — it is a root\)\*, `Epic`, `Feature`, `PBI` \| `Task` \|/);
-		// The ladder's top reads as a root, because that is what is offered with no parent.
-		expect(typeRow(content, 'Epic')).toContain('*(nothing — it is a root)*');
+		// EVERY declared type reads as a root, because the toolbar creates any of them with
+		// no parent. Asked of the whole vocabulary rather than of Epic: the marker is
+		// derived from `childTypeChoices(null)`, so a branch that narrowed again would put
+		// a false parent requirement into the README this plugin writes into a vault.
+		for (const type of ALL_TYPES) expect(typeRow(content, type)).toContain('*(nothing — it is a root)*');
 	});
 
 	it('names the keys this view uses, not the shipped defaults', () => {
@@ -529,7 +532,7 @@ describe('backlogReadmeContent', () => {
 		// Not every move: only one into a NEW parent, and never an extra type.
 		expect(auto).toContain('rewrites what you drag into a **new parent**');
 		expect(auto).toContain('Reordering among siblings rewrites nothing');
-		expect(auto).toContain('`Issue`, `Bug` and `Deliverable` keep their type wherever they land');
+		expect(auto).toContain('`Issue`, `Bug`, `Idea` and `Deliverable` keep their type wherever they land');
 		expect(auto).toContain('deeper in the subtree you dragged is left alone');
 	});
 

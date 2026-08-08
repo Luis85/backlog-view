@@ -26,7 +26,7 @@ colors:
   extra-issue: "var(--color-pink-rgb)"
   extra-bug: "var(--color-red-rgb)"
   extra-milestone: "var(--color-cyan-rgb)"
-  extra-deliverable: "var(--color-green-rgb)"
+  extra-idea: "var(--color-green-rgb)"
 typography:
   title:
     fontFamily: "inherit"
@@ -190,9 +190,11 @@ Eight fixed hues, assigned once. See **The Ladder Rule** below.
 - **Level 0–3** (`--color-orange-rgb`, `--color-purple-rgb`, `--color-blue-rgb`,
   `--color-yellow-rgb`): Epic, Feature, PBI, Task in ladder order. Rendered as
   `rgb(...)` text on a `rgba(..., 0.14)` field.
-- **Issue pink**, **Bug red**, **Milestone cyan**, **Deliverable green**: the types beside
+- **Issue pink**, **Bug red**, **Milestone cyan**, **Idea green**: the types beside
   the ladder, each clear of the four levels. A Bug reads as a problem, not as whatever came
-  after Task.
+  after Task. Green was pencilled in here for `Deliverable`, a type that was specified and
+  never built; `Idea` shipped and took it. A hue held for something unbuilt is a hue nothing
+  is wearing.
 
 ### Neutral
 
@@ -225,6 +227,17 @@ answer. **Nothing currently checks any of this.**
 for the life of the ladder, and never reused for state, selection or emphasis. Adding a type
 takes an unclaimed hue — never a rotation, never a slot after the last one. The ladder is
 fixed at four, so `styles/badges.css` holds the whole of it and there is no end to fall off.
+
+*Amended 2026-08-08:* **there is no unclaimed hue left.** Obsidian ships eight chromatic
+`--color-*-rgb` families and the eight declared types now wear all of them. The rule stands
+and is no longer satisfiable by following it — the ninth type has nowhere to go, and
+"identity, never reused for state" is what makes a rotation the wrong escape. Recorded, with
+the shapes that could answer it, in
+[`docs/issues/The type palette has no unclaimed hue left.md`](docs/issues/The%20type%20palette%20has%20no%20unclaimed%20hue%20left.md).
+Note what is NOT the problem: a badge hue matching a state hue is deliberate and already
+shipped twice — Bug red beside over-limit red, Milestone cyan beside marker cyan — because
+inside a badge colour means identity and the Spent Colour Rule below governs everywhere
+else. Green on an unfinished `Idea` is that same intended overlap, not a completion signal.
 
 **The Spent Colour Rule.** Outside the badges, colour must mean a state — accent (active or
 targeted), green (done), red (over the limit or destructive), orange (attention), cyan

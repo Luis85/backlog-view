@@ -95,12 +95,22 @@ const childrenOf = (typeName: string): string[] => childTypeChoices(position(typ
 /**
  * The types that may hold a `typeName` item — inverted from `childrenOf` rather than
  * stated, so the two halves of the table cannot disagree with each other or with the
- * view. An `Epic` is what `childTypeChoices(null)` offers, so it also reads as a root.
+ * view.
+ *
+ * The root marker is UNCONDITIONAL, and that is a statement about the toolbar: it
+ * iterates the whole vocabulary with no parent, so every declared type is root-creatable
+ * and `childTypeChoices(null)` returns `ALL_TYPES`. This used to ask that question per
+ * type. Once the answer became "always", the test was a branch nothing could take —
+ * dead code wearing the look of a check, and the kind coverage is supposed to find. The
+ * pairing it used to enforce at runtime is now pinned by two tests instead: one asserts
+ * `childTypeChoices(null)` IS `ALL_TYPES`, the other that every row here carries the
+ * marker. Narrowing that function again fails both rather than silently re-animating a
+ * branch this table stopped drawing.
  */
 function parentsOf(typeName: string): string[] {
-	const parents = ALL_TYPES.filter((candidate) => childrenOf(candidate).includes(typeName));
-	return childTypeChoices(null).includes(typeName) ? ['*(nothing — it is a root)*', ...parents] : parents;
+	return ['*(nothing — it is a root)*', ...ALL_TYPES.filter((candidate) => childrenOf(candidate).includes(typeName))];
 }
+
 
 function typeSection(settings: BacklogSettings): string[] {
 	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
@@ -111,7 +121,7 @@ function typeSection(settings: BacklogSettings): string[] {
 			`${andList(EXTRA_TYPES)} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
-			`${MARKER_TYPES.join(' and ')} is neither: a ` +
+			`${andList(MARKER_TYPES)} is neither: a ` +
 			`marker hangs from nothing and holds nothing, and states a date rather than work.`,
 		'',
 		'| Type | Parent may be | Children may be |',

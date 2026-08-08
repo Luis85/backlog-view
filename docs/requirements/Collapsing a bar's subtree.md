@@ -7,6 +7,8 @@ priority: P2
 created: 2026-08-08
 files:
   - src/domain/bars.ts
+  - src/view/collapseState.ts
+  - src/view/backlogView.ts
   - src/view/render/timeline.ts
   - src/view/render/rows.ts
   - src/view/render/roadmap.ts
@@ -24,9 +26,10 @@ being worth nothing while its children are drawn beneath it regardless.
 
 Every Gantt in the survey does this: MS Project, Jira Plans and GanttPRO all fold a
 summary task's rows into the summary bar. It is also the tree's own disclosure, on the
-projection that was drawing a flat list of every dated result, and the bit it toggles is
-already there — [[Children on the card]] settled that one node means one thing in every
-projection, and this is the third surface reading it.
+projection that was drawing a flat list of every dated result — the same CONTROL as
+[[Children on the card]]'s, over a bit of its own: folding rows off a plan and opening a
+node in the backlog are two questions about one item, and one bit answering both made
+reading the plan move the reader's place in the tree (2026-08-08).
 
 ## Use case
 
@@ -35,7 +38,7 @@ projection, and this is the third surface reading it.
 | **Actor** | Backlog owner |
 | **Trigger** | Clicking a timeline row's chevron, picking its menu entry, or the toolbar's Expand all / Collapse all |
 | **Preconditions** | Roadmap mode is on with the dated axis, and a drawn bar has another drawn bar somewhere below it |
-| **Guarantee** | Nothing is written to a note. The state is the tree's own per-path collapse bit — per saved view, per device — so folding a row here folds the same row in the tree, and the quick filter overrides both. |
+| **Guarantee** | Nothing is written to a note. The state is the dated axis's own per-path bit — per saved view, per device — so folding a row here changes the grid and nothing else, and the quick filter overrides it as it overrides the tree's. |
 
 **Main flow**
 
@@ -49,7 +52,8 @@ projection, and this is the third surface reading it.
 4. Expanding puts them back one level at a time: a child that is itself collapsed opens
    shut, because its own bit was never touched.
 5. The state comes back across a reopen, per saved view per device, like every other
-   collapse.
+   collapse — and the tree is where the reader left it, the fold above having been a
+   statement about the plan rather than about the backlog.
 
 **Extensions**
 
@@ -106,8 +110,22 @@ projection, and this is the third surface reading it.
   before any were hidden, or a collapsed row's disclosure would vanish the moment it was
   used.
 - Expanding reveals one level: a descendant that is itself collapsed stays shut.
-- The bit is the tree's own, shared with the row and the card, remembered per saved view
-  per device, and never written to the `.base` or to a note.
+- The bit is the dated axis's OWN, remembered per saved view per device beside the tree's
+  and never written to the `.base` or to a note. Folding a row on the grid leaves that
+  item where the reader left it in the tree and on a card, and opening it there leaves the
+  grid folded — driven both ways round, because one scope writing into the other's key
+  only shows from the side that was written.
+- A row nobody has ruled on opens collapsed on the grid too: the two scopes are settled
+  from one pass over the model, so the projection not on screen is never left unsettled
+  and then opened whole the first time it is shown.
+- The scope is the PROJECTION's, so the shelf and context cards drawn beside the grid keep
+  their disclosures with the axis as its rows do — one working position per screen, rather
+  than one per control.
+- An entry stored before the split holds one bit per note, and it is the bit both
+  projections were reading, so it is COPIED into the new scope on the first restore that
+  finds no scoped key. The upgrade leaves a reader's plan where they left it instead of
+  shutting every row on it, and running again cannot undo that, since the copy it made is
+  what stops it.
 - While the quick filter runs the chevron writes nothing and the menu offers no toggle.
 - The chevron opens nothing: neither a primary nor a middle click on it reaches the row's
   own open behaviour.
@@ -128,6 +146,22 @@ computed BEFORE the drop, which is what keeps a collapsed row's chevron on scree
 collapse state itself is never read there: the predicate is passed in, so
 `src/view/render/roadmap.ts` supplies `host.isCollapsed` and the quick filter's override
 of it comes for free.
+
+WHICH bit that predicate lands on is `collapseKey` in `src/view/backlogView.ts`, the one
+place the scope is decided: on the dated axis the path is prefixed with `TIMELINE_SCOPE`
+(`src/view/collapseState.ts`), and everywhere else it is the path itself. Both host
+methods route through it, so the chevron, the row menu, the keyboard and the toolbar's
+bulk controls follow the projection without any of them asking what they are looking at —
+a second pair of host methods would have made every one of those callers choose, and the
+next caller choose again. `CollapseState` therefore holds KEYS rather than paths:
+`notePath` strips the scope back off for the two operations that are about the note rather
+than about the question — pruning a key whose file is gone, and following a rename — and
+`collapseNewParents` settles both scopes in one pass over the model, since it runs on a
+data update rather than per projection and an unsettled scope would open a whole backlog
+the first time it was shown. `seedTimelineScope` is the upgrade: on a restore that finds
+no scoped key it mirrors the stored bits into the new scope, because a pre-split entry's
+one bit per note is the bit both projections were reading — and its own copy is what
+keeps it from firing twice.
 
 The control itself is the tree's, extracted rather than copied: `renderChevron` in
 `src/view/render/rows.ts` is now the one statement of what a chevron is — the icon, the

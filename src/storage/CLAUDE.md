@@ -83,6 +83,12 @@ can be checked by reading one directory.
   `2026-08-01 Planning` parses as a date — treated as one, re-picking `2026-08-01 Review`
   compares equal and writes nothing, and the merge carries ` Planning` onto its
   replacement. `axisEntries` yields the FIELD with the key so that stays decidable.
+- The risk level (`ItemWrite.risk`) is those same two rules a third time, in `applyRisk`,
+  and it shares neither writer: a level is a label the user picked from their own list, so
+  it takes the horizon's plain `setOwn` rather than the dated ends' civil-date equality and
+  datetime merge, and it has no vocabulary of fields to iterate. Its key joins
+  `touchedKeys` on the very condition `applyRisk` writes on, which is what makes a level
+  and its removal undoable — a key written but not captured is a change no undo could reach.
 - Two writes here are not work items — the `.base` file and the generated README — and
   both are in this directory for the same reason: "everything that puts bytes in the vault
   is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also
@@ -156,7 +162,9 @@ can be checked by reading one directory.
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
   session they still want. `flushCollapseState` is the only place that forgets a path,
-  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`.
+  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`, which
+  counts KEYS rather than notes — a parent settles once per scope — so a scope added is a
+  cap to raise with it, or the headroom it promises in notes quietly halves.
 - Saves are debounced (`scheduleCollapseSave`); "Collapse all" settles every parent in
   one loop and a write per row would be quadratic. `onunload` flushes a pending write,
   since closing the view is when it matters most.

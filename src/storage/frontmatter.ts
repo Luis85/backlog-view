@@ -13,17 +13,15 @@ import {
 	readTags,
 } from '../domain/noteFields';
 import {
-	AXIS_FIELDS,
-	AxisField,
 	BacklogSettings,
 	isDoneValue,
-	OptionalField,
 	optionalKeyFor,
 	resolvedDeliverableStateKey,
 	vaultFolder,
 } from '../domain/settings';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
-import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
+import { ItemWrite, TagDelta } from '../domain/writePlan';
+import { axisEntries, stubKeys, touchedKeys } from './writeKeys';
 
 /**
  * The ONLY module that writes frontmatter. Everything upstream decides what a
@@ -205,6 +203,7 @@ function applyInto(
 	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 	applyStamps(fm, settings, write, leaving);
 	applyAxis(fm, settings, write);
+	applyRisk(fm, settings, write);
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
 	// here rather than trusted from the plan for the reason the tag delta and the start
 	// stamp are: the row that planned this can be a refresh behind the note, and a value
@@ -267,14 +266,6 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 	}
 }
 
-/**
- * Whether a write carries a Deliverable-state change, set or removed. Its own function
- * to keep `touchedKeys` inside the complexity budget — inlined, the pair of branches
- * puts it at 17 against a cap of 16.
- */
-function deliverableStateWritten(write: ItemWrite): boolean {
-	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
-}
 
 /**
  * The frontmatter keys this write will touch, in the order they are written.
@@ -289,37 +280,26 @@ function deliverableStateWritten(write: ItemWrite): boolean {
  * restore that fully succeeded. Ordinary (non-exempt) collisions never reach here at
  * all: `configProblems` gates every write while one is reported.
  */
-function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
-	const keys: string[] = [];
-	if (write.removeParentKey || write.parent !== undefined) keys.push(settings.parentKey);
-	if (write.order !== undefined) keys.push(settings.orderKey);
-	if (write.typeName !== undefined) keys.push(settings.typeKey);
-	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	// Same resolved key `applyInto` just wrote: capture and apply must read the SAME
-	// fallback, or a key written under it would have no inverse to undo it with.
-	const deliverableStateKeyTouched = resolvedDeliverableStateKey(settings);
-	if (deliverableStateWritten(write) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
-	// Listed whenever the write CARRIES a stamp, including the started date it may
-	// decline to write: a key whose value did not change emits no inverse anyway, and
-	// listing it is what makes the dates ride the state's own undo.
-	if (write.startedDate !== undefined && settings.startedDateKey) keys.push(settings.startedDateKey);
-	if (write.finish !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
-	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
-	for (const key of stubKeys(settings, write.stubs)) keys.push(key);
-	return [...new Set(keys)];
-}
 
 /**
- * The configured keys a write's stubs name. Unconfigured fields drop out here, which
- * is the state key's rule applied to the one write that creates keys rather than
- * setting them: never a key no property names. Applying and capturing read this same
- * list, exactly as they do `axisEntries` — a key written but not captured would be a
- * change no undo could reach.
+ * The item's risk level — the THIRD shape of this module's two standing rules: never a
+ * key no property names, and a null REMOVES rather than blanks, because a note nobody has
+ * judged carries no risk key at all.
+ *
+ * It is a statement of those rules rather than a call to a shared helper, and
+ * deliberately so: the state key guards inline, the axis keys go through `axisEntries`,
+ * and a helper general enough to cover all three would have to carry the axis's civil-date
+ * equality and datetime merge past the two properties that must not have them. Three
+ * short statements are cheaper to read than one parameterised one. The root `CLAUDE.md`
+ * names this trade-off; it changes with any fourth property that makes extraction pay.
  */
-function stubKeys(settings: BacklogSettings, stubs?: OptionalField[]): string[] {
-	if (!stubs) return [];
-	return stubs.map((field) => optionalKeyFor(settings, field)).filter((key) => key !== '');
+function applyRisk(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.risk === undefined || !settings.riskKey) return;
+	if (write.risk === null) delete fm[settings.riskKey];
+	else setOwn(fm, settings.riskKey, write.risk);
 }
+
+
 
 /**
  * The date stamps of one write. Never a write of their own — they mutate the same
@@ -442,24 +422,6 @@ function sameCivil(a: CivilDate, b: CivilDate | null): boolean {
 	return b !== null && a.year === b.year && a.month === b.month && a.day === b.day;
 }
 
-/**
- * The configured keys one axis write touches, each with the value it will write.
- * Applying and capturing read the SAME list: a key written but not captured would
- * be a change no undo could reach, which is exactly how a hole gets in.
- */
-function axisEntries(
-	settings: BacklogSettings,
-	axis?: AxisWrite,
-): { field: AxisField; key: string; value: string | null }[] {
-	if (!axis) return [];
-	const entries: { field: AxisField; key: string; value: string | null }[] = [];
-	for (const field of AXIS_FIELDS) {
-		const key = optionalKeyFor(settings, field);
-		const value = axis[field];
-		if (key !== '' && value !== undefined) entries.push({ field, key, value });
-	}
-	return entries;
-}
 
 /** The pair the note currently states, read the same tolerant way the model reads it. */
 function axisReadings(fm: Record<string, unknown>, settings: BacklogSettings): StatedEnds {

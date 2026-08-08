@@ -70,6 +70,7 @@ describe('context menu', () => {
 			'Task',
 			'Issue',
 			'Bug',
+			'Idea',
 			'Deliverable',
 			'Milestone',
 		]);

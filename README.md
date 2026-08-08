@@ -28,8 +28,8 @@ Azure DevOps Boards.
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
-    `Bug` and `Deliverable` that sit beside it rather than on it, or `Milestone` — a
-    marker on neither, which states a date rather than work.
+    `Bug`, `Idea` and `Deliverable` that sit beside it rather than on it, or `Milestone`
+    — a marker on neither, which states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
@@ -309,11 +309,18 @@ snapshot, so tags you added yourself in between stay.
 Some work does not fit a rung. A **Bug** breaks down into Tasks whether it was raised
 against an Epic, a Feature or a PBI — its position says nothing about what it contains.
 
-So `Issue`, `Bug` and `Deliverable` are **extra types** rather than a fifth level, and
-two things follow:
+The same is true of an **Idea**: a thought about the portal and a thought about one
+screen of it are the same kind of thing, and neither is a Feature. A **Deliverable**
+is the other way round — a thing the project must produce rather than work to do —
+and it fits no rung for the same reason.
 
-- **They hang from any level above the lowest.** Add one under an Epic, a Feature or a
-  PBI. Their own children are always Tasks, so nothing is offered under one but a Task.
+So `Issue`, `Bug`, `Idea` and `Deliverable` are **extra types** rather than a fifth
+level, and two things follow:
+
+- **They hang from any level above the lowest.** Add one under an Epic, a Feature or
+  a PBI. Their own children are always Tasks, so nothing is offered under one but a
+  Task. They can also hang from *nothing*: the toolbar's type picker creates one at
+  the top level, which is where an idea usually starts.
 - **A move never re-types them.** Dropping a Bug under an Epic leaves a Bug — where
   dropping a *PBI* there would make it a Feature. Their Tasks stay Tasks too, because the
   subtree follows the extra type rather than the rung it landed on.
@@ -323,15 +330,15 @@ another type" menu — like every declared type.
 
 Where a row can hold more than one kind of thing, **the + button asks**: the new-item
 modal offers a type, defaulting to the ladder's own child. The context menu lists the
-choices directly (`New PBI`, `New Issue`, `New Bug`, `New Deliverable`), and `Set type`
-offers every declared type. A row with only one option — a Task, or an extra type, which
-holds only Tasks — asks nothing and creates it straight away.
+choices directly (`New PBI`, `New Issue`, `New Bug`, `New Idea`, `New Deliverable`),
+and `Set type` offers every declared type. A row with only one option — a Task, or an
+extra type, which holds only Tasks — asks nothing and creates it straight away.
 
-`Issue`, `Bug` and `Deliverable` each get their own badge icon and colour — an alert in
-pink, a bug in red, a package in green — distinct from the four level colours. They rank
-with `PBI`, so focusing that level shows them beside it rather than hiding them.
-`Deliverable` also has its own board with its own workflow — see
-[The Deliverables board](#the-deliverables-board) below.
+`Issue`, `Bug`, `Idea` and `Deliverable` each get their own badge icon, distinct from the
+four level colours — an alert in pink, a bug in red, and a lightbulb and a package that
+currently share one green. They rank with `PBI`, so focusing that level shows them
+beside it rather than hiding them. `Deliverable` also has its own board with its own
+workflow — see [The Deliverables board](#the-deliverables-board) below.
 
 **The type vocabulary is fixed.** That is deliberate: a configurable vocabulary means every
 rule about levels has to hold for any list someone can type, and the reward is a rename.
@@ -697,7 +704,7 @@ Open the view options in the Bases toolbar to configure:
 | Start date property / Target date property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
 | Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
 | Show completed items | on | Off hides fully-done subtrees from the tree, the board and the roadmap (only while a state property is set); the Deliverables board ignores it — see [The Deliverables board](#the-deliverables-board) — and nothing about ranking or rollups changes anywhere |
-| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/deliverables`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/ideas`, `<home>/deliverables`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
 | Deliverable state property | *(off)* | Note property with the Deliverable workflow's own state. Left off, the Deliverables board falls back to the board above's own state property rather than going inert — and to its states and done values only where you have left the two rows below **empty**, since a list you fill in is this workflow's own either way |
 | Deliverable workflow states (in order) | *(off)* | The Deliverables board's columns, in that order. **Whatever you set here wins**, whether the workflow has a property of its own or shares the one above. Left empty it falls back to **Workflow states (in order)** while **Deliverable state property** is also unset; with your own property set it draws the states your Deliverables actually carry |
 | Deliverable states that count as done | `Done, Closed, Completed, Removed` | Which Deliverable state values complete a Deliverable. **Whatever you set here wins**, whether the workflow has a property of its own or shares the one above. Left empty it falls back to **States that count as done** while **Deliverable state property** is also unset; with your own property set it stays the default shown here rather than borrowing that customization |

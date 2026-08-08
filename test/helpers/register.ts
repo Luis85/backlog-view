@@ -161,11 +161,11 @@ export function withoutHierarchyRow(type: string): string {
 const HIERARCHY_TABLE = [
 	'| Type | Parent may be | Children may be |',
 	'| --- | --- | --- |',
-	'| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Deliverable` |',
-	'| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Deliverable` |',
-	'| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Deliverable` |',
-	'| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` | *(nothing)* |',
-	'| `Issue` / `Bug` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |',
+	'| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Idea`, `Deliverable` |',
+	'| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |',
+	'| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` |',
+	'| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` | *(nothing)* |',
+	'| `Issue` / `Bug` / `Idea` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |',
 	'| `Milestone` | *(nothing — a root by nature)* | *(nothing)* |',
 ].join('\n') + '\n';
 

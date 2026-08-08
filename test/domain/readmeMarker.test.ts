@@ -1,13 +1,35 @@
 import { describe, expect, it } from 'vitest';
+import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 import { README_MARKER_PREFIX, displaySource, joinSource, readmeMarker, readmeSource } from '../../src/domain/readmeMarker';
+import { BacklogSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 
 /**
- * `readmeMarker.ts` decides what the generated README IS — the identity line that lets a
- * regeneration recognize its own output — split from `backlogReadme.test.ts`, which is
- * about what the document SAYS. Moved out under the same rule its own module states:
- * "its own question" gets its own file, once the sibling file's line budget said so.
+ * The marker is the generated README's IDENTITY, which is a different subject from what
+ * the document says — so it is a different file. Everything here asks one question: can
+ * this line be trusted to mean "this view wrote this file"? A marker that two views share,
+ * one that a half-written line satisfies, or one that survives a round trip spelled
+ * differently, all end the same way — a document replaced by a writer that had no claim
+ * on it.
+ *
+ * Split out of `backlogReadme.test.ts` when that file reached the 450-line test budget.
+ * The budget is what makes the seam get drawn rather than argued about; this one was
+ * already there, since these tests reach `readmeMarker.ts` and the ones left behind read
+ * the document's prose.
  */
-describe('readmeMarker / readmeSource round-trip', () => {
+
+/** Which view generated the document — the identity its marker carries. */
+const SOURCE = 'work/Product Backlog.base › Backlog';
+const readme = (settings: BacklogSettings): string => backlogReadmeContent(settings, [], SOURCE);
+
+describe('the generated README identifies its own source', () => {
+	it('opens with the marker that identifies its own output', () => {
+		expect(readme(settingsWith()).startsWith(readmeMarker(SOURCE))).toBe(true);
+		// The line names the view, so a second view over the same folder cannot mistake
+		// this file for its own — and whoever opens it can see where it came from.
+		expect(readme(settingsWith())).toContain(`${README_MARKER_PREFIX} from "${SOURCE}"`);
+	});
+
 	it('keeps two sources apart when only the comment-hostile characters differ', () => {
 		// `--` cannot sit in an HTML comment, and dropping or collapsing it gives two bases
 		// one marker: the second view then reads the first's file as its own and reports

@@ -11,6 +11,7 @@ import {
 	HORIZON_COL_WIDTH,
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
+	renderAddSpacer,
 	renderColumnHeader,
 	renderRowColumns,
 	RowContext,
@@ -25,11 +26,13 @@ const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
  * fallback for a declared type, because there is no declared type this file has not been
  * told about. A test renders one of each and asserts every badge got an icon and a colour
  * the stylesheet defines, which is what makes that safe to rely on rather than something
- * to remember — and is the reason a seventh name could not ship here unnoticed.
+ * to remember — and is the reason a name added to the vocabulary cannot ship here
+ * unnoticed, whatever the count happens to be.
  */
 const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
+	idea: { icon: 'lightbulb', badge: 'pbl-lvl-idea' },
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
 	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
 };
@@ -210,8 +213,9 @@ function renderRowLead(
 
 /**
  * The disclosure a row draws — shared with the dated axis's rows, so there is one
- * statement of what a chevron IS: an icon that rotates, a click that flips the tree's
- * own collapse bit, and, where there is nothing below, the leaf placeholder that keeps
+ * statement of what a chevron IS: an icon that rotates, a click that flips the collapse
+ * bit of whichever projection is asking (`collapseKey` in `backlogView.ts` decides which,
+ * so nothing here does), and, where there is nothing below, the leaf placeholder that keeps
  * every badge on the same x rather than an absence that shifts the row.
  *
  * Two things are the caller's, and they are the only two the surfaces do not share:
@@ -361,8 +365,13 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 
 	// A row that can hold nothing gets no button, rather than one labelled from the first
 	// of no choices — `New undefined`, opening a modal with no type to pick. The context
-	// menu's `New <child>` disappears with it, by having nothing to loop over.
-	if (childTypes.length === 0) return;
+	// menu's `New <child>` disappears with it, by having nothing to loop over. The button's
+	// WIDTH still has to be reserved: the columns are anchored to the row's end, so leaving
+	// it out shifts every one of them right on this row alone.
+	if (childTypes.length === 0) {
+		renderAddSpacer(row);
+		return;
+	}
 
 	// A native button so assistive tech can activate it, with no Tab stop — the same
 	// bargain the state chip makes: the tree keeps its single-tab-stop model, and the

@@ -138,6 +138,13 @@ workflows they are built from — and beside `stateKeyFor` and `ownWorkflowReadi
 one vocabulary; `STATE_COLOR_SLOTS` stays there, since the count of reserved colours is a
 fact about the palette rather than about a workflow.
 
+`src/domain/settingsConsistency.ts` holds the other half of that vocabulary question —
+`settingsInconsistency`, `listProblem` and `assertResolvedSettings`, which say which
+combinations of the two workflows' fields `resolveSettings` could actually have produced.
+It is a separate module from `settings.ts` because it asks a different question (what CAN
+exist, not what IS), and it became one when merging `Idea` into the same vocabulary put
+`settings.ts` over its 400-line budget.
+
 `ownWorkflowReading` is asked wherever something is drawn as finished: `renderRow`
 (`src/view/render/rows.ts`) for the tree row's `pbl-done`, `renderChildEntry`
 (`src/view/render/cardChildren.ts`) for a listed child's, and **inside `createCard`**

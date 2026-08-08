@@ -47,16 +47,16 @@ describe('the documented hierarchy and the gate agree', () => {
 		[
 			'a children list the gate disagrees with',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue` |');
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |', '`PBI`, `Issue` |');
 			},
 			'and the hierarchy table says Issue, PBI',
 		],
 		[
 			'a parent column that is not the inverse of the children',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |', '| `Task` | `PBI` |');
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |', '| `Task` | `PBI` |');
 			},
-			'Task may hang from Bug, Deliverable, Issue, PBI, and the hierarchy table says PBI',
+			'Task may hang from Bug, Deliverable, Idea, Issue, PBI, and the hierarchy table says PBI',
 		],
 		[
 			// Flattening with `set` would keep the LAST row and call a contradictory table
@@ -96,14 +96,14 @@ describe('the documented hierarchy and the gate agree', () => {
 			// row does not even vanish — it reads as agreeing.
 			'a children cell naming a type in prose beside the code-formatted ones',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, Spike |');
 			},
 			'has Spike outside a code span',
 		],
 		[
 			'a parent cell naming a type in prose beside the code-formatted ones',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |', '| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |', '| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, Spike |');
 			},
 			'has Spike outside a code span',
 		],
@@ -140,7 +140,7 @@ describe('the documented hierarchy and the gate agree', () => {
 			// `A gate that did not run looks like one that passed` names.
 			'a hierarchy row with fewer cells than the table has columns',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` | *(nothing)* |', '| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |');
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` | *(nothing)* |', '| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |');
 			},
 			'has 2 cells, not 3',
 		],

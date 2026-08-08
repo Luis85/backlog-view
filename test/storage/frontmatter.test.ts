@@ -608,3 +608,42 @@ describe('applying date stamps', () => {
 		expect(inverses).toEqual([]);
 	});
 });
+
+describe('writing the risk level', () => {
+	const risky = { ...settings, riskKey: 'risk' };
+
+	it('sets a level, and a null removes the key rather than blanking it', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
+
+		await applyWrites(vault.app, risky, [{ file, risk: '1 - High' }]);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', risk: '1 - High' });
+
+		await applyWrites(vault.app, risky, [{ file, risk: null }]);
+		// Absence is the value that means nobody has judged this, so the key goes.
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+	});
+
+	it('writes nothing when no risk property is configured', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
+
+		// The rule at the boundary, not at the caller: a plan naming a field no property
+		// names must not invent a key, whatever reached this module carrying one.
+		await applyWrites(vault.app, settings, [{ file, risk: '1 - High' }]);
+
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+	});
+
+	it('captures an inverse, so a level is undoable and a removal restorable', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI', risk: '3 - Low' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, risky, [{ file, risk: null }], undefined, (inv) => inverses.push(inv));
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', risk: '3 - Low' });
+	});
+});

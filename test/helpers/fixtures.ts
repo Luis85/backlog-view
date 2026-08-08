@@ -9,6 +9,14 @@
  * column including the stateless one, both roadmap axes, the shelf, a context row, a
  * milestone, and Deliverables on a workflow of their own.
  *
+ * The **extra types** are three notes rather than one for the same reason. What makes one
+ * a type rather than a rung is that its rank is pinned wherever it hangs, and a single
+ * example cannot show that — so there is one under an Epic and one under a Feature, drawn
+ * level with each other and each level with the PBIs beside it, the shallow one carrying
+ * the Task child that the pinning is what produces. The third has no parent and nothing
+ * placed, which is the pair of branches the other two cannot cover: a declared type
+ * belongs with no parent at all, and the shelf groups by type.
+ *
  * No existing suite is rewritten onto it. It is a fourth fixture, not a replacement.
  */
 import { FakeVault } from './vault';
@@ -64,11 +72,18 @@ export function demoVault(): FakeVault {
 	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next' }, 'Onboarding');
 	add('Highlight the sidebar', { type: 'PBI', order: 10, status: 'New', horizon: 'Next' }, 'Welcome tour');
 	add('Skip and resume', { type: 'PBI', order: 20 }, 'Welcome tour');
+	// An extra type at the SHALLOWEST legal parent, and the one place the pinned rank is
+	// visible rather than merely true: it sits among Features and its child is a Task, the
+	// rung two below the Epic holding it. Dated, so an extra type draws a bar as well.
+	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15' }, 'Onboarding');
+	add('Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
 
 	add('Billing', { type: 'Epic', order: 20, status: 'New', horizon: 'Later', start: '2026-10-01', due: '2027-01-31' });
 	add('Invoicing', { type: 'Feature', order: 10, status: 'New', horizon: 'Later' }, 'Billing');
 	add('Monthly statement', { type: 'PBI', order: 10, status: 'New' }, 'Invoicing');
 	add('Dunning emails', { type: 'PBI', order: 20 }, 'Invoicing');
+	// An extra type at the DEEPEST legal parent, drawn level with the two PBIs above it.
+	add('Usage-based pricing', { type: 'Idea', order: 30, status: 'New', horizon: 'Later' }, 'Invoicing');
 	add('Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
@@ -90,6 +105,10 @@ export function demoVault(): FakeVault {
 	// Neither typed nor dated nor triaged: the shelf's whole reason to exist.
 	add('Spike: offline mode', { order: 40 });
 	add('Accessibility sweep', { type: 'Issue', order: 50, status: 'New' });
+	// Parentless and untriaged, which is two branches at once: a declared type belongs with
+	// no parent at all, and the shelf groups by type, so a second extra type is what shows
+	// its grouping and its type filter doing something rather than listing one name.
+	add('Voice control', { type: 'Idea', order: 60 });
 
 	return vault;
 }

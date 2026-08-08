@@ -52,6 +52,7 @@ describe('toolbar backfill', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			riskProperty: 'note.risk',
 		});
 		// deliverableStateProperty is NOT bound: it now suggests the same key `status`
 		// does, `state` is declared first and claims it, and adoptableProperties'
@@ -73,9 +74,10 @@ describe('toolbar backfill', () => {
 			horizon: '',
 			start: '',
 			due: '',
+			risk: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
-		expect(Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due'))).toBe(
+		expect(Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due, risk'))).toBe(
 			true,
 		);
 	});
@@ -127,6 +129,7 @@ describe('toolbar backfill', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			riskProperty: 'note.risk',
 		});
 
 		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -202,6 +205,7 @@ describe('toolbar controls', () => {
 			'New Task',
 			'New Issue',
 			'New Bug',
+			'New Idea',
 			'New Deliverable',
 			'New Milestone',
 		]);

@@ -61,9 +61,14 @@ date on a roadmap is indistinguishable from a decision.
 - **2a — the span is narrower than a grid cell at this zoom.** It renders at the minimum
   drawable width; the dates are the fact and the pixels are the zoom's
   ([[Zoom and the today marker]]).
-- **2b — the user expects dependency arrows between bars.** None ship: the schema has no
-  dependency field, and drawing one would need the new data model this epic deliberately
-  is not. Recorded so it is re-decided knowingly rather than rediscovered.
+- **2b — the user expects dependency arrows between bars.** None come from *this* note, and
+  the reason it originally gave — no dependency field, and no appetite for the data model
+  one would need — was recorded so it would be re-decided knowingly rather than
+  rediscovered. It was, on 2026-08-08: [[Dependencies]] owns the question now, and what
+  changed is the second half of the reason rather than the first. A prerequisite list turns
+  out to be one more user-named optional property, not a graph beside the tree. What this
+  note keeps is the boundary: a bar's ends are its own note's two dates and nothing else,
+  so an arrow never moves one and a dependency never places a bar.
 
 ## Acceptance criteria
 
@@ -78,7 +83,8 @@ date on a roadmap is indistinguishable from a decision.
   time, offset and shape survive on disk.
 - The properties are user-named with placeholders matching the Tasks plugin's
   vocabulary; nothing is ever picked by name-matching ([[Horizons or dates]]).
-- No dependency arrows: no field exists, and this epic adds no data model.
+- Nothing a dependency states ever places a bar or moves one of its ends: a bar is its own
+  note's two dates, whatever [[Dependencies]] draws over it.
 
 ## Where it lives
 

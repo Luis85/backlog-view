@@ -156,9 +156,11 @@ they meet at the layout: translated text is longer, shorter and sometimes right-
 and the stylesheet is what absorbs it. Specification only — nothing under this epic is
 built yet, and what it asks for applies to the board as much as to the tree.
 
-`Issue` and `Bug` hang from whichever requirement they concern, which is exactly what those
-types are for: they hold Tasks, they are never re-typed by a move, and they attach to an
-Epic, a Feature or a PBI alike.
+`Issue`, `Bug` and `Idea` hang from whichever requirement they concern, which is exactly
+what those types are for: they hold Tasks, they are never re-typed by a move, and they
+attach to an Epic, a Feature or a PBI alike. The plugin also lets one hang from nothing;
+this register does not, on purpose — a note recording a problem or a thought states which
+requirement it concerns, and `docs-check.mjs` holds it to that.
 
 `Milestone` is neither a rung nor a container: it hangs from nothing, holds nothing, and
 counts for nothing. It states a date rather than work, so it never enters a rollup — a
@@ -171,11 +173,11 @@ Every pair holds:
 
 | Type | Parent may be | Children may be |
 | --- | --- | --- |
-| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Deliverable` |
-| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Deliverable` |
-| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Deliverable` |
-| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` | *(nothing)* |
-| `Issue` / `Bug` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
+| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Idea`, `Deliverable` |
+| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |
+| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` |
+| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` | *(nothing)* |
+| `Issue` / `Bug` / `Idea` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
 
 The three EXTRA types travel together — `Issue`, `Bug` and `Deliverable` are one set

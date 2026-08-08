@@ -195,8 +195,14 @@ export interface BacklogViewHost {
 	/** Move keyboard focus into the toolbar filter input. */
 	focusFilter(): void;
 
+	/**
+	 * Whether this item is folded ON THE PROJECTION CURRENTLY SHOWING. A caller passes
+	 * a path and never a scope: the dated axis folds grid rows and every other surface
+	 * opens a node, so the two keep separate bits and the view picks between them
+	 * (`collapseKey`). A surface choosing for itself is how they would drift.
+	 */
 	isCollapsed(path: string): boolean;
-	/** Returns true when the state actually changed. */
+	/** Returns true when the state actually changed. Scoped exactly as `isCollapsed` is. */
 	setCollapsed(path: string, collapsed: boolean): boolean;
 
 	/**

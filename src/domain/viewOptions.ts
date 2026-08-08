@@ -7,6 +7,7 @@ import {
 	DEFAULT_HOME_FOLDER,
 	DEFAULT_HORIZON_VALUES,
 	DEFAULT_PROP_COLUMN_WIDTH,
+	DEFAULT_RISK_VALUES,
 	defaultSettings,
 	defaultTypeFolder,
 	MAX_PROP_COLUMN_WIDTH,
@@ -67,6 +68,7 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 		progressGroup(settings),
 		deliverablesGroup(),
 		roadmapGroup(),
+		riskGroup(),
 		newItemsGroup(settings.homeFolder),
 		displayGroup(),
 	];
@@ -248,6 +250,30 @@ function roadmapGroup(): BasesAllOptions {
 			},
 			optionalPropertyOption('start', 'Start date property'),
 			optionalPropertyOption('target', 'Target date property'),
+		],
+	};
+}
+
+/**
+ * How risky an item is, read off a property and chosen from a declared list. Both
+ * halves are needed before anything can be set: a property with no levels has nothing
+ * to offer, and levels with no property have nowhere to go — `hasRiskLevels` is that
+ * pair asked once. The default list is spelled as the text the box shows, so the
+ * shipped default and the parsed one cannot drift: `defaultSettings` parses this list.
+ */
+function riskGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Risk management',
+		items: [
+			optionalPropertyOption('risk', 'Risk property'),
+			{
+				type: 'text',
+				key: 'riskValues',
+				displayName: 'Risk levels (in order)',
+				default: DEFAULT_RISK_VALUES.join(', '),
+				placeholder: DEFAULT_RISK_VALUES.join(', '),
+			},
 		],
 	};
 }

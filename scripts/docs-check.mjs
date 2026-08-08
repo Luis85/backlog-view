@@ -23,28 +23,25 @@ const ADRS = path.join(DOCS, "adrs");
 /**
  * The plugin's OWN rule, applied to the register that documents it — so this table has to
  * track `childTypeChoices` (`src/domain/itemTypes.ts`), which answers
- * `[ladderChild, ...EXTRA_TYPES]` for any parent on the ladder. The three extra types are
+ * `[ladderChild, ...EXTRA_TYPES]` for any parent on the ladder. The four extra types are
  * therefore one set repeated at each rung, and each of them takes Tasks: an extra type's
  * rank is pinned at `EXTRA_TYPE_RANK`, the rung whose children are the deepest level.
  *
  * `Deliverable` was missing here for the whole of the increment that introduced it, which
- * is why the register could not hold the very type the plugin had just started shipping —
- * and `docs/README.md` went on calling the folders "the feature demonstrating itself"
- * while the layout was the plugin's minus one. Adding a type to `EXTRA_TYPES` means adding
- * it here too.
+ * is why the register could not hold the very type the plugin had just started shipping.
+ * `Idea` arrived on main while `Deliverable` was being built on this branch, neither
+ * knowing about the other. Adding a type to `EXTRA_TYPES` means adding it here too.
  */
-const EXTRA = ["Issue", "Bug", "Deliverable"];
+const EXTRA = ["Issue", "Bug", "Idea", "Deliverable"];
 /**
  * NULL-PROTOTYPE, because every key read against it is user data — a `type:` a note
  * declares, or a type name written into the README's hierarchy table. A plain object
  * literal answers `LEGAL_CHILDREN["toString"]` with an inherited FUNCTION, which is
  * truthy: a note typed `toString` sailed past the `unknown type` check for as long as this
- * table has existed, and the table-versus-gate rule added beside it would have gone one
- * worse and crashed the run trying to spread that function.
+ * table has existed.
  *
- * The plugin already learned this three times over on three different tables — `byName`
- * (`src/domain/settings.ts`) exists for exactly it — and the gate that checks the register
- * had not. Same defect, one directory over.
+ * Kept through the merge deliberately — main's copy of this table is still a plain object
+ * literal, because the fix landed on this branch after main forked.
  */
 const LEGAL_CHILDREN = Object.assign(Object.create(null), {
 	Epic: new Set(["Feature", ...EXTRA]),
@@ -53,6 +50,7 @@ const LEGAL_CHILDREN = Object.assign(Object.create(null), {
 	Task: new Set(),
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
+	Idea: new Set(["Task"]),
 	Deliverable: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),

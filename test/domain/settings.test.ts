@@ -337,7 +337,9 @@ describe('optionalKeyFor', () => {
 			horizonKey: 'horizon',
 			startKey: 'start',
 			targetKey: 'due',
-			deliverableStateKey: 'deliverableStatus', });
+			riskKey: 'risk',
+			deliverableStateKey: 'deliverableStatus',
+		});
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(settings, field))).toEqual([
@@ -347,6 +349,7 @@ describe('optionalKeyFor', () => {
 			'horizon',
 			'start',
 			'due',
+			'risk',
 			'deliverableStatus',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
@@ -358,7 +361,8 @@ describe('optionalKeyFor', () => {
 			'',
 			'',
 			'',
-		]);
+					'',
+]);
 	});
 });
 
@@ -373,6 +377,7 @@ describe('the optional-property table', () => {
 			'horizon',
 			'start',
 			'target',
+			'risk',
 			'deliverableState',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
@@ -396,6 +401,7 @@ describe('adoptableProperties', () => {
 			'horizon',
 			'start',
 			'due',
+			'risk',
 		]);
 	});
 
