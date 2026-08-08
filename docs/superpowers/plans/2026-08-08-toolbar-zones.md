@@ -1936,6 +1936,16 @@ rules, not as an inventory of the modules — the root guide's own instruction.
   — then the spacer, then the controls that are the same in every projection. Adding a
   projection is adding a case to that switch; a control added anywhere else in the row is
   a claim that it belongs to every projection.
+- **Two questions to ask of anything added to the toolbar.** *Does it change the row's
+  width without a render behind it?* Then it calls `syncToolbarFit` itself — everything
+  reached through `renderTreeContent` is covered by the one call at its end, and exactly
+  three paths are not: revealing or collapsing the filter, the busy indicator appearing or
+  going, and a pane resize. *Must it survive `barEl.empty()`?* Then it lives on the toolbar
+  element, not inside it — `data-pbl-fit` and `pbl-filter-open` both do, while
+  `pbl-filter-active` may stay on the box because `renderFilterBox` re-derives it from the
+  input's value. The two interact, which is the failure worth remembering: state lost on a
+  rebuild hid a control, and the focus mechanism then restored focus to something
+  invisible, silently.
 - **The row never wraps, and what it sheds it does not withhold.** `syncToolbarFit`
   (`render/toolbarFit.ts`) measures the rendered row and writes a step as `data-pbl-fit`;
   `styles/toolbarFit.css` says what each step drops. It MEASURES where `columnFit` sums,

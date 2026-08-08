@@ -219,6 +219,47 @@ The `⋯` is UX truth rather than the safety mechanism: `runExclusively` already
 second batch, so a mis-enabled ✨ would be refused rather than obeyed. Expand and collapse
 have no such structural backstop, which is why they are the two that matter.
 
+### Two questions to ask of anything added to this row
+
+Five of the ten review findings on this design were one of two questions, asked of a
+different control each time. Enumerating them here is cheaper than meeting them one at a
+time, and both are checkable by reading rather than by running.
+
+**1. Does this change the row's width without a render behind it?** If so it must call
+`syncToolbarFit` itself. Everything that goes through `renderTreeContent` is covered by
+the one call at its end — `syncFilterUi`, `syncCountLabel` and `syncCollapseCtls` all run
+inside it, verified against `backlogView.ts` rather than assumed. That leaves **exactly
+three** paths that change a width outside a render, and this is the whole list:
+
+| Path | Why nothing re-renders | Answer |
+| --- | --- | --- |
+| revealing or collapsing the filter | a click on the reveal, or a blur | `revealFilter` and the blur handler call it |
+| the busy indicator appearing or going | `syncBusyUi` re-renders nothing, by design | `syncBusy` calls it on the visibility transition, and the label reserves its width so the ticks between change nothing |
+| the pane resizing | the observer is the only signal | the `ResizeObserver` callback calls it |
+
+A fourth would have existed and was removed instead: `.pbl-filter-input:focus` grew the
+input by 40px on every focus at every step.
+
+**2. Must this survive `barEl.empty()`?** `renderToolbar` empties the bar on every full
+render, so anything inside it is rebuilt and anything on the bar itself is not. Three
+things must persist, and all three live on the toolbar element or are re-derived by the
+render that rebuilds them:
+
+- `data-pbl-fit` — the ladder's verdict, on the bar.
+- `pbl-filter-open` — the revealed-empty filter, on the bar. Its sibling
+  `pbl-filter-active` is re-derived by `renderFilterBox` from the input's value, so it may
+  stay on the box.
+- The busy reservation — on a rebuilt element, and self-healing rather than persisted: the
+  fresh label has no `pbl-busy-on`, so the next `syncBusy` reads a transition and sets the
+  reservation and the step together. `render()` calls `syncBusyUi()` immediately after
+  `renderToolbar` for exactly this reason, which is why a rebuild mid-batch does not strand
+  it.
+
+Focus is the fourth thing that must survive, and it already has its own mechanism
+(`data-pbl-key`, `capturedFocusKey` / `refocusByKey`) — which is worth naming here because
+the filter bug was a case of the two questions interacting: the state was lost, so the
+control was hidden, so the focus mechanism restored focus to something invisible.
+
 ### Styling
 
 - `.pbl-mode-btn.is-active` gets a real rule: the switcher becomes a segmented group with
