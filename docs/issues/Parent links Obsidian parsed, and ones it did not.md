@@ -95,22 +95,28 @@ the linkpath and never the answer. Watched failing, as the rule requires; it did
 which is the whole finding.
 
 For the strip to change an outcome, a bracketed value would need no link entry AND a target
-that exists. Whether that pair can occur is **not settled**: it needs a resolvable link to
-be indexed, which is `resolveParent`'s premise and was never checked — the resolvable cases
-in this run were watched in the tree, where both paths parent correctly and neither can be
-told from the other. The measurement rules out one direction and says nothing about the
-other.
+that exists. **That pair cannot occur**, measured in both directions: a resolvable link has
+an entry (second run) and an unresolvable one has none (first run). Every bracketed value
+therefore either takes path 1 or resolves to nothing on path 2, and in neither case does
+removing the brackets change the answer.
 
-So the position is narrower than either branch offered: **no state is known in which the
-bracket handling changes an outcome, and it is kept anyway.** Two lines, and deleting them
-would rest on a deduction about Obsidian's link parser rather than on a measurement — a
-value that parser declines to index while still naming a real note would regress in
-silence, and that is exactly the state the unmeasured half leaves open. A worse trade than
-two lines carrying a comment that says what they are.
+Stated in two runs rather than one because the first version of this paragraph asserted the
+biconditional off half the evidence, and review caught it. The resolvable cases had been
+watched in the TREE, where both paths parent correctly and neither can be told from the
+other — the same mistake this note was rewritten to stop making, made again one section
+down.
 
-[[The fake vault can hold a cache Obsidian would not produce]] holds what is left, and is
-Open for it: whether those fixtures — brackets paired with a resolvable target — model a
-cache Obsidian hands out depends entirely on the half nobody has looked at.
+So the position is narrower than either branch offered: **the bracket handling cannot
+change an outcome for the form that was measured, and it is kept anyway.** Two lines, in a
+pure function, and what would justify deleting them is measurement of the spellings nobody
+read the cache for — the alias `[[Epic|The Epic]]` and the heading ref `[[Epic#Section]]`.
+Those were watched parenting correctly and no more. Asking for a third vault session to
+retire two lines is a worse trade than the two lines, and the comment beside them says what
+they are.
+
+[[The fake vault can hold a cache Obsidian would not produce]] holds what is left: those
+fixtures — brackets paired with a resolvable target — model a cache Obsidian does not hand
+out, which is now measured rather than deduced.
 
 ## Runs
 

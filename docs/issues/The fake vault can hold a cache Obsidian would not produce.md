@@ -2,7 +2,7 @@
 type: Issue
 order: 160
 parent: "[[Invariants as checks, not conventions]]"
-status: Open
+status: Done
 priority: P3
 area: verification
 created: 2026-08-08
@@ -58,14 +58,21 @@ than the path a vault actually takes.
 cache directly: a note whose parent link resolves to nothing has **no `frontmatterLinks`
 entry at all**.
 
-That is ONE half of a biconditional, and this note said "so Obsidian indexes a link exactly
-when it resolves" — which the run did not establish. The resolvable and alias cases were
-watched in the TREE, and a correctly parented note is an outcome the raw fallback produces
-just as well; nothing looked at their cache. Caught in review, one commit after the same
-claim had been written into `test/CLAUDE.md` as a fixture rule. The repository's own
-sentence for this is *write the guarantee to the check, never ahead of it*, and this is
-the second time in one branch that a rule about instructions was broken while writing the
-note about instructions.
+That is ONE half of a biconditional, and this note first said "so Obsidian indexes a link
+exactly when it resolves" — which that run did not establish. The resolvable and alias
+cases had been watched in the TREE, and a correctly parented note is an outcome the raw
+fallback produces just as well; nothing looked at their cache. Caught in review, one commit
+after the same claim had been written into `test/CLAUDE.md` as a fixture rule.
+
+**Second run, same day.** The console was run again on a note whose parent link resolves,
+and `frontmatterLinks` **has an entry**. Both directions are now measured, and the
+biconditional that was asserted early is true: Obsidian indexes a frontmatter link exactly
+when it resolves.
+
+Keeping the sequence rather than the conclusion alone, because the conclusion was right and
+the reasoning that produced it was not — the repository's own sentence is *write the
+guarantee to the check, never ahead of it*, and a record showing only the final measurement
+would read as though that had been done.
 
 That settles the divergence and sharpens it rather than removing it. Brackets with no link
 entry IS a cache Obsidian produces — for an unresolved link. What it never produces is
@@ -84,26 +91,24 @@ than on a measurement. A value that parser declines to index while still naming 
 would make them load-bearing again, silently. Kept, with the comment in `model.test.ts`
 saying what the tests around it do and do not cover.
 
-## The half still unmeasured
+## What the second run settled
 
-**Does Obsidian populate `frontmatterLinks` for a bracketed link that RESOLVES?**
+Every consequence that was hanging on it:
 
-It is `resolveParent`'s premise — path 1 exists for it — and it has never been checked
-here. No vault session can settle it by looking at the tree, for the same reason the
-unresolved case could not be: both paths parent the note correctly.
+- `resolveParent`'s path 1 is real. `parentLink` is the faithful fixture for a resolvable
+  link, and the guidance in [`test/CLAUDE.md`](../../test/CLAUDE.md) stands as written
+  rather than inverting.
+- The fixtures pairing `[[Epic]]` with a real `Epic.md` **do** model a cache Obsidian does
+  not hand out. Measured, not deduced.
+- The bracket stripping cannot change an outcome for that form: a bracketed value either
+  has an entry and takes path 1, or resolves to nothing and gets the same answer with or
+  without its brackets.
 
-The check is the same console line as before, on a note whose parent link resolves:
-
-```js
-app.metadataCache.getFileCache(app.workspace.getActiveFile()).frontmatterLinks
-```
-
-- **An entry** → the premise holds, `parentLink` is the faithful fixture for a resolvable
-  link, and the fixture guidance in [`test/CLAUDE.md`](../../test/CLAUDE.md) stands as
-  written.
-- **Nothing** → Obsidian does not index frontmatter links at all. Path 1 is dead in
-  production, every `parentLink` fixture in the suite is the unfaithful one, and the
-  guidance inverts. That is a large enough consequence to be worth thirty seconds.
+What was NOT read: the cache for the alias `[[Epic|The Epic]]` and heading-ref
+`[[Epic#Section]]` spellings. They were watched parenting correctly, which is the weaker
+observation this note exists to distrust. They are the same mechanism rather than a second
+question, and the only thing resting on them is whether two lines of `linkpathFromRawValue`
+could be deleted — which is not worth a third vault session.
 
 ## What is left
 

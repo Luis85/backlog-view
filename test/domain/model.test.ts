@@ -103,10 +103,10 @@ describe('buildModel', () => {
 	// less than it reads as.
 	//
 	// The bracketed fixtures above pair brackets with a target that EXISTS, which a vault
-	// would have indexed IF it indexes resolvable links at all — the half nobody has looked
-	// at, and the one that decides whether those fixtures are faithful or impossible.
-	// `docs/issues/The fake vault can hold a cache Obsidian would not produce.md` is Open
-	// for exactly that, with the console line that settles it.
+	// DOES index — measured 2026-08-08, both directions — so they model a cache Obsidian
+	// does not hand out and reach the strip through a state production cannot reach. Left
+	// as they are deliberately: see `docs/issues/The fake vault can hold a cache Obsidian
+	// would not produce.md` for why moving them is not worth what it costs.
 	it('reports an unresolvable parent link as an orphan', () => {
 		const vault = new FakeVault();
 		vault.addFile('Child.md', { frontmatter: { parent: '[[No Such Note]]' } });

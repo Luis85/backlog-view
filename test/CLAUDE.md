@@ -41,21 +41,20 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   in tests.
 - `addFile` fills `frontmatterLinks` only through its `parentLink` option, and a faithful
   parent fixture is decided by TWO questions, not one — is the value bracketed, and does it
-  resolve. **One half of that is measured and one half is assumed**, and the difference
-  decides which fixtures below are faithful, so it is stated rather than blurred: measured
-  in a vault (2026-08-08), a bracketed link that resolves to NOTHING has no
-  `frontmatterLinks` entry. That a resolvable one *does* have an entry is
-  `resolveParent`'s premise and has not been checked — `docs/issues/The fake vault can
-  hold a cache Obsidian would not produce.md` carries the one-line console check that
-  would settle it, and what it would change.
+  resolve. Both measured in a vault (2026-08-08), in two runs and in both directions: a
+  bracketed link that RESOLVES has a `frontmatterLinks` entry, and one that resolves to
+  NOTHING has none. Obsidian indexes a frontmatter link exactly when it resolves. The
+  second half was checked only after review pointed out that the first had been written as
+  a biconditional off one run — `docs/issues/The fake vault can hold a cache Obsidian would
+  not produce.md` records both, and what each covers.
   - **`parent: Epic`, a bare name.** Never a link, so never indexed, whether or not an
     `Epic.md` exists. Write it into `frontmatter` — always. This is the raw fallback's
     stated purpose and the shape `resolveParent`'s own comment names.
-  - **`[[Epic]]` where `Epic.md` exists.** Assumed indexed, so `parentLink: 'Epic'` — and
-    writing the brackets into `frontmatter` beside a real `Epic.md` is then a cache no
-    vault hands out. This is the shape resting on the unmeasured half: if Obsidian turns
-    out not to index frontmatter links at all, every `parentLink` fixture is the
-    unfaithful one and this line inverts.
+  - **`[[Epic]]` where `Epic.md` exists.** Indexed, so `parentLink: 'Epic'` — and writing
+    the brackets into `frontmatter` beside a real `Epic.md` builds a cache no vault hands
+    out. Measured for the plain `[[Name]]` form; the alias and heading-ref spellings were
+    watched parenting correctly in the tree but never had their cache read, which is a
+    weaker statement about the same mechanism rather than a second open question.
   - **`[[No Such Note]]`.** A link that resolves to nothing has no entry at all, so a raw
     bracketed value with no such file added is exactly what a vault produces.
 
