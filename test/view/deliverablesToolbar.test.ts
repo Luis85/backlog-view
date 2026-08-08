@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal } from '../helpers/obsidian-mock';
-import { fixture, makeView, projectionButton, useViewHarness } from '../helpers/view';
+import { fixture, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -235,6 +235,24 @@ describe('the collapse buttons reach the Deliverables board’s own population',
 		collapseCtl(containerEl, 'Expand all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(view.isCollapsed('D.md')).toBe(false);
+	});
+
+	it('opens a NEWLY seen Deliverable collapsed, focus or no focus', () => {
+		// The other half of the same split, found by review on the fix above: `refreshFromData`
+		// settles new parents from `model.items`, which is the FOCUSED render set, so a
+		// Deliverable arriving outside the active focus subtree was never ruled on and its
+		// card opened expanded — the one population in this view that a focus cannot narrow
+		// bypassing the collapsed-by-default rule the tree and both other boards keep.
+		const vault = outsideTheFocus();
+		const { view } = makeView(vault, { ...WORKFLOW }, { collapsed: true });
+		view.setProjection('deliverables');
+		view.setFocusLevel('Feature');
+
+		vault.addFile('D2.md', { frontmatter: { type: 'Deliverable', order: 30, status: 'New' } });
+		vault.addFile('T2.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'D2' });
+		refresh(view, vault);
+
+		expect(view.isCollapsed('D2.md')).toBe(true);
 	});
 
 	it('collapses it again, so both buttons answer for the same population', () => {

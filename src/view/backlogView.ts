@@ -287,7 +287,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// disagree about what is on screen.
 		this.chips = chipProps(this);
 		this.groupingIgnored = detectIgnoredGrouping(this.data);
-		this.collapse.collapseNewParents(this.model.items);
+		// Both populations, never `items` alone: `deliverableResults` is read off the WHOLE
+		// unfocused tree so a focus set elsewhere can never hide a Deliverable, which makes
+		// it the one set a focus cannot narrow — and a Deliverable arriving outside the
+		// active focus subtree was therefore never ruled on, its card opening expanded
+		// against the collapsed-by-default rule every other projection keeps. The same
+		// split `collapsiblePopulation` states for the buttons, at the other end of it.
+		this.collapse.collapseNewParents([...this.model.items, ...this.model.deliverableResults]);
 		this.filter.recompute(this.model);
 		this.render();
 	}
