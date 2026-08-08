@@ -40,8 +40,11 @@ people edit for two different reasons.
 
 1. The coverage key is resolved from the view options like every other optional key.
    Unbound, the property does not exist for this view: nothing is read, drawn or offered.
-2. Each result's value is read tolerantly, the way every field here is read — a single
-   entry or a list, a `[[wikilink]]` or a bare name, blanks and repeats collapsed.
+2. Each **test** result's value is read tolerantly, the way every field here is read — a
+   single entry or a list, a `[[wikilink]]` or a bare name, blanks and repeats collapsed.
+   The property is read from the test types and from nothing else: the direction rule is
+   the feature's, so the reader keeps it rather than leaving it to the one menu that
+   happens to offer the write.
 3. Each entry resolves against the item set the model **keeps** — the Base's results plus
    the excluded ancestors the parent walk loaded, less what the scope prune dropped —
    producing an edge from the test that named it to the item it covers.
@@ -85,15 +88,35 @@ people edit for two different reasons.
   itself]] owns that, and says so there.
 - **3e — the entry names another test.** It resolves, and it is an edge like any other.
   Nothing here forbids it, because nothing here can tell a test that sets up another test
-  from a mistake, and refusing it would need a rule about what a test may be about.
+  from a mistake, and refusing it would need a rule about what a test may be about. So the
+  **target** is unrestricted while the **source** is not, and the asymmetry is deliberate:
+  which notes may make a claim is a rule about writes and counts, and what a claim may
+  point at is a rule about meaning. Two consequences follow and are stated rather than
+  assumed — a test-to-test edge can close a **loop** (4c), and it can never reach a work
+  item's count, since [[Untested work names itself]] counts what names *it*.
+- **3f — a work item carries the coverage key**, hand-edited or left behind by a re-typed
+  note. It is not read, so it declares nothing and inflates no count. Nothing rewrites or
+  removes it either: reading is not repairing, here as everywhere. A `PBI` listing its
+  tests is the reverse direction [[Test coverage]] refused, and refusing it at the reader
+  is what keeps that refusal from resting on a menu.
 - **4a — the item names itself.** Marked broken. Nothing covers itself.
 - **4b — two tests name the same item.** Two edges, both kept. That is coverage, not a
   conflict.
+- **4c — two tests name each other, or a longer loop of them closes.** Kept, and **not**
+  marked. A dependency cycle is marked because prerequisites claim an *order* and a loop
+  makes that claim incoherent ([[Dependencies as a property]] 4b); coverage claims no
+  order, nothing is drawn from it that needs an acyclic graph, and no count is affected,
+  since a work item's count reads only the tests naming that work item. The one thing a
+  loop here would break is a traversal nobody has a reason to write, so the rule is *do
+  not write one* rather than *mark the data*.
 
 ## Acceptance criteria
 
 - An unbound key means the feature is absent: nothing read, nothing drawn, nothing offered
   in a menu, and no warning about a property nobody asked for.
+- The property is read from test types only. A work item carrying the key declares no edge
+  and raises no count — asserted at the reader, since the menu that offers the write is one
+  path and the rule is about all of them.
 - ✨ binds the key and backfills nothing, on work items and tests alike. The exemption is
   stated where the stub pass runs rather than left to follow from the property being a
   list.
@@ -126,9 +149,9 @@ fields of an item, and the set `linkAll` produced is not the set the model keeps
 Whether that is a *second* pass or the dependency pass generalised is the one open
 implementation question, and it should be answered when the second one is written rather
 than here — two link properties resolved by one walk is the obvious saving, and the two
-have different legality rules (a dependency may cycle and be marked for it; coverage
-cannot cycle because its two ends are always on different ladders), so a shared walk must
-not become a shared rulebook.
+have different legality rules — a dependency is read from every result and a cycle in it is
+marked; coverage is read from tests only and a cycle in it is left alone (4c) — so a shared
+walk must not become a shared rulebook.
 
 The stub exemption is in the ✨ backfill, beside the horizon key's — `src/storage/` owns
 the write, `src/domain/settings.ts` owns which keys it is asked to write.

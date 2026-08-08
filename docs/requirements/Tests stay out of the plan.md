@@ -38,9 +38,10 @@ context row when a visible descendant needs a parent to hang from.
 1. The model is built over everything the base returned, tests included — one model, so
    the edges [[Coverage as a property]] resolves are available to every projection.
 2. The backlog tree, the boards and the roadmap draw work items and skip test items.
-3. Counts, rollups, the level breakdown and the toolbar's advisory report the plan's
-   population only, so the numbers a reader has been watching do not jump on the day the
-   first suite is written.
+3. Counts, rollups and the level breakdown report the plan's population only, so the
+   numbers a reader has been watching do not jump on the day the first suite is written.
+   The toolbar's **advisory** is the deliberate exception and keeps counting the base's raw
+   results (3a).
 4. The state and tag vocabularies those projections derive from the results skip tests
    too, so a test's own `status` never becomes a column or an assignable value in the plan.
 5. The test catalog draws the other population ([[A projection for the tests]]), from the
@@ -60,8 +61,11 @@ context row when a visible descendant needs a parent to hang from.
   rollup unreadable.
 - **3a — the toolbar's advisory counts notes the tree did not draw.** It keeps counting the
   base's own results honestly, tests included, exactly as it already counts the ADRs that
-  are not work items. That advisory is a statement about the *base*, and narrowing it would
-  make the one number that reports the raw result set stop doing so.
+  are not work items. That advisory is a statement about the *base*, not about the plan, and
+  narrowing it would make the one number that reports the raw result set stop doing so. So
+  the advisory and the counts in step 3 report **different populations on purpose**, and a
+  reader comparing them will see them disagree the day the first suite is written — which is
+  the advisory working, since that gap is exactly what it exists to show.
 - **4a — a test carries a state the plan's workflow also uses.** Irrelevant: its state is
   never read by a projection it is excluded from, so it cannot create a column, cannot fill
   one, and cannot appear in a Set state menu.
@@ -81,7 +85,11 @@ context row when a visible descendant needs a parent to hang from.
   between "the Base excluded it" and "this projection excludes it" is asserted, since
   reusing the context-row mechanism is the plausible implementation that breaks this note.
 - A `Task` under a `Test case` follows its parent into the catalog and out of the plan.
-- The toolbar's advisory still reports the base's raw results.
+- The toolbar's advisory still reports the base's raw results, tests included, while the
+  counts, rollups and level breakdown report the plan's population — the two are asserted
+  together, on one result set holding both families, because the pair is a deliberate
+  disagreement and a reader who found only one of these assertions would be right to
+  call the other a bug.
 - One predicate decides membership, read from both directions, so the catalog and the plan
   cannot both claim an item or both disown one.
 

@@ -44,9 +44,12 @@ axis, while coverage is read once forward (a test says what it covers) and once 
 (a requirement counts the tests naming it). The backward read is new, and it is the only
 reason [[The test catalog projection]] has to put both families in one result set.
 
-The second is that a coverage edge **crosses the two ladders**. Every edge here has a test
-at one end and a work item at the other, which is what keeps it from being a second
-hierarchy: an edge that could join any two items would eventually be used as one.
+The second is that a coverage edge **always starts on a test**. The property is read from
+the test types and from nowhere else, so a work item can never declare coverage of another
+work item — which is what keeps this from becoming a second hierarchy, since an edge any
+item could declare about any other would eventually be used as one. The far end is not
+restricted the same way: a test may name another test, which is legal, uncommon and
+harmless, and [[Coverage as a property]] says exactly what follows from allowing it.
 
 ## What this feature will not do
 

@@ -20,25 +20,40 @@ files:
 `DESIGN.md`'s **Ladder Rule** says a type's colour is identity, assigned once, and that
 **adding a type takes an unclaimed hue** — never a rotation, never a slot after the last
 one. Obsidian ships eight chromatic families (`--color-red/orange/yellow/green/cyan/blue/
-purple/pink-rgb`) and, with [[Ideas as a type beside the ladder]] shipped, the eight
-declared types wear all eight:
+purple/pink-rgb`) and `ALL_TYPES` holds **nine** declared types, so the rule has already
+run out and has already been bent:
 
 | | |
 | --- | --- |
-| Epic · Feature · PBI · Task | orange · purple · blue · yellow |
-| Issue · Bug · Milestone · Idea | pink · red · cyan · green |
+| Epic · Feature · PBI · Task | orange · purple · blue · **yellow** |
+| Issue · Bug · Milestone | pink · red · cyan |
+| Idea | **yellow**, shared with Task |
+| Deliverable | green |
 
-So the rule is still right and is no longer *followable*. A ninth declared type has
-nowhere to go, and the two obvious escapes are the two the rule names as wrong: rotating
-back to a used hue, or taking the neutral slot after the last one.
+So the honest statement is not "a ninth type has nowhere to go" — a ninth type went
+somewhere, by sharing. A **tenth** has nowhere to go either, and the question this issue
+is really holding open is whether each new type takes its own sharing decision or whether
+one rule covers them.
 
 ## How it surfaced
 
-`Idea` took green, which `DESIGN.md` had pencilled in for `Deliverable` — a type
-specified in [[Deliverables as a rootable extra type]] and never built. That is a
-defensible resolution (a hue held for something unbuilt is a hue nothing is wearing) and
-it is not a general answer: it worked once, because one of the two claimants did not
-exist. If `Deliverable` is built, it is the ninth type and this issue is its blocker.
+`Idea` and `Deliverable` were built on branches that could not see each other and both
+reached for green — the pair `styles/badges.css` calls the worst available, two extra
+types at the same rung, side by side under one parent, told apart by icon alone. It was
+resolved by moving `Idea` to **yellow**, which costs the rule that every extra type is
+clear of the four levels and buys the lightbulb the colour a lightbulb is. Idea and Task
+can still be siblings under a PBI, so it is a smaller collision rather than none: the type
+name on the badge and the ladder's indentation separate them, and neither separated two
+greens.
+
+**This section said the opposite until 2026-08-08**, and the correction is the point.
+It described `Idea` as holding green and `Deliverable` as specified-but-never-built, which
+was true when it was written and stopped being true within the day. A note that states an
+arithmetic and then goes stale is worse than one that states none, because the next piece
+of work reasons from it: [[A badge when the palette is full]] was drafted against "eight
+types, eight hues, nothing shared" and had to be rewritten from the CSS. The register is
+where decisions live and the code is where the count lives — when a note's own numbers
+can be read off `styles/badges.css`, check them there before building on them.
 
 ## What is NOT the problem
 
@@ -70,11 +85,19 @@ than from one.
   opinionated about, and would stop tracking the user's theme. Named to be refused, not
   built.
 - **Accept a shared hue with a stated pairing rule.** Two types on one hue, distinguished
-  by icon alone. Weakest — it makes the badge's colour stop answering "which type", which
-  is the only job the Ladder Rule gives it.
+  by icon alone. Called the weakest here — it makes the badge's colour stop answering
+  "which type", which is the only job the Ladder Rule gives it — and it is nevertheless the
+  one that **shipped**, as Idea beside Task. Ranking an option last and then taking it is
+  not a contradiction to tidy away: it is what "no unclaimed hue" means in practice, and
+  the entry stays ranked last so the next round knows what it is spending.
 
-## Why not now
+## Where it stands
 
-Nothing is blocked. Eight types have eight hues and the view is correct today; this is a
-constraint waiting for a ninth type, and the shape to build depends on what that type is
-for. Building a second badge axis before anything needs one is scaffolding for later.
+**One sharing has happened; the next is due.** The view is correct today — nine types, one
+documented pair — and nothing is blocked while the vocabulary stays at nine. The next
+declared type is where this bites, and [[A badge when the palette is full]] is the round
+that has to answer it: two test types arriving together, which is the case the second-axis
+option was written for and the case that makes taking it once cheaper than taking it twice.
+
+What this issue asks of that round is only that the decision be **one decision**. Pair-by-
+pair is how two branches both reached for green.
