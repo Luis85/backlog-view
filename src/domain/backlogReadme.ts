@@ -87,11 +87,20 @@ const childrenOf = (typeName: string): string[] => childTypeChoices(position(typ
 /**
  * The types that may hold a `typeName` item — inverted from `childrenOf` rather than
  * stated, so the two halves of the table cannot disagree with each other or with the
- * view. An `Epic` is what `childTypeChoices(null)` offers, so it also reads as a root.
+ * view.
+ *
+ * The root marker is UNCONDITIONAL, and that is a statement about the toolbar: it
+ * iterates the whole vocabulary with no parent, so every declared type is root-creatable
+ * and `childTypeChoices(null)` returns `ALL_TYPES`. This used to ask that question per
+ * type. Once the answer became "always", the test was a branch nothing could take —
+ * dead code wearing the look of a check, and the kind coverage is supposed to find. The
+ * pairing it used to enforce at runtime is now pinned by two tests instead: one asserts
+ * `childTypeChoices(null)` IS `ALL_TYPES`, the other that every row here carries the
+ * marker. Narrowing that function again fails both rather than silently re-animating a
+ * branch this table stopped drawing.
  */
 function parentsOf(typeName: string): string[] {
-	const parents = ALL_TYPES.filter((candidate) => childrenOf(candidate).includes(typeName));
-	return childTypeChoices(null).includes(typeName) ? ['*(nothing — it is a root)*', ...parents] : parents;
+	return ['*(nothing — it is a root)*', ...ALL_TYPES.filter((candidate) => childrenOf(candidate).includes(typeName))];
 }
 
 /**
@@ -101,6 +110,11 @@ function parentsOf(typeName: string): string[] {
  * Idea" into the document this module exists to keep correct. `Intl.ListFormat` is the
  * stdlib answer and is not reachable: its typings arrived in `ES2021.Intl` and the
  * `lib` here is `ES2020`.
+ *
+ * Both branches have a real caller, which is why the short one is not a guard waiting for
+ * a hypothetical: `MARKER_TYPES` is one name and takes it today. That is also the honest
+ * reason it exists — the fix for `Issue and Bug and Idea` must not become `Milestone` with
+ * an `and` hanging off it the day a second marker lands.
  */
 const andList = (names: string[]): string =>
 	names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
@@ -114,7 +128,7 @@ function typeSection(settings: BacklogSettings): string[] {
 			`${andList(EXTRA_TYPES)} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
-			`${MARKER_TYPES.join(' and ')} is neither: a ` +
+			`${andList(MARKER_TYPES)} is neither: a ` +
 			`marker hangs from nothing and holds nothing, and states a date rather than work.`,
 		'',
 		'| Type | Parent may be | Children may be |',

@@ -162,6 +162,22 @@ export default defineConfig({
 			// thresholds only ever go up, and left at 93.9 the floor would go on describing
 			// a tree two increments behind. The next increment to add an undriven branch
 			// will fail on it, which is what a floor is for.
+			//
+			// It did, immediately, and the record is worth keeping because the floor worked
+			// exactly as that paragraph said it would. The `Idea` increment measured
+			// 98.23/93.99/99.47/99.38 on merging the branch above: 93.99 against a 94.0
+			// floor, failing in CI while passing locally, because the branch had been cut
+			// before the floor moved. The two branches responsible were both DEAD, and both
+			// were this increment's own — `andList`'s short-list arm, whose only callers
+			// passed a three-name list, and `parentsOf`'s "not a root" arm, which became
+			// unreachable the moment `childTypeChoices(null)` started returning the whole
+			// vocabulary. Neither was covered by a test; both were removed, one by giving
+			// the arm a real caller (`MARKER_TYPES`, one name) and one by deleting a
+			// condition that could no longer be false. That is 94.05 on a denominator two
+			// smaller, and every threshold stays: all four round down to the figures already
+			// recorded. The point for whoever reads this next is the shape, not the numbers
+			// — a coverage failure on this repository is first a question about which branch
+			// nothing can take, and only then a question about a missing test.
 			thresholds: {
 				statements: 98.2,
 				branches: 94.0,
