@@ -143,6 +143,37 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('resolves only the FIRST quoted name after a marker — the limit, pinned', async () => {
+		// Not a feature: a boundary, asserted so it cannot move by accident. A second name
+		// under one marker reads as covered and is not, which review caught in the first
+		// note that tried it. The gate cannot tell a second cited name from an ordinary
+		// quoted phrase, so `docs/README.md` states "one marker, one citation" instead.
+		//
+		// Green here is therefore the claim that the second name is IGNORED. Anyone making
+		// the rule validate every quoted name has to come here and change this case, which
+		// is the point — the limit is pinned, not merely described.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: [
+				'`src/thing.ts` and `test/thing.test.ts`.',
+				'',
+				'**Checked by** `test/thing.test.ts` — "the thing works", and "a name no file holds".',
+			].join('\n'),
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts the marker NAMED in a code span, which is documentation not a citation', async () => {
+		// `docs/README.md` documents the convention by naming the marker inline, and the
+		// gate reported its own convention page as a malformed citation. Naming a thing is
+		// not doing it — the same rule code spans already carry for wikilinks and paths.
+		const files = baseRegister();
+		files['docs/README.md'] = '# docs\n\nA claim may carry a `**Checked by**` citation naming its test.\n';
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a **Checked by** example inside a fence, which is documentation not a citation', async () => {
 		// `docs/README.md` documents the convention by showing it, naming a path that does
 		// not exist on purpose. Fenced, so it is an example being quoted rather than a

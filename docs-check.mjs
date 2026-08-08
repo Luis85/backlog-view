@@ -471,7 +471,14 @@ for (const file of [...files, "README.md"]) {
 	// planted trees in `test/docs/` are exactly such a tree.
 	const text = texts.get(file) ?? ((await exists(file)) ? await readText(file) : "");
 	const prose = withoutFences(text);
-	for (const marker of prose.matchAll(MARKER)) {
+	// The MARKER is looked for in a copy with code spans blanked to spaces — same length,
+	// so every index still points into `prose`, which is what the citation is then parsed
+	// out of. A span cannot be dropped instead of blanked for that reason, and it cannot
+	// be left alone either: `docs/README.md` writes `**Checked by**` inside backticks to
+	// NAME the marker while documenting it, and naming a thing is not doing it. Fences
+	// already handle the block form; this is the inline one.
+	const masked = prose.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
+	for (const marker of masked.matchAll(MARKER)) {
 		// Bounded at the paragraph, so a malformed citation cannot reach forward and adopt
 		// a path and a quoted phrase from further down the note.
 		const after = prose.slice(marker.index + marker[0].length);

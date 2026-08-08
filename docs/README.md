@@ -484,6 +484,12 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
   **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the shared list once configured"
   ```
 
+  **One marker, one citation.** Only the first quoted name after a `**Checked by**` is
+  resolved, so a second check needs a second marker — two names under one marker leaves
+  the second unverified while reading as covered, which review caught in the first note to
+  try it. The gate cannot report that: telling a second cited name from an ordinary quoted
+  phrase is the judgement this rule exists by not making.
+
   Read what this is and is not. It does **not** verify the claim; nothing here can, and
   [[A claim in four notes and nothing to check it]] argues why the candidates that try are
   worse than the problem. What it buys is the step where the author goes and fetches the

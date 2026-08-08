@@ -96,8 +96,9 @@ narrowed to one type.
   three") described a configuration the code does not have — a shared key with its own
   states — and it was written the same day the check asserting the opposite landed.
   **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the
-  shared list once configured", and its done-values sibling "keeps its own done values
-  over the shared list once configured".
+  shared list once configured".
+  **Checked by** `test/domain/settings.test.ts` — "keeps its own done values over the
+  shared list once configured".
 - **1b — the Deliverable workflow is configured, but the base holds no `Deliverable`
   results at all.** Every column renders empty, and the board shows "No deliverables
   yet" — never "All N items are done and hidden," which is what the requirements
@@ -401,12 +402,14 @@ every optional property already does), plus `deliverableStates` and
 `deliverableDoneValues` beside `states`/`doneValues`. `resolveSettings` names the key's
 own fallback condition once (`deliverableKeyFallsBack` — true exactly when no
 Deliverable state property is configured) and consults it for all three returned
-fields: `deliverableStateKey` itself, and the gate in front of `deliverableStates`' and
-`deliverableDoneValues`' own emptiness checks. Falling back means falling back to ALL
-THREE of the requirements workflow's own resolved key, declared states and effective
-done values together — an independently-keyed Deliverable workflow shares none of them,
-ever, falling through instead to its own observed values or the shipped default
-(`DEFAULT_DONE_VALUES`). `resolvedDeliverableStateKey(settings)` is the one function
+fields — but it is not the same question in all three. For `deliverableStateKey` it
+decides the key. For `deliverableStates` and `deliverableDoneValues` it sits BEHIND each
+list's own emptiness check and picks WHICH fallback an empty list takes: the requirements
+workflow's declared states and effective done values while the key is falling back too,
+this workflow's own observed values or the shipped default (`DEFAULT_DONE_VALUES`) once
+the key is its own. **A list the user populated is never overridden by either**, so
+falling back is field by field and never all three together — an independently-keyed
+Deliverable workflow shares none of them, ever. `resolvedDeliverableStateKey(settings)` is the one function
 every other reader and writer calls for the key — never `settings.deliverableStateKey`
 directly — deliberately excluded from `optionalKeyFor`, since `configProblems`/
 `adoptableProperties` need the RAW (possibly empty) key to tell a fallback share from an
