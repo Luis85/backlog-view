@@ -262,9 +262,14 @@ export function markers(text, label) {
 }
 
 /**
- * EVERY GFM table whose header row begins with `headings` — each table as its rows, each
- * row as its cells, each cell as `{ code, text }`: the `code` spans it holds, and the
- * prose around them.
+ * EVERY GFM table whose header row IS `headings` — each table as its rows, each row as its
+ * cells, each cell as `{ code, text, kinds }`: the `code` spans it holds, the prose around
+ * them, and the node types it is built from.
+ *
+ * EXACTLY those headings, not a prefix. A prefix match selects a table that grew a fourth
+ * column, and a caller destructuring three of them reads a document with more in it — a
+ * `Children may not be` column, correctly formatted, invisible to every rule. Found in
+ * review.
  *
  * Code spans are what a rule compares, because that is how this register writes a type or
  * a key — `` `Deliverable` ``. Prose around them (`*(nothing — it is a root)*`, "or") is a
@@ -277,6 +282,13 @@ export function markers(text, label) {
  * column, then again in the relation columns after the first was fixed. A caller cannot
  * notice what it never receives, so the prose comes back and each caller says what its own
  * table allows to be in it.
+ *
+ * `kinds` is that argument taken to its end. `text` sees `text` nodes and `code` sees
+ * `inlineCode`, so ANY other node is invisible to both — and `<del>` around a code span is
+ * exactly that: the type is collected, the tags are dropped, and the cell reads as
+ * agreeing while GitHub and Obsidian render the relation as deleted. Reporting the node
+ * types present is the only form of this that does not need a new rule per element,
+ * because a caller can whitelist what it understands and refuse the rest unread.
  *
  * Asked of the parser, so a pipe inside a code span cannot split a cell and a table
  * indented inside a list item is still a table.
@@ -294,12 +306,14 @@ export function tablesWith(text, headings) {
 	// more parser to get wrong. Walking the node the parser already built asks nothing.
 	const words = (cell) => [...walk(cell)].filter((n) => n.type === "text").map((n) => n.value).join("").trim();
 	const codes = (cell) => [...walk(cell)].filter((n) => n.type === "inlineCode").map((n) => n.value);
+	const kinds = (cell) => [...new Set([...walk(cell)].filter((n) => n !== cell).map((n) => n.type))];
 	const found = [];
 	for (const node of nodes(text)) {
 		if (node.type !== "table" || node.children.length === 0) continue;
 		const head = node.children[0].children;
-		if (!headings.every((want, i) => head[i] !== undefined && words(head[i]) === want)) continue;
-		found.push(node.children.slice(1).map((row) => row.children.map((cell) => ({ code: codes(cell), text: words(cell) }))));
+		if (head.length !== headings.length) continue;
+		if (!headings.every((want, i) => words(head[i]) === want)) continue;
+		found.push(node.children.slice(1).map((row) => row.children.map((cell) => ({ code: codes(cell), text: words(cell), kinds: kinds(cell) }))));
 	}
 	return found;
 }

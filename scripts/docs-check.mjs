@@ -911,6 +911,14 @@ const HIERARCHY_HEADINGS = ["Type", "Parent may be", "Children may be"];
  * like the others.
  */
 const NOTHING_ANNOTATIONS = new Set(["(nothing)", "(nothing — it is a root)", "(nothing — a root by nature)"]);
+/**
+ * Everything a hierarchy cell may be BUILT from. Whitelisted for the same reason its prose
+ * is: the two readers below see `text` and `inlineCode`, so any other node passes both of
+ * them unseen — raw `<del>` around a type is collected as a live relation while it renders
+ * as a deleted one. Refusing the node type rather than the element is what stops this
+ * needing a new rule for `<b>`, an image, a link, or whatever is reached for next.
+ */
+const CELL_NODES = new Set(["text", "inlineCode", "emphasis"]);
 const hierarchies = tablesWith(await readFile(path.join(DOCS, "README.md"), "utf8"), HIERARCHY_HEADINGS);
 if (hierarchies.length === 0) {
 	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
@@ -954,8 +962,27 @@ if (hierarchies.length === 0) {
 		// "this cell means its code spans" is this table's rule. What the helper owes is the
 		// prose itself, which it now returns — a caller cannot notice what it never receives,
 		// and that is exactly how this defect got a second life.
+		// A short row does NOT get padded — mdast reports the cells that are there — so the
+		// destructuring above binds `undefined` and the read below threw a TypeError, taking
+		// the whole gate down with no report at all. Measured: `| \`Feature\` | \`Epic\` |`
+		// crashed `npm run docs` rather than failing it, which is the shape
+		// `docs/issues/A gate that did not run looks like one that passed.md` is about. The
+		// row is reported and then ABANDONED, because everything after this reads three cells.
+		if (cells.length !== HIERARCHY_HEADINGS.length) {
+			fail("docs/README.md", `hierarchy table row ${index + 1} has ${cells.length} cells, not ${HIERARCHY_HEADINGS.length}`);
+			continue;
+		}
 		for (const [column, cell] of cells.entries()) {
 			const where = `hierarchy table row ${index + 1} column ${column + 1}`;
+			// The last unconstrained region, and the one that survived four fixes: `text` sees
+			// text nodes and `code` sees code spans, so anything ELSE in the cell is invisible
+			// to both rules below. `<del>` around a code span proved it — the type collected,
+			// the tags dropped, the cell reading as agreement while it renders as deleted.
+			// Whitelisting the node types is what makes that a closed question rather than one
+			// more element to think of: an image, a link, a footnote and every future spelling
+			// are refused unread.
+			const strange = cell.kinds.filter((kind) => !CELL_NODES.has(kind));
+			if (strange.length > 0) fail("docs/README.md", `${where} holds ${strange.join(", ")}, and a cell may hold only ${[...CELL_NODES].join(", ")}`);
 			// A cell that names nothing is the ONE free-form position, so it is not free-form:
 			// it must be one of the three annotations the table already uses, byte for byte.
 			// Anything else is a sentence, and a sentence in a cell that reports no types is

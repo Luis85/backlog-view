@@ -159,6 +159,43 @@ describe('the documented hierarchy and the gate agree', () => {
 			'is not one of the documented "nothing" annotations',
 		],
 		[
+			// Raw HTML is the same defect as `~~`, arrived at from the other side: `text` reads
+			// text nodes and `code` reads code spans, so an `html` node passes BOTH unseen —
+			// the type collected as a live relation while GitHub and Obsidian render it
+			// deleted. Fixed by whitelisting the node types a cell may be built from, which is
+			// why there is no case here for `<b>`, an image or a link: they are refused unread
+			// by the same rule, and a case per element would be the enumeration this whole
+			// sequence of findings argues against.
+			'a type wrapped in raw HTML that renders as deleted',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, <del>`Deliverable`</del> |');
+			},
+			'holds html, and a cell may hold only',
+		],
+		[
+			// A FOURTH COLUMN, which the prefix header match selected and the three-way
+			// destructuring then ignored: `Children may not be`, correctly formatted, invisible
+			// to every rule. `tablesWith` matches the headings exactly now, so the table stops
+			// being the hierarchy table at all — which is the loud failure, not a quiet one.
+			'a hierarchy table that grew a column nothing reads',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable()
+					.replace('| Type | Parent may be | Children may be |', '| Type | Parent may be | Children may be | Children may not be |')
+					.replace('| --- | --- | --- |', '| --- | --- | --- | --- |');
+			},
+			'the hierarchy is documented nowhere',
+		],
+		[
+			// A short row is NOT padded, so the destructuring bound `undefined` and the gate
+			// threw a TypeError — crashing rather than reporting, which is the failure mode
+			// `A gate that did not run looks like one that passed` names.
+			'a hierarchy row with fewer cells than the table has columns',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` | *(nothing)* |', '| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |');
+			},
+			'has 2 cells, not 3',
+		],
+		[
 			// The claim the prose rule does NOT subsume: a cell holding no name at all. Nothing
 			// disallowed to report, and the row still disappears.
 			'a hierarchy row whose type cell is empty',
