@@ -262,6 +262,22 @@ describe('children on the card', () => {
 		expect(matches).toContain('Task B1a');
 	});
 
+	// The keyboard path for the same dedup: `addMatchSection` is a second reader of
+	// `undisclosedMatches`, and nothing else in this suite drives it — the card-face
+	// tests above assert `.pbl-card-match` in the DOM, which the menu never touches.
+	it('does not name a matched child twice in the card menu either', () => {
+		const { containerEl, view } = makeBoard(boardVault(), {}, { focus: 'Epic' });
+		view.setFilter('Feature B1');
+		const card = cardByTitle(containerEl, 'Epic B');
+		card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		// The disclosure's entry …
+		expect(titles).toContain('Open child "Feature B1"');
+		// … so the match section must not offer it too.
+		expect(titles).not.toContain('Open match "Feature B1"');
+	});
+
 	/**
 	 * The dated axis, drawing both surfaces at once: `Dated epic` has two dates so it
 	 * gets a timeline ROW (the card shell in a bar-grid layout, never `renderCardBody`),
