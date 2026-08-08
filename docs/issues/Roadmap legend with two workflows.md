@@ -86,3 +86,20 @@ Switch to the roadmap's dated axis, with both workflows configured as above.
 
 Each point above, pass or fail, in this note. A run that reports "looked fine" leaves the
 colour-pair question exactly as open as it is now — that one wants a sentence, not a tick.
+
+## Runs
+
+**2026-08-08.** Reported as passing with nothing flagged. That settles the six bullets
+that are genuinely yes/no — the two labelled sections and their weight, both done values
+drawing the same green, a bar matching its own swatch, the narrow pane breaking between
+sections rather than inside one, and both single-workflow configurations. Those were the
+feature's structural risk and they are answered under a real theme now, which is what no
+harness could do.
+
+It does NOT settle the colour-pair bullet, and this note stays Open for that one alone.
+"Nothing flagged" and "nobody was misled" are different claims: the question is not
+whether the pairs exist — they are measured and expected — but whether a reader looking
+for a Deliverable's state has to look twice at `Ready`/`Concept`, `Active`/`Draft` or
+`Review`/`In review`. A pass reports the absence of a defect; this asks for a judgement,
+and the judgement is the thing a four-slot palette carrying two vocabularies was always
+going to need. One sentence closes it.
