@@ -52,14 +52,26 @@ export function settingsWith(over: Partial<BacklogSettings> = {}): BacklogSettin
 	// and it is about to apply the derivations the rule exists to protect.
 	// eslint-disable-next-line no-restricted-syntax
 	const settings = { ...defaultSettings(), ...over };
-	// `resolveSettings`' own rule: the Deliverable lists follow the requirements ones while
-	// its key falls back and nothing of its own was declared. Asked of `over` rather than of
-	// the merged object, because "the caller said nothing" and "the caller said []" are
-	// different statements and only the first one follows.
+	// EMPTY is the same statement as absent, and asking `over` for the difference was wrong:
+	// every list reaches the resolver through `list()`, which turns an emptied option into
+	// `[]`, so it cannot tell "never set" from "cleared" either. A caller writing
+	// `doneValues: []` is writing exactly what an emptied option produces, and the
+	// resolver's answer to that is the default — not a rejection. Found by review, after
+	// this helper promised to derive the resolved form and then refused a configuration a
+	// user can actually set.
+	if (settings.doneValues.length === 0) settings.doneValues = defaultSettings().doneValues;
+	// Unset OR emptied, which are two signals rather than one: `deliverableDoneValues`
+	// DEFAULTS to a non-empty list, so "the caller said nothing" cannot be read off the
+	// merged object, while "the caller said []" cannot be read off `over` alone.
+	const follows = (field: 'deliverableStates' | 'deliverableDoneValues'): boolean =>
+		over[field] === undefined || settings[field].length === 0;
 	if (settings.deliverableStateKey === '') {
-
-		if (over.deliverableStates === undefined) settings.deliverableStates = settings.states;
-		if (over.deliverableDoneValues === undefined) settings.deliverableDoneValues = settings.doneValues;
+		// A falling-back key means both lists follow the requirements ones.
+		if (follows('deliverableStates')) settings.deliverableStates = settings.states;
+		if (follows('deliverableDoneValues')) settings.deliverableDoneValues = settings.doneValues;
+	} else if (settings.deliverableDoneValues.length === 0) {
+		// With a key of its own it does NOT follow them — it takes its own default.
+		settings.deliverableDoneValues = defaultSettings().deliverableDoneValues;
 	}
 	// `clearablePropKey`'s yielding rule, applied rather than restated at call sites.
 	const taken = [settings.parentKey, settings.orderKey, settings.typeKey, settings.stateKey];

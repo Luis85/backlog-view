@@ -459,8 +459,11 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
 	// rule someone will read as covering both.
 	const badLimit = Object.entries(settings.wipLimits).find(([, n]) => !Number.isInteger(n) || n < 1);
 	if (badLimit) return `wipLimits sets ${badLimit[0]} to ${badLimit[1]}, which parseWipLimit would discard`;
-	const badPolicy = Object.entries(settings.columnPolicies).find(([, text]) => text.trim() === '');
-	if (badPolicy) return `columnPolicies sets ${badPolicy[0]} to an empty string, which the resolver drops`;
+	// `str(...).trim()` and then `|| null`, so a policy is stored trimmed or not at all —
+	// surrounding whitespace is as unproducible as an empty string. Review caught the first
+	// version rejecting only the empty case, which is the same half-a-job shape twice.
+	const badPolicy = Object.entries(settings.columnPolicies).find(([, text]) => text.trim() !== text || text === '');
+	if (badPolicy) return `columnPolicies sets ${badPolicy[0]} to ${JSON.stringify(badPolicy[1])}, which the resolver would trim or drop`;
 	return null;
 }
 

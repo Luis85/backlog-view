@@ -505,11 +505,32 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		expect(settingsInconsistency({ ...workflow, wipLimits: { done: 2 } })).toContain('wipLimits names done');
 		expect(settingsInconsistency({ ...workflow, wipLimits: { active: 0 } })).toContain('parseWipLimit would discard');
 		expect(settingsInconsistency({ ...workflow, wipLimits: { active: 1.5 } })).toContain('parseWipLimit would discard');
-		expect(settingsInconsistency({ ...workflow, columnPolicies: { active: '  ' } })).toContain('empty string');
+		expect(settingsInconsistency({ ...workflow, columnPolicies: { active: '  ' } })).toContain('trim or drop');
+		// Surrounding whitespace is as unproducible as an empty string: the resolver stores
+		// `str(...).trim()`, so a policy is kept trimmed or not at all.
+		expect(settingsInconsistency({ ...workflow, columnPolicies: { active: ' ship it ' } })).toContain('trim or drop');
 		expect(settingsInconsistency({ ...workflow, columnPolicies: { draft: 'x' } })).toContain('columnPolicies names draft');
 		// And the reachable configuration is still accepted, so this cannot become
 		// "rejects every map".
 		expect(settingsInconsistency({ ...workflow, wipLimits: { active: 3 }, columnPolicies: { done: 'ship it' } })).toBeNull();
+	});
+
+	it('treats an emptied list as the resolver does — absent, not a rejection', () => {
+		// Found by review: every list reaches the resolver through `list()`, which turns an
+		// emptied option into `[]`, so it cannot tell "never set" from "cleared" either. A
+		// caller writing `doneValues: []` is writing what an emptied option produces, and
+		// the resolver's answer to that is the default. `settingsWith` derives it now
+		// rather than refusing a configuration a user can actually set.
+		expect(settingsWith({ doneValues: [] })).toEqual(settingsFrom({ doneValues: '' }));
+		expect(settingsWith({ deliverableDoneValues: [] })).toEqual(settingsFrom({ deliverableDoneValues: '' }));
+		expect(settingsWith({ stateKey: 'status', states: ['New'], deliverableStates: [] })).toEqual(
+			settingsFrom({ stateProperty: 'note.status', stateValues: 'New', deliverableStateValues: '' }),
+		);
+		// With a key of its own the Deliverable done list takes its OWN default rather than
+		// following the requirements one — a different branch of the same rule.
+		expect(settingsWith({ deliverableStateKey: 'docStatus', deliverableDoneValues: [] })).toEqual(
+			settingsFrom({ deliverableStateProperty: 'note.docStatus', deliverableDoneValues: '' }),
+		);
 	});
 
 	it('accepts what the resolver would have produced for that same fixture', () => {
