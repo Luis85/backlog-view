@@ -288,6 +288,29 @@ narrowed to one type.
   gets its own state rather than the ordinary empty one, because that one names the
   focused type and offers to create another: it says why the board is empty and its
   button clears the focus.
+- **Excluding a Deliverable never excludes the requirement work below it, focus or not**
+  (`requirementsFocusRoots`, `domain/board.ts`). `Deliverable` is in `EXTRA_TYPES`, so a
+  focus on the extra-type rung promotes one to a focus root exactly as it promotes a Bug —
+  and under a focus the ROOTS are this board's candidates, so excluding that root took its
+  whole subtree off screen: a Task it owned was counted by the toolbar and drawn by
+  nothing, while with no focus that same Task gets its own card. The candidate list now
+  descends through an excluded Deliverable to its topmost non-Deliverable descendants,
+  which is the same descent `collectFocusRoots` already makes for a root that does not
+  match. The rule is stated as the two surfaces agreeing rather than as an expected card
+  list: pressing the focus button must not decide whether a Task exists on this board.
+  A CONTEXT Deliverable is kept rather than descended through — it is admitted as
+  placement and renders whenever it has a visible child, so its descendants already have
+  a card to sit under.
+- **Under a SHARED state property the observed vocabulary is one pool, not two.** When
+  `stateProperty` and the Deliverable one resolve to the same key, a Deliverable's value
+  in that key is also a real value *of that property*, so the tree's Set state offers it
+  on a PBI. Reviewed twice and decided by the maintainer: narrowing it would stop a PBI
+  being put into a state that already exists in its own property — a capability loss for a
+  tidiness gain — and the outcome is self-correcting, since a PBI carrying that value
+  gives the requirements board a column its card can sit in. This is the one place the
+  Deliverable-free scoping deliberately stops: the board's COLUMNS are still scoped
+  (`requirementsWorkflow`), because a column no card can reach is a different defect from
+  a value a card can legitimately take.
 - On a Deliverable card viewed from this board: the card menu's Set state section
   appears whenever the *resolved* Deliverable state key is non-empty — its own key, or
   (falling back) the requirements one — even when the requirements `stateKey` alone
