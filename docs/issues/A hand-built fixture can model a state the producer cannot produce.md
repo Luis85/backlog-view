@@ -10,6 +10,8 @@ source: PR #91 — four expectations in one file were modelling an unreachable c
 files:
   - src/domain/settings.ts
   - src/domain/model.ts
+  - eslint.config.mjs
+  - test/helpers/settings.ts
   - test/domain/statePalettes.test.ts
   - test/domain/settings.test.ts
   - test/domain/board.test.ts
@@ -69,9 +71,22 @@ an argument — a sweep resolves fourteen option shapes and asserts every result
 consistent, and breaking the resolver's own copy rule reddens it.
 **Checked by** `test/domain/settings.test.ts` — "names each relationship it can see broken, so the message points at the fixture"
 
-Three suites had to change: `statePalettes`, `board` and `stamps` now resolve their
-fixtures through `resolveSettings` via `FakeViewConfig`, with the reason on each so the
-next edit does not undo it.
+Three suites had to change for that alone: `statePalettes`, `board` and `stamps`.
+
+Then the hazard was closed at the CONSTRUCTOR rather than left to a runtime net.
+`test/helpers/settings.ts` holds the two ways to build a fixture — `settingsFrom(options)`,
+which runs the real resolver, and `settingsWith(fields)`, which spreads the defaults and
+then **applies the resolver's own derivations** before checking the result. Deriving rather
+than rejecting is the point: a caller naming `states` is saying "this base has these
+states", and the resolver's answer to that includes copying them to the Deliverable
+workflow while its key falls back. Making 41 call sites restate that would be asking each
+of them to remember the rule the helper exists to hold — and a fixture corrected into
+existence cannot be one that could not exist.
+
+`no-restricted-syntax` in `eslint.config.mjs` then bans the raw spread across `test/**`,
+so the helper is the way in rather than the way most people happen to use. All 41 sites
+across 13 files were converted; the helper itself carries the one `eslint-disable`, since
+it is the thing the rule points at.
 
 ## What the measurement got wrong
 
@@ -90,23 +105,29 @@ Both halves of that gap are worth keeping:
   the first is a property of today's readers, and the whole failure mode is a reader
   arriving later.
 
+The lint rule was declined once, on the grounds that it "cannot tell the two cases apart,
+so it would refuse the majority use it is right about". That was wrong, and worth naming:
+there is no majority use it is right about. EVERY hand-built fixture is at risk, so
+refusing all of them is correct — and it only became a cheap change once the helper existed
+to be refused *in favour of*. A rule with no replacement to point at is what made it look
+unaffordable.
+
 ## What is still not caught
 
-The assertion sits at `buildModel`, the widest choke point a settings object passes
-through — so it holds for tests nobody has written yet, which the alternatives could not.
-It does **not** catch a bad fixture in a test that only calls a pure settings function:
-`backlogReadme.test.ts` holds one right now and passes, because it builds no model. There
-is no seam on a `BacklogSettings` literal itself, and inventing one would be a seam built
-for the test.
+Two gaps, both real:
 
-Three earlier candidates, all still declined:
+- **Spreading a settings object under any other name.** `{ ...settings, tagsKey: 'x' }`
+  breaks the same relationships and is invisible to a syntactic rule, which sees
+  `defaultSettings()` and not the type of an arbitrary identifier. `assertResolvedSettings`
+  in `buildModel` is the runtime net under that case, and it reaches only the tests that
+  build a model.
+- **A relationship `settingsWith` does not know how to derive.** It throws rather than
+  guessing, which is the honest failure — a fixture that refuses to build beats one that
+  quietly models a vault nobody could have.
 
-- **A lint rule against `{ ...defaultSettings(), … }` in tests.** It cannot tell the two
-  cases apart, so it would refuse the majority use it is right about.
-- **A round-trip assertion in a shared helper.** Only reaches fixtures that use the helper,
-  and the failing ones were inline literals.
-- **Making the invariants of `BacklogSettings` a type.** The relationships are between
-  *values*, not shapes, so the compiler cannot hold them.
+**Making the invariants of `BacklogSettings` a type** stays declined and stays the only
+complete answer: the relationships are between *values*, not shapes, so the compiler
+cannot hold them.
 
 See [[A comment that states a rule is not a check]] for the same failure with prose as the
 instrument.

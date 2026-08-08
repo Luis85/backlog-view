@@ -3,6 +3,7 @@ import { buildModel } from '../../src/domain/model';
 import { childLevelIndex, displayType } from '../../src/domain/itemTypes';
 import { LEVELS, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
@@ -395,7 +396,7 @@ describe('buildModel with a focus level', () => {
 		// A Bug ranks with the PBI rung, so focusing that rung has to surface it —
 		// otherwise it does not render at all, having no PBI above it to hang from.
 		vault.addFile('Bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
-		const model = buildModel(vault.app, vault.entries(), { ...defaultSettings(), focusLevel: 'PBI' });
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ focusLevel: 'PBI' }));
 		expect(model.focused).toBe(true);
 		expect(model.roots.map((r) => r.title).sort()).toEqual(['Bug', 'PBI']);
 	});

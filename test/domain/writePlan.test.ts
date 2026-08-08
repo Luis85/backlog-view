@@ -4,6 +4,7 @@ import { buildModel } from '../../src/domain/model';
 import { computeDeliverableStateWrites, computeDropWrites, computeInitWrites, computeTypeChanges, DropTarget, ORDER_SPACING } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
@@ -537,7 +538,7 @@ describe('computeDeliverableStateWrites', () => {
 		vault.addFile('D.md', {
 			frontmatter: { type: 'Deliverable', order: 10, ...(state !== null ? { deliverableStatus: state } : {}) },
 		});
-		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const settings = settingsWith({ deliverableStateKey: 'deliverableStatus' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		return model.results[0];
 	}
@@ -567,7 +568,7 @@ describe('computeInitWrites — the Deliverable state stub', () => {
 		const vault = new FakeVault();
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
 		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10 } });
-		const configured = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const configured = settingsWith({ deliverableStateKey: 'deliverableStatus' });
 		const model = buildModel(vault.app, vault.entries(), configured);
 
 		const writes = computeInitWrites(model, configured);

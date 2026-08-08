@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { settingsWith } from '../helpers/settings';
 import {
 	adoptableProperties,
 	ALL_TYPES,
@@ -187,7 +188,7 @@ describe('resolveSettings progress options', () => {
 describe('configProblems', () => {
 	it('reports properties sharing a frontmatter key', () => {
 		expect(configProblems(defaultSettings())).toEqual([]);
-		const clash = configProblems({ ...defaultSettings(), orderKey: 'parent' });
+		const clash = configProblems(settingsWith({ orderKey: 'parent' }));
 		expect(clash).toHaveLength(1);
 		expect(clash[0]).toContain('parent and order');
 	});
@@ -202,7 +203,7 @@ describe('configProblems', () => {
 	});
 
 	it('refuses an axis key colliding with a key the plugin owns', () => {
-		const clash = configProblems({ ...defaultSettings(), horizonKey: 'parent' });
+		const clash = configProblems(settingsWith({ horizonKey: 'parent' }));
 		expect(clash).toHaveLength(1);
 		expect(clash[0]).toContain('parent and horizon');
 	});
@@ -210,11 +211,11 @@ describe('configProblems', () => {
 	it('refuses axis keys colliding with each other — start and target cannot share', () => {
 		// One key cannot store a span, and a horizon sharing either is two semantics
 		// on one field.
-		const span = configProblems({ ...defaultSettings(), startKey: 'when', targetKey: 'when' });
+		const span = configProblems(settingsWith({ startKey: 'when', targetKey: 'when' }));
 		expect(span).toHaveLength(1);
 		expect(span[0]).toContain('start and target');
 
-		const mixed = configProblems({ ...defaultSettings(), horizonKey: 'plan', startKey: 'plan' });
+		const mixed = configProblems(settingsWith({ horizonKey: 'plan', startKey: 'plan' }));
 		expect(mixed[0]).toContain('horizon and start');
 	});
 
@@ -286,7 +287,7 @@ describe('resolveSettings display options', () => {
 
 describe('stateMenuValues', () => {
 	it('prefers the configured states verbatim', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
+		const settings = settingsWith({ states: ['New', 'Active', 'Done'] });
 		expect(stateMenuValues(settings, ['Blocked'])).toEqual(['New', 'Active', 'Done']);
 	});
 
@@ -303,7 +304,7 @@ describe('stateMenuValues', () => {
 });
 
 describe('horizonMenuValues', () => {
-	const withHorizons = (values: string[]) => ({ ...defaultSettings(), horizonKey: 'horizon', horizonValues: values });
+	const withHorizons = (values: string[]) => (settingsWith({ horizonKey: 'horizon', horizonValues: values }));
 
 	it('offers the declared vocabulary first, in declared order', () => {
 		expect(horizonMenuValues(withHorizons(['Now', 'Next', 'Later']), [])).toEqual(['Now', 'Next', 'Later']);
@@ -331,16 +332,13 @@ describe('horizonMenuValues', () => {
 
 describe('optionalKeyFor', () => {
 	it('maps each field to the property it is stored under', () => {
-		const settings = {
-			...defaultSettings(),
-			stateKey: 'status',
+		const settings = settingsWith({ stateKey: 'status',
 			startedDateKey: 'started',
 			finishedDateKey: 'finished',
 			horizonKey: 'horizon',
 			startKey: 'start',
 			targetKey: 'due',
-			deliverableStateKey: 'deliverableStatus',
-		};
+			deliverableStateKey: 'deliverableStatus', });
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(settings, field))).toEqual([
