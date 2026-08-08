@@ -57,12 +57,18 @@ export function settingsWith(over: Partial<BacklogSettings> = {}): BacklogSettin
 	// the merged object, because "the caller said nothing" and "the caller said []" are
 	// different statements and only the first one follows.
 	if (settings.deliverableStateKey === '') {
+
 		if (over.deliverableStates === undefined) settings.deliverableStates = settings.states;
 		if (over.deliverableDoneValues === undefined) settings.deliverableDoneValues = settings.doneValues;
 	}
 	// `clearablePropKey`'s yielding rule, applied rather than restated at call sites.
 	const taken = [settings.parentKey, settings.orderKey, settings.typeKey, settings.stateKey];
 	if (settings.tagsKey !== '' && taken.includes(settings.tagsKey)) settings.tagsKey = '';
+	// The per-state maps are built over the configured states, so a key naming a state the
+	// workflow does not have is one the resolver would have dropped — and limits drop the
+	// done ones besides. NOT derived away silently: a fixture that names a limit for a
+	// state it never declared is making a claim, and dropping it would answer a different
+	// question than the one asked. The assertion below reports it instead.
 	const wrong = settingsInconsistency(settings);
 	if (wrong !== null) {
 		throw new Error(

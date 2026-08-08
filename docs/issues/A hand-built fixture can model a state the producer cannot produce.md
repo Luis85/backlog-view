@@ -112,22 +112,43 @@ refusing all of them is correct — and it only became a cheap change once the h
 to be refused *in favour of*. A rule with no replacement to point at is what made it look
 unaffordable.
 
+## The relationships, and how the list stopped being guesswork
+
+`settingsInconsistency` began with four. Review found a fifth and a sixth on the same day:
+`wipLimits` and `columnPolicies` are built by `nameTable` over the CONFIGURED states, and
+limits drop the done ones besides — so a limit keyed to a state the workflow does not have
+is one the resolver would have discarded. A board test was relying on exactly that, setting
+a limit on `draft` while the requirements workflow had no `Draft` state at all: it was
+staging the collision it claimed to reproduce. Naming `states` too makes the fixture real
+and the test better.
+
+That is this note's own subject arriving as a review finding, and it is the argument for
+the drift detector rather than for trusting the list. `settingsWith` applies the resolver's
+relationships by hand, so it can fall behind — and the way that shows is a fixture quietly
+missing a derivation, not a failure. A table of `{ fields, options }` pairs now asserts the
+two constructors agree in full, so a derivation the resolver has and the helper lacks makes
+the pair disagree.
+**Checked by** `test/domain/settings.test.ts` — "a workflow, so the Deliverable lists follow it"
+
 ## What is still not caught
 
-Two gaps, both real:
-
-- **Spreading a settings object under any other name.** `{ ...settings, tagsKey: 'x' }`
+- **Spreading a settings object under any other name.** `{ ...settings, states: [...] }`
   breaks the same relationships and is invisible to a syntactic rule, which sees
-  `defaultSettings()` and not the type of an arbitrary identifier. `assertResolvedSettings`
-  in `buildModel` is the runtime net under that case, and it reaches only the tests that
-  build a model.
-- **A relationship `settingsWith` does not know how to derive.** It throws rather than
-  guessing, which is the honest failure — a fixture that refuses to build beats one that
-  quietly models a vault nobody could have.
+  `defaultSettings()` and not the type of an arbitrary identifier. **Measured before
+  building anything for it**: with the constructors in place, asserting at three further
+  boundaries (`configProblems`, `backlogReadmeContent`, `applyWrites`) catches nothing —
+  every remaining spread in the suite is producible. A lint rule over a hand-maintained
+  list of relationship-carrying field names would cost ~40 conversions to catch a class
+  with no members, so it is declined on evidence rather than on principle. If one appears,
+  `assertResolvedSettings` in `buildModel` is the net wherever a model is built.
+- **A relationship nobody has added to the table.** The pair table catches drift for the
+  relationships listed; nothing forces a NEW one to be listed. That is the residue, and it
+  is smaller than it was — the predicate now rejects a fixture the moment one of the six is
+  broken, so a missing seventh is the only way through.
 
 **Making the invariants of `BacklogSettings` a type** stays declined and stays the only
 complete answer: the relationships are between *values*, not shapes, so the compiler
-cannot hold them.
+cannot hold them. TypeScript cannot refuse a spread-with-override.
 
 See [[A comment that states a rule is not a check]] for the same failure with prose as the
 instrument.

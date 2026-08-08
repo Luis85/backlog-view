@@ -440,6 +440,18 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
 	// colliding with one of the four properties that outrank it.
 	const taken = [settings.parentKey, settings.orderKey, settings.typeKey, settings.stateKey];
 	if (settings.tagsKey !== '' && taken.includes(settings.tagsKey)) return 'tagsKey collides with a key that outranks it';
+	// Both per-state maps are built by `nameTable` over the CONFIGURED states, lowercased —
+	// so a key naming a state the workflow does not have is one the resolver would have
+	// dropped. Limits go further and exclude the done ones: WIP is what sits between started
+	// and finished, and capping the archive is a different idea wearing the same word.
+	const named = new Set(settings.states.map((state) => state.toLowerCase()));
+	const done = new Set(settings.doneValues.map((value) => value.toLowerCase()));
+	const stray = (table: Record<string, unknown>, allowed: (key: string) => boolean): string | null =>
+		Object.keys(table).find((key) => !allowed(key)) ?? null;
+	const strayLimit = stray(settings.wipLimits, (key) => named.has(key) && !done.has(key));
+	if (strayLimit !== null) return `wipLimits names ${strayLimit}, which is not a non-done configured state`;
+	const strayPolicy = stray(settings.columnPolicies, (key) => named.has(key));
+	if (strayPolicy !== null) return `columnPolicies names ${strayPolicy}, which is not a configured state`;
 	return null;
 }
 

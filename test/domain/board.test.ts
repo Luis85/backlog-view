@@ -465,7 +465,13 @@ describe('boardColumns with the Deliverables workflow', () => {
 		// The requirements workflow's OWN limit/policy for the same state name, so this
 		// fails if deliverablesWorkflow ever forwards settings.wipLimits/columnPolicies
 		// instead of {} — a fixture with both already empty cannot tell the two apart.
+		//
+		// `states` carries `Draft` too, and has to: the resolver builds `wipLimits` over the
+		// CONFIGURED states, so a limit on a state the requirements workflow does not have
+		// is one no user could set. Without it this fixture was staging the collision it
+		// claims to test rather than reproducing it.
 		const s = deliverablesSettings({
+			states: ['Draft'],
 			deliverableStates: ['Draft'],
 			wipLimits: { draft: 2 },
 			columnPolicies: { draft: 'x' },

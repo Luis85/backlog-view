@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { settingsWith } from '../helpers/settings';
+import { settingsFrom, settingsWith } from '../helpers/settings';
 import {
 	adoptableProperties,
 	ALL_TYPES,
@@ -498,5 +498,60 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		const base = defaultSettings();
 		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'], deliverableStates: ['New'] })).toBeNull();
 		expect(settingsInconsistency(base)).toBeNull();
+	});
+});
+
+describe('settingsWith reproduces what the resolver would have derived', () => {
+	/**
+	 * The drift detector for `test/helpers/settings.ts`. `settingsWith` applies the
+	 * resolver's relationships by hand, so it can fall behind the resolver — and the way
+	 * that shows up is a fixture quietly missing a derivation rather than anything failing.
+	 *
+	 * Each case names the fields a caller would set and the OPTIONS that produce the same
+	 * base, and asserts the two constructors agree in full. A derivation the resolver has
+	 * and the helper lacks makes the pair disagree.
+	 *
+	 * What this does NOT do, since the gap is worth stating rather than papering over:
+	 * nothing forces a NEW relationship to be added to this table. It catches drift for
+	 * the relationships listed, which is what a hand-written pair table can do.
+	 */
+	const PAIRS: { name: string; fields: Partial<BacklogSettings>; options: Record<string, unknown> }[] = [
+		{ name: 'nothing configured', fields: {}, options: {} },
+		{
+			name: 'a workflow, so the Deliverable lists follow it',
+			fields: { stateKey: 'status', states: ['New', 'Active', 'Done'], doneValues: ['Done'] },
+			options: { stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' },
+		},
+		{
+			name: 'a states list with no property, which still copies across',
+			fields: { states: ['New', 'Done'] },
+			options: { stateValues: 'New, Done' },
+		},
+		{
+			name: 'a Deliverable workflow of its own, so nothing is copied',
+			fields: {
+				stateKey: 'status',
+				states: ['New', 'Done'],
+				deliverableStateKey: 'docStatus',
+				deliverableStates: ['Draft', 'Published'],
+				deliverableDoneValues: ['Published'],
+			},
+			options: {
+				stateProperty: 'note.status',
+				stateValues: 'New, Done',
+				deliverableStateProperty: 'note.docStatus',
+				deliverableStateValues: 'Draft, Published',
+				deliverableDoneValues: 'Published',
+			},
+		},
+		{
+			name: 'a tags property aimed at the state key, which yields',
+			fields: { stateKey: 'status', tagsKey: 'status' },
+			options: { stateProperty: 'note.status', tagsProperty: 'note.status' },
+		},
+	];
+
+	it.each(PAIRS)('$name', ({ fields, options }) => {
+		expect(settingsWith(fields)).toEqual(settingsFrom(options));
 	});
 });
