@@ -262,8 +262,8 @@ export function markers(text, label) {
 }
 
 /**
- * The rows of the GFM table whose header row begins with `headings`, each row as an array
- * of cells, each cell as the list of `code` spans it holds.
+ * EVERY GFM table whose header row begins with `headings` — each table as its rows, each
+ * row as its cells, each cell as the list of `code` spans it holds.
  *
  * Code spans rather than cell text, because that is how this register writes a type or a
  * key — `` `Deliverable` `` — and it is the part a rule can compare. Prose around them
@@ -272,22 +272,29 @@ export function markers(text, label) {
  * `docs/issues/Tests do not read English.md` says not to build.
  *
  * Asked of the parser, so a pipe inside a code span cannot split a cell and a table
- * indented inside a list item is still a table. Returns null when no such table exists,
- * which a caller has to handle — a missing table is a different failure from an empty one.
+ * indented inside a list item is still a table.
+ *
+ * PLURAL deliberately. The first version returned the first match, which answers a
+ * question nobody asked: with two tables under one heading set — a merge leaves one, an
+ * unfenced example leaves one — "the rows of the table" has no single answer, and picking
+ * the first validates one document while a reader sees two. Found in review, as the same
+ * defect one level up from duplicate ROWS. An empty array is a real answer (no such
+ * table) and a caller has to tell it from a table that is empty.
  */
-export function tableRows(text, headings) {
+export function tablesWith(text, headings) {
 	// The cell's own descendants, never a source slice: mdast gives a table cell a position
 	// that INCLUDES its leading pipe, so slicing yields "| Type" and re-parsing that is one
 	// more parser to get wrong. Walking the node the parser already built asks nothing.
 	const words = (cell) => [...walk(cell)].filter((n) => n.type === "text").map((n) => n.value).join("").trim();
 	const codes = (cell) => [...walk(cell)].filter((n) => n.type === "inlineCode").map((n) => n.value);
+	const found = [];
 	for (const node of nodes(text)) {
 		if (node.type !== "table" || node.children.length === 0) continue;
 		const head = node.children[0].children;
 		if (!headings.every((want, i) => head[i] !== undefined && words(head[i]) === want)) continue;
-		return node.children.slice(1).map((row) => row.children.map(codes));
+		found.push(node.children.slice(1).map((row) => row.children.map(codes)));
 	}
-	return null;
+	return found;
 }
 
 /** Every node beneath one, itself included — `nodes` over a subtree rather than a document. */

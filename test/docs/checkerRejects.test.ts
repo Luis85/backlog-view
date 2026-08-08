@@ -534,6 +534,15 @@ describe.skipIf(process.platform === 'win32')('a filename Windows cannot check o
 			'the hierarchy table gives Deliverable more than one row',
 		],
 		[
+			// One level up from the duplicate ROW: with two tables under the same headings,
+			// checking the first validates one document while a reader sees two.
+			'a hierarchy documented twice, in two tables',
+			(files) => {
+				files['docs/README.md'] = `${hierarchyTable()}\n${hierarchyTable()}`;
+			},
+			'the hierarchy is documented twice',
+		],
+		[
 			'a directory entry whose name ends in a dot',
 			(files) => {
 				files['docs/issues/A trailing thought.md.'] = 'Not a note, and not a name Windows can hold.\n';
@@ -559,6 +568,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('scripts/docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(58);
+		expect(sites.length).toBe(59);
 	});
 });

@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tableRows, wikilinks } from "./docs-markdown.mjs";
+import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -888,10 +888,15 @@ for (const file of sources) {
  * column first and an inverse nobody derives is a second place to be wrong.
  */
 const HIERARCHY_HEADINGS = ["Type", "Parent may be", "Children may be"];
-const hierarchy = tableRows(await readFile(path.join(DOCS, "README.md"), "utf8"), HIERARCHY_HEADINGS);
-if (hierarchy === null) {
+const hierarchies = tablesWith(await readFile(path.join(DOCS, "README.md"), "utf8"), HIERARCHY_HEADINGS);
+if (hierarchies.length === 0) {
 	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
+} else if (hierarchies.length > 1) {
+	// Checking the first would validate one document while a reader sees two — the
+	// duplicate-ROW defect one level up, found in the same review.
+	fail("docs/README.md", `${hierarchies.length} tables headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented twice`);
 } else {
+	const hierarchy = hierarchies[0];
 	// A row may name several types at once (`Issue` / `Bug` / `Deliverable` share one), so
 	// the table is flattened to the same type → children shape the gate holds.
 	const documented = new Map();
