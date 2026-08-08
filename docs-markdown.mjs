@@ -172,11 +172,19 @@ export function sectionBody(text, title) {
  * should be — and a parser that gives them their own node type drops that coverage
  * silently unless the type is named here. A missing diagram breaks a document exactly as
  * a missing note does; the register embeds `assets/` and would have stopped noticing.
+ *
+ * A `definition` counts for a different reason. `[guide][g]` with `[g]: missing.md` below
+ * carries its destination on the definition, not on the reference, so neither this nor the
+ * `](` scan before it ever saw one — a gap rather than a regression, and one the register
+ * has no instance of, which is exactly why it would go on being invisible. Checking the
+ * definition covers every reference to it at once, and an unreferenced definition naming a
+ * file that is gone is dead prose worth the same report.
  */
+const LINKING = new Set(["link", "image", "definition"]);
 export function localLinks(text) {
 	const out = [];
 	for (const node of nodes(text)) {
-		if (node.type !== "link" && node.type !== "image") continue;
+		if (!LINKING.has(node.type)) continue;
 		if (/^[a-z][a-z0-9+.-]*:/i.test(node.url) || node.url.startsWith("#")) continue;
 		const [target] = node.url.split("#");
 		if (target) out.push({ href: node.url, target: decodeURIComponent(target) });

@@ -162,6 +162,16 @@ describe('links', () => {
 		expect(localLinks('![external](https://example.com/x.svg)')).toEqual([]);
 	});
 
+	it('covers a reference-style link, whose destination is on the DEFINITION', () => {
+		// `[guide][g]` is a `linkReference` and carries no url; the file it points at is on
+		// the `[g]: …` definition. Neither this nor the `](` scan before it saw one, so a
+		// broken reference-style link rendered dead with the gate green.
+		expect(localLinks('[guide][g]\n\n[g]: <A slice.md>\n').map((l: { target: string }) => l.target)).toEqual([
+			'A slice.md',
+		]);
+		expect(localLinks('[g]: https://example.com/a.md\n')).toEqual([]);
+	});
+
 	it('drops what is not a local file: external schemes and bare anchors', () => {
 		expect(localLinks('[x](https://example.com/a.md)')).toEqual([]);
 		expect(localLinks('[x](#within-this-note)')).toEqual([]);

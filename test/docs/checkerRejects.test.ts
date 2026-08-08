@@ -191,6 +191,16 @@ describe('cross-references', () => {
 			'links assets/gone.svg, which does not exist',
 		],
 		[
+			// A reference-style link keeps its destination on the definition, so neither the
+			// parser filter nor the `](` scan before it ever looked at one — a gap the
+			// register has no instance of, which is what kept it invisible.
+			'a reference-style link whose definition points at nothing',
+			(files) => {
+				files['docs/requirements/Thing.md'] = note('Epic', 10, null, '# Thing\n\n[guide][g]\n\n[g]: <No such note.md>\n');
+			},
+			'links No such note.md, which does not exist',
+		],
+		[
 			'a module no use case and no ADR specifies',
 			(files) => {
 				files['src/orphan.ts'] = 'export const orphan = 1;\n';
