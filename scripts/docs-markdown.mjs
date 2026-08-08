@@ -312,7 +312,12 @@ export function tablesWith(text, headings) {
 		if (node.type !== "table" || node.children.length === 0) continue;
 		const head = node.children[0].children;
 		if (head.length !== headings.length) continue;
-		if (!headings.every((want, i) => words(head[i]) === want)) continue;
+		// PLAIN TEXT, not merely the right words. `words` reads text nodes and ignores the
+		// rest, so `<del>Parent may be</del>` reads as `Parent may be` and matched — the
+		// document marking that column deleted while the check went on comparing it. The
+		// header cells are not in what this returns, so no caller-side whitelist could ever
+		// have reached them: it has to be here, where the table is identified.
+		if (!headings.every((want, i) => words(head[i]) === want && kinds(head[i]).every((kind) => kind === "text"))) continue;
 		found.push(node.children.slice(1).map((row) => row.children.map((cell) => ({ code: codes(cell), text: words(cell), kinds: kinds(cell) }))));
 	}
 	return found;

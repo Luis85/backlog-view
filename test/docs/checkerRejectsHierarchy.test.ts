@@ -186,6 +186,19 @@ describe('the documented hierarchy and the gate agree', () => {
 			'the hierarchy is documented nowhere',
 		],
 		[
+			// The header, which no caller-side rule could reach: the head cells are not in what
+			// `tablesWith` returns, so the node whitelist that closed the BODY case could never
+			// have applied here. `words` reads text nodes and ignores the rest, so a header
+			// wrapped in `<del>` still read as the heading it claims to be while the document
+			// marked that column deleted. The headings must be plain text now, and a decorated
+			// one means this is no longer the hierarchy table at all.
+			'a hierarchy header struck through with raw HTML',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('| Type | Parent may be |', '| Type | <del>Parent may be</del> |');
+			},
+			'the hierarchy is documented nowhere',
+		],
+		[
 			// A short row is NOT padded, so the destructuring bound `undefined` and the gate
 			// threw a TypeError — crashing rather than reporting, which is the failure mode
 			// `A gate that did not run looks like one that passed` names.
