@@ -4,6 +4,7 @@ import { placeItem } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { horizonSource } from '../domain/roadmap';
 import {
+	computeDeliverableStateWrites,
 	computeDropWrites,
 	computeHorizonWrites,
 	computeScheduleWrites,
@@ -17,9 +18,10 @@ import { BacklogViewHost } from './host';
 import { announceBoardMove, announceHorizonMove, announceScheduleMove } from './interactions/cardDrag';
 
 /**
- * Card-move write orchestration: the three `BacklogViewHost` methods a drag, an
- * Alt+arrow and a card menu all land on (`performBoardMove`, `performHorizonMove`,
- * `performScheduleMove`), plus the tree's own drop (`performDrop`). Extracted from
+ * Card-move write orchestration: the `BacklogViewHost` methods a drag, an Alt+arrow
+ * and a card menu all land on (`performBoardMove`, `performDeliverablesBoardMove`,
+ * `performHorizonMove`, `performScheduleMove`), plus the tree's own drop
+ * (`performDrop`). Extracted from
  * `ProductBacklogView` the same way `WriteGate` was — see
  * `docs/tasks/Split the view dispatch hub.md`, which named this exact cluster
  * ("the card-move plumbing") as a candidate seam and picked the write gate instead;
@@ -39,6 +41,18 @@ export class CardMoveController {
 		const from = item.stateValue;
 		const columns = this.host.board?.board;
 		return this.applyCardMove(item, computeStateWrites(item, state, this.host.settings, todayStamp()), () =>
+			announceBoardMove(columns, item.title, from, state),
+		);
+	}
+
+	async performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
+		const from = item.deliverableStateValue;
+		// `host.board` is the one snapshot field — it already holds whichever
+		// board-shaped projection's snapshot the last render produced, so reading it
+		// here needs no `host.projection` check: it is non-null on exactly this move's
+		// own board while the Deliverables projection is active.
+		const columns = this.host.board?.board;
+		return this.applyCardMove(item, computeDeliverableStateWrites(item, state), () =>
 			announceBoardMove(columns, item.title, from, state),
 		);
 	}

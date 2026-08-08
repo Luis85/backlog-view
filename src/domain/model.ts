@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
-import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isExtraType, isMarkerType } from './itemTypes';
+import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isDeliverableType, isExtraType, isMarkerType } from './itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -14,9 +14,15 @@ import {
 	readTags,
 	resolveParent,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './settings';
+import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from './settings';
+import { assertResolvedSettings } from './settingsConsistency';
 import { earliest, latest, reversedSpan } from './timeline';
-import { collectObservedHorizons, collectObservedStates, collectObservedTags } from './vocabulary';
+import {
+	collectObservedDeliverableStates,
+	collectObservedHorizons,
+	collectObservedStates,
+	collectObservedTags,
+} from './vocabulary';
 
 /**
  * The model is built in three phases, and each has its own type. A field exists only
@@ -25,8 +31,7 @@ import { collectObservedHorizons, collectObservedStates, collectObservedTags } f
  * placeholder values and a paragraph of prose asking readers to remember.
  *
  * `RawItem` → `LinkedItem` → `BacklogItem`, each extending the one before. Consumers
- * outside this module only ever meet `BacklogItem`, which still carries all 28 fields,
- * so nothing downstream changes.
+ * outside this module only ever meet `BacklogItem`, so nothing downstream changes.
  */
 
 /**
@@ -75,6 +80,10 @@ interface RawItem {
 	tags: string[];
 	/** True when the state value matches one of the configured done values. */
 	done: boolean;
+	/** Raw value of the Deliverable workflow's own state property, if configured. */
+	deliverableStateValue: string | null;
+	/** True when the Deliverable state matches one of ITS OWN configured done values. */
+	deliverableDone: boolean;
 	/** The roadmap horizon this note declares, if a horizon property is configured. */
 	horizon: FieldReading<string>;
 	/** The planned start date the note states, if a start property is configured. */
@@ -166,6 +175,14 @@ export interface BacklogModel {
 	 * ancestors loaded only for context inflate the answer.
 	 */
 	results: BacklogItem[];
+	/**
+	 * Every Deliverable-typed result in the base, regardless of any active focus level —
+	 * the Deliverables board's own population. Unlike `results`, which a focus level
+	 * re-roots to one subtree (`collectFocusRoots`), this is read off the whole,
+	 * unfocused tree, so no OTHER type being focused elsewhere can narrow it. Excludes
+	 * `outsideFilter` items, same as `results`.
+	 */
+	deliverableResults: BacklogItem[];
 	/** True when a focus level restricts the rendered tree. */
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
@@ -174,11 +191,14 @@ export interface BacklogModel {
 	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
+	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
+	observedDeliverableStates: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
 	ignoredCount: number;
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
+	assertResolvedSettings(settings);
 	const linked = linkAll(createItems(app, entries, settings), settings);
 	breakCycles(linked);
 	const ignoredCount = settings.hierarchyOnly ? pruneOutsideHierarchy(linked, settings) : 0;
@@ -186,6 +206,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// them here keeps them off the tree walk below.
 	const observedStates = collectObservedStates(linked.all, settings);
 	const observedTags = collectObservedTags(linked.all);
+	const observedDeliverableStates = collectObservedDeliverableStates(linked.all, settings);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
 	// The one vocabulary that is ORDERED rather than sorted, so it is taken from the
@@ -202,7 +223,18 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
-	const rest = { realRoots: roots, byPath, observedStates, observedTags, observedHorizons, ignoredCount };
+	const rest = {
+		realRoots: roots,
+		byPath,
+		observedStates,
+		observedTags,
+		observedHorizons,
+		observedDeliverableStates,
+		// Read off `items` — the whole tree `assignAll` just built, before either branch
+		// below narrows anything to a focus subtree. See `BacklogModel.deliverableResults`.
+		deliverableResults: items.filter((item) => !item.outsideFilter && isDeliverableType(item.typeName)),
+		ignoredCount,
+	};
 	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
 	if (focusIdx >= 0 || focusExtra) {
 		const focusRoots = collectFocusRoots(roots, focusIdx, focusExtra, settings);
@@ -273,6 +305,12 @@ function addItem(
 	const seed = outsideParentSeed(app, file, parentRef, settings);
 	const stateValue = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	const doneValues = settings.doneValues.map((v) => v.toLowerCase());
+	// Reads through the resolved (fallback-aware) key, never the raw `deliverableStateKey`
+	// — see `resolvedDeliverableStateKey`'s own comment for why the raw field stays
+	// unresolved in `BacklogSettings` itself.
+	const deliverableStateKey = resolvedDeliverableStateKey(settings);
+	const deliverableStateValue = deliverableStateKey ? readString(ownValue(fm, deliverableStateKey)) : null;
+	const deliverableDoneValues = settings.deliverableDoneValues.map((v) => v.toLowerCase());
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {
@@ -290,6 +328,9 @@ function addItem(
 		stateValue,
 		tags: settings.tagsKey ? readTags(ownValue(fm, settings.tagsKey)) : [],
 		done: stateValue !== null && doneValues.includes(stateValue.toLowerCase()),
+		deliverableStateValue,
+		deliverableDone:
+			deliverableStateValue !== null && deliverableDoneValues.includes(deliverableStateValue.toLowerCase()),
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
@@ -343,12 +384,7 @@ function readOwnKeys(
  * it is also the evidence that a note belongs to the hierarchy, and dropping a Base
  * result because its anchor happens to be hidden would be worse than not showing it.
  */
-function outsideParentSeed(
-	app: App,
-	file: TFile,
-	ref: ParentRef,
-	settings: BacklogSettings,
-): TFile | null {
+function outsideParentSeed(app: App, file: TFile, ref: ParentRef, settings: BacklogSettings): TFile | null {
 	if (ref.file) return ref.file;
 	if (!settings.folderHierarchy || ref.hasValue || ref.explicitRoot) return null;
 	return nearestFolderNote(app, file.path);

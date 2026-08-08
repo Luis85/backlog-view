@@ -135,6 +135,34 @@ describe('children on the card', () => {
 		]);
 	});
 
+	it('styles a done child by ITS OWN workflow, not the requirements one', () => {
+		// A Deliverable is offered as a child under an Epic, a Feature and a PBI, and it is
+		// tracked by its own workflow everywhere else — the board it has, the chip, the
+		// menu, the timeline bar. Asking `child.done` here dims one whose requirements
+		// state happens to read done and leaves a finished one undimmed, which is the same
+		// type-dispatch rule failing at one more surface.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'New', docStatus: 'Published' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Open.md', {
+			frontmatter: { type: 'Deliverable', order: 20, status: 'Done', docStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		const { containerEl } = makeBoard(vault, {
+			deliverableStateProperty: 'note.docStatus',
+			deliverableStateValues: 'Draft, Published',
+			deliverableDoneValues: 'Published',
+		});
+		const card = cardByTitle(containerEl, 'Epic');
+		disclosure(card)?.click();
+
+		const done = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid.pbl-done'));
+		expect(done.map((el) => el.querySelector('.pbl-card-kid-title')?.textContent)).toEqual(['Shipped']);
+	});
+
 	it('opens the child, not the card, on a primary click', () => {
 		const vault = boardVault();
 		const { containerEl } = makeBoard(vault);

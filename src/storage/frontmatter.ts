@@ -13,16 +13,15 @@ import {
 	readTags,
 } from '../domain/noteFields';
 import {
-	AXIS_FIELDS,
-	AxisField,
 	BacklogSettings,
 	isDoneValue,
-	OptionalField,
 	optionalKeyFor,
+	resolvedDeliverableStateKey,
 	vaultFolder,
 } from '../domain/settings';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
-import { AxisWrite, ItemWrite, TagDelta } from '../domain/writePlan';
+import { ItemWrite, TagDelta } from '../domain/writePlan';
+import { axisEntries, stubKeys, touchedKeys } from './writeKeys';
 
 /**
  * The ONLY module that writes frontmatter. Everything upstream decides what a
@@ -195,6 +194,13 @@ function applyInto(
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
+	// The RESOLVED key — falls back to the requirements workflow's own `stateKey` when
+	// the Deliverable one is unset, so a card that looks movable on the Deliverables
+	// board (the model read through the same fallback, `model.ts`) actually lands bytes
+	// somewhere rather than resolving to the empty key `optionalKeyFor` would give here.
+	const deliverableStateKey = resolvedDeliverableStateKey(settings);
+	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
+	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 	applyStamps(fm, settings, write, leaving);
 	applyAxis(fm, settings, write);
 	applyRisk(fm, settings, write);
@@ -260,6 +266,21 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 	}
 }
 
+
+/**
+ * The frontmatter keys this write will touch, in the order they are written.
+ *
+ * Deduped before it returns: the requirements state and the Deliverable state may
+ * explicitly share one key (`configProblems`' `STATE_KEY_SHARING_EXEMPT`), and a
+ * Deliverable item missing that key gets it named twice by `missingKeyStubs`, once for
+ * each field's own gap-check. A duplicate key makes `captureInverse` record the same
+ * before/after pair twice, and the second entry reads on `applyRestores` as a conflict —
+ * the first has already restored the value, so the compare-and-swap on the second sees
+ * something other than what the write wrote — inflating `RestoreOutcome.conflicts` for a
+ * restore that fully succeeded. Ordinary (non-exempt) collisions never reach here at
+ * all: `configProblems` gates every write while one is reported.
+ */
+
 /**
  * The item's risk level — the THIRD shape of this module's two standing rules: never a
  * key no property names, and a null REMOVES rather than blanks, because a note nobody has
@@ -278,37 +299,7 @@ function applyRisk(fm: Record<string, unknown>, settings: BacklogSettings, write
 	else setOwn(fm, settings.riskKey, write.risk);
 }
 
-/** The frontmatter keys this write will touch, in the order they are written. */
-function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
-	const keys: string[] = [];
-	if (write.removeParentKey || write.parent !== undefined) keys.push(settings.parentKey);
-	if (write.order !== undefined) keys.push(settings.orderKey);
-	if (write.typeName !== undefined) keys.push(settings.typeKey);
-	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	// Listed whenever the write CARRIES a stamp, including the started date it may
-	// decline to write: a key whose value did not change emits no inverse anyway, and
-	// listing it is what makes the dates ride the state's own undo.
-	if (write.startedDate !== undefined && settings.startedDateKey) keys.push(settings.startedDateKey);
-	if (write.finish !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
-	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
-	// Listed on the same condition `applyRisk` writes on, so applying and capturing read
-	// one rule: a key written but not captured would be a change no undo could reach.
-	if (write.risk !== undefined && settings.riskKey) keys.push(settings.riskKey);
-	for (const key of stubKeys(settings, write.stubs)) keys.push(key);
-	return keys;
-}
 
-/**
- * The configured keys a write's stubs name. Unconfigured fields drop out here, which
- * is the state key's rule applied to the one write that creates keys rather than
- * setting them: never a key no property names. Applying and capturing read this same
- * list, exactly as they do `axisEntries` — a key written but not captured would be a
- * change no undo could reach.
- */
-function stubKeys(settings: BacklogSettings, stubs?: OptionalField[]): string[] {
-	if (!stubs) return [];
-	return stubs.map((field) => optionalKeyFor(settings, field)).filter((key) => key !== '');
-}
 
 /**
  * The date stamps of one write. Never a write of their own — they mutate the same
@@ -431,24 +422,6 @@ function sameCivil(a: CivilDate, b: CivilDate | null): boolean {
 	return b !== null && a.year === b.year && a.month === b.month && a.day === b.day;
 }
 
-/**
- * The configured keys one axis write touches, each with the value it will write.
- * Applying and capturing read the SAME list: a key written but not captured would
- * be a change no undo could reach, which is exactly how a hole gets in.
- */
-function axisEntries(
-	settings: BacklogSettings,
-	axis?: AxisWrite,
-): { field: AxisField; key: string; value: string | null }[] {
-	if (!axis) return [];
-	const entries: { field: AxisField; key: string; value: string | null }[] = [];
-	for (const field of AXIS_FIELDS) {
-		const key = optionalKeyFor(settings, field);
-		const value = axis[field];
-		if (key !== '' && value !== undefined) entries.push({ field, key, value });
-	}
-	return entries;
-}
 
 /** The pair the note currently states, read the same tolerant way the model reads it. */
 function axisReadings(fm: Record<string, unknown>, settings: BacklogSettings): StatedEnds {

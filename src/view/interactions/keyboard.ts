@@ -1,4 +1,5 @@
 import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
+import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { RoadmapModel } from '../../domain/roadmap';
@@ -22,7 +23,7 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 
 /** One keydown entry for the scroller: the projection decides which handler runs. */
 export function handleProjectionKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
-	if (host.projection === 'board') handleBoardKeydown(host, evt);
+	if (host.projection === 'board' || host.projection === 'deliverables') handleBoardKeydown(host, evt);
 	else if (host.projection === 'roadmap') handleRoadmapKeydown(host, evt);
 	else handleTreeKeydown(host, evt);
 }
@@ -290,7 +291,14 @@ function handleBoardMoveKey(
 	// The edges hold rather than wrap: a card in the last column has nowhere further
 	// to advance, and wrapping would send finished work back to the start unasked.
 	if (target < 0 || target >= snapshot.board.columns.length) return;
-	void host.performBoardMove(card, snapshot.board.columns[target].state);
+	const state = snapshot.board.columns[target].state;
+	// The Deliverables board is the requirements board's own handler, over a different
+	// workflow: same navigation, same guards, but the write lands on the Deliverable
+	// property alone — never on the requirements one this handler otherwise writes.
+	// Asked of the CARD's type, the same question `chooseState` asks, so the keyboard
+	// and the menu cannot route one item's move to two different workflows.
+	if (isDeliverableType(card.typeName)) void host.performDeliverablesBoardMove(card, state);
+	else void host.performBoardMove(card, state);
 }
 
 /** The keys that are not navigation: undo, the column-stop Escape, and the filter pair. */

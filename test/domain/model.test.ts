@@ -3,6 +3,7 @@ import { buildModel } from '../../src/domain/model';
 import { childLevelIndex, displayType } from '../../src/domain/itemTypes';
 import { LEVELS, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
@@ -86,6 +87,39 @@ describe('buildModel', () => {
 
 		expect(names(model.roots)).toEqual(['Epic']);
 		expect(names(model.roots[0].children).sort()).toEqual(['Alias', 'Plain', 'Wiki']);
+	});
+
+	// The one BRACKETED state that reaches the raw fallback in a real vault — a bare name
+	// reaches it too, always, and `Plain.md` above is that case. Measured in Obsidian
+	// 2026-08-08: a note carrying `parent: "[[No Such Note]]"` has frontmatter and NO
+	// `frontmatterLinks` at all — a link resolving to nothing is not indexed — so path 1 has
+	// nothing to walk and the raw value is all there is.
+	//
+	// It does NOT cover the bracket stripping, and saying so is the point: this test was
+	// written believing it did, and it passes with `linkpathFromRawValue`'s wiki branch
+	// deleted. Both spellings fail to resolve — `[[No Such Note]]` and `No Such Note` are
+	// equally absent — so the strip changes the linkpath and never the answer. What it pins
+	// is the ORPHAN outcome on the path a vault actually takes, which is worth having and is
+	// less than it reads as.
+	//
+	// The bracketed fixtures above pair brackets with a target that EXISTS, which a vault
+	// DOES index for the plain `[[Name]]` form — measured 2026-08-08, both directions — so
+	// `Wiki.md` models a cache Obsidian does not hand out and reaches the strip through a
+	// state production cannot reach. `Alias.md` is the same shape on an assumption: the
+	// alias spelling was never read from the cache. Left as they are deliberately: see
+	// `docs/issues/The fake vault can hold a cache Obsidian would not produce.md`.
+	it('reports an unresolvable parent link as an orphan', () => {
+		const vault = new FakeVault();
+		vault.addFile('Child.md', { frontmatter: { parent: '[[No Such Note]]' } });
+
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(names(model.roots)).toEqual(['Child']);
+		// An ORPHAN — a parent that was named and did not resolve — never a root that never
+		// named one. The distinction is what `clearsStaleLink` acts on when the note is moved.
+		expect(model.roots[0].orphan).toBe(true);
+		expect(model.roots[0].hasParentValue).toBe(true);
+		expect(model.roots[0].parent).toBeNull();
 	});
 
 	it('uses the first entry of a list-valued parent property', () => {
@@ -395,7 +429,7 @@ describe('buildModel with a focus level', () => {
 		// A Bug ranks with the PBI rung, so focusing that rung has to surface it —
 		// otherwise it does not render at all, having no PBI above it to hang from.
 		vault.addFile('Bug.md', { frontmatter: { type: 'Bug' }, parentLink: 'Epic' });
-		const model = buildModel(vault.app, vault.entries(), { ...defaultSettings(), focusLevel: 'PBI' });
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ focusLevel: 'PBI' }));
 		expect(model.focused).toBe(true);
 		expect(model.roots.map((r) => r.title).sort()).toEqual(['Bug', 'PBI']);
 	});
@@ -535,5 +569,37 @@ describe('buildModel progress rollup', () => {
 		const model = buildModel(vault.app, vault.entries(), { ...settings, stateKey: 'status' });
 
 		expect(model.observedStates).toEqual(['Active', 'Ready', 'Done']);
+	});
+});
+
+describe('buildModel refuses settings the resolver could not have produced', () => {
+	/**
+	 * The guard's own test, at the call site rather than on the predicate — which
+	 * `settings.test.ts` covers separately. It exists because a fixture is the one producer
+	 * that skips `resolveSettings`, and `buildModel` is the widest choke point a settings
+	 * object passes through: see
+	 * `docs/issues/A hand-built fixture can model a state the producer cannot produce.md`.
+	 *
+	 * The literal spread is what the rule bans and what this test is ABOUT, so it is written
+	 * out rather than built through `settingsWith` — which would derive the very defect
+	 * being driven here.
+	 */
+	it('throws, naming the relationship and where to go instead', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// eslint-disable-next-line no-restricted-syntax
+		const unreachable = { ...defaultSettings(), stateKey: 'status', states: ['New', 'Done'] };
+
+		expect(() => buildModel(vault.app, vault.entries(), unreachable)).toThrow(/deliverableStates is empty/);
+		expect(() => buildModel(vault.app, vault.entries(), unreachable)).toThrow(/resolveSettings/);
+	});
+
+	it('builds normally once that same fixture is one a user could set', () => {
+		// The pair, so "refuses" cannot drift into "refuses everything".
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const reachable = settingsWith({ stateKey: 'status', states: ['New', 'Done'] });
+
+		expect(buildModel(vault.app, vault.entries(), reachable).items).toHaveLength(1);
 	});
 });

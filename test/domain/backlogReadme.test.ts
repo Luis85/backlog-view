@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
 import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
+import { settingsWith } from '../helpers/settings';
 
 /**
  * The generated README is documentation the plugin promises is true, so these tests
  * ask what it SAYS rather than how it is built: every type explained, every key the
  * one this view uses, every state the view actually offers.
  */
-
-const settingsWith = (over: Partial<BacklogSettings> = {}): BacklogSettings => ({ ...defaultSettings(), ...over });
 
 /** Which view generated the document — the identity its marker carries. */
 const SOURCE = 'work/Product Backlog.base › Backlog';
@@ -33,10 +32,11 @@ describe('backlogReadmeContent', () => {
 		const content = readme(settingsWith(), []);
 		// The prose above the table names two categories whose lengths are `settings.ts`'s
 		// business, and joining either with ` and ` between every pair reads as English
-		// only at two: three shipped "Issue and Bug and Idea". Both lengths are asserted
-		// because both have a live caller — the one-name form is the markers' today, and
-		// it is the arm that would otherwise be reachable code nothing checks.
-		expect(content).toContain('Issue, Bug and Idea sit *beside* it');
+		// only at two: three shipped "Issue and Bug and Idea", and there are four now that
+		// `Idea` and `Deliverable` were merged into one vocabulary. Both lengths are
+		// asserted because both have a live caller — the one-name form is the markers'
+		// today, and it is the arm that would otherwise be reachable code nothing checks.
+		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
 		expect(content).toContain('Milestone is neither');
 		expect(content).not.toContain('and Bug and');
 	});
@@ -70,6 +70,14 @@ describe('backlogReadmeContent', () => {
 	it('documents the tags property when one is configured, and not when it is off', () => {
 		expect(readme(settingsWith({ tagsKey: 'labels' }), [])).toContain('| `labels` |');
 		expect(readme(settingsWith({ tagsKey: '' }), [])).not.toContain('Tags, as a YAML list');
+	});
+
+	it('lists Deliverable in the type section, and does not claim only extras can root', () => {
+		const content = backlogReadmeContent(defaultSettings(), [], 'test');
+		expect(content).toContain('Deliverable');
+		// A Feature/PBI/Task can also be created with no parent (the toolbar's top-level
+		// creator draws no line anywhere in ALL_TYPES) — the prose must not say otherwise.
+		expect(content).not.toMatch(/only.*(root|no parent)/i);
 	});
 
 	it('states the ranking step the planner actually uses', () => {
@@ -524,7 +532,7 @@ describe('backlogReadmeContent', () => {
 		// Not every move: only one into a NEW parent, and never an extra type.
 		expect(auto).toContain('rewrites what you drag into a **new parent**');
 		expect(auto).toContain('Reordering among siblings rewrites nothing');
-		expect(auto).toContain('`Issue`, `Bug` and `Idea` keep their type wherever they land');
+		expect(auto).toContain('`Issue`, `Bug`, `Idea` and `Deliverable` keep their type wherever they land');
 		expect(auto).toContain('deeper in the subtree you dragged is left alone');
 	});
 

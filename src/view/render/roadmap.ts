@@ -9,6 +9,7 @@ import { DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { wireTimelineDrag } from '../interactions/timelineDrag';
+import { StatePalette, statePalettes } from '../../domain/board';
 import { timelineRows } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { buildRoadmap, HorizonBucket, RoadmapAxis } from '../../domain/roadmap';
@@ -53,6 +54,7 @@ export function renderRoadmap(
 			scale: null,
 			leadWidth: null,
 			drawn: { done: false, milestone: false, accent: false },
+			palettes: [],
 		};
 	}
 	const roadmap = buildRoadmap(model, host.settings, (item) => !host.isRowHidden(item), axis);
@@ -65,6 +67,9 @@ export function renderRoadmap(
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
 	let drawn: DrawnColors = { done: false, milestone: false, accent: false };
+	// Built once, drawn from by the bars and then carried out on the snapshot for the
+	// legend — see `RoadmapSnapshot.palettes`. Empty on the horizon axis, which draws no bar.
+	let palettes: StatePalette[] = [];
 	if (axis === 'horizons') {
 		const bucketsEl = frameEl.createDiv({ cls: 'pbl-roadmap-buckets' });
 		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd));
@@ -73,6 +78,7 @@ export function renderRoadmap(
 		dnd.wireScroller(treeEl);
 	} else {
 		const activeScale = scaleFor(host.zoom);
+		palettes = statePalettes(model, host.settings);
 		// The rows the grid draws, which is the bars minus whatever a collapsed bar above
 		// them is holding shut. Asked here rather than inside `buildRoadmap`: collapse is
 		// the view's own state, and the shelf beside the grid is a statement about what the
@@ -82,7 +88,7 @@ export function renderRoadmap(
 			today,
 			scale: activeScale,
 			dnd,
-			observedStates: model.observedStates,
+			palettes,
 			// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 			// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
 			// a resize-driven re-render there measure the same box. They can still read it
@@ -132,7 +138,7 @@ export function renderRoadmap(
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
-	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth, drawn };
+	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth, drawn, palettes };
 }
 
 /**

@@ -36,6 +36,8 @@ const MAX_PATHS = 8000;
 export const BOARD_MODE = 'board';
 /** The value the `mode` field holds while the view is a roadmap. */
 export const ROADMAP_MODE = 'roadmap';
+/** The value the `mode` field holds while the view is the Deliverables board. */
+export const DELIVERABLES_MODE = 'deliverables';
 /**
  * The values the `axis` field may hold — which roadmap axis this saved view shows
  * when both are configured. Mirrors `RoadmapAxis` in `domain/roadmap.ts`; spelled
@@ -67,7 +69,7 @@ const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 export interface CollapseSnapshot {
 	collapsed: Set<string>;
 	expanded: Set<string>;
-	/** `BOARD_MODE` or `ROADMAP_MODE`; null or absent means the tree. */
+	/** `BOARD_MODE`, `ROADMAP_MODE` or `DELIVERABLES_MODE`; null or absent means the tree. */
 	mode?: string | null;
 	/** The retained roadmap-axis pick; null or absent means the user never picked. */
 	axis?: string | null;
@@ -410,7 +412,7 @@ function readEntry(value: unknown): StoredEntry | null {
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
 	const entry: StoredEntry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
-	const mode = readEnum(record.mode, [BOARD_MODE, ROADMAP_MODE]);
+	const mode = readEnum(record.mode, [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE]);
 	if (mode !== undefined) entry.mode = mode;
 	const axis = readEnum(record.axis, AXIS_VALUES);
 	if (axis !== undefined) entry.axis = axis;

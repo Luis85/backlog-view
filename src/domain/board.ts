@@ -1,5 +1,15 @@
+import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
-import { BacklogSettings, byName, stateMenuValues } from './settings';
+import { sameValue } from './noteFields';
+import {
+	BacklogSettings,
+	byName,
+	menuValues,
+	resolvedDeliverableStateKey,
+	STATE_COLOR_SLOTS,
+	stateMenuValues,
+} from './settings';
+import { collectObservedStates } from './vocabulary';
 
 /**
  * Deriving the board from the model and the settings: which columns exist, which
@@ -73,30 +83,303 @@ export const NO_STATE_LABEL = 'No state';
 export const NO_STATE_COLLISION_LABEL = 'Unset';
 
 /**
+ * What a board's columns are drawn from: how to read a card's state, the configured
+ * list (or its observed fallback), the raw observed values (for the stray-column pass,
+ * which needs them even once a workflow IS configured), the done values, and the
+ * per-state WIP limits/policies — `{}` for a workflow that carries neither.
+ */
+export interface Workflow {
+	stateOf(item: BacklogItem): string | null;
+	values: string[];
+	observedValues: string[];
+	doneValues: string[];
+	wipLimits: Record<string, number>;
+	columnPolicies: Record<string, string>;
+}
+
+/**
+ * The requirements board's workflow — `boardColumns`' original, only caller until now.
+ *
+ * ONE observed vocabulary, feeding both passes that can mint a column: the configured
+ * list's fallback (`stateMenuValues`, when no workflow is declared) and the stray pass
+ * that runs even once one is. It is collected here rather than taken from
+ * `model.observedStates`, which counts every result — Deliverables are managed on their
+ * own board (`renderRequirementsBoard`) and never become a card here, so a value only
+ * one of them carries must not open a column nothing can ever land in. Both halves, not
+ * one: scoping the strays alone still let the fallback draw the Deliverable-only column,
+ * which is the same defect through the other door.
+ *
+ * It is the FOCUSED population, since `model.results` is what a focus narrows. With a
+ * declared workflow that changes nothing — the columns are the declaration. Without
+ * one, the board draws the states its own visible work actually holds, which is the
+ * only vocabulary it could offer honestly: an unfocused list would draw columns for
+ * work this board is not showing.
+ *
+ * Stated in this factory rather than spread-and-overridden at the call site, so the
+ * domain tests exercise the same workflow the view builds instead of one the view then
+ * replaces a field of.
+ */
+export function requirementsWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
+	const observed = collectObservedStates(
+		model.results.filter((item) => !isDeliverableType(item.typeName)),
+		settings,
+	);
+	return {
+		stateOf: (item) => item.stateValue,
+		values: stateMenuValues(settings, observed),
+		observedValues: observed,
+		doneValues: settings.doneValues,
+		wipLimits: settings.wipLimits,
+		columnPolicies: settings.columnPolicies,
+	};
+}
+
+/**
+ * The requirements board's candidate roots under a focus — `model.roots` with each
+ * excluded Deliverable replaced by its own topmost non-Deliverable descendants.
+ *
+ * `Deliverable` is in `EXTRA_TYPES`, so `collectFocusRoots` promotes one to a focus root
+ * at the extra-type rung exactly as it promotes a Bug, and this board then excludes it.
+ * Without this descent its requirement children are neither cards of their own nor rolled
+ * into a parent card that is on screen — counted by the toolbar and represented by
+ * nothing. Unfocused they each get a card, because the candidates are the results
+ * themselves; this is that same answer under a focus, reached by the very descent
+ * `collectFocusRoots` already makes for a root that does not match its filter.
+ *
+ * A CONTEXT Deliverable is kept rather than descended through: the board admits one as
+ * placement (see `renderRequirementsBoard`'s predicate) and it renders whenever it has a
+ * visible child, so its descendants already have a card to sit under. Descending would
+ * card them beside the parent that is there to place them.
+ */
+export function requirementsFocusRoots(roots: BacklogItem[]): BacklogItem[] {
+	const candidates: BacklogItem[] = [];
+	const collect = (list: BacklogItem[]): void => {
+		for (const item of list) {
+			if (isDeliverableType(item.typeName) && !item.outsideFilter) collect(item.children);
+			else candidates.push(item);
+		}
+	};
+	collect(roots);
+	return candidates;
+}
+
+/**
+ * The frontmatter key THIS item's state lives under — the resolved Deliverable key for
+ * a Deliverable, the requirements `stateKey` for everything else, and `''` when the
+ * workflow that tracks it has no key configured at all.
+ *
+ * The same "an item's workflow follows its TYPE" rule the chip and the menu both
+ * render from, stated once so they cannot gate on different keys: a chip drawn where
+ * the menu offers nothing, or a menu offering picks that write to an empty key, are
+ * the two halves of one disagreement. `''` is what makes "no key, no affordance" a
+ * single test rather than a per-surface one.
+ */
+export function stateKeyFor(settings: BacklogSettings, item: BacklogItem): string {
+	return isDeliverableType(item.typeName) ? resolvedDeliverableStateKey(settings) : settings.stateKey;
+}
+
+/** An item's state value and whether that value counts as done, from one workflow. */
+export interface WorkflowReading {
+	value: string | null;
+	done: boolean;
+}
+
+/**
+ * The same "an item's workflow follows its TYPE" rule `stateKeyFor` states for the KEY,
+ * stated once more for the VALUE: a Deliverable's own reading is the Deliverable
+ * workflow's value and done flag, never the requirements pair sitting on the same note.
+ * Before this existed, the chip and the menu each hand-wrote the same
+ * `isDeliverableType(item) ? deliverable : requirements` ternary — two copies of one
+ * rule is how they came to disagree in the first place.
+ *
+ * The pair is returned together so both halves come from ONE type decision: a caller
+ * that needs only the value still gets the value of the workflow whose done flag it
+ * would have got. It does not stop a caller taking one half — `stateChoices` legitimately
+ * takes `.value` alone — and that is not what the pairing is for.
+ */
+export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
+	return isDeliverableType(item.typeName)
+		? { value: item.deliverableStateValue, done: item.deliverableDone }
+		: { value: item.stateValue, done: item.done };
+}
+
+/**
+ * Whether this base has a state column at all: EITHER workflow having a key is enough,
+ * because a vault that configures only the Deliverable one still has Deliverable rows
+ * with a state to show. Rows whose own workflow has no key render an empty cell — every
+ * configured column renders on every row, or the columns after it shift per row.
+ */
+export function hasStateColumn(settings: BacklogSettings): boolean {
+	return settings.stateKey !== '' || settings.deliverableStateKey !== '';
+}
+
+/**
+ * The Deliverables board's own workflow — no WIP limits or column policies (Scope).
+ * `values`' fallback is the same rule `stateMenuValues` already states for the
+ * requirements workflow, applied to the Deliverable one's own configured/observed pair.
+ */
+export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
+	return {
+		stateOf: (item) => item.deliverableStateValue,
+		values: menuValues(settings.deliverableStates, settings.deliverableDoneValues, model.observedDeliverableStates),
+		observedValues: model.observedDeliverableStates,
+		doneValues: settings.deliverableDoneValues,
+		wipLimits: {},
+		columnPolicies: {},
+	};
+}
+
+/**
+ * The colour vocabularies a dated-axis bar can be keyed into, in the order their slots
+ * are assigned — only the workflows that can actually key something, and only where they
+ * are genuinely two vocabularies, so the list has two entries only where the base really
+ * shows two.
+ *
+ * A palette is a VOCABULARY, not a property, and both halves of that matter:
+ *
+ * - **It can draw** when its RESOLVED key is non-empty. Without a key `domain/model.ts`
+ *   sets that workflow's every state value to null, so no bar it tracks can carry a
+ *   colour — and a vocabulary here that nothing can draw is the defect the legend's own
+ *   rule names. Resolved, not raw: a falling-back Deliverable workflow reads the
+ *   requirements property, which is a real property, so it draws.
+ * - **It is a SECOND one** when the user DECLARED a second — its own property, or its own
+ *   list of values or done values (`declaresOwnWorkflow`). Asked of the DECLARATIONS, not
+ *   of the two computed lists: with no list configured each workflow falls back to its own
+ *   OBSERVED states, and those populations are disjoint by construction
+ *   (`requirementsWorkflow` excludes Deliverables), so comparing the computed lists splits
+ *   one workflow in two in a base that declared nothing at all.
+ *
+ * With two: the label names each so one strip says which is which, and slots CONTINUE
+ * across them rather than restarting — hence an ordered list plus an offset rather than
+ * two independent vocabularies. Restarting would paint a Deliverable's first state the
+ * same colour as a PBI's, and those are different facts. Four slots still wrap
+ * (`STATE_COLOR_SLOTS`), so a long enough pair repeats.
+ *
+ * A lone one is unlabelled and starts at slot 0: nothing to tell it apart from, and no
+ * earlier vocabulary to continue from. NEITHER able to draw returns an empty list, so a
+ * caller has to say what it does with no vocabulary at all rather than be handed one that
+ * silently keys nothing.
+ */
+export interface StatePalette {
+	/** Names the workflow in the legend; empty when there is only one and nothing to tell apart. */
+	label: string;
+	values: string[];
+	doneValues: string[];
+	/** Where this palette's first value sits in the continuing slot sequence. */
+	offset: number;
+}
+
+export function statePalettes(model: BacklogModel, settings: BacklogSettings): StatePalette[] {
+	const drawable: StatePalette[] = [];
+	if (settings.stateKey !== '') {
+		drawable.push({
+			label: 'Work',
+			values: requirementsWorkflow(model, settings).values,
+			doneValues: settings.doneValues,
+			offset: 0,
+		});
+	}
+	// `drawable.length === 0` is the requirements workflow having no key at all: whatever
+	// was declared, there is no first vocabulary for this one to be the same AS.
+	if (resolvedDeliverableStateKey(settings) !== '' && (drawable.length === 0 || declaresOwnWorkflow(settings))) {
+		drawable.push({
+			label: 'Deliverables',
+			values: deliverablesWorkflow(model, settings).values,
+			doneValues: settings.deliverableDoneValues,
+			// Past everything already assigned — one statement rather than a second copy
+			// of "the requirements list comes first", which is only true while it is here.
+			offset: drawable.reduce((sum, palette) => sum + palette.values.length, 0),
+		});
+	}
+	return drawable.length === 1 ? [{ ...drawable[0], label: '', offset: 0 }] : drawable;
+}
+
+/**
+ * Whether the Deliverable settings declare a workflow of their own rather than following
+ * the requirements one: its own property, its own states, or its own done values. Any of
+ * the three is enough — two workflows agreeing on the states while disagreeing on which of
+ * them is finished paint the same value differently, since done outranks a slot.
+ */
+function declaresOwnWorkflow(settings: BacklogSettings): boolean {
+	const alike = (x: string[], y: string[]): boolean =>
+		x.length === y.length && x.every((value, i) => sameValue(value, y[i]));
+	return (
+		settings.deliverableStateKey !== '' ||
+		!alike(settings.deliverableStates, settings.states) ||
+		!alike(settings.deliverableDoneValues, settings.doneValues)
+	);
+}
+
+/**
+ * The palette an ITEM is keyed into — its own workflow, the rule `stateKeyFor` and
+ * `ownWorkflowReading` already state for the key and the value. Before this, a bar took
+ * its colour from the requirements vocabulary whatever the item was, so a Deliverable
+ * with its own workflow drew a colour naming a state it does not hold, and changing the
+ * state that IS its own moved nothing on the grid.
+ *
+ * Undefined where no workflow has a key at all, which is a real configuration and not an
+ * error: the caller decides what a bar with no vocabulary draws, rather than this handing
+ * back an empty palette that would answer "no slot" while looking like a vocabulary.
+ */
+export function paletteFor(palettes: StatePalette[], item: BacklogItem): StatePalette | undefined {
+	return palettes.length > 1 && isDeliverableType(item.typeName) ? palettes[1] : palettes[0];
+}
+
+/**
+ * Which palette slot a state value's bar takes on the roadmap's dated axis: its index in
+ * that palette's own vocabulary — the same list the workflow's columns and its Set state
+ * menu use, so a bar and a menu entry can never disagree about a state's colour — shifted
+ * by the palette's `offset` and wrapped modulo `STATE_COLOR_SLOTS` so a vocabulary longer
+ * than the palette repeats rather than running out. No state, or a value outside the
+ * vocabulary (an item's own unlisted value, most often), gets no slot: null, which is the
+ * bar's plain accent colour rather than a guess.
+ *
+ * The bar asks this of `paletteFor(item)` and the legend asks it of each palette in turn,
+ * which is the whole of why it takes a palette rather than settings: those two used to be
+ * one vocabulary read twice, and a legend that keys a colour no bar draws — or misses one
+ * every bar does — is the only failure this feature has ever had.
+ */
+export function paletteSlot(palette: StatePalette, state: string | null): number | null {
+	const index = palette.values.findIndex((value) => sameValue(value, state));
+	return index === -1 ? null : (palette.offset + index) % STATE_COLOR_SLOTS;
+}
+
+/**
+ * Done by THIS palette's own list, never `settings.doneValues`: the Deliverable workflow
+ * declares its own, so asking the requirements list would paint a finished Deliverable
+ * with a slot colour while its bar took the green override — the legend disagreeing with
+ * the only thing it exists to explain.
+ */
+export function paletteDone(palette: StatePalette, state: string): boolean {
+	return palette.doneValues.some((value) => sameValue(value, state));
+}
+
+/**
  * Project the model onto columns. `visible` is the view's own row-visibility rule
  * (quick filter, hidden completed subtrees, the context-placement test) passed in
  * whole, so the board and the tree cannot disagree about what is hidden — one
  * predicate answers for both projections.
  *
- * Which items become cards is the focus level's question: unfocused, every result
- * is a card; focused, the rendered roots are — results as live cards, and a
- * focus-level item outside the filter as an inert context card that still places
- * its results ({@link BoardColumn.cards}).
+ * `candidates` is which items become cards — the caller's question, not this
+ * function's: unfocused, every result is a card; focused, the rendered roots are —
+ * results as live cards, and a focus-level item outside the filter as an inert
+ * context card that still places its results ({@link BoardColumn.cards}).
  */
 export function boardColumns(
-	model: BacklogModel,
-	settings: BacklogSettings,
+	workflow: Workflow,
+	candidates: BacklogItem[],
 	visible: (item: BacklogItem) => boolean,
 	population: (item: BacklogItem) => boolean = visible,
 ): BoardModel {
-	const { columns, byValue, noState } = workflowColumns(model, settings);
+	const { columns, byValue, noState } = workflowColumns(workflow);
 	// State-to-column matching is case-insensitive, exactly as doneValues matching
 	// already is. A card whose state names no column gathers under no-state rather
 	// than minting one — only an OBSERVED result value mints a column, above.
-	const columnFor = (card: BacklogItem): BoardColumn =>
-		(card.stateValue !== null ? byValue.get(card.stateValue.toLowerCase()) : undefined) ?? noState;
+	const columnFor = (card: BacklogItem): BoardColumn => {
+		const state = workflow.stateOf(card);
+		return (state !== null ? byValue.get(state.toLowerCase()) : undefined) ?? noState;
+	};
 
-	const candidates = model.focused ? model.roots : model.results;
 	const cards = candidates.filter(visible);
 	const sortIndex = new Map<BacklogItem, number>();
 	for (const card of cards) {
@@ -136,13 +419,9 @@ export function overBy(col: BoardColumn): number {
  * not name. `byValue` is the case-insensitive index the placement uses.
  */
 function workflowColumns(
-	model: BacklogModel,
-	settings: BacklogSettings,
+	workflow: Workflow,
 ): { columns: BoardColumn[]; byValue: Map<string, BoardColumn>; noState: BoardColumn } {
-	// The same fallback the state menus use, so with no configured list the board
-	// still draws the observed workflow rather than nothing.
-	const workflow = stateMenuValues(settings, model.observedStates);
-	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
+	const done = new Set(workflow.doneValues.map((v) => v.toLowerCase()));
 	const column = (state: string | null, outsideWorkflow: boolean): BoardColumn => ({
 		state,
 		label: state ?? NO_STATE_LABEL,
@@ -153,11 +432,11 @@ function workflowColumns(
 		fullCount: 0,
 		// `byName`, never a bare index: a state value is user data, and a workflow may
 		// legitimately contain a state called `constructor`.
-		limit: byName(settings.wipLimits, state) ?? null,
-		policy: byName(settings.columnPolicies, state) ?? '',
+		limit: byName(workflow.wipLimits, state) ?? null,
+		policy: byName(workflow.columnPolicies, state) ?? '',
 	});
 	const noState = column(null, false);
-	const columns = [noState, ...workflow.map((s) => column(s, false))];
+	const columns = [noState, ...workflow.values.map((s) => column(s, false))];
 	const byValue = new Map<string, BoardColumn>();
 	for (const col of columns) {
 		if (col.state !== null) byValue.set(col.state.toLowerCase(), col);
@@ -165,7 +444,7 @@ function workflowColumns(
 	// A stray value still gets a column — losing a result to an unmapped status is
 	// the routine failure of every surveyed board. Minted from the observed states
 	// (results only, in their menu order), so an excluded note's value never mints one.
-	for (const value of model.observedStates) {
+	for (const value of workflow.observedValues) {
 		if (byValue.has(value.toLowerCase())) continue;
 		const col = column(value, true);
 		byValue.set(value.toLowerCase(), col);

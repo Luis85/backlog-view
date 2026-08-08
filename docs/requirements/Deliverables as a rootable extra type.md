@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Work item hierarchy]]"
 order: 70
-status: Open
+status: Done
 priority: P2
 created: 2026-08-06
 source: user request

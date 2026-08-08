@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 import { README_MARKER_PREFIX, displaySource, joinSource, readmeMarker, readmeSource } from '../../src/domain/readmeMarker';
-import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
+import { BacklogSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 
 /**
  * The marker is the generated README's IDENTITY, which is a different subject from what
@@ -16,8 +17,6 @@ import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
  * already there, since these tests reach `readmeMarker.ts` and the ones left behind read
  * the document's prose.
  */
-
-const settingsWith = (over: Partial<BacklogSettings> = {}): BacklogSettings => ({ ...defaultSettings(), ...over });
 
 /** Which view generated the document — the identity its marker carries. */
 const SOURCE = 'work/Product Backlog.base › Backlog';

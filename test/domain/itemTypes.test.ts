@@ -47,6 +47,7 @@ function fixture() {
 	// An Idea under the DEEPEST legal parent, where the Bug above sits under the shallowest:
 	// between them the pinned rank is asked at both ends of the ladder.
 	vault.addFile('Idea.md', { frontmatter: { type: 'Idea', order: 10 }, parentLink: 'PBI' });
+	vault.addFile('Deliverable.md', { frontmatter: { type: 'Deliverable', order: 50 }, parentLink: 'Epic' });
 	// A marker hangs from nothing — a root by nature, not by ladder position.
 	vault.addFile('Milestone.md', { frontmatter: { type: 'Milestone', order: 40 } });
 	const model = buildModel(vault.app, vault.entries(), settings);
@@ -112,9 +113,9 @@ describe('extra types on the ladder', () => {
 describe('childTypeChoices', () => {
 	it('offers the extra types under every rung above the deepest', () => {
 		const { get } = fixture();
-		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Idea']);
-		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug', 'Idea']);
-		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug', 'Idea']);
+		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Idea', 'Deliverable']);
+		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug', 'Idea', 'Deliverable']);
+		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug', 'Idea', 'Deliverable']);
 	});
 
 	it('offers no extras under a Task or under an extra type', () => {
@@ -159,14 +160,14 @@ describe('childTypeChoices', () => {
 	it('offers the ladder then the extras for assignment by hand', () => {
 		// The marker joins as a third category, after the extras — ALL_TYPES is the
 		// whole vocabulary, not just the ladder and the pinned container.
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Milestone']);
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone']);
 	});
 
 	it('is a fixed vocabulary, matched case-insensitively', () => {
 		// Not configurable on purpose: every level rule would otherwise have to hold for
 		// any list a user can type, and the reward was a rename.
 		expect(LEVELS).toEqual(['Epic', 'Feature', 'PBI', 'Task']);
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Milestone']);
+		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone']);
 		expect(isExtraType('bug')).toBe(true);
 		expect(isExtraType('Bugfix')).toBe(false);
 		expect(isExtraType(null)).toBe(false);
@@ -193,6 +194,22 @@ describe('childTypeChoices', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		expect(model.items.map((i) => i.title)).toEqual(['Epic']);
 		expect(model.ignoredCount).toBe(1);
+	});
+
+	it('pins Deliverable at EXTRA_TYPE_RANK wherever it hangs, holding only Tasks', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 }, parentLink: 'Epic' });
+		const model = buildModel(vault.app, vault.entries(), defaultSettings());
+		const d = model.items.find((i) => i.title === 'D');
+		if (!d) throw new Error('missing D');
+		expect(d.effectiveLevelIndex).toBe(EXTRA_TYPE_RANK);
+		expect(d.levelIndex).toBe(-1);
+		expect(childTypeChoices(d)).toEqual(['Task']);
+	});
+
+	it('defaults the Deliverable folder to <home>/deliverables', () => {
+		expect(defaultTypeFolder('Deliverable')).toBe('docs/deliverables');
 	});
 });
 

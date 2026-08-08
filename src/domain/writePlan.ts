@@ -1,7 +1,15 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex, PlacementEnd } from './itemTypes';
+import {
+	childLevelIndex,
+	EXTRA_TYPE_RANK,
+	isDeliverableType,
+	isExtraType,
+	isMarkerType,
+	nextLevelIndex,
+	PlacementEnd,
+} from './itemTypes';
 import { readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import {
@@ -45,6 +53,10 @@ export interface ItemWrite {
 	 * `removeParentKey`: absence is a value here, never written as an empty string.
 	 */
 	removeStateKey?: boolean;
+	/** New value for the Deliverable workflow's own state property. */
+	deliverableState?: string;
+	/** Remove the Deliverable state property entirely — its no-state column's drop. */
+	removeDeliverableStateKey?: boolean;
 	/**
 	 * Tags to add and remove (without '#'). A delta rather than the new list,
 	 * because the row it came from can be a refresh behind the note: two removals
@@ -314,6 +326,18 @@ export function computeStateWrites(
 }
 
 /**
+ * Everything ONE Deliverable-workflow state change writes: the target column's
+ * canonical value, or key removal for the no-state target. No stamp logic — the
+ * Deliverables board carries no started/finished date stamps (Scope).
+ */
+export function computeDeliverableStateWrites(item: BacklogItem, state: string | null): ItemWrite[] {
+	if (sameValue(item.deliverableStateValue, state)) return [];
+	return [
+		state === null ? { file: item.file, removeDeliverableStateKey: true } : { file: item.file, deliverableState: state },
+	];
+}
+
+/**
  * The dates a state change stamps, as fields of the same write — one file, one
  * `processFrontMatter` call, so one undo takes the state and its dates back together.
  * A stamp is never a second write.
@@ -465,6 +489,11 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// which is the incoherence `hasHorizonAxis` exists to prevent. The other fields
 		// need no such test: a key of '' is exactly what unconfigured means for them.
 		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
+		// The Deliverable workflow's own state describes a Deliverable, never a PBI, a
+		// Task or any other type sharing the same backfill pass — the property-table row
+		// this key gets in the generated README (Task 20) says "on a Deliverable", and
+		// this is what keeps that literally true rather than aspirational.
+		if (field === 'deliverableState' && !isDeliverableType(item.typeName)) continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

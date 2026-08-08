@@ -75,6 +75,18 @@ export const list = (values: string[]): string =>
 	values.length > 0 ? values.map((v) => (v.startsWith('*') ? v : cell(v))).join(', ') : '*(nothing)*';
 
 /**
+ * Values joined as an exhaustive prose list — "A", "A and B", "A, B and C" — never a
+ * bare `join(' and ')`, which reads right at two items and wrong at three or more.
+ * Takes values already in their final form (a caller wanting a code span calls `code`
+ * itself first, as `EXTRA_TYPES.map(code)` does): this only decides the separators.
+ */
+export function andList(values: string[]): string {
+	if (values.length <= 1) return values[0] ?? '';
+	if (values.length === 2) return `${values[0]} and ${values[1]}`;
+	return `${values.slice(0, -1).join(', ')} and ${values[values.length - 1]}`;
+}
+
+/**
  * A value as YAML, quoted when writing it bare would change what it means. The example
  * block is the part a reader copies, so a state called `Needs: review` or `#blocked` has
  * to survive it — bare, those are a mapping and a comment.

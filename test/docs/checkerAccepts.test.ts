@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adr, baseRegister, checkRegister, note, useCase } from '../helpers/register';
+import { adr, baseRegister, checkRegister, hierarchyTable, note, useCase } from '../helpers/register';
 
 /**
  * **Does a valid document pass?**
@@ -67,6 +67,26 @@ describe('the gate accepts valid documents', () => {
 		await expect(checkRegister(files)).rejects.toThrow('without reporting problems');
 	});
 
+	it('accepts a Deliverable at every rung an Issue or a Bug may sit at', async () => {
+		// The register documents the plugin's own schema, and `childTypeChoices` answers
+		// `[ladderChild, ...EXTRA_TYPES]` at every rung on the ladder — so a Deliverable is
+		// legal under an Epic, a Feature and a PBI, and takes Tasks like the other two extra
+		// types. It was missing from the gate for the whole of the increment that introduced
+		// it, which is the direction this file exists to catch: a legal form the checker
+		// started refusing.
+		const files = baseRegister();
+		files['docs/deliverables/The one-pager.md'] = note('Deliverable', 40, 'Thing', '# The one-pager\n\nA thing to produce.\n');
+		files['docs/deliverables/The deck.md'] = note('Deliverable', 50, 'A slice', '# The deck\n\nA thing to produce.\n');
+		// The PBI rung too, or the name outruns the test: with only the Epic and Feature
+		// parents driven, `PBI` could drop `...EXTRA` and this would still pass. Found in
+		// review, and it is the rule this repo states about its own claims — write the
+		// guarantee to the check.
+		files['docs/deliverables/The runbook.md'] = note('Deliverable', 60, 'Doing the thing', '# The runbook\n\nA thing to produce.\n');
+		files['docs/tasks/Draft the deck.md'] = note('Task', 30, 'The deck', '# Draft the deck\n\nWork.\n');
+
+		await expectAccepted(files);
+	});
+
 	it('accepts an angle-bracket link destination, which is how a space is written', async () => {
 		// The defect this whole file exists for. `<…>` is CommonMark's destination form;
 		// the register happens to percent-encode everywhere, so it never met the bug.
@@ -104,6 +124,203 @@ describe('the gate accepts valid documents', () => {
 				'- [within this note](#doing-the-thing)',
 			].join('\n'),
 		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a resolving **Checked by** citation, in a note and in the root README', async () => {
+		// Both sites the rule covers, because they are reached differently: `docs/` files
+		// come from the walk and the root README is fetched by name. A rule that worked on
+		// one and silently did nothing on the other would look exactly like this passing.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: [
+				'`src/thing.ts` and `test/thing.test.ts`.',
+				'',
+				'**Checked by** `test/thing.test.ts` — "the thing works".',
+			].join('\n'),
+		});
+		files['README.md'] = '# The plugin\n\n**Checked by** `test/thing.test.ts` — "the thing works".\n';
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a citation Markdown has wrapped across two lines', async () => {
+		// The legal form the first version of this rule refused — silently, which is the
+		// expensive direction: the register's own first citation wrapped exactly like this
+		// and was never checked, while the run stayed green and read as if it had been.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = "it('the thing works when it is wrapped', () => {});\n";
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: [
+				'`src/thing.ts` and `test/thing.test.ts`.',
+				'',
+				'**Checked by** `test/thing.test.ts` — "the thing works',
+				'when it is wrapped".',
+			].join('\n'),
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a citation naming a lint rule, which is this repo’s other kind of check', async () => {
+		// `eslint.config.mjs` is admitted beside `test/` deliberately: the root CLAUDE.md's
+		// answer to a category invariant is a lint rule at the forbidden thing, not a test,
+		// so a rule that took only test files would refuse the checks most worth citing.
+		const files = baseRegister();
+		files['eslint.config.mjs'] = 'export const RULE = { selector: "Nope", message: "no raw reads" };\n';
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `eslint.config.mjs` — "no raw reads".',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a citation naming a table-driven case label — the limit, pinned', async () => {
+		// The cited name must be a whole quoted string in the file, and deliberately NOT an
+		// `it()` title: this register's own citations name `runRejections` case labels, whose
+		// titles are `reports %s` and whose text lives in an array. Review asked for titles
+		// specifically; green here is the answer, so anyone making that change has to come
+		// and decide it rather than discover it.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = [
+			"const cases = [['the thing works', () => {}]];",
+			"it.each(cases)('reports %s', (_name, run) => run());",
+		].join('\n');
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "the thing works".',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('resolves only the FIRST quoted name after a marker — the limit, pinned', async () => {
+		// Not a feature: a boundary, asserted so it cannot move by accident. A second name
+		// under one marker reads as covered and is not, which review caught in the first
+		// note that tried it. The gate cannot tell a second cited name from an ordinary
+		// quoted phrase, so `docs/README.md` states "one marker, one citation" instead.
+		//
+		// Green here is therefore the claim that the second name is IGNORED. Anyone making
+		// the rule validate every quoted name has to come here and change this case, which
+		// is the point — the limit is pinned, not merely described.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: [
+				'`src/thing.ts` and `test/thing.test.ts`.',
+				'',
+				'**Checked by** `test/thing.test.ts` — "the thing works", and "a name no file holds".',
+			].join('\n'),
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts the marker NAMED in a code span, which is documentation not a citation', async () => {
+		// `docs/README.md` documents the convention by naming the marker inline, and the
+		// gate reported its own convention page as a malformed citation. Naming a thing is
+		// not doing it — the same rule code spans already carry for wikilinks and paths.
+		const files = baseRegister();
+		// Keeps the hierarchy table: a register that documents no hierarchy is a different
+		// failure, and this case is about citations.
+		files['docs/README.md'] = `# docs\n\nA claim may carry a \`**Checked by**\` citation naming its test.\n\n${hierarchyTable()}`;
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a citation commented out in HTML, which renders as nothing', async () => {
+		// A contributor parking a citation is writing something that does not render, so the
+		// gate must not read it. Reported as a malformed citation before — a failure on a
+		// correct document, which is the direction this project holds more expensive.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n<!-- **Checked by** `test/gone.test.ts` — "later" -->',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts the marker shown literally with a backslash escape', async () => {
+		// `\\**Checked by**` renders as text, not emphasis, so it is a document showing the
+		// convention rather than using it. A text scan matched the asterisks anyway and
+		// failed a correct document — the third construct to reach the marker scan that way,
+		// after a code span and an HTML comment, and the one that made it a category.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\nWrite \\**Checked by** to cite a test.',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a cited name the test source had to escape', async () => {
+		// A name is written in prose and read out of source. `doesn't retry` is spelled
+		// `it('doesn\\'t retry', …)` because the delimiter forced an escape the register has
+		// no reason to carry — so comparing only the literal form fails a citation that is
+		// exactly right, and nobody would suspect the CHECK of it.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = "it('doesn\\'t retry', () => {});\n";
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "doesn\'t retry".',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a protocol-relative destination, which is external', async () => {
+		// `//cdn.example.com/x.md` borrows the page's scheme and names none of its own, so a
+		// test for `scheme:` does not see one and the destination reads as a path — the gate
+		// would look for a directory called `cdn.example.com` beneath the note.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\nSee [the guide](//cdn.example.com/guide.md).',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a cited name that itself contains a quote', async () => {
+		// A test name may CONTAIN a quote — `test/view/board.test.ts` has one naming a state
+		// `"constructor"` — and one character class for both ends stopped at the inner one,
+		// captured a prefix, and reported a correct citation as stale. Curly outside,
+		// straight inside; the pairs admit each other.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = 'it(\'a state named "constructor"\', () => {});\n';
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — “a state named "constructor"”.',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a cited name whose repeated space is deliberate', async () => {
+		// The inverse of the false pass fixed one commit earlier, and caused by that fix:
+		// the source is no longer normalized, so collapsing every whitespace run in the
+		// CITATION rejects a name reproduced exactly. Only the Markdown wrap is normalized.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = "it('the  thing works', () => {});\n";
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "the  thing works".',
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a **Checked by** example inside a fence, which is documentation not a citation', async () => {
+		// `docs/README.md` documents the convention by showing it, naming a path that does
+		// not exist on purpose. Fenced, so it is an example being quoted rather than a
+		// reference being made — the same rule wikilinks and source paths already follow.
+		const files = baseRegister();
+		files['docs/README.md'] = [
+			'# docs',
+			'',
+			'The register. Cite a check like this:',
+			'',
+			'```',
+			'**Checked by** `test/nothing/here.test.ts` — "a name no file holds"',
+			'```',
+			'',
+			hierarchyTable(),
+		].join('\n');
 
 		await expectAccepted(files);
 	});

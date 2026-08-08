@@ -1,12 +1,12 @@
 import { BasesQueryResult, Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, BusyState, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { showMenuForClick } from '../interactions/menu';
+import { offerableTypes, showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
-import { BacklogModel } from '../../domain/model';
-import { displayType, focusTarget } from '../../domain/itemTypes';
+import { BacklogItem, BacklogModel } from '../../domain/model';
+import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
-import { ALL_TYPES } from '../../domain/settings';
+import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 import { ScaleId } from '../../domain/timeline';
 
@@ -23,26 +23,36 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
-	const newLevel = newItemType(host.settings, model);
+	// The Deliverables board only ever shows Deliverables, so the primary button is
+	// bound to that type unconditionally — never the focus-dependent `newItemType`,
+	// which would offer a type this board would not even display. With one sensible
+	// type there is nothing for a "New item of another type" picker to add, so it is
+	// absent rather than a chevron opening a one-entry menu.
+	const onDeliverables = host.projection === 'deliverables';
+	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
 	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn', attr: { [KEY_ATTR]: 'new' } });
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	newBtn.createSpan({ text: `New ${newLevel}` });
 	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
 
-	const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
-	pickBtn.addClass('pbl-new-pick');
-	pickBtn.addEventListener('click', (evt) => {
-		const menu = new Menu();
-		// Every declared type, extras included: this menu is the one place a top-level
-		// item of any type can be made, and an Issue raised against nothing in
-		// particular is a real thing to want.
-		for (const type of ALL_TYPES) {
-			menu.addItem((mi) =>
-				mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
-			);
-		}
-		showMenuForClick(menu, evt);
-	});
+	if (!onDeliverables) {
+		const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
+		pickBtn.addClass('pbl-new-pick');
+		pickBtn.addEventListener('click', (evt) => {
+			const menu = new Menu();
+			// Every declared type, extras included: this menu is the one place a top-level
+			// item of any type can be made, and an Issue raised against nothing in
+			// particular is a real thing to want. Except `Deliverable` on the requirements
+			// board, which excludes Deliverables by construction — creating one there
+			// would write a note the board it was created from cannot show.
+			for (const type of offerableTypes(host)) {
+				menu.addItem((mi) =>
+					mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
+				);
+			}
+			showMenuForClick(menu, evt);
+		});
+	}
 	renderFocusPicker(host, barEl, model);
 	renderModeToggle(host, barEl);
 	renderAxisPicker(host, barEl);
@@ -69,10 +79,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
 	// content render because that is what fills the set it reads.
 	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
-		for (const item of model.items) host.setCollapsed(item.file.path, false);
+		for (const item of collapsiblePopulation(host, model)) host.setCollapsed(item.file.path, false);
 	});
 	collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
-		for (const item of model.items) {
+		for (const item of collapsiblePopulation(host, model)) {
 			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
 		}
 	});
@@ -99,14 +109,19 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setTooltip(warn, problems.join(' '));
 	}
 	renderBusyIndicator(barEl);
-	// The Base's own results — context ancestors are not items of this base.
-	const count = model.results.length;
+	// This projection's own population — `countedPopulation`, the same one
+	// `syncCountLabel` and `renderCompletedToggle` read — never the Base's raw results:
+	// the requirements board excludes Deliverables and the Deliverables board counts
+	// only Deliverables, so a first paint off `model.results` would show a number
+	// `syncCountLabel` immediately overwrites with a different one.
+	const population = countedPopulation(host, model);
+	const count = population.length;
 	const countEl = barEl.createSpan({
 		cls: 'pbl-count-label',
 		text: `${count} item${count === 1 ? '' : 's'}`,
 		attr: { 'aria-live': 'polite' },
 	});
-	setTooltip(countEl, levelBreakdown(host, model));
+	setTooltip(countEl, levelBreakdown(population));
 	refocusByKey(barEl, refocusKey);
 }
 
@@ -211,16 +226,33 @@ export function detectIgnoredGrouping(data: BasesQueryResult | null | undefined)
  * the count is synced imperatively per pass. The Base's own results: ancestors
  * loaded for context are not items of this base and must not inflate the number.
  * Collapsed rows still count as shown — only filtering and hiding narrow it,
- * which `isRowHidden` covers both of, in both projections.
+ * which `isRowHidden` covers both of, in both projections. The Deliverables board is
+ * scoped a third way: its population is `model.deliverableResults` — every
+ * Deliverable-typed result, regardless of any active focus level, never the whole
+ * base — hidden by the filter-only predicate that board itself renders with rather
+ * than the "Show completed items" one, since that toggle does not apply there. Also
+ * fixes the label's own tooltip, which used to be set once by `renderToolbar` at
+ * full-render time and never rescoped here — so it could disagree with the text
+ * sitting right next to it.
+ *
+ * The requirements board is scoped a FOURTH way, for the opposite reason the
+ * Deliverables board is scoped at all: Deliverables are managed on their own board now
+ * (`renderRequirementsBoard`), so counting one here would claim the board shows more
+ * than it does. The tree and the roadmap keep every item — this scoping is the
+ * `'board'` projection alone.
  */
 export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void {
 	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
 	const model = host.model;
 	if (!label || !model) return;
-	const total = model.results.length;
-	const shown = model.results.filter((item) => !host.isRowHidden(item)).length;
+	const population = countedPopulation(host, model);
+	// `isRowHidden` answers per projection now, the Deliverables board's own exception
+	// included, so this asks the one question rather than choosing between two.
+	const total = population.length;
+	const shown = population.filter((item) => !host.isRowHidden(item)).length;
 	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
 	else label.setText(`${shown} of ${total}`);
+	setTooltip(label, levelBreakdown(population));
 }
 
 /**
@@ -269,9 +301,12 @@ function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void {
  * and refreshes the view.
  */
 function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	if (!host.settings.stateKey) return;
+	if (!host.settings.stateKey || host.projection === 'deliverables') return;
 	const showing = host.settings.showCompleted;
-	const hidden = model.results.filter((item) => item.subtreeDone).length;
+	// This projection's OWN population, the same one the count label answers for: on the
+	// requirements board a done Deliverable is not a hidden card, it is not a card at
+	// all, so counting it offered to reveal something pressing the button cannot show.
+	const hidden = countedPopulation(host, model).filter((item) => item.subtreeDone).length;
 	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
 	const btn = iconButton(
 		barEl,
@@ -324,15 +359,38 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
  *
  * It offers levels AND extra types, so the wording says "type" throughout: "all levels"
  * would be a promise this menu no longer keeps.
+ *
+ * **The Deliverables board is the one projection the focus level never affects, full
+ * stop** (the human's own request: a focus set on another projection must never make a
+ * Deliverable invisible here just because the wrong level was left active). So this is
+ * the one projection whose control is unconditionally the fixed, disabled
+ * "Deliverables" button, whatever `model.focused` says — never the menu (nothing to
+ * narrow by, since every card is already a Deliverable) and never the "Focused: <level>"
+ * label, since no level narrows this board's population
+ * (`BacklogModel.deliverableResults`, `renderDeliverablesBoard`) for the clear button
+ * beside it to have anything to undo. A class or `aria-disabled` alone would leave it
+ * focusable, which `src/view/CLAUDE.md`'s "once a control is focusable, disabling it in
+ * CSS is a lie" rule forbids.
  */
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	// Working position, not configuration: the collapse store persists it and the view
+	// rebuilds itself, because no Bases refresh follows a change it was not told about.
+	const setLevel = (level: string) => host.setFocusLevel(level);
+
+	if (host.projection === 'deliverables') {
+		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
+		const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
+		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
+		btn.createSpan({ text: 'Deliverables' });
+		btn.disabled = true;
+		setTooltip(btn, 'This board always shows every Deliverable — the focus level has no effect here');
+		return;
+	}
+
 	// A focus naming no configured type re-roots nothing — report all levels.
 	const active = model.focused ? focusTarget(host.settings) : '';
 	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 	wrap.toggleClass('pbl-focus-active', active !== '');
-	// Working position, not configuration: the collapse store persists it and the view
-	// rebuilds itself, because no Bases refresh follows a change it was not told about.
-	const setLevel = (level: string) => host.setFocusLevel(level);
 
 	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { [KEY_ATTR]: 'focus' } });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
@@ -352,11 +410,17 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 		// being ACCEPTABLE as a focus (`focusTarget` already reads `ALL_TYPES`) is not the
 		// same as being OFFERABLE, and a name in neither hand-written list was one a saved
 		// view could hold and no user could pick.
-		for (const type of ALL_TYPES) choice(type, type);
+		// Through `offerableTypes` like every other type list: focusing `Deliverable` on
+		// the requirements board narrows it to roots that board excludes, leaving it empty.
+		// An INHERITED one still reads in the button, with the clear beside it — this only
+		// stops the state being reached from the projection it breaks.
+		for (const type of offerableTypes(host)) choice(type, type);
 		showMenuForClick(menu, evt);
 	});
 
 	if (active === '') return;
+	// The one-click way back to "All types". The Deliverables board returns above
+	// without one: nothing narrows that board, so there is nothing to clear.
 	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
 		attr: { type: 'button', 'aria-label': 'Show all types', [KEY_ATTR]: 'focus-clear' },
@@ -384,6 +448,7 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	position('tree', 'list-tree', 'Show as backlog tree');
 	position('board', 'square-kanban', 'Show as kanban board');
 	position('roadmap', 'map', 'Show as roadmap');
+	position('deliverables', 'package', 'Show as Deliverables board');
 }
 
 /**
@@ -441,10 +506,61 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	today.addEventListener('click', () => host.jumpToToday());
 }
 
-/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip. */
-function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
+/**
+ * What this projection is counting — its own population, which is not the same question
+ * for all four. The Deliverables board draws `model.deliverableResults`; the
+ * requirements board draws every result EXCEPT a Deliverable, which it excludes by
+ * construction; the tree and the roadmap draw all of them.
+ *
+ * One function because two toolbar readouts sit beside each other and have to agree:
+ * the count label and the completed toggle's "(N hidden)". They did not — the label was
+ * scoped and the toggle was not, so the requirements board could report one item while
+ * offering to reveal another that pressing the button would never show.
+ */
+function countedPopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
+	if (host.projection === 'deliverables') return model.deliverableResults;
+	if (host.projection === 'board') return model.results.filter((item) => !isDeliverableType(item.typeName));
+	return model.results;
+}
+
+/**
+ * What these two buttons can collapse — a DIFFERENT question from `countedPopulation`
+ * beside it, which is why it is a second function rather than a reuse: counting asks for
+ * the Base's rows, and collapsing asks for everything on screen that owns a disclosure,
+ * context rows included.
+ *
+ * The Deliverables board is the one projection where `model.items` is the wrong answer.
+ * It draws `model.deliverableResults`, read off the WHOLE unfocused tree so a focus set
+ * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
+ * So with a focus active, Expand all and Collapse all reached none of the cards outside
+ * that subtree, and were a complete no-op when no Deliverable was inside it: two buttons
+ * doing nothing, on a screen full of things to collapse.
+ */
+function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
+	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
+}
+
+/**
+ * The type the PRIMARY New button makes — `newItemType`'s focus-following answer,
+ * filtered through the very list the chevron beside it offers.
+ *
+ * Both creators have to draw from one list or the narrower one is decoration. Found
+ * by review: `newItemType` returns the focus TARGET, and a `Deliverable` focus left
+ * active from another projection made the requirements board's primary button read
+ * "New Deliverable" — writing a note that board excludes — while the chevron beside
+ * it had already withheld exactly that type. Falls back to the first type this
+ * projection does offer, which is the ladder's top in every case today.
+ */
+function primaryNewType(host: BacklogViewHost, model: BacklogModel): string {
+	const offered = offerableTypes(host);
+	const focused = newItemType(host.settings, model);
+	return offered.includes(focused) ? focused : offered[0];
+}
+
+/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */
+function levelBreakdown(items: BacklogItem[]): string {
 	const byLevel = new Map<string, number>();
-	for (const item of model.results) {
+	for (const item of items) {
 		const label = displayType(item) || 'Untyped';
 		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
 	}

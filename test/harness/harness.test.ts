@@ -158,35 +158,46 @@ describe('the chrome the mock only records', () => {
  */
 describe('the harness draws every icon the view asks for', () => {
 	/**
-	 * Walk all three projections and both roadmap axes, collecting what `setIcon` was
+	 * Walk all four projections and both roadmap axes, collecting what `setIcon` was
 	 * asked for. Driving the view rather than grepping `src/` on purpose: several icon
 	 * names never appear as a literal beside a `setIcon` call — the type badges come
 	 * from a table, the spinner and the filter's two states from branches — and a grep
 	 * written to find them missed exactly those four. The instrument has to be able to
 	 * see the whole set before its verdict is worth anything.
 	 */
-	function sweepIcons(): { asked: Set<string>; missing: Set<string> } {
+	function sweepIcons(): { asked: Set<string>; missing: Set<string>; drew: string[] } {
 		const root = document.createElement('div');
 		document.body.appendChild(root);
 		const { view, containerEl } = mountHarness(root);
 		const asked = new Set<string>();
 		const missing = new Set<string>();
+		const drew: string[] = [];
 		const collect = () => {
 			for (const el of containerEl.querySelectorAll<HTMLElement>('[data-icon]')) asked.add(el.dataset.icon ?? '');
 			for (const el of containerEl.querySelectorAll<HTMLElement>('[data-icon-missing]')) {
 				missing.add(el.dataset.iconMissing ?? '');
 			}
+			// What the render pass itself says it just drew: `renderProjectionContent`
+			// names the scroller per projection. A witness the sweep cannot fake by
+			// collecting more of the same icons, which is what let a dark leg pass.
+			drew.push(containerEl.querySelector('.pbl-tree')?.getAttribute('aria-label') ?? '');
 		};
-		for (const projection of ['tree', 'board', 'roadmap'] as const) {
+		for (const projection of ['tree', 'board', 'roadmap', 'deliverables'] as const) {
 			view.setProjection(projection);
 			collect();
 		}
 		for (const axis of ['horizons', 'dates'] as const) {
+			// Back onto the roadmap explicitly. This loop is about ITS axes, and leaving
+			// that to whichever projection the loop above happened to end on is exactly how
+			// appending a fourth projection silently stopped collecting the dated axis —
+			// `setAxisPick` re-rendered the Deliverables board, and the sweep went on
+			// passing because nothing named a control only that axis draws.
+			view.setProjection('roadmap');
 			view.setAxisPick(axis);
 			view.setShelfCollapsed(false);
 			collect();
 		}
-		return { asked, missing };
+		return { asked, missing, drew };
 	}
 
 	it('resolves every name, aliases included', () => {
@@ -200,9 +211,22 @@ describe('the harness draws every icon the view asks for', () => {
 	it('measures something — the instrument is checked before its verdict is trusted', () => {
 		// A sweep that drove nothing, or a selector that matched nothing, would satisfy
 		// the test above forever.
-		const { asked } = sweepIcons();
+		const { asked, drew } = sweepIcons();
 		expect(asked.size).toBeGreaterThan(20);
 		expect(asked).toContain('inbox');
+		// Every leg actually rendered its OWN projection, asked of the label the render
+		// pass sets rather than of the icons it happened to draw. Two weaker forms of
+		// this check have now failed to catch a dark leg: a size plus one common icon,
+		// and then naming `package` — which the mode TOGGLE draws on every projection,
+		// so that assertion could not fail whatever the sweep did. An icon is evidence
+		// only if nothing else draws it; a projection's own name always is.
+		expect(drew).toContain('Product backlog');
+		expect(drew).toContain('Product backlog board');
+		expect(drew).toContain('Deliverables board');
+		expect(drew).toContain('Product backlog roadmap');
+		// The two axis legs share the roadmap's label, so the dated one is witnessed by
+		// the control only it draws.
+		expect(asked).toContain('locate-fixed');
 	});
 });
 

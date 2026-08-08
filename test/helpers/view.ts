@@ -79,7 +79,7 @@ export function makeView(
 /**
  * View options with every optional property explicitly CLEARED, merged over whatever
  * the test sets itself. A view built from `{}` has none of them named, so the backfill
- * would bind all six and stub a key on every note — which is the point of that action
+ * would bind every one of them and stub a key on every note — which is the point of that action
  * and pure noise in a test about anything else. Clearing is how a user says "not this
  * one", so a suite that says it here is describing a settled view, not disabling a rule.
  */

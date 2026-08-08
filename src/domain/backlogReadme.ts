@@ -1,8 +1,16 @@
-import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, MARKER_TYPES, stateMenuValues } from './settings';
+import {
+	ALL_TYPES,
+	BacklogSettings,
+	EXTRA_TYPES,
+	LEVELS,
+	MARKER_TYPES,
+	resolvedDeliverableStateKey,
+	stateMenuValues,
+} from './settings';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
-import { cell, code, list, yamlScalar } from './readmeText';
+import { andList, cell, code, list, yamlScalar } from './readmeText';
 import { hasDateAxis, hasHorizonAxis } from './roadmap';
 import { ORDER_SPACING } from './writePlan';
 
@@ -103,21 +111,6 @@ function parentsOf(typeName: string): string[] {
 	return ['*(nothing — it is a root)*', ...ALL_TYPES.filter((candidate) => childrenOf(candidate).includes(typeName))];
 }
 
-/**
- * Names in a sentence: `A`, `A and B`, `A, B and C`. A category of the vocabulary is a
- * list whose length is nobody's business but `settings.ts`'s, so joining one with ` and `
- * reads as English only while it holds two — a third name shipped "Issue and Bug and
- * Idea" into the document this module exists to keep correct. `Intl.ListFormat` is the
- * stdlib answer and is not reachable: its typings arrived in `ES2021.Intl` and the
- * `lib` here is `ES2020`.
- *
- * Both branches have a real caller, which is why the short one is not a guard waiting for
- * a hypothetical: `MARKER_TYPES` is one name and takes it today. That is also the honest
- * reason it exists — the fix for `Issue and Bug and Idea` must not become `Milestone` with
- * an `and` hanging off it the day a second marker lands.
- */
-const andList = (names: string[]): string =>
-	names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 
 function typeSection(settings: BacklogSettings): string[] {
 	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
@@ -161,7 +154,18 @@ function fieldRows(settings: BacklogSettings): string[] {
 		`| ${cell(settings.orderKey)} | Anything you want ranked | A number. The rank among the notes sharing a parent — see below. Without one an item sorts after the ranked ones |`,
 		`| ${cell(settings.typeKey)} | Anything you want typed | One of the type names above, or one of your own. Without one an item takes the level its position implies |`,
 	];
-	if (settings.stateKey) rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below |`);
+	// One property or two is decided by the resolved KEY, never by whether the Deliverable
+	// option was filled in: the two workflows share a property both when the Deliverable
+	// key is unset (the fallback) and when it is set to the requirements key on purpose —
+	// the one collision `configProblems` exempts. Asking the raw option instead documented
+	// that second, explicitly-shared configuration as two separate properties, and listed
+	// the one key twice in a table of what a note may carry.
+	const deliverableKey = resolvedDeliverableStateKey(settings);
+	const sharedStateKey = deliverableKey !== '' && deliverableKey === settings.stateKey;
+	if (settings.stateKey) {
+		const alsoDeliverable = sharedStateKey ? ", and the Deliverable workflow's own state on a Deliverable" : '';
+		rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below${alsoDeliverable} |`);
+	}
 	if (settings.tagsKey) rows.push(`| ${cell(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
 	// The two the view WRITES for you. They belong in the contract for the reason every
 	// other row does — a document that named only what a reader writes would leave two
@@ -173,6 +177,18 @@ function fieldRows(settings: BacklogSettings): string[] {
 	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
 	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
+	// A row of its OWN only where it is its own property. Shared, the row above already
+	// names this key and says it carries both — a second row for one key would be the
+	// table contradicting itself about how many properties a note has.
+	if (deliverableKey && !sharedStateKey) {
+		// NOT "the one above": that claim is false whenever `settings.stateKey` is unset,
+		// since `fieldRows` then has no requirements-workflow row at all (and no
+		// `## Workflow states` section either) — a fully independent, reachable
+		// configuration, and the one where there is nothing to be separate FROM, so the
+		// relationship goes unstated rather than invented.
+		const relation = settings.stateKey ? " — separate from the requirements workflow's" : '';
+		rows.push(`| ${cell(deliverableKey)} | Optional, on a Deliverable | The Deliverable workflow's own state${relation} |`);
+	}
 	return rows;
 }
 

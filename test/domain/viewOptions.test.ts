@@ -117,6 +117,14 @@ describe('getViewOptions', () => {
 		expect(keys).not.toContain('wipLimit.done');
 	});
 
+	it('exposes a Deliverables group with its own state property, states and done values', () => {
+		const groups = getViewOptions();
+		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Deliverables');
+		if (!group || !('items' in group)) throw new Error('Deliverables group missing');
+		const keys = group.items.map((item) => item.key);
+		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
+	});
+
 	it('offers neither until a workflow is stated', () => {
 		// With no `stateValues` the board falls back to observed values, which are not a
 		// workflow anyone agreed. Limits and policies are agreements; there is nothing

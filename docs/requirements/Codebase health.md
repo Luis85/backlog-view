@@ -1,9 +1,10 @@
 ---
 type: Epic
-order: 20
+order: 67.5
 status: Open
 area: meta
 created: 2026-07-31
+horizon: Later
 ---
 
 # Codebase health

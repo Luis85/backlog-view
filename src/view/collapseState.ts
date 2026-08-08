@@ -2,6 +2,7 @@ import { BacklogItem } from '../domain/model';
 import { ShelfSort } from '../domain/shelf';
 import {
 	BOARD_MODE,
+	DELIVERABLES_MODE,
 	ROADMAP_MODE,
 	collapseStoreIdentity,
 	dropCollapseState,
@@ -11,6 +12,21 @@ import {
 	ViewIdentity,
 } from '../storage/collapseStore';
 import { BacklogViewHost, Projection } from './host';
+
+/**
+ * The stored `mode` value for each projection, null for the tree — a `Record` rather
+ * than a chain of ternaries, so the compiler refuses to build once a fifth `Projection`
+ * joins the union without a case here. The chain this replaced (`mode === 'tree' ? null
+ * : mode === 'board' ? BOARD_MODE : ...`) had an unguarded final `else`, which stayed
+ * green after a new projection was added and silently persisted its bare name instead
+ * of the constant `readEntry`'s allowlist expects.
+ */
+const PROJECTION_MODE: Record<Projection, string | null> = {
+	tree: null,
+	board: BOARD_MODE,
+	roadmap: ROADMAP_MODE,
+	deliverables: DELIVERABLES_MODE,
+};
 
 /**
  * Prefix marking a key as the DATED AXIS's own fold state, kept apart from the tree's.
@@ -107,13 +123,14 @@ export class CollapseState {
 	projection(): Projection {
 		if (this.mode === BOARD_MODE) return 'board';
 		if (this.mode === ROADMAP_MODE) return 'roadmap';
+		if (this.mode === DELIVERABLES_MODE) return 'deliverables';
 		return 'tree';
 	}
 
 	setProjection(mode: Projection): void {
 		// The tree is the default and needs no stored value; a stored entry saved
 		// before a projection existed reads back as the tree the same way.
-		this.mode = mode === 'tree' ? null : mode;
+		this.mode = PROJECTION_MODE[mode];
 		this.scheduleSave();
 	}
 

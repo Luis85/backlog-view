@@ -12,10 +12,11 @@ import {
 import { readPlacement } from '../../src/domain/noteFields';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 /** A view with both axes configured, the way `resolveSettings` would hand it over. */
 function axisSettings(overrides: Partial<BacklogSettings> = {}): BacklogSettings {
-	return { ...defaultSettings(), horizonKey: 'horizon', startKey: 'start', targetKey: 'due', ...overrides };
+	return settingsWith({ horizonKey: 'horizon', startKey: 'start', targetKey: 'due', ...overrides });
 }
 
 function roadmapOf(model: BacklogModel, settings: BacklogSettings, axis: RoadmapAxis) {

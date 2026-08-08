@@ -104,6 +104,60 @@ const OVERBY = {
 };
 
 /**
+ * `ALL_TYPES` is the whole type vocabulary; a projection offers only the types it can
+ * show (`offerableTypes`, src/view/interactions/menu.ts) — the requirements board
+ * withholds Deliverable, the Deliverables board withholds everything else. Reading
+ * `ALL_TYPES` straight anywhere else in view/ is how a sixth type-offering surface
+ * arrives at the same bug the first four did (see the doc comment on `offerableTypes`).
+ * Scoped to view/, not domain/: `ALL_TYPES` is the correct thing for domain code
+ * (settings, shelf grouping, the README table, `childTypeChoices` itself) to name.
+ *
+ * This selector sees the name `ALL_TYPES` entering a file as a named import —
+ * including a renamed one (`import { ALL_TYPES as AT }`, since it is `imported.name`
+ * being matched, not `local.name`) — but not a namespace import: `import * as settings
+ * from '../../domain/settings'; settings.ALL_TYPES` never creates an `ImportSpecifier`
+ * at all, and closing that needs type information (is `settings` really that module?)
+ * this invariant is not worth building, the same trade `TREE_SCAN` states for its own
+ * receiver. `childTypeChoices(null)` (`src/domain/itemTypes.ts`) is a second, narrower
+ * route to the exact same array with no import to catch — `CHILD_TYPE_CHOICES_NULL`,
+ * below, bans that call directly rather than trying to trace a return value back to
+ * the name it came from.
+ */
+const ALL_TYPES_IMPORT = {
+	selector: "ImportSpecifier[imported.name='ALL_TYPES']",
+	message:
+		'Route through offerableTypes (src/view/interactions/menu.ts) instead of importing ALL_TYPES — the whole type vocabulary is not what a given projection can show.',
+};
+
+/**
+ * `childTypeChoices(null)` — the "what may go at top level" case in
+ * `src/domain/itemTypes.ts` — returns `ALL_TYPES` itself, unfiltered, so it is a second
+ * way for a view file to reach the whole vocabulary without ever importing that name
+ * (see `ALL_TYPES_IMPORT`, above, which this selector sits beside rather than replaces
+ * — an import of the name is still worth catching at the point it enters a file). No
+ * view/ call site has a reason to ask the top-level question: it is the toolbar's own and
+ * already goes through `offerableTypes` instead.
+ *
+ * Passing an ITEM is not the fix on its own, and this selector cannot say so — what
+ * `childTypeChoices(item)` returns is the rung below plus `EXTRA_TYPES`, and
+ * `Deliverable` is one of those, which is the exact route the requirements board's type
+ * button took to offering Deliverables. Every view/ call site therefore hands the result
+ * to `offerableTypes` — two through `buildItemMenu`, one at `renderRow`'s add button —
+ * and the message below says so rather than stopping at the item. Nothing checks that:
+ * a fourth call site could iterate the raw list with lint green, which is what
+ * `docs/tasks/Follow-ups from enforcing the Deliverables invariants.md` records.
+ * `backlogReadme.ts` calls it with `null` on purpose
+ * (a type with no declared parent reads as a root in the generated table) and is
+ * domain/, not view/, so it is out of this selector's scope the same way `settings.ts`
+ * is out of `ALL_TYPES_IMPORT`'s.
+ */
+const CHILD_TYPE_CHOICES_NULL = {
+	selector: "CallExpression[callee.name='childTypeChoices'][arguments.0.value=null]",
+	message:
+		'childTypeChoices(null) returns the unfiltered ALL_TYPES vocabulary. Route through offerableTypes (src/view/interactions/menu.ts) — and pass its result, not childTypeChoices(item) raw, which carries EXTRA_TYPES including Deliverable.',
+};
+
+/**
  * The tree element is the container; querying it is a walk of every rendered row to
  * find something the view already has by reference (`rowEls`, the selected row, the
  * drag source). A full-tree `querySelectorAll` on every `dragend` shipped once. The
@@ -129,6 +183,30 @@ const TREE_SCAN = {
 };
 
 /**
+ * Which workflow tracks an item is a property of its TYPE, not of whoever is asking —
+ * `ownWorkflowReading` (`src/domain/board.ts`) states that once, so the chip
+ * (`render/columns.ts`) and the menu (`interactions/menu.ts`) cannot go back to two
+ * hand-written `isDeliverableType(item) ? deliverable : requirements` ternaries, which
+ * is how they came to disagree in the first place. Banned everywhere in view/ except
+ * the two files that read one workflow's raw fields ON PURPOSE, by BOARD rather than by
+ * item type — a different question from the chip's and the menu's: `cardMoves.ts`
+ * (`performDeliverablesBoardMove` already knows which board's move it is performing)
+ * and `render/board.ts` (whose `doneOf` is the Deliverables board's own workflow,
+ * never asked per item).
+ *
+ * Sees the DOTTED member read (`item.deliverableStateValue`, `item.deliverableDone`) —
+ * the spelling both past disagreements were. A computed or destructured read
+ * (`item['deliverableDone']`, `const { deliverableDone } = item`) needs type
+ * information about the receiver to close, the same trade `TREE_SCAN` states for an
+ * aliased one.
+ */
+const DELIVERABLE_FIELD_READ = {
+	selector: "MemberExpression[property.name=/^(deliverableStateValue|deliverableDone)$/]",
+	message:
+		'Read ownWorkflowReading(item) (src/domain/board.ts) instead of hand-picking deliverableStateValue/deliverableDone by type — that ternary is how the chip and the menu came to disagree.',
+};
+
+/**
  * Flat config sets a rule wholesale per file: a narrower block REPLACES the wider one's
  * options rather than adding to them, so two blocks matching the same file would leave
  * it with only the later one's selectors — silently dropping the rest.
@@ -140,8 +218,22 @@ const TREE_SCAN = {
  */
 const STORAGE = 'src/storage/**/*.ts';
 const MENU = 'src/view/interactions/menu.ts';
-const RANKING = ['src/domain/writePlan.ts', 'src/view/interactions/create.ts'];
+// Ranking code lives in one domain file and one view file; split so a view-only rule
+// (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
+const RANKING_DOMAIN = ['src/domain/writePlan.ts'];
+const RANKING_VIEW = ['src/view/interactions/create.ts'];
+const RANKING = [...RANKING_DOMAIN, ...RANKING_VIEW];
 const RENDER = 'src/view/render/**/*.ts';
+// The Deliverables board's own workflow read, exempt from DELIVERABLE_FIELD_READ —
+// carved out of RENDER the same way RANKING_VIEW was carved out of RANKING, because a
+// rule applies to the rest of the region and not to this one file.
+const RENDER_BOARD = 'src/view/render/board.ts';
+// The rest of view/, once menu.ts, render/ and create.ts are carved out below.
+const VIEW = 'src/view/**/*.ts';
+// The card-move orchestration, exempt from DELIVERABLE_FIELD_READ for the same reason
+// RENDER_BOARD is: carved out of VIEW, not out of RENDER, because this file sits in the
+// "rest of view/" region.
+const CARD_MOVES = 'src/view/cardMoves.ts';
 
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
@@ -161,13 +253,8 @@ export default defineConfig([
 			'.obsidian/**',
 			'.harness/**',
 			'.claude/**',
-			'docs-check.mjs',
+			'scripts/**',
 			'eslint.config.mjs',
-			'esbuild.config.mjs',
-			'harness.mjs',
-			'styles-assemble.mjs',
-			'test-build.mjs',
-			'version-bump.mjs',
 			'vitest.config.mts',
 		],
 	},
@@ -185,11 +272,21 @@ export default defineConfig([
 	forbidden('ui', ['view', 'commands', 'domain', 'storage'], 'ui/ holds standalone dialogs; it must stay free of app structure.'),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
 	// -- invariants that are checked rather than described -----------------------
-	// Five disjoint regions of src/; see the note above `syntaxRules`.
+	// Disjoint regions of src/; see the note above `syntaxRules`. Two splits are one
+	// region divided along the view/ boundary — the general region and RANKING, split
+	// because ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL apply to the view/ half and
+	// would be false positives on the other (domain code legitimately names ALL_TYPES —
+	// settings.ts, shelf.ts, itemTypes.ts, backlogReadme.ts, model.ts — and
+	// backlogReadme.ts legitimately calls childTypeChoices(null)). Two more splits are
+	// narrower still, one file carved out of an otherwise-uniform region: RENDER_BOARD
+	// out of RENDER and CARD_MOVES out of VIEW, both exempt from DELIVERABLE_FIELD_READ
+	// because each reads one workflow's raw fields by BOARD rather than by item type —
+	// a different question from the one every other view/ file is asking.
 	{
-		// Everything that is not one of the four special cases below.
+		// Everything that is not view/ and not one of the other special cases: domain/,
+		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
-		ignores: [STORAGE, MENU, RENDER, ...RANKING],
+		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN],
 		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
@@ -201,22 +298,100 @@ export default defineConfig([
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
 		// allowed to make it. It writes nothing and plans nothing, so both other rules hold.
+		// It is also the one place allowed to read ALL_TYPES straight — offerableTypes'
+		// own default parameter — which is why it is the exemption from ALL_TYPES_IMPORT
+		// rather than a fifth place carrying it. It asks Set state's own question — which
+		// workflow does THIS item track — so DELIVERABLE_FIELD_READ applies here like
+		// everywhere else that is not RENDER_BOARD or CARD_MOVES.
 		files: [MENU],
-		rules: syntaxRules([...WRITE_BOUNDARY, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, OVERBY, TREE_SCAN, DELIVERABLE_FIELD_READ]),
 	},
 	{
-		// Ranking code: what it writes is an order among real siblings, and a type is
-		// the rung its parent chain puts it on — never the depth it is drawn at. It plans
-		// writes, which is exactly what overBy must stay out of.
-		files: RANKING,
+		// Ranking code, domain half: what it writes is an order among real siblings, and
+		// a type is the rung its parent chain puts it on — never the depth it is drawn
+		// at. It plans writes, which is exactly what overBy must stay out of. No
+		// ALL_TYPES_IMPORT: this file is domain/, not view/.
+		files: RANKING_DOMAIN,
 		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
 	},
 	{
-		// view/render/ is the one region allowed to import overBy: it draws the column,
-		// never plans a write. The write boundary and the menu-anchor rule still apply —
-		// nothing here is exempt from those, only from OVERBY.
+		// Ranking code, view half: the same rules as the domain half, plus
+		// ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL and DELIVERABLE_FIELD_READ — this file
+		// offers types (`promptCreateItem`'s callers) like any other view/ module, and
+		// asks the chip's and the menu's question rather than RENDER_BOARD's or
+		// CARD_MOVES'.
+		files: RANKING_VIEW,
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			RENDERED_ROOTS,
+			VISUAL_DEPTH,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+		]),
+	},
+	{
+		// view/render/, minus RENDER_BOARD (its own block below): draws the column, never
+		// plans a write, so it is the one region allowed to import overBy. The write
+		// boundary and the menu-anchor rule still apply — nothing here is exempt from
+		// those, only from OVERBY. It offers types on the toolbar, so ALL_TYPES_IMPORT and
+		// CHILD_TYPE_CHOICES_NULL apply here too, and so does DELIVERABLE_FIELD_READ — the
+		// chip (`columns.ts`) is exactly the surface that must not hand-pick the raw
+		// fields itself.
 		files: [RENDER],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN]),
+		ignores: [RENDER_BOARD],
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+		]),
+	},
+	{
+		// The Deliverables board's own render, carved out of RENDER: `doneOf` reads
+		// `item.deliverableDone` directly because this board only ever draws Deliverable
+		// cards — it is the board's workflow, not a per-item type dispatch, so
+		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
+		files: [RENDER_BOARD],
+		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
+	},
+	{
+		// The rest of view/ — everything under it once menu.ts, render/, create.ts and
+		// cardMoves.ts (handled above and below) are carved out. Same rules the general
+		// region has, plus ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL (any of these
+		// files is a candidate sixth type-offering surface) and DELIVERABLE_FIELD_READ
+		// (any of these files is a candidate third hand-written workflow ternary).
+		files: [VIEW],
+		ignores: [MENU, RENDER, ...RANKING_VIEW, CARD_MOVES],
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+		]),
+	},
+	{
+		// Card-move orchestration, carved out of VIEW: `performDeliverablesBoardMove`
+		// reads `item.deliverableStateValue` directly because the METHOD already says
+		// which board's move this is — a call that has already chosen the workflow, not
+		// one dispatching on the item's type. Everything else VIEW carries does apply.
+		files: [CARD_MOVES],
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+		]),
 	},
 	{
 		// Everything but `test/`, rather than `src/**` by name: a `files` pattern is
@@ -261,6 +436,29 @@ export default defineConfig([
 			// is there to force a split by subject long before a file becomes the place
 			// tests go to hide.
 			'max-lines': ['error', { max: 450, skipBlankLines: true, skipComments: true }],
+			// A fixture built by spreading the defaults carries the FIELDS of
+			// `BacklogSettings` and none of the relationships BETWEEN them that
+			// `resolveSettings` establishes — so it can express a vault nobody could
+			// configure, which stays invisible until some function reads two fields
+			// together and then asserts behaviour for a configuration that cannot occur.
+			// `test/helpers/settings.ts` applies those derivations and checks the result;
+			// this is the rule at the forbidden thing, so it holds for tests not yet
+			// written rather than for the fixtures someone thought to look at.
+			//
+			// What it does NOT see, stated because the gap is real: spreading a settings
+			// object under any OTHER name (`{ ...settings, tagsKey: 'x' }`) breaks the same
+			// relationships and is invisible to a syntactic rule. `buildModel`'s
+			// `assertResolvedSettings` is the runtime net under that case, and it reaches
+			// only the tests that build a model. See
+			// `docs/issues/A hand-built fixture can model a state the producer cannot produce.md`.
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: "SpreadElement > CallExpression[callee.name='defaultSettings']",
+					message:
+						'Spreading defaultSettings() skips the relationships resolveSettings establishes between fields. Use settingsWith({ ... }) or settingsFrom(options) from test/helpers/settings.ts.',
+				},
+			],
 			// The harness deliberately reaches past the view's public surface.
 			'@typescript-eslint/no-explicit-any': 'off',
 			// A stand-in has to accept the arguments the real API is called with, whether

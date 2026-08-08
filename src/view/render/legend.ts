@@ -1,6 +1,6 @@
 import { BacklogViewHost, DrawnColors } from '../host';
+import { paletteDone, paletteSlot, StatePalette } from '../../domain/board';
 import { activeAxis } from '../../domain/roadmap';
-import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -18,10 +18,11 @@ import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/se
  * than a gap — and it was a gap until those words existed: a bar's state lived in its
  * colour alone.
  *
- * `observedStates` is a parameter, not read off `host.model` here: the view calls this
- * only after its own `if (!this.model) return` in `render()`, so a second null check
- * on this path would guard nothing reachable — the caller already holds the model this
- * vocabulary comes from.
+ * `palettes` is a parameter, not built off `host.model` here: the view calls this only
+ * after its own `if (!this.model) return` in `render()`, so a second null check on this
+ * path would guard nothing reachable — the caller already holds the model these
+ * vocabularies come from, and hands the SAME list to `renderTimeline`. One list, two
+ * readers: a legend built from its own copy is a legend free to disagree with the grid.
  *
  * `drawn` is likewise reported by the render rather than recomputed here — see
  * `TimelineRender.drawn`. A predicate over `model.results` alone cannot see what the
@@ -37,7 +38,7 @@ import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/se
 export function renderLegend(
 	host: BacklogViewHost,
 	legendEl: HTMLElement,
-	observedStates: string[],
+	palettes: StatePalette[],
 	drawn: DrawnColors,
 ): void {
 	legendEl.empty();
@@ -51,50 +52,79 @@ export function renderLegend(
 		return;
 	}
 	legendEl.setAttribute('aria-hidden', 'true');
-	// A swatch exists only where a bar can draw the thing it keys — the general rule
-	// behind all three state-colour bugs this branch has had (the done swatch keying
-	// its slot instead of green, the milestone swatch keying cyan while the diamond
-	// drew its state slot, and this one): without a workflow property `stateKey` is
-	// `''`, `domain/model.ts` sets every `stateValue` to null, and no bar can carry a
-	// state colour at all — so the state swatches are gated on the same property that
-	// gates whether a bar has one to draw, never rendered for a vocabulary nothing on
-	// the grid can key.
-	if (host.settings.stateKey) {
-		// The same list, the same index, the same modulo `stateColorSlot` applies to a
-		// bar. Except for done, which is the one state whose bar does NOT draw its slot:
-		// a done row's bar is overridden to green in `timeline.css`, deliberately,
-		// because green for finished is a meaning the user already reads. A swatch
-		// wearing the slot class would key pink for a bar that draws green — a legend
-		// disagreeing with the only thing it exists to explain. So the swatch asks the
-		// same question the override does, `isDoneValue`, rather than trusting the
-		// index alone.
-		const states = stateMenuValues(host.settings, observedStates);
-		states.forEach((state, i) => {
-			const slot = isDoneValue(host.settings, state) ? 'pbl-legend-done' : `pbl-state-${i % STATE_COLOR_SLOTS}`;
-			addSwatch(legendEl, slot, state);
-		});
-		// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item
-		// can be done while its value is not in the configured list: its bar goes green and
-		// the loop above keyed no green. Asked of `drawn.done` — the render's own report of
-		// whether a bar actually took the override — rather than of `results`: a done item
-		// with no bar at all (shelved, filtered out, or hidden by "Show completed items")
-		// must not put a green swatch beside a grid drawing none.
-		if (!states.some((state) => isDoneValue(host.settings, state)) && drawn.done) {
-			addSwatch(legendEl, 'pbl-legend-done', host.settings.doneValues[0]);
-		}
-		// The rule's other direction: a bar that draws the plain accent — no slot, no
-		// done override, no milestone cyan — is a colour on the grid the key does not
-		// explain. `drawn.accent` is the RENDER's own report of that fact (see its doc on
-		// `TimelineRender`), never a predicate rebuilt here over `results`: that copy of
-		// `barClasses`'s precedence is exactly what missed a marker outside the window
-		// drawing the accent under `.pbl-bar-outside` instead of its own cyan.
-		if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
-	}
+	// A swatch exists only where a bar can draw the thing it keys — the general rule behind
+	// every state-colour bug this feature has had (the done swatch keying its slot instead
+	// of green, the milestone swatch keying cyan while the diamond drew its state slot, and
+	// a lone Deliverable workflow headed as if a second one existed). `renderStateSwatches`
+	// holds that rule for the vocabularies; the two below hold it for the furniture.
+	renderStateSwatches(legendEl, palettes, drawn);
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
 	// Milestone is likewise the render's own report (`drawn.milestone`): a base with no
 	// milestone in the window draws no cyan mark at all, and a swatch left unconditional
 	// here is defect 2 of this pass — the same rule failing the same way as `Other` did.
 	if (drawn.milestone) addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
+}
+
+/**
+ * The state half of the key — every workflow's vocabulary, then the two swatches that
+ * exist only because the GRID drew a colour the vocabularies do not account for. Its own
+ * function because `renderLegend` is the gate and the furniture: this is the part that
+ * grows with the number of workflows, and it had already taken the whole strip's
+ * complexity budget with it at two.
+ */
+function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], drawn: DrawnColors): void {
+	// Nothing configured, nothing keyed: `statePalettes` returns only the workflows that
+	// HAVE a key, so an empty list IS "no bar on this grid can carry a state colour" —
+	// which is the same question `renderLegend` used to ask a second time of
+	// `settings.stateKey`, and asking it twice is how the lone-Deliverable base came to
+	// draw a section headed "Deliverables" with nothing to tell it apart from.
+	if (palettes.length === 0) return;
+	let anyDone = false;
+	for (const palette of palettes) {
+		// One section per workflow, each headed by its name — empty, and so undrawn, where
+		// it is the only one and there is nothing to tell apart. Presentational: that a
+		// Deliverable is tracked by its own states is already in `stateNote`'s hidden words.
+		//
+		// The heading and its swatches go in a BOX of their own, because the strip wraps and
+		// a flat row wraps between any two items: seen in the harness at 560px, the
+		// "Deliverables" heading ended one line while its swatches carried onto the next,
+		// leaving a row of colours belonging to nothing. A lone unlabelled palette gets no
+		// box — there is no group to hold together, and the single-workflow strip stays the
+		// markup it has always been.
+		const section = palette.label ? legendEl.createDiv({ cls: 'pbl-legend-section' }) : legendEl;
+		if (palette.label) section.createSpan({ cls: 'pbl-legend-group', text: palette.label });
+		// The same list, the same index, the same offset and modulo `paletteSlot` applies
+		// to a bar. Except for done, which is the one state whose bar does NOT draw its
+		// slot: a done row's bar is overridden to green in `timeline.css`, deliberately,
+		// because green for finished is a meaning the user already reads. A swatch wearing
+		// the slot class would key pink for a bar that draws green — a legend disagreeing
+		// with the only thing it exists to explain. So the swatch asks the same question
+		// the override does, against THIS palette's own done list rather than the
+		// requirements one, or a finished Deliverable would be keyed by neither.
+		for (const state of palette.values) {
+			const done = paletteDone(palette, state);
+			anyDone ||= done;
+			addSwatch(section, done ? 'pbl-legend-done' : `pbl-state-${paletteSlot(palette, state)}`, state);
+		}
+	}
+	// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item can
+	// be done while its value is not in any configured list: its bar goes green and the loop
+	// above keyed no green. Asked of `drawn.done` — the render's own report of whether a bar
+	// actually took the override — rather than of `results`: a done item with no bar at all
+	// (shelved, filtered out, or hidden by "Show completed items") must not put a green
+	// swatch beside a grid drawing none. ONE swatch for both workflows: green means finished
+	// on either, and the grid draws one green — named by the first done value any drawn
+	// palette declares.
+	if (!anyDone && drawn.done) {
+		addSwatch(legendEl, 'pbl-legend-done', palettes.flatMap((palette) => palette.doneValues)[0] ?? 'Done');
+	}
+	// The rule's other direction: a bar that draws the plain accent — no slot, no done
+	// override, no milestone cyan — is a colour on the grid the key does not explain.
+	// `drawn.accent` is the RENDER's own report of that fact (see its doc on
+	// `TimelineRender`), never a predicate rebuilt here over `results`: that copy of
+	// `barClasses`'s precedence is exactly what missed a marker outside the window drawing
+	// the accent under `.pbl-bar-outside` instead of its own cyan.
+	if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
 }
 
 function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string): void {

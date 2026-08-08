@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
-import { assembleStyles } from '../../styles-assemble.mjs';
+import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
 import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/settings';
 import { Menu, Notice } from '../helpers/obsidian-mock';
@@ -100,6 +100,16 @@ describe('rendering', () => {
 		expect(badge('A bug')?.classList.contains('pbl-lvl-bug')).toBe(true);
 		expect(badge('Ship 1.0')?.classList.contains('pbl-lvl-milestone')).toBe(true);
 		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
+	});
+
+	it('renders a Deliverable with its own badge icon and colour', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		const badge = rowByTitle(containerEl, 'D').querySelector('.pbl-badge');
+		expect(badge?.classList.contains('pbl-lvl-deliverable')).toBe(true);
+		expect(badge?.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBe('package');
 	});
 
 	it('withholds every create affordance on a row that can hold nothing', () => {

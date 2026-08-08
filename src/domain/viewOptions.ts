@@ -66,6 +66,7 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	return [
 		hierarchyGroup(),
 		progressGroup(settings),
+		deliverablesGroup(),
 		roadmapGroup(),
 		riskGroup(),
 		newItemsGroup(settings.homeFolder),
@@ -195,6 +196,34 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 					placeholder: 'What has to be true to leave this column',
 				},
 			]),
+		],
+	};
+}
+
+/**
+ * The Deliverable workflow's own group — columns and a workflow only, per Scope: no
+ * WIP-limit or policy boxes, unlike `progressGroup`'s requirements workflow.
+ */
+function deliverablesGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Deliverables',
+		items: [
+			optionalPropertyOption('deliverableState', 'Deliverable state property'),
+			{
+				type: 'text',
+				key: 'deliverableStateValues',
+				displayName: 'Deliverable workflow states (in order)',
+				default: '',
+				placeholder: 'Concept, Draft, Review, Published',
+			},
+			{
+				type: 'text',
+				key: 'deliverableDoneValues',
+				displayName: 'Deliverable states that count as done',
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
 		],
 	};
 }
