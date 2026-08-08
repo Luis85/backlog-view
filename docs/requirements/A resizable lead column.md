@@ -135,6 +135,21 @@ bigger constant, since no single number fits every vault's titles.
   fact re-renders the dated axis to the newly effective width, and only when that width
   actually changed.
 
+## How this one is checked
+
+Eight defects were found in this grip after it first landed, and four of them were a
+single unsampled point in the same two-dimensional space: pane width by gesture. An ARIA
+range that inverted below 240px, a column that reached zero below 80px, a drag that could
+exceed what the pane draws, and a gesture at the ceiling that overwrote a wider stored
+pick — each passed every test that existed, because those tests named cases rather than
+rules.
+
+So the suite states the rules and sweeps the space rather than adding a ninth case:
+at every pane width across and below both thresholds, the announced range contains what
+is drawn and the column is never nothing; no gesture stores a width the pane cannot draw;
+and no gesture that draws no change touches a pane-clamped pick. Those hold for gestures
+nobody has written yet, which the per-defect tests beside them cannot.
+
 ## Where it lives
 
 The grip's markup and its drag/keyboard wiring are `src/view/interactions/timelineLeadResize.ts`,
