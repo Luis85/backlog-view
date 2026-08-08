@@ -101,7 +101,13 @@ toolbar's creator in `src/view/render/toolbar.ts` and the `Set type` submenu in
 
 `src/view/render/rows.ts` — the non-rung badge table gains an `idea` entry (a
 `lightbulb` icon and the badge class); `styles/badges.css` gains the colour, green, clear
-of the four levels and of pink, red and cyan.
+of the four levels and of pink, red and cyan. `DESIGN.md` had pencilled green in for
+`Deliverable`, a type specified and never built, and this takes it: a hue held for
+something unbuilt is a hue nothing is wearing. It is also the LAST one — the eight
+declared types now wear Obsidian's eight chromatic families, so the Ladder Rule's "adding
+a type takes an unclaimed hue" has run out of hues to take. That is
+[[The type palette has no unclaimed hue left]], and it blocks a ninth type rather than
+this one.
 
 `src/domain/backlogReadme.ts` — `andList` joins a category's names as English rather than
 with ` and ` between every pair. Two sentences in the generated README name a whole

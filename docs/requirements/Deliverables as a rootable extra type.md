@@ -81,7 +81,13 @@ under a real parent — and that is where this PBI's one real behavioural additi
 - It files into its own folder (`typeFolder.deliverable`, shipped default
   `deliverables` under the home folder), like every other declared type.
 - It renders with its own icon and badge colour, and the test asserting the badge table
-  covers the whole vocabulary covers it too.
+  covers the whole vocabulary covers it too. **This criterion is now blocked**: green was
+  pencilled in for `Deliverable` in `DESIGN.md` and [[Ideas as a type beside the ladder]]
+  took it, leaving the eight declared types wearing Obsidian's eight chromatic families.
+  A `Deliverable` would be the ninth and there is no unclaimed hue for it, which the
+  Ladder Rule forbids answering with a rotation — see
+  [[The type palette has no unclaimed hue left]]. Everything else in this PBI is
+  unaffected; the colour is the one part that cannot simply be picked.
 - A parentless Deliverable is never pruned by `hierarchyOnly`.
 - The generated README's hierarchy table describes `Deliverable` as able to have no
   parent (`childTypeChoices(null)` includes it) — a documentation-accuracy criterion,
