@@ -38,7 +38,7 @@ mistaken for the resize grip it sits beside.
 
 **Main flow**
 
-1. A revealed connector sits just past the **end** of the row's bar, outside it, so it
+1. A revealed connector sits just past the **drawn** end of the row's bar, outside it, so it
    never competes with the resize grip already there.
 2. Dragging from the connector draws a preview line to the pointer, and the bars that are
    legal targets are marked as such while it is held.
@@ -69,6 +69,16 @@ mistaken for the resize grip it sits beside.
   hover-revealed control that lacked one shipped unreachable on touch once
   ([[Buckets from a horizon property]]). Permanent is also the cheap direction: what a
   hoverless device loses by showing the connector always is the discretion, not a gesture.
+- **1f — the bar's end is clipped by the window.** The connector sits **at the clipped
+  edge**, inside the grid, not past it. `barGeometry` clamps `startDay`/`spanDays` to the
+  drawn window and reports `clippedEnd`, so a bar running past the edge has no on-screen end
+  to sit beyond: a connector placed past the clamped one lands outside the scrollable grid,
+  where it is unreachable at exactly the zoom that produced the clipping. This is the same
+  answer [[Arrows between bars]] gives an anchor at a clipped edge, and it costs the
+  gesture nothing — the connector is a handle, and a handle claims no date, so unlike a
+  diamond it can sit at a boundary without asserting anything is there. Which is also why
+  it is not suppressed: the drag writes a *dependency*, and the fact that some of the bar
+  is off-screen says nothing about whether the ordering is true.
 - **2a — the pointer is over an illegal target.** The source bar itself, a context row, a
   target that would close a loop, or **a target that already waits for the source** —
   marked as illegal **while the drag is held**, not refused after release. A refusal that
@@ -99,6 +109,9 @@ mistaken for the resize grip it sits beside.
 
 - The connector appears only on a result's bar, only with the key bound, and sits outside
   the bar's end so it never displaces the resize grip — including on a bar one day wide.
+- It is always inside the grid: a bar clipped by the window carries its connector at the
+  clipped edge, so no zoom or scroll position leaves a drawn bar with an unreachable
+  connector.
 - It is reachable without hover: under `(hover: none)` it is visible with no gesture, and
   the rule that does it sits immediately after the `opacity: 0` it overrides — the ordering
   checked the way `test/view/rendering.test.ts` already checks it for the other two revealed
