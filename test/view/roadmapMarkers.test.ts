@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
-import { barFor, gripNames, labelTexts, rowFor, timelineRows } from '../helpers/roadmap';
+import { useViewHarness } from '../helpers/view';
+import { barFor, gripNames, labelTexts, roadmapView, rowFor, timelineRows } from '../helpers/roadmap';
 
 /**
  * Markers on the dated axis: a milestone's own bar (reduced to a point, drawn
@@ -18,12 +18,6 @@ useViewHarness();
 const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
 /** `todayCivil()` reads the same live clock, so this always names its date. */
 const TODAY_ISO = todayStamp();
-
-function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { base?: string } = {}) {
-	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
-	harness.view.setProjection('roadmap');
-	return harness;
-}
 
 describe('a marker on the dated axis', () => {
 	it('draws no diamond for a milestone past the window edge, only the direction it lies past', () => {

@@ -99,9 +99,30 @@ export default defineConfig({
 			// plus the sweep's new rows for a done bar off the grid and a base with no
 			// milestone at all) measured 98.11/93.87/99.43/99.30 — all four round down to
 			// the figures already recorded above, so none of the four move.
+			//
+			// The a11y fix wave (the toolbar's focus identity moved from `aria-label` to a
+			// per-control key, the lead grip refocusing only what actually held focus, and
+			// each timeline row saying its state in words) measured 98.11/93.87/99.43/99.30
+			// — the same four figures again: the increment is small and all of it is
+			// driven, so none of the four move.
+			//
+			// The stale-comment-and-deletion pass (three unreachable or duplicated pieces
+			// cut — the gesture's second copy of the effective-width clamp, `jumpToToday`'s
+			// dead lead-width fallback, the mock observer's uncalled `unobserve` — plus one
+			// watched-failing test for the second-pass guard's `finally`) measured
+			// 98.13/93.93/99.43/99.30 against a 98.11/93.87/99.43/99.30 baseline at the
+			// commit before it. Cutting code nothing drove is what moves branches, and it
+			// rounds down to a new decimal (93.9, up from 93.8); the other three round down
+			// to the figures already recorded above and stay put.
+			//
+			// The final-review fix pass (one watched-failing test for the roadmap keydown
+			// guard the lead grip's whole tab-stop deviation rests on, plus comment, doc
+			// and test-instrument corrections) measured 98.13/93.97/99.43/99.30. Only
+			// branches moved at all, and it rounds down to the 93.9 already recorded, so
+			// none of the four move.
 			thresholds: {
 				statements: 98.1,
-				branches: 93.8,
+				branches: 93.9,
 				functions: 99.4,
 				lines: 99.3,
 			},

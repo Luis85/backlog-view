@@ -2,10 +2,17 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
+import { gridDrag, overlayOf } from '../helpers/dnd';
+import { gripOf, rowFor } from '../helpers/roadmap';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
-import { weekendOffsetDays } from '../../src/domain/timeline';
+import { readDate, todayStamp } from '../../src/domain/noteFields';
+import { addDays, formatCivil, MAX_TIMELINE_DAYS, MIN_BAR_PX, weekendOffsetDays } from '../../src/domain/timeline';
 
 useViewHarness();
+
+/** Offset from the REAL clock, so a fixture cannot drift out of the case it states. */
+const TODAY = readDate(todayStamp()).value;
+if (TODAY === null) throw new Error('todayStamp() did not parse as a date');
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.due' };
 
@@ -57,6 +64,21 @@ describe('the two-tier header', () => {
 			cells.reduce((n, c) => n + parseFloat(c.style.getPropertyValue('--pbl-cell-w')), 0);
 		const supers = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-cell-super'));
 		expect(sum(supers)).toBe(sum(bottomCells(containerEl)));
+	});
+
+	it('hides the tiers from assistive tech without hiding the control beside them', () => {
+		const { containerEl } = datedRoadmap(furnishedVault());
+		const grip = containerEl.querySelector<HTMLElement>('.pbl-timeline-lead-grip');
+		if (!grip) throw new Error('no lead resize grip in the header');
+		// The cell tiers are decoration and say so; the header around them is not, since
+		// the lead cell carries the resize grip. `aria-hidden` on the header would take
+		// the grip's role, its labels and its tab stop out of the accessibility tree with
+		// the decoration — an aria-hidden ANCESTOR removes every focusable descendant, and
+		// nothing the grip states about itself can undo it. So this is asked of the
+		// ancestors, which is the relationship that does the damage; the grip's own
+		// attributes are `timelineLeadResize.test.ts`'s subject and pass either way.
+		expect(grip.closest('[aria-hidden="true"]')).toBeNull();
+		expect(containerEl.querySelector('.pbl-timeline-tiers')?.getAttribute('aria-hidden')).toBe('true');
 	});
 });
 
@@ -131,10 +153,139 @@ describe('bar labels', () => {
 		const bar = containerEl.querySelector<HTMLElement>('.pbl-bar-milestone');
 		const label = containerEl.querySelector<HTMLElement>('.pbl-bar-label-after');
 		if (!bar || !label) throw new Error('no milestone diamond, or no after-label');
+		// SIX, not twelve: `.pbl-bar.pbl-bar-milestone` carries `translateX(-50%)`, so the
+		// 12px diamond drawn at `--pbl-bar-left` occupies [left − 6, left + 6] and its
+		// right edge — the thing a label has to clear — is 6px past that number, not 12.
+		// Placing from `--pbl-bar-left` plus the full width left the label a diamond's
+		// width further out than the reserve intends.
 		const gap =
 			parseFloat(label.style.getPropertyValue('--pbl-label-left')) -
 			parseFloat(bar.style.getPropertyValue('--pbl-bar-left'));
-		expect(gap).toBe(12);
+		expect(gap).toBe(6);
+	});
+
+	/**
+	 * The same arithmetic the milestone case above does, asked of a named row: how far
+	 * an after-label starts from its bar's own `--pbl-bar-left`, which is the mark's
+	 * drawn width (plus the diamond's half-width correction, where one is drawn).
+	 */
+	function labelGap(containerEl: HTMLElement, title: string): number {
+		const row = rowFor(containerEl, title);
+		const bar = row?.querySelector<HTMLElement>('.pbl-bar');
+		const label = row?.querySelector<HTMLElement>('.pbl-bar-label-after');
+		if (!bar || !label) throw new Error(`no bar, or no after-label, on the row for ${title}`);
+		return (
+			parseFloat(label.style.getPropertyValue('--pbl-label-left')) -
+			parseFloat(bar.style.getPropertyValue('--pbl-bar-left'))
+		);
+	}
+
+	it('clears the 10px arrow an outside bar draws, not the day it was clamped to', () => {
+		// The second of the three shapes: nothing of this span is in the window, so
+		// `barClasses` returns early with `.pbl-bar-outside` — a fixed 10px arrow at the
+		// edge, whatever `--pbl-bar-width` says. Measuring the clamped span instead would
+		// start the title 4px along, inside the arrow it is naming.
+		//
+		// Dated off the REAL clock, at exactly the cap: `timelineWindow` clamps to
+		// `MAX_TIMELINE_DAYS` around today, so a note that far back lies wholly before
+		// the window's start and cannot drift back into view as the clock moves.
+		const vault = new FakeVault();
+		vault.addFile('Long gone.md', { frontmatter: { type: 'PBI', order: 10, due: formatCivil(addDays(TODAY, -MAX_TIMELINE_DAYS)) } });
+		const { containerEl } = datedRoadmap(vault);
+
+		expect(containerEl.querySelector('.pbl-bar-outside')).not.toBeNull();
+		expect(labelGap(containerEl, 'Long gone')).toBe(10); // OUTSIDE_MARK_PX
+	});
+
+	it('clears the floor a hairline bar is drawn at, not the pixels its one day buys', () => {
+		// The third shape, and the floor rather than the shape: an ordinary one-day bar
+		// at quarter zoom is 2px of span and draws at `MIN_BAR_PX`, so a label placed
+		// from the product lands 2px inside the bar it labels.
+		//
+		// Two notes, both offset from the real clock: the far one only stretches the
+		// window, so that at 2px/day there is still a reserve's worth of track after the
+		// near one — on a short track `renderBarLabel` draws no label at all, which is
+		// the sibling case below.
+		const vault = new FakeVault();
+		vault.addFile('One day.md', { frontmatter: { type: 'PBI', order: 10, due: formatCivil(addDays(TODAY, 10)) } });
+		vault.addFile('Far anchor.md', { frontmatter: { type: 'PBI', order: 20, due: formatCivil(addDays(TODAY, 200)) } });
+		const { view, containerEl } = datedRoadmap(vault);
+		view.setZoom('quarter');
+
+		const bar = rowFor(containerEl, 'One day')?.querySelector('.pbl-bar-milestone');
+		expect(bar, 'a borrowed end is a one-day BAR, never the diamond').toBeNull();
+		expect(labelGap(containerEl, 'One day')).toBe(MIN_BAR_PX);
+	});
+
+	it('flips a milestone label to the diamond\'s own left edge, not across its left half', () => {
+		const vault = new FakeVault();
+		// Dated late enough in the window that no reserve fits after it, so the label
+		// flips — and far enough from the left edge that it is not dropped instead.
+		// `--pbl-label-right` is measured from the track's right edge, so the label's
+		// right edge lands at trackWidth − right: taking `--pbl-bar-left` there put it
+		// at the diamond's CENTRE, i.e. across the left half of the mark it labels.
+		vault.addFile('Cutover.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-15', due: '2030-06-15' } });
+		const { view, containerEl } = datedRoadmap(vault);
+		view.setZoom('quarter');
+		const bar = containerEl.querySelector<HTMLElement>('.pbl-bar-milestone');
+		const label = containerEl.querySelector<HTMLElement>('.pbl-bar-label-before');
+		if (!bar || !label) throw new Error('no milestone diamond, or no before-label');
+		const window = view.roadmap?.window;
+		if (!window) throw new Error('no window on the snapshot');
+		const labelRightEdge = window.days * 2 - parseFloat(label.style.getPropertyValue('--pbl-label-right'));
+		expect(labelRightEdge).toBe(parseFloat(bar.style.getPropertyValue('--pbl-bar-left')) - 6);
+	});
+
+	it('draws no bar label at all on a track shorter than twice the reserve', () => {
+		// The case `renderBarLabel`'s comment used to omit, and the one that needs no
+		// clipping and no `MAX_TIMELINE_DAYS` clamp to reach: `LABEL_RESERVE_PX` is a
+		// PIXEL budget and the track is days × dayPx. A backlog spanning days around
+		// today pads to ~3 months, which at quarter zoom (2px/day) is under 200px wide —
+		// narrower than the 160px reserve on either side — so every bar in it fails both
+		// halves of the test and the feature is simply absent at that zoom.
+		const vault = new FakeVault();
+		const soon = new Date();
+		soon.setDate(soon.getDate() + 3);
+		const due = soon.toISOString().slice(0, 10);
+		vault.addFile('Near term.md', { frontmatter: { type: 'PBI', order: 10, due } });
+		const { view, containerEl } = datedRoadmap(vault);
+		// The same bar in the same window DOES get its label at month zoom, so what the
+		// quarter case loses is the zoom and not the fixture.
+		expect(containerEl.querySelector('.pbl-bar-label')).not.toBeNull();
+		view.setZoom('quarter');
+		const window = view.roadmap?.window;
+		if (!window) throw new Error('no window on the snapshot');
+		expect(window.days * 2).toBeLessThan(320); // 2 × LABEL_RESERVE_PX
+		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
+	});
+
+	it('declutters the grid exactly while a drop is being aimed', () => {
+		// `.pbl-dragging .pbl-bar-label { visibility: hidden }` is the other half, and
+		// `timelineBoxing.test.ts` refuses its deletion — a rule keyed on a class nothing
+		// sets, and a class set with no rule behind it, both read as working here. What
+		// this half states is the class going ON for a live drag and coming back OFF when
+		// the gesture ends however it ends, with a label actually on the grid to hide.
+		const vault = new FakeVault();
+		vault.addFile('Far off.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-01', due: '2030-06-15' } });
+		const { containerEl } = datedRoadmap(vault);
+		const viewEl = containerEl.querySelector<HTMLElement>('.pbl-view');
+		if (!viewEl) throw new Error('no view element');
+		expect(containerEl.querySelector('.pbl-bar-label')).not.toBeNull();
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(false);
+
+		// The gesture has to reach a TARGET, not merely leave the grip: the drag library
+		// confirms a drag on the first `dragover` over something registered, which is also
+		// exactly the moment the claim is about — the labels go while a drop is being
+		// aimed, not while a pointer is still on the bar it came from.
+		const gesture = gridDrag.start(gripOf(containerEl, 'Far off', 'body'));
+		gesture.over(overlayOf(containerEl), { clientX: 300 });
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(true);
+		// Hidden, never removed: the label is the stylesheet's to take off screen, and a
+		// render that dropped it would move the whole grid under the pointer mid-drag.
+		expect(containerEl.querySelector('.pbl-bar-label')).not.toBeNull();
+
+		gesture.cancel();
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(false);
 	});
 
 	it('drops the label rather than placing it off the track', () => {
@@ -146,5 +297,84 @@ describe('bar labels', () => {
 		const { containerEl } = datedRoadmap(vault);
 		expect(containerEl.querySelector('.pbl-bar')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
+	});
+});
+
+/**
+ * A bar states its workflow state as a COLOUR: `pbl-state-N`, or green for done. No chip
+ * is rendered on this projection (`renderStateChip`'s only call site is the tree, and
+ * `chipProps` skips the state property), so before `stateNote` the colour was the whole
+ * of it — nothing at all for a screen reader, and colour alone for a reader who cannot
+ * separate the slots (WCAG 1.4.1). The words are hidden text in the row's own content,
+ * because the row's accessible name is content-derived and an `aria-label` would replace
+ * the badge and title rather than add to them.
+ */
+describe('workflow state on the dated axis', () => {
+	function statefulVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Rollout.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'Active', start: '2026-08-04', due: '2026-08-20' },
+		});
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'PBI', order: 20, status: 'Done', start: '2026-08-10', due: '2026-09-01' },
+		});
+		vault.addFile('Cutover.md', {
+			frontmatter: { type: 'Milestone', order: 30, status: 'Active', start: '2026-09-15', due: '2026-09-15' },
+		});
+		return vault;
+	}
+
+	function statefulRoadmap() {
+		const harness = makeView(statefulVault(), { ...DATE_AXIS, stateProperty: 'note.status' }, { collapsed: true });
+		harness.view.setProjection('roadmap');
+		return harness.containerEl;
+	}
+
+	function timelineRow(containerEl: HTMLElement, title: string): HTMLElement {
+		const row = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row')).find(
+			(r) => r.querySelector('.pbl-card-title')?.textContent === title,
+		);
+		if (!row) throw new Error(`no timeline row for ${title}`);
+		return row;
+	}
+
+	const words = (row: HTMLElement) => row.querySelector<HTMLElement>('.pbl-sr-only')?.textContent ?? null;
+
+	it('puts the state in each row, in words as well as in the bar colour', () => {
+		const containerEl = statefulRoadmap();
+		const row = timelineRow(containerEl, 'Rollout');
+
+		// The colour is still drawn — this adds a carrier, it does not replace one.
+		expect(row.className).toMatch(/pbl-state-\d/);
+		expect(words(row)).toBe('Active');
+		// And not as a visible chip: the row is a lead column and a track, deliberately.
+		expect(row.querySelector('.pbl-state-chip')).toBeNull();
+	});
+
+	it('says done in words too, which is otherwise a class and a green bar', () => {
+		const containerEl = statefulRoadmap();
+		const row = timelineRow(containerEl, 'Shipped');
+
+		expect(row.classList.contains('pbl-done')).toBe(true);
+		expect(words(row)).toBe('Done — done');
+	});
+
+	it('folds the state into a marker row, whose explicit label replaces its content', () => {
+		const containerEl = statefulRoadmap();
+
+		// The name is the whole of what a marker row announces, so hidden text inside it
+		// would be dropped: the words have to be in the label itself.
+		expect(timelineRow(containerEl, 'Cutover').getAttribute('aria-label')).toBe(
+			'Cutover — Milestone 2026-09-15 — Active',
+		);
+	});
+
+	it('says nothing where there is no workflow property to say anything about', () => {
+		const { view, containerEl } = makeView(statefulVault(), DATE_AXIS, { collapsed: true });
+		view.setProjection('roadmap');
+
+		// No `stateKey`: every `stateValue` is null and no bar carries a state colour, so
+		// there is no fact here that colour alone is carrying.
+		expect(words(timelineRow(containerEl, 'Rollout'))).toBeNull();
 	});
 });

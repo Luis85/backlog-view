@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { makeView, refresh, useViewHarness } from '../helpers/view';
+import { refresh, useViewHarness } from '../helpers/view';
 import {
 	barFor,
 	barOf,
@@ -12,6 +12,7 @@ import {
 	bucketNames,
 	bucketsOf,
 	cellLabels,
+	roadmapView,
 	rowFor,
 	shelfCountOf,
 	shelfHeavyVault,
@@ -28,13 +29,6 @@ const HORIZONS = { horizonProperty: 'note.horizon' };
 const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
 /** `todayCivil()` reads the same live clock, so this always names its date. */
 const TODAY_ISO = todayStamp();
-
-function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, opts: { base?: string } = {}) {
-	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
-	harness.view.setProjection('roadmap');
-	harness.view.setShelfCollapsed(false);
-	return harness;
-}
 
 /** The dated axis alone, at its default zoom — the fixture the density tests share. */
 function datedRoadmap(vault: FakeVault) {

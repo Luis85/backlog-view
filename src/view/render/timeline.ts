@@ -52,8 +52,10 @@ export const TIMELINE_LEAD_PX = 220;
  * Room reserved for a title beside its bar, in PIXELS — matches the label's CSS
  * budget (max-width 144px + 2×8px padding). Short of this at the window's right
  * edge, the label flips to the bar's left rather than truncating against nothing.
+ * Exported for `test/view/timelineBoxing.test.ts`, which reads that budget out of
+ * `styles/timelineFurniture.css` and refuses the two drifting apart.
  */
-const LABEL_RESERVE_PX = 160;
+export const LABEL_RESERVE_PX = 160;
 
 /** `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css` — see `markWidth`. */
 const MILESTONE_MARK_PX = 12;
@@ -104,9 +106,16 @@ export interface TimelineDrawing {
 	observedStates: string[];
 	/**
 	 * The pane's own measured width, in pixels — `renderRoadmap`'s `treeEl.clientWidth`,
-	 * the same element `backlogView.ts`'s `ResizeObserver` watches, so a render and a
-	 * resize-driven re-render agree on what "the space available" means. 0 or less reads
-	 * as "not measured" — see `effectiveLeadWidth`.
+	 * the same element and the same property `backlogView.ts`'s `ResizeObserver` branch
+	 * measures, so the two normally read the same number for "the space available".
+	 *
+	 * Normally, not always: `renderRoadmap` measures AFTER `treeEl.empty()`, so a
+	 * vertical scrollbar the pane had at resize time is gone at render time and the two
+	 * differ by its width. `.pbl-roadmap-dates .pbl-tree` is `overflow-y: auto` as a
+	 * deliberate fallback (a floor plus four maxima can exceed a short or embedded pane),
+	 * so this is confined to that case, and it costs at most one extra rebuild — the
+	 * resize branch's idempotence check fails once — and a day track reserved a scrollbar
+	 * too narrow. 0 or less reads as "not measured" — see `effectiveLeadWidth`.
 	 */
 	available: number;
 }
@@ -383,6 +392,10 @@ function renderBarRow(
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
 	renderBarLabel(track, bar, geometry, scale, window);
+	// Said in words on the row itself, because on this axis the state is otherwise a
+	// bar COLOUR and nothing else — see `stateNote`.
+	const state = stateNote(ctx.host.settings.stateKey, bar.item);
+	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
 	// The row is the timeline's one selection stop, so a MARKER'S row is where the
 	// line and the diamond's facts have to be readable (criterion 4a: neither is
 	// focusable, so nothing about a milestone may exist only under a hover). An
@@ -392,7 +405,11 @@ function renderBarRow(
 	// rather than `aria-label`: an explicit label REPLACES that name instead of
 	// adding to it, and would cost every dated row its type word for a fact the bar
 	// already states.
-	if (isMarkerType(bar.item.typeName)) row.setAttribute('aria-label', `${bar.item.title} — ${dates}`);
+	// A marker's explicit label REPLACES the row's content, the hidden state span
+	// above included, so the same words are folded into it rather than lost.
+	if (isMarkerType(bar.item.typeName)) {
+		row.setAttribute('aria-label', `${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}`);
+	}
 	wireCardActivation(ctx, row, bar.item);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
@@ -412,25 +429,29 @@ function renderBarRow(
 }
 
 /**
- * A dateless end is styled open — the plan's gap stays visible instead of being
- * filled in — and an end past the window's edge is styled the same way: both say
- * "this continues beyond what is drawn", and the tooltip carries the exact dates.
+ * The row's workflow state in words, or '' where there is none to say.
  *
- * An inferred bar is a different claim: it HAS dates, but the view drew them from
- * below rather than reading them off the note, so it is outlined rather than
- * filled and never reads as a plan somebody stated.
+ * This axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
+ * site is the tree, and `chipProps` skips the state property, so without these words the
+ * slot colours are the whole of it — unreadable to a screen reader, and colour alone
+ * for everyone else (WCAG 1.4.1). Done is spelt out for the same reason: `pbl-done` is a
+ * class and a green bar.
  *
- * ponytail: one class covers "inferred" and "inferred, some children undated" —
- * an inferred end is uncertain by construction. Split them when someone can
- * describe the two pixels apart.
- *
- * `hasBodyHold` is asked of `barHolds`, never re-derived here: a fully inferred bar,
- * a half-inferred one, and a marker with no writable target all withhold the body
- * hold, and a class computed independently from geometry alone would drift from
- * that list the moment a fourth case joined it. The class is what lets the
- * stylesheet scope the grab cursor to a bar that actually registers a drag —
- * `pbl-bar` alone would advertise a hold on every one of those.
+ * Visually hidden text in the ROW's content, not an `aria-label` anywhere. `.pbl-bar` is
+ * a plain div — role `generic`, where ARIA prohibits an accessible name, so appending to
+ * the label it already carries may be announced by nobody — and a label on the row would
+ * REPLACE the badge and title the row derives its name from, which is exactly what
+ * `renderBarRow` avoids for an ordinary row. Content adds to that name instead. It stays
+ * out of the visible row on purpose: the layout is a lead column and a track, and a
+ * sixth thing in the lead is what the colour was chosen to avoid.
  */
+function stateNote(stateKey: string, item: BacklogItem): string {
+	if (!stateKey) return '';
+	const value = item.stateValue;
+	if (item.done) return value === null ? 'Done' : `${value} — done`;
+	return value ?? '';
+}
+
 /**
  * How wide the mark actually DRAWS, which is what a label beside it has to clear.
  * `--pbl-bar-width` is not that number for two of the three shapes: `.pbl-bar-milestone`
@@ -440,7 +461,11 @@ function renderBarRow(
  * which shape is drawn — keep the two in step, and both in step with
  * `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css`.
  *
- * The diamond's 45° rotation puts its tips ~2.5px outside this box; the label's own
+ * A WIDTH only: where that width starts is the caller's business, because the two
+ * marks do not share an origin. `.pbl-bar-outside` sits at `--pbl-bar-left`, while
+ * `.pbl-bar.pbl-bar-milestone` carries `translateX(-50%)` and is centred on it —
+ * `markLeft` in `renderBarLabel` is where that difference is applied. The diamond's
+ * 45° rotation puts its tips ~2.5px outside this box on each side; the label's own
  * 8px of padding is the clearance, so this stays the CSS width rather than a
  * bounding-box calculation nothing else in the file does.
  */
@@ -464,28 +489,58 @@ function renderBarLabel(
 ): void {
 	const left = geometry.startDay * scale.dayPx;
 	const width = markWidth(geometry, scale);
+	// The mark's own left edge, which is NOT `--pbl-bar-left` for the diamond: the
+	// milestone rule in `styles/timeline.css` carries `translateX(-50%)`, so a 12px
+	// diamond drawn at `left` occupies `[left - 6, left + 6]`. Placing the label from
+	// `left` instead left the `after` label 6px further out than the reserve intends and
+	// put the `before` label's right edge across the diamond's own left half. Both
+	// offsets below take this edge, so what the label clears is the mark as DRAWN.
+	const markLeft = geometry.milestone && !geometry.outside ? left - width / 2 : left;
 	const trackWidth = window.days * scale.dayPx;
-	const after = left + width + LABEL_RESERVE_PX <= trackWidth;
-	// Dropped whenever there is no room after the bar's right edge AND its start sits
-	// within the reserve of the track's own left edge. That is a bar clipped at BOTH
-	// window edges, but not only that: it is also a bar clipped at the right alone that
-	// merely BEGINS within 160px of the left edge without being clipped there itself —
-	// reachable whenever timelineWindow clamps to MAX_TIMELINE_DAYS. Either way, flipping
-	// the label before such a bar would put it off the track behind the sticky lead
-	// column. Nothing is lost by dropping it — the row's lead carries the same title,
-	// which is what makes this decoration rather than content, and squeezing it over the
-	// bar would only trade a hidden label for an unreadable one.
-	if (!after && left < LABEL_RESERVE_PX) return;
+	const after = markLeft + width + LABEL_RESERVE_PX <= trackWidth;
+	// Dropped whenever there is no room after the mark's right edge AND the mark begins
+	// within the reserve of the track's own left edge, since flipping the label before
+	// such a mark would put it off the track behind the sticky lead column. Three ways
+	// to reach that, and `MAX_TIMELINE_DAYS` is required for none of them:
+	//   - a bar clipped at BOTH window edges;
+	//   - a bar clipped at the right alone that merely BEGINS within `LABEL_RESERVE_PX`
+	//     of the left edge without being clipped there itself;
+	//   - a SHORT TRACK, with no clipping anywhere in it. The reserve is a pixel budget
+	//     while the track is days times `dayPx`, so a backlog whose dates sit near today
+	//     pads out to ~92 days, which at quarter zoom (2px/day) is a 184px track — under
+	//     one reserve plus the other. All that still labels there is the first ~12 days
+	//     (room after) and anything starting past 160px (room before), and both of those
+	//     lie in the padding months `timelineWindow` adds either side, where no bar of
+	//     such a backlog begins. At that zoom the feature is effectively absent, which is
+	//     what `timelineFurniture.test.ts` drives with one bar rather than claiming of
+	//     every position on the track.
+	// Nothing is lost by dropping it — the row's lead carries the same title, which is
+	// what makes this decoration rather than content, and squeezing it over the bar would
+	// only trade a hidden label for an unreadable one.
+	if (!after && markLeft < LABEL_RESERVE_PX) return;
 	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
 	if (after) {
 		label.addClass('pbl-bar-label-after');
-		label.setCssProps({ '--pbl-label-left': `${left + width}px` });
+		label.setCssProps({ '--pbl-label-left': `${markLeft + width}px` });
 	} else {
 		label.addClass('pbl-bar-label-before');
-		label.setCssProps({ '--pbl-label-right': `${trackWidth - left}px` });
+		label.setCssProps({ '--pbl-label-right': `${trackWidth - markLeft}px` });
 	}
 }
 
+/**
+ * A dateless end is styled open — the plan's gap stays visible instead of being
+ * filled in — and an end past the window's edge is styled the same way: both say
+ * "this continues beyond what is drawn", and the tooltip carries the exact dates.
+ *
+ * An inferred bar is a different claim: it HAS dates, but the view drew them from
+ * below rather than reading them off the note, so it is outlined rather than
+ * filled and never reads as a plan somebody stated.
+ *
+ * ponytail: one class covers "inferred" and "inferred, some children undated" —
+ * an inferred end is uncertain by construction. Split them when someone can
+ * describe the two pixels apart.
+ */
 function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolean): string {
 	const holdable = hasBodyHold ? ' pbl-bar-holdable' : '';
 	// Nothing of it is in view. Drawing the clamp would put a diamond at a date the item

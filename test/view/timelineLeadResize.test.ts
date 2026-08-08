@@ -47,9 +47,25 @@ describe('the lead-column resize grip', () => {
 		expect(el.getAttribute('aria-valuenow')).toBe(String(TIMELINE_LEAD_PX));
 	});
 
-	it('is absent off the dated axis and in tree mode', () => {
-		const { containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
-		expect(containerEl.querySelector('.pbl-timeline-lead-grip')).toBeNull(); // tree mode
+	it('is absent in tree mode, on the board and on the horizon axis, and drawn on the dated one', () => {
+		// All four positions, because the grip belongs to ONE of them: the fixture
+		// configures both axes so 'horizons' is a real pick rather than one `activeAxis`
+		// resolves straight back to 'dates'.
+		const { view, containerEl } = makeView(
+			datedVault(),
+			{ ...DATE_AXIS, horizonProperty: 'note.horizon', horizonValues: 'Now, Later' },
+			{ collapsed: true },
+		);
+		const gripRendered = () => containerEl.querySelector('.pbl-timeline-lead-grip') !== null;
+
+		expect(gripRendered()).toBe(false); // tree mode
+		view.setProjection('board');
+		expect(gripRendered()).toBe(false);
+		view.setProjection('roadmap');
+		view.setAxisPick('horizons');
+		expect(gripRendered()).toBe(false); // a roadmap, but no grid to lead
+		view.setAxisPick('dates');
+		expect(gripRendered()).toBe(true);
 	});
 
 	describe('dragging', () => {
@@ -102,6 +118,28 @@ describe('the lead-column resize grip', () => {
 			// And the gesture is over: a later move is not still resizing.
 			el.dispatchEvent(pointer('pointermove', 200));
 			expect(content.style.getPropertyValue('--pbl-tl-lead')).toBe(`${TIMELINE_LEAD_PX}px`);
+		});
+
+		it('leaves the keyboard where it was: a pointer resize takes no focus', () => {
+			// `pointerdown` calls `preventDefault()`, so a mouse or a finger never focuses
+			// the strip — and the commit used to refocus its replacement regardless. That
+			// handed the separator a focus nobody gave it, after which the pane's own
+			// `evt.target !== evt.currentTarget` guard swallowed every key: the next arrow
+			// resized the column instead of moving the card selection.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			const pane = treeOf(containerEl);
+			pane.focus();
+
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 40));
+			el.dispatchEvent(pointer('pointerup', 40));
+
+			// The resize itself still lands — this withholds the focus, not the write.
+			expect(view.leadWidth).toBe(TIMELINE_LEAD_PX + 40);
+			expect(document.activeElement).not.toBe(grip(containerEl));
+			expect(document.activeElement).toBe(pane);
 		});
 
 		it('answers to one contact: a second finger neither starts nor ends the gesture', () => {
@@ -295,6 +333,28 @@ describe('the lead-column resize grip', () => {
 			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
 			expect(config.setCalls).toEqual([]);
 			expect(vault.writeLog).toHaveLength(0);
+		});
+
+		it('leaves the pane its own keys: a key the grip does not claim never moves the card selection', () => {
+			// The whole accepted ARIA deviation rests on this. The grip is a focusable
+			// non-`option` inside the pane's `listbox`, and what makes that cost the
+			// composite nothing is `handleRoadmapKeydown`'s `evt.target !==
+			// evt.currentTarget` guard. ArrowDown is the case that can see it: the grip
+			// claims Left, Right and Home and lets every other key bubble to the pane,
+			// so without the guard a reader resizing the column moves the selection with
+			// each press. Asserted at the forbidden thing rather than at the shelf's
+			// promoted controls, which only ever dispatch keys AT the pane.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+			expect(view.selectedPath).toBeNull();
+
+			const el = grip(containerEl);
+			el.focus();
+			el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+			expect(view.selectedPath).toBeNull();
+			// And the grip did not quietly resize on a key it does not own either.
+			expect(view.leadWidth).toBeNull();
 		});
 
 		it('keeps keyboard focus on its own replacement across the rebuild its own keypress causes', () => {

@@ -42,7 +42,7 @@ cannot name a state differently.
 **Main flow**
 
 1. Each bar's row takes a `pbl-state-N` class, `N` being its state's index in
-   `stateMenuValues` wrapped modulo five palette slots. An item with no state, or a
+   `stateMenuValues` wrapped modulo four palette slots. An item with no state, or a
    value the vocabulary does not carry, takes no slot and keeps the bar's plain accent.
 2. A done state still gets a slot, but the existing done rule wins: green is a meaning
    the user already relies on everywhere else in the plugin, a slot colour is only
@@ -52,15 +52,20 @@ cannot name a state differently.
    state (the same slot classes the bars carry, in the same order), then the today
    line's colour, then the milestone line's colour.
 4. The legend is presentational: `aria-hidden`, no tab stop, no pointer handler. Every
-   fact a swatch stands for is already reachable without it — a state from the row's
-   chip or the Set state menu, today and a milestone from the line's own tooltip.
+   fact a swatch stands for is already reachable without it — a state, and its
+   done-ness, from hidden words in the timeline row itself (NOT from the row's chip:
+   this projection renders no state chip, so until those words existed a bar's state
+   lived in its colour alone and withholding the legend was a gap rather than a
+   restatement), a milestone from its own row's accessible name, and today from being
+   today — not from the line's own tooltip, which hangs on an `aria-hidden` div and so
+   carries nothing to the audience that clause is about.
 5. The Today pill this PBI's own header band existed for ([[Reading the grid]]) is
    gone: the legend now names the today line's colour, so the header carries only the
    line itself and its tooltip, unlabeled.
 
 **Extensions**
 
-- **1a — a vocabulary longer than five states.** Slots repeat rather than run out; two
+- **1a — a vocabulary longer than four states.** Slots repeat rather than run out; two
   states can share a colour once the vocabulary passes the palette's length, the same
   tradeoff a rotating scheme always makes.
 - **3a — no workflow property configured.** `stateMenuValues` does NOT reliably return
@@ -111,9 +116,9 @@ completed items") with the vocabulary omitting its value, keyed neither there no
 vocabulary loop, and the same item once it actually lands on the grid.
 
 Beside it, a text check on the stylesheets: each swatch names the same palette colour as
-the mark it keys, the five slots are distinct, and none of them is the red, cyan or green
-that already mean today, a milestone and done — a claim `STATE_COLOR_SLOTS` makes in a
-comment and nothing checked. Its reach is the variable each rule names; what those resolve
+the mark it keys, the four slots are distinct, and none of them is the red, cyan, green
+or the default accent's purple that already mean today, a milestone, done and `Other` —
+a claim `STATE_COLOR_SLOTS` makes in a comment and nothing checked. Its reach is the variable each rule names; what those resolve
 to under a theme stays the live-vault question in [[Smoke test the roadmap]].
 
 The fifth defect was found by a reviewer AFTER the sweep existed, because the table had
@@ -183,6 +188,13 @@ what got drawn.
   window must not key cyan.
 - The legend sits outside `.pbl-timeline` (the scroller) and under the toolbar, so
   scrolling the grid never scrolls the legend with it.
+- A timeline row states its workflow state in WORDS as well as in colour — a hidden
+  span in the row itself, carrying the state's value, and its done-ness with it
+  (`<value> — done`, or `Done` where a done item carries no value). This is what the
+  legend's `aria-hidden` rests on, since the dated axis renders no state chip. A row
+  with no state, and every row where no workflow property is configured, renders no
+  such span; a MARKER's explicit `aria-label` replaces its content, so the same words
+  are folded into that label rather than lost.
 - The legend carries `aria-hidden` and nothing inside it is a `button` or otherwise
   reachable by Tab.
 - `.pbl-today-label` and `.pbl-timeline-band` no longer exist anywhere: the today
@@ -190,7 +202,7 @@ what got drawn.
 
 ## Where it lives
 
-`stateColorSlot` and its five-slot constant are `src/domain/settings.ts`, beside
+`stateColorSlot` and its four-slot constant are `src/domain/settings.ts`, beside
 `stateMenuValues` — the vocabulary both index into. `renderBarRow` in
 `src/view/render/timeline.ts` adds the slot class to a bar's row; the same file's
 `renderCellHeader` lost the empty header band the Today pill used to mount in, now
@@ -201,7 +213,7 @@ projection and axis-pick gates it shares with `renderTimelineControls` stay in s
 `renderLegend` gates the state swatches specifically on `host.settings.stateKey`, right
 beside where it builds them — never on `stateMenuValues(...)`'s own return, which still
 answers `[doneValues[0]]` with no workflow configured (see extension 3a).
-The colour rules — the five slots, the accent fallback via `--pbl-state-color`, and
+The colour rules — the four slots, the accent fallback via `--pbl-state-color`, and
 the done rule's specificity over a slot — are `styles/timeline.css`; the legend's own
 swatches and layout are `styles/legend.css`; the Today pill's rule is deleted from
 `styles/timelineFurniture.css`.

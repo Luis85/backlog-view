@@ -131,8 +131,13 @@
 .pbl-timeline-lead-grip:focus-visible {
 	background-color: var(--interactive-accent);
 }
+/* The ring has to contrast with the strip it rings. Both were `--interactive-accent`,
+   which on a 6px strip filled with that same accent is an indicator drawn in the colour
+   of the thing it indicates — invisible, on the one control here that has to say where
+   the keyboard is. `--text-on-accent` is the token a theme guarantees legible against
+   the accent it fills with, which is exactly the question being asked. */
 .pbl-timeline-lead-grip:focus-visible {
-	outline: 2px solid var(--interactive-accent);
+	outline: 2px solid var(--text-on-accent);
 	outline-offset: -1px;
 }
 
@@ -197,18 +202,22 @@
 .pbl-bar-holdable { cursor: grab; } /* only where barHolds registers the body hold — barClasses, timeline.ts */
 
 /* Per-state bar colour: `pbl-state-N` — N is the state's index in `stateMenuValues`,
-   wrapped modulo five palette slots by `stateColorSlot` (domain/settings.ts) — mirrors
-   badges.css: TS adds the index class, this file owns the colour. `--pbl-state-color`
-   is declared here on the class itself, not on `.pbl-bar`, so both consumers read the
-   same token off the same class: the bar above inherits it into `--pbl-bar-color`
-   (falling back to the accent where no slot class is present), and the legend's swatch
-   (`legend.css`) is simply an element that carries the class directly. One mapping,
-   never two to keep in step. */
+   wrapped modulo `STATE_COLOR_SLOTS` palette slots by `stateColorSlot`
+   (domain/settings.ts) — mirrors badges.css: TS adds the index class, this file owns
+   the colour. `--pbl-state-color` is declared here on the class itself, not on
+   `.pbl-bar`, so both consumers read the same token off the same class: the bar above
+   inherits it into `--pbl-bar-color` (falling back to the accent where no slot class is
+   present), and the legend's swatch (`legend.css`) is simply an element that carries the
+   class directly. One mapping, never two to keep in step.
+
+   No purple: it is Obsidian's DEFAULT accent, which is the fallback right above and the
+   colour `.pbl-legend-other` keys — a slot painting it drew two swatches alike in the one
+   strip that exists to tell colours apart. See `STATE_COLOR_SLOTS`, which counts the four
+   reserved colours and says why a user-set accent still escapes that reservation. */
 .pbl-state-0 { --pbl-state-color: rgb(var(--color-orange-rgb)); }
-.pbl-state-1 { --pbl-state-color: rgb(var(--color-purple-rgb)); }
-.pbl-state-2 { --pbl-state-color: rgb(var(--color-blue-rgb)); }
-.pbl-state-3 { --pbl-state-color: rgb(var(--color-yellow-rgb)); }
-.pbl-state-4 { --pbl-state-color: rgb(var(--color-pink-rgb)); }
+.pbl-state-1 { --pbl-state-color: rgb(var(--color-blue-rgb)); }
+.pbl-state-2 { --pbl-state-color: rgb(var(--color-yellow-rgb)); }
+.pbl-state-3 { --pbl-state-color: rgb(var(--color-pink-rgb)); }
 
 /* Done outranks a slot colour: green is a meaning the user already relies on, a slot
    colour is only positional — an item can carry both classes at once (a done state
@@ -287,11 +296,15 @@
 }
 
 /* A point in time is not a span: an equal pair the note states renders as the Gantt diamond.
-   CENTRED on its date, not started at it: `--pbl-bar-left` is the left edge a span wants,
-   but a point has no width to spend, and a 12px diamond hung off that edge sits 6px right
-   of the full-height line drawn for the same milestone at the same date. `translateX`
-   precedes the rotation so it moves the diamond along the track rather than along its own
-   rotated axis.
+   CENTRED on its DATE, not started at it: `--pbl-bar-left` is the left edge a span wants,
+   but a point has no width to spend, so a 12px diamond hung off that edge sat 6px right of
+   the date it names. `translateX` precedes the rotation so it moves the diamond along the
+   track rather than along its own rotated axis. Its date, not its line: the full-height
+   `.pbl-milestone-line` is drawn from that same day's left edge and is `--pbl-tl-line`
+   wide, and it steps aside by another line width where the milestone falls on today
+   (`renderMilestoneLines`'s `nudge`) — so the two agree on the day and differ by up to 3px
+   within it. `renderBarLabel` reads the shift back off `translateX` to place a label
+   beside the diamond as drawn; keep the two in step.
 
    Cyan, like the badge and like the full-height line drawn for the same date, and NOT
    the state slot its row would otherwise give it: a milestone is keyed in the legend as
