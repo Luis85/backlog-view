@@ -145,23 +145,43 @@ a different control.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The entries join the others in
-`src/view/interactions/menu.ts`, over the suggester machinery in `src/ui/valueSuggest.ts`
-and `src/ui/prompts.ts` that the state and tag pickers already use. What the write *is* —
-append or drop one entry, and drop the key when the last one goes — is planned in
-`src/domain/writePlan.ts` and applied by `src/storage/frontmatter.ts`.
+**Built.** The two entries are `src/view/interactions/dependencies.ts`, added to the row
+menu by `src/view/interactions/menu.ts` inside its `editable` block — which is where the
+context-row rule is kept for this feature, and deliberately the ONLY place: a second
+`outsideFilter` test in `dependenciesAvailable` was written, found to be unfalsifiable
+because the block already withheld the entries, and removed. A guard that cannot fail is
+a guard that goes on reading as a guarantee after the real one moves.
 
-**This is a new frontmatter operation, not an existing call.** "Absence is a value, and
-never write to an empty key" holds in that module today, but it is spelled twice in two
-shapes rather than once: the state key guards inline on `settings.stateKey` in `applyInto`,
-and the axis keys go through `axisEntries`, whose `key !== ''` test drops an unconfigured
-key and whose `null` value means delete. Neither shape takes a **list**, which is what this
-property is, and neither appends to or removes from one. So an implementer adds an
-operation — append one entry, drop **every** raw entry a single offered line stands for
-(4b and 4c alike: a resolved dependency however many times and however it is spelled, or an
-entry that became no edge however many times it is repeated), drop the key when the last
-goes, and write nothing when the key is unset — rather than a call to something already
-written; whether it
-also becomes the single statement of the rule for the other two is a refactor this note
-neither needs nor forbids. Which picks are legal is the loop question
-`src/domain/dropTargets.ts` already answers for the tree, asked of a second edge kind.
+The picker is `src/ui/itemSuggest.ts`, one `FuzzySuggestModal` given a different list each
+time and knowing nothing about prerequisites — which is what lets the same modal offer the
+notes an item may wait for and the entries it currently waits on.
+
+**The write has a sibling, and this note used to say it did not.** The earlier version of
+this section said the module's two existing shapes take no list, so an implementer adds an
+operation rather than calling something already written. The first half is right and the
+conclusion was wrong: `applyTagDelta` is the same shape — a delta rather than a computed
+list, applied to whatever the note holds *right now* inside `processFrontMatter`, returning
+what actually changed so undo gets its inverse, and deleting the key when the last entry
+goes. `applyDependsOnDelta` in `src/storage/dependsOnWrite.ts` is modelled on it and
+inherits its reason exactly: a menu row can be a refresh behind the note. That includes the
+half easiest to drop — an add checks the live list first, so a prerequisite that arrived
+between the menu opening and the pick landing is not appended twice, and an add that
+changed nothing captures no inverse and spends no undo slot.
+
+`setOwn` — the `__proto__`-safe key write every user-configured property goes through —
+moved to `src/storage/ownProperty.ts` in the same change, and that is a structural fix
+rather than tidying: two writers need it, and `dependsOnWrite.ts` reaching back into
+`frontmatter.ts` for it made an import cycle. The rule belongs to neither writer in
+particular, so it belongs to neither file.
+
+`DependsOnDelta` (`src/domain/writePlan.ts`) is what makes 4b, 4c and 4d one rule rather
+than three: `removePath` drops every live entry resolving to a note, `removeRaw` every
+entry whose text matches, `removeKey` the property outright. The first two restore as a
+DELTA like the tags; the third is a KEY write captured by `touchedKeys`
+(`src/storage/writeKeys.ts`) exactly as `removeStateKey` is — listing it for both would
+have undo put the prior value back *and* replay the inverse over it.
+
+Driven in `test/view/dependencyMenu.test.ts` from this note's criteria, and swept for
+context-row safety by `test/view/contextRowWrites.test.ts`, which now picks from any
+suggester a command opens: a menu entry that merely OPENS a picker has written nothing yet,
+so leaving it open would sweep the entry and not the write behind it.

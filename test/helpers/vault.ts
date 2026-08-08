@@ -15,6 +15,13 @@ export interface AddFileOptions {
 	frontmatter?: Record<string, unknown>;
 	/** Values of the `parent` key rendered as parsed frontmatter links. */
 	parentLink?: string;
+	/**
+	 * Frontmatter LIST values Obsidian would have parsed into its link cache, keyed by
+	 * property. A list is cached per entry (`dependsOn.0`, `dependsOn.1`), which is the
+	 * shape `readLinkList` reads and the one a raw-value fallback cannot exercise — so a
+	 * test wanting the real wikilink path has to be able to build it.
+	 */
+	listLinks?: Record<string, string[]>;
 	/** `file.stat.mtime`, for tests exercising "last modified" ordering. Defaults to 0. */
 	mtime?: number;
 }
@@ -212,6 +219,17 @@ export class FakeVault {
 			fm['parent'] = `[[${options.parentLink}]]`;
 			cache.frontmatterLinks = [
 				{ key: 'parent', link: options.parentLink, original: `[[${options.parentLink}]]` },
+			];
+		}
+		for (const [key, links] of Object.entries(options.listLinks ?? {})) {
+			fm[key] = links.map((link) => `[[${link}]]`);
+			cache.frontmatterLinks = [
+				...(cache.frontmatterLinks ?? []),
+				...links.map((link, index) => ({
+					key: `${key}.${index}`,
+					link,
+					original: `[[${link}]]`,
+				})),
 			];
 		}
 		if (Object.keys(fm).length > 0) cache.frontmatter = fm;

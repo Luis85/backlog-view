@@ -1,13 +1,16 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { inferFolderParent, nearestFolderNote } from './folderNotes';
+import { DependencyNode, resolveDependencies } from './dependencies';
 import { childLevelIndex, EXTRA_TYPE_RANK, focusTarget, isExtraType, isMarkerType } from './itemTypes';
 import {
 	absentReading,
 	CivilDate,
 	FieldReading,
+	LinkEntry,
 	ownValue,
 	ParentRef,
 	readDate,
+	readLinkList,
 	readNumber,
 	readPlacement,
 	readString,
@@ -47,6 +50,13 @@ interface RawItem {
 	title: string;
 	/** Raw value of the type property, if present. */
 	typeName: string | null;
+	/**
+	 * The prerequisite entries this note declares, exactly as it spells them and in its
+	 * own order — duplicates included, because the removal path matches on that text.
+	 * Read here because `addItem` is the one place a note's cache is opened; what they
+	 * MEAN is decided later, against the item set the model ends up keeping.
+	 */
+	dependsOnEntries: LinkEntry[];
 	/** Numeric rank among siblings; null when the property is missing. */
 	order: number | null;
 	/**
@@ -140,6 +150,15 @@ export interface BacklogItem extends LinkedItem {
 	 */
 	descendantStart: CivilDate | null;
 	descendantTarget: CivilDate | null;
+	/**
+	 * The items this one waits for, collapsed to one per note. Assigned by a pass after
+	 * `assignAll` — the last phase, because an entry may only resolve against the set
+	 * the model KEEPS, which the scope prune decides. Empty when the key is
+	 * unconfigured, which is not a special case but the truth: no note declares one.
+	 */
+	prerequisites: BacklogItem[];
+	/** Raw text of every declared entry that became no edge — see `dependencies.ts`. */
+	brokenPrerequisites: string[];
 }
 
 export interface BacklogModel {
@@ -187,6 +206,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// the same sequence is what keeps the menu from naming the buckets in an order
 	// the axis then contradicts.
 	const observedHorizons = collectObservedHorizons(items);
+	assignDependencies(items);
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
 	// mirroring the per-level backlogs (Epics / Features / Stories) of Azure DevOps.
@@ -202,6 +222,36 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		return { ...rest, ...shown(assignVisualDepth(focusRoots)), roots: focusRoots, focused: true };
 	}
 	return { ...rest, ...shown(items), roots, focused: false };
+}
+
+/**
+ * Resolve declared prerequisites into edges, once the item set is final.
+ *
+ * Runs after `assignAll` — and therefore after the scope prune — so an entry resolves
+ * against the notes the model KEEPS. The two fields it fills are the last to land on a
+ * `BacklogItem`, which is why they are assigned here rather than promoted: nothing about
+ * an item's place in the tree depends on them, so no earlier phase can be waiting.
+ *
+ * Nothing else about any item changes. The tree's shape is identical with the property
+ * configured and without it, which is the invariant the tests state from the rule.
+ */
+function assignDependencies(items: BacklogItem[]): void {
+	const resolved = resolveDependencies(items.map(dependencyNode));
+	for (const item of items) {
+		const result = resolved.get(item.file.path);
+		item.prerequisites = (result?.prerequisites ?? []).map((node) => node.item);
+		item.brokenPrerequisites = result?.broken ?? [];
+	}
+}
+
+/** The item as `dependencies.ts` needs it, carrying itself back for the result. */
+function dependencyNode(item: BacklogItem): DependencyNode & { item: BacklogItem } {
+	return {
+		path: item.file.path,
+		outsideFilter: item.outsideFilter,
+		dependsOnEntries: item.dependsOnEntries,
+		item,
+	};
 }
 
 // ------------------------------------------------------------- build phases
@@ -287,6 +337,7 @@ function addItem(
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
 		ownKeys: readOwnKeys(fm, settings),
+		dependsOnEntries: readLinkList(app, file, cache, settings.dependsOnKey),
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);

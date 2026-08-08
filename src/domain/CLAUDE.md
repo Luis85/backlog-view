@@ -41,6 +41,15 @@ a node test that did would be measuring the runner.
   phase cannot rebuild its items without rebuilding every reference to them. Those two
   lines are the whole unsafety, and they are why the phases are worth having anyway —
   the alternative is that same unsafety spread across ten fields and every reader.
+- The two dependency fields answer that question this way: the raw entries a note
+  declares (`dependsOnEntries`) belong to `RawItem`, because they are what one note says
+  about itself and because `addItem` holds the one cache read here; what they MEAN —
+  `prerequisites` and `brokenPrerequisites` — belongs to `BacklogItem`, assigned by
+  `assignDependencies` after `assignAll`. Later than the promotion rather than inside it,
+  and the reason is the scope prune: an entry may only resolve against the set the model
+  KEEPS, so a pass run at `linkAll` would resolve edges to notes that leave a phase later.
+  Nothing about an item's place in the tree depends on either field, which is what makes a
+  pass after the last phase legitimate rather than a fourth phase nobody typed.
 - Config property ids are `note.`-prefixed (`note.parent`); frontmatter keys are not.
   `resolveSettings` strips the prefix.
 - Tag identity is case-insensitive and lives in `noteFields.ts` (`tagKey`, `hasTag`):

@@ -372,6 +372,7 @@ describe('optionalKeyFor', () => {
 			horizonKey: 'horizon',
 			startKey: 'start',
 			targetKey: 'due',
+			dependsOnKey: 'dependsOn',
 		};
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
@@ -382,9 +383,18 @@ describe('optionalKeyFor', () => {
 			'horizon',
 			'start',
 			'due',
+			'dependsOn',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
-		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual(['', '', '', '', '', '']);
+		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+		]);
 	});
 });
 
@@ -399,6 +409,7 @@ describe('the optional-property table', () => {
 			'horizon',
 			'start',
 			'target',
+			'dependsOn',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
 	});
@@ -415,6 +426,7 @@ describe('adoptableProperties', () => {
 			'horizon',
 			'start',
 			'due',
+			'dependsOn',
 		]);
 	});
 

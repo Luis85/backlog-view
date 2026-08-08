@@ -201,8 +201,13 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
  * The roadmap's axis, declared rather than detected: a horizon property with its
  * ordered values makes the bucket axis, a start and a target property make the
  * timeline, and nothing is ever picked by name-matching. The placeholders suggest
- * the ecosystem's own vocabulary (the Tasks plugin's `start` and `due`) without
- * assuming it.
+ * the ecosystem's own vocabulary (the Tasks plugin's `start`, `due` and `dependsOn`)
+ * without assuming it.
+ *
+ * The depends-on property sits here rather than under Hierarchy for the reason
+ * `Dependencies as a property` states — a prerequisite list is not a second tree, and
+ * the group that owns `parent` is the tree's. It is the roadmap's because that is the
+ * projection that DRAWS one; the menu that sets one is offered wherever an item renders.
  */
 function roadmapGroup(): BasesAllOptions {
 	return {
@@ -219,6 +224,7 @@ function roadmapGroup(): BasesAllOptions {
 			},
 			optionalPropertyOption('start', 'Start date property'),
 			optionalPropertyOption('target', 'Target date property'),
+			optionalPropertyOption('dependsOn', 'Depends-on property'),
 		],
 	};
 }

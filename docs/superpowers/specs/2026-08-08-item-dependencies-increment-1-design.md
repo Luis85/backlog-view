@@ -160,8 +160,18 @@ first entry back. The register note is corrected as part of this increment.
 
 The delta:
 
-- **Add** carries a wikilink to the prerequisite, appended to the live list. The write
-  lands on the dependent — the note the menu was opened on — and on no other note.
+- **Add** carries a wikilink to the prerequisite, appended to the live list **unless the
+  live list already names it** — resolved, so any spelling of the same note counts. The
+  write lands on the dependent — the note the menu was opened on — and on no other note.
+  The guard is not defensive tidying, and it is the half of `applyTagDelta` this spec's
+  first draft dropped while claiming to copy it: `applyTagDelta` appends only
+  `!hasTag(next, tag)` and records in `added` only what actually changed. Both halves
+  matter here for the reason the delta shape exists at all — the menu row can be a refresh
+  behind the note. If the prerequisite arrived between the menu opening and the pick
+  landing, an unconditional append writes a second entry that the reader collapses to no
+  visible change, and then the inverse — which drops **every** entry matching the target
+  (4b/4c) — takes the other writer's entry away too. An add that changed nothing captures
+  no inverse and spends no undo slot.
 - **Remove** carries either a resolved target path or a raw text, and drops **every**
   live entry that matches it. That is 4b and 4c in one rule rather than two: a resolved
   dependency however many times and however spelled, or a broken entry however many times
@@ -250,6 +260,9 @@ jsdom tests, in `test/view/`:
   offer removes the key.
 - The write lands on one note, as one batch, taken back by one undo.
 - Removing a dependency the list names twice, or names two ways, leaves nothing behind.
+- An add whose prerequisite the note already names writes nothing and captures no inverse,
+  driven against a live value that differs from the one the menu was built from — the
+  stale-refresh race, which is the only way that state is reachable.
 - **The new write path is driven through `test/view/contextRowWrites.test.ts`**, which
   exists so a write path nobody predicted fails the context-row rule without anyone
   enumerating the surfaces.

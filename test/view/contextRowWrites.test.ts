@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { Menu, Modal } from '../helpers/obsidian-mock';
+import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
 import { drag, expandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 
 /**
@@ -185,10 +185,16 @@ describe('write safety with context rows, across every entry point', () => {
 		// The context row in the middle is done and the result below it is not, so
 		// counting either one in a rollup would show up as a wrong number.
 		vault.addFile('Mid.md', {
-			frontmatter: { type: 'PBI', order: 10, status: 'Done', tags: ['ctx'] },
+			// It also DECLARES a prerequisite: an excluded note may be named and may not
+			// do the naming, so this list must produce no edge and no mark at all.
+			frontmatter: { type: 'PBI', order: 10, status: 'Done', tags: ['ctx'], dependsOn: 'Task' },
 			parentLink: 'Feature B',
 		});
-		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
+		// And a result naming a context row, which is the allowed direction.
+		vault.addFile('Task.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', dependsOn: 'Mid' },
+			parentLink: 'Mid',
+		});
 
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
@@ -201,6 +207,7 @@ describe('write safety with context rows, across every entry point', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			dependsOnProperty: 'note.dependsOn',
 		});
 		// The tag column is a write surface too — drive it like every other one.
 		config.order = ['note.tags'];
@@ -222,11 +229,26 @@ describe('write safety with context rows, across every entry point', () => {
 			// A command that opens a prompt has not written anything yet, so the prompt
 			// is part of the entry point: confirm the one that would.
 			await confirmSchedulePrompt();
+			await chooseFirstSuggestion();
 			for (const sub of item.submenu?.items ?? []) {
 				sub.clickHandler?.();
 				await flush();
 			}
 		}
+	}
+
+	/**
+	 * Take the first offer of any suggester the last command opened. A menu entry that
+	 * merely OPENS a picker has written nothing yet, so leaving it open would sweep the
+	 * entry and not the write behind it.
+	 */
+	async function chooseFirstSuggestion(): Promise<void> {
+		const modal = Modal.lastOpened;
+		if (!(modal instanceof FuzzySuggestModal)) return;
+		Modal.lastOpened = null;
+		const offered = (modal as FuzzySuggestModal<unknown>).offered();
+		if (offered.length > 0) (modal as FuzzySuggestModal<unknown>).choose(offered[0]);
+		await flush();
 	}
 
 	/** Fill and submit the schedule prompt, if that is what the last command opened. */

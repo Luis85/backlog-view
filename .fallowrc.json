@@ -14,6 +14,10 @@
 		{
 			"extends": "ValueSuggest",
 			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion", "valueOf"]
+		},
+		{
+			"extends": "FuzzySuggestModal",
+			"members": ["getItems", "getItemText", "renderSuggestion", "onChooseItem"]
 		}
 	],
 	"health": {

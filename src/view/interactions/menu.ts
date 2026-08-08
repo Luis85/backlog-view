@@ -14,6 +14,7 @@ import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
+import { addDependencyItems, dependenciesAvailable } from './dependencies';
 import { listedChildren, undisclosedMatches } from '../childrenList';
 
 /**
@@ -77,6 +78,9 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		// for nothing at all.
 		if (canSchedule(host.settings, item)) addScheduleItems(host, menu, item);
 		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
+		// A prerequisite is a property of the note rather than of a projection, so the
+		// entries are offered wherever an item renders — not only where one is drawn.
+		if (dependenciesAvailable(host)) addDependencyItems(host, model, menu, item);
 	}
 	menu.addSeparator();
 

@@ -84,11 +84,35 @@ export interface ItemWrite {
 	 * state, horizon and dates it had — which is none — so nothing moves.
 	 */
 	stubs?: OptionalField[];
+	/** Prerequisites to add and remove. Ignored when no depends-on property is configured. */
+	dependsOn?: DependsOnDelta;
 }
 
 export interface TagDelta {
 	add?: string[];
 	remove?: string[];
+}
+
+/**
+ * A change to one note's prerequisite list — a DELTA, for the same reason `TagDelta` is
+ * one and not a computed list: the menu row that planned it can be a refresh behind the
+ * note, and two removals each computed from one stale list would put the first entry back.
+ *
+ * `add` is a link to write; `remove` names lines to drop rather than values to match, and
+ * that difference is the whole of why this is not `TagDelta`:
+ *
+ * - `removePath` drops every live entry RESOLVING to that note — `[A, A]`, or `[[A]]`
+ *   beside a bare `A`, are one dependency on screen and must go in one action.
+ * - `removeRaw` drops every live entry whose text matches exactly. It is the only handle
+ *   an entry that resolves to nothing has, and it is how a broken line is cleared.
+ * - `removeKey` drops the property outright, which is what a list holding nothing
+ *   nameable offers instead of a line.
+ */
+export interface DependsOnDelta {
+	add?: TFile;
+	removePath?: string;
+	removeRaw?: string;
+	removeKey?: boolean;
 }
 
 /**
@@ -443,6 +467,14 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// which is the incoherence `hasHorizonAxis` exists to prevent. The other fields
 		// need no such test: a key of '' is exactly what unconfigured means for them.
 		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
+		// Prerequisites are never stubbed, and this is a second early return rather than
+		// a widening of the one above: the reason is its own. An empty state or an empty
+		// date is a slot on this note the user is invited to fill; an empty prerequisite
+		// list is a claim about a RELATIONSHIP that does not exist, made on every note at
+		// once. It is also exactly the state `Linking two items` requires a removal never
+		// to leave behind, so backfilling one would have ✨ create what a remove must
+		// clean up.
+		if (field === 'dependsOn') continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

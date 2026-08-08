@@ -52,9 +52,17 @@ describe('toolbar backfill', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			dependsOnProperty: 'note.dependsOn',
 		});
 		// Every one of them on the note, empty: the features are usable and nothing was
 		// decided for the user — no state, no horizon, no dates.
+		//
+		// Every one EXCEPT the prerequisite list, which is bound above and deliberately
+		// absent here. An empty state is a slot on this note to fill; an empty
+		// prerequisite list is a claim about a relationship that does not exist, made on
+		// every note at once — and it is the exact state a removal is required never to
+		// leave behind, so backfilling one would have this button create what
+		// `Remove dependency…` exists to clean up.
 		expect(vault.fm('Epic.md')).toEqual({
 			type: 'Epic',
 			order: 10,
@@ -66,9 +74,9 @@ describe('toolbar backfill', () => {
 			due: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
-		expect(Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due'))).toBe(
-			true,
-		);
+		expect(
+			Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due, dependsOn')),
+		).toBe(true);
 	});
 
 	it('binds nothing a second time, and nothing the user cleared', async () => {

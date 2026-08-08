@@ -93,6 +93,12 @@ export interface BacklogSettings {
 	 * the bucket axis: a horizon axis with no values is a board without stages.
 	 */
 	horizonValues: string[];
+	/**
+	 * Frontmatter key holding the prerequisites this note waits for, or '' when the
+	 * feature is unconfigured. A LIST key, unlike every other optional property here,
+	 * which is why the read and the write both have their own shape.
+	 */
+	dependsOnKey: string;
 	/** Frontmatter key holding the planned start date, or '' when unset. */
 	startKey: string;
 	/** Frontmatter key holding the planned target date, or '' when unset. */
@@ -262,6 +268,7 @@ export function defaultSettings(): BacklogSettings {
 		showCompleted: true,
 		horizonKey: '',
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
+		dependsOnKey: '',
 		startKey: '',
 		targetKey: '',
 	};
@@ -278,14 +285,28 @@ export function defaultSettings(): BacklogSettings {
  * the model's presence test and the backfill would otherwise each spell out the same
  * switch.
  */
-export type OptionalField = 'state' | 'startedDate' | 'finishedDate' | 'horizon' | 'start' | 'target';
+export type OptionalField =
+	| 'state'
+	| 'startedDate'
+	| 'finishedDate'
+	| 'horizon'
+	| 'start'
+	| 'target'
+	| 'dependsOn';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
  * rather than `keyof BacklogSettings` so the table below can only name a string-valued
  * key: `keyof` would let a boolean option through and `optionalKeyFor` would return one.
  */
-type OptionalSettingsKey = 'stateKey' | 'startedDateKey' | 'finishedDateKey' | 'horizonKey' | 'startKey' | 'targetKey';
+type OptionalSettingsKey =
+	| 'stateKey'
+	| 'startedDateKey'
+	| 'finishedDateKey'
+	| 'horizonKey'
+	| 'startKey'
+	| 'targetKey'
+	| 'dependsOnKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -323,6 +344,9 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon', settingsKey: 'horizonKey' },
 	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
 	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
+	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
+	// idea — offered as a placeholder, never matched by name.
+	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */
@@ -683,5 +707,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
 		startKey: propKey('startProperty', fallback.startKey),
 		targetKey: propKey('targetProperty', fallback.targetKey),
+		dependsOnKey: propKey('dependsOnProperty', fallback.dependsOnKey),
 	};
 }

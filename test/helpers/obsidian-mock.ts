@@ -388,6 +388,34 @@ export class Modal {
 	}
 }
 
+/**
+ * A suggester opened from a menu. Records itself as the last opened modal like every
+ * other, and exposes the two things a test needs: what it OFFERED, and a way to pick
+ * one — `choose(label)` runs the same path a click would, so a test asserts on the
+ * write rather than on the modal.
+ */
+export abstract class FuzzySuggestModal<T> extends Modal {
+	placeholder = '';
+	setPlaceholder(placeholder: string): void {
+		this.placeholder = placeholder;
+	}
+	abstract getItems(): T[];
+	abstract getItemText(item: T): string;
+	abstract renderSuggestion(match: { item: T }, el: HTMLElement): void;
+	abstract onChooseItem(item: T, evt?: unknown): void;
+	/** Every offered row's text — what the picker would show. */
+	offered(): string[] {
+		return this.getItems().map((item) => this.getItemText(item));
+	}
+	/** Pick the row whose text contains `label`; throws when nothing matches. */
+	choose(label: string): void {
+		const item = this.getItems().find((candidate) => this.getItemText(candidate).includes(label));
+		if (item === undefined) throw new Error(`no suggestion matching "${label}" in [${this.offered().join(' | ')}]`);
+		this.onChooseItem(item);
+		this.close();
+	}
+}
+
 export abstract class AbstractInputSuggest<T> {
 	app: any;
 	private readonly suggestInputEl: unknown;

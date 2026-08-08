@@ -180,14 +180,39 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The key joins the other optional property options
-in `src/domain/viewOptions.ts` and their resolution in `src/domain/settings.ts`, with the
-tolerant read beside the tolerant date and number in `src/domain/noteFields.ts` — the
-module that already owns "what shape did the user's frontmatter take". Resolution is a
-pass in `src/domain/model.ts` **after `pruneOutsideHierarchy`** — not after `linkAll`,
-which is the tempting place and the wrong one: the prune runs later and takes whole
-subtrees with it, so the set `linkAll` produced is not the set the model keeps. The marks
-it produces are fields of `BacklogItem`, which places the pass after `assignAll` rather
-than merely after the prune — so the question `src/domain/CLAUDE.md` asks of every new
-field, *which phase owns it*, is answered by the phase that can first see every item **that
-survives**.
+**Built.** `dependsOn` joins the optional properties in `src/domain/settings.ts` — the
+`PROPERTY_TABLE` row is the whole declaration, and the option (`dependsOnProperty`), the
+collision report, ✨'s adoption and the settings key all follow from it rather than from
+code written per feature. Its picker is one line in `src/domain/viewOptions.ts`, in the
+Roadmap group.
+
+The tolerant read is `readLinkList` in `src/domain/noteFields.ts`, beside `resolveParent`,
+which already answers four of the five questions a list asks — the dotted `key.0` form the
+link cache uses for a list entry was written for exactly this shape. It parts company with
+`resolveParent` in ONE way, and it is a requirement rather than an omission: **duplicates
+survive the read**, because the removal path has to drop every raw entry an offered line
+stands for, so collapsing happens at resolution where it is a statement about dependencies
+rather than about YAML. The entries ride on `RawItem` because `addItem` holds the one cache
+read in this layer — a later phase re-opening each note is what
+`test/domain/modelCost.test.ts` catches as n².
+
+Resolution and the marks are `src/domain/dependencies.ts`, one pass called from
+`buildModel` **after `assignAll`** — which is after `pruneOutsideHierarchy`, so an entry
+resolves against the set the model KEEPS rather than the set `linkAll` produced. That
+ordering is the whole of extension 3b: nothing is loaded to make an entry resolve, so a
+name the prune dropped simply does not.
+
+The cycle rule is **Tarjan's strongly-connected components** (`stronglyConnected`), and it
+is chosen for what 4b asks rather than for speed: an edge is broken exactly when both ends
+share a component, which is a property of the graph. A cheaper back-edge DFS marks
+whichever entry the traversal reached second — a fact about the visit order, and one that
+would move between two notes when the Base re-sorts. A self-edge is a component of one, so
+4a needs no case of its own. `dependentsClosure` beside it answers the legality question
+once per menu rather than once per candidate.
+
+The two fields land on `BacklogItem`: `prerequisites` and `brokenPrerequisites`. The
+backfill exemption is the `dependsOn` early return in `missingKeyStubs`
+(`src/domain/writePlan.ts`), its own return beside the horizon's rather than a widening of
+it. Driven in `test/domain/dependencies.test.ts`, which states each case from this note's
+criteria — including the one that asserts the tree is identical with the key configured and
+without it.
