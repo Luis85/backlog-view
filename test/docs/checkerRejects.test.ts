@@ -182,6 +182,15 @@ describe('cross-references', () => {
 			'names src/gone.ts, which does not exist',
 		],
 		[
+			// An embedded image is a reference like any other, and the pattern this rule
+			// used to be caught it only because `](` appears in `![alt](src)` as well.
+			'an embedded image whose file does not exist',
+			(files) => {
+				files['docs/requirements/Thing.md'] = note('Epic', 10, null, '# Thing\n\n![diagram](assets/gone.svg)\n');
+			},
+			'links assets/gone.svg, which does not exist',
+		],
+		[
 			'a module no use case and no ADR specifies',
 			(files) => {
 				files['src/orphan.ts'] = 'export const orphan = 1;\n';

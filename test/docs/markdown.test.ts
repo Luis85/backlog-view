@@ -107,6 +107,16 @@ describe('links', () => {
 		}
 	});
 
+	it('covers an IMAGE, which the pattern this replaced caught by accident', () => {
+		// `](` is in `![alt](src)` too, so the old scan validated images without anyone
+		// choosing to. A parser gives them their own node type, so the coverage is lost the
+		// moment nobody names it — and a missing diagram breaks a page like a missing note.
+		expect(localLinks('![diagram](assets/layers.svg)').map((l: { target: string }) => l.target)).toEqual([
+			'assets/layers.svg',
+		]);
+		expect(localLinks('![external](https://example.com/x.svg)')).toEqual([]);
+	});
+
 	it('drops what is not a local file: external schemes and bare anchors', () => {
 		expect(localLinks('[x](https://example.com/a.md)')).toEqual([]);
 		expect(localLinks('[x](#within-this-note)')).toEqual([]);

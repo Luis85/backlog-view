@@ -131,11 +131,17 @@ export function sectionBody(text, title) {
  * CommonMark defines, which is what a hand-written matcher kept getting wrong: `<...>`
  * for a destination with a space (this register is full of them), percent-encoding, and
  * an anchor that belongs INSIDE the angle brackets rather than after them.
+ *
+ * IMAGES count. The pattern this replaced scanned for `](`, which is in `![alt](src)`
+ * just as it is in `[text](href)`, so images were covered without anyone deciding they
+ * should be — and a parser that gives them their own node type drops that coverage
+ * silently unless the type is named here. A missing diagram breaks a document exactly as
+ * a missing note does; the register embeds `assets/` and would have stopped noticing.
  */
 export function localLinks(text) {
 	const out = [];
 	for (const node of nodes(text)) {
-		if (node.type !== "link") continue;
+		if (node.type !== "link" && node.type !== "image") continue;
 		if (/^[a-z][a-z0-9+.-]*:/i.test(node.url) || node.url.startsWith("#")) continue;
 		const [target] = node.url.split("#");
 		if (target) out.push({ href: node.url, target: decodeURIComponent(target) });
