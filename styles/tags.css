@@ -45,14 +45,25 @@
    .pbl-prop`), so a button that ENTERS the box model on reveal grows the cell and
    reflows the card around it; reserving its space always is what makes it stay put,
    the same trade `.pbl-add` (columns.css) and `.pbl-bucket-add` (roadmap.css) already
-   make for the same reason. */
-.pbl-tag-remove {
+   make for the same reason.
+
+   It is also a real `<button>` (see `renderTagCell` in `render/columns.ts`), which
+   loses `color`, `background-color` and `box-shadow` below to Obsidian's own
+   `button:not(.clickable-icon)` at (0,1,1) — the bare class alone is (0,1,0) and loses
+   regardless of source order, so at rest this control painted Obsidian's filled chrome
+   and full-strength text colour underneath the opacity-0 meant to hide it entirely.
+   Rather than a second rule restating whichever property Obsidian is noticed
+   contesting, the button-qualified selector joins this rule's own selector list — the
+   `button.pbl-card-kids-toggle` precedent in cardChildren.css — which ties Obsidian's
+   specificity and wins on source order, carrying every declaration below with it. */
+.pbl-tag-remove,
+button.pbl-tag-remove {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	appearance: none;
 	box-shadow: none;
-	background: transparent;
+	background-color: transparent;
 	border: none;
 	border-radius: var(--radius-s);
 	padding: 0;
@@ -79,24 +90,12 @@
 	background-color: var(--background-modifier-hover);
 }
 
-/* A real `<button>` loses its own `background: transparent`/`box-shadow: none`
-   above to Obsidian's `button:not(.clickable-icon)` at (0,1,1) — the base rule
-   is a bare class, (0,1,0), and loses regardless of source order, so at rest
-   this control has always painted Obsidian's filled chrome underneath the
-   opacity-0 that was meant to hide it entirely. Element-qualified to tie and win
-   on source order, the `button.pbl-card-kids-toggle` precedent in
-   cardChildren.css. The hover rule above already wins outright ((0,2,0) beats
-   Obsidian's (0,1,1)), so only rest needs restating — background-color here
-   rather than the `background` shorthand, since a per-property cascade only
-   needs the one property actually contested. */
-button.pbl-tag-remove {
-	background-color: transparent;
-	box-shadow: none;
-}
-
-/* That override also beats Obsidian's `button:focus-visible` ring at the same
-   (0,1,1) tie, so the button needs its own visible focus indicator — outline,
-   not box-shadow, matching every other control fixed this way. */
+/* The base rule above also beats Obsidian's `button:focus-visible` ring at the same
+   (0,1,1) tie, so the button needs its own visible focus indicator — outline, not
+   box-shadow, matching every other control fixed this way. Measured clear of
+   `.pbl-tag-list`'s own `overflow: hidden`: the pill's line-height leaves enough
+   vertical room around the 12px button that an outward ring is not clipped, unlike
+   the state/horizon chips beside it, which sit flush against their column's edge. */
 .pbl-tag-remove:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: 1px;

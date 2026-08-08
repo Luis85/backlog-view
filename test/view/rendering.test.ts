@@ -26,7 +26,14 @@ const styles: string = assembleStyles();
  * decidable here, with no browser to ask.
  */
 function ruleAt(selector: string, decl: string, inMedia?: string): number {
-	const pattern = new RegExp(`^[\\t]*\\${selector}[,\\s][^{]*\\{[^}]*${decl}`, 'gm');
+	// Every existing caller starts `selector` with `.`, so a single leading backslash
+	// happened to escape the one metacharacter that mattered. `button.pbl-x` does not:
+	// an unescaped `\b` in the pattern below is a word-boundary token, not a literal
+	// "b", and silently eats the control's element qualifier. Escaping the whole
+	// selector is the general fix — a no-op for every prior caller (a `.` escaped twice
+	// over matches exactly what an unescaped `.` wildcard already matched).
+	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const pattern = new RegExp(`^[\\t]*${escaped}[,\\s][^{]*\\{[^}]*${decl}`, 'gm');
 	let found = -1;
 	for (const match of styles.matchAll(pattern)) {
 		const at = match.index;
@@ -182,6 +189,33 @@ describe('rendering', () => {
 		for (const bit of ['.pbl-shelf', '.pbl-roadmap-context', '.pbl-board-advisory']) {
 			const unpinned = ruleAt(`.pbl-view.pbl-roadmap-dates ${bit}`, 'position: static;');
 			expect(unpinned, `${bit} needs a higher-specificity rule to unpin it on the dated axis`).toBeGreaterThan(-1);
+		}
+	});
+
+	it('qualifies every button-chrome-stripping control with the element, in ONE rule covering color, background and shadow', () => {
+		// Obsidian's `button:not(.clickable-icon)` sets THREE properties — color,
+		// background-color and box-shadow — at (0,1,1), which outranks a bare class
+		// alone ((0,1,0)) regardless of source order. A control meaning to strip that
+		// chrome has to be element-qualified (`button.pbl-x`) to tie and win on source
+		// order — the `button.pbl-card-kids-toggle` precedent in cardChildren.css — and
+		// that qualification has to sit in the SAME rule as its color/background/shadow,
+		// not a second rule restating only the property someone happened to notice: that
+		// second shape is exactly what let color slip through for all four of these in
+		// review (2026-08-08, e5c63fb) — background-color and box-shadow were restated,
+		// color was not, and three "muted" controls rendered at full text strength with
+		// a dead no-op hover. This cannot see every control in the stylesheet this rule
+		// applies to (that would mean parsing every selector against every
+		// button-producing call site, which this regex instrument does not do) — only
+		// that these four, the ones the closed issue named, are shaped that way.
+		for (const selector of ['button.pbl-state-chip', 'button.pbl-horizon-chip', 'button.pbl-tag-remove', 'button.pbl-card-match']) {
+			const color = ruleAt(selector, 'color:');
+			const background = ruleAt(selector, 'background-color:');
+			const shadow = ruleAt(selector, 'box-shadow:');
+			expect(color, `${selector} needs its own color, not Obsidian's`).toBeGreaterThan(-1);
+			expect(background, `${selector} needs its own background-color`).toBeGreaterThan(-1);
+			expect(shadow, `${selector} needs its own box-shadow`).toBeGreaterThan(-1);
+			expect(background, `${selector}'s background-color must live in the SAME rule as its color`).toBe(color);
+			expect(shadow, `${selector}'s box-shadow must live in the SAME rule as its color`).toBe(color);
 		}
 	});
 
