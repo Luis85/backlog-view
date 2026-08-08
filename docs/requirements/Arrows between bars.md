@@ -34,15 +34,17 @@ against one would report a date no note carries — a red mark on a fact that do
 | **Actor** | Backlog owner |
 | **Trigger** | The dated timeline renders with the dependency key configured and at least one edge whose ends both have bars |
 | **Preconditions** | Roadmap mode is on with the dated axis ([[Horizons or dates]]), and the dependency property is bound ([[Dependencies as a property]]) |
-| **Guarantee** | Every arrow drawn has two bars on screen, and every dependency the view knows about is stated by its dependent's row whether or not an arrow is drawn. Nothing about an arrow is written, inferred onto a note, or reachable only under a pointer, and no arrow adds a place the keyboard has to stop. |
+| **Guarantee** | Every arrow drawn has two bars on screen, and every dependency of a **rendered** dependent is stated by its own row whether or not an arrow is drawn. A dependent the reader's own controls removed from the roadmap has no row, and nothing is promised on its behalf. Nothing about an arrow is written, inferred onto a note, or reachable only under a pointer, and no arrow adds a place the keyboard has to stop. |
 
 **Main flow**
 
 1. Each readable edge whose prerequisite and dependent both render bars inside the drawn
    window draws one arrow, from the prerequisite's end to the dependent's start.
-2. An edge whose dependent starts before its prerequisite ends draws as a **conflict** —
-   the arrow marked, and the dependent's row marked with it, so the contradiction is
-   visible without hunting for the arrow that caused it.
+2. An edge whose dependent starts **on or before** the day its prerequisite ends draws as
+   a **conflict** — the arrow marked, and the dependent's row marked with it, so the
+   contradiction is visible without hunting for the arrow that caused it. On or before,
+   not before: an end is inclusive here, which is what makes a one-day span one day wide,
+   so a dependent starting the same day occupies a day its prerequisite is still running.
 3. Every dependent row's accessible name names what it waits for, and says when one of
    those is in conflict — so the ordering is available to a reader who never sees a pixel
    of the arrow layer.
@@ -51,30 +53,43 @@ against one would report a date no note carries — a red mark on a fact that do
 
 **Extensions**
 
-- **1a — one end has no bar.** Shelved for want of readable dates ([[The unplaced shelf]]),
-  hidden by the reader's own controls, collapsed into a lane ([[Lanes on the roadmap]]), or
-  lying wholly outside the drawn window ([[Zoom and the today marker]]). No arrow: an arrow
-  needs two ends and the view has one. The dependency is still stated by the dependent's
-  row, per step 3, which is the whole reason step 3 is not a nicety. Re-aiming the arrow at
-  a visible ancestor instead would draw an ordering no note states.
-- **1b — either end is outside the Base's filter.** No arrow. An arrow across the results
+- **1a — the prerequisite has no bar.** Shelved for want of readable dates
+  ([[The unplaced shelf]]), hidden by the reader's own controls, collapsed into a lane
+  ([[Lanes on the roadmap]]), or lying wholly outside the drawn window
+  ([[Zoom and the today marker]]). No arrow: an arrow needs two ends and the view has one.
+  The dependency is still stated by the dependent's row, per step 3, which is the whole
+  reason step 3 is not a nicety. Re-aiming the arrow at a visible ancestor instead would
+  draw an ordering no note states.
+- **1b — the *dependent* is the end with no bar.** No arrow either, and — where it was the
+  reader's own narrowing that removed it, the quick filter or "Show completed items" — no
+  row to carry the dependency on, since a hidden item is filtered out before anything is
+  projected. So this branch promises nothing and the guarantee says so: restoring the
+  control restores the row and its statement with it, which is the same bargain every other
+  fact about a hidden row already strikes. The case where the dependent *does* render but
+  its bar does not — shelved for want of dates — is 1a's answer, from the other side: the
+  shelf card is its row.
+- **1c — either end is outside the Base's filter.** No arrow. An arrow across the results
   is a thing derived from the results, and a context row is never a source of one — the
   same rule that keeps a context milestone from drawing a line. The dependent's row still
   states it, because that is what its own note says.
-- **1c — the edge is marked broken.** Unresolvable, self-referential or loop-closing
+- **1d — the edge is marked broken.** Unresolvable, self-referential or loop-closing
   ([[Dependencies as a property]]): no arrow, and the dependent's row carries the broken
   marker. An arrow drawn from a name that resolves to nothing would be a claim about a note
   that does not exist.
-- **1d — one end is a milestone.** The arrow meets the diamond at its date. A marker is a
+- **1e — one end is a milestone.** The arrow meets the diamond at its date. A marker is a
   point, so both of its ends are the same day; nothing else about the drawing changes.
-- **1e — the two bars are on the same row, or so close the arrow has no room to route.**
+- **1f — the two bars are on the same row, or so close the arrow has no room to route.**
   The arrow still draws, at the minimum geometry the grid allows — the dates are the fact
   and the pixels are the zoom's, the rule [[Bars from two dates]] already applies to a
   narrow span.
-- **2a — the conflict is against an inferred span.** Not flagged. The parent's dates are a
-  rollup drawn on screen and stated on no note, so the conflict would be between a real
-  date and a drawing. Two items that both state their own dates are the case this feature
-  is about.
+- **2a — one of the two dates being compared is inferred.** Not flagged, because the
+  conflict would be between a real date and a drawing: a rolled-up span exists on screen
+  and is stated on no note. But the suppression is **per end, not per item**. Only two
+  dates take part — the prerequisite's end and the dependent's start — and a bar carries
+  `inferredStart` and `inferredEnd` independently, so a parent with a stated target and a
+  rolled-up start has a perfectly real end to be late against. Suppressing the whole edge
+  because *some* endpoint was inferred would hide a contradiction between two persisted
+  dates on the strength of a third nobody compared.
 - **2b — the dependent is shelved and the prerequisite is dated.** No conflict either: with
   no start there is nothing to compare, and "unplanned" is not "late".
 - **3a — the reader cannot use a pointer.** Neither an arrow nor its head is focusable. The
@@ -90,11 +105,14 @@ against one would report a date no note carries — a red mark on a fact that do
 
 - Every arrow drawn has a prerequisite bar and a dependent bar on screen; an edge missing
   either end, or crossing the filter, or marked broken, draws none.
-- Every dependency the view read is stated by its dependent's row whether or not an arrow
-  was drawn, and a conflict is stated there too — no fact about an ordering is available
-  only by looking at, or hovering, the arrow layer.
-- A dependent starting before its prerequisite ends is marked as a conflict; a conflict is
-  never computed against an inferred span, and a shelved dependent is never in conflict.
+- Every dependency of a rendered dependent is stated by its row whether or not an arrow was
+  drawn, and a conflict is stated there too — no fact about an ordering is available only by
+  looking at, or hovering, the arrow layer. A dependent the reader's controls have hidden is
+  outside this criterion: it has no row, and restoring the control restores both.
+- A dependent starting on or before the day its prerequisite ends is marked as a conflict —
+  on or before, because an end is inclusive. A conflict is never computed from an inferred
+  date, judged at each of the two ends the comparison uses rather than at the whole span,
+  and a shelved dependent is never in conflict.
 - No arrow moves a bar, writes a date, or changes what any note says — rendering the
   roadmap with the dependency key bound writes nothing at all.
 - Neither an arrow nor its head is focusable: the timeline keeps one selection stop per

@@ -91,8 +91,11 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   never read.
 - Dependencies do not roll up: an item's prerequisites are its own, and no ancestor
   acquires them.
-- Resolution adds no second superlinear step beside `sortSiblingsDeep` — it is one pass
-  over the declared entries, and the model's O(n log n) bound is unchanged.
+- Resolution adds no second superlinear step beside `sortSiblingsDeep`: it is one pass over
+  the declared entries, so the model's bound becomes O(n log n + E) in the number of entries
+  E. Stated in E rather than folded into O(n log n), because nothing caps how many
+  prerequisites an item may name — a register where every note names every other has E in
+  n², and a bound that hid that would be claiming a check nobody can run.
 
 ## Where it lives
 
