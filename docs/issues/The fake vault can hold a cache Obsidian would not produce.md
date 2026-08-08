@@ -66,8 +66,9 @@ after the same claim had been written into `test/CLAUDE.md` as a fixture rule.
 
 **Third run, same day.** The console was run again on a note whose parent link resolves,
 and `frontmatterLinks` **has an entry**. Both directions are now measured, and the
-biconditional that was asserted early is true: Obsidian indexes a frontmatter link exactly
-when it resolves.
+biconditional that was asserted early is true for the plain `[[Name]]` form: Obsidian
+indexes it exactly when it resolves. Only that form was read from the cache — see below for
+what that leaves standing on assumption.
 
 Keeping the sequence rather than the conclusion alone, because the conclusion was right and
 the reasoning that produced it was not — the repository's own sentence is *write the

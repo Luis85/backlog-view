@@ -95,8 +95,9 @@ the linkpath and never the answer. Watched failing, as the rule requires; it did
 which is the whole finding.
 
 For the strip to change an outcome, a bracketed value would need no link entry AND a target
-that exists. **That pair cannot occur**, measured in both directions: a resolvable link has
-an entry (third run) and an unresolvable one has none (second run). Every bracketed value
+that exists. **That pair cannot occur for a plain `[[Name]]` link**, measured in both
+directions: a resolvable one has an entry (third run) and an unresolvable one has none
+(second run). Every such value
 therefore either takes path 1 or resolves to nothing on path 2, and in neither case does
 removing the brackets change the answer.
 

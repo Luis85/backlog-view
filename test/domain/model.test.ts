@@ -103,10 +103,11 @@ describe('buildModel', () => {
 	// less than it reads as.
 	//
 	// The bracketed fixtures above pair brackets with a target that EXISTS, which a vault
-	// DOES index — measured 2026-08-08, both directions — so they model a cache Obsidian
-	// does not hand out and reach the strip through a state production cannot reach. Left
-	// as they are deliberately: see `docs/issues/The fake vault can hold a cache Obsidian
-	// would not produce.md` for why moving them is not worth what it costs.
+	// DOES index for the plain `[[Name]]` form — measured 2026-08-08, both directions — so
+	// `Wiki.md` models a cache Obsidian does not hand out and reaches the strip through a
+	// state production cannot reach. `Alias.md` is the same shape on an assumption: the
+	// alias spelling was never read from the cache. Left as they are deliberately: see
+	// `docs/issues/The fake vault can hold a cache Obsidian would not produce.md`.
 	it('reports an unresolvable parent link as an orphan', () => {
 		const vault = new FakeVault();
 		vault.addFile('Child.md', { frontmatter: { parent: '[[No Such Note]]' } });

@@ -42,8 +42,10 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 - `addFile` fills `frontmatterLinks` only through its `parentLink` option, and a faithful
   parent fixture is decided by TWO questions, not one — is the value bracketed, and does it
   resolve. Both measured in a vault (2026-08-08), in two runs and in both directions: a
-  bracketed link that RESOLVES has a `frontmatterLinks` entry, and one that resolves to
-  NOTHING has none. Obsidian indexes a frontmatter link exactly when it resolves. The
+  plain `[[Name]]` link that RESOLVES has a `frontmatterLinks` entry, and one that resolves
+  to NOTHING has none — so for that spelling, Obsidian indexes a frontmatter link exactly
+  when it resolves. The alias and heading-ref spellings were never read from the cache, so
+  the rule below is stated for the form that was measured and assumed for the other two. The
   second half was checked only after review pointed out that the first had been written as
   a biconditional off one run — `docs/issues/The fake vault can hold a cache Obsidian would
   not produce.md` records both, and what each covers.
