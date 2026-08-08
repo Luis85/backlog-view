@@ -52,8 +52,10 @@ export const TIMELINE_LEAD_PX = 220;
  * Room reserved for a title beside its bar, in PIXELS — matches the label's CSS
  * budget (max-width 144px + 2×8px padding). Short of this at the window's right
  * edge, the label flips to the bar's left rather than truncating against nothing.
+ * Exported for `test/view/timelineBoxing.test.ts`, which reads that budget out of
+ * `styles/timelineFurniture.css` and refuses the two drifting apart.
  */
-const LABEL_RESERVE_PX = 160;
+export const LABEL_RESERVE_PX = 160;
 
 /** `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css` — see `markWidth`. */
 const MILESTONE_MARK_PX = 12;
@@ -104,9 +106,16 @@ export interface TimelineDrawing {
 	observedStates: string[];
 	/**
 	 * The pane's own measured width, in pixels — `renderRoadmap`'s `treeEl.clientWidth`,
-	 * the same element `backlogView.ts`'s `ResizeObserver` watches, so a render and a
-	 * resize-driven re-render agree on what "the space available" means. 0 or less reads
-	 * as "not measured" — see `effectiveLeadWidth`.
+	 * the same element and the same property `backlogView.ts`'s `ResizeObserver` branch
+	 * measures, so the two normally read the same number for "the space available".
+	 *
+	 * Normally, not always: `renderRoadmap` measures AFTER `treeEl.empty()`, so a
+	 * vertical scrollbar the pane had at resize time is gone at render time and the two
+	 * differ by its width. `.pbl-roadmap-dates .pbl-tree` is `overflow-y: auto` as a
+	 * deliberate fallback (a floor plus four maxima can exceed a short or embedded pane),
+	 * so this is confined to that case, and it costs at most one extra rebuild — the
+	 * resize branch's idempotence check fails once — and a day track reserved a scrollbar
+	 * too narrow. 0 or less reads as "not measured" — see `effectiveLeadWidth`.
 	 */
 	available: number;
 }

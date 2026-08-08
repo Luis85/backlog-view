@@ -50,6 +50,23 @@ describe('the roadmap legend', () => {
 		expect(legendEl(containerEl)).toBeNull(); // board
 	});
 
+	it('takes its aria-hidden off with its class, rather than leaving a hidden empty box', () => {
+		// The element itself is the view's and outlives every axis change; only the class
+		// and the attribute are `renderLegend`'s. The test above asks what the class does,
+		// which is what makes the legend absent rather than merely invisible — this asks
+		// the other half, since an `aria-hidden` left behind marks an ordinary empty div
+		// as decoration for every projection that follows.
+		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+		const el = legendEl(containerEl);
+		if (!el) throw new Error('no legend on the dated axis');
+		expect(el.getAttribute('aria-hidden')).toBe('true');
+
+		view.setProjection('tree');
+		expect(el.classList.contains('pbl-legend')).toBe(false);
+		expect(el.hasAttribute('aria-hidden')).toBe(false);
+	});
+
 	it('shows Today but no state or milestone swatch when no workflow property is configured', () => {
 		// `stateMenuValues` still returns a done value even with `stateKey === ''` (it
 		// falls back to `observedStates` plus a done default), but `domain/model.ts` sets
@@ -225,6 +242,14 @@ describe('the legend keys exactly the colours the grid draws', () => {
 		// than restating the fixture.
 		const milestoneDrawn = rows.some((row) => barColourKey(row) === 'pbl-legend-milestone');
 		expect(keyed.has('pbl-legend-milestone')).toBe(milestoneDrawn);
+		// The accent, both ways round for the same reason — the loop above only ever
+		// asks "is what this row draws keyed", so a swatch keying a colour NO row draws
+		// passed it. `renderBarRow` reports the accent only where no other override
+		// won, the milestone diamond included: drop that term and an in-window marker
+		// reports its own cyan AND the accent, and `Other` appears for a colour nothing
+		// on this grid paints.
+		const accentDrawn = rows.some((row) => barColourKey(row) === 'pbl-legend-other');
+		expect(keyed.has('pbl-legend-other')).toBe(accentDrawn);
 	});
 });
 

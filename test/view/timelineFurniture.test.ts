@@ -2,10 +2,17 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
+import { gridDrag, overlayOf } from '../helpers/dnd';
+import { gripOf, rowFor } from '../helpers/roadmap';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
-import { weekendOffsetDays } from '../../src/domain/timeline';
+import { readDate, todayStamp } from '../../src/domain/noteFields';
+import { addDays, formatCivil, MAX_TIMELINE_DAYS, MIN_BAR_PX, weekendOffsetDays } from '../../src/domain/timeline';
 
 useViewHarness();
+
+/** Offset from the REAL clock, so a fixture cannot drift out of the case it states. */
+const TODAY = readDate(todayStamp()).value;
+if (TODAY === null) throw new Error('todayStamp() did not parse as a date');
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.due' };
 
@@ -57,6 +64,21 @@ describe('the two-tier header', () => {
 			cells.reduce((n, c) => n + parseFloat(c.style.getPropertyValue('--pbl-cell-w')), 0);
 		const supers = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-cell-super'));
 		expect(sum(supers)).toBe(sum(bottomCells(containerEl)));
+	});
+
+	it('hides the tiers from assistive tech without hiding the control beside them', () => {
+		const { containerEl } = datedRoadmap(furnishedVault());
+		const grip = containerEl.querySelector<HTMLElement>('.pbl-timeline-lead-grip');
+		if (!grip) throw new Error('no lead resize grip in the header');
+		// The cell tiers are decoration and say so; the header around them is not, since
+		// the lead cell carries the resize grip. `aria-hidden` on the header would take
+		// the grip's role, its labels and its tab stop out of the accessibility tree with
+		// the decoration — an aria-hidden ANCESTOR removes every focusable descendant, and
+		// nothing the grip states about itself can undo it. So this is asked of the
+		// ancestors, which is the relationship that does the damage; the grip's own
+		// attributes are `timelineLeadResize.test.ts`'s subject and pass either way.
+		expect(grip.closest('[aria-hidden="true"]')).toBeNull();
+		expect(containerEl.querySelector('.pbl-timeline-tiers')?.getAttribute('aria-hidden')).toBe('true');
 	});
 });
 
@@ -142,6 +164,59 @@ describe('bar labels', () => {
 		expect(gap).toBe(6);
 	});
 
+	/**
+	 * The same arithmetic the milestone case above does, asked of a named row: how far
+	 * an after-label starts from its bar's own `--pbl-bar-left`, which is the mark's
+	 * drawn width (plus the diamond's half-width correction, where one is drawn).
+	 */
+	function labelGap(containerEl: HTMLElement, title: string): number {
+		const row = rowFor(containerEl, title);
+		const bar = row?.querySelector<HTMLElement>('.pbl-bar');
+		const label = row?.querySelector<HTMLElement>('.pbl-bar-label-after');
+		if (!bar || !label) throw new Error(`no bar, or no after-label, on the row for ${title}`);
+		return (
+			parseFloat(label.style.getPropertyValue('--pbl-label-left')) -
+			parseFloat(bar.style.getPropertyValue('--pbl-bar-left'))
+		);
+	}
+
+	it('clears the 10px arrow an outside bar draws, not the day it was clamped to', () => {
+		// The second of the three shapes: nothing of this span is in the window, so
+		// `barClasses` returns early with `.pbl-bar-outside` — a fixed 10px arrow at the
+		// edge, whatever `--pbl-bar-width` says. Measuring the clamped span instead would
+		// start the title 4px along, inside the arrow it is naming.
+		//
+		// Dated off the REAL clock, at exactly the cap: `timelineWindow` clamps to
+		// `MAX_TIMELINE_DAYS` around today, so a note that far back lies wholly before
+		// the window's start and cannot drift back into view as the clock moves.
+		const vault = new FakeVault();
+		vault.addFile('Long gone.md', { frontmatter: { type: 'PBI', order: 10, due: formatCivil(addDays(TODAY, -MAX_TIMELINE_DAYS)) } });
+		const { containerEl } = datedRoadmap(vault);
+
+		expect(containerEl.querySelector('.pbl-bar-outside')).not.toBeNull();
+		expect(labelGap(containerEl, 'Long gone')).toBe(10); // OUTSIDE_MARK_PX
+	});
+
+	it('clears the floor a hairline bar is drawn at, not the pixels its one day buys', () => {
+		// The third shape, and the floor rather than the shape: an ordinary one-day bar
+		// at quarter zoom is 2px of span and draws at `MIN_BAR_PX`, so a label placed
+		// from the product lands 2px inside the bar it labels.
+		//
+		// Two notes, both offset from the real clock: the far one only stretches the
+		// window, so that at 2px/day there is still a reserve's worth of track after the
+		// near one — on a short track `renderBarLabel` draws no label at all, which is
+		// the sibling case below.
+		const vault = new FakeVault();
+		vault.addFile('One day.md', { frontmatter: { type: 'PBI', order: 10, due: formatCivil(addDays(TODAY, 10)) } });
+		vault.addFile('Far anchor.md', { frontmatter: { type: 'PBI', order: 20, due: formatCivil(addDays(TODAY, 200)) } });
+		const { view, containerEl } = datedRoadmap(vault);
+		view.setZoom('quarter');
+
+		const bar = rowFor(containerEl, 'One day')?.querySelector('.pbl-bar-milestone');
+		expect(bar, 'a borrowed end is a one-day BAR, never the diamond').toBeNull();
+		expect(labelGap(containerEl, 'One day')).toBe(MIN_BAR_PX);
+	});
+
 	it('flips a milestone label to the diamond\'s own left edge, not across its left half', () => {
 		const vault = new FakeVault();
 		// Dated late enough in the window that no reserve fits after it, so the label
@@ -182,6 +257,35 @@ describe('bar labels', () => {
 		if (!window) throw new Error('no window on the snapshot');
 		expect(window.days * 2).toBeLessThan(320); // 2 × LABEL_RESERVE_PX
 		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
+	});
+
+	it('declutters the grid exactly while a drop is being aimed', () => {
+		// `.pbl-dragging .pbl-bar-label { visibility: hidden }` is the other half, and
+		// `timelineBoxing.test.ts` refuses its deletion — a rule keyed on a class nothing
+		// sets, and a class set with no rule behind it, both read as working here. What
+		// this half states is the class going ON for a live drag and coming back OFF when
+		// the gesture ends however it ends, with a label actually on the grid to hide.
+		const vault = new FakeVault();
+		vault.addFile('Far off.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-01', due: '2030-06-15' } });
+		const { containerEl } = datedRoadmap(vault);
+		const viewEl = containerEl.querySelector<HTMLElement>('.pbl-view');
+		if (!viewEl) throw new Error('no view element');
+		expect(containerEl.querySelector('.pbl-bar-label')).not.toBeNull();
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(false);
+
+		// The gesture has to reach a TARGET, not merely leave the grip: the drag library
+		// confirms a drag on the first `dragover` over something registered, which is also
+		// exactly the moment the claim is about — the labels go while a drop is being
+		// aimed, not while a pointer is still on the bar it came from.
+		const gesture = gridDrag.start(gripOf(containerEl, 'Far off', 'body'));
+		gesture.over(overlayOf(containerEl), { clientX: 300 });
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(true);
+		// Hidden, never removed: the label is the stylesheet's to take off screen, and a
+		// render that dropped it would move the whole grid under the pointer mid-drag.
+		expect(containerEl.querySelector('.pbl-bar-label')).not.toBeNull();
+
+		gesture.cancel();
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(false);
 	});
 
 	it('drops the label rather than placing it off the track', () => {

@@ -1,6 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
+import { LABEL_RESERVE_PX } from '../../src/view/render/timeline';
+
+/** The declarations of one rule, by selector — good enough for a single-selector rule. */
+function bodyOf(css: string, selector: string, file: string): string {
+	const at = css.indexOf(`\n${selector} {`);
+	if (at === -1) throw new Error(`no rule for ${selector} in ${file}`);
+	const open = css.indexOf('{', at);
+	return css.slice(open + 1, css.indexOf('}', open));
+}
 
 /**
  * The dated axis positions everything it draws — bars, the today line, milestone lines,
@@ -27,14 +36,7 @@ import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
 describe('the two boxes sized from TypeScript arithmetic', () => {
 	const css = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
 
-	/** The declarations of one rule, by selector — good enough for a single-selector rule. */
-	function ruleBody(selector: string): string {
-		const at = css.indexOf(`\n${selector} {`);
-		if (at === -1) throw new Error(`no rule for ${selector} in styles/timeline.css`);
-		const open = css.indexOf('{', at);
-		const close = css.indexOf('}', open);
-		return css.slice(open + 1, close);
-	}
+	const ruleBody = (selector: string) => bodyOf(css, selector, 'styles/timeline.css');
 
 	it.each(['.pbl-timeline-lead', '.pbl-timeline-cell'])('sizes %s border-box', (selector) => {
 		expect(ruleBody(selector)).toContain('box-sizing: border-box;');
@@ -62,9 +64,7 @@ describe('the legend keys the same palette colours the marks draw', () => {
 
 	/** The palette colour a rule names — `--color-green`, `rgb(var(--color-pink-rgb))`, … */
 	function paletteColour(css: string, selector: string): string {
-		const at = css.indexOf(`\n${selector} {`);
-		if (at === -1) throw new Error(`no rule for ${selector}`);
-		const body = css.slice(css.indexOf('{', at) + 1, css.indexOf('}', css.indexOf('{', at)));
+		const body = bodyOf(css, selector, css === legendCss ? 'styles/legend.css' : 'styles/timeline.css');
 		const named = /--color-([a-z]+)(?:-rgb)?\b/.exec(body);
 		if (!named) throw new Error(`${selector} names no palette colour: ${body.trim()}`);
 		return named[1];
@@ -93,6 +93,21 @@ describe('the legend keys the same palette colours the marks draw', () => {
 		expect(new Set(slots).size, `slots repeat a colour: ${slots.join(', ')}`).toBe(STATE_COLOR_SLOTS);
 		for (const reserved of ['red', 'cyan', 'green', 'purple']) {
 			expect(slots, `slot palette must stay clear of ${reserved}`).not.toContain(reserved);
+		}
+	});
+
+	it('reads a state swatch off the same token the bar it keys reads', () => {
+		// The pairs above check the four MODIFIER swatches, whose colours are written out
+		// in both files. A state swatch is the other half: it carries the bar's own
+		// `pbl-state-N` class and takes the value that class sets, so the mapping exists
+		// once. A swatch rule naming a colour of its own would draw the right hue today
+		// and drift the first time the rotation changes — which the distinctness test
+		// beside it cannot see, because it never asks where the swatch's colour comes from.
+		expect(bodyOf(legendCss, '.pbl-legend-swatch', 'styles/legend.css')).toContain(
+			'background-color: var(--pbl-state-color);',
+		);
+		for (let slot = 0; slot < STATE_COLOR_SLOTS; slot++) {
+			expect(bodyOf(timelineCss, `.pbl-state-${slot}`, 'styles/timeline.css')).toContain('--pbl-state-color:');
 		}
 	});
 
@@ -173,6 +188,58 @@ describe('the sticky lead column stays opaque under its tint', () => {
 		for (const body of leadTintRules()) {
 			if (/^\s*background-image\s*:/m.test(body)) expect(body).toContain('var(--pbl-row-tint)');
 		}
+	});
+});
+
+/**
+ * Three claims `styles/timelineFurniture.css` states in comments and nothing checked.
+ * Text checks, and their reach is exactly that: they see the declaration in the rule and
+ * cannot see a later rule overriding it, nor what any of it renders as — the browser
+ * harness and a live vault are what do. Each one refuses the deletion that was described
+ * as a defect beside it.
+ */
+describe('the furniture declarations whose comments call them load-bearing', () => {
+	const css = readFileSync(new URL('../../styles/timelineFurniture.css', import.meta.url), 'utf8');
+	const ruleBody = (selector: string) => bodyOf(css, selector, 'styles/timelineFurniture.css');
+
+	it('repeats the weekend gradient every seven days, so its phase survives the repeat', () => {
+		// One layer for every weekend in the window: TS publishes the phase
+		// (`--pbl-weekend-offset`, which the sibling suite asserts) and the repeat is what
+		// turns that one number into shading. Without an explicit period the gradient
+		// covers the whole layer once, and `background-position-x` then bands the left
+		// edge of any window that is not a whole number of weeks — the 92-day default
+		// among them.
+		expect(ruleBody('.pbl-weekend-layer')).toContain('background-size: calc(var(--pbl-day-px) * 7)');
+	});
+
+	it('spans the weekend layer over the drawn days, never the wrapper it sits in', () => {
+		// `.pbl-timeline-content` carries `min-width: 100%`, so in a pane wider than the
+		// dated track it runs past the last cell: `right: 0` would shade blank space no
+		// header date explains.
+		expect(ruleBody('.pbl-weekend-layer')).toContain('width: var(--pbl-tl-days);');
+	});
+
+	it('reserves in TypeScript exactly the width the stylesheet lets a label take', () => {
+		// `LABEL_RESERVE_PX` decides which SIDE of its bar a label is drawn on; this rule
+		// decides how wide it may then be. The two comments say "change them together" and
+		// nothing made that true — a wider `max-width` alone flips labels at the wrong
+		// point and truncates them where the reserve said they fit.
+		//
+		// The padding term is Obsidian's `--size-4-N` scale, which is N × 4px; a theme
+		// redefining it moves the budget by a few pixels, the same accepted cost as the
+		// column-fit constants that read those tokens (`src/view/CLAUDE.md`).
+		const body = ruleBody('.pbl-bar-label');
+		const maxWidth = /max-width:\s*(\d+)px/.exec(body);
+		const padding = /padding:\s*0\s+var\(--size-4-(\d+)\)/.exec(body);
+		if (!maxWidth || !padding) throw new Error(`.pbl-bar-label states no max-width and padding pair: ${body.trim()}`);
+		expect(Number(maxWidth[1]) + 2 * Number(padding[1]) * 4).toBe(LABEL_RESERVE_PX);
+	});
+
+	it('takes the labels off the grid while a drag is live', () => {
+		// The other half of `timelineFurniture.test.ts`'s "declutters while a drop is
+		// being aimed": that one drives the class onto the view, this one is the rule the
+		// class exists for. Neither is the whole claim on its own.
+		expect(ruleBody('.pbl-dragging .pbl-bar-label')).toContain('visibility: hidden;');
 	});
 });
 

@@ -79,8 +79,9 @@ export function renderRoadmap(
 			observedStates: model.observedStates,
 			// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 			// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
-			// a resize-driven re-render there measure the same thing and cannot disagree
-			// about whether the effective width actually changed.
+			// a resize-driven re-render there measure the same box. They can still read it
+			// a scrollbar apart, since this measurement happens after `treeEl.empty()` —
+			// see `TimelineDrawing.available`, which states what that costs.
 			available: treeEl.clientWidth,
 		});
 		cards.push(...timeline.cards);
