@@ -20,8 +20,19 @@ covered item's row, and a signal when that count is zero.
 
 It is a **read**, all of it. Nothing is written to the covered item — no `tested: true`, no
 stamp, no cached number — which is what keeps a test's existence from being a fact two
-notes can disagree about, and what makes the count correct the moment a test is renamed,
-retired or deleted.
+notes can disagree about, and what makes the count correct the moment the base's results
+change: a test deleted, a test whose coverage entry was removed, a test the filter stopped
+returning.
+
+**Retiring a test is not on that list**, and the sentence said it was until this note was
+reviewed. There is no retired state to read: this epic declares no test-status vocabulary
+([[A catalog of tests]] refuses one, since `status` already says drafted, active and done),
+so a test whose `status` someone set to `Done` still declares its coverage and still counts.
+The count means *a test names this item*, not *a live test names this item*, and the only
+thing that narrows it is the base's own filter — which is a real answer, since a base that
+excludes finished notes gets the narrower count for free. Writing the wider guarantee and
+leaving it standing is the defect this register has a name for; what a status ought to do
+here is a question for whichever increment gives tests a lifecycle, and it is not this one.
 
 ## Use case
 
@@ -67,6 +78,13 @@ retired or deleted.
 - **2b — the item is covered only by a test whose entry is marked broken.** Not counted. A
   broken entry names nothing this base can see, and counting it would make the reassuring
   number the one thing a typo can inflate.
+- **2c — the only test naming it is one the user considers finished or abandoned**, its
+  `status` set accordingly. It counts. Nothing here reads a test's status, and the count
+  says what it says: a test names this item. A base that filters finished notes out of its
+  results narrows the count by narrowing the results, which is the ordinary mechanism and
+  needs nothing added; a base that does not, reports the wider number. What is refused is
+  a rule inside the counter — a second status vocabulary the epic declined to invent,
+  applied to a number whose whole value is that it is simple to believe.
 - **3a — a `Test suite` covers a parent and its cases cover the children.** Both count, on
   their own items, and neither is added to the other. No edge rolls up in either direction:
   a Feature is not covered because its PBI is, and a PBI is not covered because its Feature
@@ -87,6 +105,9 @@ retired or deleted.
 - Coverage does not roll up: a parent's count is its own edges, and a test naming a child
   changes no ancestor's number.
 - A broken entry counts for nothing.
+- A test's own `status` changes no count. The number is *a test names this item*, and the
+  only thing that narrows it is the base's results — stated as a criterion because the
+  wider promise is the easy sentence to write and nothing here would fail because of it.
 - `Task`s are counted when covered and never marked untested when not, and the distinction
   is asserted rather than left to the reader of the render code.
 - Not verifiable here: whether the untested signal reads as *information* rather than as an

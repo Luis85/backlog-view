@@ -67,12 +67,16 @@ design: the relationship between a test and the work it checks is
   `parent` becomes the PBI and its **type is left alone**: the auto-type cascade assigns
   the child type of the rung an item landed under, and a `Test case` is not a rung of that
   ladder, so the same branch that protects a dragged `Bug` protects it. What the user gets
-  is a case parented to a PBI — visible in neither projection's ordinary rows, since the
-  plan hides tests and the catalog shows suites — which is the cost of an advisory rule
-  and is not new to this type.
-- **4b — the user drags a `Test suite` under an `Epic`.** Same answer, same reason. A
-  suite is a root by nature and nothing enforces that; it keeps its type and acquires a
-  parent it should not have.
+  is a case parented to a PBI, and it stays **visible in the catalog as a root**
+  ([[A projection for the tests]] 2c): its parent is not in that projection, so it is drawn
+  where a parentless case is drawn. That is the cost of an advisory rule and it is a
+  visible cost, which is the point — a note that vanished from every ordinary row until
+  someone repaired its frontmatter would be the view punishing a legal drag.
+- **4b — the user drags a `Test suite` under an `Epic`.** Same answer, same reason, same
+  visibility. A suite is a root by nature and nothing enforces that; it keeps its type,
+  acquires a parent it should not have, and still draws as a catalog root with its cases
+  under it. **No legal item is ever invisible in every projection** — that is the rule 4a
+  and this extension both keep, and the one to check against any future exclusion.
 - **5a — the `Test case` is deleted while its `Task`s remain.** Untouched here. A child
   whose `parent` names a note that is gone is [[Broken links still render]]'s question,
   and a test's children answer it by exactly the rule every other type's do.
@@ -94,6 +98,9 @@ design: the relationship between a test and the work it checks is
 - Each files into its own folder from the generated per-type options, with the folder
   prompt reachable when the option is cleared.
 - A parentless suite or case stays in the model and is not pruned by `hierarchyOnly`.
+- A test dragged under a work item is still drawn — as a catalog root — so no legal item is
+  invisible in every projection. Asserted from the rule rather than from the drag, since
+  the next exclusion added anywhere is what would break it.
 - The generated README's hierarchy table states both rungs and the suite's root
   capability, and `docs-check.mjs`'s own `LEGAL_CHILDREN` table gains the same pair — the
   register is written in this schema, so a type the plugin ships that the register cannot

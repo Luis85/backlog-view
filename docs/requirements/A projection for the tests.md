@@ -14,10 +14,14 @@ source: user request
 the test catalog, **so that** I can walk a suite from the top without the plan in the way
 and without a second base to keep in step with the first.
 
-A fourth toolbar position beside the backlog, the board and the roadmap, drawing the test
-ladder as a tree: suites in their order, cases in theirs, `Task`s under a case. It is a
-tree and not a board or a roadmap because this epic records no results and writes no
-dates, so there is nothing to put in a column and nothing to draw on an axis.
+A **fifth** toolbar position, drawing the test ladder as a tree: suites in their order,
+cases in theirs, `Task`s under a case. Fifth and not fourth — the toggle already carries
+four, `Projection` being `tree | board | roadmap | deliverables` since
+[[A Deliverables board]] shipped, and a note that counted the three it had heard of would
+have specified a control that replaces the Deliverables board rather than joining it.
+
+It is a tree and not a board or a roadmap because this epic records no results and writes
+no dates, so there is nothing to put in a column and nothing to draw on an axis.
 
 The position is **UI state** — vault-scoped localStorage beside the collapse state — never
 a `.base` setting, exactly as the mode, the roadmap axis and the focus level already are:
@@ -71,8 +75,9 @@ base settings are saved on the view, working position on the device.
 
 ## Acceptance criteria
 
-- The toggle has a fourth position, and picking it draws the test ladder from the same
-  model, with no note written and no `.base` setting changed.
+- The toggle has a fifth position, the four it already has are all still reachable, and
+  picking the new one draws the test ladder from the same model, with no note written and
+  no `.base` setting changed.
 - The projection is reachable whether or not the base returns tests, and its empty state
   offers creation rather than configuration.
 - Collapse state is stored per projection, so collapsing a suite does not collapse an Epic.
@@ -91,7 +96,7 @@ base settings are saved on the view, working position on the device.
 `src/view/uiState.ts` over `src/storage/collapseStore.ts`, the empty state
 `src/view/render/emptyStates.ts`, and the rows themselves `src/view/render/rows.ts` — the
 same tree renderer over a different population, which is what makes this projection cheap
-and is the reason it is a tree rather than a fourth kind of drawing.
+and is the reason it is a tree rather than a third kind of drawing.
 
 Which items belong to this population is a domain question and lives with the type
 vocabulary in `src/domain/itemTypes.ts`, beside the answer [[Tests stay out of the plan]]
