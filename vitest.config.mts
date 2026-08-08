@@ -64,6 +64,12 @@ export default defineConfig({
 			// context-row rule holds by there being no write rather than by a check. Functions
 			// and lines happen to round to the same 99.22 here — 1029/1037 and 3702/3731 are
 			// not the same fraction, the display width is just too short to show it.
+			//
+			// Aligning `childrenLabel` with `displayType` (task 14, so the disclosure's count
+			// agrees with the badges beside it for untyped children) measured
+			// 97.9969/93.6807/99.2285/99.2231 (4403/4493, 2787/2975, 1029/1037, 3704/3733) —
+			// a real but sub-0.01 move on three of the four, indistinguishable from the figure
+			// above at the thresholds' own precision, so they stay rather than chasing noise.
 			thresholds: {
 				statements: 97.85,
 				branches: 93.55,

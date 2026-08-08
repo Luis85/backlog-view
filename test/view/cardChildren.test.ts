@@ -27,9 +27,31 @@ function nestedVault(): FakeVault {
 	return vault;
 }
 
+/**
+ * Like `boardVault`, but Epic B's children carry no explicit `type` — the common case,
+ * where each child's badge names the level the ladder implies rather than a declared
+ * name. The label has to agree with that badge.
+ */
+function untypedChildrenVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
+	vault.addFile('Feature B1.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic B' });
+	vault.addFile('Feature B2.md', { frontmatter: { order: 20 }, parentLink: 'Epic B' });
+	return vault;
+}
+
 describe('children on the card', () => {
 	it('names the visible direct children, by their shared type', () => {
 		const { containerEl } = makeBoard(boardVault());
+		expect(disclosure(cardByTitle(containerEl, 'Epic B'))?.textContent).toContain('2 features');
+	});
+
+	// The common case: nothing on these notes declares a type, so `childrenLabel` has
+	// to name them by the level the ladder gives them — the same thing their badges
+	// read — rather than seeing `typeName === null` and degrading to "2 children".
+	it('names untyped children by the level their badges show, not a bare count', () => {
+		const { containerEl } = makeBoard(untypedChildrenVault());
 		expect(disclosure(cardByTitle(containerEl, 'Epic B'))?.textContent).toContain('2 features');
 	});
 

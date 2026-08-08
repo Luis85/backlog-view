@@ -52,9 +52,10 @@ shape, so the same `(0,1,0)` loss applies to each. Two controls that look like t
 family are not affected, for two different reasons — and `.pbl-add` is not even one shape:
 the column header's (`header.createDiv({ cls: 'pbl-add clickable-icon' })` in
 `src/view/render/columns.ts`) is a `<div>`, so none of Obsidian's `button…` rules can match
-it at all, while the tree row's own (`row.createEl('button', { cls: 'pbl-add
-clickable-icon' })`, `src/view/render/rows.ts:275`) is a real `<button>`, safe for the same
-reason as `.pbl-bucket-add` below rather than for being a div. `.pbl-bucket-add`
+it at all, while the tree row's own (`addBtn` in `renderRowTrailing`,
+`row.createEl('button', { cls: 'pbl-add clickable-icon' })`, `src/view/render/rows.ts`) is
+a real `<button>`, safe for the same reason as `.pbl-bucket-add` below rather than for
+being a div. `.pbl-bucket-add`
 (`styles/roadmap.css`) is a real `<button>` but carries `.clickable-icon` itself, which the
 `:not()` excludes, leaving only the bare `button` rule at `(0,0,1)` — already beaten by the
 plugin's own `(0,1,0)`.

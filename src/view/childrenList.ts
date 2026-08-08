@@ -1,6 +1,7 @@
 import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
 import { hiddenMatches } from '../domain/board';
+import { displayType } from '../domain/itemTypes';
 
 /**
  * The direct children a card may list: the ones the view is showing anyway.
@@ -26,14 +27,18 @@ export function listedChildren(host: BacklogViewHost, item: BacklogItem): Backlo
 /**
  * What the disclosure calls them. Naming the type is worth more than a bare count — a
  * board of Epics says "3 features" — but only while they agree on one, since a mixed
- * set has no true name. The plural is a naive `+ s`, the same shape `columnLabel` uses
- * for `1 card` / `2 cards`: type names are user data, so a declared type that
- * pluralizes otherwise reads slightly wrong, and the ceiling is a word, never an action.
+ * set has no true name. Compared and named by `displayType`, the same function the
+ * badge beside each child reads: an untyped child's badge names its rung, not "no
+ * type", so comparing raw `typeName` disagreed with the badges and degraded the common
+ * case (untyped children) to a bare count. The plural is a naive `+ s`, the same shape
+ * `columnLabel` uses for `1 card` / `2 cards`: type names are user data, so a declared
+ * type that pluralizes otherwise reads slightly wrong, and the ceiling is a word, never
+ * an action.
  */
 export function childrenLabel(children: BacklogItem[]): string {
 	const count = children.length;
-	const type = children[0]?.typeName ?? null;
-	if (type !== null && children.every((child) => child.typeName === type)) {
+	const type = children[0] ? displayType(children[0]) : '';
+	if (type !== '' && children.every((child) => displayType(child) === type)) {
 		return `${count} ${type.toLowerCase()}${count === 1 ? '' : 's'}`;
 	}
 	return `${count} child${count === 1 ? '' : 'ren'}`;
