@@ -148,6 +148,24 @@ line now renders unlabeled. The title column is the reader's to size rather than
 constant: a grip on its edge resizes it by drag or by keyboard, remembered per saved view
 per device like the zoom beside it.
 
+**Test Management** is the fourth projection's worth of design without a projection's
+worth of drawing: an end-to-end test catalog kept as work items beside the work it
+checks. `Test suite` → `Test case` is a ladder of its own, rooted at the top level rather
+than hanging off a PBI, because `parent` already decides level, rank, rollup and focus and
+a test belongs to none of those; what a test is *for* is a user-named property on the
+test, resolved the way [[Dependencies as a property]] resolved a prerequisite eight days
+earlier. Read forward it says what a case covers; read backward it answers the question
+the epic exists for — which work has nothing checking it — and that backward read is why
+both families share one base and the plan's projections learn to exclude one of them,
+the way the requirements board already excludes a `Deliverable`. Three features, eight use
+cases, all design. It also inherits a blocker rather than deferring it: two new types need
+two badge slots and the palette has none, so `The type palette has no unclaimed hue left`
+is resolved inside this epic or the types do not ship. What it deliberately does not build
+is a result — no pass, no fail, no run history, no automation — since a run is a second
+item family and the checklist this register already walks by hand
+(`Plugin Features Smoke Test`) is the evidence that the catalog is the part worth having
+first.
+
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a
 per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's design
