@@ -10,6 +10,7 @@ import {
 	HORIZON_COL_WIDTH,
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
+	renderAddSpacer,
 	renderColumnHeader,
 	renderRowColumns,
 	RowContext,
@@ -354,8 +355,13 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 
 	// A row that can hold nothing gets no button, rather than one labelled from the first
 	// of no choices — `New undefined`, opening a modal with no type to pick. The context
-	// menu's `New <child>` disappears with it, by having nothing to loop over.
-	if (childTypes.length === 0) return;
+	// menu's `New <child>` disappears with it, by having nothing to loop over. The button's
+	// WIDTH still has to be reserved: the columns are anchored to the row's end, so leaving
+	// it out shifts every one of them right on this row alone.
+	if (childTypes.length === 0) {
+		renderAddSpacer(row);
+		return;
+	}
 
 	// A native button so assistive tech can activate it, with no Tab stop — the same
 	// bargain the state chip makes: the tree keeps its single-tab-stop model, and the

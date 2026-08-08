@@ -122,6 +122,29 @@ describe('rendering', () => {
 		expect(titles.some((t) => t.includes('undefined'))).toBe(false);
 	});
 
+	it("reserves the add button's width on a row that can hold nothing", () => {
+		// Everything after `.pbl-row-spacer` is anchored to the row's END, so an element
+		// missing from a row's trailing strip does not leave a gap where it was — it shifts
+		// every column on that row right by its own width. A marker holds nothing and so
+		// renders no add button, which is what displaced a milestone's whole set of columns
+		// from the rows above it.
+		const vault = new FakeVault();
+		vault.addFile('An epic.md', { frontmatter: { type: 'Epic', status: 'Todo' } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', status: 'Todo' } });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+
+		const trailing = (title: string): string[] => {
+			const kids = [...rowByTitle(containerEl, title).children];
+			return kids.slice(kids.findIndex((el) => el.classList.contains('pbl-row-spacer'))).map(() => 'box');
+		};
+		expect(trailing('Ship 1.0')).toEqual(trailing('An epic'));
+
+		// Reserved, never shown — `visibility`, because the row hover reveals anything
+		// that is merely transparent.
+		expect(rowByTitle(containerEl, 'Ship 1.0').lastElementChild?.className).toContain('pbl-add-spacer');
+		expect(ruleAt('.pbl-add-spacer', 'visibility: hidden;')).toBeGreaterThan(-1);
+	});
+
 	it('mutes a done row without striking its title through', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });

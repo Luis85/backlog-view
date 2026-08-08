@@ -216,8 +216,22 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 			text: settings.stateKey ? 'Progress' : 'Items',
 		});
 	}
-	// Reserves exactly the width of a row's add button, so the last column lines up.
-	setIcon(header.createDiv({ cls: 'pbl-add clickable-icon' }), 'plus');
+	renderAddSpacer(header);
+}
+
+/**
+ * The width a row's add button takes, where there is no button to take it: the header,
+ * which is not a row, and a row that can hold nothing (`renderRowTrailing`).
+ *
+ * Not cosmetic. Everything after `.pbl-row-spacer` is anchored to the row's END, so an
+ * absent trailing element is not a control missing — it is every column on that row
+ * displaced by its width, which is exactly how a milestone's columns came to sit clear
+ * of the backlog above it. Built from the same `clickable-icon` box around the same
+ * icon rather than from a width restating Obsidian's padding, so the reservation cannot
+ * drift from the thing it reserves for.
+ */
+export function renderAddSpacer(containerEl: HTMLElement): void {
+	setIcon(containerEl.createDiv({ cls: 'pbl-add-spacer clickable-icon', attr: { 'aria-hidden': 'true' } }), 'plus');
 }
 
 /**
