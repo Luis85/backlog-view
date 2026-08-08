@@ -102,14 +102,19 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setTooltip(warn, problems.join(' '));
 	}
 	renderBusyIndicator(barEl);
-	// The Base's own results — context ancestors are not items of this base.
-	const count = model.results.length;
+	// This projection's own population — `countedPopulation`, the same one
+	// `syncCountLabel` and `renderCompletedToggle` read — never the Base's raw results:
+	// the requirements board excludes Deliverables and the Deliverables board counts
+	// only Deliverables, so a first paint off `model.results` would show a number
+	// `syncCountLabel` immediately overwrites with a different one.
+	const population = countedPopulation(host, model);
+	const count = population.length;
 	const countEl = barEl.createSpan({
 		cls: 'pbl-count-label',
 		text: `${count} item${count === 1 ? '' : 's'}`,
 		attr: { 'aria-live': 'polite' },
 	});
-	setTooltip(countEl, levelBreakdown(model.results));
+	setTooltip(countEl, levelBreakdown(population));
 }
 
 /**

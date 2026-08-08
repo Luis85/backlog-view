@@ -26,6 +26,7 @@ files:
   - src/domain/backlogReadme.ts
   - src/view/cardMoves.ts
   - README.md
+  - eslint.config.mjs
 ---
 
 # A board scoped to Deliverables
@@ -276,7 +277,10 @@ narrowed to one type.
   Deliverable, the tree and the roadmap count them all. The count label and the completed
   toggle's "(N hidden)" sit beside each other and disagreed — the label was scoped and the
   toggle was not, so a done Deliverable made the requirements board offer to reveal a
-  hidden card that board never had.
+  hidden card that board never had. "Every readout" is true of `render/toolbar.ts`, which
+  is where the readouts are and where `countedPopulation` is private: a readout added in
+  another view file would have to duplicate it, and nothing stops that
+  ([[Follow-ups from enforcing the Deliverables invariants]]).
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button
@@ -535,3 +539,15 @@ reduced form — since extension 3b's reversal, the same disabled `Deliverables`
 unconditionally, whatever the inherited focus, never a "Focused: …" label and never a
 clear button; and the view-options table gains the new "Deliverables" group's rows,
 each stating its own fallback.
+`eslint.config.mjs` — three rules this board's review found broken a surface at a time
+are now checked at the call rather than relied on at the next review:
+`ALL_TYPES_IMPORT` bans IMPORTING the whole type vocabulary into view/ outside
+`offerableTypes` (`interactions/menu.ts`, above) and `CHILD_TYPE_CHOICES_NULL` bans the
+one spelling that reached it without the import; the `countedPopulation`
+one-population-per-readout rule (above) has a watched test rather than a lint rule,
+since `no-restricted-syntax` cannot express "not inside this one function"; and
+`DELIVERABLE_FIELD_READ` bans the dotted `deliverableStateValue`/`deliverableDone`
+member access in view/ outside `cardMoves.ts` and `render/board.ts`, which
+read one workflow's raw fields by BOARD rather than by item type — `ownWorkflowReading`
+(`domain/board.ts`, beside `stateKeyFor`) is the one accessor the chip and the menu now
+share instead of each hand-writing the same `isDeliverableType(item) ? … : …` ternary.

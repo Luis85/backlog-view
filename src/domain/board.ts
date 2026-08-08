@@ -141,6 +141,31 @@ export function stateKeyFor(settings: BacklogSettings, item: BacklogItem): strin
 	return isDeliverableType(item.typeName) ? resolvedDeliverableStateKey(settings) : settings.stateKey;
 }
 
+/** An item's state value and whether that value counts as done, from one workflow. */
+export interface WorkflowReading {
+	value: string | null;
+	done: boolean;
+}
+
+/**
+ * The same "an item's workflow follows its TYPE" rule `stateKeyFor` states for the KEY,
+ * stated once more for the VALUE: a Deliverable's own reading is the Deliverable
+ * workflow's value and done flag, never the requirements pair sitting on the same note.
+ * Before this existed, the chip and the menu each hand-wrote the same
+ * `isDeliverableType(item) ? deliverable : requirements` ternary — two copies of one
+ * rule is how they came to disagree in the first place.
+ *
+ * The pair is returned together so both halves come from ONE type decision: a caller
+ * that needs only the value still gets the value of the workflow whose done flag it
+ * would have got. It does not stop a caller taking one half — `stateChoices` legitimately
+ * takes `.value` alone — and that is not what the pairing is for.
+ */
+export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
+	return isDeliverableType(item.typeName)
+		? { value: item.deliverableStateValue, done: item.deliverableDone }
+		: { value: item.stateValue, done: item.done };
+}
+
 /**
  * Whether this base has a state column at all: EITHER workflow having a key is enough,
  * because a vault that configures only the Deliverable one still has Deliverable rows
