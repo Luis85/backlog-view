@@ -40,8 +40,10 @@ a different control.
 
 **Main flow**
 
-1. On a result, the menu offers **Depends on…** and, when the item's list holds anything at
-   all, **Remove dependency…**.
+1. On a result, the menu offers **Depends on…** and, whenever the note **carries the key at
+   all**, **Remove dependency…**. The key's presence is the test, not the list's contents:
+   a value that reads as no dependencies is still a value on disk, and a control keyed to
+   what the reader parsed could not offer to remove what the parser discarded.
 2. **Depends on…** opens a suggester over the Base's results, offering only picks that
    would write something: not itself, not what it already waits for, not anything that
    would close a loop.
@@ -51,7 +53,8 @@ a different control.
 4. **Remove dependency…** offers **everything the list holds** — each prerequisite by name,
    and each entry that became no edge by the raw text it holds — and picking one removes
    every entry that line stands for. Removing the last one removes the key rather than
-   leaving an empty list behind.
+   leaving an empty list behind. Where the list holds nothing the view can name at all, the
+   one thing offered is to remove the key itself.
 
 **Extensions**
 
@@ -108,11 +111,23 @@ a different control.
   that gets diagnosed as "the write did not land". Removal is defined against the
   **resolved** dependency, the same unit the offer was made in, and the key goes when no
   entry survives.
-
+- **4d — the key is there but reads as nothing** — `dependsOn: ""`, or a list of blanks.
+  The reading side discards blanks ([[Dependencies as a property]]), so there is no
+  prerequisite and no raw text worth naming; the picker offers one entry, which removes the
+  key. Without it the value is unreachable from here in either direction — a picker keyed to
+  the parsed list would be absent or empty, and the key would stay on disk with no control
+  able to touch it, which is the one state this note's own rule against leaving an empty
+  list forbids. It is also the state ✨ would produce if [[Dependencies as a property]] did
+  not exempt this key from the stub pass, and a hole reachable by hand is worth closing
+  whether or not the view can create it.
 ## Acceptance criteria
 
-- Both entries appear only on results, only with the key bound, and **Remove dependency…**
-  only when there is something to remove.
+- Both entries appear only on results and only with the key bound; **Remove dependency…**
+  appears whenever the note carries the key, judged on the key's presence rather than on
+  what the reader parsed out of it.
+- Any value the key can hold is removable from here. A note left carrying the key with no
+  control able to clear it is the state this feature must never produce or tolerate,
+  whatever the value is — a name, a broken name, repeats, or nothing at all.
 - Every pick offered would change something: a pick that would write nothing is absent, and
   absence is decided by the plan the pick would produce rather than by a comparison written
   beside it.

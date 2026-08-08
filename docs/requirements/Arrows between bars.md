@@ -53,9 +53,12 @@ against one would report a date no note carries — a red mark on a fact that do
    each carrying a guard: a marker is its target at both ends (1e), an end the projection
    inferred is not compared at all (2a), and an end no projection derived — because the row
    never reached the axis — is nothing to compare (1c).
-3. Every dependent row's accessible name names what it waits for, and says when one of
-   those is in conflict — so the ordering is available to a reader who never sees a pixel
-   of the arrow layer.
+3. Every dependent row's accessible name names what it waits for, and marks the conflict
+   **on the prerequisite it belongs to** — so the ordering is available to a reader who
+   never sees a pixel of the arrow layer, at the same resolution the picture has. A row
+   waiting on four things with one contradiction says *which* one, because that is what the
+   marked arrow says: a single "in conflict" appended to a list of four names would be the
+   picture's information rounded down to a quarter of itself.
 4. The arrows redraw with the bars, one element per edge, and nothing about them is
    written anywhere.
 
@@ -170,9 +173,12 @@ against one would report a date no note carries — a red mark on a fact that do
 - Every arrow drawn has a prerequisite bar and a dependent bar on screen; an edge missing
   either end, or crossing the filter, or marked broken, draws none.
 - Every dependency of a rendered dependent is stated by its row whether or not an arrow was
-  drawn, and a conflict is stated there too — no fact about an ordering is available only by
-  looking at, or hovering, the arrow layer. A dependent the reader's controls have hidden is
-  outside this criterion: it has no row, and restoring the control restores both.
+  drawn, and a conflict is stated there **against the prerequisite it concerns** — so a row
+  waiting on several things names which of them contradicts the dates, not merely that one
+  does. No fact about an ordering is available only by looking at, or hovering, the arrow
+  layer, and none is available at a coarser resolution there than in the picture. A
+  dependent the reader's controls have hidden is outside this criterion: it has no row, and
+  restoring the control restores both.
 - A dependent starting on or before the day its prerequisite ends is marked as a conflict —
   on or before, because an end is inclusive. A conflict rests only on dates the two notes
   state: an end that is rolled up, and an end that is absent, both suppress it, judged at
