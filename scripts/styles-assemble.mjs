@@ -22,10 +22,12 @@ import { readFileSync, readdirSync } from 'node:fs';
  * this does — see the check below.
  */
 
-// Relative to the working directory, as every other build script here is (`main.js`,
-// `dist/`): npm scripts and vitest both run from the repository root. `import.meta.url`
-// would be the more robust spelling and is not available — vitest's jsdom environment
-// gives this module a non-file URL, and that is where the tests read it from.
+// Relative to the WORKING DIRECTORY, not to this file — which is worth saying twice now
+// that this file lives in `scripts/` and `styles/` does not. npm scripts and vitest both
+// run from the repository root, and every other build script here resolves the same way
+// (`main.js`, `dist/`). `import.meta.url` would be the more robust spelling and is not
+// available: vitest's jsdom environment gives this module a non-file URL, and that is
+// where the tests read it from.
 const DIR = 'styles/';
 
 // The cap `eslint.config.mjs` holds every TypeScript module to. Splitting a file that

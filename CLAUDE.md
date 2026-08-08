@@ -112,6 +112,15 @@ why `DropTarget` and `DropZone` live in `domain/dropTargets.ts` rather than with
 writer and the view that read them. Both used to sit upstream and made the pure layer
 depend on the effectful one.
 
+**Everything `npm run` invokes lives in `scripts/`** — the build, the harness, the vault
+handover, the version bump, and the register gate with its Markdown layer. Two files stay
+at the repository root because a TOOL finds them there rather than a script calling them:
+`eslint.config.mjs` (which `eslint .` discovers) and `vitest.config.mts`. Every script
+resolves its paths from the WORKING DIRECTORY, not from its own location — npm scripts and
+vitest both run from the root — so `scripts/styles-assemble.mjs` reading `styles/` is
+correct and not a bug waiting to happen. That is stated in the one file where the
+distinction bites.
+
 **The stylesheet lives under the same rule.** `styles/` is one partial per concern and
 `styles/index.css` assembles them; the root `styles.css` is generated and gitignored
 beside `main.js`, so the file to edit is always the partial. `styles-assemble.mjs` is

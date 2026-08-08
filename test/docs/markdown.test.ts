@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 // @ts-expect-error — a plain .mjs helper with no type declarations, imported for what it does.
-import { collapsed, containerAt, headings, localLinks, prose, proseWithSpans, sectionBody, wikilinks } from '../../docs-markdown.mjs';
+import { collapsed, containerAt, headings, localLinks, prose, proseWithSpans, sectionBody, wikilinks } from '../../scripts/docs-markdown.mjs';
 
 /**
  * **The Markdown layer, tested as a unit.**

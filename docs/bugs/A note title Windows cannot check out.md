@@ -9,7 +9,7 @@ created: 2026-08-03
 closed: 2026-08-03
 source: Windows CI on PR #61, checkout step
 files:
-  - docs-check.mjs
+  - scripts/docs-check.mjs
   - test/docs/checkerRejects.test.ts
 ---
 

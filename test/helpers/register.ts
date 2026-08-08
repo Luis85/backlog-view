@@ -22,7 +22,7 @@ import { expect, it } from 'vitest';
 
 const run = promisify(execFile);
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
-const CHECKER = path.join(REPO, 'docs-check.mjs');
+const CHECKER = path.join(REPO, 'scripts', 'docs-check.mjs');
 
 /** Relative path → file contents. */
 export type Register = Record<string, string>;

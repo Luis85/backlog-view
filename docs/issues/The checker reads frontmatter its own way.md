@@ -8,7 +8,7 @@ area: verification
 created: 2026-08-01
 source: 2026-08-01 review of PR #24
 files:
-  - docs-check.mjs
+  - scripts/docs-check.mjs
   - src/domain/noteFields.ts
 ---
 

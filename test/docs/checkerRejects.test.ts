@@ -497,7 +497,7 @@ describe('the corpus covers every rule', () => {
 		// is a false ALARM that makes somebody look, never a false pass. It is the one
 		// direction in which regex-over-source is safe, which is why this is not the thing
 		// `docs/README.md` warns about.
-		const source = await readFile('docs-check.mjs', 'utf8');
+		const source = await readFile('scripts/docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
 		expect(sites.length).toBe(52);

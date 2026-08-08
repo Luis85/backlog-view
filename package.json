@@ -4,18 +4,18 @@
   "description": "Obsidian Bases view that displays notes as a product backlog: a drag-and-drop tree of Epics, Features, PBIs and Tasks, a kanban board with WIP limits, and a roadmap, inspired by Azure DevOps Boards.",
   "main": "main.js",
   "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "test-build": "tsc -noEmit -skipLibCheck && node test-build.mjs",
-    "harness": "node harness.mjs",
+    "dev": "node scripts/esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production",
+    "test-build": "tsc -noEmit -skipLibCheck && node scripts/test-build.mjs",
+    "harness": "node scripts/harness.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "analyze": "fallow",
-    "docs": "node docs-check.mjs",
+    "docs": "node scripts/docs-check.mjs",
     "check": "npm run build && npm run lint && npm run test:coverage && npm run analyze && npm run docs",
-    "version": "node version-bump.mjs && git add manifest.json versions.json"
+    "version": "node scripts/version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [
     "obsidian",
