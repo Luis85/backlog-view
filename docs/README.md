@@ -484,6 +484,10 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
   **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the shared list once configured"
   ```
 
+  The path is a `*.test.ts` file — the set `vitest.config.mts` runs — or `eslint.config.mjs`,
+  since a lint rule at the forbidden thing is this repository's other kind of check. A helper
+  or a double under `test/` is neither, and the gate refuses it.
+
   **One marker, one citation.** Only the first quoted name after a `**Checked by**` is
   resolved, so a second check needs a second marker — two names under one marker leaves
   the second unverified while reading as covered, which review caught in the first note to

@@ -444,8 +444,15 @@ const MARKER = "Checked by";
  * because this repository's own answer to a category invariant is a lint rule rather than
  * a test — "checked at the forbidden thing", in the root `CLAUDE.md` — so refusing it
  * would make the convention unusable for exactly the checks it most wants cited.
+ *
+ * `.test.ts` and not any `.ts` under `test/`, because that directory holds the doubles and
+ * the fixture builders too: `test/helpers/register.ts` — "useCase" resolved, the file being
+ * there and the exported name being in it, and a citation nobody could open a test case
+ * from is the by-name weakness this rule exists to close. The suffix is not a convention
+ * borrowed from the file names either — `vitest.config.mts` runs `test/**\/*.test.ts`, so
+ * the spelling this admits is exactly the set of files that get executed.
  */
-const CITATION = /^[^`]*`(test\/[\w./-]+\.ts|eslint\.config\.mjs)`[^`"“]*["“]([^"”]+)["”]/;
+const CITATION = /^[^`]*`(test\/[\w./-]+\.test\.ts|eslint\.config\.mjs)`[^`"“]*["“]([^"”]+)["”]/;
 const flat = (s) => s.replace(/\s+/g, " ");
 for (const file of [...files, "README.md"]) {
 	// The root README is reached by name rather than by the walk, so its absence is a
@@ -470,7 +477,7 @@ for (const file of [...files, "README.md"]) {
 		const blockEnd = owner ? owner.end : from;
 		const cited = CITATION.exec(spans.slice(from, Math.min(next ?? blockEnd, blockEnd)));
 		if (!cited) {
-			fail(file, "has a **Checked by** with no `path.ts` and \"test name\" after it");
+			fail(file, "has a **Checked by** with no `path.test.ts` and \"test name\" after it");
 			continue;
 		}
 		const [, target, name] = cited;

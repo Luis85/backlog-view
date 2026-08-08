@@ -36,16 +36,35 @@ describe('checked-claim citations', () => {
 					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `src/thing.ts` — "thing".',
 				});
 			},
-			'has a **Checked by** with no `path.ts` and "test name" after it',
+			'has a **Checked by** with no `path.test.ts` and "test name" after it',
 		],
 		[
-			// The pattern admits `.` and `/`, so `test/..` spelled a path that LOOKS like a
-			// test and resolves to the implementation — the restriction to test files read
-			// as closed while one traversal walked straight through it.
+			// `test/` holds the doubles and the fixture builders as well as the tests, and
+			// admitting every `.ts` under it admitted those too — the file is there and the
+			// exported name is in it, so the citation resolved while naming no test case a
+			// reader could open. Planted with the helper present, so what rejects it is the
+			// suffix rule and not a missing file.
+			'a citation naming a helper under test/ rather than a test file',
+			(files) => {
+				files['test/helpers/register.ts'] = 'export const useCase = () => {};\n';
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives:
+						'`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/helpers/register.ts` — "useCase".',
+				});
+			},
+			'has a **Checked by** with no `path.test.ts` and "test name" after it',
+		],
+		[
+			// The pattern admits `.` and `/`, so `test/..` spells a path that LOOKS like it
+			// starts in the test tree and lands anywhere — the restriction to test files
+			// read as closed while one traversal walked straight through it. The suffix
+			// rule does not close this: a name is not a location, so the spelling below
+			// satisfies the pattern and still leaves `test/`.
 			'a citation whose path climbs out of test/ into the source tree',
 			(files) => {
 				files['docs/requirements/Doing the thing.md'] = useCase({
-					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/../src/thing.ts` — "thing".',
+					whereItLives:
+						'`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/../src/thing.test.ts` — "thing".',
 				});
 			},
 			'climbs out of the directory it names',
@@ -68,7 +87,7 @@ describe('checked-claim citations', () => {
 					].join('\n'),
 				});
 			},
-			'has a **Checked by** with no `path.ts` and "test name" after it',
+			'has a **Checked by** with no `path.test.ts` and "test name" after it',
 		],
 		[
 			'a citation naming a test file that does not exist',
@@ -132,7 +151,7 @@ describe('checked-claim citations', () => {
 					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** the tests, obviously.',
 				});
 			},
-			'has a **Checked by** with no `path.ts` and "test name" after it',
+			'has a **Checked by** with no `path.test.ts` and "test name" after it',
 		],
 		[
 			// Review asked whether the paragraph boundary (`\n[ \t]*\n`) misses `\r\n\r\n` on
@@ -156,7 +175,7 @@ describe('checked-claim citations', () => {
 				});
 				for (const [path, text] of Object.entries(files)) files[path] = text.replaceAll('\n', '\r\n');
 			},
-			'has a **Checked by** with no `path.ts` and "test name" after it',
+			'has a **Checked by** with no `path.test.ts` and "test name" after it',
 		],
 		[
 			// The other half of that lesson, in the accept direction's shape: a citation
