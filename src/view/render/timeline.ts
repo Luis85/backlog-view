@@ -1,12 +1,12 @@
 import { setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
-import { renderBadge, renderTitleText } from './rows';
+import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { CardDragController } from '../interactions/cardDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
-import { DrawnColors } from '../host';
+import { BacklogViewHost, DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { barHolds, TimelineBar } from '../../domain/bars';
+import { barHolds, TimelineBar, TimelineRow } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
 import {
 	ownWorkflowReading,
@@ -130,10 +130,13 @@ export interface TimelineDrawing {
 export function renderTimeline(
 	ctx: RowContext,
 	containerEl: HTMLElement,
-	bars: TimelineBar[],
+	rows: TimelineRow[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
 	const { today, scale, dnd, palettes, available } = drawing;
+	// What a collapsed row hides, it hides from the whole grid: the window is the drawn
+	// spans, exactly as it already is for the spans hiding completed work removes.
+	const bars = rows.map((row) => row.bar);
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
@@ -184,8 +187,8 @@ export function renderTimeline(
 	const tracks = new Map<string, HTMLElement>();
 	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, palettes };
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
-	bars.forEach((bar, index) => {
-		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
+	rows.forEach((entry, index) => {
+		const { row, colors } = renderBarRow(ctx, mounts, window, entry, scale);
 		if (colors.done) drawn.done = true;
 		if (colors.milestone) drawn.milestone = true;
 		if (colors.accent) drawn.accent = true;
@@ -357,9 +360,10 @@ function renderBarRow(
 	ctx: RowContext,
 	mounts: BarRowMounts,
 	window: TimelineWindow,
-	bar: TimelineBar,
+	entry: TimelineRow,
 	scale: TimelineScale,
 ): { row: HTMLElement; colors: DrawnColors } {
+	const bar = entry.bar;
 	// The item's OWN workflow, read ONCE and threaded through the three things on this row
 	// that key a colour or say one in words: the slot class, the hidden state words, and
 	// the `drawn` report the legend is built from. (`pbl-done` is the fourth and is no
@@ -380,6 +384,7 @@ function renderBarRow(
 	const slot = palette ? paletteSlot(palette, own.value) : null;
 	if (slot !== null) row.addClass(`pbl-state-${slot}`);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
+	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(ctx.host, title, bar.item.title);
@@ -442,6 +447,51 @@ function renderBarRow(
 		accent: !own.done && slot === null && !milestoneDrawn,
 	};
 	return { row, colors };
+}
+
+/**
+ * The row's disclosure — the tree's own chevron (`renderChevron`), in the lead column,
+ * folding the ROWS below this bar rather than listing anything on its face. A row with
+ * nothing below it on the grid draws that function's leaf placeholder instead.
+ *
+ * What is decided here is the two things the shared control cannot know: that a collapse
+ * on this axis re-renders the whole projection, since the window, the gridlines and every
+ * full-height mark are derived from the row set it changes; and that the path joins
+ * `ctx.cardKids`, the register of what actually drew a disclosure this pass, which is
+ * what makes the toolbar's bulk controls live and puts the same toggle in the row menu
+ * for a reader with no pointer.
+ */
+function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow): void {
+	// Annotated so fallow can see which host members this file uses — see the root
+	// CLAUDE.md on interface members resolved through a property access.
+	const host: BacklogViewHost = ctx.host;
+	const item = entry.bar.item;
+	if (entry.hasChildren) ctx.cardKids.add(item.file.path);
+	// A LABEL is passed, which is what makes this the button form — see `renderChevron`,
+	// which also states what that does and does not buy on a `role="option"` row. Worded
+	// exactly as the row menu's own entry, because the row's NAME is the part a screen
+	// reader gets either way and the two surfaces must not describe one act differently.
+	const label = entry.collapsed ? 'Show children' : 'Hide children';
+	renderChevron(host, lead, item, { ...entry, label }, (heldFocus) => {
+		host.render();
+		if (heldFocus) refocusPane(host);
+	});
+}
+
+/**
+ * Focus after a fold, for the one case that loses it: the button that was pressed is gone
+ * with the frame it was drawn in, and a browser drops focus to the body — where the
+ * pane's arrows and menu keys do nothing until the reader finds their own way back.
+ *
+ * The PANE, never the replacement chevron, which is `render/shelfControls.ts`'s rule for
+ * the same situation and not a preference: `handleRoadmapKeydown` returns on any event
+ * whose target is not the pane itself, so focusing a `tabindex="-1"` control inside the
+ * composite would look right and silently kill the arrow keys. Read off the snapshot the
+ * render just published, because every element this function could have closed over
+ * belongs to the frame that was just thrown away.
+ */
+function refocusPane(host: BacklogViewHost): void {
+	host.roadmap?.scroller?.closest<HTMLElement>('.pbl-tree')?.focus();
 }
 
 /**
