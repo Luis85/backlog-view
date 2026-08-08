@@ -39,6 +39,13 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   is the real exception: the cache never gets an object for it, so writes to it stay
   invisible to the model. `entry.getValue()` returns null, so property chips render empty
   in tests.
+- `addFile` fills `frontmatterLinks` only through its `parentLink` option, so writing a
+  bracketed value straight into `frontmatter` (`parent: '[[Epic]]'`) builds a cache
+  Obsidian would not hand out — brackets with no parsed link — and sends `resolveParent`
+  down its raw fallback instead of the path a vault takes. Reach for `parentLink` when the
+  test is about a parent LINK. Measured as latent, not live, and open because the deciding
+  question needs a vault: `docs/issues/The fake vault can hold a cache Obsidian would not
+  produce.md`.
 
 ## Looking at it
 

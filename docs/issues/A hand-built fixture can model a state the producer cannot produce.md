@@ -170,5 +170,9 @@ produces a wrong expectation, it goes in then, with the case that justified it.
 complete answer: the relationships are between *values*, not shapes, so the compiler
 cannot hold them. TypeScript cannot refuse a spread-with-override.
 
+The same shape exists one layer down, with Obsidian's metadata cache as the producer and
+`FakeVault` as the fixture: [[The fake vault can hold a cache Obsidian would not produce]].
+It is measured and latent, and open only because the deciding question needs a vault.
+
 See [[A comment that states a rule is not a check]] for the same failure with prose as the
 instrument.
