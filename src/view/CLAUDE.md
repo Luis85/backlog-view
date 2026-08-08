@@ -409,6 +409,12 @@ free of runtime code so imports stay cycle-free.
   once. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
   never "which projection is this" — which is what makes the toolbar's bulk controls and
   the row menu's section serve both without either asking what it is looking at.
+  **Which element says "expanded" is decided by the ROW's role, not by preference**: a
+  `treeitem` carries `aria-expanded` itself, so the tree's chevron is a plain div, while
+  a card row is `role="option"` — which does not support that state — so the timeline's
+  is a real `tabindex="-1"` button carrying it, the card disclosure's own answer to the
+  same problem, and `button.pbl-chevron` in `styles/tree.css` strips the Obsidian chrome
+  that arrives with it. `renderChevron` takes a label exactly to make that choice.
   `domain/bars.ts`'s `timelineRows` decides which rows survive and which keep a chevron,
   and it is asked of the bars derived BEFORE any were hidden: computed from what is
   left, a collapsed row would have no children to have and would lose the very control

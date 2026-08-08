@@ -11,6 +11,7 @@ files:
   - src/view/render/rows.ts
   - src/view/render/roadmap.ts
   - src/view/interactions/menu.ts
+  - styles/tree.css
   - styles/timelineFurniture.css
 ---
 
@@ -38,9 +39,9 @@ projection, and this is the third surface reading it.
 
 **Main flow**
 
-1. A row with another bar below it draws the tree's chevron in its lead column, and
-   says so on the row itself (`aria-expanded`); a row with none draws the leaf
-   placeholder, so every badge starts at the same x.
+1. A row with another bar below it draws the tree's chevron in its lead column — a real
+   button off the tab order, carrying `aria-expanded` and a name; a row with none draws
+   the leaf placeholder, a plain spacer, so every badge starts at the same x.
 2. The reader collapses the row.
 3. Every bar below it leaves the grid, whatever its depth, and the row's own bar stays —
    which for a parent with no dates of its own is the span rolled up from exactly the
@@ -82,8 +83,12 @@ projection, and this is the third surface reading it.
 ## Acceptance criteria
 
 - A timeline row draws a chevron exactly when another drawn bar hangs below it — at any
-  depth, through parents the grid did not draw — and the leaf placeholder otherwise. The
-  row carries `aria-expanded` in the first case and nothing in the second.
+  depth, through parents the grid did not draw — and the leaf placeholder otherwise.
+- The expanded state is on the CONTROL and never on the row: `createCard` gives a card
+  row `role="option"`, which does not support `aria-expanded`, so the chevron is a real
+  `<button tabindex="-1">` carrying the state and a name worded exactly as the menu
+  entry, and the row carries no such attribute. The leaf placeholder is a plain div — a
+  button opening onto nothing would be announced as a control that does nothing.
 - Collapsing a row removes its whole subtree from the grid, not only its children, and
   the row keeps its own chevron: which rows have children is asked of the bars derived
   before any were hidden, or a collapsed row's disclosure would vanish the moment it was
@@ -112,9 +117,15 @@ of it comes for free.
 
 The control itself is the tree's, extracted rather than copied: `renderChevron` in
 `src/view/render/rows.ts` is now the one statement of what a chevron is — the icon, the
-leaf placeholder, the click that flips the bit, and the two guards a copy would have had
-to rediscover (the filter override, and the middle click that never fires `click` and so
-never meets the first guard). Only what the flip REDRAWS is the caller's.
+leaf placeholder, the click that flips the bit, and the three guards a copy would have had
+to rediscover (the filter override, the real `disabled` flag, and the middle click that
+never fires `click` and so never meets the first guard). Two things are the caller's: what
+the flip REDRAWS, and **who says the row is expanded**, which the ROW's role decides
+rather than preference — a `treeitem` carries `aria-expanded` itself and gets the plain
+div, while a card row's `option` role does not support it, so passing a label makes the
+chevron a real button carrying the state. `styles/tree.css` strips Obsidian's button
+chrome off that form, by the recipe `cardChildren.css` already states for the same
+problem on the same role.
 `renderRowChevron` in `src/view/render/timeline.ts` supplies `host.render()` rather than
 the tree's targeted `refreshSubtree` — what changes here is which rows the grid holds, and
 its window, gridlines and full-height marks are all derived from that set — and registers

@@ -359,9 +359,6 @@ function renderBarRow(
 	const bar = entry.bar;
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
-	// The row IS the disclosure's element, the tree's own arrangement: the chevron is
-	// decoration of a state the row announces, never a control with a name of its own.
-	if (entry.hasChildren) row.setAttribute('aria-expanded', String(!entry.collapsed));
 	// The bar's colour, by the item's own state — never computed here: `stateColorSlot`
 	// is the one place that decides a slot, so a bar and the Set state menu cannot name
 	// a state a different colour. No slot (no state, or a value the vocabulary does not
@@ -454,7 +451,13 @@ function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow
 	const host: BacklogViewHost = ctx.host;
 	const item = entry.bar.item;
 	if (entry.hasChildren) ctx.cardKids.add(item.file.path);
-	renderChevron(host, lead, item, entry, () => host.render());
+	// A LABEL is passed, which is what makes this the button form — see `renderChevron`:
+	// `createCard` gives every card row `role="option"`, and `aria-expanded` is not a
+	// supported state of that role, so a state put on the row may reach nobody. Worded
+	// exactly as the row menu's own entry, since a button inside an `option` joins the
+	// row's accessible name and the two surfaces should not describe one act differently.
+	const label = entry.collapsed ? 'Show children' : 'Hide children';
+	renderChevron(host, lead, item, { ...entry, label }, () => host.render());
 }
 
 /**

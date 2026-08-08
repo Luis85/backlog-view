@@ -46,7 +46,28 @@ describe('collapsing a bar’s subtree', () => {
 		const { containerEl } = roadmapView(nestedVault(), { ...DATES });
 
 		expect(timelineTitles(containerEl)).toEqual(['Epic']);
-		expect(rowFor(containerEl, 'Epic')?.getAttribute('aria-expanded')).toBe('false');
+		expect(chevronOf(containerEl, 'Epic')?.getAttribute('aria-expanded')).toBe('false');
+	});
+
+	it('says expanded on the CONTROL, never on a row whose role cannot carry it', () => {
+		// `createCard` gives every card row `role="option"`, and `aria-expanded` is not a
+		// supported state of that role — put there it may be announced by nobody. So the
+		// chevron is a real button carrying the state and a name, `tabindex="-1"` like
+		// every other per-row control, which is the same answer the card's own disclosure
+		// gives on the same role.
+		const { containerEl } = roadmapView(nestedVault(), { ...DATES });
+		const row = rowFor(containerEl, 'Epic')!;
+		const chevron = chevronOf(containerEl, 'Epic')!;
+
+		expect(row.getAttribute('role')).toBe('option');
+		expect(row.hasAttribute('aria-expanded')).toBe(false);
+		expect(chevron.tagName).toBe('BUTTON');
+		expect(chevron.getAttribute('tabindex')).toBe('-1');
+		expect(chevron.getAttribute('aria-label')).toBe('Show children');
+
+		click(chevron);
+
+		expect(chevronOf(containerEl, 'Epic')?.getAttribute('aria-label')).toBe('Hide children');
 	});
 
 	it('shows one level per click, and takes it back', () => {
@@ -55,7 +76,7 @@ describe('collapsing a bar’s subtree', () => {
 		click(chevronOf(containerEl, 'Epic')!);
 		// One level: the PBI is behind the feature's own disclosure, not the epic's.
 		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
-		expect(rowFor(containerEl, 'Epic')?.getAttribute('aria-expanded')).toBe('true');
+		expect(chevronOf(containerEl, 'Epic')?.getAttribute('aria-expanded')).toBe('true');
 
 		click(chevronOf(containerEl, 'Feature')!);
 		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature', 'PBI']);
@@ -72,9 +93,12 @@ describe('collapsing a bar’s subtree', () => {
 		click(chevronOf(containerEl, 'Feature')!);
 
 		expect(chevronOf(containerEl, 'PBI')).toBeNull();
-		// The placeholder still renders, so every badge starts at the same x.
-		expect(rowFor(containerEl, 'PBI')?.querySelector('.pbl-chevron.pbl-leaf')).not.toBeNull();
-		expect(rowFor(containerEl, 'PBI')?.hasAttribute('aria-expanded')).toBe(false);
+		// The placeholder still renders, so every badge starts at the same x — and it is a
+		// spacer rather than a control: a button opening onto nothing is a lie a screen
+		// reader would read out.
+		const leaf = rowFor(containerEl, 'PBI')?.querySelector('.pbl-chevron.pbl-leaf');
+		expect(leaf).not.toBeNull();
+		expect(leaf?.tagName).toBe('DIV');
 	});
 
 	it('toggles without opening the note the row would open', () => {
@@ -109,6 +133,9 @@ describe('collapsing a bar’s subtree', () => {
 		click(chevronOf(containerEl, 'Epic')!);
 		view.setFilter('Epic');
 
+		// Said on the control as well as honoured in the handler: it is a real button now,
+		// so `disabled` is what tells a reader it is inert — CSS could only stop a mouse.
+		expect((chevronOf(containerEl, 'Epic') as HTMLButtonElement).disabled).toBe(true);
 		click(chevronOf(containerEl, 'Epic')!);
 
 		view.setFilter('');
