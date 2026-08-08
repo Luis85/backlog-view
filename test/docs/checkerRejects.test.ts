@@ -96,6 +96,17 @@ describe('the backlog tree', () => {
 			'Task under Epic is not a legal pair',
 		],
 		[
+			// The extra types are one set repeated at each rung, so a Deliverable is legal
+			// wherever an Issue or a Bug is and illegal wherever they are — under a Task,
+			// which is the deepest level and holds nothing at all.
+			'a Deliverable under a Task, which holds nothing',
+			(files) => {
+				files['docs/tasks/The work.md'] = note('Task', 10, 'Doing the thing', '# The work\n\nWork.\n');
+				files['docs/deliverables/The handout.md'] = note('Deliverable', 10, 'The work', '# The handout\n\nA thing.\n');
+			},
+			'Deliverable under Task is not a legal pair',
+		],
+		[
 			'a root that is not an Epic',
 			(files) => {
 				files['docs/requirements/A slice.md'] = note('Feature', 10, null, '# A slice\n\n**Outcome** — it works.\n');

@@ -20,13 +20,28 @@ import { collapsed, containerAt, headings, localLinks, markers, prose, proseWith
 
 const DOCS = "docs";
 const ADRS = path.join(DOCS, "adrs");
+/**
+ * The plugin's OWN rule, applied to the register that documents it — so this table has to
+ * track `childTypeChoices` (`src/domain/itemTypes.ts`), which answers
+ * `[ladderChild, ...EXTRA_TYPES]` for any parent on the ladder. The three extra types are
+ * therefore one set repeated at each rung, and each of them takes Tasks: an extra type's
+ * rank is pinned at `EXTRA_TYPE_RANK`, the rung whose children are the deepest level.
+ *
+ * `Deliverable` was missing here for the whole of the increment that introduced it, which
+ * is why the register could not hold the very type the plugin had just started shipping —
+ * and `docs/README.md` went on calling the folders "the feature demonstrating itself"
+ * while the layout was the plugin's minus one. Adding a type to `EXTRA_TYPES` means adding
+ * it here too.
+ */
+const EXTRA = ["Issue", "Bug", "Deliverable"];
 const LEGAL_CHILDREN = {
-	Epic: new Set(["Feature", "Issue", "Bug"]),
-	Feature: new Set(["PBI", "Issue", "Bug"]),
-	PBI: new Set(["Task", "Issue", "Bug"]),
+	Epic: new Set(["Feature", ...EXTRA]),
+	Feature: new Set(["PBI", ...EXTRA]),
+	PBI: new Set(["Task", ...EXTRA]),
 	Task: new Set(),
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
+	Deliverable: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
 };

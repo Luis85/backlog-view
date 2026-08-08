@@ -13,6 +13,7 @@ demonstrating itself:
 | `tasks/` | Engineering work done to keep it maintainable | `Task` |
 | `issues/` | Open questions, verifications and recorded decisions | `Issue` |
 | `bugs/` | Defects, with what was learned from them | `Bug` |
+| `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |

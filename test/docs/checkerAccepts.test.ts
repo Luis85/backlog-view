@@ -67,6 +67,21 @@ describe('the gate accepts valid documents', () => {
 		await expect(checkRegister(files)).rejects.toThrow('without reporting problems');
 	});
 
+	it('accepts a Deliverable at every rung an Issue or a Bug may sit at', async () => {
+		// The register documents the plugin's own schema, and `childTypeChoices` answers
+		// `[ladderChild, ...EXTRA_TYPES]` at every rung on the ladder — so a Deliverable is
+		// legal under an Epic, a Feature and a PBI, and takes Tasks like the other two extra
+		// types. It was missing from the gate for the whole of the increment that introduced
+		// it, which is the direction this file exists to catch: a legal form the checker
+		// started refusing.
+		const files = baseRegister();
+		files['docs/deliverables/The one-pager.md'] = note('Deliverable', 40, 'Thing', '# The one-pager\n\nA thing to produce.\n');
+		files['docs/deliverables/The deck.md'] = note('Deliverable', 50, 'A slice', '# The deck\n\nA thing to produce.\n');
+		files['docs/tasks/Draft the deck.md'] = note('Task', 30, 'The deck', '# Draft the deck\n\nWork.\n');
+
+		await expectAccepted(files);
+	});
+
 	it('accepts an angle-bracket link destination, which is how a space is written', async () => {
 		// The defect this whole file exists for. `<…>` is CommonMark's destination form;
 		// the register happens to percent-encode everywhere, so it never met the bug.
