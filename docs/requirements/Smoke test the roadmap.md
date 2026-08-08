@@ -92,4 +92,10 @@ and each stays open until they are, so a stale check is visible rather than assu
   way (backward when a conflict overlaps in time), the arrowhead sits at the dependent's
   end, a conflict's red reads as distinct from the today line's red and the state
   colours, and the row's own conflict mark (a left accent) is visible without hovering
-  the arrow. **Never checked.**
+  the arrow. Beside it, the shelf card's own dependency statement (1b, 2b): the
+  "Waits for …" block sits legibly under the shelf reason rather than crowding it, a
+  long or multi-name list wraps inside the card's own width instead of overflowing it,
+  and the conflict styling on a shelved card reads as the same red the arrow layer uses.
+  **Never checked** — `npm run harness`'s demo fixture carries no `dependsOn` data, so it
+  draws no arrow and shelves no conflicted card out of the box; a live vault needs its
+  own fixture to see any of this.
