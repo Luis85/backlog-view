@@ -38,8 +38,10 @@ against one would report a date no note carries — a red mark on a fact that do
 
 **Main flow**
 
-1. Each readable edge whose prerequisite and dependent both render bars inside the drawn
-   window draws one arrow, from the prerequisite's end to the dependent's start.
+1. Each readable edge whose prerequisite and dependent each have **some part of a bar** in
+   the drawn window draws one arrow, from the prerequisite's end to the dependent's start.
+   Some part, not the whole: a span crossing the window's edge is drawn clipped, and 1h is
+   what its arrow anchors to.
 2. An edge whose dependent starts **on or before** the day its prerequisite ends draws as
    a **conflict** — the arrow marked, and the dependent's row marked with it, so the
    contradiction is visible without hunting for the arrow that caused it. On or before,
@@ -93,6 +95,20 @@ against one would report a date no note carries — a red mark on a fact that do
   a bar that is already drawn as a gap. What such an edge never does is produce a conflict,
   which is 2a's rule and the reason 2a is written about **stated** dates rather than about
   rollups.
+- **1h — the anchor is clipped by the window rather than absent.** The arrow still draws,
+  anchored at the clipped edge. `barGeometry` clamps an end that runs past the window and
+  reports `clippedStart`/`clippedEnd`; only `outside` — nothing of the span in view at all —
+  means no bar, and that is 1a's case, not this one. Anchoring at the clamp invents no
+  coordinate for 1g's reason exactly: the clipped edge already carries the vocabulary that
+  says *this continues beyond what is drawn*, which is the distinction
+  [[A milestone line across the plan]] settled when it gave a clipped end a **direction** to
+  claim and refused a point beyond the edge a **date**. Suppressing instead would delete a
+  stated ordering at some zoom levels and restore it at others, the same trade 1g refused.
+  What the window must never reach is the **conflict**: that comparison is between the two
+  notes' own dates, never between the coordinates the drawing clamped them to, so a
+  prerequisite finishing past the right edge is late against a dependent inside the window
+  exactly as it would be with both on screen. Zooming changes what can be seen and never
+  what is true.
 - **2a — one of the two dates being compared is not one its note states.** Not flagged. A
   conflict is a contradiction between two things somebody wrote, so both dates it rests on
   have to be written down, and an endpoint can fail that in two different ways: **rolled up**
@@ -145,7 +161,11 @@ against one would report a date no note carries — a red mark on a fact that do
   stated on the shelf card with no arrow drawn.
 - An arrow whose anchor is an open end still draws, anchored at that open end; no arrow
   anchor implies a date, and an unstated endpoint never becomes a stated one by being
-  pointed at.
+  pointed at. A clipped end is the same: some part of a bar in the window is enough to
+  anchor one, and only a span with nothing in view suppresses an arrow.
+- No conflict verdict depends on the window. The comparison is between stated dates, not
+  between the clamped coordinates a clipped bar draws at, so zooming or panning never
+  creates a conflict and never clears one.
 - No arrow moves a bar, writes a date, or changes what any note says — rendering the
   roadmap with the dependency key bound writes nothing at all.
 - Neither an arrow nor its head is focusable: the timeline keeps one selection stop per
