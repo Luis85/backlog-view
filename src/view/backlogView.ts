@@ -24,7 +24,7 @@ import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { ResizePolicy } from './resize';
-import { rowHidden } from './rowVisibility';
+import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
 import {
@@ -340,15 +340,29 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, this.filter, this.settings, true, this.filterScope);
+		return rowHidden(item, this.visibility(true));
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, this.filter, this.settings, false, this.filterScope);
+		return rowHidden(item, this.visibility(false));
 	}
 
-	isRowHiddenByFilterOnly(item: BacklogItem): boolean {
-		return this.filter.active && !this.filter.keeps(item.file.path, this.filterScope);
+	/**
+	 * The one visibility rule, assembled once. `hideCompleted` is where the Deliverables
+	 * board's exception lives — that board has no completion concept of its own, so the
+	 * toggle describing the requirements rollup must not reach it. Stated here rather than
+	 * offered as a second method for call sites to remember: three surfaces asked the
+	 * narrower question and the fourth asked the ordinary one, which is how a Deliverable
+	 * card's child list came to be emptied by a setting from another projection.
+	 */
+	private visibility(applyFilter: boolean): VisibilityRule {
+		return {
+			filter: this.filter,
+			settings: this.settings,
+			applyFilter,
+			scope: this.filterScope,
+			hideCompleted: this.projection !== 'deliverables',
+		};
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {

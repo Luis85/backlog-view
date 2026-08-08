@@ -245,12 +245,11 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
 	const model = host.model;
 	if (!label || !model) return;
-	const onDeliverables = host.projection === 'deliverables';
 	const population = countedPopulation(host, model);
-	const hidden = (item: BacklogItem): boolean =>
-		onDeliverables ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
+	// `isRowHidden` answers per projection now, the Deliverables board's own exception
+	// included, so this asks the one question rather than choosing between two.
 	const total = population.length;
-	const shown = population.filter((item) => !hidden(item)).length;
+	const shown = population.filter((item) => !host.isRowHidden(item)).length;
 	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
 	else label.setText(`${shown} of ${total}`);
 	setTooltip(label, levelBreakdown(population));
