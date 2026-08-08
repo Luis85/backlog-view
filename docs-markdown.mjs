@@ -154,9 +154,29 @@ export function wikilinks(text) {
 	return [...prose(text).matchAll(/\[\[([^\]|#]+)/g)].map(([, target]) => target.replace(/\s+/g, " ").trim());
 }
 
-/** Paragraph bodies, which is what a citation is bounded by — never a blank-line scan. */
-export function paragraphs(text) {
-	return [...nodes(text)]
-		.filter((n) => n.type === "paragraph" && n.position)
-		.map((n) => ({ text: source(text, n), index: n.position.start.offset }));
+/**
+ * The innermost BLOCK containing an offset — what a marker's citation is bounded by.
+ *
+ * Not `paragraphs`, which this replaced. A `**Checked by**` inside a GFM table cell is a
+ * `tableCell` and not a paragraph at all, so asking only for paragraphs found no owner
+ * and the caller fell back to "the rest of the document" — where a malformed marker could
+ * reach forward and adopt the next citation's path and name. A table cell is a natural
+ * place to put a claim, so the natural place was the hole.
+ *
+ * Every kind that can HOLD a citation is listed rather than "anything with a position",
+ * because inline nodes have positions too and the marker itself is one (`**bold**` is
+ * `strong`): bounding a citation at the marker would leave nothing after it to read.
+ */
+const BLOCKS = new Set(["paragraph", "tableCell", "listItem", "heading", "blockquote", "definition"]);
+export function containerAt(text, index) {
+	let best = null;
+	for (const node of nodes(text)) {
+		if (!BLOCKS.has(node.type) || !node.position) continue;
+		const { start, end } = node.position;
+		if (index < start.offset || index >= end.offset) continue;
+		if (best === null || end.offset - start.offset < best.end - best.start) {
+			best = { start: start.offset, end: end.offset, text: source(text, node) };
+		}
+	}
+	return best;
 }

@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { collapsed, headings, localLinks, paragraphs, prose, proseWithSpans, sectionBody, wikilinks } from "./docs-markdown.mjs";
+import { collapsed, containerAt, headings, localLinks, prose, proseWithSpans, sectionBody, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -451,16 +451,28 @@ for (const file of [...files, "README.md"]) {
 	const spans = proseWithSpans(text);
 	const markers = [...prose(text).matchAll(MARKER)].map((m) => m.index);
 	for (const marker of prose(text).matchAll(MARKER)) {
-		const owner = paragraphs(text).find((p) => marker.index >= p.index && marker.index < p.index + p.text.length);
+		const owner = containerAt(text, marker.index);
 		const from = marker.index + marker[0].length;
 		const next = markers.find((m) => m > marker.index);
-		const paragraphEnd = owner ? owner.index + owner.text.length : text.length;
-		const cited = CITATION.exec(spans.slice(from, Math.min(next ?? paragraphEnd, paragraphEnd)));
+		// No container at all means the marker is somewhere this rule cannot bound — report
+		// it rather than scanning to the end of the file, which is how a malformed marker
+		// would reach forward and adopt the next citation's path and name.
+		const blockEnd = owner ? owner.end : from;
+		const cited = CITATION.exec(spans.slice(from, Math.min(next ?? blockEnd, blockEnd)));
 		if (!cited) {
 			fail(file, "has a **Checked by** with no `path.ts` and \"test name\" after it");
 			continue;
 		}
 		const [, target, name] = cited;
+		// A path that climbs out of `test/` is not a test. `test/../src/domain/settings.ts`
+		// matched the pattern above — `[\w./-]+` admits `..` — and then resolved to the
+		// implementation, so quoting a function name off it passed as evidence. The pattern
+		// says which SPELLINGS it accepts; this says where the path may actually land, and
+		// only the second question can be asked of a normalized path.
+		if (path.posix.normalize(target) !== target) {
+			fail(file, `cites ${target}, which climbs out of the directory it names`);
+			continue;
+		}
 		if (!(await exists(target))) {
 			fail(file, `cites ${target}, which does not exist`);
 			continue;

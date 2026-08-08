@@ -39,6 +39,38 @@ describe('checked-claim citations', () => {
 			'has a **Checked by** with no `path.ts` and "test name" after it',
 		],
 		[
+			// The pattern admits `.` and `/`, so `test/..` spelled a path that LOOKS like a
+			// test and resolves to the implementation — the restriction to test files read
+			// as closed while one traversal walked straight through it.
+			'a citation whose path climbs out of test/ into the source tree',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/../src/thing.ts` — "thing".',
+				});
+			},
+			'climbs out of the directory it names',
+		],
+		[
+			// A table cell is a `tableCell` and not a paragraph, so bounding a citation by
+			// paragraph found no owner and scanned to the END of the document — where this
+			// malformed marker would have adopted the real citation two sections down.
+			'a malformed marker inside a table cell, with a resolvable citation later',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: [
+						'`src/thing.ts` and `test/thing.test.ts`.',
+						'',
+						'| Claim | Evidence |',
+						'| --- | --- |',
+						'| It happens | **Checked by** the tests |',
+						'',
+						'**Checked by** `test/thing.test.ts` — "the thing works".',
+					].join('\n'),
+				});
+			},
+			'has a **Checked by** with no `path.ts` and "test name" after it',
+		],
+		[
 			'a citation naming a test file that does not exist',
 			(files) => {
 				files['docs/issues/A limitation.md'] = note(

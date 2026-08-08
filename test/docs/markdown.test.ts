@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 // @ts-expect-error — a plain .mjs helper with no type declarations, imported for what it does.
-import { collapsed, headings, localLinks, paragraphs, prose, proseWithSpans, sectionBody, wikilinks } from '../../docs-markdown.mjs';
+import { collapsed, containerAt, headings, localLinks, prose, proseWithSpans, sectionBody, wikilinks } from '../../docs-markdown.mjs';
 
 /**
  * **The Markdown layer, tested as a unit.**
@@ -133,14 +133,34 @@ describe('wikilinks', () => {
 	});
 });
 
-describe('paragraphs', () => {
-	it('bounds a paragraph without scanning for blank lines', () => {
+describe('the block a citation is bounded by', () => {
+	it('bounds at the paragraph, without scanning for blank lines', () => {
 		// What the citation rule needs. Its first version hunted for `\n[ \t]*\n`, which is
 		// a blank-line scan wearing a parser's job — and would have been wrong on CRLF if
 		// the reader had not already normalized it.
-		const found = paragraphs('One paragraph.\n\nAnother one.\n').map((p: { text: string }) => p.text.trim());
+		const text = 'One paragraph.\n\nAnother one.\n';
 
-		expect(found).toEqual(['One paragraph.', 'Another one.']);
+		expect(containerAt(text, 2).text.trim()).toBe('One paragraph.');
+		expect(containerAt(text, text.indexOf('Another')).text.trim()).toBe('Another one.');
+	});
+
+	it('bounds inside a TABLE CELL, which is not a paragraph', () => {
+		// Asking only for paragraphs found no owner here, and the caller then scanned to the
+		// end of the document — so a malformed marker in a cell could adopt a citation from
+		// a later section. A table cell is a natural place to put a claim, so the natural
+		// place was the hole.
+		const text = '| Claim | Evidence |\n| --- | --- |\n| It happens | see the tests |\n';
+		const at = text.indexOf('see the tests');
+
+		// The cell's own span, pipes included — narrower than the row, which is the point.
+		expect(containerAt(text, at).text).toContain('see the tests');
+		expect(containerAt(text, at).text).not.toContain('It happens');
+	});
+
+	it('bounds at the list item, not the whole list', () => {
+		const text = '- first item\n- second item\n';
+
+		expect(containerAt(text, text.indexOf('second')).text.trim()).toBe('second item');
 	});
 });
 
