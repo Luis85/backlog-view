@@ -359,7 +359,7 @@ describe('the write', () => {
 
 	it('still removes a prerequisite renamed while the picker was open', async () => {
 		const vault = vaultWith({ B: { dependsOn: '[[A]]' } });
-		const { containerEl } = makeView(vault, withKey);
+		const { containerEl, view } = makeView(vault, withKey);
 
 		click(openMenu(containerEl, 'B'), 'Remove dependency…');
 		// Obsidian renames by mutating the one file object AND rewriting the links that
@@ -368,10 +368,28 @@ describe('the write', () => {
 		// entry, and the pick would close the picker having removed nothing.
 		vault.renameFile('A.md', 'A renamed.md');
 		vault.fm('B.md')['dependsOn'] = '[[A renamed]]';
+		refresh(view, vault);
 		suggester().choose('A');
 		await flush();
 
 		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
+	});
+
+	it('writes nothing when the prerequisite is DELETED while the picker was open', async () => {
+		const vault = vaultWith({ B: { dependsOn: '[[A]]' } });
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		vault.files.delete('A.md');
+		refresh(view, vault);
+		suggester().choose('A');
+		await flush();
+
+		// Nothing resolves to that path now, so the delta had no line to take out. The
+		// entry survives — and reopening the picker offers it as unresolved raw text,
+		// which is removable. What must not happen is the silent close.
+		expect(vault.fm('B.md')['dependsOn']).toBe('[[A]]');
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
 	});
 
 	it('writes nothing when the source note is replaced by another at the same path', async () => {

@@ -152,6 +152,31 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 }
 
 /**
+ * What clearing one named prerequisite means, asked when the pick LANDS rather than
+ * when the list was drawn — because between those two moments the note can move, or
+ * stop existing, and `removePath` can only ever match what the reader still resolves.
+ *
+ * The choice therefore names its target by FILE and derives the path late, which
+ * answers the three things that can happen to a note in one test:
+ *
+ * - **Renamed.** Obsidian mutates the one `TFile` and rewrites the links that named it,
+ *   so the same object now carries the new path and the live entry resolves to it. A
+ *   path captured when the list was drawn would match nothing and the picker would
+ *   close having silently removed nothing.
+ * - **Deleted.** Nothing resolves to that path any more, so there is no line this delta
+ *   could take out: it returns null and the caller says so, rather than closing over a
+ *   write that was always going to be a no-op. The entry is still on the note, and
+ *   reopening the picker offers it as unresolved raw text — which IS removable.
+ * - **Replaced by a different note under the same name.** The path matches and the file
+ *   does not, which is the whole reason this compares the file: the delta would clear
+ *   the user's dependency on a note they never picked.
+ */
+function removalOf(host: BacklogViewHost, target: BacklogItem): () => DependsOnDelta | null {
+	return () =>
+		host.model?.byPath.get(target.file.path)?.file === target.file ? { removePath: target.file.path } : null;
+}
+
+/**
  * Everything the list holds, offered as lines to remove: each prerequisite by name,
  * each broken entry grouped by the note it still names (or by its raw text when it
  * names nothing at all) — and, when the key is there but holds nothing nameable, the
@@ -176,19 +201,15 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 		if (target !== null) broken.add(target);
 		else unresolved.add(raw);
 	}
-	// Each choice is a delta the pick BUILDS, not one the list captured, and the whole
-	// difference is when `file.path` is read. Obsidian renames a note by mutating its
-	// one `TFile` and rewriting the wikilinks that named it, so a path captured while
-	// the picker sits open names nothing on disk once a rename lands: `removePath`
-	// would match no live entry and the picker would close having silently done
-	// nothing. Reading the path off the file when the choice arrives follows the
-	// rename, because it is the same file object either way. A raw entry keeps its
-	// text, which is the only identity it has and which a rename cannot change.
-	const choices: SuggestChoice<() => DependsOnDelta>[] = [
+	// Each choice is a delta the pick BUILDS, not one the list captured — see
+	// `removalOf` for what that buys and what it refuses. A raw entry needs none of it:
+	// its text is the only identity it has, and nothing that happens to a note can
+	// change what a line SAYS.
+	const choices: SuggestChoice<() => DependsOnDelta | null>[] = [
 		...[...item.prerequisites, ...broken].map((target) => ({
 			label: target.title,
 			detail: target.file.path,
-			value: () => ({ removePath: target.file.path }),
+			value: removalOf(host, target),
 		})),
 		...[...unresolved].map((raw) => ({
 			label: raw,
@@ -202,7 +223,14 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 	new ItemSuggestModal(host.app, {
 		placeholder: `Stop ${item.title} waiting for…`,
 		choices,
-		onChoose: (delta) => applyDependencyWrite(host, item, delta()),
+		onChoose: (plan) => {
+			const delta = plan();
+			if (delta === null) {
+				new Notice('That note changed while the picker was open, so nothing was written.');
+				return;
+			}
+			applyDependencyWrite(host, item, delta);
+		},
 	}).open();
 }
 

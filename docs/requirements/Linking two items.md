@@ -91,15 +91,20 @@ a different control.
   `outsideFilter` — is exactly as unwritable as one the model still lists that way. That
   half of the recheck guards **Remove dependency…** too, which has no candidate to lose
   legality but has the same source that can.
-- **2e — a note is RENAMED, or replaced by a different note under the same name, before the
-  pick lands.** The two are opposite answers, and telling them apart is what a path cannot
-  do: Obsidian renames by mutating a note's one file object, so a rename is the same note
-  wearing a new path and a delete-and-recreate is a different note wearing the old one. A
-  rename must not cost the user their pick — **Remove dependency…** therefore names the
-  note it will clear by file and reads the path only when the choice lands, so it follows
-  the rename and clears the entry Obsidian rewrote. A replacement must never inherit one —
-  both pickers compare the file itself, so a pick that would now write a link to, or into,
-  a note nobody chose writes nothing and says so with the 2d `Notice`.
+- **2e — the note a choice names is RENAMED, DELETED, or replaced by a different note
+  under the same name, before the pick lands.** Three answers, and a path tells none of
+  them apart: Obsidian renames by mutating a note's one file object, so a rename is the
+  same note wearing a new path and a delete-and-recreate is a different note wearing the
+  old one. A rename must not cost the user their pick — **Remove dependency…** therefore
+  names the note it will clear by file and reads the path only when the choice lands, so
+  it follows the rename and clears the entry Obsidian rewrote. A replacement must never
+  inherit one: both pickers compare the file itself, so a pick that would now write a
+  link to, or into, a note nobody chose writes nothing and says so with the 2d `Notice`.
+  A deletion gets that same `Notice` rather than a quiet close — nothing resolves to the
+  note any more, so there is no line left for that pick to take out. The entry stays,
+  and reopening the picker offers it as unresolved raw text, which does remove it.
+  Silence is the thing refused here: a pick that cannot do what it says has to say so,
+  or the reader is left believing a removal happened.
 - **3a — the write takes the note out of the Base's filter.** Nothing reports it, and that
   is deliberate rather than forgotten: a filter can name the very property being written,
   so the row can leave in silence. [[The outcome report was built from one sentence]]
