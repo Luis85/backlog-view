@@ -371,3 +371,58 @@ describe('the shared scroller across projections', () => {
 		expect(scroller(containerEl).scrollLeft).toBe(0);
 	});
 });
+
+describe('a shared card is finished by ITS OWN workflow, on every projection that draws one', () => {
+	const WORKFLOWS = {
+		stateProperty: 'note.status',
+		stateValues: 'New, Done',
+		doneValues: 'Done',
+		deliverableStateProperty: 'note.docStatus',
+		deliverableStateValues: 'Draft, Published',
+		deliverableDoneValues: 'Published',
+	};
+
+	/**
+	 * Three Deliverables whose two workflows DISAGREE, one per surface that draws a card
+	 * from the shared shell: a horizon bucket, the shelf, and the context strip. Each pair
+	 * is inverted, so a reader that took the wrong workflow is wrong in both directions
+	 * rather than merely conservative.
+	 */
+	function disagreeingVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'Deliverable', order: 10, horizon: 'Now', status: 'New', docStatus: 'Published' },
+		});
+		vault.addFile('Open.md', {
+			frontmatter: { type: 'Deliverable', order: 20, horizon: 'Now', status: 'Done', docStatus: 'Draft' },
+		});
+		vault.addFile('Shelved.md', {
+			frontmatter: { type: 'Deliverable', order: 30, status: 'New', docStatus: 'Published' },
+		});
+		return vault;
+	}
+
+	function doneClasses(containerEl: HTMLElement): Record<string, boolean> {
+		const of = (title: string): boolean => {
+			const card = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-card')).find(
+				(el) => el.querySelector('.pbl-card-title')?.textContent === title,
+			);
+			if (!card) throw new Error(`no card for ${title}`);
+			return card.classList.contains('pbl-done');
+		};
+		return { Shipped: of('Shipped'), Open: of('Open'), Shelved: of('Shelved') };
+	}
+
+	it('styles a bucket card and a shelf card by the Deliverable workflow, both directions', () => {
+		// `createCard` took a `done` parameter with an `item.done` default and a per-board
+		// override, so the Deliverables board and the timeline passed the right workflow
+		// while these three surfaces silently took the requirements one. Asked inside
+		// `createCard` now, which is why one assertion covers every projection that draws
+		// a card rather than one test per call site.
+		const { view, containerEl } = makeView(disagreeingVault(), { horizonProperty: 'note.horizon', ...WORKFLOWS }, { collapsed: true });
+		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
+
+		expect(doneClasses(containerEl)).toEqual({ Shipped: true, Open: false, Shelved: true });
+	});
+});

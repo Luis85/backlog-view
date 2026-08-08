@@ -20,6 +20,7 @@ import {
 	cardPaths,
 	deliverablesWorkflow,
 	overBy,
+	ownWorkflowReading,
 	requirementsFocusRoots,
 	requirementsWorkflow,
 } from '../../domain/board';
@@ -31,7 +32,6 @@ import { undisclosedMatches } from '../childrenList';
 interface BoardRenderOptions {
 	move: (item: BacklogItem, state: string | null) => void;
 	drawEmpty: (host: BacklogViewHost, aside: HTMLElement) => void;
-	doneOf?: (item: BacklogItem) => boolean;
 	/**
 	 * The view-options display name of THIS workflow's state list, named in the
 	 * stray-column tooltip (`renderColumnHeader`) so the hint points at the setting
@@ -156,7 +156,6 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performDeliverablesBoardMove(item, state),
-		doneOf: (item) => item.deliverableDone,
 		stateOptionLabel: 'Deliverable workflow states (in order)',
 		drawEmpty: (h, aside) => {
 			const m = h.model;
@@ -332,8 +331,7 @@ function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 }
 
 function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, render: ColumnRenderCtx): void {
-	const doneOf = render.opts.doneOf ?? ((i: BacklogItem) => i.done);
-	const card = createCard(ctx, cardsEl, item, doneOf(item));
+	const card = createCard(ctx, cardsEl, item);
 	renderCardBody(ctx, card, item);
 	// The board's own addition to the shared body: which items already have a card is
 	// a question only the board can answer, so the roadmap does not get this and the
@@ -346,12 +344,19 @@ function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, re
 /**
  * A card's shell, registered in the row index so selection and targeted lookups
  * reach it. Shared with the roadmap: a card is a result row wearing the card
- * layout, whichever projection drew it. `done` defaults to the requirements
- * workflow's own completion (`item.done`) — the roadmap's own call site never passes
- * it, and the Deliverables board passes its OWN workflow's completion instead, since
- * `item.done` answers for a workflow this card may not even be tracked by.
+ * layout, whichever projection drew it.
+ *
+ * Finished styling is the ITEM's own workflow, asked HERE and taking no parameter, so
+ * every projection that draws a card gets the same answer. It was a parameter with an
+ * `item.done` default and a per-board override, which is a category invariant asked at
+ * the places someone thought of: the Deliverables board passed its own workflow and the
+ * timeline passed its own reading, while the horizon buckets, the shelf and the context
+ * strip took the default and styled a Deliverable by a workflow that does not track it —
+ * in both directions. `ownWorkflowReading` is the same rule `stateKeyFor` states for the
+ * key; a non-Deliverable's answer is `item.done` exactly as before.
  */
-export function createCard(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem, done = item.done): HTMLElement {
+export function createCard(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem): HTMLElement {
+	const done = ownWorkflowReading(item).done;
 	const selected = ctx.host.selectedPath === item.file.path;
 	const card = containerEl.createDiv({
 		cls:
