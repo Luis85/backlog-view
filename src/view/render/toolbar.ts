@@ -204,11 +204,7 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	const model = host.model;
 	if (!label || !model) return;
 	const onDeliverables = host.projection === 'deliverables';
-	const population = onDeliverables
-		? model.deliverableResults
-		: host.projection === 'board'
-			? model.results.filter((item) => !isDeliverableType(item.typeName))
-			: model.results;
+	const population = countedPopulation(host, model);
 	const hidden = (item: BacklogItem): boolean =>
 		onDeliverables ? host.isRowHiddenByFilterOnly(item) : host.isRowHidden(item);
 	const total = population.length;
@@ -242,7 +238,10 @@ function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void {
 function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	if (!host.settings.stateKey || host.projection === 'deliverables') return;
 	const showing = host.settings.showCompleted;
-	const hidden = model.results.filter((item) => item.subtreeDone).length;
+	// This projection's OWN population, the same one the count label answers for: on the
+	// requirements board a done Deliverable is not a hidden card, it is not a card at
+	// all, so counting it offered to reveal something pressing the button cannot show.
+	const hidden = countedPopulation(host, model).filter((item) => item.subtreeDone).length;
 	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
 	const btn = iconButton(barEl, showing ? 'eye' : 'eye-off', showing ? 'Hide completed items' : `Show completed items${suffix}`);
 	btn.addClass('pbl-completed-toggle');
@@ -425,6 +424,23 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());
+}
+
+/**
+ * What this projection is counting — its own population, which is not the same question
+ * for all four. The Deliverables board draws `model.deliverableResults`; the
+ * requirements board draws every result EXCEPT a Deliverable, which it excludes by
+ * construction; the tree and the roadmap draw all of them.
+ *
+ * One function because two toolbar readouts sit beside each other and have to agree:
+ * the count label and the completed toggle's "(N hidden)". They did not — the label was
+ * scoped and the toggle was not, so the requirements board could report one item while
+ * offering to reveal another that pressing the button would never show.
+ */
+function countedPopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
+	if (host.projection === 'deliverables') return model.deliverableResults;
+	if (host.projection === 'board') return model.results.filter((item) => !isDeliverableType(item.typeName));
+	return model.results;
 }
 
 /**

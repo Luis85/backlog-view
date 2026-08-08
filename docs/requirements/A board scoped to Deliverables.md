@@ -270,6 +270,13 @@ narrowed to one type.
   Deliverable whose ancestor sits ABOVE the focus root, and a Deliverable whose matching
   descendant sits BELOW it across that boundary). Two indexes make all six structural:
   neither is a special case of the other, and neither can write into the other.
+- **Every toolbar readout answers for the projection's OWN population**, resolved once
+  (`countedPopulation`) rather than per readout: the Deliverables board counts
+  `model.deliverableResults`, the requirements board counts every result except a
+  Deliverable, the tree and the roadmap count them all. The count label and the completed
+  toggle's "(N hidden)" sit beside each other and disagreed — the label was scoped and the
+  toggle was not, so a done Deliverable made the requirements board offer to reveal a
+  hidden card that board never had.
 - **The requirements board's empty advisory answers for its OWN population**, never
   `model.results` — which counts the Deliverables it excludes. A base of Deliverables
   alone read "All N items are done and hidden", beside a `Show completed items` button

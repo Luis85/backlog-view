@@ -492,3 +492,53 @@ describe('the Deliverables board can be set up from its own empty state', () => 
 		expect(empty?.querySelector('button')).toBeNull();
 	});
 });
+
+describe('the toolbar counts one population, not two', () => {
+	/** A done Deliverable beside open requirements work. */
+	function doneDeliverable(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: 'In progress' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 20, status: 'Done', docStatus: 'Draft' } });
+		return vault;
+	}
+	// Completed items HIDDEN — the suffix only exists while the toggle offers to show them.
+	const CONFIG_DONE = { ...CONFIG, doneValues: 'Done', showCompleted: false };
+
+	it('never offers to reveal a hidden card the requirements board would not show', () => {
+		// `subtreeDone` is the requirements workflow's, and this Deliverable satisfies it —
+		// but it is not a card here at all, so counting it offered to reveal something
+		// pressing the button cannot produce. The label beside it was already scoped; the
+		// toggle was not, so the two readouts disagreed about the same board.
+		const harness = makeView(doneDeliverable(), CONFIG_DONE);
+		const { containerEl } = harness;
+		const toggleLabel = () => containerEl.querySelector('.pbl-completed-toggle')?.getAttribute('aria-label');
+
+		// The tree counts every result, so it still names the hidden Deliverable.
+		expect(toggleLabel()).toContain('(1 hidden)');
+
+		harness.view.setProjection('board');
+		expect(toggleLabel()).not.toContain('hidden');
+	});
+});
+
+describe('a context Deliverable is never a source of this board’s vocabulary', () => {
+	it('mints no column from an excluded ancestor’s own state', () => {
+		// The root context-row rule: an `outsideFilter` row is never a source of anything
+		// derived from the Base's results, state vocabulary included. `firstSeen` already
+		// enforces it for every collector, so this pins the behaviour rather than fixing
+		// it — the case is easy to reintroduce by collecting outside that helper.
+		const vault = new FakeVault();
+		vault.addFile('Old handbook.md', { frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Archived' } });
+		vault.addFile('Live spec.md', { frontmatter: { type: 'Deliverable', order: 20, docStatus: 'Draft' } });
+		const harness = makeView(vault, CONFIG);
+		// The excluded ancestor is in the vault and out of the Base's results.
+		const anyView = harness.view as unknown as Record<string, unknown>;
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Old handbook.md') };
+		harness.view.onDataUpdated();
+		harness.view.setProjection('deliverables');
+
+		const columns = [...harness.containerEl.querySelectorAll('.pbl-board-col-name')].map((el) => el.textContent);
+		expect(columns).toContain('Draft');
+		expect(columns).not.toContain('Archived');
+	});
+});
