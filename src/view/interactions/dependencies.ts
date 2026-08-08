@@ -62,11 +62,11 @@ export function dependenciesAvailable(host: BacklogViewHost): boolean {
  * `declaredPrerequisitePaths` collects, rather than resolving a second time and risking
  * the two disagreeing about what a broken entry names.
  */
-function resolveBrokenEntry(app: App, model: BacklogModel, item: BacklogItem, raw: string): string | null {
+function resolveBrokenEntry(app: App, model: BacklogModel, item: BacklogItem, raw: string): BacklogItem | null {
 	const linkpath = linkpathFromRawValue(raw);
 	if (linkpath.length === 0) return null;
 	const path = app.metadataCache.getFirstLinkpathDest(linkpath, item.file.path)?.path ?? null;
-	return path !== null && model.byPath.has(path) ? path : null;
+	return path === null ? null : (model.byPath.get(path) ?? null);
 }
 
 /**
@@ -82,7 +82,8 @@ function declaredPrerequisitePaths(app: App, model: BacklogModel, item: BacklogI
 	const resolved = item.prerequisites.map((p) => p.file.path);
 	const broken = item.brokenPrerequisites
 		.map((raw) => resolveBrokenEntry(app, model, item, raw))
-		.filter((path): path is string => path !== null);
+		.filter((target): target is BacklogItem => target !== null)
+		.map((target) => target.file.path);
 	return [...resolved, ...broken];
 }
 
@@ -134,9 +135,13 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 			// have been rebuilt since, and reusing `candidates` here is what keeps this one
 			// rule rather than a second opinion of it (the same rule `dependsOnWrite.ts`'s
 			// own `add` arm keeps at the write boundary).
+			//
+			// Matched on the FILE, not its path, for the reason `applyDependencyWrite`
+			// states about the source: a note deleted and another created at the same
+			// path would satisfy a path compare while `choice.file` stayed detached, and
+			// the link written from it would name a note the user never picked.
 			const current = host.model;
-			const stillLegal =
-				current !== null && candidates(host.app, current, item).some((c) => c.file.path === choice.file.path);
+			const stillLegal = current !== null && candidates(host.app, current, item).some((c) => c.file === choice.file);
 			if (!stillLegal) {
 				new Notice('That note changed while the picker was open, so nothing was written.');
 				return;
@@ -164,37 +169,40 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 	// broken path 4b asks for). An entry resolving to nothing has no note to group by,
 	// so it keeps `removeRaw`, deduped by its own text — raw text is the only identity
 	// it has.
-	const brokenPaths = new Set<string>();
+	const broken = new Set<BacklogItem>();
 	const unresolved = new Set<string>();
 	for (const raw of new Set(item.brokenPrerequisites)) {
-		const path = resolveBrokenEntry(host.app, model, item, raw);
-		if (path !== null) brokenPaths.add(path);
+		const target = resolveBrokenEntry(host.app, model, item, raw);
+		if (target !== null) broken.add(target);
 		else unresolved.add(raw);
 	}
-	const choices: SuggestChoice<DependsOnDelta>[] = [
-		...item.prerequisites.map((prerequisite) => ({
-			label: prerequisite.title,
-			detail: prerequisite.file.path,
-			value: { removePath: prerequisite.file.path },
-		})),
-		...[...brokenPaths].map((path) => ({
-			label: model.byPath.get(path)?.title ?? path,
-			detail: path,
-			value: { removePath: path },
+	// Each choice is a delta the pick BUILDS, not one the list captured, and the whole
+	// difference is when `file.path` is read. Obsidian renames a note by mutating its
+	// one `TFile` and rewriting the wikilinks that named it, so a path captured while
+	// the picker sits open names nothing on disk once a rename lands: `removePath`
+	// would match no live entry and the picker would close having silently done
+	// nothing. Reading the path off the file when the choice arrives follows the
+	// rename, because it is the same file object either way. A raw entry keeps its
+	// text, which is the only identity it has and which a rename cannot change.
+	const choices: SuggestChoice<() => DependsOnDelta>[] = [
+		...[...item.prerequisites, ...broken].map((target) => ({
+			label: target.title,
+			detail: target.file.path,
+			value: () => ({ removePath: target.file.path }),
 		})),
 		...[...unresolved].map((raw) => ({
 			label: raw,
 			detail: 'Does not resolve in this base',
-			value: { removeRaw: raw },
+			value: () => ({ removeRaw: raw }),
 		})),
 	];
 	if (choices.length === 0) {
-		choices.push({ label: 'Remove the empty property', value: { removeKey: true } });
+		choices.push({ label: 'Remove the empty property', value: () => ({ removeKey: true }) });
 	}
 	new ItemSuggestModal(host.app, {
 		placeholder: `Stop ${item.title} waiting for…`,
 		choices,
-		onChoose: (delta) => applyDependencyWrite(host, item, delta),
+		onChoose: (delta) => applyDependencyWrite(host, item, delta()),
 	}).open();
 }
 

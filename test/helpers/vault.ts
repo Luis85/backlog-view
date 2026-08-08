@@ -159,14 +159,17 @@ export class FakeVault {
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	renameFile(oldPath: string, newPath: string): TFile {
-		const existing = this.files.get(oldPath);
-		if (!existing) throw new Error(`no such file: ${oldPath}`);
+		const file = this.files.get(oldPath);
+		if (!file) throw new Error(`no such file: ${oldPath}`);
+		// The old name is read BEFORE the move, because the move rewrites it: the file
+		// object is mutated in place, as Obsidian's is.
+		const oldBasename = file.basename;
 		this.files.delete(oldPath);
 		const cache = this.caches.get(oldPath);
 		const fm = this.frontmatter.get(oldPath);
 		this.caches.delete(oldPath);
 		this.frontmatter.delete(oldPath);
-		const file = new TFile(newPath);
+		file.moveTo(newPath);
 		this.files.set(newPath, file);
 		if (cache) this.caches.set(newPath, cache);
 		if (fm) this.frontmatter.set(newPath, fm);
@@ -175,7 +178,7 @@ export class FakeVault {
 		// look like a restructure rather than a rename.
 		for (const [path, cache] of this.caches) {
 			for (const link of cache.frontmatterLinks ?? []) {
-				if (link.link !== existing.basename) continue;
+				if (link.link !== oldBasename) continue;
 				link.link = file.basename;
 				link.original = `[[${file.basename}]]`;
 				const fm = this.frontmatter.get(path);
@@ -192,10 +195,10 @@ export class FakeVault {
 	 * from.
 	 */
 	renameFolder(oldPath: string, newPath: string): void {
-		for (const path of [...this.files.keys()]) {
+		for (const [path, file] of [...this.files]) {
 			if (!path.startsWith(`${oldPath}/`)) continue;
 			const moved = newPath + path.slice(oldPath.length);
-			const file = new TFile(moved);
+			file.moveTo(moved);
 			this.files.delete(path);
 			this.files.set(moved, file);
 			const cache = this.caches.get(path);

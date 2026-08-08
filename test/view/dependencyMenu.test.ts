@@ -341,6 +341,39 @@ describe('the write', () => {
 		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
 	});
 
+	it('writes nothing when the OFFERED prerequisite is replaced by another at the same path', async () => {
+		// The mirror of the source-side guard: the picker's captured file is detached, and
+		// the link would be written from it, naming a note the user never chose.
+		const vault = vaultWith();
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Depends on…');
+		refreshReplacingFile(view, vault, 'A.md');
+		suggester().choose('A');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
+		expect(view.canUndo()).toBe(false);
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+	});
+
+	it('still removes a prerequisite renamed while the picker was open', async () => {
+		const vault = vaultWith({ B: { dependsOn: '[[A]]' } });
+		const { containerEl } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		// Obsidian renames by mutating the one file object AND rewriting the links that
+		// named it. The fake does the first; the second is done here as the external edit
+		// it is. A choice holding the path it was built with would now match no live
+		// entry, and the pick would close the picker having removed nothing.
+		vault.renameFile('A.md', 'A renamed.md');
+		vault.fm('B.md')['dependsOn'] = '[[A renamed]]';
+		suggester().choose('A');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
+	});
+
 	it('writes nothing when the source note is replaced by another at the same path', async () => {
 		// The path still resolves, and the replacement is a perfectly ordinary result —
 		// so a path-only recheck passes and the batch writes through the captured, now

@@ -53,6 +53,19 @@ export class TFile {
 	stat: { mtime: number; ctime: number; size: number };
 
 	constructor(path: string, mtime = 0) {
+		this.stat = { mtime, ctime: mtime, size: 0 };
+		this.moveTo(path);
+	}
+
+	/**
+	 * Take a new path IN PLACE, which is how Obsidian renames a file: the vault mutates
+	 * the one `TFile` rather than minting a replacement, so an object captured before a
+	 * rename is still the object the vault holds afterwards. Modelled here because code
+	 * under test compares file identity to tell a rename (same object, new path) from a
+	 * delete-and-recreate (a different object at the same path) — a distinction a fake
+	 * that replaced the object on rename made invisible.
+	 */
+	moveTo(path: string): void {
 		this.path = path;
 		const slash = path.lastIndexOf('/');
 		const name = slash === -1 ? path : path.substring(slash + 1);
@@ -60,7 +73,6 @@ export class TFile {
 		this.basename = dot === -1 ? name : name.substring(0, dot);
 		this.extension = dot === -1 ? '' : name.substring(dot + 1);
 		this.parent = { path: slash === -1 ? '/' : path.substring(0, slash) };
-		this.stat = { mtime, ctime: mtime, size: 0 };
 	}
 }
 
