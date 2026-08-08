@@ -32,9 +32,8 @@ and each stays open until they are, so a stale check is visible rather than assu
   milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
 - The grid furniture stays furniture under a real theme: gridlines, weekend banding
   and the row stripes read as background behind the bars, the milestone label stays
-  legible over the header cells, the two header tiers stay aligned, the scrolled-lead
-  shadow appears once the grid scrolls, bar labels hide while a drag is live, and
-  compact rows actually shorten the row. **Never checked.**
+  legible over the header cells, the two header tiers stay aligned, bar labels hide
+  while a drag is live, and compact rows actually shorten the row. **Never checked.**
 - Everything the header names sits over the thing it names: each year over its own
   months, each month label over its own days, the milestone label over its own line,
   and the milestone diamond centred on its line. All of it is one arithmetic in TS and

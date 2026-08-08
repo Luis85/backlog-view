@@ -96,11 +96,6 @@
 	background-image: linear-gradient(var(--pbl-row-tint), var(--pbl-row-tint));
 }
 
-/* Only once there is anything under the sticky edge to hint at. */
-.pbl-scrolled-x .pbl-timeline-lead {
-	box-shadow: 4px 0 6px -3px var(--background-modifier-border);
-}
-
 /* max-width + 2×padding = LABEL_RESERVE_PX in render/timeline.ts — the reserve the
    side flip is decided against. Change them together. */
 .pbl-bar-label {

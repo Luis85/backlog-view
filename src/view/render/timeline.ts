@@ -173,9 +173,6 @@ export function renderTimeline(
 		// count the header, the lines and the layers interleaved in this container.
 		if (index % 2 === 1) row.addClass('pbl-row-even');
 	});
-	const syncScrolled = () => grid.toggleClass('pbl-scrolled-x', grid.scrollLeft > 0);
-	grid.addEventListener('scroll', syncScrolled, { passive: true });
-	syncScrolled();
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });

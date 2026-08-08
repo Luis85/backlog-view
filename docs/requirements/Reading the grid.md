@@ -43,8 +43,7 @@ nothing is written, and no rendering decision changes what places or what shelve
    the grid instead, and its exact date stays on its tooltip —
    [[State colour and a legend]] retired the header-band pill this bullet used to
    describe, once a legend existed to make it redundant.
-4. Alternate rows stripe, the hovered row highlights across lead and track, and the
-   sticky lead column carries a shadow once the grid is scrolled.
+4. Alternate rows stripe and the hovered row highlights across lead and track.
 5. Each bar carries its title beside it in the track, flipping to the bar's other
    side where the window's edge leaves no room; the label drops entirely when there is
    no room on either side — a bar clipped at both window edges, but also a bar clipped
@@ -88,7 +87,7 @@ nothing is written, and no rendering decision changes what places or what shelve
 ## Where it lives
 
 `superCells`, `weekendOffsetDays` and the year-free `cellLabel` in
-`src/domain/timeline.ts`; the tiers, gridlines, weekend layer, stripes, scroll shadow
+`src/domain/timeline.ts`; the tiers, gridlines, weekend layer, stripes
 and bar labels — dropped when neither side has room — in `src/view/render/timeline.ts`
 (the today band it once also drew is gone; see [[State colour and a legend]]); the
 density toggle in `src/view/render/toolbar.ts` over

@@ -30,8 +30,9 @@ Five bundles, each independently shippable:
   [[State colour and a legend]] — the marker is unlabeled again, named by the legend
   strip instead).
 - **Two-tier header** — months above weeks, years above months, years above quarters.
-- **Row tracking** — row hover highlight, subtle zebra striping, a shadow on the sticky
-  lead column once scrolled.
+- **Row tracking** — row hover highlight, subtle zebra striping (the shadow on the sticky
+  lead column once scrolled shipped and was removed on 2026-08-08: a reader found it
+  noise rather than a hint, and a stripe already says where the column ends).
 - **Bar labels** — the item's title beside its bar, side picked from geometry.
 - **Row density toggle** — compact/comfortable timeline rows, stored as UI state.
 
@@ -127,8 +128,12 @@ pill takes the band for the reason above. Cell widths don't change, so
 - **Zebra:** alternate rows get a `pbl-row-even` class from the render loop (CSS has no
   nth-of-class), tinted via `color-mix(… 50%, transparent)` so weekend stripes still
   read through it and hover stays clearly stronger.
-- **Lead shadow:** a passive scroll listener on the scroller toggles `pbl-scrolled-x`
-  when `scrollLeft > 0`; CSS puts a shadow on the sticky lead column only then. The
+- **Lead shadow — shipped, then removed 2026-08-08.** A reader found it noise rather
+  than a hint; the stripe and the column's own border already say where the track
+  begins, and nothing replaced it. The design as built is kept below rather than
+  deleted, so this spec records what happened rather than only what survived. A passive
+  scroll listener on the scroller toggled `pbl-scrolled-x`
+  when `scrollLeft > 0`; CSS put a shadow on the sticky lead column only then. The
   scroller is rebuilt every render pass, so the listener cannot leak.
 
 ### 4. Bar labels
