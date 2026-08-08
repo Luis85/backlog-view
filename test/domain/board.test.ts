@@ -10,16 +10,18 @@ import {
 } from '../../src/domain/board';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
-import { BacklogSettings, defaultSettings, resolveSettings } from '../../src/domain/settings';
+import { BacklogSettings, resolveSettings } from '../../src/domain/settings';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
-/** Progress tracking on, with a configured workflow — the board's home ground. */
-const settings = {
-	...defaultSettings(),
-	stateKey: 'status',
-	states: ['New', 'Active', 'Done'],
-	doneValues: ['Done'],
-};
+/**
+ * Progress tracking on, with a configured workflow — the board's home ground. Resolved
+ * from view options rather than spread from `defaultSettings()`: the resolver is where
+ * the Deliverable lists FOLLOW a falling-back key, so the literal expressed a
+ * configuration nobody could set. `assertResolvedSettings` rejects it now.
+ */
+const settings = resolveSettings(
+	new FakeViewConfig({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' }) as never,
+);
 
 const everything = () => true;
 

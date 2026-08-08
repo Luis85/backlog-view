@@ -407,6 +407,67 @@ export function optionalKeyFor(settings: BacklogSettings, field: OptionalField):
  * very workflow it is deliberately reusing — the `''` a cleared/unset key resolves to
  * there is what lets `ownedProperties` skip it.
  */
+/**
+ * The relationships `resolveSettings` ESTABLISHES between fields, stated as a predicate so
+ * a `BacklogSettings` that could not have come from it can be recognised. Returns the
+ * broken one by name, or null.
+ *
+ * This exists because a test fixture is the one producer that skips the resolver. A
+ * `{ ...defaultSettings(), stateKey: 'status', states: [...] }` literal carries the fields
+ * and none of the rules, so it can express a vault nobody could configure — and that is
+ * invisible until some function starts reading a RELATIONSHIP rather than a field, at
+ * which point the fixture asserts behaviour for a configuration that cannot occur, in
+ * both directions: a passing test proving nothing, and a failing test blaming correct
+ * code. Four expectations in `test/domain/statePalettes.test.ts` were exactly that (see
+ * `docs/issues/A hand-built fixture can model a state the producer cannot produce.md`).
+ *
+ * The list is the resolver's own guarantees, and it is the whole of what is checkable
+ * here: these are relationships between VALUES, so no type can hold them.
+ */
+export function settingsInconsistency(settings: BacklogSettings): string | null {
+	// `effectiveDoneValues` falls back to DEFAULT_DONE_VALUES, and the Deliverable list
+	// falls back to that in turn, so neither is ever empty coming out of the resolver.
+	if (settings.doneValues.length === 0) return 'doneValues is empty';
+	if (settings.deliverableDoneValues.length === 0) return 'deliverableDoneValues is empty';
+	// The one that bit. With the Deliverable key falling back and no list of its own
+	// declared, the resolver COPIES `states` — so an empty Deliverable list beside a
+	// populated requirements one is a state it cannot emit.
+	if (settings.deliverableStateKey === '' && settings.deliverableStates.length === 0 && settings.states.length > 0) {
+		return 'deliverableStates is empty while the key falls back to a configured states list';
+	}
+
+	// `clearablePropKey`'s yielding rule: the tags key resolves to '' rather than
+	// colliding with one of the four properties that outrank it.
+	const taken = [settings.parentKey, settings.orderKey, settings.typeKey, settings.stateKey];
+	if (settings.tagsKey !== '' && taken.includes(settings.tagsKey)) return 'tagsKey collides with a key that outranks it';
+	return null;
+}
+
+/**
+ * The check on the CATEGORY, at the widest choke point a settings object passes through
+ * (`buildModel`) rather than at the fixtures someone thought to look at — so it holds for
+ * tests nobody has written yet.
+ *
+ * It throws rather than reporting, and unconditionally rather than under a dev flag,
+ * because in production it is unreachable: `resolveSettings` is the only producer, its
+ * one spread in `view/backlogView.ts` touches none of these fields, and
+ * `test/domain/settings.test.ts` checks that claim across a spread of configurations
+ * rather than leaving it as an argument. What it costs there is four comparisons on a
+ * path that already sorts.
+ *
+ * Scope, stated to the check and not past it: this catches a bad fixture in any test that
+ * builds a MODEL, and not one in a test that only calls a pure settings function. Nothing
+ * intercepts a `BacklogSettings` literal itself — there is no seam to put one on.
+ */
+export function assertResolvedSettings(settings: BacklogSettings): void {
+	const wrong = settingsInconsistency(settings);
+	if (wrong === null) return;
+	throw new Error(
+		`settings that resolveSettings could not have produced: ${wrong}. Build the fixture ` +
+			'through resolveSettings (see test/domain/statePalettes.test.ts) rather than spreading defaultSettings().',
+	);
+}
+
 export function resolvedDeliverableStateKey(settings: BacklogSettings): string {
 	return settings.deliverableStateKey || settings.stateKey;
 }

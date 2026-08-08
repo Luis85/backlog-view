@@ -15,6 +15,7 @@ import {
 	optionalKeyFor,
 	optionalProperty,
 	resolveSettings,
+	settingsInconsistency,
 	stateMenuValues,
 } from '../../src/domain/settings';
 
@@ -447,5 +448,57 @@ describe('the marker category', () => {
 		expect(defaultTypeFolder('Milestone')).toBe('docs/milestones');
 		expect(defaultTypeFolder('Milestone', 'work')).toBe('work/milestones');
 		expect(defaultSettings().typeFolders.milestone).toBe('docs/milestones');
+	});
+});
+
+describe('settingsInconsistency, and what the only producer guarantees', () => {
+	/**
+	 * The claim `assertResolvedSettings` rests on: in production `resolveSettings` is the
+	 * only producer, so the throw is unreachable. Checked across a spread of configurations
+	 * rather than left as an argument — the whole point of the assertion is that it can
+	 * only ever fire on a hand-built fixture.
+	 *
+	 * These are the option shapes the relationships are actually about: a key with no list,
+	 * a list with no key, a shared key, an overridden list under a falling-back key, a tags
+	 * property aimed at each of the four that outrank it, and nothing at all.
+	 */
+	const CONFIGS: Record<string, unknown>[] = [
+		{},
+		{ stateProperty: 'note.status' },
+		{ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' },
+		{ stateValues: 'New, Done' },
+		{ deliverableStateProperty: 'note.docStatus' },
+		{ deliverableStateProperty: 'note.docStatus', deliverableStateValues: 'Draft, Published' },
+		{ stateProperty: 'note.status', stateValues: 'New, Done', deliverableStateValues: 'Draft, Published' },
+		{ stateProperty: 'note.status', deliverableStateProperty: 'note.status' },
+		{ stateProperty: 'note.status', doneValues: '' },
+		{ deliverableDoneValues: '' },
+		{ tagsProperty: 'note.parent' },
+		{ tagsProperty: 'note.order' },
+		{ tagsProperty: 'note.type' },
+		{ tagsProperty: 'note.status', stateProperty: 'note.status' },
+	];
+
+	it.each(CONFIGS)('resolveSettings emits a consistent object for %o', (options) => {
+		expect(settingsInconsistency(resolveSettings(fakeConfig(options) as never))).toBeNull();
+	});
+
+	it('names each relationship it can see broken, so the message points at the fixture', () => {
+		// The other direction: the predicate is only worth having if it actually rejects.
+		// Hand-built on purpose — this is the one place a literal is the subject.
+		const base = defaultSettings();
+		expect(settingsInconsistency({ ...base, doneValues: [] })).toContain('doneValues');
+		expect(settingsInconsistency({ ...base, deliverableDoneValues: [] })).toContain('deliverableDoneValues');
+		// The one that bit: a populated requirements list beside an empty Deliverable one
+		// under a falling-back key — the resolver would have copied `states` across.
+		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'] })).toContain('deliverableStates');
+		expect(settingsInconsistency({ ...base, tagsKey: 'parent' })).toContain('tagsKey');
+	});
+
+	it('accepts what the resolver would have produced for that same fixture', () => {
+		// The pair to the case above, so "rejects" cannot quietly become "rejects everything".
+		const base = defaultSettings();
+		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'], deliverableStates: ['New'] })).toBeNull();
+		expect(settingsInconsistency(base)).toBeNull();
 	});
 });
