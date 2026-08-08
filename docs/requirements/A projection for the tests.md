@@ -40,7 +40,14 @@ base settings are saved on the view, working position on the device.
 
 1. The user picks the test catalog on the toggle.
 2. The view draws the test items from the model it already built, as a tree rooted at the
-   suites.
+   suites. **The roots are computed for the projection**, not taken from `model.roots` and
+   filtered: `renderTree` starts at the model's own roots and `renderForest` drops a hidden
+   sibling *without descending through it*, so a filtered parent takes its whole subtree
+   off the screen with it. A projection's roots are therefore **the items it draws whose
+   parent it does not draw** — which for the catalog is every test whose parent is not a
+   test, and for the plan is every work item whose parent is not a work item. The operation
+   is not new: `collectFocusRoots` already re-roots the rendered tree at the topmost items
+   of a level, and this is the same re-rooting under a different predicate.
 3. Collapse, the quick filter and every write path behave as they do in the backlog tree,
    over this population — including the toolbar's count label, which counts tests here and
    only tests. Its **completed toggle** is withheld, as it already is on the Deliverables
@@ -59,12 +66,15 @@ base settings are saved on the view, working position on the device.
   drawn as a root of its own, beside the suites. That is the honest picture and it is the
   same answer the backlog tree gives a parentless item.
 - **2c — a test's parent is a work item** (the advisory drag of
-  [[Test suite and test case as a ladder of their own]] 4a). It is drawn as a root here,
-  since its parent is not in this projection, and the work item does **not** appear as a
-  context row: a context row exists because the Base excluded a parent, and this parent was
-  excluded by the projection, which is this view's own doing and not the user's filter.
-  Conflating the two would put half the plan in the catalog the moment somebody mis-dragged
-  one case.
+  [[Test suite and test case as a ladder of their own]] 4a). It is drawn as a root here, by
+  step 2's rule and only by it: its parent is not drawn in this projection, so the test is
+  one of the items this projection roots at. Filtering alone would have lost it — the walk
+  never reaches a hidden parent's children — and that is the case that makes the roots a
+  computation rather than a filter.
+  The work item does **not** appear as a context row: a context row exists because the Base
+  excluded a parent, and this parent was excluded by the projection, which is this view's
+  own doing and not the user's filter. Conflating the two would put half the plan in the
+  catalog the moment somebody mis-dragged one case.
 - **3a — the focus level is set.** It does nothing here. The levels it names are the
   `Epic → Task` ladder's, and a two-rung ladder has no rung called `PBI`; a control that
   narrowed this projection by matching level indices across two ladders would hide suites
@@ -93,7 +103,14 @@ base settings are saved on the view, working position on the device.
   both halves asserted, since the second is the part [[A Deliverables board]] had to
   correct after shipping.
 - A parentless case, and a case parented to a work item, both render as roots; no work item
-  appears in this projection, as a row or as a context row.
+  appears in this projection, as a row or as a context row. The second half of that is the
+  one a filter-only implementation fails, so it is asserted on a model where the test's
+  parent is a `PBI` **that is itself a descendant of an Epic** — a shallow fixture would
+  pass by accident, since a top-level hidden parent and a nested one are the same bug at
+  different depths and only the nested one is reached through a walk.
+- The plan's projections root the same way: a work item whose parent is a test is drawn in
+  the plan, as a root. Symmetry is the criterion, not a courtesy — one rule computed both
+  ways is what stops the next exclusion from needing its own re-rooting argument.
 - The stored position is vault-scoped UI state, and a vault that has never opened the
   catalog opens exactly as before.
 
@@ -105,6 +122,14 @@ base settings are saved on the view, working position on the device.
 `src/view/render/emptyStates.ts`, and the rows themselves `src/view/render/rows.ts` — the
 same tree renderer over a different population, which is what makes this projection cheap
 and is the reason it is a tree rather than a third kind of drawing.
+
+**The roots are the one thing the renderer cannot be handed unchanged.** `renderTree` takes
+`model.roots` and `renderForest` filters siblings without descending through the ones it
+drops, so a projection that only hides rows loses everything under a hidden parent. What
+this projection needs is a root set of its own, computed by the rule in step 2 — which
+belongs beside `collectFocusRoots` in `src/domain/model.ts`, the function that already
+answers "what does the rendered tree root at when it is not the model's own roots", rather
+than as a second re-rooting written inside the renderer.
 
 Which items belong to this population is a domain question and lives with the type
 vocabulary in `src/domain/itemTypes.ts`, beside the answer [[Tests stay out of the plan]]

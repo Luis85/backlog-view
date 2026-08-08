@@ -14,12 +14,13 @@ source: user request
 at a glance as an Epic or a Bug, **so that** two new types do not arrive wearing a colour
 that already means something else.
 
-This is [[The type palette has no unclaimed hue left]] coming due, and the first thing to
-do is **recount**, because that note is stale and the code is the fact. `ALL_TYPES` holds
+This is [[The type palette has no unclaimed hue left]] coming due. The first thing it
+needed was a **recount** — that note stated the palette as it stood before `Deliverable`
+landed, and this epic was drafted against the stale figure before anyone checked it against
+the CSS. The note now states the real one; what follows is that arithmetic, kept here
+because it is what the axis is an answer to. `ALL_TYPES` holds
 **nine** declared types today — four rungs, four extra types including the shipped
-`Deliverable`, and `Milestone` — against Obsidian's **eight** chromatic families. The
-issue's table is a snapshot from before `Deliverable` landed, and its "eight types, eight
-hues, nothing shared" reading is no longer true of anything:
+`Deliverable`, and `Milestone` — against Obsidian's **eight** chromatic families:
 
 | | |
 | --- | --- |
@@ -97,17 +98,19 @@ and must not be closed as one.
   second sharing decision. Closing the issue on this PBI's resolution must therefore say
   *what was resolved* — the test family, and the recount — and not read as a general
   answer, or the next type will inherit a solution that does not fit it.
-- **5b — the issue note is corrected rather than closed.** That is what actually happens
-  first, and it is part of this PBI rather than a tidy-up after it: a blocker whose stated
-  arithmetic disagrees with the shipped CSS cannot be resolved, only argued with. The
-  recount above is the correction.
+- **5b — the issue note's arithmetic is already corrected.** It was, in the same change
+  that wrote this PBI, and the ordering is the point rather than a detail: a blocker whose
+  stated figures disagreed with the shipped CSS could not be resolved, only argued with.
+  What the note still holds open is the **decision**, not the count — which is what step 5
+  closes.
 
 ## Acceptance criteria
 
-- [[The type palette has no unclaimed hue left]] states the palette as it is: nine declared
-  types, eight tokens, Idea and Task already sharing yellow by a recorded decision, and
-  `Deliverable` shipped on green. That correction lands before the axis is designed, since
-  the axis is an answer to the real count and not to the one in the note.
+- The arithmetic this PBI is built on is the shipped one — nine declared types, eight
+  tokens, Idea and Task sharing yellow, `Deliverable` on green — and it is read from
+  `styles/badges.css` rather than from any note. The issue's own statement of it was
+  corrected first, and stays corrected: a criterion here that could pass while the register
+  disagreed with the CSS would be the same defect one level up.
 - No shipped type's hue changes, and no colour originates in `styles/` — the **Borrowed
   Palette Rule** holds, so the badges still track the user's theme.
 - `Test suite` and `Test case` are distinguishable from each other and from all nine

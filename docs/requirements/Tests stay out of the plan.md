@@ -56,10 +56,14 @@ context row when a visible descendant needs a parent to hang from.
 **Extensions**
 
 - **2a — a work item's parent chain runs through a test.** Only possible via the advisory
-  drag, and the answer is the plain one: the work item is drawn where the exclusion leaves
-  it — as a root — and the test does **not** appear as a context row. A context row exists
-  because the *Base* excluded a parent; this exclusion is the view's own, so borrowing the
-  mechanism would put test items on the plan through the door this note is closing.
+  drag, and the work item is drawn as a **root of the plan** — by the same computed-roots
+  rule the catalog uses ([[A projection for the tests]] 2), read the other way round: a
+  projection roots at the items it draws whose parent it does not draw. Hiding the test
+  row without that rule would take the work item off the screen with it, since the tree
+  walk never reaches a dropped parent's children.
+  The test does **not** appear as a context row. A context row exists because the *Base*
+  excluded a parent; this exclusion is the view's own, so borrowing the mechanism would
+  put test items on the plan through the door this note is closing.
 - **2b — the item is a `Task` under a `Test case`.** It is part of the test catalog, not of
   the plan: a task belongs to the item it hangs from. Drawn in the catalog under its case,
   and excluded from the plan's projections with the rest of that subtree. Counting it in
@@ -129,6 +133,9 @@ context row when a visible descendant needs a parent to hang from.
   between "the Base excluded it" and "this projection excludes it" is asserted, since
   reusing the context-row mechanism is the plausible implementation that breaks this note.
 - A `Task` under a `Test case` follows its parent into the catalog and out of the plan.
+- A work item under a test is still drawn in the plan, as a root — the symmetric half of
+  [[A projection for the tests]]' rule, asserted here so that neither note owns only its
+  own direction of it.
 - The toolbar's count label, its level breakdown and its "*N hidden*" completed toggle all
   read the projection's population, so none of them counts a test in the plan and the
   catalog's label counts nothing else. The completed toggle is asserted specifically, with
