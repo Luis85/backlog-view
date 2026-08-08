@@ -252,6 +252,35 @@ describe('the shelf card states a 2b conflict the domain computed, with no arrow
 		expect(shelfTitles(harness.containerEl)).toContain('B');
 		expect(harness.containerEl.querySelector('.pbl-shelf-conflict')).toBeNull();
 	});
+
+	/**
+	 * `Arrows between bars`' Preconditions scope the whole feature — the statement
+	 * included, not only the conflict mark — to "Roadmap mode is on with the dated
+	 * axis". A prior round gated only the conflict class on the map being non-empty
+	 * (always true on the horizon axis) and left `dependencyNote`'s plain "Waits for
+	 * X" text unconditional, so it leaked onto the horizon axis's shelf despite there
+	 * being no conflict to show. Same vault, same `dependsOn`, both prerequisites
+	 * real and readable: only the axis differs.
+	 */
+	it('states nothing on a horizon-axis shelf card even with a real, readable prerequisite — but does on the dated axis', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {
+			frontmatter: { type: 'PBI', order: 10, horizon: 'Now', start: '2026-08-01', due: '2026-08-10' },
+		});
+		// Shelved on every axis: no horizon, no dates.
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: 'A' } });
+
+		const horizon = roadmapView(vault, {
+			horizonProperty: 'note.horizon',
+			dependsOnProperty: 'note.dependsOn',
+		});
+		expect(shelfTitles(horizon.containerEl)).toContain('B');
+		expect(shelfWaitsFor(horizon.containerEl, 'B')).toBeNull();
+
+		const dated = roadmapView(vault, { ...DATES });
+		expect(shelfTitles(dated.containerEl)).toContain('B');
+		expect(shelfWaitsFor(dated.containerEl, 'B')).toBe('Waits for A');
+	});
 });
 
 /**

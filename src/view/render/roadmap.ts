@@ -113,7 +113,7 @@ export function renderRoadmap(
 	// a bucket, which no domain-model counter answers on its own.
 	const axisCardCount = cards.length;
 	const removal = shelfRemoval(host, axis);
-	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts }, dnd, removal);
+	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
 	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);

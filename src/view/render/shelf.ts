@@ -14,15 +14,20 @@ import { organizeShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
 /**
- * The shelf to render, and which of each card's prerequisites are in dependency
- * conflict (2b) — grouped into one param so `renderShelf` stays under the
- * five-parameter budget. `conflicts` is keyed by dependent path, empty on the horizon
- * axis, where this conflict has no meaning — see `dependencyArrows`'s own `conflicts`
- * (`TimelineRender.dependencyConflicts` on the dated axis).
+ * The shelf to render, which of each card's prerequisites are in dependency conflict
+ * (2b), and which axis is drawing — grouped into one param so `renderShelf` stays
+ * under the five-parameter budget. `conflicts` is keyed by dependent path, empty on
+ * the horizon axis, where this conflict has no meaning — see `dependencyArrows`'s own
+ * `conflicts` (`TimelineRender.dependencyConflicts` on the dated axis). `axis` is what
+ * gates the dependency statement itself (below): `Arrows between bars`' Preconditions
+ * scope the whole feature — statement included — to "Roadmap mode is on with the
+ * dated axis", so a shelf card drawn on the horizon axis must say nothing about what
+ * it waits for, not merely leave the conflict half unmarked.
  */
 export interface ShelfInput {
 	cards: ShelfCard[];
 	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
+	axis: RoadmapAxis;
 }
 
 export interface ShelfRemoval {
@@ -164,9 +169,10 @@ export function renderShelf(
 	if (empty || collapsed) return { cards: [], el: shelfEl };
 
 	// `dnd` and `removal` travel together to every card below, and now so does which
-	// of them is in conflict (2b) — grouped once here rather than threading a fourth
-	// argument through both `renderShelfGroup` and `renderShelfCard`.
-	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts };
+	// of them is in conflict (2b) and which axis is drawing — grouped once here rather
+	// than threading a fourth and fifth argument through both `renderShelfGroup` and
+	// `renderShelfCard`.
+	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts, axis: shelf.axis };
 	const cards: BacklogItem[] = [];
 	for (const group of organizeShelf(shelfCards, host.shelfSort, host.shelfHiddenTypes)) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
@@ -180,6 +186,8 @@ interface ShelfWiring {
 	removal: ShelfRemoval;
 	/** Which of each dependent's prerequisites are in conflict (2b) — see `ShelfInput`. */
 	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
+	/** Which axis is drawing — see `ShelfInput`. */
+	axis: RoadmapAxis;
 }
 
 /** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
@@ -210,12 +218,17 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// 1b: no bar exists here for any arrow to reach — the shelf card IS this
 	// dependent's row, so what it waits for (and which of that runs past this card's
 	// own stated start, 2b, or never resolved at all, 1d) has to be stated here or it
-	// is stated nowhere. Same string `dependencyNote` builds for a dated row, so a
-	// reader gets one phrasing of one fact regardless of which axis or projection
-	// shows it. Visible content, like the reason above it, so it reaches the card's
-	// accessible name the same content-derived way.
+	// is stated nowhere — but only on the DATED axis: `Arrows between bars`'
+	// Preconditions scope the whole feature to "Roadmap mode is on with the dated
+	// axis", and `Dependencies`' "It marks damage in one place" refuses this exact
+	// promise on the other three surfaces a prerequisite can be set from. Gated on the
+	// axis itself, not on `conflicting` being empty — that would also silence a
+	// dated card with no conflict, which is the bug the previous round fixed. Same
+	// string `dependencyNote` builds for a dated row, so a reader gets one phrasing of
+	// one fact wherever it does show. Visible content, like the reason above it, so it
+	// reaches the card's accessible name the same content-derived way.
 	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
-	const waits = dependencyNote(entry.item, conflicting);
+	const waits = wiring.axis === 'dates' ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
 		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
 		setIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
