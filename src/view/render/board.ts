@@ -1,46 +1,169 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { renderCardChildren } from './cardChildren';
 import { renderPropCells, renderRollup, RowContext } from './columns';
-import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
+import {
+	renderAllDoneState,
+	renderBoardExcludedFocusState,
+	renderEmptyState,
+	renderFilterEmptyState,
+	renderNoDeliverablesState,
+} from './emptyStates';
 import { renderBadge, renderTitleText } from './rows';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showColumnMenu, showItemMenu } from '../interactions/menu';
-import { boardColumns, BoardColumn, BoardModel, cardPaths, overBy } from '../../domain/board';
-import { childTypeChoices } from '../../domain/itemTypes';
+import {
+	boardColumns,
+	BoardColumn,
+	BoardModel,
+	cardPaths,
+	deliverablesWorkflow,
+	overBy,
+	ownWorkflowReading,
+	requirementsFocusRoots,
+	requirementsWorkflow,
+} from '../../domain/board';
+import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { undisclosedMatches } from '../childrenList';
+
+/** What differs between the two board-shaped projections' render passes. */
+interface BoardRenderOptions {
+	move: (item: BacklogItem, state: string | null) => void;
+	drawEmpty: (host: BacklogViewHost, aside: HTMLElement) => void;
+	/**
+	 * The view-options display name of THIS workflow's state list, named in the
+	 * stray-column tooltip (`renderColumnHeader`) so the hint points at the setting
+	 * that actually holds this board's states — found by review: an unparametrized
+	 * tooltip hardcoded the requirements option name, so a stray Deliverables column
+	 * told the user to edit "Workflow states (in order)", a property this board
+	 * ignores entirely.
+	 */
+	stateOptionLabel: string;
+}
+
+/**
+ * Everything `renderColumn`/`renderCard` need beyond `ctx` and the element/model
+ * they are rendering — bundled so both stay within the repo's `max-params: 5` lint
+ * rule. Found by review: the first draft threaded `dnd`, `carded` and `opts` as three
+ * separate trailing parameters, which pushed both functions to six.
+ */
+interface ColumnRenderCtx {
+	dnd: CardDragController;
+	carded: Set<string>;
+	opts: BoardRenderOptions;
+}
 
 /**
  * The board projection: the same model the tree renders, projected onto the
  * workflow's columns. A card is a result row wearing a different layout — badge,
  * title, the same resolved property columns, the rollup — so switching projections
- * costs no information about an item.
+ * costs no information about an item. Shared by both board-shaped projections; what
+ * differs between them (whose workflow, whose move, whose empty state) rides in `opts`.
  */
-export function renderBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
+function renderBoard(
+	ctx: RowContext,
+	boardEl: HTMLElement,
+	dnd: CardDragController,
+	board: BoardModel,
+	opts: BoardRenderOptions,
+): BoardSnapshot {
+	renderBoardInstructions(boardEl);
+	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
+	// Which items have a card of their own, so a card naming the matches below it can
+	// skip the ones already on screen. Built once per pass rather than searched per card.
+	const render: ColumnRenderCtx = { dnd, carded: cardPaths(board), opts };
+	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, render));
+	dnd.wireScroller(boardEl);
+	renderBoardAdvisory(ctx, boardEl, board, opts.drawEmpty);
+	return { board, colEls };
+}
+
+/** The requirements board — `renderBoard`'s original, only caller until now. */
+export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
 	// Annotated rather than inferred from `ctx.host` so `npm run check` can see which
 	// host members this file uses — fallow resolves interface members through an
 	// explicit type and not through a property access. See the root CLAUDE.md.
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
+	// Deliverables are managed on their own board now — never a REAL card, never a
+	// stray column and never counted here, whatever state they carry. Their Task
+	// children are untouched: Task-typed, so this predicate does not reach them, and
+	// they keep their own card and column placement even though their parent has none
+	// here — under a focus too, which takes `requirementsFocusRoots` to be true, since
+	// a focus makes the roots the candidates and an excluded root takes its subtree off
+	// screen with it. `item.outsideFilter ||` exempts a Deliverable acting purely as CONTEXT
+	// (an excluded ancestor placing a visible descendant, admitted as a focus root under
+	// PBI focus exactly as an Issue or a Bug already is) — every other extra type keeps
+	// the "a context row renders whenever it has a visible child" guarantee, and this
+	// exclusion must not be the one place a Deliverable alone loses it. It still counts
+	// nowhere: `population` below is unchanged, and `boardColumns` already zeroes every
+	// `outsideFilter` card out of both `count` and `fullCount` regardless of type.
 	const board = boardColumns(
-		model,
-		host.settings,
-		(item) => !host.isRowHidden(item),
-		(item) => !host.isRowHiddenUnfiltered(item),
+		// Its `observedValues` is already Deliverable-free — the stray-column half of
+		// this same exclusion, stated in the workflow itself.
+		requirementsWorkflow(model, host.settings),
+		model.focused ? requirementsFocusRoots(model.roots) : model.results,
+		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverableType(item.typeName)),
+		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverableType(item.typeName),
 	);
+	return renderBoard(ctx, boardEl, dnd, board, {
+		move: (item, state) => void host.performBoardMove(item, state),
+		stateOptionLabel: 'Workflow states (in order)',
+		drawEmpty: (h, aside) => {
+			const m = h.model;
+			if (!m) return;
+			// Asked of the board's OWN population, never `m.results`: Deliverables are
+			// managed elsewhere, so counting them here reported "all N items are done and
+			// hidden" over a board that simply had nothing of its own to show — a flat lie
+			// in a base of Deliverables alone, and again under a `Deliverable` focus, where
+			// every focus root is a type this board excludes.
+			const population = m.results.filter((item) => !isDeliverableType(item.typeName));
+			// That focus gets its own state rather than the ordinary empty one: the ordinary
+			// one would name the focused type and offer to create another — a fifth surface
+			// offering the one type this board cannot show.
+			if (m.focused && isDeliverableType(focusTarget(h.settings))) renderBoardExcludedFocusState(h, aside);
+			else if (population.length === 0) renderEmptyState(h, aside);
+			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
+			else renderAllDoneState(h, aside, population.length);
+		},
+	});
+}
 
-	renderBoardInstructions(boardEl);
-	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
-	// Which items have a card of their own, so a card naming the matches below it can
-	// skip the ones already on screen. Built once per pass rather than searched per card.
-	const carded = cardPaths(board);
-	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, dnd, carded));
-	dnd.wireScroller(boardEl);
-	renderBoardAdvisory(ctx, boardEl, board);
-	return { board, colEls };
+/**
+ * The Deliverables board — every Deliverable-typed item the base holds, in every
+ * focus state. It reads `model.deliverableResults`, never `model.results` or
+ * `model.roots`: the human's own request is that a focus level set on another
+ * projection must never make a Deliverable invisible here, and `model.results` is
+ * itself narrowed to the focused subtree while a focus is active (`buildModel`'s
+ * `shown()`) — `domain/model.ts` builds `deliverableResults` off the whole, unfocused
+ * tree for exactly this projection. Every candidate here is already Deliverable-typed
+ * by construction, so `population` (the filter-ignoring `fullCount` count) is
+ * unconditional. Also regardless of either workflow's completion state (Scope: no
+ * "Show completed items" concept here).
+ */
+export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
+	const host: BacklogViewHost = ctx.host;
+	const model = host.model;
+	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
+	const board = boardColumns(
+		deliverablesWorkflow(model, host.settings),
+		model.deliverableResults,
+		(item) => !host.isRowHidden(item),
+		() => true,
+	);
+	return renderBoard(ctx, boardEl, dnd, board, {
+		move: (item, state) => void host.performDeliverablesBoardMove(item, state),
+		stateOptionLabel: 'Deliverable workflow states (in order)',
+		drawEmpty: (h, aside) => {
+			const m = h.model;
+			if (!m) return;
+			if (m.deliverableResults.length === 0) renderNoDeliverablesState(aside);
+			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
+		},
+	});
 }
 
 /**
@@ -83,23 +206,17 @@ function renderBoardInstructions(boardEl: HTMLElement): void {
  * itself. A context card renders only while it places a visible result, so gating
  * on rendered cards agrees with the visibility rule by construction.
  */
-function renderBoardAdvisory(ctx: RowContext, boardEl: HTMLElement, board: BoardModel): void {
-	const host = ctx.host;
-	const model = host.model;
-	if (!model || board.columns.some((col) => col.cards.length > 0)) return;
-	const aside = boardEl.createDiv({ cls: 'pbl-board-advisory' });
-	if (model.results.length === 0) renderEmptyState(host, aside);
-	else if (host.isFiltering()) renderFilterEmptyState(host, aside);
-	else renderAllDoneState(host, aside, model.results.length);
+function renderBoardAdvisory(
+	ctx: RowContext,
+	boardEl: HTMLElement,
+	board: BoardModel,
+	drawEmpty: (host: BacklogViewHost, aside: HTMLElement) => void,
+): void {
+	if (board.columns.some((col) => col.cards.length > 0)) return;
+	drawEmpty(ctx.host, boardEl.createDiv({ cls: 'pbl-board-advisory' }));
 }
 
-function renderColumn(
-	ctx: RowContext,
-	colsEl: HTMLElement,
-	col: BoardColumn,
-	dnd: CardDragController,
-	carded: Set<string>,
-): HTMLElement {
+function renderColumn(ctx: RowContext, colsEl: HTMLElement, col: BoardColumn, render: ColumnRenderCtx): HTMLElement {
 	// The no-state column earns its room only while it holds cards; empty, it
 	// shrinks to a leading drop strip so clearing a state by drag stays possible
 	// without a permanently empty column. "Empty" is about the POPULATION, not the
@@ -117,13 +234,13 @@ function renderColumn(
 			(strip ? ' pbl-board-strip' : ''),
 		attr: { role: 'group', 'aria-label': columnLabel(col, filtering) },
 	});
-	renderColumnHeader(colEl, col, strip, filtering);
+	renderColumnHeader(colEl, col, strip, filtering, render.opts.stateOptionLabel);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
-	for (const card of col.cards) renderCard(ctx, cardsEl, card, dnd, carded);
+	for (const card of col.cards) renderCard(ctx, cardsEl, card, render);
 	// What a drop on this column MEANS is the board's; the controller only resolves
 	// the card that was dragged and hands it here.
-	dnd.wireDropTarget(colEl, (source) => void ctx.host.performBoardMove(source.item, col.state));
-	dnd.wireScroller(cardsEl);
+	render.dnd.wireDropTarget(colEl, (source) => render.opts.move(source.item, col.state));
+	render.dnd.wireScroller(cardsEl);
 	return colEl;
 }
 
@@ -145,7 +262,13 @@ function columnLabel(col: BoardColumn, filtering: boolean): string {
 	return `${label}, ${counts}, limit ${col.limit}${over > 0 ? `, over by ${over}` : ''}`;
 }
 
-function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean, filtering: boolean): void {
+function renderColumnHeader(
+	colEl: HTMLElement,
+	col: BoardColumn,
+	strip: boolean,
+	filtering: boolean,
+	stateOptionLabel: string,
+): void {
 	// The header doubles as the column's keyboard stop: an option-like element the
 	// selection can make the listbox's active descendant, because the column itself
 	// is a group and a group is not a valid active item — a screen reader told to
@@ -178,7 +301,7 @@ function renderColumnHeader(colEl: HTMLElement, col: BoardColumn, strip: boolean
 		setIcon(mark, 'circle-help');
 		setTooltip(
 			colEl,
-			`"${col.label}" is not one of the configured workflow states. Add it to "Workflow states (in order)" in the view options, or move its cards.`,
+			`"${col.label}" is not one of the configured workflow states. Add it to "${stateOptionLabel}" in the view options, or move its cards.`,
 		);
 	}
 	if (strip) setTooltip(colEl, 'Drop a card here to clear its state');
@@ -207,34 +330,38 @@ function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 	header.addEventListener('contextmenu', (evt) => showColumnMenu(evt, col.policy));
 }
 
-function renderCard(
-	ctx: RowContext,
-	cardsEl: HTMLElement,
-	item: BacklogItem,
-	dnd: CardDragController,
-	carded: Set<string>,
-): void {
+function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, render: ColumnRenderCtx): void {
 	const card = createCard(ctx, cardsEl, item);
 	renderCardBody(ctx, card, item);
 	// The board's own addition to the shared body: which items already have a card is
 	// a question only the board can answer, so the roadmap does not get this and the
 	// shared body stays the thing both projections agree on.
-	renderCardMatches(ctx, card, item, carded);
+	renderCardMatches(ctx, card, item, render.carded);
 	wireCardActivation(ctx, card, item);
-	dnd.wireCard(card, item);
+	render.dnd.wireCard(card, item);
 }
 
 /**
  * A card's shell, registered in the row index so selection and targeted lookups
  * reach it. Shared with the roadmap: a card is a result row wearing the card
  * layout, whichever projection drew it.
+ *
+ * Finished styling is the ITEM's own workflow, asked HERE and taking no parameter, so
+ * every projection that draws a card gets the same answer. It was a parameter with an
+ * `item.done` default and a per-board override, which is a category invariant asked at
+ * the places someone thought of: the Deliverables board passed its own workflow and the
+ * timeline passed its own reading, while the horizon buckets, the shelf and the context
+ * strip took the default and styled a Deliverable by a workflow that does not track it —
+ * in both directions. `ownWorkflowReading` is the same rule `stateKeyFor` states for the
+ * key; a non-Deliverable's answer is `item.done` exactly as before.
  */
 export function createCard(ctx: RowContext, containerEl: HTMLElement, item: BacklogItem): HTMLElement {
+	const done = ownWorkflowReading(item).done;
 	const selected = ctx.host.selectedPath === item.file.path;
 	const card = containerEl.createDiv({
 		cls:
 			'pbl-card' +
-			(item.done ? ' pbl-done' : '') +
+			(done ? ' pbl-done' : '') +
 			(item.outsideFilter ? ' pbl-card-context pbl-outside' : '') +
 			(selected ? ' pbl-selected' : ''),
 		attr: { role: 'option', 'aria-selected': String(selected) },

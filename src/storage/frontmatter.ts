@@ -19,6 +19,7 @@ import {
 	isDoneValue,
 	OptionalField,
 	optionalKeyFor,
+	resolvedDeliverableStateKey,
 	vaultFolder,
 } from '../domain/settings';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
@@ -195,6 +196,13 @@ function applyInto(
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
+	// The RESOLVED key — falls back to the requirements workflow's own `stateKey` when
+	// the Deliverable one is unset, so a card that looks movable on the Deliverables
+	// board (the model read through the same fallback, `model.ts`) actually lands bytes
+	// somewhere rather than resolving to the empty key `optionalKeyFor` would give here.
+	const deliverableStateKey = resolvedDeliverableStateKey(settings);
+	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
+	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 	applyStamps(fm, settings, write, leaving);
 	applyAxis(fm, settings, write);
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
@@ -259,13 +267,38 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 	}
 }
 
-/** The frontmatter keys this write will touch, in the order they are written. */
+/** Whether a write carries a Deliverable-state change, set or removed. */
+function deliverableStateWritten(write: ItemWrite): boolean {
+	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
+}
+
+/**
+ * The frontmatter keys this write will touch, in the order they are written.
+ *
+ * Deduped before it returns: the requirements state and the Deliverable state may now
+ * explicitly share one key (`configProblems`' `STATE_KEY_SHARING_EXEMPT`), and a
+ * Deliverable item missing that key entirely gets it named twice by
+ * `missingKeyStubs` — once for each field's own gap-check — so `write.stubs` can carry
+ * both `state` and `deliverableState` resolving to the identical raw key. An
+ * ordinary (non-exempt) collision never reaches here at all, because `configProblems`
+ * gates every write while one is reported, so this dedupe only ever fires for the
+ * one legitimate pair it was written for. Without it, `captureInverse` records the
+ * same key twice with the same before/after pair, and the second, redundant entry
+ * reads on `applyRestores` as a conflict — the note already matches what undo would
+ * write, because the FIRST entry just restored it, so the compare-and-swap on the
+ * second sees a value that no longer matches what THIS write wrote and skips it,
+ * inflating `RestoreOutcome.conflicts` for a restore that in truth fully succeeded.
+ */
 function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	const keys: string[] = [];
 	if (write.removeParentKey || write.parent !== undefined) keys.push(settings.parentKey);
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
+	// Same resolved key `applyInto` just wrote: capture and apply must read the SAME
+	// fallback, or a key written under it would have no inverse to undo it with.
+	const deliverableStateKeyTouched = resolvedDeliverableStateKey(settings);
+	if (deliverableStateWritten(write) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
 	// Listed whenever the write CARRIES a stamp, including the started date it may
 	// decline to write: a key whose value did not change emits no inverse anyway, and
 	// listing it is what makes the dates ride the state's own undo.
@@ -273,7 +306,7 @@ function touchedKeys(settings: BacklogSettings, write: ItemWrite): string[] {
 	if (write.finish !== undefined && settings.finishedDateKey) keys.push(settings.finishedDateKey);
 	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
 	for (const key of stubKeys(settings, write.stubs)) keys.push(key);
-	return keys;
+	return [...new Set(keys)];
 }
 
 /**

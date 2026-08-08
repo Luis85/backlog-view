@@ -227,6 +227,65 @@ describe('the board projection', () => {
 	});
 });
 
+describe('the requirements board excludes Deliverables', () => {
+	/** `boardVault()` plus a Deliverable sharing a real column's state. */
+	function vaultWithDeliverable(): FakeVault {
+		const vault = boardVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'New' } });
+		return vault;
+	}
+
+	it('never shows a Deliverable as a card, though its state matches a real column', () => {
+		const { containerEl } = boardView(vaultWithDeliverable());
+
+		expect(cardTitles(columnByName(containerEl, 'New'))).toEqual(['Epic A']);
+		expect(cardTitles(containerEl)).not.toContain('D');
+	});
+
+	it('keeps a Deliverable off the board even when its state names no configured column', () => {
+		const vault = boardVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Weird' } });
+		const { containerEl } = boardView(vault);
+
+		// A stray value normally mints its own column; a Deliverable's must not, or an
+		// item this board is meant to hide would still open one in its name.
+		expect(columnNames(containerEl)).toEqual(['No state', 'New', 'Active', 'Done']);
+	});
+
+	it('keeps the column count and its fullCount in agreement with the cards on screen', async () => {
+		const vault = vaultWithDeliverable();
+		const { containerEl, view } = boardView(vault);
+
+		// Without the Deliverable inflating it, "New" holds exactly the one visible card.
+		expect(countOf(columnByName(containerEl, 'New'))).toBe('1');
+
+		view.setFilter('Epic A');
+		await flush();
+		// The filtered pair count is "of" the same population the unfiltered count
+		// already excluded the Deliverable from — never "1 of 2".
+		expect(countOf(columnByName(containerEl, 'New'))).toBe('1 of 1');
+	});
+
+	it('keeps a Deliverable’s Task children on the board as their own cards', () => {
+		const vault = boardVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'New' } });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 10, status: 'Active' }, parentLink: 'D' });
+		const { containerEl } = boardView(vault);
+
+		// Task-typed, so this rule does not touch it — it stays a card of its own,
+		// placed by its OWN state rather than its parent's exclusion.
+		expect(cardTitles(columnByName(containerEl, 'Active'))).toEqual(['Epic B', 'T']);
+		expect(cardTitles(containerEl)).not.toContain('D');
+		// Its parent chain still names the Deliverable, even though that parent has no
+		// card of its own here — the same "context" a hidden ancestor already gets.
+		expect(cardByTitle(containerEl, 'T').querySelector('.pbl-card-parent')?.textContent).toContain('D');
+	});
+});
+
+// A Deliverable acting purely as an outsideFilter context row (an excluded ancestor
+// placing a visible descendant) is exercised in deliverablesBoardContext.test.ts —
+// split out to keep this file under its line budget, and because it is one subject.
+
 describe('the projection toggle', () => {
 	function storedEntries(vault: FakeVault): Record<string, { mode?: string }> {
 		return (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, { mode?: string }>;

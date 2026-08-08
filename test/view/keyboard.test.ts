@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { FakeVault } from '../helpers/vault';
 import { fixture, flush, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -183,5 +184,54 @@ describe('keyboard structure shortcuts', () => {
 		const fm = vault.fm('Feature B1.md');
 		expect('parent' in fm).toBe(false);
 		expect(fm['order']).toBe(30);
+	});
+});
+
+describe('the Deliverables board keyboard', () => {
+	it('routes the Deliverables board through the board keyboard handler, not the tree', async () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		const harness = makeView(vault, {
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		// Nothing selected yet: the TREE handler's ArrowRight is a no-op with no current
+		// row (`handleExpandCollapseKey` is only reached when `current` is non-null), while
+		// the BOARD handler always has an entry point — even an empty leading column is a
+		// valid stop. Landing on `selectedBoardColumn` is proof the board dispatcher ran;
+		// the tree handler would leave it untouched (null).
+		key(treeOf(containerEl), 'ArrowRight');
+		await flush();
+		expect(harness.view.selectedBoardColumn).toBe(0);
+	});
+
+	it('Alt+Right on a Deliverables card writes the Deliverable state alone', async () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Untouched', deliverableStatus: 'Draft' },
+		});
+		const harness = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		// Select the card directly rather than via arrow navigation — the leading no-state
+		// column is empty in this fixture, so an ArrowRight walk lands on ITS stop, never
+		// on a card, and this test's subject is the move-key routing, not board arithmetic.
+		const card = harness.view.model?.results.find((i) => i.title === 'D');
+		if (!card) throw new Error('missing D');
+		harness.view.selectItem(card);
+
+		key(treeOf(containerEl), 'ArrowRight', { altKey: true });
+		await flush();
+
+		expect(vault.fm('D.md')['deliverableStatus']).toBe('Review');
+		expect(vault.fm('D.md')['status']).toBe('Untouched');
 	});
 });

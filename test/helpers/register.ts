@@ -22,7 +22,7 @@ import { expect, it } from 'vitest';
 
 const run = promisify(execFile);
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
-const CHECKER = path.join(REPO, 'docs-check.mjs');
+const CHECKER = path.join(REPO, 'scripts', 'docs-check.mjs');
 
 /** Relative path → file contents. */
 export type Register = Record<string, string>;
@@ -143,7 +143,10 @@ export function baseRegister(): Register {
 		'docs/requirements/A slice.md': note('Feature', 10, 'Thing', '# A slice\n\n**Outcome** — it works.\n'),
 		'docs/requirements/Doing the thing.md': useCase(),
 		'src/thing.ts': 'export const thing = 1;\n',
-		'test/thing.test.ts': 'export const spec = 1;\n',
+		// A real test NAME, not a placeholder export: the `**Checked by**` rule resolves a
+		// citation by looking for the quoted name inside the file it points at, so a corpus
+		// whose tests had no names could only ever exercise that rule's failure direction.
+		'test/thing.test.ts': "it('the thing works', () => {});\n",
 	};
 }
 

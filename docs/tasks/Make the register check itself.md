@@ -9,7 +9,7 @@ closed: 2026-08-01
 created: 2026-08-01
 source: 2026-08-01 Codex review of PR #24
 files:
-  - docs-check.mjs
+  - scripts/docs-check.mjs
   - package.json
   - .github/workflows/ci.yml
 ---

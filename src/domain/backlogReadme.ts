@@ -1,8 +1,16 @@
-import { ALL_TYPES, BacklogSettings, EXTRA_TYPES, LEVELS, MARKER_TYPES, stateMenuValues } from './settings';
+import {
+	ALL_TYPES,
+	BacklogSettings,
+	EXTRA_TYPES,
+	LEVELS,
+	MARKER_TYPES,
+	resolvedDeliverableStateKey,
+	stateMenuValues,
+} from './settings';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
-import { cell, code, list, yamlScalar } from './readmeText';
+import { andList, cell, code, list, yamlScalar } from './readmeText';
 import { hasDateAxis, hasHorizonAxis } from './roadmap';
 import { ORDER_SPACING } from './writePlan';
 
@@ -100,7 +108,7 @@ function typeSection(settings: BacklogSettings): string[] {
 		`## ${TYPES_HEADING}`,
 		'',
 		`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
-			`${EXTRA_TYPES.join(' and ')} sit *beside* it — they hang from any rung above the ` +
+			`${andList(EXTRA_TYPES)} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
 			`${MARKER_TYPES.join(' and ')} is neither: a ` +
@@ -116,7 +124,7 @@ function typeSection(settings: BacklogSettings): string[] {
 			(settings.autoType
 				? ' With one exception, and it belongs to this view: assigning types on a move ' +
 					`rewrites what you drag into a **new parent**, a name of your own included. ` +
-					`Reordering among siblings rewrites nothing, ${EXTRA_TYPES.map(code).join(' and ')} ` +
+					`Reordering among siblings rewrites nothing, ${andList(EXTRA_TYPES.map(code))} ` +
 					'keep their type wherever they land, and the same custom name deeper in the ' +
 					'subtree you dragged is left alone.'
 				: ' Nothing rewrites it into one of these.'),
@@ -136,7 +144,18 @@ function fieldRows(settings: BacklogSettings): string[] {
 		`| ${cell(settings.orderKey)} | Anything you want ranked | A number. The rank among the notes sharing a parent — see below. Without one an item sorts after the ranked ones |`,
 		`| ${cell(settings.typeKey)} | Anything you want typed | One of the type names above, or one of your own. Without one an item takes the level its position implies |`,
 	];
-	if (settings.stateKey) rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below |`);
+	// One property or two is decided by the resolved KEY, never by whether the Deliverable
+	// option was filled in: the two workflows share a property both when the Deliverable
+	// key is unset (the fallback) and when it is set to the requirements key on purpose —
+	// the one collision `configProblems` exempts. Asking the raw option instead documented
+	// that second, explicitly-shared configuration as two separate properties, and listed
+	// the one key twice in a table of what a note may carry.
+	const deliverableKey = resolvedDeliverableStateKey(settings);
+	const sharedStateKey = deliverableKey !== '' && deliverableKey === settings.stateKey;
+	if (settings.stateKey) {
+		const alsoDeliverable = sharedStateKey ? ", and the Deliverable workflow's own state on a Deliverable" : '';
+		rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below${alsoDeliverable} |`);
+	}
 	if (settings.tagsKey) rows.push(`| ${cell(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
 	// The two the view WRITES for you. They belong in the contract for the reason every
 	// other row does — a document that named only what a reader writes would leave two
@@ -148,6 +167,18 @@ function fieldRows(settings: BacklogSettings): string[] {
 	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
 	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
+	// A row of its OWN only where it is its own property. Shared, the row above already
+	// names this key and says it carries both — a second row for one key would be the
+	// table contradicting itself about how many properties a note has.
+	if (deliverableKey && !sharedStateKey) {
+		// NOT "the one above": that claim is false whenever `settings.stateKey` is unset,
+		// since `fieldRows` then has no requirements-workflow row at all (and no
+		// `## Workflow states` section either) — a fully independent, reachable
+		// configuration, and the one where there is nothing to be separate FROM, so the
+		// relationship goes unstated rather than invented.
+		const relation = settings.stateKey ? " — separate from the requirements workflow's" : '';
+		rows.push(`| ${cell(deliverableKey)} | Optional, on a Deliverable | The Deliverable workflow's own state${relation} |`);
+	}
 	return rows;
 }
 

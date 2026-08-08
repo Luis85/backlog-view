@@ -11,12 +11,13 @@ import { adr, note, runRejections, useCase } from '../helpers/register';
  * and recorded in prose, so each tightening re-derived the evidence or did without it.
  *
  * These are those plantings, executable. Each case is **one edit** to the valid corpus in
- * `checkerAccepts.test.ts`, so a failure names a rule rather than a document. The ADR
- * rules are the sibling file; the accept direction is `checkerAccepts.test.ts`, and none
- * of the three is worth much alone.
+ * `checkerAccepts.test.ts`, so a failure names a rule rather than a document. Two sibling
+ * files hold the groups that outgrew this one — the ADR rules, and the `**Checked by**`
+ * citations; the accept direction is `checkerAccepts.test.ts`, and none of the four is
+ * worth much alone.
  *
  * **The guarantee, stated exactly.** Every place the gate can report a problem has at
- * least one planted case across the two rejection files, so a rule deleted from
+ * least one planted case across the three rejection files, so a rule deleted from
  * `docs-check.mjs` turns one of them red.
  *
  * That was **measured, not read**: each of the 45 report sites was neutered in turn and
@@ -179,6 +180,25 @@ describe('cross-references', () => {
 				});
 			},
 			'names src/gone.ts, which does not exist',
+		],
+		[
+			// An embedded image is a reference like any other, and the pattern this rule
+			// used to be caught it only because `](` appears in `![alt](src)` as well.
+			'an embedded image whose file does not exist',
+			(files) => {
+				files['docs/requirements/Thing.md'] = note('Epic', 10, null, '# Thing\n\n![diagram](assets/gone.svg)\n');
+			},
+			'links assets/gone.svg, which does not exist',
+		],
+		[
+			// A reference-style link keeps its destination on the definition, so neither the
+			// parser filter nor the `](` scan before it ever looked at one — a gap the
+			// register has no instance of, which is what kept it invisible.
+			'a reference-style link whose definition points at nothing',
+			(files) => {
+				files['docs/requirements/Thing.md'] = note('Epic', 10, null, '# Thing\n\n[guide][g]\n\n[g]: <No such note.md>\n');
+			},
+			'links No such note.md, which does not exist',
 		],
 		[
 			'a module no use case and no ADR specifies',
@@ -477,9 +497,9 @@ describe('the corpus covers every rule', () => {
 		// is a false ALARM that makes somebody look, never a false pass. It is the one
 		// direction in which regex-over-source is safe, which is why this is not the thing
 		// `docs/README.md` warns about.
-		const source = await readFile('docs-check.mjs', 'utf8');
+		const source = await readFile('scripts/docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(47);
+		expect(sites.length).toBe(52);
 	});
 });

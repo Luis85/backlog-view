@@ -74,9 +74,28 @@ than the matches, so a filter cannot make an overcommitted stage look calm; it s
 in colour, in shape and in words, and it refuses nothing — a check drives every board
 write path against a column already over one. The policy is described rather than
 named, reachable by pointer and from a column menu this increment introduces and
-creation from a column will later share. What remains under the epic — lanes, creation
-from a column, column collapse, and the touch verdict a device has to answer — is
-still design.
+creation from a column will later share. A fifth did not extend this board but
+multiplied it: `Deliverable` items — concepts, designs, anything the team must produce
+rather than build — get a second board of their own, reached by a fourth toolbar
+toggle, with a workflow property, states and done values overridable independently of
+the requirements board's, or — left unconfigured — falling back to the requirements
+board's own field by field, so a vault that never bothered to name a separate property
+still gets a working Deliverables board rather than an inert one. A later fix scoped the
+requirements board the other way in return: it now excludes every `Deliverable` from
+its cards, its count and its stray columns, so a design's review status never has to
+share a column list with a PBI's implementation status even when the two workflows turn
+out to be the same property — a Deliverable acting purely as an excluded ancestor still
+surfaces there as a context row, exactly as any other excluded parent does. It keeps
+the guarantee — one model, one write gate, one undo history — and the three inputs
+that move a card, but takes none of the fourth increment's agreements: no WIP limit,
+no column policy, no date stamp, and it does not honor "Show completed items", since
+completion there is a question the Deliverable workflow answers, not the requirements
+one; its own toolbar creates only Deliverables — and its focus control, briefly
+clear-only while an inherited focus still narrowed this board like any other, was
+later reversed to ignore the focus level outright, since no level narrows this board
+and there is never anything left to clear. What remains under the epic — lanes,
+creation from a column, column collapse, and the touch verdict a device has to
+answer — is still design.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly
@@ -463,6 +482,39 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
   a guess, and guesses are the thing this register exists to keep out of the code. That is
   what `source` and the `Evidence` heading are for, and why a Task opens with a measurement
   rather than an opinion.
+- **A claim about behaviour may name the check that holds it**, and `docs-check.mjs`
+  verifies that citation resolves — the file is there and the cited name is still one of
+  its quoted strings, whole. The form is a backticked path and a quoted test name on one
+  line:
+
+  ```
+  **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the shared list once configured"
+  ```
+
+  The path is a `*.test.ts` file — the set `vitest.config.mts` runs — or `eslint.config.mjs`,
+  since a lint rule at the forbidden thing is this repository's other kind of check. A helper
+  or a double under `test/` is neither, and the gate refuses it. Quote the name in FULL: the
+  match is against whole quoted strings, so a phrase from the middle of a title does not
+  resolve — which is what makes a title *extended* rather than replaced count as a rename.
+  It is not a check that the string is an `it()` title, and cannot be: a citation here may
+  legitimately name a table-driven case label or a lint message, neither of which is a title
+  anywhere in its file.
+
+  **One marker, one citation.** Only the first quoted name after a `**Checked by**` is
+  resolved, so a second check needs a second marker — two names under one marker leaves
+  the second unverified while reading as covered, which review caught in the first note to
+  try it. The gate cannot report that: telling a second cited name from an ordinary quoted
+  phrase is the judgement this rule exists by not making.
+
+  Read what this is and is not. It does **not** verify the claim; nothing here can, and
+  [[A claim in four notes and nothing to check it]] argues why the candidates that try are
+  worse than the problem. What it buys is the step where the author goes and fetches the
+  test name — the claim this convention was built for was written the same day a test
+  asserting its opposite landed, and spread to five notes before a reviewer read one. And
+  it is **opt-in**: an unmarked claim is exactly as unchecked as before. A citation that
+  rots fails the build, in a closed note as loudly as a living one, and in the root
+  `README.md` too — a citation says the check is live, so the historical-path allowance
+  that covers prose naming a file does not cover this.
 - **Write it when it is decided, not when it is convenient.** Half of what is worth keeping
   here — an asymmetry nobody chose, a rule that only holds by luck — was noticed in passing
   while doing something else, and would have been unrecoverable an hour later.

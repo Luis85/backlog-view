@@ -11,7 +11,7 @@ source: tsc 6.0.2 run against tsconfig.json, and the Windows-only defect found w
 files:
   - tsconfig.json
   - .github/workflows/ci.yml
-  - docs-check.mjs
+  - scripts/docs-check.mjs
   - test/docs/checkerAccepts.test.ts
 ---
 

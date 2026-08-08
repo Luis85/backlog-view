@@ -27,9 +27,9 @@ Azure DevOps Boards.
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
-  - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue` and
-    `Bug` that sit beside it rather than on it, or `Milestone` — a marker on neither, which
-    states a date rather than work.
+  - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
+    `Bug` and `Deliverable` that sit beside it rather than on it, or `Milestone` — a
+    marker on neither, which states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
@@ -69,11 +69,11 @@ Manually, the equivalent is:
 3. In the view switcher of the Base, add a new view and pick **Product Backlog**.
 4. Drop existing notes into the folder, or use **+ New Epic** in the view to create items.
 5. Click the ✨ toolbar button once: it fills in the `type`/`order` your notes don't
-   have yet, and sets up the properties the board and the roadmap need — the board's and
-   the roadmap's own empty states offer the same button when you get there first. Notes
-   with neither a supported `type` nor a `parent` aren't treated as backlog items — to
-   organize a folder of plain notes by dragging, turn **Ignore notes outside the
-   hierarchy** off in the view options first.
+   have yet, and sets up the properties the board, the roadmap and the Deliverables
+   board need — each one's own empty state offers the same button when you get there
+   first. Notes with neither a supported `type` nor a `parent` aren't treated as backlog
+   items — to organize a folder of plain notes by dragging, turn **Ignore notes outside
+   the hierarchy** off in the view options first.
 
 Example `.base` file:
 
@@ -104,7 +104,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 
 | Action | How |
 | --- | --- |
-| Switch projection | Toolbar toggle — **backlog tree**, **kanban board**, **roadmap**. See [The board](#the-board) and [The roadmap](#the-roadmap) |
+| Switch projection | Toolbar toggle — **backlog tree**, **kanban board**, **roadmap**, **Deliverables board**. See [The board](#the-board), [The roadmap](#the-roadmap) and [The Deliverables board](#the-deliverables-board) |
 | Expand / collapse | Click the chevron, or use the toolbar buttons |
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
 | Re-order among siblings | Drag a row and drop it **between** two rows |
@@ -303,29 +303,35 @@ parent done in a base that hides done items): taking that change back is exactly
 undo is for. Tags are undone as an add/remove of the same tags rather than as a
 snapshot, so tags you added yourself in between stay.
 
-### Issues and bugs sit beside the ladder
+### Extra types sit beside the ladder
 
 `Epic → Feature → PBI → Task` is a ladder: each level's children are the level below.
 Some work does not fit a rung. A **Bug** breaks down into Tasks whether it was raised
 against an Epic, a Feature or a PBI — its position says nothing about what it contains.
 
-So `Issue` and `Bug` are **extra types** rather than a fifth level, and two things follow:
+So `Issue`, `Bug` and `Deliverable` are **extra types** rather than a fifth level, and
+two things follow:
 
 - **They hang from any level above the lowest.** Add one under an Epic, a Feature or a
-  PBI. Their own children are always Tasks, so nothing is offered under a Bug but a Task.
+  PBI. Their own children are always Tasks, so nothing is offered under one but a Task.
 - **A move never re-types them.** Dropping a Bug under an Epic leaves a Bug — where
   dropping a *PBI* there would make it a Feature. Their Tasks stay Tasks too, because the
-  subtree follows the Bug rather than the rung it landed on.
+  subtree follows the extra type rather than the rung it landed on.
+
+All three are also creatable with **no parent at all**, from the toolbar's own "pick
+another type" menu — like every declared type.
 
 Where a row can hold more than one kind of thing, **the + button asks**: the new-item
 modal offers a type, defaulting to the ladder's own child. The context menu lists the
-choices directly (`New PBI`, `New Issue`, `New Bug`), and `Set type` offers every
-declared type. A row with only one option — a Task, or a Bug, which holds only Tasks —
-asks nothing and creates it straight away.
+choices directly (`New PBI`, `New Issue`, `New Bug`, `New Deliverable`), and `Set type`
+offers every declared type. A row with only one option — a Task, or an extra type, which
+holds only Tasks — asks nothing and creates it straight away.
 
-`Issue` and `Bug` each get their own badge icon and colour — an alert in pink and a bug in
-red, distinct from the four level colours. They rank with `PBI`, so focusing that level
-shows them beside it rather than hiding them.
+`Issue`, `Bug` and `Deliverable` each get their own badge icon and colour — an alert in
+pink, a bug in red, a package in green — distinct from the four level colours. They rank
+with `PBI`, so focusing that level shows them beside it rather than hiding them.
+`Deliverable` also has its own board with its own workflow — see
+[The Deliverables board](#the-deliverables-board) below.
 
 **The type vocabulary is fixed.** That is deliberate: a configurable vocabulary means every
 rule about levels has to hold for any list someone can type, and the reward is a rename.
@@ -491,7 +497,7 @@ represented beneath them rather than scattered across the columns as cards of th
 That is the same re-rooting the tree does, and it is usually what you want from a board:
 one card per thing you are tracking, at the altitude you are tracking it.
 
-**The projection is working position, not configuration.** Which of the three a view is
+**The projection is working position, not configuration.** Which of the four a view is
 showing is remembered per saved view, per device, beside the collapse state — it is never
 written to the `.base`, so opening the same backlog on another machine does not move
 anyone else's view.
@@ -544,9 +550,53 @@ matches no column, it sits in the no-state column.
   the filter excluded still gets an inert card, so its results have somewhere to sit.
   Unfocused, the board is results only — an excluded item never gets a card without a focus
   level pointing at it. Either way, a context card carries no control that would write to it.
+- **`Deliverable` items never appear here.** They get a board of their own — see
+  [The Deliverables board](#the-deliverables-board) — though one acting purely as an
+  excluded ancestor can still render as an inert context card for a visible descendant,
+  the same as any other excluded parent.
 
 Every move — drag, keyboard or menu — is the same gated write, announced in the same words,
 and taken back by the same <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd>.
+
+## The Deliverables board
+
+A fourth projection, alongside tree/board/roadmap, reserved for items typed
+`Deliverable` — concepts, designs and anything else the team must produce rather than
+plan. It draws from a **workflow**: its own state property, ordered states and done
+values when you configure one — in which case it is entirely independent of the board
+above, and a Deliverable finished in one workflow does not read as finished in the
+other — or, left unconfigured, the same workflow the board above already uses, so a
+vault that never bothered to name a separate property still gets a working
+Deliverables board rather than an inert one; in that case the two boards deliberately
+share the one property and the one write.
+
+A Deliverable never appears as a card on the board above — that board is scoped to
+everything else, whatever either workflow's state says — though it still counts on the
+tree and on both roadmap axes, and one acting purely as an excluded ancestor still
+shows there as a context card for a matching visible descendant, the same as any other
+excluded parent.
+
+Columns and a workflow only — no WIP limits, no column policies, no started/finished
+date stamps, and "Show completed items" has no effect here: a Deliverable's
+completion state on either workflow never hides its card, and only the quick filter
+narrows what is shown. **The focus level set elsewhere in the toolbar has no effect on
+this board at all** — a focus left on, say, Feature would otherwise make a Deliverable
+outside that subtree confusingly disappear, so the toolbar's **Focus** control always
+reads a plain, disabled "Deliverables" button here, whatever the inherited focus is:
+never a menu to pick a *different* focus (every card is already a Deliverable, so there
+is nothing to narrow by that way), and never a "Focused: …" label with a clear button,
+since no focus level narrows this board's own cards for one to clear. Moving a card
+(drag, <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, or the card menu's Set state) writes
+the resolved Deliverable state property — its own key when you configured one, or the
+shared one when you did not.
+
+The toolbar's **New** button on this board always creates a Deliverable; the picker for
+every other type, offered everywhere else, is absent here since nothing else could ever
+appear as a card.
+
+Everything else about a Deliverable — its parent, its rank, its tags, its place on the
+roadmap — is the same property every other type already uses; nothing about this board
+changes how those work.
 
 ## The roadmap
 
@@ -599,11 +649,12 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
   item. A milestone is its target date alone: with none of its own, it goes to the shelf,
   **Unplaced**, whatever dates its children carry.
 - **Dates are set from the row**, not from the bar: right-click → **Schedule** or
-  **Unschedule**, on any projection — the tree, the board and the roadmap all reach the
-  same row menu, deliberately: a write reachable only from roadmap mode would be a
-  projection disagreeing about what the backlog can do. What this release does *not* have
-  is a gesture on the bar itself — dragging one to move it, dragging its edge to resize, or
-  dragging an item off the shelf onto a date. Those are specified and not yet built.
+  **Unschedule**, on any projection — the tree, the board, the roadmap and the
+  Deliverables board all reach the same row menu, deliberately: a write reachable only
+  from roadmap mode would be a projection disagreeing about what the backlog can do.
+  What this release does *not* have is a gesture on the bar itself — dragging one to
+  move it, dragging its edge to resize, or dragging an item off the shelf onto a date.
+  Those are specified and not yet built.
 
   **Schedule appears only when the item has an end it can use.** A milestone is its target
   date alone, so on a roadmap configured with a start property and no target, milestones
@@ -645,8 +696,11 @@ Open the view options in the Bases toolbar to configure:
 | Horizons (in order) | `Now, Next, Later` | The buckets the horizon axis draws, in order. Naming a **Horizon property** is enough to turn the axis on — the values ship populated, so you only need to edit this list to rename or add buckets |
 | Start date property / Target date property | *(off)* | The dates the timeline draws bars from. **Either one alone is enough** — a target-only roadmap or a start-only plan both work |
 | Started date / Finished date property | *(off)* | Where the board stamps transition dates as a card moves. Never the same properties as the planned dates above — a plan must not overwrite a record |
-| Show completed items | on | Off hides fully-done subtrees from every projection (only while a state property is set); nothing about ranking or rollups changes |
-| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Show completed items | on | Off hides fully-done subtrees from the tree, the board and the roadmap (only while a state property is set); the Deliverables board ignores it — see [The Deliverables board](#the-deliverables-board) — and nothing about ranking or rollups changes anywhere |
+| Folder for *&lt;type&gt;* items | `<home>/requirements`, `<home>/tasks`, `<home>/issues`, `<home>/bugs`, `<home>/deliverables`, `<home>/milestones` | **One folder picker per configured type.** Untouched, each follows the home folder |
+| Deliverable state property | *(off)* | Note property with the Deliverable workflow's own state. Left off, the Deliverables board falls back to the board above's own state property rather than going inert — and to its states and done values only where you have left the two rows below **empty**, since a list you fill in is this workflow's own either way |
+| Deliverable workflow states (in order) | *(off)* | The Deliverables board's columns, in that order. **Whatever you set here wins**, whether the workflow has a property of its own or shares the one above. Left empty it falls back to **Workflow states (in order)** while **Deliverable state property** is also unset; with your own property set it draws the states your Deliverables actually carry |
+| Deliverable states that count as done | `Done, Closed, Completed, Removed` | Which Deliverable state values complete a Deliverable. **Whatever you set here wins**, whether the workflow has a property of its own or shares the one above. Left empty it falls back to **States that count as done** while **Deliverable state property** is also unset; with your own property set it stays the default shown here rather than borrowing that customization |
 | Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
 | Property column width | `132` px | Width of one property column |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |

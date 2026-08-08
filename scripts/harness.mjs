@@ -23,10 +23,21 @@ import { assembleStyles } from './styles-assemble.mjs';
 
 const OUT = '.harness';
 
+/**
+ * The bundle entry, overridable: `npm run harness -- test/harness/mock.ts`.
+ *
+ * A mock of a projection that does not exist yet is hand-written markup against the real
+ * stylesheet, and it needs its own entry to be reachable — but only an entry, since
+ * `mount.ts` gives it the real view and the real fixture to sit in. Keep such a file
+ * uncommitted: nothing imports it, so `npm run analyze` reports it as dead code, which is
+ * the correct answer for a scratch file and the wrong one to suppress.
+ */
+const ENTRY = process.argv[2] ?? 'test/harness/page.ts';
+
 await mkdir(OUT, { recursive: true });
 
 await esbuild.build({
-	entryPoints: ['test/harness/page.ts'],
+	entryPoints: [ENTRY],
 	bundle: true,
 	// A page opened over file:// cannot load ES modules (the browser treats every file
 	// as a distinct opaque origin), and an IIFE needs no server to exist for it.
@@ -75,7 +86,7 @@ await writeFile(
 );
 
 console.log(`\nOpen ${pathToFileURL(path.resolve(OUT, 'index.html')).href}`);
-console.log('The toolbar switches tree, board and roadmap; ?view=board and ?view=roadmap open into one.');
+console.log('The toolbar switches all four projections; ?view=board|roadmap|deliverables opens into one.');
 console.log('Every action is the view’s own. The menu and dialog WIDGETS are the harness’s stand-ins.');
 console.log(
 	'Colours are approximations of Obsidian’s, and so is any layout a partial leans on an Obsidian element default for — see test/harness/theme.css and test/CLAUDE.md.',

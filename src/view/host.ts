@@ -2,6 +2,7 @@ import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import { BoardModel } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
+import { StatePalette } from '../domain/board';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
@@ -13,11 +14,11 @@ import { WriteOutcome } from '../storage/frontmatter';
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 /**
- * The three readings of one backlog. UI state, not a base setting: the choice
+ * The four readings of one backlog. UI state, not a base setting: the choice
  * lives beside the collapse state in vault-scoped localStorage — per saved view,
  * per device — and never in the `.base`.
  */
-export type Projection = 'tree' | 'board' | 'roadmap';
+export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables';
 
 /**
  * A visible property resolved into a column: the id to read, the label the header
@@ -126,6 +127,14 @@ export interface RoadmapSnapshot {
 	 * precedence that missed the outside-window case.
 	 */
 	drawn: DrawnColors;
+	/**
+	 * The state vocabularies the bars were keyed into this pass, in slot order — empty on
+	 * the horizon axis, where nothing draws a bar. Carried out of the render rather than
+	 * rebuilt by the legend for the same reason `drawn` is: the legend exists only to
+	 * explain the colours on the grid, so it has to key the very list the grid used. Two
+	 * calls to `statePalettes` would agree today and are two places to change tomorrow.
+	 */
+	palettes: StatePalette[];
 }
 
 /**
@@ -156,6 +165,12 @@ export interface BacklogViewHost {
 	 * while completed items are hidden, part of a fully-done subtree. Rendering,
 	 * keyboard navigation and menus consult this; data operations never do —
 	 * order math always runs over the full sibling lists.
+	 *
+	 * ONE method, for every projection. The Deliverables board's exception — no
+	 * completion concept of its own, so the toggle cannot reach it — is inside this
+	 * answer (`VisibilityRule.hideCompleted`), never a second method a caller picks
+	 * between: three surfaces picked the narrower one and the fourth did not, which
+	 * emptied a Deliverable card's child disclosure from a setting flipped elsewhere.
 	 */
 	isRowHidden(item: BacklogItem): boolean;
 	/**
@@ -272,6 +287,13 @@ export interface BacklogViewHost {
 	 * plans nothing and resolves false, leaving the undo slot untouched.
 	 */
 	performBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
+	/**
+	 * Plan and apply the Deliverable workflow's state write — the canonical value, or
+	 * key removal for the no-state column. The board's rule, on the Deliverable
+	 * workflow's own property: one path for all three inputs (a drop, an Alt+arrow,
+	 * the card menu), so no input can write the requirements state key by mistake.
+	 */
+	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean>;
 	/**
 	 * Plan and apply the horizon write a roadmap move means — the target bucket's
 	 * value, or key removal for the shelf. The board's rule on the roadmap's

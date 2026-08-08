@@ -1,6 +1,6 @@
-import { renderBoard } from './board';
+import { renderDeliverablesBoard, renderRequirementsBoard } from './board';
 import { RowContext } from './columns';
-import { renderBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptyStates';
+import { renderBoardNoWorkflowState, renderDeliverablesBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptyStates';
 import { renderRoadmap } from './roadmap';
 import { renderTree } from './rows';
 import { TIMELINE_LEAD_PX } from './timeline';
@@ -8,6 +8,7 @@ import { BoardSnapshot, Projection, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { CivilDate } from '../../domain/noteFields';
 import { activeAxis } from '../../domain/roadmap';
+import { resolvedDeliverableStateKey } from '../../domain/settings';
 import { daysBetween, dayAt } from '../../domain/timeline';
 
 /**
@@ -206,6 +207,7 @@ export function renderProjectionContent(
 ): ProjectionContent {
 	if (projection === 'board') return renderBoardContent(ctx, treeEl, dnd);
 	if (projection === 'roadmap') return renderRoadmapContent(ctx, treeEl, dnd);
+	if (projection === 'deliverables') return renderDeliverablesBoardContent(ctx, treeEl, dnd);
 	renderTree(ctx, treeEl);
 	return { board: null, roadmap: null, role: 'tree', label: 'Product backlog' };
 }
@@ -221,7 +223,25 @@ function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragC
 		renderBoardNoWorkflowState(ctx.host, treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
 	}
-	return { board: renderBoard(ctx, treeEl, dnd), roadmap: null, role: 'listbox', label };
+	return { board: renderRequirementsBoard(ctx, treeEl, dnd), roadmap: null, role: 'listbox', label };
+}
+
+/**
+ * The Deliverables board projection — the same guidance-or-columns rule
+ * `renderBoardContent` follows, gated on the DELIVERABLE state property instead of the
+ * requirements one. Returns its board through the same `ProjectionContent.board`
+ * field `renderBoardContent` uses — there is no second snapshot field.
+ */
+function renderDeliverablesBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
+	const label = 'Deliverables board';
+	// The RESOLVED key: this guidance is a lie about a workflow that does not exist, and
+	// under the fallback one does exist — the shared requirements one — the moment
+	// either key is configured.
+	if (!resolvedDeliverableStateKey(ctx.host.settings)) {
+		renderDeliverablesBoardNoWorkflowState(ctx.host, treeEl);
+		return { board: null, roadmap: null, role: 'region', label };
+	}
+	return { board: renderDeliverablesBoard(ctx, treeEl, dnd), roadmap: null, role: 'listbox', label };
 }
 
 /**

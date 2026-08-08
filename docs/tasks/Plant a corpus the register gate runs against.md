@@ -9,7 +9,7 @@ closed: 2026-08-01
 created: 2026-08-01
 source: 2026-08-01 pass over the open issues — the gate was 544 lines with no test
 files:
-  - docs-check.mjs
+  - scripts/docs-check.mjs
   - test/helpers/register.ts
   - test/docs/checkerAccepts.test.ts
   - test/docs/checkerRejects.test.ts

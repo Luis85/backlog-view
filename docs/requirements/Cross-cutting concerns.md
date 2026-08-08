@@ -1,9 +1,10 @@
 ---
 type: Epic
-order: 40
+order: 66.25
 status: Open
 area: meta
 created: 2026-08-01
+horizon: Later
 ---
 
 # Cross-cutting concerns

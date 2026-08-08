@@ -1,12 +1,14 @@
 ---
 type: Epic
-order: 60
+order: 66.875
 status: Open
 created: 2026-08-02
 source: user request
+horizon: Later
+area: quality
 ---
 
-# Feature Test
+# Plugin Features Smoke Test
 
 **A smoke test this repository can actually run.** Obsidian does not run in CI and jsdom
 asserts classes rather than pixels, so a whole class of defect — appearance, base

@@ -43,8 +43,8 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 ## Looking at it
 
 `npm run harness` bundles the REAL view into a static page — no Obsidian, no server, no
-browser-automation dependency — and prints a `file://` URL. `?view=board` and
-`?view=roadmap` open straight into a projection and `?theme=light` into the light scheme,
+browser-automation dependency — and prints a `file://` URL. `?view=board`,
+`?view=roadmap` and `?view=deliverables` open straight into a projection and `?theme=light` into the light scheme,
 so a headless screenshot of a URL needs nothing to click; a corner toggle switches the
 scheme by hand, and it is the harness's furniture rather than the view's. The toolbar switches projections, and the drags, menu entries and
 keyboard moves are the view's own — but the menu and dialog WIDGETS are drawn by
@@ -54,9 +54,13 @@ Obsidian's.
 
 - `test/harness/mount.ts` — mounts `ProductBacklogView` against `demoVault()`, re-rendering
   once a batch of writes stops. `test/harness/page.ts` is the bundle entry and is two
-  statements, so everything real is reachable from a test.
+  statements, so everything real is reachable from a test — and it is the DEFAULT entry,
+  not the only one: `npm run harness -- test/harness/mock.ts` bundles another, which is how
+  a projection that does not exist yet gets hand-drawn markup into the real stylesheet
+  before it is built. Leave such a file uncommitted; nothing imports it, so `npm run
+  analyze` reports it dead, correctly.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
-  three projections at once. A fourth fixture, not a replacement: the per-suite ones stay
+  four projections at once. A fourth fixture, not a replacement: the per-suite ones stay
   four notes each on purpose.
 - `test/harness/chrome.ts` — patches the mock's `Menu` and `Modal` to appear, from the
   harness rather than in the mock, so the 68 files asserting through `lastShown` /
@@ -68,7 +72,7 @@ Obsidian's.
   nobody would see.
 - Its own checks live in `test/harness/harness.test.ts` — it still mounts, the theme
   stub still covers every `var(--x)` the partials read, and every icon name the view asks
-  for across all three projections still resolves.
+  for across all four projections still resolves.
 
 **What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the

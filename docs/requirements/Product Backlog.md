@@ -2,6 +2,8 @@
 type: Epic
 order: 10
 status: Active
+horizon: Now
+area: product
 ---
 
 # Product Backlog

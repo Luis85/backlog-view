@@ -8,7 +8,14 @@ import { DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, TimelineBar } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
-import { stateColorSlot } from '../../domain/settings';
+import {
+	ownWorkflowReading,
+	paletteFor,
+	paletteSlot,
+	stateKeyFor,
+	StatePalette,
+	WorkflowReading,
+} from '../../domain/board';
 import {
 	BarGeometry,
 	barGeometry,
@@ -98,12 +105,12 @@ export interface TimelineDrawing {
 	/** The controller every bar's grips are wired through — the same one the shelf uses. */
 	dnd: CardDragController;
 	/**
-	 * The vocabulary `stateColorSlot` indexes a bar's colour into — passed down by
+	 * The vocabularies `paletteSlot` indexes a bar's colour into — passed down by
 	 * `renderRoadmap`, which already holds the non-null model this axis draws from,
 	 * rather than re-read here off `ctx.host.model`: a bar exists only because a model
 	 * did, so a second null check here would guard nothing reachable.
 	 */
-	observedStates: string[];
+	palettes: StatePalette[];
 	/**
 	 * The pane's own measured width, in pixels — `renderRoadmap`'s `treeEl.clientWidth`,
 	 * the same element and the same property `backlogView.ts`'s `ResizeObserver` branch
@@ -126,7 +133,7 @@ export function renderTimeline(
 	bars: TimelineBar[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
-	const { today, scale, dnd, observedStates, available } = drawing;
+	const { today, scale, dnd, palettes, available } = drawing;
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
@@ -175,7 +182,7 @@ export function renderTimeline(
 	// that line unkeyed.
 	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
-	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates };
+	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, palettes };
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
 	bars.forEach((bar, index) => {
 		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
@@ -342,8 +349,8 @@ interface BarRowMounts {
 	dnd: CardDragController;
 	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
 	tracks: Map<string, HTMLElement>;
-	/** See `TimelineDrawing.observedStates`. */
-	observedStates: string[];
+	/** See `TimelineDrawing.palettes`. */
+	palettes: StatePalette[];
 }
 
 function renderBarRow(
@@ -353,15 +360,24 @@ function renderBarRow(
 	bar: TimelineBar,
 	scale: TimelineScale,
 ): { row: HTMLElement; colors: DrawnColors } {
+	// The item's OWN workflow, read ONCE and threaded through the three things on this row
+	// that key a colour or say one in words: the slot class, the hidden state words, and
+	// the `drawn` report the legend is built from. (`pbl-done` is the fourth and is no
+	// longer passed — `createCard` asks the same question itself now, for every projection
+	// that draws a card.) Reading `item.done` / `item.stateValue` here keyed a Deliverable
+	// into the REQUIREMENTS workflow — a colour naming a state it does not hold, and
+	// changing the state that IS its own moved nothing on the grid.
+	const own = ownWorkflowReading(bar.item);
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
-	// The bar's colour, by the item's own state — never computed here: `stateColorSlot`
-	// is the one place that decides a slot, so a bar and the Set state menu cannot name
-	// a state a different colour. No slot (no state, or a value the vocabulary does not
-	// carry) adds no class, and the bar keeps its plain accent — `styles/timeline.css`
-	// owns what a slot actually paints, mirroring the level badge's TS-adds-the-class,
-	// CSS-owns-the-colour split.
-	const slot = stateColorSlot(ctx.host.settings, mounts.observedStates, bar.item.stateValue);
+	// Which vocabulary indexes that value is the same type decision, made by `paletteFor`.
+	// No slot (no state, or a value its own vocabulary does not carry) adds no class and
+	// the bar keeps its plain accent — `styles/timeline.css` owns what a slot paints, the
+	// level badge's TS-adds-the-class, CSS-owns-the-colour split.
+	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
+	// the same answer `paletteSlot` gives a state outside one: the plain accent.
+	const palette = paletteFor(mounts.palettes, bar.item);
+	const slot = palette ? paletteSlot(palette, own.value) : null;
 	if (slot !== null) row.addClass(`pbl-state-${slot}`);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderBadge(ctx.host, lead, bar.item);
@@ -394,7 +410,7 @@ function renderBarRow(
 	renderBarLabel(track, bar, geometry, scale, window);
 	// Said in words on the row itself, because on this axis the state is otherwise a
 	// bar COLOUR and nothing else — see `stateNote`.
-	const state = stateNote(ctx.host.settings.stateKey, bar.item);
+	const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), own);
 	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
 	// The row is the timeline's one selection stop, so a MARKER'S row is where the
 	// line and the diamond's facts have to be readable (criterion 4a: neither is
@@ -421,9 +437,9 @@ function renderBarRow(
 	// it"), so this is asked of the geometry alone, never narrowed to marker items.
 	const milestoneDrawn = geometry.milestone && !geometry.outside;
 	const colors: DrawnColors = {
-		done: bar.item.done,
-		milestone: !bar.item.done && milestoneDrawn,
-		accent: !bar.item.done && slot === null && !milestoneDrawn,
+		done: own.done,
+		milestone: !own.done && milestoneDrawn,
+		accent: !own.done && slot === null && !milestoneDrawn,
 	};
 	return { row, colors };
 }
@@ -445,11 +461,10 @@ function renderBarRow(
  * out of the visible row on purpose: the layout is a lead column and a track, and a
  * sixth thing in the lead is what the colour was chosen to avoid.
  */
-function stateNote(stateKey: string, item: BacklogItem): string {
+function stateNote(stateKey: string, reading: WorkflowReading): string {
 	if (!stateKey) return '';
-	const value = item.stateValue;
-	if (item.done) return value === null ? 'Done' : `${value} — done`;
-	return value ?? '';
+	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
+	return reading.value ?? '';
 }
 
 /**

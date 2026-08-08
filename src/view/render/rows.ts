@@ -1,11 +1,12 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
-import { showItemMenu } from '../interactions/menu';
+import { offerableTypes, showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { byName } from '../../domain/settings';
+import { ownWorkflowReading } from '../../domain/board';
 import {
 	HORIZON_COL_WIDTH,
 	INDENT_PER_DEPTH,
@@ -30,6 +31,7 @@ const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
+	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
 };
 
 /** Render the tree content (or the empty state) into the tree element. */
@@ -113,7 +115,12 @@ function renderItem(
 	// into an empty group would be a lie (its progress bar tells the story).
 	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
 	const collapsed = host.isCollapsed(item.file.path);
-	const childTypes = childTypeChoices(item);
+	// Through `offerableTypes` like every other type list. `childTypeChoices` answers the
+	// ladder's question and its answer carries `EXTRA_TYPES` — `Deliverable` among them —
+	// so the raw list is the whole vocabulary minus the rungs, not what a projection may
+	// show. The tree may show every type, so this narrows nothing today; what it stops is
+	// the next surface reading the raw list because this one did.
+	const childTypes = offerableTypes(host, childTypeChoices(item));
 
 	const selected = host.selectedPath === item.file.path;
 	const row = containerEl.createDiv({
@@ -127,7 +134,9 @@ function renderItem(
 		},
 	});
 	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
-	if (item.done) row.addClass('pbl-done');
+	// The row's OWN workflow, the same rule the card's child list, the card itself and the
+	// timeline bar all keep: a Deliverable is finished when ITS states say so.
+	if (ownWorkflowReading(item).done) row.addClass('pbl-done');
 	if (item.outsideFilter) row.addClass('pbl-outside');
 	row.setCssProps({ '--pbl-depth': String(item.depth) });
 	row.dataset.path = item.file.path;
