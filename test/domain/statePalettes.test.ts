@@ -50,6 +50,31 @@ describe('statePalettes', () => {
 		expect(statePalettes(modelOf(fallsBack), fallsBack)).toHaveLength(1);
 	});
 
+	it('is one unlabelled zero-offset palette where only the DELIVERABLE key is set', () => {
+		// Found by review. The question is "which workflows can draw?", not "is there a
+		// second key?" — and the two differ exactly where the missing key is the first one.
+		// Without `stateKey`, `domain/model.ts` sets every requirements state value to null,
+		// so that vocabulary can key nothing: heading the surviving section "Deliverables"
+		// tells it apart from nothing, and offsetting its slots past a list no bar can use
+		// starts the only palette on the grid at slot 1.
+		const lone = { ...twoWorkflows, stateKey: '', states: [] };
+		const palettes = statePalettes(modelOf(lone), lone);
+
+		expect(palettes).toHaveLength(1);
+		expect(palettes[0].label).toBe('');
+		expect(palettes[0].offset).toBe(0);
+		expect(palettes[0].values).toEqual(['Draft', 'Published']);
+		expect(paletteSlot(palettes[0], 'Draft')).toBe(0);
+	});
+
+	it('is NO palette where neither workflow has a key', () => {
+		// An empty list rather than a palette of nothing, so a caller has to say what it
+		// draws with no vocabulary at all instead of being handed one that keys nothing.
+		const none = { ...defaultSettings(), stateKey: '', deliverableStateKey: '' };
+
+		expect(statePalettes(modelOf(none), none)).toEqual([]);
+	});
+
 	it('carries each workflow’s own values and its own done list', () => {
 		const palettes = statePalettes(modelOf(twoWorkflows), twoWorkflows);
 
@@ -79,6 +104,14 @@ describe('paletteFor', () => {
 
 		expect(paletteFor(palettes, deliverable).label).toBe('Deliverables');
 		expect(paletteFor(palettes, pbi).label).toBe('Work');
+	});
+
+	it('has no palette to name where no workflow has a key', () => {
+		const none = { ...defaultSettings(), stateKey: '', deliverableStateKey: '' };
+		const model = modelOf(none);
+
+		// Undefined rather than a stand-in: the bar decides what no vocabulary draws.
+		expect(paletteFor(statePalettes(model, none), model.byPath.get('D.md')!)).toBeUndefined();
 	});
 
 	it('keys a Deliverable into the only palette when there is only one', () => {

@@ -375,7 +375,10 @@ function renderBarRow(
 	// No slot (no state, or a value its own vocabulary does not carry) adds no class and
 	// the bar keeps its plain accent — `styles/timeline.css` owns what a slot paints, the
 	// level badge's TS-adds-the-class, CSS-owns-the-colour split.
-	const slot = paletteSlot(paletteFor(mounts.palettes, bar.item), own.value);
+	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
+	// the same answer `paletteSlot` gives a state outside one: the plain accent.
+	const palette = paletteFor(mounts.palettes, bar.item);
+	const slot = palette ? paletteSlot(palette, own.value) : null;
 	if (slot !== null) row.addClass(`pbl-state-${slot}`);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderBadge(ctx.host, lead, bar.item);

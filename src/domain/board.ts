@@ -231,21 +231,34 @@ export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSetti
 
 /**
  * The colour vocabularies a dated-axis bar can be keyed into, in the order their slots
- * are assigned — the requirements workflow first, then the Deliverable one when it is
- * genuinely a SECOND workflow.
+ * are assigned — only the workflows that can actually key something, so the list has two
+ * entries only where the base really runs two.
  *
- * "Genuinely second" is `settings.deliverableStateKey !== ''`, the raw key rather than
- * the resolved one: a Deliverable workflow FALLING BACK reads the same property, holds
- * the same values and is the same workflow wearing another name, so a second section
- * would key one vocabulary twice and invite the reader to look for a difference that is
- * not there.
+ * A workflow is here when it has a KEY. Without one `domain/model.ts` sets its every
+ * state value to null, so no bar it tracks can carry a colour, and a vocabulary in this
+ * list that nothing can draw is exactly the defect the legend's own rule names — a swatch
+ * exists only where a bar can draw the thing it keys. The Deliverable one is asked of the
+ * RAW `deliverableStateKey` rather than the resolved one: a workflow FALLING BACK reads
+ * the same property, holds the same values and is the same workflow wearing another name,
+ * so a second entry would key one vocabulary twice and invite the reader to look for a
+ * difference that is not there. Configuring only the Deliverable key is therefore ONE
+ * workflow too, and the one it is — found by review, which is also the shape it failed in:
+ * the question was written as "is there a second key?" when it is "which workflows can
+ * draw?", and the two differ exactly where the first key is the missing one.
  *
- * Slots CONTINUE across the palettes rather than restarting, which is why this returns an
- * ordered list and an offset rather than two independent vocabularies. Restarting would
+ * Both present, and: the label names each so two vocabularies in one strip say which is
+ * which, and slots CONTINUE across them rather than restarting — which is why this returns
+ * an ordered list and an offset rather than two independent vocabularies. Restarting would
  * paint a Deliverable's first state the same colour as a PBI's first state, and the whole
  * point of asking the item's own workflow is that those are different facts. Four slots
  * still wrap (`STATE_COLOR_SLOTS`), so a long enough pair repeats — the same honest limit
  * one vocabulary longer than the palette already has.
+ *
+ * A lone workflow is unlabelled and starts at slot 0 whichever of the two it is: there is
+ * nothing to tell it apart from, and there is no earlier vocabulary for its slots to
+ * continue from. NEITHER key configured returns an empty list — no palette, rather than a
+ * palette of nothing — so a caller has to say what it does with no vocabulary at all
+ * instead of being handed one that silently keys nothing.
  */
 export interface StatePalette {
 	/** Names the workflow in the legend; empty when there is only one and nothing to tell apart. */
@@ -257,19 +270,26 @@ export interface StatePalette {
 }
 
 export function statePalettes(model: BacklogModel, settings: BacklogSettings): StatePalette[] {
-	const requirements = requirementsWorkflow(model, settings);
-	const separate = settings.deliverableStateKey !== '';
-	if (!separate) return [{ label: '', values: requirements.values, doneValues: settings.doneValues, offset: 0 }];
-	const deliverables = deliverablesWorkflow(model, settings);
-	return [
-		{ label: 'Work', values: requirements.values, doneValues: settings.doneValues, offset: 0 },
-		{
+	const drawable: StatePalette[] = [];
+	if (settings.stateKey !== '') {
+		drawable.push({
+			label: 'Work',
+			values: requirementsWorkflow(model, settings).values,
+			doneValues: settings.doneValues,
+			offset: 0,
+		});
+	}
+	if (settings.deliverableStateKey !== '') {
+		drawable.push({
 			label: 'Deliverables',
-			values: deliverables.values,
+			values: deliverablesWorkflow(model, settings).values,
 			doneValues: settings.deliverableDoneValues,
-			offset: requirements.values.length,
-		},
-	];
+			// Past everything already assigned — one statement rather than a second copy
+			// of "the requirements list comes first", which is only true while it is here.
+			offset: drawable.reduce((sum, palette) => sum + palette.values.length, 0),
+		});
+	}
+	return drawable.length === 1 ? [{ ...drawable[0], label: '', offset: 0 }] : drawable;
 }
 
 /**
@@ -278,8 +298,12 @@ export function statePalettes(model: BacklogModel, settings: BacklogSettings): S
  * its colour from the requirements vocabulary whatever the item was, so a Deliverable
  * with its own workflow drew a colour naming a state it does not hold, and changing the
  * state that IS its own moved nothing on the grid.
+ *
+ * Undefined where no workflow has a key at all, which is a real configuration and not an
+ * error: the caller decides what a bar with no vocabulary draws, rather than this handing
+ * back an empty palette that would answer "no slot" while looking like a vocabulary.
  */
-export function paletteFor(palettes: StatePalette[], item: BacklogItem): StatePalette {
+export function paletteFor(palettes: StatePalette[], item: BacklogItem): StatePalette | undefined {
 	return palettes.length > 1 && isDeliverableType(item.typeName) ? palettes[1] : palettes[0];
 }
 

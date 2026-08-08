@@ -39,7 +39,7 @@ changed by editing a requirements state nothing on that board shows.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Opening the roadmap's dated axis in a base that configures a Deliverable state property |
-| **Preconditions** | `deliverableStateProperty` is configured — the RAW option, since a Deliverable workflow that falls back to `stateKey` reads the same property and holds the same values, and is the same workflow wearing another name |
+| **Preconditions** | Both state properties are configured. The Deliverable one is read as the RAW option, since a workflow falling back to `stateKey` reads the same property and holds the same values, and is the same workflow wearing another name |
 | **Guarantee** | Every colour a bar draws is keyed by exactly one swatch, and every swatch keys a colour something on the grid draws — the rule [[State colour and a legend]] already states, now holding across two vocabularies rather than one |
 
 **Main flow**
@@ -55,10 +55,17 @@ changed by editing a requirements state nothing on that board shows.
 
 **Extensions**
 
-- **1a — only one workflow is configured.** `statePalettes` returns a single palette with
-  an empty label, and nothing draws a group heading: a base that tracks Deliverables on
-  the requirements workflow has one vocabulary and draws exactly the strip it drew
-  before a second one existed.
+- **1a — only one workflow has a key.** `statePalettes` returns that one alone, unlabelled
+  and at offset 0, WHICHEVER of the two it is: there is nothing to tell it apart from, and
+  no earlier vocabulary for its slots to continue from. That covers the Deliverable
+  workflow falling back to `stateKey` and, found in review, the base that configures the
+  Deliverable property and leaves the requirements one unset — a case the first version got
+  wrong by asking "is there a second key?" instead of "which workflows can draw?". Without
+  a key, `domain/model.ts` sets that workflow's every state value to null, so its
+  vocabulary can key nothing and must not appear.
+- **1b — neither workflow has a key.** An empty list, so `paletteFor` answers undefined and
+  the bar draws its plain accent: no palette, rather than a palette of nothing that would
+  key silently. The legend renders Today alone, exactly as it did before this change.
 - **2a — slots CONTINUE across the palettes rather than restarting.** Restarting would
   paint a Deliverable's first state the same colour as a PBI's first state, and the whole
   point of asking the item's own workflow is that those are different facts. The four
@@ -85,6 +92,11 @@ changed by editing a requirements state nothing on that board shows.
   **Checked by** `test/view/legend.test.ts` — "names each workflow and keys both vocabularies, in slot order"
 - With one workflow configured it draws no heading at all.
   **Checked by** `test/view/legend.test.ts` — "names nothing where one workflow tracks everything"
+- A base configuring ONLY the Deliverable property draws that vocabulary unlabelled and
+  from slot 0.
+  **Checked by** `test/view/legend.test.ts` — "leaves a LONE Deliverable workflow unlabelled and at slot 0"
+- A base configuring neither gets no palette at all.
+  **Checked by** `test/domain/statePalettes.test.ts` — "is NO palette where neither workflow has a key"
 - The split is on the RAW `deliverableStateKey`, so a falling-back workflow stays one
   palette rather than keying one vocabulary twice.
   **Checked by** `test/domain/statePalettes.test.ts` — "splits on the RAW deliverable key, so a falling-back workflow is still one workflow"
@@ -113,8 +125,11 @@ fourth not is the shape every past bug in this feature had.
 `RoadmapSnapshot.palettes` (`src/view/host.ts`), which is where `src/view/backlogView.ts`
 reads them for `renderLegend` — the same reason `drawn` is carried rather than recomputed:
 the legend exists only to explain the colours on the grid, so it keys the very list the
-grid used. `renderLegend` (`src/view/render/legend.ts`) gates each section on its own raw
-key, matching the gate `statePalettes` itself splits on. `.pbl-legend-group` in
+grid used. `renderLegend` (`src/view/render/legend.ts`) gates nothing itself: `statePalettes` already
+returns only the workflows that can key something, so the legend renders what it is handed
+— the same question asked once. `renderStateSwatches` beside it is the part that grows with
+the number of workflows, split out when two of them took the whole strip's complexity
+budget. `.pbl-legend-group` in
 `styles/legend.css` is the section heading; `styles/timeline.css`'s slot rules are
 unchanged, since what a slot paints was never the question.
 

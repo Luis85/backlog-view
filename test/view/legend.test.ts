@@ -427,6 +427,27 @@ describe('two workflows, two keyed vocabularies', () => {
 		expect(swatchLabels(containerEl)).toEqual(['New', 'Active', 'Done', 'Today']);
 	});
 
+	it('leaves a LONE Deliverable workflow unlabelled and at slot 0', () => {
+		// Only the Deliverable workflow has a key, so it is the only vocabulary that can
+		// key anything — `stateKey` is '' and `domain/model.ts` sets every `stateValue` to
+		// null, so no requirements bar carries a colour at all. Naming this section
+		// "Deliverables" tells it apart from nothing, and offsetting its slots past a
+		// vocabulary no bar can use starts the only palette on the grid at slot 1.
+		const { view, containerEl } = makeView(
+			twoWorkflowVault(),
+			{ ...DATE_AXIS, ...DELIVERABLE_WORKFLOW },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		expect(groupLabels(containerEl)).toEqual([]);
+		// `Other` because the PBI's own workflow has no key, so its bar takes no slot and
+		// draws the plain accent — a colour on the grid, and the key has to explain it.
+		expect(swatchLabels(containerEl)).toEqual(['Draft', 'Published', 'Other', 'Today']);
+		expect(rowClasses(containerEl, 'D.md')).toContain('pbl-state-0');
+		expect(rowClasses(containerEl, 'P.md').toString()).not.toContain('pbl-state-');
+	});
+
 	it('keys a Deliverable’s bar by its OWN state, in its own palette’s slot', () => {
 		const { view, containerEl } = makeView(
 			twoWorkflowVault(),
