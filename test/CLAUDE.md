@@ -39,13 +39,36 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   is the real exception: the cache never gets an object for it, so writes to it stay
   invisible to the model. `entry.getValue()` returns null, so property chips render empty
   in tests.
-- `addFile` fills `frontmatterLinks` only through its `parentLink` option, so writing a
-  bracketed value straight into `frontmatter` (`parent: '[[Epic]]'`) builds a cache
-  Obsidian would not hand out — brackets with no parsed link — and sends `resolveParent`
-  down its raw fallback instead of the path a vault takes. Reach for `parentLink` when the
-  test is about a parent LINK. Measured as latent, not live, and open because the deciding
-  question needs a vault: `docs/issues/The fake vault can hold a cache Obsidian would not
-  produce.md`.
+- `addFile` fills `frontmatterLinks` only through its `parentLink` option, and a faithful
+  parent fixture is decided by TWO questions, not one — is the value bracketed, and does it
+  resolve. Both measured in a vault (2026-08-08), in two runs and in both directions: a
+  plain `[[Name]]` link that RESOLVES has a `frontmatterLinks` entry, and one that resolves
+  to NOTHING has none — so for that spelling, Obsidian indexes a frontmatter link exactly
+  when it resolves. The alias and heading-ref spellings were never read from the cache, so
+  the rule below is stated for the form that was measured and assumed for the other two. The
+  second half was checked only after review pointed out that the first had been written as
+  a biconditional off one run — `docs/issues/The fake vault can hold a cache Obsidian would
+  not produce.md` records both, and what each covers.
+  - **`parent: Epic`, a bare name.** Never a link, so never indexed, whether or not an
+    `Epic.md` exists. Write it into `frontmatter` — always. This is the raw fallback's
+    stated purpose and the shape `resolveParent`'s own comment names.
+  - **`[[Epic]]` where `Epic.md` exists.** Indexed, so `parentLink: 'Epic'` — and writing
+    the brackets into `frontmatter` beside a real `Epic.md` builds a cache no vault hands
+    out. Measured for the plain `[[Name]]` form; the alias and heading-ref spellings were
+    watched parenting correctly in the tree but never had their cache read, which is a
+    weaker statement about the same mechanism rather than a second open question.
+  - **`[[No Such Note]]`.** A link that resolves to nothing has no entry at all, so a raw
+    bracketed value with no such file added is exactly what a vault produces.
+
+  The trap is reading this as "it resolves, so use `parentLink`" and converting a
+  bare-name fixture — `model.test.ts`'s `Plain.md` is one, and moving it would bypass the
+  branch it exists to cover. Bracketing decides the path; resolution only decides which
+  bracketed spelling is honest. (Found by review, on the version of this bullet that had
+  just been rewritten to fix the opposite error.)
+
+  None of the three measures the fallback's bracket STRIPPING, which has no observable
+  effect in a vault — the reasoning is in `docs/issues/The fake vault can hold a cache
+  Obsidian would not produce.md` and beside the test in `test/domain/model.test.ts`.
 
 ## Looking at it
 

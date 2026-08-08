@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-08
-source: two instances in one branch — PR #97, both found by review rather than by the gate
+source: three instances across two branches — PRs #97 and #101, all found by review rather than by the gate
 ---
 
 # A verification's instructions are prose nothing gates
@@ -17,7 +17,7 @@ source: two instances in one branch — PR #97, both found by review rather than
 and cadence vocabulary, its parent link, every wikilink in it, and every source path it
 names. What it cannot read is the part a human actually follows — **the steps**.
 
-Two instances landed in one branch, both caught by review and neither catchable by
+Three instances landed across two branches, all caught by review and none catchable by
 `npm run check`:
 
 1. [[Roadmap legend with two workflows]] told a runner that `docs-check.mjs` refuses
@@ -30,8 +30,21 @@ Two instances landed in one branch, both caught by review and neither catchable 
    previous version asked for an observation that does not exist, so one rewrite produced
    an answerable check that could not be run.
 
+3. [`test/CLAUDE.md`](../../test/CLAUDE.md) told a contributor that a bracketed parent value
+   with no link entry is a cache Obsidian never hands out, and to reach for `parentLink`.
+   Half true, and the wrong half is the half a fixture for an *unresolved* link needs —
+   following it forces the parsed-link path and leaves the raw fallback untested. Broader
+   than the other two, because this file is read before the code is written rather than
+   during a vault session.
+
 The shapes are different and the gap is one: an instruction can go stale, or be wrong on
-arrival, and the register's own gate reports the note as consistent either way.
+arrival, or be right about one case and steer the other into a wall — and every gate this
+register has reports the document as consistent.
+
+The third instance also widens the scope. This is not only about `cadence: release` notes:
+the layer guides are instructions too, and `test/CLAUDE.md` is loaded automatically when
+someone works in `test/`. A wrong sentence there is executed by every contributor rather
+than by whoever picks up one verification.
 
 ## Why this is worse than ordinary prose rot
 
@@ -59,7 +72,11 @@ Nothing obvious, which is why this is Open rather than a task. What has been con
   open verification — plausibly worse than the defect.
 
 The honest position for now: this is a known hole with no proposed fix, recorded so the
-next instance is the third of a known kind rather than the first of a new one.
+next instance is the **fourth** of a known kind rather than the first of a new one.
+
+A counted list in prose is itself the thing this note is about — the count above was raised
+from two to three and this sentence was left saying "the third", which review caught. If a
+fourth arrives, raise both, or replace the number with "one more".
 
 ## What to do meanwhile
 

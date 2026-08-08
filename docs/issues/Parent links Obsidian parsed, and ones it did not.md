@@ -2,7 +2,7 @@
 type: Issue
 order: 80
 parent: "[[Smoke test the tree]]"
-status: Open
+status: Done
 priority: P3
 area: verification
 cadence: release
@@ -26,6 +26,10 @@ apart. Measured: with the fake taught to index bracketed values the way Obsidian
 So the fallback's bracket handling is either dead code in production or a real safety net,
 and this repository cannot tell which. [[The fake vault can hold a cache Obsidian would not
 produce]] holds the analysis; this note is the ninety seconds that settles it.
+
+**Settled below**, and the answer is neither of the two this paragraph anticipated — which
+is why the paragraph is left standing rather than rewritten. What a question looked like
+before it was answered is the part a reader cannot reconstruct.
 
 ## How to check
 
@@ -69,24 +73,73 @@ distinguish. [[The fake vault can hold a cache Obsidian would not produce]] had 
 first ("a look at whether the link resolves *through the cache*") and this note drifted
 off it into something a person could actually be asked to do and still learn nothing.
 
-## What a run has to record
+## What the run found
 
-For the unresolved-link case, what the console printed — the `frontmatterLinks` value
-itself, not a summary of it. That answer decides one of two follow-ups, and neither
-should be taken before it:
+**2026-08-08, in a live vault.** With `parent: "[[No Such Note]]"` on an open note, the
+console printed nothing — `getFileCache(...)` returned a real cache object, since an error
+would have been loud, and `frontmatterLinks` was simply absent.
 
-- **Obsidian indexes unresolved links** → the bracket handling in `linkpathFromRawValue`
-  is dead. Delete it, teach `FakeVault.addFile` to index bracketed values, and move the
-  ten fixtures that write brackets by hand onto `parentLink`.
-- **It does not** → the fallback is load-bearing for exactly that case. Keep it, and add a
-  fixture that reaches it *honestly* — a bracketed value with no link entry, which is then
-  a cache Obsidian really does produce.
+**Obsidian does not index a link that resolves to nothing.** The unresolved case therefore
+takes path 2, and path 2 is live code rather than a leftover.
+
+## What that did not settle
+
+Both follow-ups this note offered were wrong, and finding out cost one test written and
+corrected in place.
+
+"It does not index them → the bracket handling is load-bearing for exactly that case" does
+not follow: *reaching* path 2 is not the same as the STRIPPING mattering once there. The
+test written to cover it passes with `linkpathFromRawValue`'s wiki branch deleted, because
+`[[No Such Note]]` and `No Such Note` are equally absent from the vault — the strip changes
+the linkpath and never the answer. Watched failing, as the rule requires; it did not fail,
+which is the whole finding.
+
+For the strip to change an outcome, a bracketed value would need no link entry AND a target
+that exists. **That pair cannot occur for a plain `[[Name]]` link**, measured in both
+directions: a resolvable one has an entry (third run) and an unresolvable one has none
+(second run). Every such value
+therefore either takes path 1 or resolves to nothing on path 2, and in neither case does
+removing the brackets change the answer.
+
+Split across two console runs rather than one because the first version of this paragraph asserted the
+biconditional off half the evidence, and review caught it. The resolvable cases had been
+watched in the TREE, where both paths parent correctly and neither can be told from the
+other — the same mistake this note was rewritten to stop making, made again one section
+down.
+
+So the position is narrower than either branch offered: **the bracket handling cannot
+change an outcome for the form that was measured, and it is kept anyway.** Two lines, in a
+pure function, and what would justify deleting them is measurement of the spellings nobody
+read the cache for — the alias `[[Epic|The Epic]]` and the heading ref `[[Epic#Section]]`.
+Those were watched parenting correctly and no more. Asking for a fourth vault session to
+retire two lines is a worse trade than the two lines, and the comment beside them says what
+they are.
+
+[[The fake vault can hold a cache Obsidian would not produce]] holds what is left: those
+fixtures — brackets paired with a resolvable target — model a cache Obsidian does not hand
+out, which is now measured rather than deduced.
 
 ## Runs
 
-**2026-08-08.** The three tree-visible cases were run and passed: a resolvable link, an
+Three runs, and the gaps between them are the point rather than an accident of scheduling.
+Each is numbered here and referred to by number above, so which observation established
+which half is never a matter of reading order.
+
+**First run — the tree only.** The three tree-visible cases passed: a resolvable link, an
 alias, and a plain unbracketed name all parent correctly. The console was not opened, so
-the deciding case is **not** answered and this note stays Open — which is the outcome the
-first version of it would have hidden, since the tree half looks like a complete pass.
-Neither follow-up is taken: `linkpathFromRawValue` keeps its bracket handling and the ten
-hand-written fixtures stay where they are, on a question rather than on a guess.
+the deciding case was unanswered and the note stayed Open. Recorded at the time because the
+tree half looks like a complete pass, and a run that stopped there would have read as one.
+
+**Second run — the cache, unresolved.** `parent: "[[No Such Note]]"` has no
+`frontmatterLinks` entry. Half the question, and the note briefly claimed the whole of it.
+
+**Third run — the cache, resolvable.** `parent: "[[Epic]]"` beside a real `Epic.md` **has**
+an entry. This is what closes the note, and it is a separate run because review caught the
+conclusion being written from the second alone.
+
+All three are kept rather than collapsed into the one that worked. Between them this check
+was rewritten twice — for asking an observation that does not exist, and for a console
+expression that could not run — and its conclusion was narrowed once for outrunning its
+evidence. A record showing only the successful run would make that look like one clean
+verification instead of four attempts, and it is the evidence
+[[A verification's instructions are prose nothing gates]] rests on.

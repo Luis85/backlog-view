@@ -2,7 +2,7 @@
 type: Issue
 order: 160
 parent: "[[Invariants as checks, not conventions]]"
-status: Open
+status: Done
 priority: P3
 area: verification
 created: 2026-08-08
@@ -52,26 +52,73 @@ Three of the ten cover exactly the cases worth having — an alias (`[[Epic|The 
 list value, and a `toString` key — and today each exercises the hand-rolled stripper rather
 than the path a vault actually takes.
 
-## Why it is not fixed here
+## What the vault answered
 
-The deciding question cannot be answered from this repository: **does Obsidian always
-populate `frontmatterLinks` for a bracketed frontmatter value?**
+**2026-08-08, second run.** [[Parent links Obsidian parsed, and ones it did not]] asked the
+metadata cache directly: a note whose parent link resolves to nothing has **no `frontmatterLinks`
+entry at all**.
 
-- If it does, path 2's bracket branch is dead in production and should go, with those
-  fixtures moved onto `parentLink`.
-- If it does not — an unresolved link, say — the branch is load-bearing and needs fixtures
-  that reach it honestly.
+That is ONE half of a biconditional, and this note first said "so Obsidian indexes a link
+exactly when it resolves" — which that run did not establish. The resolvable and alias
+cases had been watched in the TREE, and a correctly parented note is an outcome the raw
+fallback produces just as well; nothing looked at their cache. Caught in review, one commit
+after the same claim had been written into `test/CLAUDE.md` as a fixture rule.
 
-Shipping the faithful fake without that answer means either an untested branch or a
-deleted one, each on a guess. Coverage would notice: the branch has no other caller.
+**Third run, same day.** The console was run again on a note whose parent link resolves,
+and `frontmatterLinks` **has an entry**. Both directions are now measured, and the
+biconditional that was asserted early is true for the plain `[[Name]]` form: Obsidian
+indexes it exactly when it resolves. Only that form was read from the cache — see below for
+what that leaves standing on assumption.
 
-## What would settle it
+Keeping the sequence rather than the conclusion alone, because the conclusion was right and
+the reasoning that produced it was not — the repository's own sentence is *write the
+guarantee to the check, never ahead of it*, and a record showing only the final measurement
+would read as though that had been done.
 
-One note in a real vault carrying `parent: "[[Something]]"`, and a look at whether the link
-resolves through the cache. Five lines of change either way afterwards. It is small enough
-to ride along with the colour check [[Smoke test the roadmap]] already owes, which is the
-only reason this is Open rather than scheduled.
+That settles the divergence and sharpens it rather than removing it. Brackets with no link
+entry IS a cache Obsidian produces — for an unresolved link. What it never produces is
+brackets, no link entry, and a target that **exists**, which is what every fixture here
+does: they pair `[[Epic]]` with an `Epic.md` a real vault would have indexed.
 
-Until then the divergence is recorded rather than removed, and
-[`test/CLAUDE.md`](../../test/CLAUDE.md) names it where someone writing a fixture will meet
-it.
+## Why the branch is kept anyway
+
+The second measurement above — nothing reaches the bracket stripper once the fake is
+faithful — is now joined by a third: nothing reaches it *with an effect that can be
+observed* even in a real vault. An unresolved bracketed link resolves to nothing whether or
+not the brackets come off.
+
+Deleting the two lines therefore rests on a deduction about Obsidian's link parser rather
+than on a measurement. A value that parser declines to index while still naming a real note
+would make them load-bearing again, silently. Kept, with the comment in `model.test.ts`
+saying what the tests around it do and do not cover.
+
+## What the third run settled
+
+Every consequence that was hanging on it:
+
+- `resolveParent`'s path 1 is real. `parentLink` is the faithful fixture for a resolvable
+  link, and the guidance in [`test/CLAUDE.md`](../../test/CLAUDE.md) stands as written
+  rather than inverting.
+- The fixtures pairing `[[Epic]]` with a real `Epic.md` **do** model a cache Obsidian does
+  not hand out. Measured, not deduced.
+- The bracket stripping cannot change an outcome for that form: a bracketed value either
+  has an entry and takes path 1, or resolves to nothing and gets the same answer with or
+  without its brackets.
+
+What was NOT read: the cache for the alias `[[Epic|The Epic]]` and heading-ref
+`[[Epic#Section]]` spellings. They were watched parenting correctly, which is the weaker
+observation this note exists to distrust. They are the same mechanism rather than a second
+question, and the only thing resting on them is whether two lines of `linkpathFromRawValue`
+could be deleted — which is not worth a third vault session.
+
+## What is left
+
+The fixtures still model a cache no vault hands out, and the cost of that is now known
+exactly: they exercise a code path with no production behaviour behind it, so a change that
+broke the stripper would fail them and nothing else. Moving them onto `parentLink` would be
+honest and would leave the stripper untested — which, given the above, is the accurate
+state rather than a regression.
+
+Left as it is on purpose. This is a two-line branch in a pure function; the work of
+rewriting ten fixtures to prove a point already written down is worth less than the note
+that records it. See `docs/issues/A rule chased past the mistakes it prevents.md`.
