@@ -913,26 +913,43 @@ if (hierarchies.length === 0) {
 	// the table is flattened to the same type → children shape the gate holds.
 	const documented = new Map();
 	const documentedParents = new Map();
-	for (const [index, [types, parents, children]] of hierarchy.entries()) {
-		// A row naming no type in code DISAPPEARS: `codes` reports the spans a cell holds,
-		// prose is deliberately dropped, and a loop over an empty list runs zero times. So
-		// `| Spike | Epic | *(nothing)* |` — the same row a contributor would add, minus the
-		// backticks — left the table advertising a type the gate refuses while the gate
-		// reported the table consistent. Measured before it was fixed, not argued.
+	for (const [index, cells] of hierarchy.entries()) {
+		const [types, parents, children] = cells;
+		// A name written WITHOUT backticks disappears: `code` reports the spans a cell holds
+		// and the prose is not compared, so a loop over it never sees the name and the cell
+		// reads as agreeing with the gate. `| Spike | Epic | *(nothing)* |` left the table
+		// advertising a type the gate refuses, and `` `Feature`, …, Spike `` did the same one
+		// column over while the collected set still equalled `LEGAL_CHILDREN`. Both measured
+		// against the real register before being fixed; both passed.
 		//
-		// Checked HERE rather than in `tablesWith`, which is generic over any heading set and
-		// is right to report what a cell holds: "column one names a type" is this table's
-		// rule, and belongs with the rule that reads it.
-		if (types.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);
-		for (const type of types) {
+		// The rule is CAPITALISATION, which is as far as this can go without reading English:
+		// every type is a capitalised word, and every legitimate scrap of prose in this table
+		// is lowercase connective tissue — `(nothing — it is a root)`, `or`, the separators.
+		// So a capital outside a code span is a name someone forgot to format. A type spelled
+		// in lowercase prose would still slip through, and nothing here claims otherwise.
+		//
+		// Checked HERE rather than in `tablesWith`, which is generic over any heading set:
+		// "this table's prose is lowercase" is this table's rule. What the helper owes is the
+		// prose itself, which it now returns — a caller cannot notice what it never receives,
+		// and that is exactly how this defect got a second life after the first fix.
+		for (const cell of cells) {
+			// The capitalised WORDS rather than the whole cell: the prose of a relation cell is
+			// mostly the separators between the code spans, so reporting it raw says
+			// `", , , , Spike"` and buries the one word a contributor has to go and fix.
+			const loose = cell.text.match(/\p{Lu}[\p{L}\p{M}]*/gu);
+			if (loose) fail("docs/README.md", `hierarchy table row ${index + 1} names ${loose.join(", ")} outside a code span`);
+		}
+		// Distinct from the rule above, and not covered by it: a cell holding no name at all.
+		if (types.code.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);
+		for (const type of types.code) {
 			// A second row for a type is not a merge, it is a contradiction — and flattening
 			// with `set` would keep the last one and call the table consistent. Found in
 			// review: a stale `Deliverable` row left above the grouped
 			// `Issue` / `Bug` / `Deliverable` row would have passed this check silently,
 			// which is the false pass this whole rule exists to remove.
 			if (documented.has(type)) fail("docs/README.md", `the hierarchy table gives ${type} more than one row`);
-			documented.set(type, new Set(children));
-			documentedParents.set(type, new Set(parents));
+			documented.set(type, new Set(children.code));
+			documentedParents.set(type, new Set(parents.code));
 		}
 	}
 	const named = (set) => [...set].sort().join(", ") || "(nothing)";

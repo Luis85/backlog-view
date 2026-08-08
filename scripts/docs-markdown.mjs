@@ -263,13 +263,20 @@ export function markers(text, label) {
 
 /**
  * EVERY GFM table whose header row begins with `headings` — each table as its rows, each
- * row as its cells, each cell as the list of `code` spans it holds.
+ * row as its cells, each cell as `{ code, text }`: the `code` spans it holds, and the
+ * prose around them.
  *
- * Code spans rather than cell text, because that is how this register writes a type or a
- * key — `` `Deliverable` `` — and it is the part a rule can compare. Prose around them
- * (`*(nothing — it is a root)*`, "or") is a human's connective tissue and is deliberately
- * dropped: a check that had to understand it would be reading English, which is the thing
- * `docs/issues/Tests do not read English.md` says not to build.
+ * Code spans are what a rule compares, because that is how this register writes a type or
+ * a key — `` `Deliverable` ``. Prose around them (`*(nothing — it is a root)*`, "or") is a
+ * human's connective tissue and no rule should try to understand it, which would be
+ * reading English — the thing `docs/issues/Tests do not read English.md` says not to
+ * build.
+ *
+ * It is REPORTED rather than understood, and that is the difference. Dropping it silently
+ * is how a name written without backticks disappeared from a cell twice — once in the type
+ * column, then again in the relation columns after the first was fixed. A caller cannot
+ * notice what it never receives, so the prose comes back and each caller says what its own
+ * table allows to be in it.
  *
  * Asked of the parser, so a pipe inside a code span cannot split a cell and a table
  * indented inside a list item is still a table.
@@ -292,7 +299,7 @@ export function tablesWith(text, headings) {
 		if (node.type !== "table" || node.children.length === 0) continue;
 		const head = node.children[0].children;
 		if (!headings.every((want, i) => head[i] !== undefined && words(head[i]) === want)) continue;
-		found.push(node.children.slice(1).map((row) => row.children.map(codes)));
+		found.push(node.children.slice(1).map((row) => row.children.map((cell) => ({ code: codes(cell), text: words(cell) }))));
 	}
 	return found;
 }

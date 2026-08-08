@@ -2,7 +2,7 @@
 type: Issue
 order: 50
 parent: "[[Smoke test the roadmap]]"
-status: Open
+status: Done
 priority: P2
 area: verification
 cadence: release
@@ -96,10 +96,15 @@ sections rather than inside one, and both single-workflow configurations. Those 
 feature's structural risk and they are answered under a real theme now, which is what no
 harness could do.
 
-It does NOT settle the colour-pair bullet, and this note stays Open for that one alone.
-"Nothing flagged" and "nobody was misled" are different claims: the question is not
-whether the pairs exist — they are measured and expected — but whether a reader looking
-for a Deliverable's state has to look twice at `Ready`/`Concept`, `Active`/`Draft` or
-`Review`/`In review`. A pass reports the absence of a defect; this asks for a judgement,
-and the judgement is the thing a four-slot palette carrying two vocabularies was always
-going to need. One sentence closes it.
+**The colour pairs, asked separately and answered.** `Ready`/`Concept`, `Active`/`Draft`
+and `Review`/`In review` each share a palette slot, and the runner reported that none of
+the three made them look twice: the section headings carry enough context that a repeated
+colour never reads as the wrong workflow. That is the judgement this note existed to
+collect, and it had to be asked for on its own — a run reporting no defects says nothing
+about it, since the pairs are expected rather than broken.
+
+So the four-slot limit is **accepted rather than merely documented**, and a redesign of
+`STATE_COLOR_SLOTS` is not owed. What would reopen it: a vocabulary long enough to wrap a
+slot twice within ONE workflow, where no heading separates the repeat.
+
+Closed.

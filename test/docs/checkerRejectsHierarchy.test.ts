@@ -80,15 +80,40 @@ describe('the documented hierarchy and the gate agree', () => {
 			'the hierarchy table names toString, which LEGAL_CHILDREN does not allow at all',
 		],
 		[
-			// The row that DISAPPEARS rather than disagreeing, and the only one of these cases
-			// where the table visibly says something the gate refuses while the gate calls it
-			// consistent. `codes` reports code spans and drops prose, so a type written
-			// without backticks leaves an empty type list and the flattening loop runs zero
-			// times. Found by review; the hole was measured in the real register before it was
-			// closed — the planted row passed.
+			// The row that DISAPPEARS rather than disagreeing — the table visibly says something
+			// the gate refuses while the gate calls it consistent. Found by review; measured in
+			// the real register before it was closed, where the planted row passed.
 			'a hierarchy row naming its type in prose rather than code',
 			(files) => {
 				files['docs/README.md'] = `${hierarchyTable()}| Spike | Epic | *(nothing)* |\n`;
+			},
+			'names Spike outside a code span',
+		],
+		[
+			// ONE CASE PER COLUMN, because the first fix went in at the type column only and
+			// review immediately found the same hole in the other two: a prose name beside the
+			// code-formatted ones leaves the collected set equal to `LEGAL_CHILDREN`, so the
+			// row does not even vanish — it reads as agreeing. The next time this rule is
+			// widened, these three are what say the rule is about a TABLE and not a column.
+			'a children cell naming a type in prose beside the code-formatted ones',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
+			},
+			'names Spike outside a code span',
+		],
+		[
+			'a parent cell naming a type in prose beside the code-formatted ones',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable` |', '| `Task` | `PBI`, `Issue`, `Bug`, `Deliverable`, Spike |');
+			},
+			'names Spike outside a code span',
+		],
+		[
+			// The claim the capitalisation rule does NOT subsume: a cell holding no name at
+			// all. No capital, nothing to report, and the row still disappears.
+			'a hierarchy row whose type cell is empty',
+			(files) => {
+				files['docs/README.md'] = `${hierarchyTable()}|  | \`Epic\` | *(nothing)* |\n`;
 			},
 			'names no type in code',
 		],

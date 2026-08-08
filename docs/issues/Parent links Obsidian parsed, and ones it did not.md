@@ -75,3 +75,12 @@ should be taken before it:
 - **It does not** → the fallback is load-bearing for exactly that case. Keep it, and add a
   fixture that reaches it *honestly* — a bracketed value with no link entry, which is then
   a cache Obsidian really does produce.
+
+## Runs
+
+**2026-08-08.** The three tree-visible cases were run and passed: a resolvable link, an
+alias, and a plain unbracketed name all parent correctly. The console was not opened, so
+the deciding case is **not** answered and this note stays Open — which is the outcome the
+first version of it would have hidden, since the tree half looks like a complete pass.
+Neither follow-up is taken: `linkpathFromRawValue` keeps its bracket handling and the ten
+hand-written fixtures stay where they are, on a question rather than on a guess.
