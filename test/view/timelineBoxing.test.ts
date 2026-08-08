@@ -89,3 +89,49 @@ describe('the legend keys the same palette colours the marks draw', () => {
 		}
 	});
 });
+
+/**
+ * The sticky lead column is what the day track scrolls UNDER, so it has to stay opaque.
+ * That is easy to lose by accident: `--background-modifier-hover` is itself translucent
+ * in Obsidian's themes, so tinting the lead with
+ * `color-mix(in srgb, var(--background-modifier-hover) 35%, var(--background-primary))`
+ * produces alpha 0.67 rather than an opaque colour — and the grid then scrolled visibly
+ * through the sticky column on every tinted row. Measured at 0.667843 in Chromium before
+ * this rule changed, opaque after.
+ *
+ * So the tint goes on as a background-IMAGE layer over the opaque background-color the
+ * base rule sets, and the check is that no rule tinting the lead ever sets
+ * `background-color` — which is the mistake, stated at the thing that makes it.
+ */
+describe('the sticky lead column stays opaque under its tint', () => {
+	const css = readFileSync(new URL('../../styles/timelineFurniture.css', import.meta.url), 'utf8');
+
+	/** Every rule whose selector list ends at `.pbl-timeline-lead`, with its declarations. */
+	function leadTintRules(): string[] {
+		return css
+			.split('}')
+			.filter((chunk) => /\.pbl-timeline-lead\s*\{/.test(chunk + '}'))
+			.map((chunk) => chunk.slice(chunk.indexOf('{') + 1));
+	}
+
+	it('tints it with a layer, never by replacing the opaque colour underneath', () => {
+		const rules = leadTintRules();
+		expect(rules.length).toBeGreaterThan(0);
+		const tinting = rules.filter((body) => /^\s*background(-color|-image)?\s*:/m.test(body));
+		expect(tinting.length, 'no rule tints the lead at all').toBeGreaterThan(0);
+		for (const body of tinting) {
+			expect(body, `a lead rule sets background-color: ${body.trim()}`).not.toMatch(/^\s*background-color\s*:/m);
+			expect(body).toMatch(/^\s*background-image\s*:/m);
+		}
+	});
+
+	it('gives the lead the same tint value the row itself uses, rather than a second copy', () => {
+		// One custom property, redefined by zebra and by hover, read by both. Two literal
+		// percentages in two rules is how the lead and the track came to disagree once.
+		expect(css).toMatch(/\.pbl-card\.pbl-timeline-row\.pbl-row-even\s*\{[^}]*--pbl-row-tint:/);
+		expect(css).toMatch(/\.pbl-card\.pbl-timeline-row:hover\s*\{[^}]*--pbl-row-tint:/);
+		for (const body of leadTintRules()) {
+			if (/^\s*background-image\s*:/m.test(body)) expect(body).toContain('var(--pbl-row-tint)');
+		}
+	});
+});

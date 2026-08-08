@@ -55,7 +55,13 @@ and each stays open until they are, so a stale check is visible rather than assu
   the milestone — legible over the header, and a bar's colour actually matches its own
   swatch. **Never checked.**
 - The row hover/zebra tint spans the opaque lead cell and the track as one band, not
-  two — checked in Chromium via `npm run harness`, in both schemes. Per ADR 0020 the
-  harness is faithful about layout and not about colour, so that run settles that the
-  band spans lead and track together and says nothing about what the tint looks like.
-  **Layout checked 2026-08-07, in both schemes; appearance never checked.**
+  two, AND the lead stays opaque while tinted — the day track scrolls under it, so a
+  translucent lead lets the grid show through the sticky column on every tinted row.
+  That happened: tinting with `color-mix(hover, primary)` produced alpha 0.67, because
+  `--background-modifier-hover` is itself translucent, and it took a reader scrolling to
+  notice. The tint is a background-IMAGE layer over the opaque colour now, which
+  `test/view/timelineBoxing.test.ts` refuses to see replaced. Per ADR 0020 the harness
+  settles layout and not colour.
+  **Layout checked 2026-08-07 in both schemes; opacity re-checked 2026-08-08 (lead
+  rgb(255,255,255), and the column's pixels identical across a 420px scroll);
+  appearance never checked.**

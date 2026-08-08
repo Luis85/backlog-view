@@ -67,26 +67,33 @@
    hover and zebra tie with each other, so WITHIN this block order is behaviour
    and hover has to stay last. */
 .pbl-card.pbl-timeline-row.pbl-row-even {
-	background-color: color-mix(in srgb, var(--background-modifier-hover) 35%, transparent);
+	--pbl-row-tint: color-mix(in srgb, var(--background-modifier-hover) 35%, transparent);
+	background-color: var(--pbl-row-tint);
+}
+
+/* Hover ties with zebra on specificity, so it has to stay LATER in this file: a hovered
+   even row otherwise keeps the zebra tint. It redefines the same custom property, which
+   is what lets the lead rule below serve both states with one declaration instead of
+   repeating each percentage in two places that can drift. */
+.pbl-card.pbl-timeline-row:hover {
+	--pbl-row-tint: color-mix(in srgb, var(--background-modifier-hover) 80%, transparent);
+	background-color: var(--pbl-row-tint);
 }
 
 /* The row's background does not reach its lead cell: `.pbl-timeline-lead` paints an
-   opaque --background-primary so the track can scroll under the sticky column, and an
-   opaque child never shows its parent's background through. Tinting the row alone
-   starts the highlight at the day area and leaves the title outside the thing tracking
-   it. So the lead composes the same tint over --background-primary itself — opaque, as
-   it must stay — which is why these are the same two percentages twice and not a
-   variable: the pair is the appearance, and a reader comparing them is the check. */
-.pbl-card.pbl-timeline-row.pbl-row-even .pbl-timeline-lead {
-	background-color: color-mix(in srgb, var(--background-modifier-hover) 35%, var(--background-primary));
-}
+   opaque `--background-primary` so the day track can scroll under the sticky column, and
+   an opaque child never shows its parent's background through. So the lead carries the
+   tint itself — as a LAYER over that opaque colour, never as the colour.
 
-.pbl-card.pbl-timeline-row:hover {
-	background-color: color-mix(in srgb, var(--background-modifier-hover) 80%, transparent);
-}
-
+   That distinction is the whole rule. Setting `background-color` here instead REPLACES
+   the opaque one, and `--background-modifier-hover` is itself translucent in Obsidian's
+   themes, so `color-mix(hover, primary)` came out at alpha 0.67: the sticky column went
+   see-through and the grid scrolled visibly underneath it, on every tinted row. A
+   translucent layer over an opaque colour composes to exactly the tint the track shows,
+   and stays opaque. */
+.pbl-card.pbl-timeline-row.pbl-row-even .pbl-timeline-lead,
 .pbl-card.pbl-timeline-row:hover .pbl-timeline-lead {
-	background-color: color-mix(in srgb, var(--background-modifier-hover) 80%, var(--background-primary));
+	background-image: linear-gradient(var(--pbl-row-tint), var(--pbl-row-tint));
 }
 
 /* Only once there is anything under the sticky edge to hint at. */
