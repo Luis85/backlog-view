@@ -127,6 +127,35 @@ export function requirementsWorkflow(model: BacklogModel, settings: BacklogSetti
 }
 
 /**
+ * The requirements board's candidate roots under a focus — `model.roots` with each
+ * excluded Deliverable replaced by its own topmost non-Deliverable descendants.
+ *
+ * `Deliverable` is in `EXTRA_TYPES`, so `collectFocusRoots` promotes one to a focus root
+ * at the extra-type rung exactly as it promotes a Bug, and this board then excludes it.
+ * Without this descent its requirement children are neither cards of their own nor rolled
+ * into a parent card that is on screen — counted by the toolbar and represented by
+ * nothing. Unfocused they each get a card, because the candidates are the results
+ * themselves; this is that same answer under a focus, reached by the very descent
+ * `collectFocusRoots` already makes for a root that does not match its filter.
+ *
+ * A CONTEXT Deliverable is kept rather than descended through: the board admits one as
+ * placement (see `renderRequirementsBoard`'s predicate) and it renders whenever it has a
+ * visible child, so its descendants already have a card to sit under. Descending would
+ * card them beside the parent that is there to place them.
+ */
+export function requirementsFocusRoots(roots: BacklogItem[]): BacklogItem[] {
+	const candidates: BacklogItem[] = [];
+	const collect = (list: BacklogItem[]): void => {
+		for (const item of list) {
+			if (isDeliverableType(item.typeName) && !item.outsideFilter) collect(item.children);
+			else candidates.push(item);
+		}
+	};
+	collect(roots);
+	return candidates;
+}
+
+/**
  * The frontmatter key THIS item's state lives under — the resolved Deliverable key for
  * a Deliverable, the requirements `stateKey` for everything else, and `''` when the
  * workflow that tracks it has no key configured at all.

@@ -83,3 +83,62 @@ describe('an excluded Deliverable still carries a matching descendant', () => {
 		expect(cardTitles(containerEl)).not.toContain('D');
 	});
 });
+
+describe('a focus never takes a Deliverable’s requirement work off the requirements board', () => {
+	/**
+	 * `Deliverable` is in `EXTRA_TYPES`, so a focus on the extra-type rung promotes one to
+	 * a focus root exactly as it promotes a Bug — and this board excludes it. Under a focus
+	 * the ROOTS are the candidates, so an excluded root used to take its whole subtree off
+	 * screen with it: the Task below was counted by the toolbar and drawn by nothing.
+	 */
+	function ownedTaskVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Active' } });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 10, status: 'Active' }, parentLink: 'D' });
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 20, status: 'Active' } });
+		return vault;
+	}
+
+	it('cards the Task its Deliverable owns, the same as with no focus', () => {
+		const focused = boardView(ownedTaskVault());
+		focused.view.setFocusLevel('PBI');
+
+		// The Deliverable itself is still no card; what changes is that excluding it no
+		// longer excludes the requirement work hanging from it.
+		expect(cardTitles(focused.containerEl)).toEqual(['T', 'P']);
+		expect(cardTitles(focused.containerEl)).not.toContain('D');
+	});
+
+	it('agrees with the unfocused board about which items are cards', () => {
+		// The rule stated as the two surfaces agreeing rather than as one expected list:
+		// pressing the focus button must not decide whether a Task exists on this board.
+		const unfocused = boardView(ownedTaskVault());
+		const focused = boardView(ownedTaskVault());
+		focused.view.setFocusLevel('PBI');
+
+		expect(cardTitles(focused.containerEl)).toEqual(cardTitles(unfocused.containerEl));
+	});
+
+	it('counts exactly what it draws, so the toolbar cannot report work the board hides', () => {
+		const { containerEl, view } = boardView(ownedTaskVault());
+		view.setFocusLevel('PBI');
+
+		// The half that made this visible: the count was already Deliverable-free and read
+		// "2 items" over a board drawing one card.
+		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('2 items');
+		expect(cardTitles(containerEl)).toHaveLength(2);
+	});
+
+	it('descends through a Deliverable under a Deliverable', () => {
+		// The descent is a walk, not one hop: nesting must not restore the hole.
+		const vault = ownedTaskVault();
+		vault.addFile('D2.md', { frontmatter: { type: 'Deliverable', order: 30, status: 'Active' }, parentLink: 'D' });
+		vault.addFile('T2.md', { frontmatter: { type: 'Task', order: 10, status: 'Active' }, parentLink: 'D2' });
+		const { containerEl, view } = boardView(vault);
+		view.setFocusLevel('PBI');
+
+		// Sorted, because within-column order is the Base's own sort rather than the order
+		// this descent happens to reach things in — asserting the walk would test the walk.
+		expect(cardTitles(containerEl).sort()).toEqual(['P', 'T', 'T2']);
+	});
+});

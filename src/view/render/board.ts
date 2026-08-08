@@ -20,6 +20,7 @@ import {
 	deliverablesWorkflow,
 	hiddenMatches,
 	overBy,
+	requirementsFocusRoots,
 	requirementsWorkflow,
 } from '../../domain/board';
 import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
@@ -90,7 +91,9 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	// stray column and never counted here, whatever state they carry. Their Task
 	// children are untouched: Task-typed, so this predicate does not reach them, and
 	// they keep their own card and column placement even though their parent has none
-	// here. `item.outsideFilter ||` exempts a Deliverable acting purely as CONTEXT
+	// here — under a focus too, which takes `requirementsFocusRoots` to be true, since
+	// a focus makes the roots the candidates and an excluded root takes its subtree off
+	// screen with it. `item.outsideFilter ||` exempts a Deliverable acting purely as CONTEXT
 	// (an excluded ancestor placing a visible descendant, admitted as a focus root under
 	// PBI focus exactly as an Issue or a Bug already is) — every other extra type keeps
 	// the "a context row renders whenever it has a visible child" guarantee, and this
@@ -101,7 +104,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 		// Its `observedValues` is already Deliverable-free — the stray-column half of
 		// this same exclusion, stated in the workflow itself.
 		requirementsWorkflow(model, host.settings),
-		model.focused ? model.roots : model.results,
+		model.focused ? requirementsFocusRoots(model.roots) : model.results,
 		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverableType(item.typeName)),
 		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverableType(item.typeName),
 	);
