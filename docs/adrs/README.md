@@ -87,3 +87,4 @@ record itself changes. Open a record for its current status, area and any
 - [0018 — Admit runtime dependencies by exception, starting with Pragmatic drag and drop](0018-admit-runtime-dependencies-by-exception.md)
 - [0019 — Notice dependency staleness on a clock, verify it with the gate](0019-notice-dependency-staleness-on-a-clock.md)
 - [0020 — The browser harness draws, it does not assert](0020-the-browser-harness-draws-it-does-not-assert.md)
+- [0021 — Parse the register with a Markdown library, not a pile of patterns](0021-parse-the-register-with-mdast.md)

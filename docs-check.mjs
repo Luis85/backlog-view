@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { collapsed, headings, localLinks, paragraphs, prose, proseWithSpans, sectionBody, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -107,10 +108,9 @@ const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(ra
  * versions eventually, and the checker is what has to notice.
  */
 function checkSections(file, text, sections, what) {
-	const prose = withoutCode(text);
 	const found = [];
 	for (const section of sections) {
-		const hits = sectionHits(prose, section);
+		const hits = sectionHits(text, section);
 		if (hits.length !== 1) fail(file, countProblem(what, section, hits.length));
 		// The first index is what the order walk needs, and it is recorded even when the
 		// count was wrong: a note reported for saying `## Use case` twice should not also
@@ -121,17 +121,19 @@ function checkSections(file, text, sections, what) {
 }
 
 /**
- * Every occurrence of one section marker, in document order.
+ * Every occurrence of one section marker, in document order — `{ index }` either way, so
+ * the order walk reads both kinds the same.
  *
- * Bounded at both ends. A line-start anchor alone is a prefix match, so `## Contextual`
- * satisfied `## Context` — the same prefix hole as `showCounts` vouching for `showCount`,
- * in the third place it has turned up. A `##` heading is a whole line and is anchored as
- * one; a `**Bold**` marker opens a sentence and is bounded by its own closing `**`, so it
- * needs only to not run straight into more word.
+ * The two kinds are genuinely different documents' furniture. A `## Heading` is STRUCTURE,
+ * so it is asked of the parser (`headings`) and compared whole: the prefix hole that let
+ * `## Contextual` satisfy `## Context` — three times, in three places — cannot occur when
+ * the comparison is between two parsed strings rather than between a pattern and the start
+ * of a line. A `**Bold**` marker is not structure at all; it opens a sentence, so it stays
+ * a pattern, bounded so it does not run into more word, over a document with code blanked.
  */
-function sectionHits(prose, section) {
-	const bound = section.startsWith("#") ? String.raw`\s*$` : String.raw`(?=\s|$)`;
-	return [...prose.matchAll(new RegExp(`^${escapeRe(section)}${bound}`, "gm"))];
+function sectionHits(text, section) {
+	if (section.startsWith("##")) return headings(text).filter((h) => h.text === section.slice(3));
+	return [...prose(text).matchAll(new RegExp(`^${escapeRe(section)}(?=\\s|$)`, "gm"))];
 }
 
 /** Missing and duplicated are one question — "how many" — so they are one message. */
@@ -157,42 +159,7 @@ function between(text, start, end) {
 /**
  * Fenced blocks removed. Both fence characters: CommonMark fences with ``` or ~~~, and
  * stripping only the first left every structural question in this file — headings,
- * sections, index entries — readable inside a tilde fence, where nothing renders and
- * nothing is real.
- *
- * Split out from `withoutCode` for the one question that needs a document's structure and
- * its code spans at once: `sectionBody` locates a heading and then reads the PATHS under
- * it, and this register writes every path in backticks, so stripping spans would leave the
- * section empty of the only thing being looked for. Fences are what protect a heading from
- * an example anyway — a `## Decision` inside a code span cannot open a line to begin with,
- * so `sectionHits`' line anchor already refuses it.
- */
-const withoutFences = (text) => text.replace(/```[\s\S]*?```/g, "").replace(/~~~[\s\S]*?~~~/g, "");
 
-/** Wikilinks and paths inside code spans are examples, not references. */
-function withoutCode(text) {
-	return withoutFences(text).replace(/`[^`\n]*`/g, "");
-}
-
-/**
- * What one section says: from its heading to the next `## `, or to the end of the note —
- * `## Where it lives` is a use case's last section, so running to the end is the ordinary
- * case here rather than the edge one. A `###` subheading is inside the section, not after
- * it.
- *
- * The heading is found by `sectionHits`, so a section is the same thing here as everywhere
- * else in this file: a line of its own, never a phrase in a sentence. A duplicated heading
- * is already reported by `checkSections`; the first one is read, which is the half a
- * reader meets first.
- */
-function sectionBody(text, section) {
-	const prose = withoutFences(text);
-	const [hit] = sectionHits(prose, section);
-	if (!hit) return "";
-	const after = prose.slice(hit.index + hit[0].length);
-	const next = /^## /m.exec(after);
-	return next ? after.slice(0, next.index) : after;
-}
 
 /**
  * `field` reads a **value**, `has` reads a **key**, and the difference is load-bearing: a
@@ -386,12 +353,12 @@ for (const [name, note] of notes) {
 const historical = [];
 for (const file of files) {
 	const text = texts.get(file);
-	// Known limitation: `[^\]|#]` admits `\n`, so a `[[link]]` that Markdown hard-wraps
-	// across two lines is captured whole (with the newline inside it) and fails the stem
-	// lookup below. The workaround is to reword so the link never wraps; there is no
-	// detection for it, so a contributor who hits this sees only "unresolved wikilink".
-	for (const [, target] of withoutCode(text).matchAll(/\[\[([^\]|#]+)/g)) {
-		if (!stems.has(target.trim())) fail(file, `unresolved wikilink [[${target.trim()}]]`);
+	// A link the 100-column wrap breaks across two lines used to be captured with the
+	// newline inside it, fail the stem lookup, and report as unresolved — a documented
+	// limitation with no detection, so the contributor saw only a false "unresolved
+	// wikilink". `wikilinks` flattens the wrap, so that link resolves now.
+	for (const target of wikilinks(text)) {
+		if (!stems.has(target)) fail(file, `unresolved wikilink [[${target}]]`);
 	}
 	const living = isLiving(file);
 	for (const [, referenced] of text.matchAll(/`((?:src|test)\/[\w./-]+\.ts)`/g)) {
@@ -401,21 +368,13 @@ for (const file of files) {
 	}
 	// Every relative markdown link, of any shape — not just the `NNNN-slug.md` between
 	// ADRs. A link to `assets/diagram.svg` breaks exactly as loudly as a link to a note.
-	// Code spans are skipped for the same reason wikilinks are: inside backticks nothing
-	// renders as a link, so it is an example being quoted, not a reference being made.
-	// `<...>` is Markdown's way of putting a space in a destination, and this register is
-	// full of filenames with spaces — so the bracketed form is read whole, before the
-	// whitespace-delimited one. Capturing `[^)\s>]+` for both stopped at the first space and
-	// resolved `[x](<The quick filter on the board.md>)` as a file called `The`: a valid link
-	// **failed**. Every other hole in this file has been a false pass; this one blocks a
-	// legitimate note, which is the more expensive direction to get wrong.
-	for (const [, bracketed, bare] of withoutCode(text).matchAll(/\]\(\s*(?:<([^>]*)>|([^)\s]+))[^)]*\)/g)) {
-		const target = bracketed ?? bare;
-		if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) continue;
-		const [linkPath] = target.split("#");
-		if (!linkPath) continue; // a bare anchor into this same file
-		const resolved = path.join(path.dirname(file), decodeURIComponent(linkPath));
-		if (!(await exists(resolved))) fail(file, `links ${target}, which does not exist`);
+	// Which destinations are LOCAL, and how each form spells its target, is the parser's
+	// question now (`localLinks`): the hand-written matcher had to encode `<...>` for a
+	// destination with a space ahead of the whitespace-delimited form, and getting that
+	// order wrong resolved `[x](<The quick filter on the board.md>)` as a file called
+	// `The` — a legal link **failed**, which is the more expensive direction here.
+	for (const { href, target } of localLinks(text)) {
+		if (!(await exists(path.join(path.dirname(file), target)))) fail(file, `links ${href}, which does not exist`);
 	}
 }
 
@@ -447,19 +406,28 @@ for (const file of files) {
  * refused. So the honest statement of what this delivers is narrow: **a citation that
  * has rotted fails the build; a claim nobody cited is exactly as unchecked as before.**
  *
- * Read from `withoutFences`, not `withoutCode`: the path lives in a code span by design,
- * so stripping spans would blind the rule to every real citation — while a citation
- * inside a fenced block is an example being documented (`docs/README.md` has one) and
- * must not be resolved.
+ * Read from `proseWithSpans`, not `prose`: the path lives in a code span by design, so
+ * blanking spans would blind the rule to every real citation — while a citation inside a
+ * FENCE is an example being documented (`docs/README.md` has one) and must not resolve.
+ * The marker NAMED in a span is the third case, and it is why the marker is looked for in
+ * `prose` while the citation is read out of `proseWithSpans`: `docs/README.md` writes
+ * `**Checked by**` inside backticks to name the convention, and naming a thing is not
+ * doing it. Both are offset-preserving, so one index reads into either.
  *
- * The MARKER is found first and the citation parsed out of the paragraph after it,
- * rather than one regex matching the whole thing. That is not a refactor — the one-regex
- * version excluded `\n` from the test name to keep it bounded, so the first real citation
- * written into the register, which Markdown had wrapped across two lines, matched nothing
- * and was silently unchecked while `npm run docs` stayed green. A rule that quietly does
- * nothing on input it cannot parse is worse than no rule, because it reads as a check. So
- * an unparseable marker is itself a failure, and the name is read across the wrap and
- * compared with whitespace flattened on both sides.
+ * A citation is bounded by its PARAGRAPH **and by the next marker**, so a malformed one
+ * cannot reach forward and adopt a path and a quoted phrase belonging to something else.
+ * The paragraph half was a blank-line scan once; it is the parser's answer now, which is
+ * what a paragraph is. The marker half was missing, and the register found it immediately:
+ * "one marker, one citation" put two of them in ONE paragraph, so mangling the first was
+ * not reported — its scan ran on to the second and resolved that instead, leaving the
+ * first claim reading as covered. Two citations in a row is the ordinary shape of the
+ * convention, so the ordinary shape was the blind spot.
+ *
+ * An unparseable marker is a failure of its own, not a skip. The one-regex first version
+ * excluded `\n` from the test name to stay bounded, so the first real citation written
+ * into the register — which Markdown had wrapped across two lines — matched nothing and
+ * went unchecked while `npm run docs` stayed green. A rule that quietly does nothing on
+ * input it cannot parse is worse than no rule, because it reads as a check.
  */
 const MARKER = /\*\*Checked by\*\*/g;
 /**
@@ -480,20 +448,14 @@ for (const file of [...files, "README.md"]) {
 	// tree without one would take every other rule down with it, reporting nothing. The
 	// planted trees in `test/docs/` are exactly such a tree.
 	const text = texts.get(file) ?? ((await exists(file)) ? await readText(file) : "");
-	const prose = withoutFences(text);
-	// The MARKER is looked for in a copy with code spans blanked to spaces — same length,
-	// so every index still points into `prose`, which is what the citation is then parsed
-	// out of. A span cannot be dropped instead of blanked for that reason, and it cannot
-	// be left alone either: `docs/README.md` writes `**Checked by**` inside backticks to
-	// NAME the marker while documenting it, and naming a thing is not doing it. Fences
-	// already handle the block form; this is the inline one.
-	const masked = prose.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
-	for (const marker of masked.matchAll(MARKER)) {
-		// Bounded at the paragraph, so a malformed citation cannot reach forward and adopt
-		// a path and a quoted phrase from further down the note.
-		const after = prose.slice(marker.index + marker[0].length);
-		const end = after.search(/\n[ \t]*\n/);
-		const cited = CITATION.exec(end === -1 ? after : after.slice(0, end));
+	const spans = proseWithSpans(text);
+	const markers = [...prose(text).matchAll(MARKER)].map((m) => m.index);
+	for (const marker of prose(text).matchAll(MARKER)) {
+		const owner = paragraphs(text).find((p) => marker.index >= p.index && marker.index < p.index + p.text.length);
+		const from = marker.index + marker[0].length;
+		const next = markers.find((m) => m > marker.index);
+		const paragraphEnd = owner ? owner.index + owner.text.length : text.length;
+		const cited = CITATION.exec(spans.slice(from, Math.min(next ?? paragraphEnd, paragraphEnd)));
 		if (!cited) {
 			fail(file, "has a **Checked by** with no `path.ts` and \"test name\" after it");
 			continue;
@@ -516,7 +478,7 @@ for (const [, note] of notes) {
 	// itself; `between` did not, so a `## Use case` quoted in an example would bound the
 	// block at the wrong place and every answer drawn from that slice would be about the
 	// wrong region — a false failure rather than a false pass, and just as wrong.
-	const text = withoutCode(texts.get(note.file));
+	const text = collapsed(texts.get(note.file));
 	checkSections(note.file, text, USE_CASE_SECTIONS, "use case");
 	// The whole opening sentence, not just its first word. `**As**` alone would accept a
 	// note that never says what the actor wants or why — the two halves that make it a use
@@ -606,7 +568,7 @@ for (const [, note] of notes) {
 	// Whole-line, via the same matcher every other section rule uses: `## How to check,
 	// properly` heads an investigation into a CI gate that never ran, and a prefix match
 	// sweeps it into a checklist of things a person is supposed to do in a live vault.
-	const swept = sectionHits(withoutCode(text), "## How to check").length > 0;
+	const swept = sectionHits(text, "## How to check").length > 0;
 	const cadence = frontmatter(text)?.field("cadence");
 	if (swept && cadence === null) {
 		fail(note.file, "carries `## How to check` but no `cadence:` — the release sweep cannot place it");
@@ -745,7 +707,7 @@ for (const link of chains) {
 }
 // Code stripped: the index's job is to *link* every record, and a filename quoted inside
 // backticks is an example being shown, not a row pointing anywhere.
-const adrIndex = withoutCode(texts.get(path.join(DOCS, "adrs", "README.md")) ?? "");
+const adrIndex = prose(texts.get(path.join(DOCS, "adrs", "README.md")) ?? "");
 for (const file of adrFiles) {
 	if (!adrIndex.includes(`(${path.basename(file)})`)) fail("docs/adrs/README.md", `does not list ${path.basename(file)}`);
 }
@@ -802,8 +764,8 @@ const sources = await collectTs("src", (n) => n.endsWith(".ts"));
  */
 const specified = new Set(
 	[
-		...[...notes.values()].filter((n) => n.type === "PBI").map((n) => sectionBody(texts.get(n.file), "## Where it lives")),
-		...adrFiles.map((f) => sectionBody(texts.get(f), "## Decision")),
+		...[...notes.values()].filter((n) => n.type === "PBI").map((n) => sectionBody(texts.get(n.file), "Where it lives")),
+		...adrFiles.map((f) => sectionBody(texts.get(f), "Decision")),
 	]
 		.flatMap((body) => body.match(/[\w./-]+/g) ?? [])
 		.map((token) => token.replace(/[.-]+$/, ""))
