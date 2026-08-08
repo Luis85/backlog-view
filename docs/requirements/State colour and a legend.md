@@ -56,8 +56,9 @@ cannot name a state differently.
    done-ness, from hidden words in the timeline row itself (NOT from the row's chip:
    this projection renders no state chip, so until those words existed a bar's state
    lived in its colour alone and withholding the legend was a gap rather than a
-   restatement), a milestone from its own row's accessible name, and today from the
-   line's tooltip and from being today.
+   restatement), a milestone from its own row's accessible name, and today from being
+   today — not from the line's own tooltip, which hangs on an `aria-hidden` div and so
+   carries nothing to the audience that clause is about.
 5. The Today pill this PBI's own header band existed for ([[Reading the grid]]) is
    gone: the legend now names the today line's colour, so the header carries only the
    line itself and its tooltip, unlabeled.
