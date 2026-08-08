@@ -51,16 +51,22 @@ export function dependenciesAvailable(host: BacklogViewHost): boolean {
 }
 
 /**
- * The note one broken raw entry still names, or null when it names nothing this base
- * can resolve — a self-reference and a cycle both resolve, since the entry is only
- * "broken" as a dependency, not as a link. Factored out so the removal picker below can
- * group by the same answer `declaredPrerequisitePaths` collects, rather than resolving
- * a second time and risking the two disagreeing about what a broken entry names.
+ * The note one broken raw entry still names, or null when it names nothing THIS BASE'S
+ * MODEL resolves — a self-reference and a cycle both resolve, because domain only ever
+ * marks an entry broken that way when its note is one `assignDependencies` kept
+ * (`Dependencies as a property` 3b: nothing is loaded to make an entry resolve). Checked
+ * against `model.byPath` rather than `getFirstLinkpathDest` alone, or a broken entry
+ * naming a real vault note this base never loaded — or the scope prune dropped — would
+ * be presented as though the base knows it, which is exactly the "mistyped" reading 3b
+ * forbids. Factored out so the removal picker below can group by the same answer
+ * `declaredPrerequisitePaths` collects, rather than resolving a second time and risking
+ * the two disagreeing about what a broken entry names.
  */
-function resolveBrokenEntry(app: App, item: BacklogItem, raw: string): string | null {
+function resolveBrokenEntry(app: App, model: BacklogModel, item: BacklogItem, raw: string): string | null {
 	const linkpath = linkpathFromRawValue(raw);
 	if (linkpath.length === 0) return null;
-	return app.metadataCache.getFirstLinkpathDest(linkpath, item.file.path)?.path ?? null;
+	const path = app.metadataCache.getFirstLinkpathDest(linkpath, item.file.path)?.path ?? null;
+	return path !== null && model.byPath.has(path) ? path : null;
 }
 
 /**
@@ -72,10 +78,10 @@ function resolveBrokenEntry(app: App, item: BacklogItem, raw: string): string | 
  * exactly the set that misses both cases, so this asks the vault the same question
  * `dependsOnWrite.ts` asks when it writes, not a second opinion of it.
  */
-function declaredPrerequisitePaths(app: App, item: BacklogItem): string[] {
+function declaredPrerequisitePaths(app: App, model: BacklogModel, item: BacklogItem): string[] {
 	const resolved = item.prerequisites.map((p) => p.file.path);
 	const broken = item.brokenPrerequisites
-		.map((raw) => resolveBrokenEntry(app, item, raw))
+		.map((raw) => resolveBrokenEntry(app, model, item, raw))
 		.filter((path): path is string => path !== null);
 	return [...resolved, ...broken];
 }
@@ -94,7 +100,7 @@ function declaredPrerequisitePaths(app: App, item: BacklogItem): string[] {
  */
 function candidates(app: App, model: BacklogModel, item: BacklogItem): BacklogItem[] {
 	const declared = new Map(
-		[...model.byPath].map(([path, candidate]) => [path, declaredPrerequisitePaths(app, candidate)]),
+		[...model.byPath].map(([path, candidate]) => [path, declaredPrerequisitePaths(app, model, candidate)]),
 	);
 	// Asked once for the whole menu rather than once per row: naming any item that
 	// already waits on this one — at any depth, including through a broken cyclic edge —
@@ -146,7 +152,7 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 	const brokenPaths = new Set<string>();
 	const unresolved = new Set<string>();
 	for (const raw of new Set(item.brokenPrerequisites)) {
-		const path = resolveBrokenEntry(host.app, item, raw);
+		const path = resolveBrokenEntry(host.app, model, item, raw);
 		if (path !== null) brokenPaths.add(path);
 		else unresolved.add(raw);
 	}

@@ -212,6 +212,24 @@ describe('the write', () => {
 		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('groups a genuine cycle by the note it names, and offers by raw text a note this base never loaded — never presenting one as the other', async () => {
+		// A and B name each other: a genuine cycle, and both notes are in this base's
+		// model. B also names Excluded, a real vault note the `only` filter never
+		// returned and which is nobody's ancestor either, so it never enters the model
+		// at all — `Dependencies as a property` 3b's "never loaded" case, not a typo.
+		const vault = vaultWith({ A: { dependsOn: 'B' }, B: { dependsOn: ['A', '[[Excluded]]'] } });
+		vault.addFile('Excluded.md', { frontmatter: { type: 'PBI', order: 99 } });
+		const { containerEl } = makeView(vault, withKey, { only: ['Epic.md', 'A.md', 'B.md', 'C.md'] });
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+
+		// The cyclic entry resolves to the note it names, by title, exactly as a broken
+		// self-reference does. The out-of-model entry is offered by its own raw text
+		// with the "does not resolve" detail — never by a title this base cannot vouch
+		// for, and never grouped as though it named a note the base knows.
+		expect(suggester().offered()).toEqual(['A A.md', '[[Excluded]] Does not resolve in this base']);
+	});
+
 	it('removes a broken entry the same way, however many times it repeats', async () => {
 		const vault = vaultWith({ B: { dependsOn: ['[[Missing]]', '[[Missing]]'] } });
 		const { containerEl } = makeView(vault, withKey);
