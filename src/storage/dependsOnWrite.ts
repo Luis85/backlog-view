@@ -208,13 +208,13 @@ export function restoreDependsOn(
 		const remaining = key !== null ? (toRemove.get(key) ?? 0) : 0;
 		if (key !== null && remaining > 0) {
 			toRemove.set(key, remaining - 1);
-			// Captured as `text` (TRIMMED), unlike the forward capture above
-			// (`applyDependsOnDelta`'s `removed.push(value as string)`), which keeps the
-			// original spelling exactly. Left as a known asymmetry rather than fixed here:
-			// it only shows up three moves deep — undoing an undo of an add, with
-			// whitespace hand-added to the note in between — where this redo would
-			// normalize away whitespace the forward capture would have preserved.
-			removed.push(text as string);
+			// Matched on `key` (the TRIMMED, resolved identity), captured for the redo as
+			// the ORIGINAL `value` — the same split `applyDependsOnDelta`'s own capture
+			// keeps above, and for the same reason: `key !== null` already means `value`
+			// is a string, so restoring `value` itself rather than the matched text is
+			// what carries a hand-added respelling (padding, or any other edit) into the
+			// redo instead of normalizing it away.
+			removed.push(value as string);
 			continue;
 		}
 		next.push(value);

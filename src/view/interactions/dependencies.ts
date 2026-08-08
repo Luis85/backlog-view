@@ -205,7 +205,21 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
  * than plan beside it — one move, several inputs, one place the batch is made — but a
  * symbol exported for a caller that does not exist is dead code today, and the register
  * is where that intent is recorded until the second input arrives.
+ *
+ * Rechecks the SOURCE — the item the menu was opened on, not the candidate `onChoose`
+ * already re-asks `candidates` about — against `host.model` read fresh here, not the
+ * `model` closed over when the menu opened: a suggester left open is exactly the window
+ * an external edit can use to drop this note out of the Base's results entirely, and
+ * `applySafely`'s own `outsideFilter` test only catches a row still in `byPath` — never
+ * one missing from it altogether. Shared by both entries because both plan through here:
+ * the add path's own recheck only asks whether the PAIR is still legal, and the removal
+ * path asks nothing at all, so neither on its own would have caught this.
  */
 function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
+	const source = host.model?.byPath.get(item.file.path);
+	if (source === undefined || source.outsideFilter) {
+		new Notice('That note changed while the picker was open, so nothing was written.');
+		return;
+	}
 	void host.applySafely([{ file: item.file, dependsOn }]);
 }

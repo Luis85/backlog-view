@@ -281,6 +281,30 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toEqual([' [[A]] ']);
 	});
 
+	it('captures its own redo from the live spelling it removed, not the trimmed match — mirroring the forward capture', async () => {
+		const vault = new FakeVault();
+		const a = vault.addFile('A.md');
+		const item = vault.addFile('Item.md');
+
+		// The plugin adds [[A]]...
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: a } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+
+		// ...the user respells it by hand, padding it with whitespace the reader trims
+		// but which is still the user's own edit.
+		vault.fm('Item.md')['dependsOn'] = [' [[A]] '];
+
+		const redoBatch: RestoreWrite[] = [];
+		await applyRestores(vault.app, inverses, undefined, (inv) => redoBatch.push(inv));
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+
+		// Redoing has to reverse what this undo actually did — remove the padded
+		// entry — so the redo it records must hold the padded spelling, not the
+		// trimmed form the plugin originally wrote.
+		await applyRestores(vault.app, redoBatch);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual([' [[A]] ']);
+	});
+
 	it('still matches a live entry naming no note by its exact text — nothing to resolve, nothing to share', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: 'Ghost' } });

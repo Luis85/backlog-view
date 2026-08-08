@@ -79,12 +79,18 @@ a different control.
   never written to here — the write lands on the dependent — but offering it would make an
   excluded note part of this base's vocabulary, which is the same rule that keeps its state
   out of the Set menu.
-- **2d — the candidate stops being legal before the pick lands.** The suggester is built from
-  a moment, and the model can be rebuilt while it sits open, so choosing a candidate re-asks
-  `candidates` of the LIVE model — the same rule that built the offer — rather than trusting
-  the list the menu opened with. A pick that would now repeat a prerequisite or close a loop
-  writes nothing, and a `Notice` says so: "every offer would change something" is a promise
-  about the write, and it is only true at write time if it is checked again at write time.
+- **2d — the candidate stops being legal, or the item itself leaves the Base, before the pick
+  lands.** The suggester is built from a moment, and the model can be rebuilt while it sits
+  open, so choosing a candidate re-asks `candidates` of the LIVE model — the same rule that
+  built the offer — rather than trusting the list the menu opened with. A pick that would
+  now repeat a prerequisite or close a loop writes nothing, and a `Notice` says so: "every
+  offer would change something" is a promise about the write, and it is only true at write
+  time if it is checked again at write time. The item the menu was opened on is asked the
+  same question, separately from the candidate: it can leave the Base's results the same
+  way a candidate can, and a note missing from the live model entirely — not merely
+  `outsideFilter` — is exactly as unwritable as one the model still lists that way. That
+  half of the recheck guards **Remove dependency…** too, which has no candidate to lose
+  legality but has the same source that can.
 - **3a — the write takes the note out of the Base's filter.** Nothing reports it, and that
   is deliberate rather than forgotten: a filter can name the very property being written,
   so the row can leave in silence. [[The outcome report was built from one sentence]]

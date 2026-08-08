@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { flush, makeView, refresh, rowByTitle, useViewHarness } from '../helpers/view';
@@ -50,6 +51,13 @@ function suggester(): FuzzySuggestModal<unknown> {
 	const modal = Modal.lastOpened;
 	if (!(modal instanceof FuzzySuggestModal)) throw new Error('no suggester opened');
 	return modal as FuzzySuggestModal<unknown>;
+}
+
+/** Rebuild the model with one note dropped from the Base's own results — the way an
+ *  external edit can remove a note while a suggester sits open over it. */
+function refreshExcluding(view: ProductBacklogView, vault: FakeVault, path: string): void {
+	(view as unknown as Record<string, unknown>).data = { data: vault.entries().filter((e) => e.file.path !== path) };
+	view.onDataUpdated();
 }
 
 describe('when the entries are offered at all', () => {
@@ -290,5 +298,36 @@ describe('the write', () => {
 		await flush();
 
 		expect(vault.fm('C.md')['dependsOn']).toEqual(['B']);
+	});
+
+	it('writes nothing when the source note leaves the Base while the "Depends on…" picker is open', async () => {
+		// B is not an ancestor of anything here, so dropping it from the Base's results
+		// removes it from the model entirely — it is not even a context row — which is
+		// the shape `outsideFilter` alone cannot catch.
+		const vault = vaultWith();
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Depends on…');
+		refreshExcluding(view, vault, 'B.md');
+		suggester().choose('A');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
+		expect(view.canUndo()).toBe(false);
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+	});
+
+	it('writes nothing when the source note leaves the Base while the "Remove dependency…" picker is open', async () => {
+		const vault = vaultWith({ B: { dependsOn: 'A' } });
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		refreshExcluding(view, vault, 'B.md');
+		suggester().choose('A');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBe('A');
+		expect(view.canUndo()).toBe(false);
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
 	});
 });
