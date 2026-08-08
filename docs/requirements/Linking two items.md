@@ -103,8 +103,16 @@ a different control.
 `src/view/interactions/menu.ts`, over the suggester machinery in `src/ui/valueSuggest.ts`
 and `src/ui/prompts.ts` that the state and tag pickers already use. What the write *is* —
 append or drop one entry, and drop the key when the last one goes — is planned in
-`src/domain/writePlan.ts` and applied by `src/storage/frontmatter.ts`, whose `writeOptional`
-already states "absence is a value, and never write to an empty key" for the state and
-horizon removals; a third such property adds a call, not a rule. Which picks are legal is
-the loop question `src/domain/dropTargets.ts` already answers for the tree, asked of a
-second edge kind.
+`src/domain/writePlan.ts` and applied by `src/storage/frontmatter.ts`.
+
+**This is a new frontmatter operation, not an existing call.** "Absence is a value, and
+never write to an empty key" holds in that module today, but it is spelled twice in two
+shapes rather than once: the state key guards inline on `settings.stateKey` in `applyInto`,
+and the axis keys go through `axisEntries`, whose `key !== ''` test drops an unconfigured
+key and whose `null` value means delete. Neither shape takes a **list**, which is what this
+property is, and neither appends to or removes from one. So an implementer adds an
+operation — append one entry, drop one entry, drop the key when the last goes, and write
+nothing when the key is unset — rather than a call to something already written; whether it
+also becomes the single statement of the rule for the other two is a refactor this note
+neither needs nor forbids. Which picks are legal is the loop question
+`src/domain/dropTargets.ts` already answers for the tree, asked of a second edge kind.
