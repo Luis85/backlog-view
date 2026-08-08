@@ -82,8 +82,17 @@ function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], dr
 	let anyDone = false;
 	for (const palette of palettes) {
 		// One section per workflow, each headed by its name — empty, and so undrawn, where
-		// it is the only one and there is nothing to tell apart.
-		if (palette.label) addGroupLabel(legendEl, palette.label);
+		// it is the only one and there is nothing to tell apart. Presentational: that a
+		// Deliverable is tracked by its own states is already in `stateNote`'s hidden words.
+		//
+		// The heading and its swatches go in a BOX of their own, because the strip wraps and
+		// a flat row wraps between any two items: seen in the harness at 560px, the
+		// "Deliverables" heading ended one line while its swatches carried onto the next,
+		// leaving a row of colours belonging to nothing. A lone unlabelled palette gets no
+		// box — there is no group to hold together, and the single-workflow strip stays the
+		// markup it has always been.
+		const section = palette.label ? legendEl.createDiv({ cls: 'pbl-legend-section' }) : legendEl;
+		if (palette.label) section.createSpan({ cls: 'pbl-legend-group', text: palette.label });
 		// The same list, the same index, the same offset and modulo `paletteSlot` applies
 		// to a bar. Except for done, which is the one state whose bar does NOT draw its
 		// slot: a done row's bar is overridden to green in `timeline.css`, deliberately,
@@ -95,7 +104,7 @@ function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], dr
 		for (const state of palette.values) {
 			const done = paletteDone(palette, state);
 			anyDone ||= done;
-			addSwatch(legendEl, done ? 'pbl-legend-done' : `pbl-state-${paletteSlot(palette, state)}`, state);
+			addSwatch(section, done ? 'pbl-legend-done' : `pbl-state-${paletteSlot(palette, state)}`, state);
 		}
 	}
 	// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item can
@@ -104,8 +113,11 @@ function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], dr
 	// actually took the override — rather than of `results`: a done item with no bar at all
 	// (shelved, filtered out, or hidden by "Show completed items") must not put a green
 	// swatch beside a grid drawing none. ONE swatch for both workflows: green means finished
-	// on either, and the grid draws one green.
-	if (!anyDone && drawn.done) addSwatch(legendEl, 'pbl-legend-done', doneLabel(palettes));
+	// on either, and the grid draws one green — named by the first done value any drawn
+	// palette declares.
+	if (!anyDone && drawn.done) {
+		addSwatch(legendEl, 'pbl-legend-done', palettes.flatMap((palette) => palette.doneValues)[0] ?? 'Done');
+	}
 	// The rule's other direction: a bar that draws the plain accent — no slot, no done
 	// override, no milestone cyan — is a colour on the grid the key does not explain.
 	// `drawn.accent` is the RENDER's own report of that fact (see its doc on
@@ -113,20 +125,6 @@ function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], dr
 	// `barClasses`'s precedence is exactly what missed a marker outside the window drawing
 	// the accent under `.pbl-bar-outside` instead of its own cyan.
 	if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
-}
-
-/** The done value to NAME the fallback swatch by — the first one any drawn palette declares. */
-function doneLabel(palettes: StatePalette[]): string {
-	return palettes.flatMap((palette) => palette.doneValues)[0] ?? 'Done';
-}
-
-/**
- * A workflow's name above its swatches, so two vocabularies in one strip say which is
- * which. Presentational like everything else here: the fact a Deliverable is tracked by
- * its own states is already on its row, in `stateNote`'s hidden words.
- */
-function addGroupLabel(legendEl: HTMLElement, label: string): void {
-	legendEl.createSpan({ cls: 'pbl-legend-group', text: label });
 }
 
 function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string): void {

@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, titlesOf, useViewHarness } from '../helpers/view';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
-import { horizonVault, makeRoadmap, shelfTitles } from '../helpers/roadmap';
+import { horizonVault, makeRoadmap, shelfTitles, timelineTitles } from '../helpers/roadmap';
 
 useViewHarness();
+
+const DATED_AXIS = { startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' };
 
 function collapseCtls(containerEl: HTMLElement): HTMLButtonElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
@@ -55,19 +57,18 @@ describe('the bulk collapse controls reach cards', () => {
 		expect(collapseCtls(containerEl).every((b) => b.disabled)).toBe(true);
 	});
 
-	it('disables them on a dated roadmap whose only rows are timeline rows', () => {
-		const DATED_AXIS = { startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' };
+	it('disables them on a dated roadmap where no bar hangs under another', () => {
 		const vault = new FakeVault();
-		// BOTH dated, so both draw bars and neither is unplaceable: the shelf stays
-		// empty, no card body is drawn anywhere in the projection, and there is
-		// genuinely nothing to collapse. This is the case a board-only test cannot
-		// reach — cards exist on screen, and none of them is a card body.
+		// Two dated ROOTS: both draw bars and neither is unplaceable, so the shelf stays
+		// empty, no card body is drawn anywhere in the projection, and no timeline row
+		// draws a chevron either — there is genuinely nothing to collapse. This is the
+		// case a board-only test cannot reach: cards exist on screen, and none of them
+		// discloses anything.
 		vault.addFile('Dated epic.md', {
 			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-12-01' },
 		});
-		vault.addFile('Dated feature.md', {
-			frontmatter: { type: 'Feature', order: 10, start: '2026-09-01', due: '2026-10-01' },
-			parentLink: 'Dated epic',
+		vault.addFile('Other epic.md', {
+			frontmatter: { type: 'Epic', order: 20, start: '2026-09-01', due: '2026-10-01' },
 		});
 		const { containerEl } = makeRoadmap(vault, DATED_AXIS);
 
@@ -79,6 +80,28 @@ describe('the bulk collapse controls reach cards', () => {
 		// what keeps them from vanishing as the projection changes.
 		expect(collapseCtls(containerEl).length).toBe(2);
 		expect(collapseCtls(containerEl).every((b) => b.disabled)).toBe(true);
+	});
+
+	it('enables them for a timeline row that has a bar under it, and drives that row', () => {
+		const vault = new FakeVault();
+		vault.addFile('Dated epic.md', {
+			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-12-01' },
+		});
+		vault.addFile('Dated feature.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-09-01', due: '2026-10-01' },
+			parentLink: 'Dated epic',
+		});
+		const { containerEl } = makeRoadmap(vault, DATED_AXIS);
+
+		// A parent nobody has ruled on opens shut, here as in the tree: the child is
+		// behind the epic's disclosure and the controls are live because it drew one.
+		expect(timelineTitles(containerEl)).toEqual(['Dated epic']);
+		const expand = collapseCtl(containerEl, 'Expand all');
+		expect(expand?.disabled).toBe(false);
+
+		expand?.click();
+
+		expect(timelineTitles(containerEl)).toEqual(['Dated epic', 'Dated feature']);
 	});
 });
 

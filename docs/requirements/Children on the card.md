@@ -43,12 +43,22 @@ card — and a count is the half of it that cannot be acted on.
 - **1a — the item has no visible direct children.** No disclosure renders. A card whose
   children have all hidden is a leaf, exactly as such a row is: a chevron opening onto
   nothing is a lie its rollup already covers for.
-- **1b — the card is a timeline row.** No disclosure. A dated-axis row is the card
-  *shell* in a bar-grid layout, and a disclosure inside that geometry is its own
-  question.
+- **1b — the card is a timeline row.** No disclosure of THIS kind. A dated-axis row is
+  the card *shell* in a bar-grid layout, and a list of children inside that geometry is
+  its own question; the row grew a different answer to it —
+  [[Collapsing a bar's subtree]] folds the rows below it instead of listing them on its
+  face, off the same collapse bit. What the two share is the register of what was drawn
+  (`cardChildrenShown`) and therefore the row menu's section, which is why that gate is
+  the render's own record rather than the projection's name.
 - **1c — the quick filter is running.** It overrides collapse state, so every listed
   card shows its children and the toggle is disabled — it would otherwise write state
   that reads back as expanded and took effect once the filter cleared.
+- **1d — what the disclosure is announced AS.** Open, and shared with the timeline's
+  row: this toggle is a `<button aria-expanded>` inside a `role="option"` card, and
+  `option` has presentational children, so a user agent may flatten it and drop both.
+  What is certain is the card's own name (which the toggle's count joins) and the card
+  menu's entries. See [[A disclosure nested in an option role]] — no criterion below
+  claims more than that.
 - **3a — a child is done.** Listed, styled done. Hiding finished work is the option that
   says so, not this.
 - **3b — a child already has a card of its own.** Still listed. The disclosure answers
@@ -93,8 +103,11 @@ that importing from each other would close. `src/view/render/cardChildren.ts` im
 `listedChildren` and `childrenLabel` and adds `renderCardChildren` (the disclosure, and
 the list when it is open), called from `renderCardBody` in `src/view/render/board.ts`
 so every card projection gets one implementation and timeline rows, which use the card
-shell without the body, get none. The render module also records which paths it drew a
-disclosure for; the view publishes that set as `BacklogViewHost.cardChildrenShown` and
+shell without the body, get none of THIS list — they draw their own disclosure over the
+rows below them instead ([[Collapsing a bar's subtree]]). The render module also records
+which paths it drew a
+disclosure for, and so does that one; the view publishes the set as
+`BacklogViewHost.cardChildrenShown` and
 `menu.ts`'s `addChildrenSection` reads it — the same list and the same gate, reached
 through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
 (`showContextMenuFor`) — so neither re-derives an answer the screen already has.

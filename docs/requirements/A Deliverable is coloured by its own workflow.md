@@ -178,6 +178,22 @@ did not follow the Deliverables board's own states. Confirmed in the code — `r
 called `stateColorSlot(settings, model.observedStates, item.stateValue)`, none of whose
 three arguments knows a second workflow exists.
 
-The appearance of the two-section legend — the heading's weight against the strip's muted
-colour, and whether a second vocabulary crowds a narrow pane — is a live-vault check this
-harness cannot make (ADR 0020). See [[Smoke test the roadmap]].
+The appearance was then LOOKED at, in `npm run harness` with the demo fixture's horizon
+property removed so the dated axis resolves — which answered two of the three questions the
+jsdom suite could not, and found a defect neither had.
+
+- The heading reads as a heading: `--font-semibold` against the strip's muted colour is
+  weight rather than colour, so the harness is faithful about it.
+- **A second vocabulary DID crowd a narrow pane, and worse than crowding.** At 560px the
+  strip wrapped mid-group — the "Deliverables" heading ended one line while its swatches
+  carried onto the next, leaving a row of colours belonging to nothing. `.pbl-legend` is a
+  wrapping flex row and a flat row breaks at whatever item reaches the edge. Each named
+  palette now sits in a `.pbl-legend-section` box, so a break falls BETWEEN groups.
+- The lone-Deliverable configuration draws correctly and legibly: no heading, slot 0 used,
+  and `Other` keyed beside it for the Epic bars whose own workflow has no key.
+
+What the harness still cannot answer, and what remains owed to a vault (ADR 0020): the
+COLOURS. Seven slot-bearing values across four slots means `Ready`/`Concept`,
+`Active`/`Draft` and `Review`/`In review` each share one, and both done values draw the
+same green — correct by the rule, and only a themed vault can say whether it reads that
+way. See [[Smoke test the roadmap]].

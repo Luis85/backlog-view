@@ -1,8 +1,7 @@
 import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
-import { BoardModel } from '../domain/board';
+import { BoardModel, StatePalette } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
-import { StatePalette } from '../domain/board';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';

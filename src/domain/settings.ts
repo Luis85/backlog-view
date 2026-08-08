@@ -407,6 +407,110 @@ export function optionalKeyFor(settings: BacklogSettings, field: OptionalField):
  * very workflow it is deliberately reusing — the `''` a cleared/unset key resolves to
  * there is what lets `ownedProperties` skip it.
  */
+/**
+ * The relationships `resolveSettings` ESTABLISHES between fields, stated as a predicate so
+ * a `BacklogSettings` that could not have come from it can be recognised. Returns the
+ * broken one by name, or null.
+ *
+ * This exists because a test fixture is the one producer that skips the resolver. A
+ * `{ ...defaultSettings(), stateKey: 'status', states: [...] }` literal carries the fields
+ * and none of the rules, so it can express a vault nobody could configure — and that is
+ * invisible until some function starts reading a RELATIONSHIP rather than a field, at
+ * which point the fixture asserts behaviour for a configuration that cannot occur, in
+ * both directions: a passing test proving nothing, and a failing test blaming correct
+ * code. Four expectations in `test/domain/statePalettes.test.ts` were exactly that (see
+ * `docs/issues/A hand-built fixture can model a state the producer cannot produce.md`).
+ *
+ * The list is the resolver's own guarantees, and it is the whole of what is checkable
+ * here: these are relationships between VALUES, so no type can hold them.
+ */
+export function settingsInconsistency(settings: BacklogSettings): string | null {
+	// `effectiveDoneValues` falls back to DEFAULT_DONE_VALUES, and the Deliverable list
+	// falls back to that in turn, so neither is ever empty coming out of the resolver.
+	if (settings.doneValues.length === 0) return 'doneValues is empty';
+	if (settings.deliverableDoneValues.length === 0) return 'deliverableDoneValues is empty';
+	// The one that bit. With the Deliverable key falling back and no list of its own
+	// declared, the resolver COPIES `states` — so an empty Deliverable list beside a
+	// populated requirements one is a state it cannot emit.
+	if (settings.deliverableStateKey === '' && settings.deliverableStates.length === 0 && settings.states.length > 0) {
+		return 'deliverableStates is empty while the key falls back to a configured states list';
+	}
+
+	// `clearablePropKey`'s yielding rule: the tags key resolves to '' rather than
+	// colliding with one of the four properties that outrank it.
+	const taken = [settings.parentKey, settings.orderKey, settings.typeKey, settings.stateKey];
+	if (settings.tagsKey !== '' && taken.includes(settings.tagsKey)) return 'tagsKey collides with a key that outranks it';
+	// Both per-state maps are built by `nameTable` over the CONFIGURED states, lowercased —
+	// so a key naming a state the workflow does not have is one the resolver would have
+	// dropped. Limits go further and exclude the done ones: WIP is what sits between started
+	// and finished, and capping the archive is a different idea wearing the same word.
+	const named = new Set(settings.states.map((state) => state.toLowerCase()));
+	const done = new Set(settings.doneValues.map((value) => value.toLowerCase()));
+	const stray = (table: Record<string, unknown>, allowed: (key: string) => boolean): string | null =>
+		Object.keys(table).find((key) => !allowed(key)) ?? null;
+	const strayLimit = stray(settings.wipLimits, (key) => named.has(key) && !done.has(key));
+	if (strayLimit !== null) return `wipLimits names ${strayLimit}, which is not a non-done configured state`;
+	const strayPolicy = stray(settings.columnPolicies, (key) => named.has(key));
+	if (strayPolicy !== null) return `columnPolicies names ${strayPolicy}, which is not a configured state`;
+	// Values, not only keys: `parseWipLimit` admits integers of 1 or more and `nameTable`
+	// drops whatever it refuses, so a limit of 0 is a cell the resolver would have left
+	// empty; the policy map drops an empty string the same way (`|| null`). Raised in
+	// review as half a job, correctly — a key rule that ignores the value beside it is a
+	// rule someone will read as covering both.
+	const badLimit = Object.entries(settings.wipLimits).find(([, n]) => !Number.isInteger(n) || n < 1);
+	if (badLimit) return `wipLimits sets ${badLimit[0]} to ${badLimit[1]}, which parseWipLimit would discard`;
+	// `str(...).trim()` and then `|| null`, so a policy is stored trimmed or not at all —
+	// surrounding whitespace is as unproducible as an empty string. Review caught the first
+	// version rejecting only the empty case, which is the same half-a-job shape twice.
+	const repeated = repeatIn(settings);
+	if (repeated !== null) return repeated;
+	const badPolicy = Object.entries(settings.columnPolicies).find(([, text]) => text.trim() !== text || text === '');
+	if (badPolicy) return `columnPolicies sets ${badPolicy[0]} to ${JSON.stringify(badPolicy[1])}, which the resolver would trim or drop`;
+	return null;
+}
+
+/**
+ * The four VOCABULARIES, against `dedupe()`. Not the two done lists: they take `list()`
+ * alone, so a repeat there is reachable and rejecting it would refuse a real vault.
+ * Its own function to keep `settingsInconsistency` inside its complexity budget.
+ */
+function repeatIn(settings: BacklogSettings): string | null {
+	for (const field of ['states', 'deliverableStates', 'startedStates', 'horizonValues'] as const) {
+		const seen = new Set<string>();
+		for (const value of settings[field]) {
+			const key = value.toLowerCase();
+			if (seen.has(key)) return `${field} repeats ${JSON.stringify(value)}, which dedupe() would have dropped`;
+			seen.add(key);
+		}
+	}
+	return null;
+}
+
+/**
+ * The check on the CATEGORY, at the widest choke point a settings object passes through
+ * (`buildModel`) rather than at the fixtures someone thought to look at — so it holds for
+ * tests nobody has written yet.
+ *
+ * It throws rather than reporting, and unconditionally rather than under a dev flag,
+ * because in production it is unreachable: `resolveSettings` is the only producer, its
+ * one spread in `view/backlogView.ts` touches none of these fields, and
+ * `test/domain/settings.test.ts` checks that claim across a spread of configurations
+ * rather than leaving it as an argument. What it costs there is four comparisons on a
+ * path that already sorts.
+ *
+ * Scope, stated to the check and not past it: this catches a bad fixture in any test that
+ * builds a MODEL, and not one in a test that only calls a pure settings function. Nothing
+ * intercepts a `BacklogSettings` literal itself — there is no seam to put one on.
+ */
+export function assertResolvedSettings(settings: BacklogSettings): void {
+	const wrong = settingsInconsistency(settings);
+	if (wrong === null) return;
+	throw new Error(
+		`settings that resolveSettings could not have produced: ${wrong}. Build the fixture ` +
+			'through resolveSettings (see test/domain/statePalettes.test.ts) rather than spreading defaultSettings().',
+	);
+}
+
 export function resolvedDeliverableStateKey(settings: BacklogSettings): string {
 	return settings.deliverableStateKey || settings.stateKey;
 }
@@ -550,22 +654,16 @@ function ownedProperties(settings: BacklogSettings): { label: string; key: strin
 
 /**
  * The one pair `configProblems` lets share a key: the requirements state and the
- * Deliverable state, explicitly configured to the same property. Sharing a key by
- * FALLBACK was already legitimate (`resolvedDeliverableStateKey`, and `ownedProperties`
- * reading `deliverableStateKey` RAW so that fallback resolves to '' and never reaches
- * this map at all) — this is the same "Deliverables don't need their own dedicated
- * status property; they can use the same one" idea, asked for explicitly rather than
- * arrived at by leaving a key unset. The two workflows do not share a vocabulary
- * (`deliverableStates`/`deliverableDoneValues` stay independent of `states`/`doneValues`
- * once the key IS explicit — see the Deliverable workflow's own resolution rules), so
- * one property silently overwriting the other's meaning — the usual reason a shared
- * key is a mistake — never applies to this pair.
+ * Deliverable state, explicitly configured to the same property. Sharing by FALLBACK is
+ * already legitimate and never reaches this map (`ownedProperties` reads
+ * `deliverableStateKey` RAW, so an unset one resolves to ''); this is the same
+ * "Deliverables can use the same status property" idea asked for explicitly. The two
+ * workflows keep independent vocabularies either way, so the usual reason a shared key is
+ * a mistake — one property silently overwriting the other's meaning — never applies here.
  *
- * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": a
- * third property landing on the same key is still every bit the mistake it always was,
- * so the exemption only fires when these two are the WHOLE group sharing the key —
- * one more label on it (order, tags, an axis key, anything) reports as a collision
- * again, state and deliverable state both named in it like any other clash.
+ * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": one
+ * more label on the key (order, tags, an axis key) reports as a collision again, these
+ * two named in it like any other clash.
  */
 const STATE_KEY_SHARING_EXEMPT: [string, string] = ['state', 'deliverable state'];
 

@@ -14,7 +14,7 @@ import {
 	readTags,
 	resolveParent,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from './settings';
+import { ALL_TYPES, assertResolvedSettings, BacklogSettings, LEVELS, OPTIONAL_FIELDS, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from './settings';
 import { earliest, latest, reversedSpan } from './timeline';
 import {
 	collectObservedDeliverableStates,
@@ -190,6 +190,7 @@ export interface BacklogModel {
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
+	assertResolvedSettings(settings);
 	const linked = linkAll(createItems(app, entries, settings), settings);
 	breakCycles(linked);
 	const ignoredCount = settings.hierarchyOnly ? pruneOutsideHierarchy(linked, settings) : 0;

@@ -239,38 +239,26 @@ export function deliverablesWorkflow(model: BacklogModel, settings: BacklogSetti
  *
  * - **It can draw** when its RESOLVED key is non-empty. Without a key `domain/model.ts`
  *   sets that workflow's every state value to null, so no bar it tracks can carry a
- *   colour, and a vocabulary in this list that nothing can draw is exactly the defect the
- *   legend's own rule names — a swatch exists only where a bar can draw the thing it
- *   keys. Resolved, not raw: a Deliverable workflow falling back reads the requirements
- *   property, which is a real property, so it draws.
+ *   colour — and a vocabulary here that nothing can draw is the defect the legend's own
+ *   rule names. Resolved, not raw: a falling-back Deliverable workflow reads the
+ *   requirements property, which is a real property, so it draws.
  * - **It is a SECOND one** when the user DECLARED a second — its own property, or its own
- *   list of values or done values. Splitting on the key alone was wrong in both
- *   directions, and review found both: a base configuring only the Deliverable key built
- *   two palettes where one workflow exists, and a base whose key falls back while
- *   `deliverableStates` is populated built one where two do. `resolveSettings` keeps a
- *   populated list whatever the key does — the lists follow the key only while they are
- *   EMPTY — so one property can legitimately be read through two vocabularies.
+ *   list of values or done values (`declaresOwnWorkflow`). Asked of the DECLARATIONS, not
+ *   of the two computed lists: with no list configured each workflow falls back to its own
+ *   OBSERVED states, and those populations are disjoint by construction
+ *   (`requirementsWorkflow` excludes Deliverables), so comparing the computed lists splits
+ *   one workflow in two in a base that declared nothing at all.
  *
- *   Asked of the DECLARATIONS rather than of the two computed lists, which is the same
- *   question and a different answer: with no list configured each workflow falls back to
- *   the states its own results were OBSERVED to hold, and those populations are disjoint
- *   by construction (`requirementsWorkflow` excludes Deliverables), so the computed lists
- *   differ in a base that declared nothing at all. Comparing them split one workflow in
- *   two and drew `Done` twice in one strip.
+ * With two: the label names each so one strip says which is which, and slots CONTINUE
+ * across them rather than restarting — hence an ordered list plus an offset rather than
+ * two independent vocabularies. Restarting would paint a Deliverable's first state the
+ * same colour as a PBI's, and those are different facts. Four slots still wrap
+ * (`STATE_COLOR_SLOTS`), so a long enough pair repeats.
  *
- * Two of them, and: the label names each so two vocabularies in one strip say which is
- * which, and slots CONTINUE across them rather than restarting — which is why this returns
- * an ordered list and an offset rather than two independent vocabularies. Restarting would
- * paint a Deliverable's first state the same colour as a PBI's first state, and the whole
- * point of asking the item's own workflow is that those are different facts. Four slots
- * still wrap (`STATE_COLOR_SLOTS`), so a long enough pair repeats — the same honest limit
- * one vocabulary longer than the palette already has.
- *
- * A lone one is unlabelled and starts at slot 0 whichever it is: nothing to tell it apart
- * from, and no earlier vocabulary for its slots to continue from. NEITHER able to draw
- * returns an empty list — no palette, rather than a palette of nothing — so a caller has
- * to say what it does with no vocabulary at all instead of being handed one that silently
- * keys nothing.
+ * A lone one is unlabelled and starts at slot 0: nothing to tell it apart from, and no
+ * earlier vocabulary to continue from. NEITHER able to draw returns an empty list, so a
+ * caller has to say what it does with no vocabulary at all rather than be handed one that
+ * silently keys nothing.
  */
 export interface StatePalette {
 	/** Names the workflow in the legend; empty when there is only one and nothing to tell apart. */

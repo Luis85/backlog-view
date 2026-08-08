@@ -436,6 +436,29 @@ export default defineConfig([
 			// is there to force a split by subject long before a file becomes the place
 			// tests go to hide.
 			'max-lines': ['error', { max: 450, skipBlankLines: true, skipComments: true }],
+			// A fixture built by spreading the defaults carries the FIELDS of
+			// `BacklogSettings` and none of the relationships BETWEEN them that
+			// `resolveSettings` establishes — so it can express a vault nobody could
+			// configure, which stays invisible until some function reads two fields
+			// together and then asserts behaviour for a configuration that cannot occur.
+			// `test/helpers/settings.ts` applies those derivations and checks the result;
+			// this is the rule at the forbidden thing, so it holds for tests not yet
+			// written rather than for the fixtures someone thought to look at.
+			//
+			// What it does NOT see, stated because the gap is real: spreading a settings
+			// object under any OTHER name (`{ ...settings, tagsKey: 'x' }`) breaks the same
+			// relationships and is invisible to a syntactic rule. `buildModel`'s
+			// `assertResolvedSettings` is the runtime net under that case, and it reaches
+			// only the tests that build a model. See
+			// `docs/issues/A hand-built fixture can model a state the producer cannot produce.md`.
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: "SpreadElement > CallExpression[callee.name='defaultSettings']",
+					message:
+						'Spreading defaultSettings() skips the relationships resolveSettings establishes between fields. Use settingsWith({ ... }) or settingsFrom(options) from test/helpers/settings.ts.',
+				},
+			],
 			// The harness deliberately reaches past the view's public surface.
 			'@typescript-eslint/no-explicit-any': 'off',
 			// A stand-in has to accept the arguments the real API is called with, whether

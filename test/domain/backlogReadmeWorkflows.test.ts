@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 import { defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 
 /**
  * What the generated README says about the TWO workflows sharing one property table.
@@ -16,7 +17,7 @@ describe('the property table with two workflows in it', () => {
 	const keyRows = (content: string, key: string) => content.split('\n').filter((l) => l.startsWith(`| \`${key}\` |`)).length;
 
 	it('adds a property row for a configured Deliverable state key', () => {
-		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const settings = settingsWith({ deliverableStateKey: 'deliverableStatus' });
 		const content = backlogReadmeContent(settings, [], 'test');
 		expect(content).toContain('deliverableStatus');
 	});
@@ -33,7 +34,7 @@ describe('the property table with two workflows in it', () => {
 		// stateKey, so the requirements-workflow row — and the whole '## Workflow states'
 		// section — can be entirely absent from this same document while this row renders.
 		// "The one above" would have no antecedent here.
-		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const settings = settingsWith({ deliverableStateKey: 'deliverableStatus' });
 		const content = backlogReadmeContent(settings, [], 'test');
 		expect(content).toContain('| `deliverableStatus` | Optional, on a Deliverable |');
 		expect(content).not.toContain('## Workflow states');
@@ -49,8 +50,8 @@ describe('the property table with two workflows in it', () => {
 		// documented the second as two SEPARATE properties, and listed the one key twice
 		// in a table of what a note may carry.
 		for (const settings of [
-			{ ...defaultSettings(), stateKey: 'status' },
-			{ ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'status' },
+			settingsWith({ stateKey: 'status' }),
+			settingsWith({ stateKey: 'status', deliverableStateKey: 'status' }),
 		]) {
 			const content = backlogReadmeContent(settings, [], 'test');
 			expect(keyRows(content, 'status')).toBe(1);
@@ -61,7 +62,7 @@ describe('the property table with two workflows in it', () => {
 
 
 	it('still claims "separate" when the Deliverable workflow has its own distinct key', () => {
-		const settings = { ...defaultSettings(), stateKey: 'status', deliverableStateKey: 'deliverableStatus' };
+		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'deliverableStatus' });
 		const content = backlogReadmeContent(settings, [], 'test');
 		expect(content).toContain(
 			"| `deliverableStatus` | Optional, on a Deliverable | The Deliverable workflow's own state — separate from the requirements workflow's |",
@@ -77,7 +78,7 @@ describe('the property table with two workflows in it', () => {
 		// independent configuration: the document has no requirements-state row and no
 		// "## Workflow states" section, so "separate from the requirements workflow's"
 		// would name something this reader cannot find.
-		const settings = { ...defaultSettings(), stateKey: '', deliverableStateKey: 'docStatus' };
+		const settings = settingsWith({ stateKey: '', deliverableStateKey: 'docStatus' });
 		const content = backlogReadmeContent(settings, [], 'test');
 		expect(content).toContain("| `docStatus` | Optional, on a Deliverable | The Deliverable workflow's own state |");
 		expect(content).not.toContain('requirements workflow');

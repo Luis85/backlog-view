@@ -110,9 +110,36 @@
 	transition: transform 100ms ease-in-out;
 }
 
+/* The dated axis draws this same chevron as a real `<button>` (`renderChevron` in
+   `render/rows.ts`: a card row's `option` role cannot carry `aria-expanded`, so the
+   control has to), which arrives wearing Obsidian's button chrome. Stripped by the recipe
+   `button.pbl-card-kids-toggle` already states in cardChildren.css: the ELEMENT qualifier
+   ties `button:not(.clickable-icon)` at (0,1,1) and wins on load order, where the class
+   alone (0,1,0) loses whatever the order. `color` is here rather than left to the base
+   rule above for exactly that reason — that one is (0,1,0) too. */
+button.pbl-chevron {
+	appearance: none;
+	border: none;
+	margin: 0;
+	padding: 0;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
 .pbl-chevron:not(.pbl-leaf):hover {
 	color: var(--text-normal);
 	background-color: var(--background-modifier-hover);
+}
+
+/* Restated on hover, and not covered by the rule above: a browser resolves the winning
+   declaration PER PROPERTY, so the base rule's win at rest says nothing about Obsidian's
+   own `button:hover` fill — the 2026-08-08 bug in
+   `docs/bugs/The disclosure's hover still painted a button fill.md`. The hover BACKGROUND
+   is the plugin's own affordance and stays; only the chrome behind it goes. */
+button.pbl-chevron:hover {
+	box-shadow: none;
 }
 
 .pbl-chevron.pbl-expanded {

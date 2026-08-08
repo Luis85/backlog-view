@@ -21,6 +21,20 @@
 	gap: var(--size-2-2);
 }
 
+/* A workflow's heading and its swatches, held together so the strip wraps BETWEEN groups
+   rather than through one. `.pbl-legend` is a wrapping flex row, and a flat row breaks at
+   whatever item happens to reach the edge — at 560px that was mid-group, leaving swatches
+   on a line with no heading to own them. Its own `flex-wrap` keeps a group that is wider
+   than the pane readable rather than clipped, which is the honest fallback: the heading
+   still leads it. Drawn only for a NAMED palette (`render/legend.ts`), so a
+   single-workflow base has no box and no rule here applies to it. */
+.pbl-legend-section {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-3);
+}
+
 /* A workflow's name before its own swatches, drawn only where a base configures a second
    state property and the strip therefore carries two vocabularies. Not an item — it is the
    heading for the items after it — so it sits in the same flex row without the swatch gap,

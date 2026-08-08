@@ -4,10 +4,11 @@ import { buildModel } from '../../src/domain/model';
 import { ALL_TYPES, defaultSettings, resolvedDeliverableStateKey } from '../../src/domain/settings';
 import { applyWrites } from '../../src/storage/frontmatter';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 describe('collectObservedDeliverableStates', () => {
 	it('reads only Deliverable-typed items, never a PBI carrying the same key', () => {
-		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const settings = settingsWith({ deliverableStateKey: 'deliverableStatus' });
 		const vault = new FakeVault();
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
 		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, deliverableStatus: 'Stray' } });
@@ -17,11 +18,8 @@ describe('collectObservedDeliverableStates', () => {
 	});
 
 	it('sorts open states before its own done values', () => {
-		const settings = {
-			...defaultSettings(),
-			deliverableStateKey: 'deliverableStatus',
-			deliverableDoneValues: ['Published'],
-		};
+		const settings = settingsWith({ deliverableStateKey: 'deliverableStatus',
+			deliverableDoneValues: ['Published'], });
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Published' } });
 		vault.addFile('B.md', { frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' } });
@@ -33,12 +31,9 @@ describe('collectObservedDeliverableStates', () => {
 
 describe('BacklogItem.deliverableStateValue / deliverableDone', () => {
 	it('reads the Deliverable workflow state independently of the requirements one', () => {
-		const settings = {
-			...defaultSettings(),
-			stateKey: 'status',
+		const settings = settingsWith({ stateKey: 'status',
 			deliverableStateKey: 'deliverableStatus',
-			deliverableDoneValues: ['Published'],
-		};
+			deliverableDoneValues: ['Published'], });
 		const vault = new FakeVault();
 		vault.addFile('D.md', {
 			frontmatter: { type: 'Deliverable', order: 10, status: 'Done', deliverableStatus: 'Draft' },
@@ -59,12 +54,9 @@ describe('BacklogItem.deliverableStateValue / deliverableDone', () => {
 		// deliverableDone === false, so an implementation that hardcoded false (or never
 		// wired deliverableDoneValues into addItem at all) would still pass the suite.
 		// This is the one case that actually exercises the true branch.
-		const settings = {
-			...defaultSettings(),
-			stateKey: 'status',
+		const settings = settingsWith({ stateKey: 'status',
 			deliverableStateKey: 'deliverableStatus',
-			deliverableDoneValues: ['Published'],
-		};
+			deliverableDoneValues: ['Published'], });
 		const vault = new FakeVault();
 		vault.addFile('D.md', {
 			frontmatter: { type: 'Deliverable', order: 10, status: 'Open', deliverableStatus: 'Published' },
@@ -81,7 +73,7 @@ describe('BacklogItem.deliverableStateValue / deliverableDone', () => {
 	});
 
 	it('collects observed Deliverable states onto the model, scoped to Deliverable items', () => {
-		const settings = { ...defaultSettings(), deliverableStateKey: 'deliverableStatus' };
+		const settings = settingsWith({ deliverableStateKey: 'deliverableStatus' });
 		const vault = new FakeVault();
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
@@ -103,7 +95,7 @@ describe('BacklogItem.deliverableStateValue / deliverableDone', () => {
 
 describe('the Deliverable workflow falls back to the shared one, on the READ side', () => {
 	it('reads deliverableStateValue off the shared state key when its own is unset', () => {
-		const settings = { ...defaultSettings(), stateKey: 'status' };
+		const settings = settingsWith({ stateKey: 'status' });
 		const vault = new FakeVault();
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Draft' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
@@ -125,7 +117,7 @@ describe('the Deliverable workflow falls back to the shared one, on the READ sid
 	 * bytes nowhere — would show up here as the read finding nothing after the write.
 	 */
 	it('a card move under the fallback lands on the shared key, and the model reads it back', async () => {
-		const settings = { ...defaultSettings(), stateKey: 'status' };
+		const settings = settingsWith({ stateKey: 'status' });
 		const vault = new FakeVault();
 		const file = vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
 
@@ -139,7 +131,7 @@ describe('the Deliverable workflow falls back to the shared one, on the READ sid
 	});
 
 	it('resolvedDeliverableStateKey names the property both sides actually used', () => {
-		const settings = { ...defaultSettings(), stateKey: 'status' };
+		const settings = settingsWith({ stateKey: 'status' });
 		expect(resolvedDeliverableStateKey(settings)).toBe('status');
 	});
 
@@ -148,7 +140,7 @@ describe('the Deliverable workflow falls back to the shared one, on the READ sid
 		// lists are the same, agree for the same note — but the rollup (`assignAll`)
 		// only ever reads `child.done`, never `child.deliverableDone`, so this is not
 		// two facts about the same subtree being folded in twice.
-		const settings = { ...defaultSettings(), stateKey: 'status', doneValues: ['Done'], deliverableDoneValues: ['Done'] };
+		const settings = settingsWith({ stateKey: 'status', doneValues: ['Done'], deliverableDoneValues: ['Done'] });
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Done' }, parentLink: 'Epic' });
@@ -186,7 +178,7 @@ describe('BacklogModel.deliverableResults — immune to the focus level', () => 
 
 	it.each(['', ...ALL_TYPES])('contains the Deliverable under focus level %j', (level) => {
 		const vault = fixture();
-		const settings = { ...defaultSettings(), focusLevel: level };
+		const settings = settingsWith({ focusLevel: level });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		expect(model.deliverableResults.map((item) => item.title)).toEqual(['D']);

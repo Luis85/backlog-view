@@ -112,6 +112,11 @@ export function timelineRows(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
 }
 
+/** The titles the grid drew, in row order — what a disclosure adds to and takes away. */
+export function timelineTitles(containerEl: HTMLElement): string[] {
+	return timelineRows(containerEl).map((row) => row.querySelector('.pbl-card-title')?.textContent ?? '');
+}
+
 export function barOf(row: HTMLElement): HTMLElement {
 	const bar = row.querySelector<HTMLElement>('.pbl-bar');
 	if (!bar) throw new Error('bar not rendered');
