@@ -32,6 +32,17 @@ function waitsFor(row: HTMLElement): string | null {
 	return row.querySelector<HTMLElement>('.pbl-dependency-note')?.textContent ?? null;
 }
 
+/** The shelved card for a given title, or null when it is not on the shelf at all. */
+function shelfCardFor(containerEl: HTMLElement, title: string): HTMLElement | null {
+	const cards = Array.from(shelfOf(containerEl)?.querySelectorAll<HTMLElement>('.pbl-card') ?? []);
+	return cards.find((c) => c.querySelector('.pbl-card-title')?.textContent === title) ?? null;
+}
+
+/** What a shelved card visibly states it waits for, or null where it says nothing. */
+function shelfWaitsFor(containerEl: HTMLElement, title: string): string | null {
+	return shelfCardFor(containerEl, title)?.querySelector<HTMLElement>('.pbl-shelf-dependency')?.textContent ?? null;
+}
+
 describe('one element per edge', () => {
 	it('draws exactly the edges dependencyArrows returns, not one per pair of rows', () => {
 		const vault = new FakeVault();
@@ -240,6 +251,85 @@ describe('the shelf card states a 2b conflict the domain computed, with no arrow
 
 		expect(shelfTitles(harness.containerEl)).toContain('B');
 		expect(harness.containerEl.querySelector('.pbl-shelf-conflict')).toBeNull();
+	});
+});
+
+/**
+ * Fix round, item 1 (Critical): a shelf card is that dependent's row under 1b, and
+ * step 3 requires every rendered dependent's row to state what it waits for whether
+ * or not it is in conflict — not only when 2b happens to flag one.
+ */
+describe('the shelf card states what it waits for even with no conflict at all', () => {
+	it('names a prerequisite on a shelved card that has nothing to conflict with', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		// No dates at all: shelved with no stated start, so 2b's own rule exempts it —
+		// "unplanned is not late" — and no conflict is possible, only the plain fact.
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: 'A' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(shelfCardFor(containerEl, 'B')?.querySelector('.pbl-shelf-conflict')).toBeNull();
+		expect(shelfWaitsFor(containerEl, 'B')).toBe('Waits for A');
+	});
+
+	it('names which of two prerequisites conflicts, on the card itself', () => {
+		const vault = new FakeVault();
+		vault.addFile('Clear.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-07-01', due: '2026-07-05' } });
+		vault.addFile('Late.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('B.md', {
+			frontmatter: { type: 'PBI', order: 30, dependsOn: ['Clear', 'Late'], start: '2026-08-10', due: 'not-a-date' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(shelfCardFor(containerEl, 'B')?.querySelector('.pbl-shelf-conflict')).not.toBeNull();
+		expect(shelfWaitsFor(containerEl, 'B')).toBe('Waits for Clear, Late (conflict)');
+	});
+});
+
+/**
+ * Fix round, item 3 (extension 1d, never built): a broken edge resolves to no
+ * prerequisite at all, so `item.prerequisites` never carries it — nothing about it
+ * was stated anywhere. `item.brokenPrerequisites` is the raw text `Remove
+ * dependency…` matches on, and it belongs on the row for the same reason main flow
+ * step 3 belongs there: no arrow reaches a broken edge by design (1d), so the row is
+ * the only place left.
+ */
+describe('a broken dependency (1d) is stated on the row, dated or shelved', () => {
+	it('states an unresolvable entry on a dated row, with no arrow drawn for it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Waiter.md', {
+			frontmatter: { type: 'PBI', order: 10, dependsOn: 'Ghost', start: '2026-08-01', due: '2026-08-05' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(arrows(containerEl)).toHaveLength(0);
+		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Ghost (broken)');
+	});
+
+	it('states an unresolvable entry on a shelved card, the same row under 1b', () => {
+		const vault = new FakeVault();
+		vault.addFile('Waiter.md', { frontmatter: { type: 'PBI', order: 10, dependsOn: 'Ghost' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(shelfWaitsFor(containerEl, 'Waiter')).toBe('Waits for Ghost (broken)');
+	});
+
+	it('names a real prerequisite, a conflicting one, and a broken entry together, in that order', () => {
+		const vault = new FakeVault();
+		vault.addFile('Clear.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-07-01', due: '2026-07-05' } });
+		vault.addFile('Late.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('Waiter.md', {
+			frontmatter: {
+				type: 'PBI',
+				order: 30,
+				dependsOn: ['Clear', 'Late', 'Ghost'],
+				start: '2026-08-10',
+				due: '2026-08-25',
+			},
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Clear, Late (conflict), Ghost (broken)');
 	});
 });
 

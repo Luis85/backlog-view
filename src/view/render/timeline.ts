@@ -99,12 +99,14 @@ export interface TimelineRender {
 	 */
 	drawn: DrawnColors;
 	/**
-	 * File paths of shelved dependents whose own stated start conflicts with a dated
-	 * prerequisite (2b) — computed here (nothing on this grid draws one, since a
-	 * shelved item has no bar) and read by `renderRoadmap` to mark the shelf card,
-	 * which is that dependent's row (1b). See `dependencyArrows`.
+	 * Which of EACH dependent's prerequisites conflict, keyed by the dependent's own
+	 * path — `dependencyArrows`' own `conflicts` map, unfiltered by anything this grid
+	 * drew. It covers a shelved dependent too (2b): nothing on this grid draws one,
+	 * since a shelved item has no bar, but the map is keyed by path either way, so
+	 * `renderRoadmap` reads this SAME map to mark the shelf card, which is that
+	 * dependent's row (1b) — one shape for both. See `dependencyArrows`.
 	 */
-	shelfConflicts: ReadonlySet<string>;
+	dependencyConflicts: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -204,13 +206,20 @@ export function renderTimeline(
 	// edge clear across the plan from where the reader is scrolled still names its
 	// dependent's row and still marks it, exactly as one on screen does (1a/1b's "the
 	// row is where the dependency still lives" — the guarantee a window-derived mark
-	// would silently narrow). `shelfConflicts` is not read here: nothing on THIS grid
-	// draws a shelved dependent — it has no bar — so there is nothing for this pass to
-	// mark with it. It is the shelf's own card that states 2b's conflict
-	// (`TimelineRender.shelfConflicts`, read by `renderRoadmap`), not this one's.
+	// would silently narrow). `dependencies.conflicts` covers a shelved dependent too
+	// (2b): nothing on THIS grid draws one, since a shelved item has no bar, but the
+	// map is keyed by the dependent's own path regardless, so the shelf's own card
+	// (`TimelineRender.dependencyConflicts`, read by `renderRoadmap`) reads this exact
+	// same map rather than a second one built for it.
 	const dependencies = dependencyArrows(bars, shelf);
-	const conflictedPrereqs = conflictsByDependent(dependencies.arrows);
-	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, observedStates, conflictedPrereqs };
+	const mounts: BarRowMounts = {
+		content,
+		scroller: grid,
+		dnd,
+		tracks,
+		observedStates,
+		conflictedPrereqs: dependencies.conflicts,
+	};
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
 	bars.forEach((bar, index) => {
 		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
@@ -252,7 +261,7 @@ export function renderTimeline(
 		tracks,
 		leadWidth,
 		drawn,
-		shelfConflicts: dependencies.shelfConflicts,
+		dependencyConflicts: dependencies.conflicts,
 	};
 }
 
@@ -404,42 +413,31 @@ function renderDependencyArrows(
 	}
 }
 
-/**
- * Which of a dependent's prerequisites conflict, keyed by the DEPENDENT's own path —
- * built once from `dependencyArrows`' own edge list, which never filters by the drawn
- * window, so this is the single window-independent source both the row's accessible
- * name (`dependencyNote`) and its `pbl-row-conflict` class read, rather than either
- * one asking the arrow-drawing loop what it happened to draw.
- */
-function conflictsByDependent(arrows: DependencyArrow[]): Map<string, Set<string>> {
-	const byDependent = new Map<string, Set<string>>();
-	for (const arrow of arrows) {
-		if (!arrow.conflict) continue;
-		const path = arrow.to.item.file.path;
-		const set = byDependent.get(path);
-		if (set) set.add(arrow.from.item.file.path);
-		else byDependent.set(path, new Set([arrow.from.item.file.path]));
-	}
-	return byDependent;
-}
-
 /** Shared by every row with no conflicting prerequisite, so `renderBarRow` allocates nothing for the common case. */
 const NO_CONFLICTS: ReadonlySet<string> = new Set();
 
 /**
- * Every dependent row's accessible name states what it waits for, and marks the
- * conflict on the prerequisite it concerns — `Arrows between bars` main flow step 3.
- * Built from `item.prerequisites` alone, which is model data rather than anything the
- * arrow layer drew: a prerequisite with no bar at all (shelved, hidden, collapsed,
- * filtered — 1a) is still named here, simply never a member of `conflicted`, because
- * nothing was derived for it to compare (main flow step 2's own rule, read from the
- * other side). '' where the item waits for nothing, so callers can skip the span
+ * Every RENDERED dependent's row states what it waits for, whether or not an arrow was
+ * drawn — `Arrows between bars` main flow step 3, extensions 1a/1b/1d/2b. Shared
+ * verbatim by a dated row (`renderRowFacts`, below) and a shelved card
+ * (`render/shelf.ts`'s `renderShelfCard`), which 1b names as the same kind of row: one
+ * function is what keeps the two from drifting into different phrasings of one fact.
+ *
+ * Two lists, both read straight off the model rather than anything an arrow layer drew:
+ * `item.prerequisites`, marking the conflicting ones from `conflicted` (1a — a
+ * prerequisite with no bar at all is still named here, simply never a member of
+ * `conflicted`, because nothing was derived for it to compare — main flow step 2's own
+ * rule, read from the other side), and `item.brokenPrerequisites` (1d — an entry that
+ * never became an edge at all, so its raw text is its only identity, the same text
+ * `Remove dependency…` matches on; deduped the way that menu already groups repeats of
+ * one line). '' where the item waits for nothing at all, so callers can skip the span
  * (and the marker's aria-label join) with a plain truthiness check.
  */
-function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string>): string {
-	if (item.prerequisites.length === 0) return '';
-	const names = item.prerequisites.map((p) => (conflicted.has(p.file.path) ? `${p.title} (conflict)` : p.title));
-	return `Waits for ${names.join(', ')}`;
+export function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string>): string {
+	const named = item.prerequisites.map((p) => (conflicted.has(p.file.path) ? `${p.title} (conflict)` : p.title));
+	const broken = [...new Set(item.brokenPrerequisites)].map((raw) => `${raw} (broken)`);
+	const all = [...named, ...broken];
+	return all.length === 0 ? '' : `Waits for ${all.join(', ')}`;
 }
 
 /** One arrow element, positioned from the day axis and the two rows' own rects. */
@@ -497,8 +495,8 @@ interface BarRowMounts {
 	tracks: Map<string, HTMLElement>;
 	/** See `TimelineDrawing.observedStates`. */
 	observedStates: string[];
-	/** Which of a dependent's prerequisites conflict, by the dependent's path — see `conflictsByDependent`. */
-	conflictedPrereqs: Map<string, Set<string>>;
+	/** Which of a dependent's prerequisites conflict, by the dependent's path — see `DependencyArrows.conflicts`. */
+	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 function renderBarRow(
@@ -588,17 +586,17 @@ function renderRowFacts(
 	ctx: RowContext,
 	bar: TimelineBar,
 	dates: string,
-	conflictedPrereqs: Map<string, Set<string>>,
+	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>,
 ): void {
 	// Said in words on the row itself, because on this axis the state is otherwise a
 	// bar COLOUR and nothing else — see `stateNote`.
 	const state = stateNote(ctx.host.settings.stateKey, bar.item);
 	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
-	// What this row waits for, and which of those conflicts — `dependencyNote`, read
-	// from `conflictedPrereqs` (window-independent, see `renderTimeline`) rather than
-	// from anything the arrow layer drew. The class is the same fact for sighted
-	// users: both come from this one map, so neither can say something the other
-	// does not (`Arrows between bars` Task 3, concerns 1 and 2).
+	// What this row waits for, which of those conflicts, and which is broken (1d) —
+	// `dependencyNote`, read from `conflictedPrereqs` (window-independent, see
+	// `renderTimeline`) rather than from anything the arrow layer drew. The class is
+	// the same fact for sighted users: both come from this one map, so neither can say
+	// something the other does not (`Arrows between bars` Task 3, concerns 1 and 2).
 	const conflicted = conflictedPrereqs.get(bar.item.file.path) ?? NO_CONFLICTS;
 	if (conflicted.size > 0) row.addClass('pbl-row-conflict');
 	const waits = dependencyNote(bar.item, conflicted);

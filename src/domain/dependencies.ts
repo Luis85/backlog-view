@@ -272,16 +272,21 @@ export interface DependencyArrow {
 
 /**
  * What `dependencyArrows` returns: the edges with two bars to draw between (main flow
- * 1-2), and — separately — every SHELVED dependent whose own stated start conflicts with
- * a dated prerequisite (2b). The two sets cannot share one shape: an arrow needs a `to`
- * bar and a shelved dependent has none, only a stated date instead of it. Nothing here
- * decides HOW a shelf conflict is shown; a caller reads `shelfConflicts` to mark the
- * card, exactly as it reads `arrows` to draw a line.
+ * 1-2), and — separately — WHICH of each dependent's own prerequisites conflict, keyed
+ * by the dependent's own path. `conflicts` covers two populations that cannot share one
+ * arrow shape — an arrow needs a `to` bar and a SHELVED dependent (2b) has none, only a
+ * stated date instead of it — but they answer the identical question main flow step 3
+ * asks of either kind of row: not merely THAT a prerequisite conflicts, but WHICH one,
+ * at the same resolution the picture has rather than a boolean rounding it down to a
+ * quarter of itself. Nothing here decides HOW that is shown; a caller reads `conflicts`
+ * to mark a row or a card, exactly as it reads `arrows` to draw a line.
  */
 export interface DependencyArrows {
 	arrows: DependencyArrow[];
-	/** File paths of shelved dependents in conflict (2b) — no arrow, no `to` bar to draw one from. */
-	shelfConflicts: ReadonlySet<string>;
+	/** Dependent path → the prerequisite paths that conflict with it — a dated row's own
+	 *  edges (main flow step 2) and a shelved card's (2b) in the one map, since both are
+	 *  "the dependent's row" under 1b and neither needs a shape the other lacks. */
+	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /**
@@ -296,7 +301,9 @@ export interface DependencyArrows {
  * computed for it, so such a row never has a bar in the passed set either — the same
  * membership test that answers 1a/1b already answers 1c. A `brokenPrerequisites` entry is
  * likewise never re-examined: `resolveDependencies` already kept it out of
- * `prerequisites` (1d), so walking that list is the whole answer.
+ * `prerequisites` (1d), so walking that list is the whole answer — and it never conflicts
+ * either, for the same reason: an entry that resolved to nothing, or to a self-reference
+ * or a cyclic edge, is not a date to be late against.
  *
  * A shelved dependent has no bar, so its half of the question needs the shelf as a second
  * input — the register's own answer once the plan that first read 2b backwards was
@@ -311,18 +318,29 @@ export function dependencyArrows(bars: TimelineBar[], shelf: ShelfCard[]): Depen
 	const byPath = new Map<string, TimelineBar>();
 	for (const bar of bars) byPath.set(bar.item.file.path, bar);
 	const arrows: DependencyArrow[] = [];
+	const conflictedPrereqs = new Map<string, Set<string>>();
 	for (const to of bars) {
 		for (const prerequisite of to.item.prerequisites) {
 			const from = byPath.get(prerequisite.file.path);
 			if (!from) continue;
-			arrows.push({ from, to, conflict: conflicts(from, to) });
+			const conflict = conflicts(from, to);
+			arrows.push({ from, to, conflict });
+			if (conflict) addConflict(conflictedPrereqs, to.item.file.path, from.item.file.path);
 		}
 	}
-	const shelfConflicts = new Set<string>();
 	for (const card of shelf) {
-		if (shelvedConflicts(card, byPath)) shelfConflicts.add(card.item.file.path);
+		for (const prerequisite of shelvedConflicts(card, byPath)) {
+			addConflict(conflictedPrereqs, card.item.file.path, prerequisite);
+		}
 	}
-	return { arrows, shelfConflicts };
+	return { arrows, conflicts: conflictedPrereqs };
+}
+
+/** Record that `dependent` conflicts with `prerequisite`, minting the set on first use. */
+function addConflict(conflicts: Map<string, Set<string>>, dependent: string, prerequisite: string): void {
+	const set = conflicts.get(dependent);
+	if (set) set.add(prerequisite);
+	else conflicts.set(dependent, new Set([prerequisite]));
 }
 
 /**
@@ -358,16 +376,23 @@ function conflicts(from: TimelineBar, to: TimelineBar): boolean {
  * to be made here. Read off `card.item.plannedStart` directly rather than through
  * `bars.ts`'s `statedEnds`: that import would close `bars.ts → model.ts →
  * dependencies.ts → bars.ts`, and the field it wraps is already on `BacklogItem`.
+ *
+ * Returns every prerequisite path that runs past the stated start, not merely whether
+ * one does: a shelved dependent waiting on several things is judged per prerequisite,
+ * exactly as a dated one is by `conflicts` — the note forbids a coarser verdict than
+ * the picture, and a flat `.some()` here was that verdict.
  */
-function shelvedConflicts(card: ShelfCard, byPath: Map<string, TimelineBar>): boolean {
-	if (isMarkerType(card.item.typeName)) return false;
+function shelvedConflicts(card: ShelfCard, byPath: Map<string, TimelineBar>): string[] {
+	if (isMarkerType(card.item.typeName)) return [];
 	const start = card.item.plannedStart;
-	if (start.invalid || start.value === null) return false;
+	if (start.invalid || start.value === null) return [];
 	const stated = start.value;
-	return card.item.prerequisites.some((prerequisite) => {
-		const from = byPath.get(prerequisite.file.path);
-		return from !== undefined && runsPast(from, stated);
-	});
+	return card.item.prerequisites
+		.filter((prerequisite) => {
+			const from = byPath.get(prerequisite.file.path);
+			return from !== undefined && runsPast(from, stated);
+		})
+		.map((prerequisite) => prerequisite.file.path);
 }
 
 /** True when a prerequisite bar's own stated end runs on or past `start` — the inclusive

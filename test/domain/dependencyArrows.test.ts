@@ -32,7 +32,13 @@ function edges(axis: DatedAxis): Array<{ from: string; to: string; conflict: boo
 
 /** Paths of shelved dependents 2b marks in conflict — no arrow, so no `edges()` entry. */
 function shelfConflicts(axis: DatedAxis): string[] {
-	return [...dependencyArrows(axis.bars, axis.shelf).shelfConflicts];
+	const conflicts = dependencyArrows(axis.bars, axis.shelf).conflicts;
+	return axis.shelf.filter((card) => conflicts.has(card.item.file.path)).map((card) => card.item.file.path);
+}
+
+/** Which of ONE dependent's own prerequisites conflict — the widened, per-prerequisite shape (item 2). */
+function conflictingPrereqs(axis: DatedAxis, dependent: string): string[] {
+	return [...(dependencyArrows(axis.bars, axis.shelf).conflicts.get(dependent) ?? [])];
 }
 
 describe('which edges draw', () => {
@@ -223,6 +229,27 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 			expect(axis.shelf.find((c) => c.item.title === 'B')?.reason).toBe('Unreadable target date');
 			expect(edges(axis)).toEqual([]); // still no arrow: B has no bar
 			expect(shelfConflicts(axis)).toEqual(['B.md']);
+		});
+
+		it('identifies exactly WHICH shelved prerequisite conflicts, not merely that one does', () => {
+			// A boolean `.some()` could only say "B has a conflict"; a dependent waiting on
+			// several things has to name which one, the same rule main flow step 3 states
+			// for a dated row — here for a shelved one instead (2b).
+			const vault = new FakeVault();
+			vault.addFile('Clear.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-07-01', target: '2026-07-05' } });
+			vault.addFile('Late.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-01', target: '2026-08-20' } });
+			vault.addFile('B.md', {
+				frontmatter: {
+					type: 'PBI',
+					order: 30,
+					dependsOn: ['Clear', 'Late'],
+					start: '2026-08-10',
+					target: 'not-a-date',
+				},
+			});
+
+			const axis = datedAxis(vault);
+			expect(conflictingPrereqs(axis, 'B.md')).toEqual(['Late.md']);
 		});
 
 		it('is not in conflict with the same stated start once the prerequisite no longer runs past it', () => {

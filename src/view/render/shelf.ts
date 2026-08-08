@@ -2,7 +2,7 @@ import { setIcon, setTooltip } from 'obsidian';
 import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderShelfControls } from './shelfControls';
-import { spanText } from './timeline';
+import { dependencyNote, spanText } from './timeline';
 import { BacklogViewHost } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';
 import { canSchedule, unschedulePlan } from '../interactions/plan';
@@ -14,14 +14,15 @@ import { organizeShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
 /**
- * The shelf to render, and which of its cards are in dependency conflict (2b) —
- * grouped into one param so `renderShelf` stays under the five-parameter budget.
- * `conflicts` is a set of file paths, empty on the horizon axis, where this
- * conflict has no meaning — see `dependencyArrows`'s own `shelfConflicts`.
+ * The shelf to render, and which of each card's prerequisites are in dependency
+ * conflict (2b) — grouped into one param so `renderShelf` stays under the
+ * five-parameter budget. `conflicts` is keyed by dependent path, empty on the horizon
+ * axis, where this conflict has no meaning — see `dependencyArrows`'s own `conflicts`
+ * (`TimelineRender.dependencyConflicts` on the dated axis).
  */
 export interface ShelfInput {
 	cards: ShelfCard[];
-	conflicts: ReadonlySet<string>;
+	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 export interface ShelfRemoval {
@@ -177,9 +178,12 @@ export function renderShelf(
 interface ShelfWiring {
 	dnd: CardDragController;
 	removal: ShelfRemoval;
-	/** File paths of shelved dependents in conflict (2b) — see `ShelfInput`. */
-	conflicts: ReadonlySet<string>;
+	/** Which of each dependent's prerequisites are in conflict (2b) — see `ShelfInput`. */
+	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
 }
+
+/** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
+const NO_CONFLICTS: ReadonlySet<string> = new Set();
 
 /** One type group inside the expanded shelf: its header, then its cards in sort order. */
 function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGroup, wiring: ShelfWiring): BacklogItem[] {
@@ -192,7 +196,7 @@ function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGro
 	return group.cards.map((entry) => entry.item);
 }
 
-/** One shelved card: its body, its shelving reason or dependency conflict if it has one, and its drag source. */
+/** One shelved card: its body, its shelving reason, what it waits for, and its drag source. */
 function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard, wiring: ShelfWiring): void {
 	const card = createCard(ctx, cardsEl, entry.item);
 	renderCardBody(ctx, card, entry.item);
@@ -203,14 +207,19 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 		setIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
 		reason.createSpan({ text: entry.reason });
 	}
-	// 2b: this card's own stated start conflicts with a dated prerequisite, and there
-	// is no bar for an arrow to reach — so this IS where the contradiction is stated,
-	// per `Arrows between bars` extension 2b. Visible content, like the reason above
-	// it, so it reaches the card's accessible name the same content-derived way.
-	if (wiring.conflicts.has(entry.item.file.path)) {
-		const conflict = card.createDiv({ cls: 'pbl-shelf-conflict' });
-		setIcon(conflict.createSpan({ cls: 'pbl-shelf-conflict-icon' }), 'alert-triangle');
-		conflict.createSpan({ text: 'A prerequisite runs past this start date' });
+	// 1b: no bar exists here for any arrow to reach — the shelf card IS this
+	// dependent's row, so what it waits for (and which of that runs past this card's
+	// own stated start, 2b, or never resolved at all, 1d) has to be stated here or it
+	// is stated nowhere. Same string `dependencyNote` builds for a dated row, so a
+	// reader gets one phrasing of one fact regardless of which axis or projection
+	// shows it. Visible content, like the reason above it, so it reaches the card's
+	// accessible name the same content-derived way.
+	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
+	const waits = dependencyNote(entry.item, conflicting);
+	if (waits) {
+		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
+		setIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
+		dep.createSpan({ text: waits });
 	}
 	wireCardActivation(ctx, card, entry.item);
 	// A gesture whose only possible batch is empty must not begin: `removal.canDrag`
