@@ -73,16 +73,22 @@ Obsidian's.
 **What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the
 partials style. **What it is not:** colour, and any layout a partial leans on an Obsidian
-element default to supply rather than writing itself. `test/harness/theme.css` gives a
-handful of those elements a baseline — `.svg-icon`, `.clickable-icon`, and a bare
-`button`'s background colour — each one labelled with what it is sourced from, and a
-property left OUT where nothing public confirms it rather than guessed (the `button`
-rule's own comment says why it sets no `justify-content`). That baseline is not
-exhaustive: a card-children disclosure whose toggle rendered as a centred, boxed native
-button shipped looking right here and wrong in a vault (2026-08-08), because the stub had
-no rule for `button` at all yet. The gap narrows one element at a time and stays real for
-every element not yet asked about — "layout is faithful" is true only of what a partial
-sets itself, never of what it assumes an Obsidian default will supply. The COLOUR half of
+element default to supply rather than writing itself. Two files answer that now, in
+order: `test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the
+harness exercises (its header states what was kept and why), and `test/harness/theme.css`
+fills what the app sheet leaves to a theme — the variable palette, `.svg-icon`,
+`.clickable-icon`, and the leaf frame. Loading the real sheet first is what makes an
+element default present at all rather than approximated: a card-children disclosure whose
+toggle rendered as a centred, boxed native button shipped looking right here and wrong in
+a vault (2026-08-08), because the stub then had no `button` rule and nothing had guessed
+one. That episode is also why the stub no longer carries hand-written element defaults —
+a guessed baseline beside a real one is two answers to one question.
+
+This narrows the gap; it does not close it. The reduced sheet keeps only what the
+harness was driven through, so an element default that no driven state reached is still
+absent, and a themed vault still replaces the colours. "Layout is faithful" remains true
+only of what a partial sets itself and of the app defaults the reduction happened to
+keep. The COLOUR half of
 the stub — `test/harness/theme.css`'s base scale and named palette, in both schemes — is
 close enough to judge contrast and hierarchy by and not close enough to read a colour off,
 since a themed vault replaces exactly those values. It therefore replaces NO live-vault
