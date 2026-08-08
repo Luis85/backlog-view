@@ -82,7 +82,17 @@ one entry per drawable edge: the two bars, and whether the edge is in conflict.
   target and a rolled-up start still conflicts. An end that is **absent** (`span.target ===
   null`, the open end 1g draws) also suppresses it — `inferredEnd` is false there, so
   "stated" is the test and "inferred" is not.
-- A **shelved dependent** is never in conflict (2b) — it has no start to compare.
+- A **shelved dependent** is judged by the same stated-start rule as everything else, and
+  **not by having shelved** (2b) — this bullet said the opposite in the first version of
+  this plan, Task 1 was built against it, and the register is the authority: *"exempt when
+  it has no readable stated start, in conflict when it has one and its prerequisite runs
+  past it, stated on the shelf card with no arrow drawn."* Shelving is a verdict on the
+  whole span; a conflict rests on one end of it. Two of the ways to shelve leave a stated,
+  readable start on the note and shelve for what the *other* end says — an unreadable
+  target, or a target before the start — and those are in conflict when the prerequisite
+  runs past that start. Only "no start at all, or a start the reader refuses" is exempt,
+  because unplanned is not late. **This means the derivation cannot take bars alone**: a
+  shelved dependent has no bar, so the shelf is an input too.
 - A **milestone** takes part like anything else (1e): its two ends are the same day.
 
 **Verification:**
@@ -91,6 +101,8 @@ one entry per drawable edge: the two bars, and whether the edge is in conflict.
       later is not.
 - [ ] A prerequisite with a stated target and an inferred start still conflicts; one whose
       compared end is inferred, and one whose compared end is absent, do not.
+- [ ] A shelved dependent with a stated readable start IS in conflict when its prerequisite
+      runs past that start, and draws no arrow; one shelved with no readable start is not.
 - [ ] `npm run check` passes. Commit.
 
 ---
