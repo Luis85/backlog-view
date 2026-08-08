@@ -419,6 +419,79 @@ for (const file of files) {
 	}
 }
 
+// ------------------------------------------------------------------- checked claims
+/**
+ * A behavioural claim may name the check that holds it, and this verifies the CITATION
+ * resolves: the file is there, and the test name is still inside it. It does not verify
+ * the claim — nothing in a markdown validator can, and `docs/issues/A claim in four notes
+ * and nothing to check it.md` argues at length why the candidates that try are all worse
+ * than the problem. This is not one of them: it compares a citation against a file, which
+ * is the same thing the wikilink and source-path rules above already do.
+ *
+ * What it buys is the step where the author OPENS the check. The claim it was built for
+ * — "the Deliverable key, states and done values fall back as one unit" — was written the
+ * same day a test asserting its opposite landed in this repository, and `npm run check`
+ * was green on both sides of it. It then spread to five notes before a reviewer read one
+ * of them. Nothing here would have caught the wrong sentence; the author going to fetch
+ * the test name would have.
+ *
+ * Two things it does that the source-path rule above cannot. It holds in a CLOSED note
+ * too — that rule lets a historical path slide for anything outside `requirements/` and
+ * `adrs/`, which is right for prose naming a file and wrong for a citation, since a
+ * citation claims the check is live. And it covers the root `README.md`, which is not in
+ * the register at all and is where the sentence this rule exists for was read by users.
+ *
+ * OPT-IN, deliberately: an unmarked claim is not checked. That is the by-name weakness
+ * this file spent fifteen rounds removing, taken back on purpose — the alternative is a
+ * gate with an opinion about every sentence in the register, which is the thing already
+ * refused. So the honest statement of what this delivers is narrow: **a citation that
+ * has rotted fails the build; a claim nobody cited is exactly as unchecked as before.**
+ *
+ * Read from `withoutFences`, not `withoutCode`: the path lives in a code span by design,
+ * so stripping spans would blind the rule to every real citation — while a citation
+ * inside a fenced block is an example being documented (`docs/README.md` has one) and
+ * must not be resolved.
+ *
+ * The MARKER is found first and the citation parsed out of the paragraph after it,
+ * rather than one regex matching the whole thing. That is not a refactor — the one-regex
+ * version excluded `\n` from the test name to keep it bounded, so the first real citation
+ * written into the register, which Markdown had wrapped across two lines, matched nothing
+ * and was silently unchecked while `npm run docs` stayed green. A rule that quietly does
+ * nothing on input it cannot parse is worse than no rule, because it reads as a check. So
+ * an unparseable marker is itself a failure, and the name is read across the wrap and
+ * compared with whitespace flattened on both sides.
+ */
+const MARKER = /\*\*Checked by\*\*/g;
+const CITATION = /^[^`]*`((?:src|test)\/[\w./-]+\.ts)`[^`"“]*["“]([^"”]+)["”]/;
+const flat = (s) => s.replace(/\s+/g, " ");
+for (const file of [...files, "README.md"]) {
+	// The root README is reached by name rather than by the walk, so its absence is a
+	// real possibility here in a way no `docs/` file's is — and a gate that CRASHED on a
+	// tree without one would take every other rule down with it, reporting nothing. The
+	// planted trees in `test/docs/` are exactly such a tree.
+	const text = texts.get(file) ?? ((await exists(file)) ? await readText(file) : "");
+	const prose = withoutFences(text);
+	for (const marker of prose.matchAll(MARKER)) {
+		// Bounded at the paragraph, so a malformed citation cannot reach forward and adopt
+		// a path and a quoted phrase from further down the note.
+		const after = prose.slice(marker.index + marker[0].length);
+		const end = after.search(/\n[ \t]*\n/);
+		const cited = CITATION.exec(end === -1 ? after : after.slice(0, end));
+		if (!cited) {
+			fail(file, "has a **Checked by** with no `path.ts` and \"test name\" after it");
+			continue;
+		}
+		const [, target, name] = cited;
+		if (!(await exists(target))) {
+			fail(file, `cites ${target}, which does not exist`);
+			continue;
+		}
+		if (!flat(await readText(target)).includes(flat(name).trim())) {
+			fail(file, `cites "${flat(name).trim()}", which ${target} does not contain`);
+		}
+	}
+}
+
 // ------------------------------------------------------------------------ use cases
 for (const [, note] of notes) {
 	if (note.type !== "PBI") continue;

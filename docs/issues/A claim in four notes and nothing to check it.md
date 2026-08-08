@@ -30,6 +30,19 @@ that three copies were still standing.
 
 Every one of those rounds ran a green `npm run docs` immediately before and after.
 
+A second instance, 2026-08-08, and it is **not** the same shape — which is what produced
+the partial remedy below. The claim *"the Deliverable key, states and done values fall
+back as one unit"* was false, and it reached five places: the root `README.md` twice, this
+register's index, the parent feature note, and the use case's precondition, main flow and
+extension. Review found them one at a time again, and the correction of the extension
+shipped in the same commit that left the precondition and main flow standing.
+
+What is new is the evidence: **the check already existed and said the opposite.**
+`test/domain/settings.test.ts` — "keeps its own declared states over the shared list once
+configured" — landed in `fe69c4d`, and the wrong sentence was written the same day, in
+`d4a26bd`. Both sides green. So this instance was not a claim beyond a validator's reach.
+It was a claim whose check was sitting in the repository, and nothing connected the two.
+
 ## Why it is deliberate
 
 Checking claims means understanding them, and there is nothing between "does this heading
@@ -83,9 +96,40 @@ mechanical failures off a reader's plate so their attention lands on the ones on
 can catch. It does not replace that reader, and `docs/README.md` says so — of the seven
 kinds of note, only two shapes are enforced at all.
 
+## The one part a checker can take
+
+The three candidates above all try to judge a claim, and that is why they fail. The second
+instance showed a fourth thing that is not a judgement at all: **a citation**. A claim may
+name the check that holds it, and `docs-check.mjs` resolves that citation the same way it
+already resolves a wikilink or a source path — the file is there, the test name is still
+inside it. `docs/README.md` documents the form under **Conventions**.
+
+Read exactly what that is worth, because it is easy to read as more:
+
+- It does **not** verify the claim, and cannot. A citation to a real test says nothing
+  about whether the sentence beside it describes that test.
+- It is **opt-in**. An unmarked claim is exactly as unchecked as it was before, which is
+  the by-name weakness this gate spent fifteen rounds removing — taken back knowingly,
+  because the alternative is a gate with an opinion about every sentence here.
+- Duplication is untouched. Five copies each citing the same test would all still be
+  wrong together, and this note's argument that per-audience restatement is irreducible
+  stands unchanged.
+
+What it does buy is one step in the author's hands: **going to fetch the test name**. On
+the instance that produced it, that step alone was decisive — the test asserted the
+opposite of the sentence being written, on the same day, and opening it was the only thing
+between the two. It also fails the build when a cited test is renamed or deleted, in a
+closed note as loudly as a living one, since a citation claims the check is live.
+
+So the honest summary is that the gate now catches a **rotted** citation and nothing else,
+and the value is mostly in the habit the form makes cheap rather than in the rule.
+**Checked by** `test/docs/checkerRejects.test.ts` — "a citation naming a test the file no
+longer contains".
+
 ## Acceptance criteria
 
-None that a checker can take. Recorded so that "the docs are checked" is never read as
-"the docs are verified" — and, after this note overstated its own remedy and had to be
-corrected in review, so that a claim about the register is held to the same standard as a
-claim about the code.
+None *for the claims themselves* — that half stands. Recorded so that "the docs are
+checked" is never read as "the docs are verified"; and, after this note overstated its own
+remedy once and had to be corrected in review, so that a claim about the register is held
+to the same standard as a claim about the code. The citation rule above is written to that
+standard deliberately: its section says what it does not do before it says what it does.

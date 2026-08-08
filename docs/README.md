@@ -476,6 +476,23 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
   a guess, and guesses are the thing this register exists to keep out of the code. That is
   what `source` and the `Evidence` heading are for, and why a Task opens with a measurement
   rather than an opinion.
+- **A claim about behaviour may name the check that holds it**, and `docs-check.mjs`
+  verifies that citation resolves — the file is there and the test name is still inside
+  it. The form is a backticked path and a quoted test name on one line:
+
+  ```
+  **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the shared list once configured"
+  ```
+
+  Read what this is and is not. It does **not** verify the claim; nothing here can, and
+  [[A claim in four notes and nothing to check it]] argues why the candidates that try are
+  worse than the problem. What it buys is the step where the author goes and fetches the
+  test name — the claim this convention was built for was written the same day a test
+  asserting its opposite landed, and spread to five notes before a reviewer read one. And
+  it is **opt-in**: an unmarked claim is exactly as unchecked as before. A citation that
+  rots fails the build, in a closed note as loudly as a living one, and in the root
+  `README.md` too — a citation says the check is live, so the historical-path allowance
+  that covers prose naming a file does not cover this.
 - **Write it when it is decided, not when it is convenient.** Half of what is worth keeping
   here — an asymmetry nobody chose, a rule that only holds by luck — was noticed in passing
   while doing something else, and would have been unrecoverable an hour later.

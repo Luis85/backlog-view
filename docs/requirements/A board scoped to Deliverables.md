@@ -94,8 +94,10 @@ narrowed to one type.
   not; the all-or-nothing rule is about BORROWING, not about overriding. Saying it the
   wider way ("only an unset key borrows every field together, never just one of the
   three") described a configuration the code does not have — a shared key with its own
-  states, which `settings.test.ts`' "keeps its own declared states over the shared list
-  once configured" has asserted the whole time.
+  states — and it was written the same day the check asserting the opposite landed.
+  **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the
+  shared list once configured", and its done-values sibling "keeps its own done values
+  over the shared list once configured".
 - **1b — the Deliverable workflow is configured, but the base holds no `Deliverable`
   results at all.** Every column renders empty, and the board shows "No deliverables
   yet" — never "All N items are done and hidden," which is what the requirements

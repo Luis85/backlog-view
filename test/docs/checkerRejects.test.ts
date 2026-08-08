@@ -181,6 +181,87 @@ describe('cross-references', () => {
 			'names src/gone.ts, which does not exist',
 		],
 		[
+			'a citation naming a test file that does not exist',
+			(files) => {
+				files['docs/issues/A limitation.md'] = note(
+					'Issue',
+					10,
+					'A slice',
+					'# A limitation\n\nIt behaves.\n\n**Checked by** `test/gone.test.ts` — "the thing works".\n',
+				);
+			},
+			'cites test/gone.test.ts, which does not exist',
+		],
+		[
+			// The half the source-path rule above cannot give: an `issues/` note is not
+			// living, so a path it merely NAMES is allowed to be historical. A citation is
+			// a stronger act — it says the check is live — so it fails here where the same
+			// path in ordinary prose would be waved through.
+			'a citation in a closed-note directory, where a named path would be allowed',
+			(files) => {
+				files['docs/issues/A limitation.md'] = note(
+					'Issue',
+					10,
+					'A slice',
+					'# A limitation\n\nOnce lived in `src/gone.ts`.\n\n**Checked by** `test/gone.test.ts` — "the thing works".\n',
+				);
+			},
+			'cites test/gone.test.ts, which does not exist',
+		],
+		[
+			'a citation naming a test the file no longer contains',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** `test/thing.test.ts` — "renamed away".',
+				});
+			},
+			'cites "renamed away", which test/thing.test.ts does not contain',
+		],
+		[
+			// The failure mode this rule's FIRST version had, turned into a report. That
+			// version matched marker, path and name in one regex that excluded `\n` to stay
+			// bounded — so the first real citation written into the register, which Markdown
+			// wrapped across two lines, matched nothing and went unchecked while the run
+			// stayed green. A rule that quietly does nothing on input it cannot parse reads
+			// exactly like a rule that works.
+			'a **Checked by** marker the gate cannot parse a citation out of',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n**Checked by** the tests, obviously.',
+				});
+			},
+			'has a **Checked by** with no `path.ts` and "test name" after it',
+		],
+		[
+			// The other half of that lesson, in the accept direction's shape: a citation
+			// Markdown has wrapped is a legal citation and must resolve. Without this, the
+			// rule could be "fixed" back into the broken version and only this case would
+			// notice — the reject cases above all fit on one line.
+			'a wrapped citation whose test name is genuinely absent',
+			(files) => {
+				files['docs/requirements/Doing the thing.md'] = useCase({
+					whereItLives: [
+						'`src/thing.ts` and `test/thing.test.ts`.',
+						'',
+						'**Checked by** `test/thing.test.ts` — "the thing works',
+						'when it is wrapped".',
+					].join('\n'),
+				});
+			},
+			'cites "the thing works when it is wrapped", which test/thing.test.ts does not contain',
+		],
+		[
+			// The root README is fetched by name rather than reached by the walk, so it is
+			// a second code path and needs its own planting — a rule that covered only the
+			// walk would pass every case above and still miss the file the wrong sentence
+			// this convention exists for was actually read in.
+			'a rotted citation in the root README, which is not in the register at all',
+			(files) => {
+				files['README.md'] = '# The plugin\n\n**Checked by** `test/gone.test.ts` — "the thing works".\n';
+			},
+			'cites test/gone.test.ts, which does not exist',
+		],
+		[
 			'a module no use case and no ADR specifies',
 			(files) => {
 				files['src/orphan.ts'] = 'export const orphan = 1;\n';
@@ -480,6 +561,6 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(47);
+		expect(sites.length).toBe(50);
 	});
 });

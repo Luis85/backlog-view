@@ -108,6 +108,59 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a resolving **Checked by** citation, in a note and in the root README', async () => {
+		// Both sites the rule covers, because they are reached differently: `docs/` files
+		// come from the walk and the root README is fetched by name. A rule that worked on
+		// one and silently did nothing on the other would look exactly like this passing.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: [
+				'`src/thing.ts` and `test/thing.test.ts`.',
+				'',
+				'**Checked by** `test/thing.test.ts` — "the thing works".',
+			].join('\n'),
+		});
+		files['README.md'] = '# The plugin\n\n**Checked by** `test/thing.test.ts` — "the thing works".\n';
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a citation Markdown has wrapped across two lines', async () => {
+		// The legal form the first version of this rule refused — silently, which is the
+		// expensive direction: the register's own first citation wrapped exactly like this
+		// and was never checked, while the run stayed green and read as if it had been.
+		const files = baseRegister();
+		files['test/thing.test.ts'] = "it('the thing works when it is wrapped', () => {});\n";
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: [
+				'`src/thing.ts` and `test/thing.test.ts`.',
+				'',
+				'**Checked by** `test/thing.test.ts` — "the thing works',
+				'when it is wrapped".',
+			].join('\n'),
+		});
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a **Checked by** example inside a fence, which is documentation not a citation', async () => {
+		// `docs/README.md` documents the convention by showing it, naming a path that does
+		// not exist on purpose. Fenced, so it is an example being quoted rather than a
+		// reference being made — the same rule wikilinks and source paths already follow.
+		const files = baseRegister();
+		files['docs/README.md'] = [
+			'# docs',
+			'',
+			'The register. Cite a check like this:',
+			'',
+			'```',
+			'**Checked by** `test/nothing/here.test.ts` — "a name no file holds"',
+			'```',
+		].join('\n');
+
+		await expectAccepted(files);
+	});
+
 	it('accepts every Markdown bullet marker on an extension', async () => {
 		// The register writes `-`. A contributor writing `*` or `+` is writing Markdown,
 		// and an index matcher that encoded one spelling has already blocked one.
