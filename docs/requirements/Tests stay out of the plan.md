@@ -69,6 +69,19 @@ context row when a visible descendant needs a parent to hang from.
   and excluded from the plan's projections with the rest of that subtree. Counting it in
   the plan's totals while its parent is invisible there is the shape that would make a
   rollup unreadable.
+  So membership is **one rule with two clauses**, and `Task` is the whole reason it needs
+  two: a `Task` takes the projection of its parent, and every other type takes the
+  projection of its own type. That is not an exception carved out for this note — it is
+  what a `Task` already is here, the one type that means nothing on its own and everything
+  by what it hangs from. Written as a single "work items go to the plan" rule it
+  contradicts itself the moment a task hangs from a test, which is the legal, expected
+  shape rather than a mis-drag.
+- **2c — a `PBI`, `Feature` or `Epic` sits under a test**, which only an advisory drag can
+  produce. It is drawn in the plan, as a root, by 2a. The contrast with 2b is the rule
+  above working rather than a line drawn twice: a `Task` under a test is test work by
+  design, and a `PBI` under a test is plan work in the wrong place. Hiding the second
+  would lose a note the user still has to manage, and the projection they would look for
+  it in is the plan.
 - **3b — a `Test case` sits under a `PBI`** (the advisory drag of
   [[Test suite and test case as a ladder of their own]] 4a), and that PBI is on the plan.
   The PBI's progress bar, completion and inferred span are exactly what they were before
@@ -132,10 +145,13 @@ context row when a visible descendant needs a parent to hang from.
 - A test is never drawn as a context row in the plan's projections — the distinction
   between "the Base excluded it" and "this projection excludes it" is asserted, since
   reusing the context-row mechanism is the plausible implementation that breaks this note.
-- A `Task` under a `Test case` follows its parent into the catalog and out of the plan.
-- A work item under a test is still drawn in the plan, as a root — the symmetric half of
-  [[A projection for the tests]]' rule, asserted here so that neither note owns only its
-  own direction of it.
+- A `Task` under a `Test case` follows its parent into the catalog and out of the plan; a
+  `PBI`, `Feature` or `Epic` under a test does not — it is drawn in the plan, as a root.
+  Both are the same rule (2b): a `Task` takes its parent's projection, every other type
+  takes its own. Asserted as the pair, because a criterion naming only one of them reads as
+  "work items go to the plan" and that sentence is false of exactly one type.
+- That root behaviour is the symmetric half of [[A projection for the tests]]' rule,
+  asserted here too so that neither note owns only its own direction of it.
 - The toolbar's count label, its level breakdown and its "*N hidden*" completed toggle all
   read the projection's population, so none of them counts a test in the plan and the
   catalog's label counts nothing else. The completed toggle is asserted specifically, with

@@ -60,10 +60,15 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   on every row in a vault that has no tests would be a view shouting about a feature nobody
   turned on.
 - **1b — the base returns no tests at all**, the coverage key being bound. Every work item
-  reads as untested, which is true of that result set and is the honest report — the same
-  answer the toolbar's advisory gives when it counts what the Base returned rather than
-  what the vault holds. What must not happen is a signal keyed to *whether tests exist*:
-  that would make the marker mean two different things depending on a filter.
+  **that the signal applies to at all** reads as untested — which excludes `Task`s, per 1c,
+  and that exclusion holds here exactly as it holds everywhere else. Nothing about this case
+  is special enough to widen the population: 1c is a rule about which rows carry the signal,
+  not a rule about the ordinary case, and a "but here, all of them" would be the signal
+  meaning something different when the result set is empty.
+  For the rows it does apply to, marking them all is the honest report of that result set —
+  the answer the count label gives when it reports what the Base returned rather than what
+  the vault holds. What must not happen is a signal keyed to *whether tests exist*: that
+  would make the marker mean two different things depending on a filter.
 - **1c — the item is a `Task`.** Counted like any other work item if a test names it, and
   **not** marked untested when none does. Tests are written against behaviour, and marking
   every task in the register as untested would make the signal noise on the population that
@@ -71,10 +76,19 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
 - **1d — the item is a context row.** No count and no signal. An `outsideFilter` row is
   never a source of anything derived from the results, and a count is exactly that — the
   rule `assignAll` already keeps for rollups, asked of one more number.
-- **2a — the only test naming it is one the Base excluded.** It does not count, so the item
-  reads as untested. The edge exists ([[Coverage as a property]] 3a) and the count is a
-  statement about the results, so this is the context-row rule producing an answer that is
-  correct and looks wrong — which is why it is written down here rather than discovered.
+- **2a — the only test naming it is one the Base excluded.** The item reads as untested,
+  and the reason is simpler than an earlier draft of this extension claimed: **there is no
+  edge at all.** An excluded note's coverage list is not read
+  ([[Coverage as a property]] 3c) — its claims are not this base's facts — so nothing was
+  declared for the count to decline to count. The draft cited 3a instead, which is the
+  opposite case (an *included* test naming an *excluded* item, where the edge does exist and
+  is simply never counted), and reached the right answer through the wrong rule. The
+  outcome is unchanged and the reasoning is not, which is worth the correction: a rule
+  quoted at the wrong case is how the next extension gets decided wrongly.
+  It stays written down because it still looks wrong from outside — a test the user can see
+  in another base names this item, and this base says nothing checks it. That is the
+  context-row rule doing its job, and the honest reading of "nothing in *these results*
+  checks it".
 - **2b — the item is covered only by a test whose entry is marked broken.** Not counted. A
   broken entry names nothing this base can see, and counting it would make the reassuring
   number the one thing a typo can inflate.

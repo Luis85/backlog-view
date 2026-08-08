@@ -44,10 +44,13 @@ base settings are saved on the view, working position on the device.
    filtered: `renderTree` starts at the model's own roots and `renderForest` drops a hidden
    sibling *without descending through it*, so a filtered parent takes its whole subtree
    off the screen with it. A projection's roots are therefore **the items it draws whose
-   parent it does not draw** — which for the catalog is every test whose parent is not a
-   test, and for the plan is every work item whose parent is not a work item. The operation
-   is not new: `collectFocusRoots` already re-roots the rendered tree at the topmost items
-   of a level, and this is the same re-rooting under a different predicate.
+   parent it does not draw** — asked of whatever each projection's membership rule already
+   answers ([[Tests stay out of the plan]] 2b), so the catalog roots at every item it draws
+   whose parent it does not, and the plan does the same. Stated that way rather than as
+   "every test whose parent is not a test", which would be a second membership rule written
+   beside the first and would disagree with it about a `Task`. The operation is not new:
+   `collectFocusRoots` already re-roots the rendered tree at the topmost items of a level,
+   and this is the same re-rooting under a different predicate.
 3. Collapse, the quick filter and every write path behave as they do in the backlog tree,
    over this population — including the toolbar's count label, which counts tests here and
    only tests. Its **completed toggle** is withheld, as it already is on the Deliverables
