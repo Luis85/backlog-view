@@ -84,10 +84,15 @@ narrowed to one type.
 - **2a — the Deliverable state property IS configured, on its own distinct key, but its
   own states or done values are not.** They fall through to THIS workflow's own
   observed values or the shipped default (`DEFAULT_DONE_VALUES`) — never to the
-  requirements workflow's declared states or customized done values. The fallback is
-  all-or-nothing on the KEY: an independently-keyed workflow shares nothing with the
-  requirements one, and only an unset key borrows every field of it together (key,
-  states and done values as one unit, never just one of the three).
+  requirements workflow's declared states or customized done values. What the KEY decides
+  is which fallback an EMPTY list takes — its own observed values when the key is its own,
+  the requirements workflow's declared list when the key is falling back too — never
+  whether a list the user populated is used. **A list you set always wins**, shared key or
+  not; the all-or-nothing rule is about BORROWING, not about overriding. Saying it the
+  wider way ("only an unset key borrows every field together, never just one of the
+  three") described a configuration the code does not have — a shared key with its own
+  states, which `settings.test.ts`' "keeps its own declared states over the shared list
+  once configured" has asserted the whole time.
 - **1b — the Deliverable workflow is configured, but the base holds no `Deliverable`
   results at all.** Every column renders empty, and the board shows "No deliverables
   yet" — never "All N items are done and hidden," which is what the requirements

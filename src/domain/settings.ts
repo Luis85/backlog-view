@@ -702,8 +702,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	const states = dedupe(list('stateValues'));
 	// The KEY's own fallback condition, named ONCE and consulted by every Deliverable-
 	// workflow field below: the returned `deliverableStateKey` directly, and
-	// `deliverableStates`/`deliverableDoneValues` as the gate in front of each list's
-	// own emptiness check — not three expressions that happen to agree today. Resolved
+	// `deliverableStates`/`deliverableDoneValues` as the gate BEHIND each list's own
+	// emptiness check — a populated list wins first, and this only picks WHICH fallback
+	// an empty one takes — not three expressions that happen to agree today. Resolved
 	// here, before either list, because both need it. See `resolvedDeliverableStateKey`,
 	// which states the identical condition (`settings.deliverableStateKey === ''`) for
 	// every READER outside this function; this is that condition's one computation
