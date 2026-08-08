@@ -72,7 +72,11 @@ Nothing obvious, which is why this is Open rather than a task. What has been con
   open verification — plausibly worse than the defect.
 
 The honest position for now: this is a known hole with no proposed fix, recorded so the
-next instance is the third of a known kind rather than the first of a new one.
+next instance is the **fourth** of a known kind rather than the first of a new one.
+
+A counted list in prose is itself the thing this note is about — the count above was raised
+from two to three and this sentence was left saying "the third", which review caught. If a
+fourth arrives, raise both, or replace the number with "one more".
 
 ## What to do meanwhile
 
