@@ -44,9 +44,11 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
    Unbound, the property does not exist for this view: nothing is read, drawn or offered.
 2. Each result's value is read tolerantly, the way every field here is read — a single
    entry or a list, a `[[wikilink]]` or a bare name, blanks and repeats collapsed.
-3. Each entry resolves against the same item set `parent` resolves against — the Base's
-   results plus the excluded ancestors the parent walk already loaded, and nothing
-   further — producing an edge from the prerequisite to the item that named it.
+3. Each entry resolves against the same item set `parent` resolves against, **once the
+   scope prune has had it** — the Base's results plus the excluded ancestors the parent
+   walk already loaded, less the notes "Ignore notes outside the hierarchy" dropped as not
+   work items, and nothing further — producing an edge from the prerequisite to the item
+   that named it.
 4. Entries that cannot become an edge — unresolvable, self-referential, or the one that
    closes a loop — are kept and **marked broken**, never dropped and never rewritten by
    the reader. Never *by the reader* is the whole of it: the user can still remove one
@@ -83,10 +85,16 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   The statement here was made by a result, on its own note, exactly as a result naming an
   excluded `parent` is the case that puts a context row on screen in the first place — it
   renders, it parents, and that is all. What the rule forbids is the other direction, 3c's.
-- **3b — the entry names a note this base never loaded.** It does not resolve, and the
+- **3b — the entry names a note this base never loaded, or one the scope prune dropped.**
+  It does not resolve, and the
   boundary is the point: the item set is the Base's results plus the excluded **ancestors**
-  the parent walk pulls in, so a prerequisite that is neither is simply not there to
-  resolve against. **Nothing is loaded to make it resolve.** Doing so would mean a vault
+  the parent walk pulls in, minus what the prune took, so a prerequisite that is neither is
+  simply not there to resolve against. The pruned case is the one that needs saying out
+  loud, because such a note *was* returned by the Base and *is* in `byPath` when `linkAll`
+  finishes: it leaves the model a phase later, and an edge resolved before that would point
+  at a meeting note ([[What counts as a work item]]) — the guarantee that nothing downstream
+  sees a pruned note, broken by a pass that ran too early rather than by a rule anyone
+  disagreed with. **Nothing is loaded to make any of them resolve.** Doing so would mean a vault
   read per named prerequisite — bounded by the entries someone typed rather than by the
   tree — to obtain a note that then cannot be drawn (an arrow needs both ends inside the
   filter), cannot be counted, and cannot be written to. The one thing it would add is the
@@ -125,6 +133,11 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
   an already-loaded ancestor does not resolve, and the vault is not consulted to find out
   why. Nothing reports such an entry as mistyped, since the view cannot tell that from
   out-of-base without the read it is not making.
+- The set is the one the build **keeps**: with the hierarchy scope on, a prerequisite naming
+  a note the prune dropped resolves to nothing, so no edge points at a note absent from the
+  finished model and no non-work-item is offered as a prerequisite anywhere. Checkable by
+  building a model whose base returns a meeting note the prune drops and asserting the edge
+  that names it is marked broken — no ordering claim needed about which pass ran first.
 - An unresolvable, self-referential or loop-closing entry is marked, never dropped: no
   item is hidden, re-parented, re-ranked or re-levelled by any edge, and the tree's own
   shape is identical with the property configured and without it.
@@ -145,7 +158,10 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 in `src/domain/viewOptions.ts` and their resolution in `src/domain/settings.ts`, with the
 tolerant read beside the tolerant date and number in `src/domain/noteFields.ts` — the
 module that already owns "what shape did the user's frontmatter take". Resolution is a
-pass in `src/domain/model.ts` after `linkAll`, on the item set that phase produced, and
-the marks it produces are fields of `BacklogItem` — so the question `src/domain/CLAUDE.md`
-asks of every new field, *which phase owns it*, is answered by the phase that can first
-see every item.
+pass in `src/domain/model.ts` **after `pruneOutsideHierarchy`** — not after `linkAll`,
+which is the tempting place and the wrong one: the prune runs later and takes whole
+subtrees with it, so the set `linkAll` produced is not the set the model keeps. The marks
+it produces are fields of `BacklogItem`, which places the pass after `assignAll` rather
+than merely after the prune — so the question `src/domain/CLAUDE.md` asks of every new
+field, *which phase owns it*, is answered by the phase that can first see every item **that
+survives**.

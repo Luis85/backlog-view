@@ -32,7 +32,7 @@ mistaken for the resize grip it sits beside.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | The pointer hovers, or the keyboard focuses, a timeline row whose item has a bar |
+| **Trigger** | The pointer hovers, or the keyboard focuses, a timeline row whose item has a bar — or the device has no hover, where it is not revealed because it was never hidden |
 | **Preconditions** | Roadmap mode is on with the dated axis, and the dependency property is bound ([[Dependencies as a property]]) |
 | **Guarantee** | The gesture plans no write of its own: a completed drag calls the same method the menu calls, so the batch, its refusals and its undo are identical either way. A cancelled drag writes nothing. No drop changes a date, and none writes to a note the Base excluded. |
 
@@ -60,6 +60,15 @@ mistaken for the resize grip it sits beside.
 - **1d — the bar is narrower than its own handles.** The connector still sits outside the
   bar's end rather than inside it, so a one-day bar keeps both its resize grip and its
   connector instead of trading one for the other.
+- **1e — the device has no hover.** Neither trigger above is available on a touch-only
+  device with no hardware keyboard, so the connector is **permanent** there rather than
+  revealed: a `(hover: none)` block undoes the `opacity: 0`, and it sits *beside* that rule
+  rather than in `styles/touch.css`, because a media query adds no specificity and any later
+  rule for the same selector would get between the pair. Not a new rule — `.pbl-add` and
+  `.pbl-bucket-add` each carry exactly that block for exactly this reason, and a
+  hover-revealed control that lacked one shipped unreachable on touch once
+  ([[Buckets from a horizon property]]). Permanent is also the cheap direction: what a
+  hoverless device loses by showing the connector always is the discretion, not a gesture.
 - **2a — the pointer is over an illegal target.** The source bar itself, a context row, a
   target that would close a loop, or **a target that already waits for the source** —
   marked as illegal **while the drag is held**, not refused after release. A refusal that
@@ -80,7 +89,9 @@ mistaken for the resize grip it sits beside.
   loudly, identically to the menu path, because it is the same batch.
 - **3b — the input is touch.** The same rules the other card and bar drags already keep
   ([[Keyboard, menu and touch]]); no dependency-specific gesture, and no gesture that only
-  a mouse can make.
+  a mouse can make. The half that is *not* shared is the affordance, which is 1e's: a
+  connector nothing reveals is a gesture only a mouse can start, whatever the drag handler
+  accepts.
 - **4a — the user takes the link back.** One undo, because the drag produced the same
   single-note batch the menu produces.
 
@@ -88,6 +99,10 @@ mistaken for the resize grip it sits beside.
 
 - The connector appears only on a result's bar, only with the key bound, and sits outside
   the bar's end so it never displaces the resize grip — including on a bar one day wide.
+- It is reachable without hover: under `(hover: none)` it is visible with no gesture, and
+  the rule that does it sits immediately after the `opacity: 0` it overrides — the ordering
+  checked the way `test/view/rendering.test.ts` already checks it for the other two revealed
+  controls, since a stylesheet cannot be asked whether a control is reachable.
 - Legality is shown during the drag: an illegal target is visibly illegal before release,
   and releasing on one writes nothing. Every legal target would change something — a bar
   already waiting for the source is illegal, decided from the **target's** prerequisites,
@@ -103,6 +118,8 @@ mistaken for the resize grip it sits beside.
 `src/view/interactions/timelineDrag.ts`, which already owns the pointer session, the day
 grid and the preview for moving and resizing a bar; the preview line and the legality
 marking are the drop-indicator vocabulary in `styles/dragDrop.css` and `styles/timeline.css`
-rather than a new one. Legality itself is asked of `src/domain/dropTargets.ts` — the module
+rather than a new one. The connector's own reveal and the `(hover: none)` block that undoes
+it are a pair in `styles/timeline.css` and deliberately not in `styles/touch.css`, which
+says why for the two controls that already do this. Legality itself is asked of `src/domain/dropTargets.ts` — the module
 that already answers "would this drop be refused" for the tree — and the write is the
 method [[Linking two items]] puts on `src/view/host.ts`, called and not re-planned.
