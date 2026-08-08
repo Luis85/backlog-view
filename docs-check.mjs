@@ -361,7 +361,10 @@ for (const file of files) {
 		if (!stems.has(target)) fail(file, `unresolved wikilink [[${target}]]`);
 	}
 	const living = isLiving(file);
-	for (const [, referenced] of text.matchAll(/`((?:src|test)\/[\w./-]+\.ts)`/g)) {
+	// `proseWithSpans`, not raw text: the path lives in a code span so spans must survive,
+	// but an HTML COMMENT must not — a path parked inside one renders nowhere and is not a
+	// reference, the same rule the citation scan follows one section down.
+	for (const [, referenced] of proseWithSpans(text).matchAll(/`((?:src|test)\/[\w./-]+\.ts)`/g)) {
 		if (await exists(referenced)) continue;
 		if (living) fail(file, `names ${referenced}, which does not exist`);
 		else historical.push(`${file} -> ${referenced}`);

@@ -187,6 +187,18 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a citation commented out in HTML, which renders as nothing', async () => {
+		// A contributor parking a citation is writing something that does not render, so the
+		// gate must not read it. Reported as a malformed citation before — a failure on a
+		// correct document, which is the direction this project holds more expensive.
+		const files = baseRegister();
+		files['docs/requirements/Doing the thing.md'] = useCase({
+			whereItLives: '`src/thing.ts` and `test/thing.test.ts`.\n\n<!-- **Checked by** `test/gone.test.ts` — "later" -->',
+		});
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a **Checked by** example inside a fence, which is documentation not a citation', async () => {
 		// `docs/README.md` documents the convention by showing it, naming a path that does
 		// not exist on purpose. Fenced, so it is an example being quoted rather than a

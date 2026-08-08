@@ -54,6 +54,16 @@ describe('code is blanked, not deleted', () => {
 		expect(masked).not.toContain('span');
 	});
 
+	it('blanks an HTML comment, and leaves ordinary raw HTML alone', () => {
+		// Nothing inside a comment renders, so nothing inside one is a reference — the rule
+		// backticks already carry. Only the comment: an `html` node is also every raw tag,
+		// and a `<details>` block's prose is ordinary Markdown that has to keep being read.
+		const text = '<!-- [[Ghost]] and `x` -->\n\n<details>\n\nSee [[A slice]].\n\n</details>\n';
+
+		expect(wikilinks(text)).toEqual(['A slice']);
+		expect(prose(text)).toHaveLength(text.length);
+	});
+
 	it('blanks fences but keeps spans, for the caller that needs the path inside them', () => {
 		// `proseWithSpans` is not a lesser `prose`: the citation rule reads a path OUT of a
 		// code span, so stripping spans would blind it to every real citation.

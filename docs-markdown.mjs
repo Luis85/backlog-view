@@ -53,10 +53,21 @@ function* nodes(text) {
 }
 
 const CODE = new Set(["code", "inlineCode"]);
+const range = (n) => [n.position.start.offset, n.position.end.offset];
+/**
+ * An HTML COMMENT is masked alongside code, because nothing inside one renders and so
+ * nothing inside one is a reference — the same rule backticks already carry. Only the
+ * comment: an `html` node is also every raw tag, and a `<details>` block's prose is
+ * ordinary Markdown that must keep being read. Without this, `<!-- **Checked by** … -->`
+ * was found by the marker scan and then had no block to be bounded by, so a contributor
+ * commenting out a citation got a malformed-citation failure on a correct document —
+ * the expensive direction.
+ */
+const isComment = (text, n) => n.type === "html" && text.slice(...range(n)).startsWith("<!--");
 const spans = (text, kinds) =>
 	[...nodes(text)]
-		.filter((n) => kinds.has(n.type) && n.position)
-		.map((n) => [n.position.start.offset, n.position.end.offset]);
+		.filter((n) => n.position && (kinds.has(n.type) || isComment(text, n)))
+		.map(range);
 
 /** Same length, same newlines — so offsets and line anchors survive. */
 const blankOut = (text, ranges) => {
