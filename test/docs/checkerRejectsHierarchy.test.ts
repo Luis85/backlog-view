@@ -83,11 +83,16 @@ describe('the documented hierarchy and the gate agree', () => {
 			// The row that DISAPPEARS rather than disagreeing — the table visibly says something
 			// the gate refuses while the gate calls it consistent. Found by review; measured in
 			// the real register before it was closed, where the planted row passed.
+			//
+			// Now reported by the code-free branch rather than the prose one, since a cell with
+			// no span at all is what this is. The case is unchanged; which rule catches it moved
+			// as the rules were tightened, which is the point of asserting the message and not
+			// the site.
 			'a hierarchy row naming its type in prose rather than code',
 			(files) => {
 				files['docs/README.md'] = `${hierarchyTable()}| Spike | Epic | *(nothing)* |\n`;
 			},
-			'has Spike outside a code span',
+			'"Spike" is not one of the documented "nothing" annotations',
 		],
 		[
 			// ONE CASE PER COLUMN, because the first fix went in at the type column only and
@@ -140,6 +145,18 @@ describe('the documented hierarchy and the gate agree', () => {
 				files['docs/README.md'] = hierarchyTable().replace('`PBI`, `Issue`, `Bug`, `Deliverable` |', '`PBI`, `Issue`, `Bug` (and never `Deliverable`) |');
 			},
 			'outside a code span',
+		],
+		[
+			// The FIFTH, and it was in the exemption written for the fourth: "a parenthetical is
+			// free-form where the cell names nothing" reopened the bypass one position over.
+			// The extracted set stays empty and matches the gate while the table says an Epic
+			// hangs from a Feature. The cell that reports no types is the one place a sentence
+			// can sit, so it is the one place a relation can hide.
+			'a nothing-annotation carrying a relation in its prose',
+			(files) => {
+				files['docs/README.md'] = hierarchyTable().replace('(nothing — it is a root)', '(nothing — except Feature)');
+			},
+			'is not one of the documented "nothing" annotations',
 		],
 		[
 			// The claim the prose rule does NOT subsume: a cell holding no name at all. Nothing

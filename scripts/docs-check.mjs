@@ -900,6 +900,17 @@ for (const file of sources) {
  * column first and an inverse nobody derives is a second place to be wrong.
  */
 const HIERARCHY_HEADINGS = ["Type", "Parent may be", "Children may be"];
+/**
+ * The only prose a hierarchy cell naming NO types may hold, byte for byte. Deliberately an
+ * enumeration of the three the table already uses rather than a pattern: the position is
+ * the one place a sentence can sit in that table, so it is the one place a relation can
+ * hide in prose while the extracted set stays empty and agrees with the gate.
+ *
+ * It duplicates three strings of `docs/README.md` and that is the point — a fourth way to
+ * write "nothing" has to be declared here, loudly, rather than admitted because it looked
+ * like the others.
+ */
+const NOTHING_ANNOTATIONS = new Set(["(nothing)", "(nothing — it is a root)", "(nothing — a root by nature)"]);
 const hierarchies = tablesWith(await readFile(path.join(DOCS, "README.md"), "utf8"), HIERARCHY_HEADINGS);
 if (hierarchies.length === 0) {
 	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
@@ -944,16 +955,30 @@ if (hierarchies.length === 0) {
 		// prose itself, which it now returns — a caller cannot notice what it never receives,
 		// and that is exactly how this defect got a second life.
 		for (const [column, cell] of cells.entries()) {
-			const aside = cell.code.length === 0 ? cell.text.replace(/\([^)]*\)/gu, "") : cell.text;
+			const where = `hierarchy table row ${index + 1} column ${column + 1}`;
+			// A cell that names nothing is the ONE free-form position, so it is not free-form:
+			// it must be one of the three annotations the table already uses, byte for byte.
+			// Anything else is a sentence, and a sentence in a cell that reports no types is
+			// exactly where a relation can hide — `*(nothing — except Feature)*` says an Epic
+			// hangs from a Feature while the extracted set stays empty and matches the gate.
+			// Found in review one round after the rule above, in the exemption written FOR the
+			// rule above: "arbitrary text is fine here" was the same mistake one position over.
+			if (cell.code.length === 0) {
+				// Named cause first: a cell reaching this branch is usually a contributor who
+				// forgot the backticks, not one writing an annotation, and "that is not one of
+				// the nothing annotations" answers a question they were not asking.
+				if (!NOTHING_ANNOTATIONS.has(cell.text.trim())) {
+					fail("docs/README.md", `${where} names nothing in code, and "${cell.text.trim()}" is not one of the documented "nothing" annotations`);
+				}
+				continue;
+			}
 			// Reported as WORDS and deduped CHARACTERS rather than raw: the prose of a relation
 			// cell is mostly separators, so the whole cell reads `", , , , Spike"` and buries
 			// the one thing to go and fix.
-			const named = aside.match(/[\p{L}\p{M}]+/gu) ?? [];
-			const odd = [...new Set(aside.replace(/[\p{L}\p{M}]+/gu, "").match(/[^\s,/]/gu) ?? [])];
+			const named = cell.text.match(/[\p{L}\p{M}]+/gu) ?? [];
+			const odd = [...new Set(cell.text.replace(/[\p{L}\p{M}]+/gu, "").match(/[^\s,/]/gu) ?? [])];
 			const wrong = [...named.filter((word) => word !== "or"), ...odd];
-			if (wrong.length > 0) {
-				fail("docs/README.md", `hierarchy table row ${index + 1} column ${column + 1} has ${wrong.join(", ")} outside a code span`);
-			}
+			if (wrong.length > 0) fail("docs/README.md", `${where} has ${wrong.join(", ")} outside a code span`);
 		}
 		// Distinct from the rule above, and not covered by it: a cell holding no name at all.
 		if (types.code.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);
