@@ -70,12 +70,13 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
 	// `scrollLeft` IS the day-track offset of the first visible date, and no lead-column
 	// term belongs here. The lead is `position: sticky; left: 0`, so it stays pinned at
 	// the scrollport's edge and covers the track beneath it: the first day a reader can
-	// actually see sits at viewport x = 220, which is content x = scrollLeft + 220, which
-	// is day-track offset scrollLeft. Subtracting the lead names a date hidden underneath
-	// it — at 4px/day and scrollLeft 620 that is day 100 while the reader is looking at
-	// day 155 — and it was doing so in an earlier revision of this plan, together with a
-	// guard for the negative offsets it produced near zero. Both are gone: a sticky
-	// element shifts what is painted, not where the content is.
+	// actually see sits at viewport x = the lead's own width, which is content x =
+	// scrollLeft + that width, which is day-track offset scrollLeft — for every lead,
+	// including the ones a reader has dragged. Subtracting it names a date hidden
+	// underneath — at 4px/day, scrollLeft 620 and the DEFAULT 220px lead, day 100 while
+	// the reader is looking at day 155 — and it was doing so in an earlier revision of
+	// this plan, together with a guard for the negative offsets it produced near zero.
+	// Both are gone: a sticky element shifts what is painted, not where the content is.
 	const leadingDate =
 		scroller && roadmap?.window && roadmap.scale ? dayAt(roadmap.window, roadmap.scale, scroller.scrollLeft) : null;
 	return { ...anchor, offsets, leadingDate };
@@ -99,8 +100,12 @@ export function centreOnToday(todayLeft: number, viewport: number, leadWidth: nu
 	return Math.max(todayLeft - leadWidth - band / 2, 0);
 }
 
-/** The width THIS render drew, or the default off the dated axis — split out so the
- * `??` does not add to `anchorScrollLeft`'s own branching. */
+/**
+ * The width THIS render drew, or the default off the dated axis. Kept as a function
+ * rather than inlined at its two callers because `anchorScrollLeft` is at 16 of ESLint's
+ * `complexity` 16 without it: the `??` is the seventeenth branch and inlining it fails
+ * lint. That is the whole reason, and it is checked rather than argued.
+ */
 function resolvedLeadWidth(roadmap: RoadmapSnapshot | null): number {
 	return roadmap?.leadWidth ?? TIMELINE_LEAD_PX;
 }

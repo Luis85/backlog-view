@@ -67,12 +67,17 @@ export function renderLeadResize(
 	setTooltip(grip, 'Drag to resize, or focus and use the arrow keys (Home resets it)');
 
 	// Live feedback is the CSS custom property alone — nothing re-renders mid-gesture,
-	// which is also why the today line, the milestone lines and the gridlines (each a
-	// number baked into an element's own inline style at the LAST render) do not chase
-	// the column during an active drag: they catch up in one pass when `commit` below
-	// re-renders at the settled width. ponytail: redoing that arithmetic every
-	// `mousemove` would track them live too, for a mismatch that self-heals the instant
-	// the pointer releases.
+	// and that splits the frame in two while the gesture lasts. Everything laid out AFTER
+	// the sticky lead reads `--pbl-tl-lead` and so DOES track it: the header's date
+	// tiers, every row's track and therefore every bar, the weekend layer and the drop
+	// overlay. What stays put is the three marks positioned absolutely with `leadWidth`
+	// already added into the number, baked into an element's own inline style at the LAST
+	// render — the gridlines, the today line and the milestone lines.
+	// ponytail: so the accepted cost is not a few stray marks, it is the whole grid out
+	// of register — for the length of the drag every bar sits on the wrong gridline and
+	// today's mark is off by the gesture's delta. Taken because `commit` below re-renders
+	// at the settled width and it is gone the instant the pointer releases; redoing that
+	// arithmetic on every `pointermove` is the upgrade path.
 	const live = (width: number): void => {
 		content.setCssProps({ '--pbl-tl-lead': `${width}px` });
 		grip.setAttribute('aria-valuenow', String(width));
@@ -138,7 +143,7 @@ export function renderLeadResize(
 		// pointer's from arriving.
 		const mine = (e: PointerEvent): boolean => e.pointerId === activePointer;
 		const onMove = (moveEvt: PointerEvent): void => {
-			if (mine(moveEvt)) live(clampLeadWidth(startWidth + (moveEvt.clientX - startX), available));
+			if (mine(moveEvt)) live(effectiveLeadWidth(startWidth + (moveEvt.clientX - startX), available));
 		};
 		const end = (evt: PointerEvent): void => {
 			grip.removeEventListener('pointermove', onMove);
@@ -150,7 +155,7 @@ export function renderLeadResize(
 		const onUp = (upEvt: PointerEvent): void => {
 			if (!mine(upEvt)) return;
 			end(upEvt);
-			commitIfChanged(clampLeadWidth(startWidth + (upEvt.clientX - startX), available));
+			commitIfChanged(effectiveLeadWidth(startWidth + (upEvt.clientX - startX), available));
 		};
 		// A cancel is the platform saying the gesture stopped being the user's — palm
 		// rejection, an orientation change, another gesture taking it over. The width it
@@ -175,7 +180,7 @@ export function renderLeadResize(
 		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
 			evt.preventDefault();
 			const step = evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX;
-			commitIfChanged(clampLeadWidth(current + step, available));
+			commitIfChanged(effectiveLeadWidth(current + step, available));
 		} else if (evt.key === 'Home') {
 			evt.preventDefault();
 			commit(defaultWidth);
@@ -187,22 +192,6 @@ export function renderLeadResize(
 const KEY_STEP_PX = 10;
 
 /**
- * The range a GESTURE may reach, which is the pane's and not the store's. A width the
- * pane cannot draw is one the reader cannot see: dragging past it moved `aria-valuenow`
- * past the `aria-valuemax` beside it, covered the day track the clamp reserves, and
- * persisted a number the very next render threw away. So the interaction honours the
- * same range it announces.
- *
- * This does NOT narrow a pick already stored from a wider pane — that one is clamped
- * for display and returns in full when the pane grows. It bounds what a reader can newly
- * ASK for here, which in a narrow pane is all they can express anyway.
- */
-function clampLeadWidth(px: number, availablePx: number): number {
-	const { min, max } = leadBoundsFor(availablePx);
-	return Math.min(max, Math.max(min, px));
-}
-
-/**
  * Room reserved for the day track when the pane is too narrow to also hold the
  * stored lead width — enough that a sliver of grid always survives, never the whole
  * width the opaque lead column. Its own constant, not `MIN_TIMELINE_LEAD_PX`: that one
@@ -212,13 +201,23 @@ function clampLeadWidth(px: number, availablePx: number): number {
 export const MIN_DAY_TRACK_PX = 80;
 
 /**
- * The lead width actually DRAWN — the stored pick clamped against the space the pane
- * actually has, never against the pick itself: a stored 480 in a 300px pane draws
- * narrower here without being rewritten, so it comes back in full the moment the pane
- * widens again, the same rule `density` and the axis pick already keep. `renderTimeline`
- * resolves this ONCE and threads the result everywhere the CSS width and the TS
- * arithmetic — the today line, the milestone lines, the gridlines — have to agree; see
- * its own comment for what happens when they don't (commit 791e1da).
+ * A lead width clamped into what the pane can honour — ONE answer to two questions,
+ * because they were the same expression over the same `leadBoundsFor` range under two
+ * names.
+ *
+ * The RENDER asks it of the stored pick, and draws the result: a stored 480 in a 300px
+ * pane draws narrower here without being rewritten, so it comes back in full the moment
+ * the pane widens again, the same rule `density` and the axis pick already keep.
+ * `renderTimeline` resolves this ONCE and threads the result everywhere the CSS width and
+ * the TS arithmetic — the today line, the milestone lines, the gridlines — have to agree;
+ * see its own comment for what happens when they don't (commit 791e1da).
+ *
+ * A GESTURE asks it of the width the pointer or the arrow key names, so the interaction
+ * honours exactly the range the separator announces: dragging past it moved
+ * `aria-valuenow` past the `aria-valuemax` beside it, covered the day track the clamp
+ * reserves, and persisted a number the very next render threw away. Neither use narrows
+ * what is STORED — a pick made in a wider pane is clamped for display, and bounds what a
+ * reader can newly ASK for here, which in a narrow pane is all they can express anyway.
  *
  * **A measurement of 0 or less means "not measured", not "clamp to the minimum".**
  * jsdom reports `clientWidth` as 0 and Obsidian itself renders before layout settles,
@@ -239,10 +238,13 @@ export function effectiveLeadWidth(stored: number, availablePx: number): number 
  * an `aria-valuemax` of 120 hands assistive tech a backwards range — invalid exactly in
  * the narrow case the clamp exists for. Both ends therefore come from the pane.
  *
- * The `availablePx / 2` term is what keeps the column from eating a pane too narrow to
- * subtract a whole day track from: a lead wider than the grid it labels is not a
- * timeline, and the plain subtraction went to zero — no titles at all — once the pane
- * dropped under the track's own minimum.
+ * The `availablePx / 2` term decides nothing above `2 * MIN_DAY_TRACK_PX`: the plain
+ * subtraction is the larger of the two from there on, so this does NOT stop a lead wider
+ * than the grid it labels — a 200px pane gives 120px of column over an 80px track, which
+ * is the worked example above. It binds only at the narrow end, and what it buys there is
+ * that the column stays worth drawing: the subtraction leaves a sliver just under 160px
+ * and zero or less at or below `MIN_DAY_TRACK_PX` itself — no titles at all — so half the
+ * pane stands in, and `paneMax` never goes negative.
  *
  * An unmeasured pane (0 or less) reports the storable bounds unchanged, for the reason
  * `effectiveLeadWidth` falls through: not measured is not narrow.

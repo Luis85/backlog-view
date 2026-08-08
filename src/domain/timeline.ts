@@ -196,7 +196,10 @@ export interface BarGeometry {
 	startDay: number;
 	/** Days the bar covers inside the window, at least 1. */
 	spanDays: number;
-	/** True when both ends land on the same day, whether stated or inferred. */
+	/**
+	 * True when the note STATES both ends and they land on the same day — never for an
+	 * end borrowed from the other, or every note carrying a single date would be one.
+	 */
 	milestone: boolean;
 	/** True when that end runs past the window's edge and was clamped to it. */
 	clippedStart: boolean;

@@ -87,9 +87,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	chips: ChipProp[] = [];
 
 	/**
-	 * Guards the one re-render a changed fit may ask for, so it cannot recurse — shared
-	 * by the tree's column ladder and the dated axis's lead-width clamp, since the two
-	 * projections that use it are mutually exclusive and never guard at once.
+	 * Guards the one re-render a changed column verdict may ask for, so it cannot
+	 * recurse. The TREE's alone, and set around a synchronous call only — restored in a
+	 * `finally`, because a render that throws while it is set would otherwise leave the
+	 * ladder's second pass switched off for the life of the view.
 	 */
 	private refitting = false;
 
@@ -259,10 +260,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	jumpToToday(): void {
 		const roadmap = this.roadmap;
-		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
-		// `roadmap.leadWidth` is null only off the dated axis, which `todayLeft` already
-		// rules out — the fallback is for the type checker, not a case this reaches.
-		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth ?? TIMELINE_LEAD_PX);
+		// `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
+		// `renderRoadmap` sets both in the dated branch and neither anywhere else, so the
+		// term costs nothing and it is what narrows `leadWidth` to a number.
+		if (!roadmap?.scroller || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
+		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth);
 	}
 
 	/**
@@ -282,15 +284,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// else happens to re-render it.
 		if (this.projection !== 'roadmap' || !this.roadmap) return;
 		if (activeAxis(this.settings, this.axisPick) !== 'dates') return;
-		// Same reasoning as `refit`'s own guard: the re-render below cannot itself be
-		// what triggers another pass.
-		if (this.refitting) return;
 		const stored = this.leadWidth ?? TIMELINE_LEAD_PX;
 		const effective = effectiveLeadWidth(stored, this.treeEl.clientWidth);
+		// No `refitting` guard here, and `refit`'s reasoning does not carry: that one
+		// brackets a SYNCHRONOUS recursive call, while this branch is only ever entered
+		// from the observer, which is delivered asynchronously — a flag set and cleared
+		// around the render below would always read false on arrival. The line that
+		// actually stops a loop is this one, and it guarantees idempotence rather than
+		// non-recursion: the render sets `roadmap.leadWidth` to `effective`, so the next
+		// notification about the same pane returns here.
 		if (effective === this.roadmap.leadWidth) return;
-		this.refitting = true;
 		this.renderTreeContent();
-		this.refitting = false;
 	}
 
 	onDataUpdated(): void {
@@ -579,8 +583,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// more pass, guarded, since the second pass measures the same tree.
 		if (this.refit() && !this.refitting) {
 			this.refitting = true;
-			this.renderTreeContent();
-			this.refitting = false;
+			try {
+				this.renderTreeContent();
+			} finally {
+				this.refitting = false;
+			}
 		}
 	}
 

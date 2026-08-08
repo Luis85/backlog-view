@@ -32,9 +32,9 @@ function applyOptions(el: HTMLElement, options?: CreateOptions | string): void {
 }
 
 /**
- * A minimal `ResizeObserver` for jsdom, which implements none: `observe`/`unobserve`/
- * `disconnect` just track which elements a callback is watching, and nothing fires on
- * its own — real layout never happens here. `fireResize` (below) is what a test uses to
+ * A minimal `ResizeObserver` for jsdom, which implements none: `observe` and `disconnect`
+ * — the two `backlogView.ts` calls — just track which elements a callback is watching,
+ * and nothing fires on its own, since real layout never happens here. `fireResize` (below) is what a test uses to
  * say "the platform just told every observer of this element that it resized", the same
  * one-shot shape `dragend`/`keydown` already stand in for real platform events.
  */
@@ -48,10 +48,6 @@ class MockResizeObserver {
 
 	observe(target: Element): void {
 		this.targets.add(target);
-	}
-
-	unobserve(target: Element): void {
-		this.targets.delete(target);
 	}
 
 	disconnect(): void {

@@ -105,9 +105,18 @@ export default defineConfig({
 			// each timeline row saying its state in words) measured 98.11/93.87/99.43/99.30
 			// — the same four figures again: the increment is small and all of it is
 			// driven, so none of the four move.
+			//
+			// The stale-comment-and-deletion pass (three unreachable or duplicated pieces
+			// cut — the gesture's second copy of the effective-width clamp, `jumpToToday`'s
+			// dead lead-width fallback, the mock observer's uncalled `unobserve` — plus one
+			// watched-failing test for the second-pass guard's `finally`) measured
+			// 98.13/93.93/99.43/99.30 against a 98.11/93.87/99.43/99.30 baseline at the
+			// commit before it. Cutting code nothing drove is what moves branches, and it
+			// rounds down to a new decimal (93.9, up from 93.8); the other three round down
+			// to the figures already recorded above and stay put.
 			thresholds: {
 				statements: 98.1,
-				branches: 93.8,
+				branches: 93.9,
 				functions: 99.4,
 				lines: 99.3,
 			},
