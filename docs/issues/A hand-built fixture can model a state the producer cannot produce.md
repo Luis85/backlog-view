@@ -130,6 +130,26 @@ two constructors agree in full, so a derivation the resolver has and the helper 
 the pair disagree.
 **Checked by** `test/domain/settings.test.ts` — "a workflow, so the Deliverable lists follow it"
 
+## What the predicate covers, and what it deliberately does not
+
+Review followed the `wipLimits` finding with a second: the key rule ignored the VALUE beside
+it, and `parseWipLimit` admits only integers of 1 or more, so `{ active: 0 }` was a cell the
+resolver would have left empty. Correct, and taken — a key rule that ignores its own value
+reads as covering both.
+
+Scanning `resolveSettings` for the rest turned up six more constraints it enforces that this
+predicate does not: list entries are trimmed and non-empty; the four VOCABULARIES (but not
+the two done lists) are deduped case-insensitively; `propColumnWidth` is a whole number
+clamped to [80, 280]; `typeFolders` is keyed by declared type. All six were implemented and
+measured: **they catch nothing in the suite**, and they pushed `settingsInconsistency` past
+its complexity budget and `settings.ts` past its 400-line cap — which would have bought a
+module split and an ADR to specify it.
+
+So they are out, on the same evidence standard the lint rule was declined on. The predicate
+covers the relationships that have actually produced a defect plus the ones review named,
+and it does not claim to be every constraint the resolver enforces. If one of the six ever
+produces a wrong expectation, it goes in then, with the case that justified it.
+
 ## What is still not caught
 
 - **Spreading a settings object under any other name.** `{ ...settings, states: [...] }`

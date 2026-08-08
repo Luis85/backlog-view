@@ -452,6 +452,15 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
 	if (strayLimit !== null) return `wipLimits names ${strayLimit}, which is not a non-done configured state`;
 	const strayPolicy = stray(settings.columnPolicies, (key) => named.has(key));
 	if (strayPolicy !== null) return `columnPolicies names ${strayPolicy}, which is not a configured state`;
+	// Values, not only keys: `parseWipLimit` admits integers of 1 or more and `nameTable`
+	// drops whatever it refuses, so a limit of 0 is a cell the resolver would have left
+	// empty; the policy map drops an empty string the same way (`|| null`). Raised in
+	// review as half a job, correctly — a key rule that ignores the value beside it is a
+	// rule someone will read as covering both.
+	const badLimit = Object.entries(settings.wipLimits).find(([, n]) => !Number.isInteger(n) || n < 1);
+	if (badLimit) return `wipLimits sets ${badLimit[0]} to ${badLimit[1]}, which parseWipLimit would discard`;
+	const badPolicy = Object.entries(settings.columnPolicies).find(([, text]) => text.trim() === '');
+	if (badPolicy) return `columnPolicies sets ${badPolicy[0]} to an empty string, which the resolver drops`;
 	return null;
 }
 

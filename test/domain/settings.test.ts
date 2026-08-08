@@ -493,6 +493,25 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		expect(settingsInconsistency({ ...base, tagsKey: 'parent' })).toContain('tagsKey');
 	});
 
+	it('rejects a per-state map the resolver would have emptied, key or value', () => {
+		// The maps are `nameTable` over the configured states, so a key naming a state the
+		// workflow does not have is one the resolver would have dropped — and so is a value
+		// it refuses. Raised in review as half a job: a key rule that ignores the value
+		// beside it reads as covering both.
+		const workflow = settingsWith({ states: ['Active', 'Done'], doneValues: ['Done'] });
+		expect(settingsInconsistency({ ...workflow, wipLimits: { draft: 2 } })).toContain('wipLimits names draft');
+		// A limit on a DONE state is the same defect through the other door: WIP is what
+		// sits between started and finished, so `limitedStates` excludes them.
+		expect(settingsInconsistency({ ...workflow, wipLimits: { done: 2 } })).toContain('wipLimits names done');
+		expect(settingsInconsistency({ ...workflow, wipLimits: { active: 0 } })).toContain('parseWipLimit would discard');
+		expect(settingsInconsistency({ ...workflow, wipLimits: { active: 1.5 } })).toContain('parseWipLimit would discard');
+		expect(settingsInconsistency({ ...workflow, columnPolicies: { active: '  ' } })).toContain('empty string');
+		expect(settingsInconsistency({ ...workflow, columnPolicies: { draft: 'x' } })).toContain('columnPolicies names draft');
+		// And the reachable configuration is still accepted, so this cannot become
+		// "rejects every map".
+		expect(settingsInconsistency({ ...workflow, wipLimits: { active: 3 }, columnPolicies: { done: 'ship it' } })).toBeNull();
+	});
+
 	it('accepts what the resolver would have produced for that same fixture', () => {
 		// The pair to the case above, so "rejects" cannot quietly become "rejects everything".
 		const base = defaultSettings();
