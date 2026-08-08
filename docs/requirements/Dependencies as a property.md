@@ -54,6 +54,19 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 - **1a — the key names a property another key already uses.** `configProblems` reports
   the collision and gates every write, exactly as it does for the state, horizon and date
   keys. A dependency key is not special enough to earn its own kind of warning.
+- **1b — the user runs ✨ to bind the properties nobody has named.** The key is bound like
+  the others and **nothing is backfilled onto any note**: this key is an exception to the
+  stub pass, and it has to be written as one, because the machinery's default is the
+  opposite. `missingKeyStubs` walks every configured optional field and writes an empty
+  value to each result that lacks it, with exactly one exemption today — the horizon key
+  when no horizon axis is configured — spelled as its own early return. A second exemption
+  is a second early return, not something inherited by being similar to the first.
+  The reason it must be exempt: an empty stub is precisely the state
+  [[Linking two items]] forbids the removal path to leave behind, so backfilling one would
+  have ✨ create what a remove is required to clean up. It is also meaningless in a way the
+  other stubs are not — an empty state or an empty date is a slot the user is invited to
+  fill on that note, while an empty prerequisite list is a claim about a *relationship*
+  that does not exist, on every note at once.
 - **2a — the value is a single entry rather than a list.** One prerequisite. Frontmatter
   spells a one-item list both ways and a reader that accepted only the bracketed form
   would make the user's YAML the user's problem.
@@ -85,6 +98,9 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 
 - An unbound key means the feature is absent: nothing read, nothing drawn, nothing
   offered in a menu, and no warning about a property nobody asked for.
+- ✨ binds the key and backfills nothing: after it runs, no note carries an empty
+  dependency list. The exemption is stated in the stub pass itself rather than left to
+  follow from the property being a list.
 - A value is read tolerantly — one entry or many, linked or bare — with blanks and
   repeats collapsed, and nothing is ever written, reordered or repaired by reading it.
 - Entries resolve against the same item set `parent` resolves against, by the same rule.

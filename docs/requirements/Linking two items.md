@@ -82,6 +82,16 @@ a different control.
 - **4a — the last prerequisite is removed.** The key is removed, not emptied. Absence is a
   value here as it is for every optional property, and an empty list left on disk is a
   value the reader would then have to be taught to ignore.
+- **4b — the stored list names the same prerequisite more than once.** Removing it removes
+  **every** raw entry that resolves to it, not the first one found. The reading side
+  collapses duplicates and differing spellings into one dependency
+  ([[Dependencies as a property]]), so what the picker offers is one entry for a list that
+  may hold several — `[A, A]`, or `[[A]]` beside a bare `A`. A removal that dropped one of
+  them would report success and change nothing a reader could see: the next refresh
+  collapses what is left back into the same single dependency, which is the shape of bug
+  that gets diagnosed as "the write did not land". Removal is defined against the
+  **resolved** dependency, the same unit the offer was made in, and the key goes when no
+  entry survives.
 
 ## Acceptance criteria
 
@@ -94,7 +104,9 @@ a different control.
   never offered.
 - The write lands on the item the menu was opened on and on no other note, through the one
   gate, taken back by one undo.
-- Removing the last entry removes the key.
+- Removing a dependency removes every raw entry that resolves to it — duplicates and
+  alternate spellings alike — so the dependency is gone after one removal rather than
+  reappearing on the next refresh; removing the last one removes the key.
 - Every string this adds goes through the catalog like every other ([[The string catalog]]).
 
 ## Where it lives
@@ -111,8 +123,9 @@ shapes rather than once: the state key guards inline on `settings.stateKey` in `
 and the axis keys go through `axisEntries`, whose `key !== ''` test drops an unconfigured
 key and whose `null` value means delete. Neither shape takes a **list**, which is what this
 property is, and neither appends to or removes from one. So an implementer adds an
-operation — append one entry, drop one entry, drop the key when the last goes, and write
-nothing when the key is unset — rather than a call to something already written; whether it
+operation — append one entry, drop **every** entry resolving to one dependency (4b), drop
+the key when the last goes, and write nothing when the key is unset — rather than a call to
+something already written; whether it
 also becomes the single statement of the rule for the other two is a refactor this note
 neither needs nor forbids. Which picks are legal is the loop question
 `src/domain/dropTargets.ts` already answers for the tree, asked of a second edge kind.
