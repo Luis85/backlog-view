@@ -312,7 +312,11 @@ describe('the Deliverables board’s card menu', () => {
 		harness.view.setFilter('T');
 
 		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		expect(Menu.lastShown?.item('Open match "T"')).toBeDefined();
+		// A direct child the disclosure lists is offered as a child, not a second time as
+		// a match — `undisclosedMatches`. Either entry is the keyboard path this test is
+		// about: the match must be reachable without a pointer.
+		expect(Menu.lastShown?.item('Open child "T"')).toBeDefined();
+		expect(Menu.lastShown?.item('Open match "T"')).toBeUndefined();
 	});
 
 	it('gates the tree’s Set state on each item’s OWN workflow key', () => {

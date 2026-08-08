@@ -95,9 +95,9 @@ narrowed to one type.
   wider way ("only an unset key borrows every field together, never just one of the
   three") described a configuration the code does not have — a shared key with its own
   states — and it was written the same day the check asserting the opposite landed.
-  **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the
+  **Checked by** `test/domain/deliverableSettings.test.ts` — "keeps its own declared states over the
   shared list once configured".
-  **Checked by** `test/domain/settings.test.ts` — "keeps its own done values over the
+  **Checked by** `test/domain/deliverableSettings.test.ts` — "keeps its own done values over the
   shared list once configured".
 - **1b — the Deliverable workflow is configured, but the base holds no `Deliverable`
   results at all.** Every column renders empty, and the board shows "No deliverables

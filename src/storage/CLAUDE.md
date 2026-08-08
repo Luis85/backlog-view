@@ -104,15 +104,15 @@ can be checked by reading one directory.
 ## Collapse state, and the view mode beside it
 
 - The rule that decides where anything persists: **base settings are saved on the view
-  (the `.base` options); UI state is saved in vault-scoped localStorage.** The collapse
-  sets, the projection (`mode` on the same per-view entry — `board` or `roadmap`,
-  absent for the tree), the retained roadmap-axis pick (`axis` — kept even while its
-  axis is unconfigured, so restoring the configuration restores the choice) and the
-  focused type (`focus`, absent for the whole tree) are UI
-  state — one person's working position on one device — and are NEVER written to the
-  `.base`: a path per collapsed row is exactly the growth that shared file should not
-  take, and a projection choice forced on everyone the base syncs to would be the same
-  mistake. The price, accepted knowingly: working position does not sync across
+  (the `.base` options); UI state is saved in vault-scoped localStorage.** What that
+  entry holds is one person's working position on one device: the collapse sets, and
+  every pick that says how this view is being LOOKED at rather than what it contains —
+  which projection, which roadmap axis, how the frame is zoomed, sized, sorted and
+  narrowed. None of it is ever written to the `.base`: a path per collapsed row is
+  exactly the growth that shared file should not take, and a projection choice forced
+  on everyone the base syncs to would be the same mistake. A pick is retained even
+  while whatever it applies to is unconfigured, so restoring the configuration restores
+  the choice. The price, accepted knowingly: working position does not sync across
   devices.
 - The store's key only has to be UNIQUE, never parsed: each entry carries its own
   `base`, because a view name may contain anything a user can type ("Sprint #3" is an
@@ -162,7 +162,17 @@ can be checked by reading one directory.
   since closing the view is when it matters most.
 - Stored state is read defensively at every level: it is user-writable data on disk that
   another version of this plugin may have written, so anything unrecognizable is dropped
-  rather than trusted. `focus` is checked for SHAPE only, not against the vocabulary: the
+  rather than trusted. **Absence is the default for every pick** — the tree, no axis, no
+  zoom, comfortable rows, the default lead width, the whole tree — which is what makes a
+  failed check and a value never written the same thing on the way back in, and why the
+  write side stores nothing for a pick that means the default. A NAME is checked against
+  the vocabulary it mirrors (`readEnum`, spelled as strings here rather than imported as
+  a type, because stored state is not trusted as one). `leadWidth` is the first pick that
+  is a NUMBER, so there is no vocabulary to check it against: `readLeadWidth` takes
+  finite and inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` and drops anything else
+  rather than clamping it, since a clamp still trusts a corrupt-but-plausible number into
+  the layout. A range check is the same rule as a vocabulary check, not an exception to
+  it. `focus` is checked for SHAPE only, not against the vocabulary: the
   type list lives in `domain/settings.ts` and `focusTarget` already answers a name no
   configured type matches with "no focus" — the same tolerance it had while this value
   lived in the `.base`.

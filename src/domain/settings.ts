@@ -466,6 +466,37 @@ export function stateMenuValues(settings: BacklogSettings, observedStates: strin
 }
 
 /**
+ * Palette slots the roadmap's dated axis rotates a state's bar colour through — see
+ * `stateColorSlot`. Four, not eight, because FOUR palette colours already mean
+ * something fixed on this grid and a slot that repeated one would key two things at
+ * once: red is the today line's, cyan the milestone line's and green the done rule's
+ * (`styles/timeline.css`), and PURPLE is Obsidian's default `--interactive-accent` —
+ * what `.pbl-bar` falls back to for an item with no slot and what `.pbl-legend-other`
+ * keys as `Other`. Purple was a slot until the legend drew it twice in one strip.
+ *
+ * The accent is the one of the four that cannot be fully reserved: it is a user
+ * setting, so a reader who picks one of the remaining slot colours reopens the
+ * collision against that slot instead. Dropping purple removes the collision every
+ * DEFAULT install has, which is the only one a constant here can reach.
+ */
+export const STATE_COLOR_SLOTS = 4;
+
+/**
+ * Which palette slot a state value's bar takes on the roadmap's dated axis: its index
+ * in `stateMenuValues` — the same vocabulary the board's columns and the Set state
+ * menu use, so a bar and a menu entry can never disagree about a state's colour —
+ * wrapped modulo `STATE_COLOR_SLOTS` so a vocabulary longer than the palette repeats
+ * rather than running out. No state, or a value outside the vocabulary (an item's own
+ * unlisted value, most often), gets no slot: null, which is the bar's plain accent
+ * colour rather than a guess.
+ */
+export function stateColorSlot(settings: BacklogSettings, observedStates: string[], state: string | null): number | null {
+	if (state === null) return null;
+	const index = stateMenuValues(settings, observedStates).findIndex((value) => value.toLowerCase() === state.toLowerCase());
+	return index === -1 ? null : index % STATE_COLOR_SLOTS;
+}
+
+/**
  * Whether a state value counts as done, by the same case-insensitive match the model
  * and the board's columns already use. Takes a VALUE rather than an item because the
  * stamps ask it of a state being written, which no item holds yet.

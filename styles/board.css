@@ -1,8 +1,10 @@
 /* The board: its columns, their headers and their counts — `src/view/render/board.ts`. */
 
-/* Text for assistive tech only — the board's keyboard instructions. Clipped
-   rather than `display: none`, which would take it out of the accessibility tree
-   and leave `aria-describedby` describing nothing. */
+/* Text for assistive tech only — the board's keyboard instructions, a column's
+   policy, and a timeline row's workflow state, which the dated axis otherwise draws
+   as a colour alone. Clipped rather than `display: none`, which would take it out of
+   the accessibility tree, leaving `aria-describedby` describing nothing and a row's
+   accessible name without the words its content is supposed to give it. */
 .pbl-sr-only {
 	position: absolute;
 	width: 1px;

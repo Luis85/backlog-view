@@ -1,4 +1,5 @@
 import { setIcon, setTooltip } from 'obsidian';
+import { renderCardChildren } from './cardChildren';
 import { renderPropCells, renderRollup, RowContext } from './columns';
 import {
 	renderAllDoneState,
@@ -18,13 +19,13 @@ import {
 	BoardModel,
 	cardPaths,
 	deliverablesWorkflow,
-	hiddenMatches,
 	overBy,
 	requirementsFocusRoots,
 	requirementsWorkflow,
 } from '../../domain/board';
 import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
+import { undisclosedMatches } from '../childrenList';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
@@ -397,6 +398,10 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 
 	if (ctx.chips.length > 0) renderPropCells(ctx, card, item);
 	renderRollup(host, card, item);
+	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
+	// come through here. Timeline rows never do — they use the card SHELL with a
+	// bar-grid row layout — which is exactly why they get no disclosure.
+	renderCardChildren(ctx, card, item);
 }
 
 /** Click opens (selecting first), middle-click opens in a new tab — every projection's cards. */
@@ -432,7 +437,7 @@ export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: Bac
 function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem, carded: Set<string>): void {
 	const host: BacklogViewHost = ctx.host;
 	if (!host.isFiltering()) return;
-	const matches = hiddenMatches(item, (child) => host.isFilterMatch(child), carded);
+	const matches = undisclosedMatches(host, item, carded);
 	if (matches.length === 0) return;
 	const list = card.createDiv({ cls: 'pbl-card-matches' });
 	setIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');

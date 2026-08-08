@@ -21,12 +21,23 @@ import { DropTarget } from '../domain/dropTargets';
 import { activeAxis, RoadmapAxis } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
-import { ScaleId, scaleFor } from '../domain/timeline';
+import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
+import { ResizePolicy } from './resize';
+import { rowHidden } from './rowVisibility';
 import { SelectionController } from './selection';
-import { detectIgnoredGrouping, renderToolbar, syncBusy, syncCountLabel, syncFilterUi } from './render/toolbar';
-import { chipProps, rowContext, RowContext, syncColumnFit } from './render/columns';
+import { UiStateController } from './uiState';
+import {
+	detectIgnoredGrouping,
+	renderToolbar,
+	syncBusy,
+	syncCollapseCtls,
+	syncCountLabel,
+	syncFilterUi,
+} from './render/toolbar';
+import { chipProps, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
+import { renderLegend } from './render/legend';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
@@ -50,6 +61,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	readonly viewEl: HTMLElement;
 	private toolbarEl: HTMLElement;
+	private legendEl: HTMLElement;
 	private treeEl: HTMLElement;
 	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
@@ -58,8 +70,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	board: BoardSnapshot | null = null;
 	/** The roadmap of the last render; null while the view is not a roadmap. */
 	roadmap: RoadmapSnapshot | null = null;
+	/**
+	 * Paths whose card drew a child disclosure this render pass, filled through
+	 * `RowContext.cardKids` and cleared beside `rowEls`. Exposed read-only as
+	 * `cardChildrenShown` — the card menu's `addChildrenSection` is its first reader.
+	 */
+	private readonly cardKids = new Set<string>();
+	get cardChildrenShown(): ReadonlySet<string> {
+		return this.cardKids;
+	}
 	/** What the scroller last drew and where today sat — see `restoreScroll`. */
-	private scroll: ScrollAnchor = { content: '', todayLeft: null, scale: null, offsets: {}, leadingDate: null };
+	private scroll: ScrollAnchor = { content: '', todayTrackLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
 
@@ -72,6 +93,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private readonly gate: WriteGate;
 	/** Card-move write orchestration: plans, applies and announces board/horizon/schedule moves. */
 	private readonly cardMoves: CardMoveController;
+	/** The collapse-store-backed UI state — projection, axis pick, focus, shelf, zoom,
+	 * density, lead width — see `uiState.ts`. */
+	private readonly ui: UiStateController;
+	/** When to re-measure the pane and re-run the column-fit ladder — see `resize.ts`. */
+	private readonly resize: ResizePolicy;
 	private watchingRenames = false;
 	/**
 	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
@@ -82,13 +108,23 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** The Base's visible properties as columns, resolved once per data update. */
 	chips: ChipProp[] = [];
 
-	/** Guards the one re-render a changed fit may ask for, so it cannot recurse. */
+	/**
+	 * Guards the one re-render a changed column verdict may ask for, so it cannot
+	 * recurse. The TREE's alone, and set around a synchronous call only — restored in a
+	 * `finally`, because a render that throws while it is set would otherwise leave the
+	 * ladder's second pass switched off for the life of the view.
+	 */
 	private refitting = false;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view' });
 		this.toolbarEl = this.viewEl.createDiv({ cls: 'pbl-toolbar' });
+		// Below the toolbar, above the tree, so a legend rendered into it never scrolls
+		// away with the timeline it keys — the class it draws under is toggled by
+		// `renderLegend` itself, which is also what makes it absent (not merely hidden)
+		// off the dated axis.
+		this.legendEl = this.viewEl.createDiv();
 		this.treeEl = this.viewEl.createDiv({
 			cls: 'pbl-tree',
 			attr: { role: 'tree', tabindex: '0' },
@@ -107,18 +143,26 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			flushDataUpdate: () => this.refreshFromData(),
 		});
 		this.cardMoves = new CardMoveController(this, this.rowEls);
+		this.ui = new UiStateController(this.collapse, {
+			render: () => this.render(),
+			renderTreeContent: () => this.renderTreeContent(),
+			refreshFromData: () => this.refreshFromData(),
+		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
 			treeEl: this.treeEl,
 			rootDropEl: this.rootDropEl,
 		});
+		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, () => this.rowCtx());
 		this.dnd.setupRootDropZone();
 		this.cardDnd = new CardDragController(this, this.viewEl);
 		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
-			this.resizeObserver = new ResizeObserver(() => this.onResize());
+			this.resizeObserver = new ResizeObserver(() => {
+				if (this.resize.shouldRebuildOnResize()) this.renderTreeContent();
+			});
 			// The tree, not the view: its content box is what the rows get, and it also
 			// changes when the vertical scrollbar appears, which the view's box does not.
 			this.resizeObserver.observe(this.treeEl);
@@ -137,104 +181,89 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.viewEl.detach();
 	}
 
-	/** Re-measure the pane and apply the column ladder to what is currently rendered. */
-	private refit(): boolean {
-		return syncColumnFit(this.rowCtx(), this.viewEl, this.treeEl);
-	}
-
 	/**
 	 * Which projection this view shows. UI state, not a base setting: it lives
 	 * beside the collapse state — per saved view, per device — never in the `.base`.
+	 * This and the seven accessors below are one-line delegations to `UiStateController`
+	 * (`uiState.ts`), which holds the read/write and the render-depth choice; kept here
+	 * because `BacklogViewHost` has to resolve to this one class.
 	 */
 	get projection(): Projection {
-		return this.collapse.projection();
+		return this.ui.projection;
 	}
 
 	setProjection(mode: Projection): void {
-		if (mode === this.projection) return;
-		this.collapse.setProjection(mode);
-		// No config was set, so no Bases refresh is coming: this render is the switch.
-		this.render();
+		this.ui.setProjection(mode);
 	}
 
 	/** The retained roadmap-axis pick for this saved view; null before the user picks. */
 	get axisPick(): string | null {
-		return this.collapse.axisPick();
+		return this.ui.axisPick;
 	}
 
 	setAxisPick(axis: RoadmapAxis): void {
-		if (axis === this.axisPick) return;
-		this.collapse.setAxisPick(axis);
-		// The pick is UI state like the mode: no Bases refresh is coming.
-		this.render();
+		this.ui.setAxisPick(axis);
 	}
 
 	setFocusLevel(level: string): void {
-		if (level === this.collapse.focusLevel()) return;
-		this.collapse.setFocusLevel(level);
-		// Unlike the mode and the axis pick, a re-render is not enough: focus re-roots the
-		// MODEL, and no Bases refresh is coming now that it is not a config change.
-		this.refreshFromData();
+		this.ui.setFocusLevel(level);
 	}
 
 	get shelfCollapsed(): boolean {
-		return this.collapse.shelfCollapsed();
+		return this.ui.shelfCollapsed;
 	}
 
 	setShelfCollapsed(collapsed: boolean): void {
-		if (collapsed === this.shelfCollapsed) return;
-		this.collapse.setShelfCollapsed(collapsed);
-		// Content only, like setFilter: the toolbar keeps its own focus and its own DOM.
-		// This does NOT spare the control that asked for it — the shelf's disclosure
-		// lives in the content pane and is rebuilt by this very call, which is why it
-		// hands focus to its replacement itself (`renderShelfControls`).
-		this.renderTreeContent();
+		this.ui.setShelfCollapsed(collapsed);
 	}
 
 	get shelfSort(): ShelfSort {
-		return this.collapse.shelfSort();
+		return this.ui.shelfSort;
 	}
 
 	setShelfSort(sort: ShelfSort): void {
-		if (sort === this.shelfSort) return;
-		this.collapse.setShelfSort(sort);
-		this.renderTreeContent();
+		this.ui.setShelfSort(sort);
 	}
 
 	get shelfHiddenTypes(): ReadonlySet<string> {
-		return this.collapse.shelfHiddenTypes();
+		return this.ui.shelfHiddenTypes;
 	}
 
 	setShelfHiddenTypes(types: ReadonlySet<string>): void {
-		this.collapse.setShelfHiddenTypes(types);
-		this.renderTreeContent();
+		this.ui.setShelfHiddenTypes(types);
 	}
 
 	get zoom(): ScaleId {
-		return scaleFor(this.collapse.zoomPick()).id;
+		return this.ui.zoom;
 	}
 
 	setZoom(id: ScaleId): void {
-		if (id === this.zoom) return;
-		this.collapse.setZoom(id);
-		// UI state like the mode and the axis pick: no config was set, so no Bases
-		// refresh is coming and this render is the change.
-		this.render();
+		this.ui.setZoom(id);
+	}
+
+	get density(): string | null {
+		return this.ui.density;
+	}
+
+	setDensity(value: string | null): void {
+		this.ui.setDensity(value);
+	}
+
+	get leadWidth(): number | null {
+		return this.ui.leadWidth;
+	}
+
+	setLeadWidth(value: number | null): void {
+		this.ui.setLeadWidth(value);
 	}
 
 	jumpToToday(): void {
 		const roadmap = this.roadmap;
-		if (!roadmap?.scroller || roadmap.todayLeft === null) return;
-		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth);
-	}
-
-	/** Re-measure after a resize, and rebuild only if a column came or went. */
-	private onResize(): void {
-		// The COLUMN ladder is the tree's alone — board columns and the timeline scroll
-		// rather than dropping columns, and the shelf answers to a stored pick rather
-		// than to a width.
-		if (this.projection !== 'tree') return;
-		if (this.refit()) this.renderTreeContent();
+		// `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
+		// `renderRoadmap` sets both in the dated branch and neither anywhere else, so the
+		// term costs nothing and it is what narrows `leadWidth` to a number.
+		if (!roadmap?.scroller || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
+		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth);
 	}
 
 	onDataUpdated(): void {
@@ -305,11 +334,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return this.hidden(item, true);
+		return rowHidden(item, this.filter, this.settings, true, this.filterScope);
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return this.hidden(item, false);
+		return rowHidden(item, this.filter, this.settings, false, this.filterScope);
 	}
 
 	isRowHiddenByFilterOnly(item: BacklogItem): boolean {
@@ -331,41 +360,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 */
 	private get filterScope(): FilterScope {
 		return this.projection === 'deliverables' ? 'whole' : 'focused';
-	}
-
-	/**
-	 * Row visibility, with the filter itself optionally lifted. One predicate answers
-	 * for the narrowed board and for the population its counts are measured against,
-	 * so the two cannot disagree about what "in this column" means.
-	 *
-	 * Lifting the filter is NOT the same as having no filter: while one is running it
-	 * suspends the completed-items toggle, and the population a count is "of" has to
-	 * keep that suspension. Measuring against the cleared board instead would count a
-	 * matched-but-otherwise-hidden card as "1 of 0" — each number defensible on its
-	 * own and the pair nonsense. What "of" means is what this filter is choosing among.
-	 */
-	private hidden(item: BacklogItem, applyFilter: boolean): boolean {
-		// While filtering, the filter alone decides — a match must be findable even
-		// when completed items are hidden, so hiding is suspended.
-		if (this.filter.active) {
-			if (applyFilter && !this.filter.keeps(item.file.path, this.filterScope)) return true;
-		} else if (this.hidingCompleted() && item.subtreeDone) {
-			return true;
-		}
-		// A context row is here only to place a result. Once nothing below it is
-		// visible it is an empty scaffold, so it goes with them — whatever hid them.
-		// One visible child is enough: a context child is itself subject to this rule.
-		if (item.outsideFilter) return !item.children.some((child) => !this.hidden(child, applyFilter));
-		return false;
-	}
-
-	/**
-	 * True when the completed-items toggle is actively hiding fully-done subtrees.
-	 * The filter's own suspension of it is structural — `hidden` only consults this
-	 * on the branch where no filter is in play.
-	 */
-	private hidingCompleted(): boolean {
-		return !this.settings.showCompleted && this.settings.stateKey !== '';
 	}
 
 	isFiltering(): boolean {
@@ -461,7 +455,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		refreshRowChildren(this.rowCtx(), item, row);
 		// Expanding or collapsing changes the deepest rendered row, and with it the
 		// room the columns have left — in both directions.
-		if (this.refit()) this.renderTreeContent();
+		if (this.resize.refit()) this.renderTreeContent();
 		// The selection may have been inside the subtree that just collapsed.
 		this.selection.resyncAfterRender();
 	}
@@ -469,7 +463,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	// ------------------------------------------------------------------- render
 
 	render(): void {
-		if (!this.model) return;
+		const model = this.model;
+		if (!model) return;
 		renderToolbar(this, this.toolbarEl);
 		// The toolbar was just rebuilt; a batch may still be running behind it.
 		this.syncBusyUi();
@@ -503,6 +498,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.scroll = captureScroll(this.treeEl, this.roadmap, this.scroll);
 		this.treeEl.empty();
 		this.rowEls.clear();
+		// Same lifetime as the row index: a set that outlived its render would claim
+		// disclosures for a screen that is gone.
+		this.cardKids.clear();
 		if (projection !== 'tree') {
 			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
 			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-horizon', 'pbl-hide-state');
@@ -525,20 +523,34 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
 		this.selection.resyncAfterRender();
 		syncCountLabel(this, this.toolbarEl);
+		// Beside `syncCountLabel` for the same reason: both read what the content render
+		// just produced, so both have to run after it rather than in the toolbar pass.
+		syncCollapseCtls(this, this.toolbarEl);
+		// Rendered HERE rather than in `render()`: the legend keys what the grid just drew,
+		// and `drawn` comes off the snapshot this pass produced. Every path that redraws
+		// content has to refresh it, not only a full render — a filter re-renders content
+		// ALONE, and it can hide the last bar drawing a colour (or reveal the first), which
+		// changes what the key must say. Above the early return below, because that return
+		// is the tree's and this is the roadmap's.
+		const drawn = this.roadmap?.drawn ?? { done: false, milestone: false, accent: false };
+		renderLegend(this, this.legendEl, model.observedStates, drawn);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.
-		if (this.refit() && !this.refitting) {
+		if (this.resize.refit() && !this.refitting) {
 			this.refitting = true;
-			this.renderTreeContent();
-			this.refitting = false;
+			try {
+				this.renderTreeContent();
+			} finally {
+				this.refitting = false;
+			}
 		}
 	}
 
 	/** The per-pass render state: the row index plus the hoisted config lookups. */
 	private rowCtx(): RowContext {
-		return rowContext(this, this.dnd, this.rowEls);
+		return rowContext(this, this.dnd, this.rowEls, this.cardKids);
 	}
 
 	// -------------------------------------------------------------------- writes

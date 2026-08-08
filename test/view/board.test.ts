@@ -330,9 +330,11 @@ describe('the projection toggle', () => {
 		expect(containerEl.querySelectorAll('.pbl-row').length).toBeGreaterThan(0);
 	});
 
-	it('drops the tree-only collapse controls in board mode', () => {
+	it('offers the collapse controls in board mode, since Epic B has cards to collapse', () => {
 		const { containerEl } = boardView(boardVault());
-		expect(containerEl.querySelector('.pbl-collapse-ctl')).toBeNull();
+		const ctls = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
+		expect(ctls).toHaveLength(2);
+		expect(ctls.some((b) => b.disabled)).toBe(false);
 		// The rest of the toolbar survives the projection: creation, undo, the filter.
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();

@@ -41,8 +41,14 @@ substitute; say so honestly when a change still needs a live-vault smoke test.
 When the question is what a change *looks* like and no vault is at hand, `npm run harness`
 bundles the real view into a static page with the real stylesheet — no Obsidian, no
 dependency — so a browser can show it and drive it. It draws and asserts nothing: what it
-is faithful about, and the colour it is not, are in [`test/CLAUDE.md`](test/CLAUDE.md) and
-ADR 0020, and it replaces no live-vault check.
+is faithful about, and where that runs out — colour always, and any layout a partial
+leans on an Obsidian element default to supply rather than writing itself — are in
+[`test/CLAUDE.md`](test/CLAUDE.md) and ADR 0020, and it replaces no live-vault check. A
+card-children disclosure centred and boxed like a raw button shipped looking right here
+and wrong in a vault (2026-08-08) for exactly that second reason: `test/harness/theme.css`
+had no baseline at all for a bare `<button>`. Improving the stub narrows the gap; it does
+not close it, so keep saying so honestly rather than letting "faithful" read wider than
+what the stub actually covers.
 
 That makes it a way to mock a projection *before* building it, and the offer belongs
 before the implementation rather than after: when a change would visibly alter the view,

@@ -14,6 +14,13 @@ import { ScaleId } from '../../domain/timeline';
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const model = host.model;
 	if (!model) return;
+	// `barEl.empty()` below destroys whatever element currently holds focus inside the
+	// toolbar. Any control whose click re-renders the view — the density toggle, a zoom
+	// button, an axis button — would otherwise drop focus to `document.body`, so a
+	// keyboard or screen-reader user has to tab back through the whole toolbar to press
+	// it again. This is the rebuild losing the focus, not any one control's fault, so it
+	// is fixed once, here, rather than in each control.
+	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
 	// The Deliverables board only ever shows Deliverables, so the primary button is
@@ -23,7 +30,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// absent rather than a chevron opening a one-entry menu.
 	const onDeliverables = host.projection === 'deliverables';
 	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
-	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn' });
+	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn', attr: { [KEY_ATTR]: 'new' } });
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	newBtn.createSpan({ text: `New ${newLevel}` });
 	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
@@ -67,18 +74,18 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	undoBtn.addEventListener('click', () => {
 		void host.undoLast();
 	});
-	// Expand and collapse drive the tree's rows; the board and the roadmap have
-	// nothing collapsible yet, and a control that visibly does nothing is worse than none.
-	if (host.projection === 'tree') {
-		collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
-			for (const item of model.items) host.setCollapsed(item.file.path, false);
-		});
-		collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
-			for (const item of model.items) {
-				if (item.children.length > 0) host.setCollapsed(item.file.path, true);
-			}
-		});
-	}
+	// Expand and collapse drive the tree's rows and, since cards grew disclosures, the
+	// cards too. They are no longer gated on the projection — but they ARE gated on the
+	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
+	// content render because that is what fills the set it reads.
+	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
+		for (const item of model.items) host.setCollapsed(item.file.path, false);
+	});
+	collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
+		for (const item of model.items) {
+			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
+		}
+	});
 	renderCompletedToggle(host, barEl, model);
 
 	renderFilterBox(host, barEl);
@@ -115,6 +122,40 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(population));
+	refocusByKey(barEl, refocusKey);
+}
+
+/** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
+const KEY_ATTR = 'data-pbl-key';
+
+/**
+ * The identity focus is restored by: a per-control key, written where the control is
+ * created and the same string on the control the next render builds in its place.
+ *
+ * Not the class — `.pbl-zoom-btn` and `.pbl-axis-btn` each name several buttons — and
+ * not `aria-label`, which is neither always present nor always stable. `.pbl-new-btn`
+ * and `.pbl-focus-btn` are named by their text content and carry no label at all, so
+ * nothing was captured for them; and the completed toggle's label flips between
+ * 'Hide completed items' and 'Show completed items (3 hidden)' across the very rebuild
+ * its own click causes, so the control whose press ALWAYS re-renders was the one that
+ * could never be restored. A key is independent of both.
+ *
+ * What that guarantees is exactly what carries a key: a control created without one is
+ * not restored, and nothing here can see that it was meant to be. The check under the
+ * sentence is `test/view/toolbarFocus.test.ts`, which asserts every focusable element
+ * the toolbar renders — across the three projections, under a focus level — carries a
+ * key, and that no two share one.
+ */
+function capturedFocusKey(barEl: HTMLElement): string | null {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement) || !barEl.contains(active)) return null;
+	return active.getAttribute(KEY_ATTR);
+}
+
+/** The other half of `capturedFocusKey`: find the rebuilt control wearing that key. */
+function refocusByKey(barEl: HTMLElement, key: string | null): void {
+	if (!key) return;
+	barEl.querySelector<HTMLElement>(`[${KEY_ATTR}="${key}"]`)?.focus();
 }
 
 /**
@@ -154,19 +195,15 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: bo
 
 /**
  * The filter can be cleared from outside the toolbar (Escape in the tree, the
- * no-match state); keep the input and its clear affordance in sync. A filter change
- * re-renders only the content pane, so the collapse controls are updated here too:
- * they are focusable buttons, and while collapse state is overridden they have to
- * actually refuse the press, not just look dimmed.
+ * no-match state); keep the input and its clear affordance in sync. It does NOT
+ * touch the collapse controls — `syncCollapseCtls` is their sole writer, called
+ * after the content render along with `syncCountLabel`, and a filter change
+ * reaches it the same way any other content re-render does.
  */
 export function syncFilterUi(host: BacklogViewHost, barEl: HTMLElement): void {
 	const input = barEl.querySelector<HTMLInputElement>('.pbl-filter-input');
 	if (input && input.value !== host.filterText) input.value = host.filterText;
 	input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', host.filterText !== '');
-	const filtering = host.isFiltering();
-	barEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
-		btn.disabled = filtering;
-	});
 }
 
 /**
@@ -220,6 +257,30 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 }
 
 /**
+ * The bulk collapse controls, decided from what the render actually drew. It has to run
+ * AFTER the content: `renderToolbar` goes first and the cards are drawn afterwards, so a
+ * verdict taken during the toolbar pass would read the previous frame's set —
+ * `syncCountLabel` above is the same shape for the same reason. It is the only writer of
+ * `btn.disabled` on `.pbl-collapse-ctl` today — nothing enforces that, a lint rule for it
+ * was considered and declined — but `syncFilterUi` used to also write it, which made two
+ * functions own one property agreeing only by call order; `collapseButton`'s own click
+ * handler below READS `btn.disabled` to guard its mutation, which does not reopen that
+ * split — a read cannot disagree with the writer about what the value is.
+ *
+ * A card projection with no disclosure gets them disabled rather than removed. They
+ * would otherwise write collapse state that changes nothing on screen and then surprises
+ * the tree later — inert to look at and not inert in effect, which is the worst pairing.
+ * The real `disabled` property, never CSS: `pointer-events: none` stops a mouse and
+ * nothing else.
+ */
+export function syncCollapseCtls(host: BacklogViewHost, barEl: HTMLElement): void {
+	const nothingToCollapse = host.projection !== 'tree' && host.cardChildrenShown.size === 0;
+	barEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
+		btn.disabled = host.isFiltering() || nothingToCollapse;
+	});
+}
+
+/**
  * Notes the base returned that aren't backlog items are silently skipped — say so,
  * so a missing note is never a mystery, and point at the option that brings them back.
  */
@@ -248,7 +309,12 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	// all, so counting it offered to reveal something pressing the button cannot show.
 	const hidden = countedPopulation(host, model).filter((item) => item.subtreeDone).length;
 	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
-	const btn = iconButton(barEl, showing ? 'eye' : 'eye-off', showing ? 'Hide completed items' : `Show completed items${suffix}`);
+	const btn = iconButton(
+		barEl,
+		showing ? 'eye' : 'eye-off',
+		showing ? 'Hide completed items' : `Show completed items${suffix}`,
+		'completed',
+	);
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
 	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
@@ -261,7 +327,7 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	setTooltip(filterEl, 'Filter items — press / in the tree');
 	const input = filterEl.createEl('input', {
 		cls: 'pbl-filter-input',
-		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items' },
+		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter' },
 	});
 	input.value = host.filterText;
 	// setFilter re-renders the tree and syncs this box's active state.
@@ -280,7 +346,7 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 	const clearBtn = filterEl.createEl('button', {
 		cls: 'pbl-filter-clear clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Clear filter' },
+		attr: { type: 'button', 'aria-label': 'Clear filter', [KEY_ATTR]: 'filter-clear' },
 	});
 	setIcon(clearBtn, 'x');
 	setTooltip(clearBtn, 'Clear filter');
@@ -327,7 +393,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 	wrap.toggleClass('pbl-focus-active', active !== '');
 
-	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn' });
+	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { [KEY_ATTR]: 'focus' } });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
 	btn.createSpan({ text: active || 'All types' });
 	setTooltip(btn, 'Focus — show one type as the top of the tree');
@@ -358,7 +424,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// without one: nothing narrows that board, so there is nothing to clear.
 	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Show all types' },
+		attr: { type: 'button', 'aria-label': 'Show all types', [KEY_ATTR]: 'focus-clear' },
 	});
 	setIcon(clear, 'x');
 	setTooltip(clear, 'Show all types');
@@ -426,6 +492,16 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	position('week', 'calendar-days', 'Zoom to weeks');
 	position('month', 'calendar', 'Zoom to months');
 	position('quarter', 'calendar-range', 'Zoom to quarters');
+	const compact = host.density === 'compact';
+	// The name is the SETTING, fixed, and aria-pressed carries its value — a toggle
+	// whose name changes to the next action announces "Comfortable rows, pressed"
+	// while compact rows are on, which states the opposite of what is true. The icon
+	// still swaps: it is the sighted affordance, and it says nothing to a reader.
+	const densityBtn = iconButton(barEl, compact ? 'rows-2' : 'rows-4', 'Compact rows');
+	densityBtn.addClass('pbl-density-toggle');
+	densityBtn.toggleClass('is-active', compact);
+	densityBtn.setAttribute('aria-pressed', String(compact));
+	densityBtn.addEventListener('click', () => host.setDensity(compact ? null : 'compact'));
 	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());
@@ -479,11 +555,15 @@ function levelBreakdown(items: BacklogItem[]): string {
  * A toolbar icon control. A real `<button>`, not a div: the toolbar sits outside
  * the tree's single-tab-stop model, and these are the only way to reach the type
  * picker, the backfill and the collapse commands without a mouse.
+ *
+ * `key` is the focus identity (`capturedFocusKey`) and defaults to the label, which
+ * is the same string on every rebuild for all of these but one: the completed toggle
+ * names the next action and its count, so it passes its own.
  */
-function iconButton(parent: HTMLElement, icon: string, label: string): HTMLButtonElement {
+function iconButton(parent: HTMLElement, icon: string, label: string, key: string = label): HTMLButtonElement {
 	const btn = parent.createEl('button', {
 		cls: 'clickable-icon pbl-icon-btn',
-		attr: { type: 'button', 'aria-label': label },
+		attr: { type: 'button', 'aria-label': label, [KEY_ATTR]: key },
 	});
 	setIcon(btn, icon);
 	setTooltip(btn, label);
@@ -494,7 +574,7 @@ function iconButton(parent: HTMLElement, icon: string, label: string): HTMLButto
  * Expand/collapse toolbar buttons. Collapse state is overridden while a filter is
  * active, so they are genuinely `disabled` then rather than only dimmed: a control
  * a keyboard user can reach has to refuse the press, not just look like it would.
- * The view re-syncs the flag on every filter change (`syncFilterUi`).
+ * The view re-syncs the flag after every content render (`syncCollapseCtls`).
  */
 function collapseButton(
 	host: BacklogViewHost,
@@ -505,8 +585,12 @@ function collapseButton(
 ): void {
 	const btn = iconButton(parent, icon, label);
 	btn.addClass('pbl-collapse-ctl');
-	btn.disabled = host.isFiltering();
 	btn.addEventListener('click', () => {
+		// A click on the icon `<svg>` inside a disabled button still reaches this
+		// listener (only `btn.click()` on the button itself is blocked by `disabled`),
+		// so the guard has to be read here rather than trusted from the DOM state —
+		// same shape as the card disclosure toggle in `render/cardChildren.ts`.
+		if (btn.disabled) return;
 		mutate();
 		host.render();
 	});
