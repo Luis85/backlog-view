@@ -181,6 +181,58 @@ describe('applyRestores', () => {
 	});
 });
 
+describe('dependency inverses', () => {
+	const linked = { ...settings, dependsOnKey: 'dependsOn' };
+
+	it('preserves an entry the tolerant reader ignores through a removal', async () => {
+		// 7 is not a dependency line — the reader drops it — but it is still frontmatter
+		// this edit has no business destroying.
+		const vault = new FakeVault();
+		const a = vault.addFile('A.md');
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: [7, '[[A]]'] } });
+
+		await applyWrites(vault.app, linked, [{ file: item, dependsOn: { removePath: a.path } }]);
+
+		expect(vault.fm('Item.md')['dependsOn']).toEqual([7]);
+	});
+
+	it('installs no redo when the replay finds nothing left to change', async () => {
+		const vault = new FakeVault();
+		const a = vault.addFile('A.md');
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: ['[[A]]'] } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: a.path } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// The user hand-restores the exact dependency the write just took out.
+		vault.fm('Item.md')['dependsOn'] = ['[[A]]'];
+
+		const redoBatch: RestoreWrite[] = [];
+		await applyRestores(vault.app, inverses, undefined, (inv) => redoBatch.push(inv));
+
+		// The replay found its own change already undone by hand: nothing to do, and
+		// nothing installed that a stray redo could later reapply and remove it again.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+		expect(redoBatch).toEqual([]);
+	});
+
+	it('restores every duplicate a removal captured, not just the first', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md');
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: ['[[Missing]]', '[[Missing]]', 'X'] } });
+
+		const inverses = await writeCapturing(
+			vault,
+			[{ file: item, dependsOn: { removeRaw: '[[Missing]]' } }],
+			linked,
+		);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['X']);
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['X', '[[Missing]]', '[[Missing]]']);
+	});
+});
+
 describe('tag inverses', () => {
 	const tagged = { ...settings, tagsKey: 'tags' };
 

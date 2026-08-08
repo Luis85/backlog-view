@@ -542,7 +542,7 @@ function restoreInto(
 		const applied = applyTagDelta(fm, restore.tags.key, restore.tags.delta);
 		if (applied) tags = { key: restore.tags.key, delta: { add: applied.remove, remove: applied.add } };
 	}
-	const dependsOn = restore.dependsOn ? restoreDependsOn(fm, restore.dependsOn) : undefined;
+	const dependsOn = restore.dependsOn ? (restoreDependsOn(fm, restore.dependsOn) ?? undefined) : undefined;
 	if (changed.length === 0 && !tags && !dependsOn) return null;
 	return { file: restore.file, keys: changed, tags, dependsOn };
 }

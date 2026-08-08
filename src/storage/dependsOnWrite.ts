@@ -28,19 +28,39 @@ export interface DependsOnRestore {
  * write.
  */
 
-/** Every non-blank string the key currently holds, in the note's own order. */
-function liveEntries(fm: Record<string, unknown>, key: string): string[] {
+/** Every entry the key currently holds, of any type, in the note's own order. */
+function liveEntries(fm: Record<string, unknown>, key: string): unknown[] {
 	const raw: unknown = ownValue(fm, key);
-	return (Array.isArray(raw) ? raw : [raw])
-		.filter((value): value is string => typeof value === 'string')
-		.map((value) => value.trim())
-		.filter((value) => value.length > 0);
+	if (raw === undefined) return [];
+	return Array.isArray(raw) ? raw : [raw];
+}
+
+/**
+ * The trimmed text of an entry that could be a dependency LINE — null for anything else,
+ * which is exactly what a delta must never match, drop or rewrite: a non-string entry is
+ * unrelated frontmatter the tolerant reader already ignores (`dependsOn: [7, "A"]` reads
+ * one dependency, "A"), and it must survive an edit to "A" rather than being silently
+ * dropped as collateral. A blank string reads the same way — no line the reader would
+ * ever offer to remove — so it passes through untouched here too.
+ */
+function textOf(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const text = value.trim();
+	return text.length > 0 ? text : null;
 }
 
 /** Write the list back, or remove the key when nothing survives. Absence is a value. */
-function writeEntries(fm: Record<string, unknown>, key: string, next: string[]): void {
+function writeEntries(fm: Record<string, unknown>, key: string, next: unknown[]): void {
 	if (next.length > 0) setOwn(fm, key, next);
 	else delete fm[key];
+}
+
+/** Count occurrences of each string, for MULTISET matching — a duplicate line is two
+ *  entries to restore, not one, and a plain membership test cannot tell them apart. */
+function countOf(texts: string[]): Map<string, number> {
+	const counts = new Map<string, number>();
+	for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1);
+	return counts;
 }
 
 /**
@@ -77,16 +97,30 @@ function applyDependsOnDelta(
 		if (ownValue(fm, key) !== undefined) delete fm[key];
 		return null;
 	}
-	const drops = (text: string): boolean => {
-		if (delta.removeRaw !== undefined && text === delta.removeRaw) return true;
-		return delta.removePath !== undefined && pathOf(text) === delta.removePath;
+	// The matched text of an entry this delta would drop, or null to keep it untouched —
+	// a non-string or blank entry is never a candidate, so it can never match either arm.
+	const dropText = (value: unknown): string | null => {
+		const text = textOf(value);
+		if (text === null) return null;
+		if (delta.removeRaw !== undefined && text === delta.removeRaw) return text;
+		if (delta.removePath !== undefined && pathOf(text) === delta.removePath) return text;
+		return null;
 	};
-	const removed = current.filter(drops);
-	const next = current.filter((text) => !drops(text));
+	const removed: string[] = [];
+	const next: unknown[] = [];
+	for (const value of current) {
+		const dropped = dropText(value);
+		if (dropped !== null) removed.push(dropped);
+		else next.push(value);
+	}
 	const added: string[] = [];
 	if (delta.add) {
 		const wanted = delta.add.path;
-		if (!next.some((text) => pathOf(text) === wanted)) {
+		const already = next.some((value) => {
+			const text = textOf(value);
+			return text !== null && pathOf(text) === wanted;
+		});
+		if (!already) {
 			const link = '[[' + app.metadataCache.fileToLinktext(delta.add, file.path) + ']]';
 			next.push(link);
 			added.push(link);
@@ -99,18 +133,54 @@ function applyDependsOnDelta(
 }
 
 /**
- * Replay one captured prerequisite inverse, in the same live-value terms, returning the
- * REDO — this inverse read backwards, which is what makes undoing an undo redo.
+ * Replay one captured prerequisite inverse against the LIVE list, returning the REDO —
+ * only what THIS replay actually changed, read backwards — or null when it changed
+ * nothing.
+ *
+ * Both arms are compare-and-swap against the live value, not a blind swap of the
+ * captured fields: the note may have moved since the batch was captured (the user
+ * hand-edited it, or undid the same change by hand), so a replay states what it
+ * actually did rather than what it was told to do. Skipping that check is exactly how a
+ * redo comes to re-add a dependency the user deliberately removed themselves.
+ *
+ * Both arms are also MULTISETS, not membership tests, because a removal can have
+ * captured the same raw text more than once (`[A, A]` is one dependency and two lines):
+ * `toRemove`/`already` count each text rather than asking yes-or-no, so undoing a
+ * duplicate-line removal restores every copy instead of the first. The guard this
+ * replaces a plain "already present" check for is the same one `applyDependsOnDelta`'s
+ * `add` keeps: an entry already on the note — because the user put it back by hand, or
+ * because an earlier partial replay already restored it — satisfies one occurrence of
+ * what this replay would add, so only the copies genuinely missing get written. A count
+ * of zero live copies is the ordinary case and restores the full multiplicity untouched.
  */
-export function restoreDependsOn(
-	fm: Record<string, unknown>,
-	restore: DependsOnRestore,
-): DependsOnRestore {
-	const current = liveEntries(fm, restore.key);
-	const next = current.filter((text) => !restore.remove.includes(text));
-	for (const text of restore.add) if (!next.includes(text)) next.push(text);
+export function restoreDependsOn(fm: Record<string, unknown>, restore: DependsOnRestore): DependsOnRestore | null {
+	const toRemove = countOf(restore.remove);
+	const removed: string[] = [];
+	const next: unknown[] = [];
+	for (const value of liveEntries(fm, restore.key)) {
+		const text = textOf(value);
+		const remaining = text !== null ? (toRemove.get(text) ?? 0) : 0;
+		if (text !== null && remaining > 0) {
+			toRemove.set(text, remaining - 1);
+			removed.push(text);
+			continue;
+		}
+		next.push(value);
+	}
+	const already = countOf(next.map((value) => textOf(value)).filter((text): text is string => text !== null));
+	const added: string[] = [];
+	for (const text of restore.add) {
+		const have = already.get(text) ?? 0;
+		if (have > 0) {
+			already.set(text, have - 1);
+			continue;
+		}
+		next.push(text);
+		added.push(text);
+	}
+	if (added.length === 0 && removed.length === 0) return null;
 	writeEntries(fm, restore.key, next);
-	return { key: restore.key, add: restore.remove, remove: restore.add };
+	return { key: restore.key, add: removed, remove: added };
 }
 
 /**

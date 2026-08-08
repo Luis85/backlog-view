@@ -1,7 +1,8 @@
-import { Menu, Notice } from 'obsidian';
+import { App, Menu, Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { dependentsClosure } from '../../domain/dependencies';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { linkpathFromRawValue } from '../../domain/noteFields';
 import { ItemSuggestModal, SuggestChoice } from '../../ui/itemSuggest';
 import { DependsOnDelta } from '../../domain/writePlan';
 
@@ -50,30 +51,55 @@ export function dependenciesAvailable(host: BacklogViewHost): boolean {
 }
 
 /**
+ * Every note `item`'s OWN dependsOn list already names — resolved paths, whether the
+ * entry became a real prerequisite or was marked broken (a self-reference, or part of a
+ * cycle). A broken entry still names a note: offering it again would be a pick the
+ * writer collapses into the same line already on disk, a no-op wearing the shape of an
+ * offer. `item.prerequisites` alone is only the entries that resolved AND survived —
+ * exactly the set that misses both cases, so this asks the vault the same question
+ * `dependsOnWrite.ts` asks when it writes, not a second opinion of it.
+ */
+function declaredPrerequisitePaths(app: App, item: BacklogItem): string[] {
+	const resolved = item.prerequisites.map((p) => p.file.path);
+	const broken: string[] = [];
+	for (const raw of item.brokenPrerequisites) {
+		const linkpath = linkpathFromRawValue(raw);
+		if (linkpath.length === 0) continue;
+		const dest = app.metadataCache.getFirstLinkpathDest(linkpath, item.file.path);
+		if (dest) broken.push(dest.path);
+	}
+	return [...resolved, ...broken];
+}
+
+/**
  * The notes this item may be made to wait for.
  *
  * Every exclusion here is a pick that would write nothing or refuse: itself, what it
- * already waits for, anything that would close a loop, and every row the Base excluded.
- * A result the reader cannot currently SEE is still offered — the focus level and
- * "Show completed items" narrow what is drawn, not what exists, and the link is to a
- * note rather than to a row.
+ * already waits for however that entry is spelled or whether it resolved, anything that
+ * would close a loop, and every row the Base excluded. Drawn from `model.byPath` — the
+ * full item set, unaffected by the focus level — rather than `model.results`: a result
+ * the reader cannot currently SEE is still offered, because the focus level and "Show
+ * completed items" narrow what is *drawn*, not what exists, and the link is to a note
+ * rather than to a row. `outsideFilter` is filtered explicitly here for exactly that
+ * reason — `byPath` carries context rows that `results` never did.
  */
-function candidates(model: BacklogModel, item: BacklogItem): BacklogItem[] {
-	const prerequisites = new Map(
-		[...model.byPath].map(([path, candidate]) => [path, candidate.prerequisites.map((p) => p.file.path)]),
+function candidates(app: App, model: BacklogModel, item: BacklogItem): BacklogItem[] {
+	const declared = new Map(
+		[...model.byPath].map(([path, candidate]) => [path, declaredPrerequisitePaths(app, candidate)]),
 	);
 	// Asked once for the whole menu rather than once per row: naming any item that
-	// already waits on this one — at any depth — is what would close a loop.
-	const closesLoop = dependentsClosure(item.file.path, prerequisites);
-	const already = new Set(item.prerequisites.map((p) => p.file.path));
-	return model.results.filter(
+	// already waits on this one — at any depth, including through a broken cyclic edge —
+	// is what would close a loop.
+	const closesLoop = dependentsClosure(item.file.path, declared);
+	const already = new Set(declared.get(item.file.path) ?? []);
+	return [...model.byPath.values()].filter(
 		(candidate) =>
 			!candidate.outsideFilter && !closesLoop.has(candidate.file.path) && !already.has(candidate.file.path),
 	);
 }
 
 function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: BacklogItem): void {
-	const choices: SuggestChoice<BacklogItem>[] = candidates(model, item).map((candidate) => ({
+	const choices: SuggestChoice<BacklogItem>[] = candidates(host.app, model, item).map((candidate) => ({
 		label: candidate.title,
 		detail: candidate.file.path,
 		value: candidate,

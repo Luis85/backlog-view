@@ -125,6 +125,34 @@ describe('what the picker offers', () => {
 
 		expect(Modal.lastOpened).toBeNull();
 	});
+
+	it('leaves out a target already named through a broken, cyclic entry', () => {
+		// A and B name each other, so `Dependencies as a property` 4b marks BOTH entries
+		// broken — neither lands in `prerequisites`, only in `brokenPrerequisites`.
+		const vault = vaultWith({ A: { dependsOn: 'B' }, B: { dependsOn: 'A' } });
+		const { containerEl } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'A'), 'Depends on…');
+
+		// B is already named on A's own list — the entry just happens to be broken — so
+		// offering it again would be a no-op at the writer. Only what A does not yet
+		// name remains.
+		expect(suggester().offered()).toEqual(['Epic Epic.md', 'C C.md']);
+	});
+
+	it('offers a result the focus level currently hides', () => {
+		// Every candidate here sits at the SAME level as A (a flat PBI fixture), so
+		// focusing on PBI re-roots the tree there and Epic — one level up — drops out of
+		// the rendered tree and the Base's own result set entirely.
+		const vault = vaultWith();
+		const { containerEl } = makeView(vault, withKey, { focus: 'PBI' });
+
+		click(openMenu(containerEl, 'A'), 'Depends on…');
+
+		// The link is to a note, not to a row: a result the focus level hides from view
+		// is still legal vocabulary for a prerequisite.
+		expect(suggester().offered()).toContain('Epic Epic.md');
+	});
 });
 
 describe('the write', () => {
