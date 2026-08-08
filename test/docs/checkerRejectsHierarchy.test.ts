@@ -80,6 +80,19 @@ describe('the documented hierarchy and the gate agree', () => {
 			'the hierarchy table names toString, which LEGAL_CHILDREN does not allow at all',
 		],
 		[
+			// The row that DISAPPEARS rather than disagreeing, and the only one of these cases
+			// where the table visibly says something the gate refuses while the gate calls it
+			// consistent. `codes` reports code spans and drops prose, so a type written
+			// without backticks leaves an empty type list and the flattening loop runs zero
+			// times. Found by review; the hole was measured in the real register before it was
+			// closed — the planted row passed.
+			'a hierarchy row naming its type in prose rather than code',
+			(files) => {
+				files['docs/README.md'] = `${hierarchyTable()}| Spike | Epic | *(nothing)* |\n`;
+			},
+			'names no type in code',
+		],
+		[
 			// One level up from the duplicate ROW: with two tables under the same headings,
 			// checking the first validates one document while a reader sees two.
 			'a hierarchy documented twice, in two tables',

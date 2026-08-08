@@ -913,7 +913,17 @@ if (hierarchies.length === 0) {
 	// the table is flattened to the same type → children shape the gate holds.
 	const documented = new Map();
 	const documentedParents = new Map();
-	for (const [types, parents, children] of hierarchy) {
+	for (const [index, [types, parents, children]] of hierarchy.entries()) {
+		// A row naming no type in code DISAPPEARS: `codes` reports the spans a cell holds,
+		// prose is deliberately dropped, and a loop over an empty list runs zero times. So
+		// `| Spike | Epic | *(nothing)* |` — the same row a contributor would add, minus the
+		// backticks — left the table advertising a type the gate refuses while the gate
+		// reported the table consistent. Measured before it was fixed, not argued.
+		//
+		// Checked HERE rather than in `tablesWith`, which is generic over any heading set and
+		// is right to report what a cell holds: "column one names a type" is this table's
+		// rule, and belongs with the rule that reads it.
+		if (types.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);
 		for (const type of types) {
 			// A second row for a type is not a merge, it is a contradiction — and flattening
 			// with `set` would keep the last one and call the table consistent. Found in
