@@ -14,10 +14,17 @@ import { ScaleId } from '../../domain/timeline';
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const model = host.model;
 	if (!model) return;
+	// `barEl.empty()` below destroys whatever element currently holds focus inside the
+	// toolbar. Any control whose click re-renders the view — the density toggle, a zoom
+	// button, an axis button — would otherwise drop focus to `document.body`, so a
+	// keyboard or screen-reader user has to tab back through the whole toolbar to press
+	// it again. This is the rebuild losing the focus, not any one control's fault, so it
+	// is fixed once, here, rather than in each control.
+	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
 	const newLevel = newItemType(host.settings, model);
-	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn' });
+	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn', attr: { [KEY_ATTR]: 'new' } });
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	newBtn.createSpan({ text: `New ${newLevel}` });
 	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
@@ -100,6 +107,40 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(host, model));
+	refocusByKey(barEl, refocusKey);
+}
+
+/** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
+const KEY_ATTR = 'data-pbl-key';
+
+/**
+ * The identity focus is restored by: a per-control key, written where the control is
+ * created and the same string on the control the next render builds in its place.
+ *
+ * Not the class — `.pbl-zoom-btn` and `.pbl-axis-btn` each name several buttons — and
+ * not `aria-label`, which is neither always present nor always stable. `.pbl-new-btn`
+ * and `.pbl-focus-btn` are named by their text content and carry no label at all, so
+ * nothing was captured for them; and the completed toggle's label flips between
+ * 'Hide completed items' and 'Show completed items (3 hidden)' across the very rebuild
+ * its own click causes, so the control whose press ALWAYS re-renders was the one that
+ * could never be restored. A key is independent of both.
+ *
+ * What that guarantees is exactly what carries a key: a control created without one is
+ * not restored, and nothing here can see that it was meant to be. The check under the
+ * sentence is `test/view/toolbarFocus.test.ts`, which asserts every focusable element
+ * the toolbar renders — across the three projections, under a focus level — carries a
+ * key, and that no two share one.
+ */
+function capturedFocusKey(barEl: HTMLElement): string | null {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement) || !barEl.contains(active)) return null;
+	return active.getAttribute(KEY_ATTR);
+}
+
+/** The other half of `capturedFocusKey`: find the rebuilt control wearing that key. */
+function refocusByKey(barEl: HTMLElement, key: string | null): void {
+	if (!key) return;
+	barEl.querySelector<HTMLElement>(`[${KEY_ATTR}="${key}"]`)?.focus();
 }
 
 /**
@@ -232,7 +273,12 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	const showing = host.settings.showCompleted;
 	const hidden = model.results.filter((item) => item.subtreeDone).length;
 	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
-	const btn = iconButton(barEl, showing ? 'eye' : 'eye-off', showing ? 'Hide completed items' : `Show completed items${suffix}`);
+	const btn = iconButton(
+		barEl,
+		showing ? 'eye' : 'eye-off',
+		showing ? 'Hide completed items' : `Show completed items${suffix}`,
+		'completed',
+	);
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
 	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
@@ -245,7 +291,7 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	setTooltip(filterEl, 'Filter items — press / in the tree');
 	const input = filterEl.createEl('input', {
 		cls: 'pbl-filter-input',
-		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items' },
+		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter' },
 	});
 	input.value = host.filterText;
 	// setFilter re-renders the tree and syncs this box's active state.
@@ -264,7 +310,7 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 	const clearBtn = filterEl.createEl('button', {
 		cls: 'pbl-filter-clear clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Clear filter' },
+		attr: { type: 'button', 'aria-label': 'Clear filter', [KEY_ATTR]: 'filter-clear' },
 	});
 	setIcon(clearBtn, 'x');
 	setTooltip(clearBtn, 'Clear filter');
@@ -288,7 +334,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// rebuilds itself, because no Bases refresh follows a change it was not told about.
 	const setLevel = (level: string) => host.setFocusLevel(level);
 
-	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn' });
+	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { [KEY_ATTR]: 'focus' } });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
 	btn.createSpan({ text: active || 'All types' });
 	setTooltip(btn, 'Focus — show one type as the top of the tree');
@@ -313,7 +359,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	if (active === '') return;
 	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Show all types' },
+		attr: { type: 'button', 'aria-label': 'Show all types', [KEY_ATTR]: 'focus-clear' },
 	});
 	setIcon(clear, 'x');
 	setTooltip(clear, 'Show all types');
@@ -380,6 +426,16 @@ function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void
 	position('week', 'calendar-days', 'Zoom to weeks');
 	position('month', 'calendar', 'Zoom to months');
 	position('quarter', 'calendar-range', 'Zoom to quarters');
+	const compact = host.density === 'compact';
+	// The name is the SETTING, fixed, and aria-pressed carries its value — a toggle
+	// whose name changes to the next action announces "Comfortable rows, pressed"
+	// while compact rows are on, which states the opposite of what is true. The icon
+	// still swaps: it is the sighted affordance, and it says nothing to a reader.
+	const densityBtn = iconButton(barEl, compact ? 'rows-2' : 'rows-4', 'Compact rows');
+	densityBtn.addClass('pbl-density-toggle');
+	densityBtn.toggleClass('is-active', compact);
+	densityBtn.setAttribute('aria-pressed', String(compact));
+	densityBtn.addEventListener('click', () => host.setDensity(compact ? null : 'compact'));
 	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());
@@ -399,11 +455,15 @@ function levelBreakdown(host: BacklogViewHost, model: BacklogModel): string {
  * A toolbar icon control. A real `<button>`, not a div: the toolbar sits outside
  * the tree's single-tab-stop model, and these are the only way to reach the type
  * picker, the backfill and the collapse commands without a mouse.
+ *
+ * `key` is the focus identity (`capturedFocusKey`) and defaults to the label, which
+ * is the same string on every rebuild for all of these but one: the completed toggle
+ * names the next action and its count, so it passes its own.
  */
-function iconButton(parent: HTMLElement, icon: string, label: string): HTMLButtonElement {
+function iconButton(parent: HTMLElement, icon: string, label: string, key: string = label): HTMLButtonElement {
 	const btn = parent.createEl('button', {
 		cls: 'clickable-icon pbl-icon-btn',
-		attr: { type: 'button', 'aria-label': label },
+		attr: { type: 'button', 'aria-label': label, [KEY_ATTR]: key },
 	});
 	setIcon(btn, icon);
 	setTooltip(btn, label);

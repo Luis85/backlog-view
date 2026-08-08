@@ -52,4 +52,9 @@
 @import "./cardChildren.css";
 @import "./roadmap.css";
 @import "./timeline.css";
+@import "./timelineFurniture.css";
 @import "./shelf.css";
+/* Position NOT load-bearing: `legend.css` only ever reads `--pbl-state-color` (a custom
+   property, resolved by value regardless of which partial's rule set it) and defines no
+   selector any other partial also targets, so it can sit anywhere in this list. */
+@import "./legend.css";

@@ -86,6 +86,9 @@ body {
 	--interactive-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
 	--interactive-accent-hsl: var(--accent-h), var(--accent-s), var(--accent-l);
 	--text-accent: var(--interactive-accent);
+	/* What a theme guarantees legible ON that accent — white in Obsidian's own default,
+	   in both schemes, because the accent is a mid-lightness hue in both. */
+	--text-on-accent: #ffffff;
 }
 
 /*

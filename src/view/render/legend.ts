@@ -1,0 +1,104 @@
+import { BacklogViewHost, DrawnColors } from '../host';
+import { activeAxis } from '../../domain/roadmap';
+import { isDoneValue, stateMenuValues, STATE_COLOR_SLOTS } from '../../domain/settings';
+
+/**
+ * A colour key for the dated axis's bars, rendered under the toolbar and outside the
+ * timeline scroller so it never scrolls away — gated exactly like `renderTimelineControls`
+ * (`toolbar.ts`), because a legend for an axis that is not drawn would key nothing.
+ *
+ * Presentational only: `aria-hidden`, no tab stop, no pointer handler. It restates
+ * colour and nothing else — every fact a swatch stands for is already reachable without
+ * it: a state and its done-ness from the hidden words `stateNote` puts in each timeline
+ * row (never the tree's chip, which this projection does not render), a milestone from
+ * its own row's accessible name, and today from being today — not from the line's own
+ * tooltip, which hangs on an `aria-hidden` div and so carries nothing to the audience
+ * this paragraph is about.
+ * That is what makes withholding it from assistive tech and the tab order correct rather
+ * than a gap — and it was a gap until those words existed: a bar's state lived in its
+ * colour alone.
+ *
+ * `observedStates` is a parameter, not read off `host.model` here: the view calls this
+ * only after its own `if (!this.model) return` in `render()`, so a second null check
+ * on this path would guard nothing reachable — the caller already holds the model this
+ * vocabulary comes from.
+ *
+ * `drawn` is likewise reported by the render rather than recomputed here — see
+ * `TimelineRender.drawn`. A predicate over `model.results` alone cannot see what the
+ * grid actually drew: `model.results` includes items with no bar at all (unscheduled on
+ * the shelf, excluded by a quick filter, or hidden by "Show completed items", which
+ * hides done subtrees specifically), so it can call a colour keyed that nothing visible
+ * draws — the done swatch keying green with every done item off screen, or the
+ * milestone swatch keying cyan for a base with no milestone at all, are both that same
+ * mistake. And a predicate over `results` alone still cannot see precedence within what
+ * IS on screen, which is what let a marker dated outside the capped window (drawing the
+ * plain accent under `.pbl-bar-outside`) go unkeyed.
+ */
+export function renderLegend(
+	host: BacklogViewHost,
+	legendEl: HTMLElement,
+	observedStates: string[],
+	drawn: DrawnColors,
+): void {
+	legendEl.empty();
+	const onDatedAxis = host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+	// The class itself is the gate, not a hidden variant of it: a rule that hid an
+	// always-present `.pbl-legend` empty box would still leave the box in the layout
+	// and in `querySelector('.pbl-legend')`'s answer to "is a legend here".
+	legendEl.toggleClass('pbl-legend', onDatedAxis);
+	if (!onDatedAxis) {
+		legendEl.removeAttribute('aria-hidden');
+		return;
+	}
+	legendEl.setAttribute('aria-hidden', 'true');
+	// A swatch exists only where a bar can draw the thing it keys — the general rule
+	// behind all three state-colour bugs this branch has had (the done swatch keying
+	// its slot instead of green, the milestone swatch keying cyan while the diamond
+	// drew its state slot, and this one): without a workflow property `stateKey` is
+	// `''`, `domain/model.ts` sets every `stateValue` to null, and no bar can carry a
+	// state colour at all — so the state swatches are gated on the same property that
+	// gates whether a bar has one to draw, never rendered for a vocabulary nothing on
+	// the grid can key.
+	if (host.settings.stateKey) {
+		// The same list, the same index, the same modulo `stateColorSlot` applies to a
+		// bar. Except for done, which is the one state whose bar does NOT draw its slot:
+		// a done row's bar is overridden to green in `timeline.css`, deliberately,
+		// because green for finished is a meaning the user already reads. A swatch
+		// wearing the slot class would key pink for a bar that draws green — a legend
+		// disagreeing with the only thing it exists to explain. So the swatch asks the
+		// same question the override does, `isDoneValue`, rather than trusting the
+		// index alone.
+		const states = stateMenuValues(host.settings, observedStates);
+		states.forEach((state, i) => {
+			const slot = isDoneValue(host.settings, state) ? 'pbl-legend-done' : `pbl-state-${i % STATE_COLOR_SLOTS}`;
+			addSwatch(legendEl, slot, state);
+		});
+		// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item
+		// can be done while its value is not in the configured list: its bar goes green and
+		// the loop above keyed no green. Asked of `drawn.done` — the render's own report of
+		// whether a bar actually took the override — rather than of `results`: a done item
+		// with no bar at all (shelved, filtered out, or hidden by "Show completed items")
+		// must not put a green swatch beside a grid drawing none.
+		if (!states.some((state) => isDoneValue(host.settings, state)) && drawn.done) {
+			addSwatch(legendEl, 'pbl-legend-done', host.settings.doneValues[0]);
+		}
+		// The rule's other direction: a bar that draws the plain accent — no slot, no
+		// done override, no milestone cyan — is a colour on the grid the key does not
+		// explain. `drawn.accent` is the RENDER's own report of that fact (see its doc on
+		// `TimelineRender`), never a predicate rebuilt here over `results`: that copy of
+		// `barClasses`'s precedence is exactly what missed a marker outside the window
+		// drawing the accent under `.pbl-bar-outside` instead of its own cyan.
+		if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
+	}
+	addSwatch(legendEl, 'pbl-legend-today', 'Today');
+	// Milestone is likewise the render's own report (`drawn.milestone`): a base with no
+	// milestone in the window draws no cyan mark at all, and a swatch left unconditional
+	// here is defect 2 of this pass — the same rule failing the same way as `Other` did.
+	if (drawn.milestone) addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
+}
+
+function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string): void {
+	const item = legendEl.createDiv({ cls: 'pbl-legend-item' });
+	item.createSpan({ cls: `pbl-legend-swatch ${swatchCls}` });
+	item.createSpan({ cls: 'pbl-legend-label', text: label });
+}

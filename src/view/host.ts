@@ -55,6 +55,21 @@ export interface ScrollBox {
 }
 
 /**
+ * Which override colours the dated axis actually drew this pass — see
+ * `TimelineRender.drawn` (`render/timeline.ts`) for where each is decided. Declared
+ * here, beside `RoadmapSnapshot`, rather than imported from `render/timeline.ts`: that
+ * module reaches `host.ts` (through `RowContext`), so the other direction would cycle.
+ */
+export interface DrawnColors {
+	/** A bar overridden green by `.pbl-timeline-row.pbl-done .pbl-bar` — wins outright. */
+	done: boolean;
+	/** A bar drawing the cyan diamond (`.pbl-bar-milestone`) — beats a state slot too. */
+	milestone: boolean;
+	/** A bar with none of the above: no slot, no done override, no milestone cyan. */
+	accent: boolean;
+}
+
+/**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
  * the order the keyboard walks.
@@ -93,6 +108,24 @@ export interface RoadmapSnapshot {
 	window: TimelineWindow | null;
 	/** The density the grid drew at; null on the horizon axis. */
 	scale: TimelineScale | null;
+	/**
+	 * The lead-column width this render actually drew, resolved once from the user's
+	 * pick or `TIMELINE_LEAD_PX` and then clamped to what the pane can actually give
+	 * (`effectiveLeadWidth`); null on the horizon axis. Everything downstream that used
+	 * to read `TIMELINE_LEAD_PX` directly — the scroll-centring math, the drag's
+	 * lead-column hit test — reads this instead, so a resize cannot leave one of them
+	 * disagreeing with what is actually drawn, and a pane too narrow for the stored pick
+	 * cannot leave one of them assuming room that is not there.
+	 */
+	leadWidth: number | null;
+	/**
+	 * Which override colours were actually drawn on the dated axis this pass — see
+	 * `TimelineRender.drawn`, which this carries out unchanged. All `false` on the
+	 * horizon axis, where nothing draws a bar at all. The legend reads this instead of
+	 * re-deciding a bar's colour from `results`, which is the copy of `barClasses`'s
+	 * precedence that missed the outside-window case.
+	 */
+	drawn: DrawnColors;
 }
 
 /**
@@ -208,6 +241,20 @@ export interface BacklogViewHost {
 	readonly zoom: ScaleId;
 	/** Pick a density and re-render; the collapse store persists it. */
 	setZoom(id: ScaleId): void;
+	/**
+	 * The retained row density for the dated axis — 'compact', or null for
+	 * comfortable, the default. UI state exactly like the zoom beside it.
+	 */
+	readonly density: string | null;
+	/** Toggle compact rows and re-render; the collapse store persists the pick. */
+	setDensity(value: string | null): void;
+	/**
+	 * The retained timeline lead-column width in pixels, or null for
+	 * `TIMELINE_LEAD_PX`, the default. UI state exactly like the density beside it.
+	 */
+	readonly leadWidth: number | null;
+	/** Resize the lead column and re-render; the collapse store persists the pick. */
+	setLeadWidth(value: number | null): void;
 	/** Put today back in the middle of the timeline's scroller, from any position. */
 	jumpToToday(): void;
 	/**
