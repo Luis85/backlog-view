@@ -13,6 +13,43 @@ import {
 import { BacklogViewHost, Projection } from './host';
 
 /**
+ * Prefix marking a key as the DATED AXIS's own fold state, kept apart from the tree's.
+ * The grid's chevron folds rows off the plan and the tree's opens a node in the backlog:
+ * two questions about one item, so one bit could only answer both by making the reader
+ * lose their place in the other projection every time they used it.
+ *
+ * A NUL, because a vault path may legitimately contain any printable prefix — `notePath`
+ * has to strip this back off to prune and to rename, so a key that could be a real path
+ * would prune the wrong entry.
+ */
+export const TIMELINE_SCOPE = '\u0000timeline:';
+
+/** The note path a key belongs to, whichever scope settled it. */
+function notePath(key: string): string {
+	return key.startsWith(TIMELINE_SCOPE) ? key.slice(TIMELINE_SCOPE.length) : key;
+}
+
+/**
+ * An entry stored before the dated axis had a scope of its own holds ONE bit per note —
+ * and it is the bit both projections were reading, so the split copies it across rather
+ * than starting the grid from nothing. Without this, the first open after the upgrade
+ * shuts every row a reader had left open on their plan: `collapseNewParents` finds the
+ * scope unsettled and applies the default to all of it.
+ *
+ * Fires only where the entry names no scoped key at all, which is what keeps it from
+ * touching a state this version wrote — and makes it idempotent, since the copy it
+ * makes is exactly what stops it running again.
+ */
+function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
+	const keys = [...settled];
+	if (keys.some((key) => key.startsWith(TIMELINE_SCOPE))) return;
+	for (const key of keys) {
+		settled.add(TIMELINE_SCOPE + key);
+		if (collapsed.has(key)) collapsed.add(TIMELINE_SCOPE + key);
+	}
+}
+
+/**
  * The view's working position, remembered across sessions: which rows are shut,
  * which projection — tree, board or roadmap — the view is showing, which roadmap
  * axis it shows when both are configured, and which type the tree is focused on.
@@ -21,12 +58,13 @@ import { BacklogViewHost, Projection } from './host';
  * working position on the device.
  *
  * Two sets, not one: `collapsed` is what is shut right now, and `settled` is every
- * path the user has ruled on either way. A parent that is in neither has never been
+ * key the user has ruled on either way. A parent that is in neither has never been
  * touched, and opens collapsed. Without the second set a restored session would be
  * re-collapsed by the very pass meant to honour it.
  *
- * The view owns the *policy* on top of this — the quick filter overrides collapse
- * state while it is active — and delegates the bookkeeping here.
+ * KEYS, not paths: a key is a note path, optionally under {@link TIMELINE_SCOPE}. The
+ * view owns the *policy* on top of this — which scope a projection asks in, and the
+ * quick filter's override while it is active — and delegates the bookkeeping here.
  */
 export class CollapseState {
 	private readonly host: BacklogViewHost;
@@ -62,8 +100,8 @@ export class CollapseState {
 		this.host = host;
 	}
 
-	isCollapsed(path: string): boolean {
-		return this.collapsed.has(path);
+	isCollapsed(key: string): boolean {
+		return this.collapsed.has(key);
 	}
 
 	projection(): Projection {
@@ -160,14 +198,14 @@ export class CollapseState {
 	}
 
 	/** Returns true when the state actually changed. */
-	set(path: string, collapsed: boolean): boolean {
-		const changed = collapsed ? !this.collapsed.has(path) : this.collapsed.delete(path);
-		if (collapsed) this.collapsed.add(path);
+	set(key: string, collapsed: boolean): boolean {
+		const changed = collapsed ? !this.collapsed.has(key) : this.collapsed.delete(key);
+		if (collapsed) this.collapsed.add(key);
 		// An explicit expand or collapse settles this row, so the initial state is not
 		// applied to it later. That matters most for a row with no children yet: a drop
 		// or a create expands it before the write, and the refresh that follows would
 		// otherwise collapse it as a newly seen parent and hide what just landed there.
-		this.settled.add(path);
+		this.settled.add(key);
 		this.scheduleSave();
 		return changed;
 	}
@@ -176,13 +214,19 @@ export class CollapseState {
 	 * A parent nobody has ruled on opens collapsed — "nobody" being per parent, not
 	 * per pass, so a data update does not undo what was expanded and a restored
 	 * session does not re-collapse what was left open.
+	 *
+	 * Both scopes, from one pass: the grid's default is the tree's, and this runs on a
+	 * data update rather than per projection, so the scope not on screen would otherwise
+	 * be settled by nobody and open every row of a whole backlog when it was.
 	 */
 	collapseNewParents(items: BacklogItem[]): void {
 		for (const item of items) {
-			const path = item.file.path;
-			if (item.children.length === 0 || this.settled.has(path)) continue;
-			this.settled.add(path);
-			this.collapsed.add(path);
+			if (item.children.length === 0) continue;
+			for (const key of [item.file.path, TIMELINE_SCOPE + item.file.path]) {
+				if (this.settled.has(key)) continue;
+				this.settled.add(key);
+				this.collapsed.add(key);
+			}
 		}
 	}
 
@@ -194,15 +238,18 @@ export class CollapseState {
 	 */
 	renamePath(oldPath: string, newPath: string): void {
 		let changed = false;
-		for (const path of [...this.settled]) {
-			const moved = movedPath(path, oldPath, newPath);
+		for (const key of [...this.settled]) {
+			const moved = movedPath(notePath(key), oldPath, newPath);
 			// A folder rename carries every row beneath it, so this cannot match on the
 			// renamed path alone — the event for a moved folder names the folder, and
 			// every row in it would otherwise be left behind under the old prefix.
 			if (moved === null) continue;
-			this.settled.delete(path);
-			this.settled.add(moved);
-			if (this.collapsed.delete(path)) this.collapsed.add(moved);
+			// Back into the scope it came from: a rename moves the item, never the
+			// question the scope is asking about it.
+			const next = key.startsWith(TIMELINE_SCOPE) ? TIMELINE_SCOPE + moved : moved;
+			this.settled.delete(key);
+			this.settled.add(next);
+			if (this.collapsed.delete(key)) this.collapsed.add(next);
 			changed = true;
 		}
 		if (changed) this.scheduleSave();
@@ -223,6 +270,7 @@ export class CollapseState {
 		this.collapsed = snapshot.collapsed;
 		// Both sets settle a path; only the collapsed ones are shut.
 		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
+		seedTimelineScope(this.collapsed, this.settled);
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
 		this.zoom = snapshot.zoom ?? null;
@@ -289,10 +337,10 @@ export class CollapseState {
 		// rather than on the model: a query that has not warmed up yet, or a filter
 		// the user narrowed, must not be read as "these notes no longer exist" and
 		// throw away a session the user still wants.
-		for (const path of this.settled) {
-			if (this.host.app.vault.getAbstractFileByPath(path) !== null) continue;
-			this.settled.delete(path);
-			this.collapsed.delete(path);
+		for (const key of this.settled) {
+			if (this.host.app.vault.getAbstractFileByPath(notePath(key)) !== null) continue;
+			this.settled.delete(key);
+			this.collapsed.delete(key);
 		}
 		const expanded = new Set([...this.settled].filter((path) => !this.collapsed.has(path)));
 		saveCollapseState(this.host.app, id, {

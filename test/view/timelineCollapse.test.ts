@@ -4,6 +4,7 @@ import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { Menu } from '../helpers/obsidian-mock';
 import { rowFor, roadmapView, timelineTitles } from '../helpers/roadmap';
+import { rowByTitle, titlesOf } from '../helpers/view';
 
 useViewHarness();
 
@@ -85,6 +86,44 @@ describe('collapsing a bar’s subtree', () => {
 		// The feature's own state is untouched — it is shut because an ancestor is,
 		// which is a different thing from being collapsed itself.
 		expect(timelineTitles(containerEl)).toEqual(['Epic']);
+	});
+
+	it('folds the grid without folding the tree, in both directions', () => {
+		// Two questions about one item — what the plan shows and where the reader is in
+		// the backlog — so two bits. Driven both ways round, because one scope writing
+		// into the other's key is a bug that only shows from the side that was written.
+		const { containerEl, view } = roadmapView(nestedVault(), { ...DATES });
+		click(chevronOf(containerEl, 'Epic')!);
+		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
+
+		view.setProjection('tree');
+		// Untouched by the fold above: still shut, as a parent nobody has ruled on.
+		expect(titlesOf(containerEl)).toEqual(['Epic']);
+		click(rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-chevron')!);
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature']);
+
+		view.setProjection('roadmap');
+		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
+		click(chevronOf(containerEl, 'Epic')!);
+		expect(timelineTitles(containerEl)).toEqual(['Epic']);
+
+		view.setProjection('tree');
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature']);
+	});
+
+	it('carries a pre-split entry into the new scope rather than shutting the plan', () => {
+		// What an installed version stored: one bit per note, which is the bit BOTH
+		// projections were reading. Splitting them must copy it across — otherwise the
+		// first open after the upgrade finds the axis's scope unsettled and applies the
+		// default to all of it, shutting every row the reader had left open.
+		const vault = nestedVault();
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: ['Epic.md'] },
+		});
+
+		const { containerEl } = roadmapView(vault, { ...DATES }, { base: 'Backlog.base' });
+
+		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
 	});
 
 	it('draws no disclosure on a row with nothing below it on the grid', () => {

@@ -1,5 +1,5 @@
 import { BasesView, Keymap, Menu, QueryController, setIcon } from 'obsidian';
-import { CollapseState } from './collapseState';
+import { CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterState } from './filterState';
 import {
 	BacklogViewHost,
@@ -353,11 +353,31 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	isCollapsed(path: string): boolean {
 		// While filtering, everything on a path to a match renders expanded.
-		return !this.filter.active && this.collapse.isCollapsed(path);
+		return !this.filter.active && this.collapse.isCollapsed(this.collapseKey(path));
 	}
 
 	setCollapsed(path: string, collapsed: boolean): boolean {
-		return this.collapse.set(path, collapsed);
+		return this.collapse.set(this.collapseKey(path), collapsed);
+	}
+
+	/**
+	 * Which scope a collapse question is asked in: the dated axis is reading a PLAN, and
+	 * every other projection is reading the backlog, so the two keep separate bits
+	 * ({@link TIMELINE_SCOPE}). Every collapse call in the view routes through the two
+	 * methods above and therefore through here, so the chevron, the row menu, the keyboard
+	 * and the toolbar's bulk controls all follow the projection without any of them asking
+	 * what they are looking at.
+	 *
+	 * The PROJECTION and not the control, which is a decision and not an oversight: the
+	 * shelf and context cards drawn beside the grid take the axis's scope too, because
+	 * they are on that screen and the working position being kept is the screen's. Scoping
+	 * the row chevron alone would leave a card beside it writing the tree's bit, and then
+	 * the toolbar's Collapse all — which settles items no surface drew — would have no
+	 * single answer for the ones it cannot see.
+	 */
+	private collapseKey(path: string): string {
+		const dated = this.projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates';
+		return dated ? TIMELINE_SCOPE + path : path;
 	}
 
 

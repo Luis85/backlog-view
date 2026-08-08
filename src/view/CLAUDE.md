@@ -116,7 +116,9 @@ free of runtime code so imports stay cycle-free.
   or disagree about which is checked. A property with an interactive chip is skipped by
   `chipProps`, so the row never draws it twice with only one of them editable.
 - The tree opens collapsed for a parent nobody has ruled on — `collapseNewParents`
-  collapses each one the first time it is seen, tracked in `settled` so a data update
+  collapses each one the first time it is seen, in BOTH scopes from that one pass (it runs
+  on a data update, not per projection, so the scope off screen would otherwise be
+  unsettled and open a whole backlog the first time it was shown), tracked in `settled` so a data update
   never undoes what the user expanded, and a restored session is not re-collapsed by the
   very pass meant to honour it. An explicit `setCollapsed` also settles the path, so a
   row expanded to reveal a drop or a new child is not collapsed again by the refresh that
@@ -413,9 +415,13 @@ free of runtime code so imports stay cycle-free.
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
-  face; they are one bit and one register.** The bit is the tree's `isCollapsed`, so a
-  row folded on the grid is folded in the tree, and the quick filter overrides both at
-  once. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
+  face; they are two bits and one register.** Both go through `isCollapsed`/`setCollapsed`,
+  and `collapseKey` is the ONE place that decides which bit those land on: the dated axis
+  keys under `TIMELINE_SCOPE`, everything else under the path. Add a caller, not a choice —
+  a surface that picks its own scope is how the two drift, and the shelf and context cards
+  beside the grid take the axis's scope with it deliberately, since the working position
+  being kept is the SCREEN's rather than the control's. The quick filter still overrides
+  whichever is being asked. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
   never "which projection is this" — which is what makes the toolbar's bulk controls and
   the row menu's section serve both without either asking what it is looking at.
   **Which element says "expanded" is decided by the ROW's role, not by preference**: a

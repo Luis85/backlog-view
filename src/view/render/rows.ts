@@ -203,8 +203,9 @@ function renderRowLead(
 
 /**
  * The disclosure a row draws — shared with the dated axis's rows, so there is one
- * statement of what a chevron IS: an icon that rotates, a click that flips the tree's
- * own collapse bit, and, where there is nothing below, the leaf placeholder that keeps
+ * statement of what a chevron IS: an icon that rotates, a click that flips the collapse
+ * bit of whichever projection is asking (`collapseKey` in `backlogView.ts` decides which,
+ * so nothing here does), and, where there is nothing below, the leaf placeholder that keeps
  * every badge on the same x rather than an absence that shifts the row.
  *
  * Two things are the caller's, and they are the only two the surfaces do not share:

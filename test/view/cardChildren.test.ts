@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
-import { refresh, titlesOf, useViewHarness } from '../helpers/view';
+import { refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
 import { Menu } from '../helpers/obsidian-mock';
@@ -352,6 +352,21 @@ describe('children on the card', () => {
 
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(titles.some((t) => t.startsWith('Open child'))).toBe(false);
+	});
+
+	it('keeps a shelf card’s disclosure with the AXIS, not with the tree', () => {
+		// The scope is the PROJECTION's, not the control's: everything on the dated axis
+		// — its rows and the shelf beside them — is one working position, kept apart from
+		// the backlog's. A shelf card is on that screen, so its disclosure goes with it.
+		const { containerEl, view } = makeRoadmap(datedVault(), DATED_AXIS);
+		disclosure(cardByTitle(containerEl, 'Feature X'))?.click();
+		expect(kidTitles(cardByTitle(containerEl, 'Feature X'))).toEqual(['Task X1']);
+
+		view.setProjection('tree');
+		// Opened one level by hand, so what is asked is the FEATURE's own bit: the shelf
+		// card's expand must not have opened the same node in the backlog.
+		rowByTitle(containerEl, 'Dated epic').querySelector<HTMLElement>('.pbl-chevron')?.click();
+		expect(titlesOf(containerEl)).toEqual(['Dated epic', 'Feature X']);
 	});
 
 	it('still offers them on a shelf card in the same projection', () => {
