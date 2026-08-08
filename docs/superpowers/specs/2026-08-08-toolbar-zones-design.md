@@ -137,13 +137,41 @@ attribute lives on the toolbar element itself, which `renderToolbar`'s `barEl.em
 not destroy, so the step survives a toolbar rebuild and is re-decided after it rather than
 flickering through step 0.
 
-**Nothing shed becomes unreachable.** A `⋯` button holds density, jump-to-today, ✨,
-expand all and collapse all — *always those five, whatever the step*. The button itself is
-rendered from step 2. Fixing the menu's contents rather than deriving them from the step
-is the point: a menu whose entries tracked the ladder would be a second opinion about the
-verdict, and the two would drift. A duplicated entry for a control still visible is
-harmless and already the pattern here — the card menu carries the state chip's values
-while the chip is on screen.
+**The write-in-flight indicator is the third width that moves without a render**, and it is
+the one place a refit must NOT be the answer. `syncBusy` runs at the start of a batch, once
+per file, and at the end, and `syncBusyUi` deliberately re-renders nothing — re-rendering
+per tick is the jank the deferred update exists to remove, and `scrollWidth` is a forced
+layout read, so measuring per file would put back a cost of the same shape. So the
+indicator **reserves its width instead of changing it**: `.pbl-busy-label` carries a
+`min-width` sized for its longest form, so "Updating…" and "Updating 12 of 340…" occupy the
+same box and no tick moves anything. That is the rule the row already keeps for its
+end-anchored strip — `renderAddSpacer` withholds the control and reserves its width,
+because an element skipped from such a strip does not leave a gap where it was. What is
+left is the visibility transition, idle → busy → idle, which happens twice per batch rather
+than once per file: the ladder re-runs on those two, and on nothing between them.
+
+**The `/` shortcut has to keep working at a step that hides the input.** `focusFilter()`
+is what `/` in the tree and the no-match empty state both call, and it does
+`querySelector('.pbl-filter-input')?.focus()` — against a `display: none` input that call
+silently does nothing, so the documented keyboard path to the filter would die at exactly
+the pane widths where the filter is hardest to reach. Revealing the input is therefore one
+function, `revealFilter`, and both inputs go through it: the reveal button's click, and
+`focusFilter()` before it focuses. This is the codebase's own "one action, several inputs"
+rule — a second input calls the first one's function rather than repeating it — applied to
+a control rather than to a move.
+
+**Nothing shed becomes unreachable.** A `⋯` button holds density, jump-to-today, ✨, expand
+all and collapse all. The button itself is rendered from step 2.
+
+Its contents never depend on the **step** — a menu whose entries tracked the ladder would
+be a second opinion about the verdict, and the two would drift; a duplicated entry for a
+control still visible is harmless and already the pattern here, since the card menu
+carries the state chip's values while the chip is on screen. They *do* depend on the
+**projection**, and by exactly one mechanism: an entry appears when the button it
+duplicates was rendered. Density and jump-to-today exist only on the dated roadmap axis,
+so those two are absent everywhere else — an entry for them on the tree would offer an
+invisible density mutation and a no-op jump, and would have no button to read its disabled
+state from either. Asking the DOM for the button is one question answering both.
 
 This follows the rule the register already states about the column ladder: the responsive
 `pbl-hide-*` classes are a space decision, and no command is withheld for them.
@@ -190,11 +218,15 @@ have no such structural backstop, which is why they are the two that matter.
 
 ## Testing
 
-- `test/view/toolbarFit.test.ts` — the step chosen from stubbed widths; that a control shed
-  at each step still has its command in the `⋯` menu; that revealing the collapsed filter
-  re-runs the ladder; and that a `⋯` entry is disabled whenever the button it duplicates
-  is — driven by putting the view into the state that disables the button (a running quick
-  filter for expand/collapse) rather than by asserting the condition twice.
+- `test/view/toolbarFit.test.ts` — the step chosen from stubbed widths; that revealing the
+  collapsed filter re-runs the ladder; that `/` still reaches the input at a step that
+  hides it; and that a progress tick moves nothing, asserted against the reserved label
+  rather than against a refit that must not happen.
+- `test/view/toolbarOverflow.test.ts` — that a control shed at a step still has its command
+  in the `⋯`; that the roadmap-only entries are absent on the projections whose buttons do
+  not exist; and that an entry is disabled whenever the button it duplicates is — driven by
+  putting the view into the state that disables the button (a running quick filter, for
+  expand and collapse) rather than by asserting the condition a second time.
 - `test/view/toolbar.test.ts` — extended: the projection zone renders the roadmap's
   controls and nothing at all on the tree, the board and the Deliverables board; the
   zone's separator is absent with the zone.
