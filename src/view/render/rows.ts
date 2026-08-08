@@ -214,11 +214,20 @@ function renderRowLead(
  *   preference. A `treeitem` carries `aria-expanded` itself, so the tree passes no
  *   `label` and this draws a plain div — decoration of a state the row already announces.
  *   A card projection's row is `role="option"`, which does NOT support `aria-expanded`
- *   (ARIA 1.2), so a state put there may be announced by nobody: passing a `label` makes
- *   the chevron a real `<button>` carrying the state and that name, the same answer
- *   `render/cardChildren.ts`'s toggle already gives on the same role. The cost is real
- *   and accepted — a button inside an `option` joins the row's content-derived name, so
- *   the label is kept short and worded exactly as the menu's own entry.
+ *   (ARIA 1.2), so a state put there is discarded: passing a `label` makes the chevron a
+ *   real `<button>` carrying the state and that name, the same answer
+ *   `render/cardChildren.ts`'s toggle already gives on the same role.
+ *
+ *   **That is better, not settled**, and the claim is narrowed to what can be checked
+ *   here: `option` also has PRESENTATIONAL CHILDREN, so a user agent may flatten this
+ *   button and drop its role and state with it — a focusable node is generally read as
+ *   surviving that rule, and nothing in this repository can run a screen reader to find
+ *   out. What survives either way is the row's content-derived NAME, which this label
+ *   joins and, being worded "Show children"/"Hide children", flips with the state; the
+ *   ACTION's guaranteed path is the row menu's identical entry. Do not write "the state
+ *   is announced" here until a device has said so —
+ *   `docs/issues/A disclosure nested in an option role.md` holds the two redesigns that
+ *   would settle it.
  *
  * Everything else is one rule in one place — including the three guards, each of which
  * had to be discovered twice before: the filter override, because `isCollapsed` reports

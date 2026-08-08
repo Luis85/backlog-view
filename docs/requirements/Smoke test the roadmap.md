@@ -96,3 +96,10 @@ and each stays open until they are, so a stale check is visible rather than assu
   the size a lead column actually gives it, the leaf placeholder keeps every badge on one
   x, and a fold does not leave the grid's scroll position somewhere the reader did not
   ask for. **Never checked.**
+- Then the part only a screen reader can answer, and the reason
+  [[A disclosure nested in an option role]] is open: what a row with a disclosure
+  actually announces. `option` has presentational children, so the nested button's role
+  and `aria-expanded` may be flattened away — does the reader get "Show children" /
+  "Hide children" from the row's name, is the button reachable and activatable at all,
+  and does the row menu's identical entry read as the same act? **Never checked**, and
+  the same question applies to the card disclosure on the board.

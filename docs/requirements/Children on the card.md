@@ -53,6 +53,12 @@ card — and a count is the half of it that cannot be acted on.
 - **1c — the quick filter is running.** It overrides collapse state, so every listed
   card shows its children and the toggle is disabled — it would otherwise write state
   that reads back as expanded and took effect once the filter cleared.
+- **1d — what the disclosure is announced AS.** Open, and shared with the timeline's
+  row: this toggle is a `<button aria-expanded>` inside a `role="option"` card, and
+  `option` has presentational children, so a user agent may flatten it and drop both.
+  What is certain is the card's own name (which the toggle's count joins) and the card
+  menu's entries. See [[A disclosure nested in an option role]] — no criterion below
+  claims more than that.
 - **3a — a child is done.** Listed, styled done. Hiding finished work is the option that
   says so, not this.
 - **3b — a child already has a card of its own.** Still listed. The disclosure answers

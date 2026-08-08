@@ -414,7 +414,13 @@ free of runtime code so imports stay cycle-free.
   a card row is `role="option"` — which does not support that state — so the timeline's
   is a real `tabindex="-1"` button carrying it, the card disclosure's own answer to the
   same problem, and `button.pbl-chevron` in `styles/tree.css` strips the Obsidian chrome
-  that arrives with it. `renderChevron` takes a label exactly to make that choice.
+  that arrives with it. `renderChevron` takes a label exactly to make that choice. **The
+  button is the better placement and not a settled one**: `option` also has
+  presentational children, so a user agent may flatten it and drop the role and state
+  with it. What holds either way is the row's content-derived NAME — which the label
+  joins and flips — and the row menu's identical entry as the action's path. Claim that
+  and no more; the two redesigns that would settle it are in
+  `docs/issues/A disclosure nested in an option role.md`.
   `domain/bars.ts`'s `timelineRows` decides which rows survive and which keep a chevron,
   and it is asked of the bars derived BEFORE any were hidden: computed from what is
   left, a collapsed row would have no children to have and would lose the very control

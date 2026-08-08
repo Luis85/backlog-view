@@ -451,11 +451,10 @@ function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow
 	const host: BacklogViewHost = ctx.host;
 	const item = entry.bar.item;
 	if (entry.hasChildren) ctx.cardKids.add(item.file.path);
-	// A LABEL is passed, which is what makes this the button form — see `renderChevron`:
-	// `createCard` gives every card row `role="option"`, and `aria-expanded` is not a
-	// supported state of that role, so a state put on the row may reach nobody. Worded
-	// exactly as the row menu's own entry, since a button inside an `option` joins the
-	// row's accessible name and the two surfaces should not describe one act differently.
+	// A LABEL is passed, which is what makes this the button form — see `renderChevron`,
+	// which also states what that does and does not buy on a `role="option"` row. Worded
+	// exactly as the row menu's own entry, because the row's NAME is the part a screen
+	// reader gets either way and the two surfaces must not describe one act differently.
 	const label = entry.collapsed ? 'Show children' : 'Hide children';
 	renderChevron(host, lead, item, { ...entry, label }, () => host.render());
 }

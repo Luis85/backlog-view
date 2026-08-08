@@ -89,6 +89,12 @@ projection, and this is the third surface reading it.
   `<button tabindex="-1">` carrying the state and a name worded exactly as the menu
   entry, and the row carries no such attribute. The leaf placeholder is a plain div — a
   button opening onto nothing would be announced as a control that does nothing.
+- What a screen reader is promised here is the row's NAME and the menu's entry, and not
+  more: `option` has presentational children, so a user agent may flatten the button and
+  drop its role and state. The label is therefore worded as the state ("Show children" /
+  "Hide children") so the fact flips inside the name that survives.
+  [[A disclosure nested in an option role]] holds the two redesigns that would settle it,
+  neither of which belongs in this increment.
 - Collapsing a row removes its whole subtree from the grid, not only its children, and
   the row keeps its own chevron: which rows have children is asked of the bars derived
   before any were hidden, or a collapsed row's disclosure would vanish the moment it was
