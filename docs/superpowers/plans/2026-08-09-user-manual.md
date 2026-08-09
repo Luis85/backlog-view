@@ -4,7 +4,7 @@
 
 **Goal:** Put a six-section manual inside the view, reachable from the toolbar and from the four places its questions are actually asked.
 
-**Architecture:** Content is pure data (`view/manual/`), composition is `view/`, and the dialog is a leaf in `ui/` that takes its sections as a parameter — because `ui/` may not import `domain/`. One opener serves all five doors. The dialog is built on Obsidian's own settings-modal classes, so nearly all chrome comes from the app.
+**Architecture:** Content is pure data (`view/manual/`), composition is `view/`, and the dialog is a leaf in `ui/` that takes its sections as a parameter — because `ui/` may not import `domain/`. One opener serves all seven doors, and focus on close is a caller-supplied callback so `ui/` decides no policy. The dialog is built on Obsidian's own settings-modal classes, so nearly all chrome comes from the app.
 
 **Tech Stack:** TypeScript, Obsidian 1.10.2+ API, vitest with a jsdom environment and an `obsidian` module mock, esbuild, CSS partials assembled by `scripts/styles-assemble.mjs`.
 
@@ -36,10 +36,10 @@
 | Modify `styles/toolbarFit.css` | Add `.pbl-help-btn` to the step-2 shed group. |
 | Modify `src/view/render/toolbar.ts` | The `?` button; help links on the busy indicator and the config warning. |
 | Modify `src/view/render/toolbarControls.ts` | The `⋯` mirror entry. |
-| Modify `src/view/render/emptyStates.ts` | Help link on the empty state. |
+| Modify `src/view/render/emptyStates.ts` | Help link on **all three** empty states. |
 | Modify `src/view/interactions/create.ts` | Help link in the new-item modal. |
 | Modify `src/ui/prompts.ts` | Accept an optional help affordance on the new-item prompt. |
-| Modify `test/docs/surfaces.test.ts` | Assert every `getViewOptions()` key is claimed by exactly one setup entry. |
+| Modify `test/docs/surfaces.test.ts` | Assert every `getViewOptions(config)` key is claimed once, by an exact key or a `prefix.*` family. |
 
 ---
 
@@ -57,8 +57,9 @@
 - Produces:
   - `interface ManualEntry { term: string; text: string; badge?: { text: string; cls: string }; keys?: string[] }`
   - `interface ManualSection { id: string; title: string; intro?: string; entries: ManualEntry[] }`
-  - `class ManualDialog extends Modal` with `constructor(app: App, sections: ManualSection[], initialId: string, returnFocusTo: HTMLElement | null)`
-  - `function openManual(app: App, sections: ManualSection[], sectionId: string, returnFocusTo: HTMLElement | null): void`
+  - `class ManualDialog extends Modal` with `constructor(app: App, sections: ManualSection[], initialId: string, onClosed?: () => void)`
+  - `function openManual(app: App, sections: ManualSection[], sectionId: string, onClosed?: () => void): void`
+  - `function manualLink(parent, app, sections, sectionId, label, onClosed?): HTMLButtonElement` (added in Task 5)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -92,19 +93,19 @@ describe('the manual dialog', () => {
 	});
 
 	it('opens on the section it was asked for, not the first one', () => {
-		openManual({} as never, SECTIONS, 'two', null);
+		openManual({} as never, SECTIONS, 'two');
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('Second');
 	});
 
 	it('lists every section in the sidebar, marking the open one', () => {
-		openManual({} as never, SECTIONS, 'two', null);
+		openManual({} as never, SECTIONS, 'two');
 		const tabs = Array.from(content().querySelectorAll('.vertical-tab-nav-item'));
 		expect(tabs.map((t) => t.textContent)).toEqual(['First', 'Second']);
 		expect(tabs.filter((t) => t.hasClass('is-active')).map((t) => t.textContent)).toEqual(['Second']);
 	});
 
 	it('switches the pane when a sidebar item is clicked', () => {
-		openManual({} as never, SECTIONS, 'one', null);
+		openManual({} as never, SECTIONS, 'one');
 		const second = Array.from(content().querySelectorAll<HTMLElement>('.vertical-tab-nav-item'))[1];
 		second.click();
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('Second');
@@ -112,25 +113,29 @@ describe('the manual dialog', () => {
 	});
 
 	it('falls back to the first section when the id is unknown', () => {
-		openManual({} as never, SECTIONS, 'nope', null);
+		openManual({} as never, SECTIONS, 'nope');
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('First');
 	});
 
-	// The whole reason `returnFocusTo` is a parameter: a test that only ever opens from
-	// one control passes even when the parameter is ignored.
-	it('returns focus to the control that opened it, whichever that was', () => {
-		const opener = document.body.createEl('button');
-		const other = document.body.createEl('button');
-		other.focus();
-
-		openManual({} as never, SECTIONS, 'one', opener);
+	// Focus policy belongs to the caller, so what this asserts is that the dialog CALLS
+	// back — where focus lands is each door's own test, in `manualEntryPoints.test.ts`.
+	it('tells the caller when it closes, so focus policy stays out of ui/', () => {
+		let closed = 0;
+		openManual({} as never, SECTIONS, 'one', () => {
+			closed += 1;
+		});
+		expect(closed).toBe(0);
 		Modal.lastOpened?.close();
+		expect(closed).toBe(1);
+	});
 
-		expect(document.activeElement).toBe(opener);
+	it('closes cleanly with no callback at all', () => {
+		openManual({} as never, SECTIONS, 'one');
+		expect(() => Modal.lastOpened?.close()).not.toThrow();
 	});
 
 	it('renders a badge when an entry carries one', () => {
-		openManual({} as never, [{ id: 'x', title: 'X', entries: [{ term: 'Epic', text: 'e', badge: { text: 'Epic', cls: 'pbl-lvl-0' } }] }], 'x', null);
+		openManual({} as never, [{ id: 'x', title: 'X', entries: [{ term: 'Epic', text: 'e', badge: { text: 'Epic', cls: 'pbl-lvl-0' } }] }], 'x');
 		const badge = content().querySelector('.pbl-badge');
 		expect(badge?.hasClass('pbl-lvl-0')).toBe(true);
 		expect(badge?.textContent).toBe('Epic');
@@ -181,14 +186,14 @@ export interface ManualSection {
 export class ManualDialog extends Modal {
 	private readonly sections: ManualSection[];
 	private readonly initialId: string;
-	private readonly returnFocusTo: HTMLElement | null;
+	private readonly onClosed: (() => void) | undefined;
 	private paneEl: HTMLElement | null = null;
 
-	constructor(app: App, sections: ManualSection[], initialId: string, returnFocusTo: HTMLElement | null) {
+	constructor(app: App, sections: ManualSection[], initialId: string, onClosed?: () => void) {
 		super(app);
 		this.sections = sections;
 		this.initialId = initialId;
-		this.returnFocusTo = returnFocusTo;
+		this.onClosed = onClosed;
 	}
 
 	onOpen(): void {
@@ -244,19 +249,11 @@ export class ManualDialog extends Modal {
 
 	onClose(): void {
 		this.contentEl.empty();
-		// Focus goes back to whatever OPENED the manual, which is not always the `?`:
-		// the busy indicator and the config warning open it too, and dropping focus to
-		// the document from either is the failure this parameter exists to prevent.
-		//
-		// The opener can VANISH while the dialog is up — the busy indicator is hidden by
-		// `styles/busy.css` the moment `syncBusy` drops `pbl-busy-on`, and `focus()` on a
-		// hidden element is a silent no-op that lands focus on the document. Same hazard
-		// `refocusByKey` routes through `focusInBar` for. So: only focus it if it is still
-		// focusable, else hand back to the toolbar's `?`.
-		const target = this.returnFocusTo;
-		const usable = target?.isConnected === true && target.offsetParent !== null;
-		const fallback = document.querySelector<HTMLElement>('.pbl-toolbar .pbl-help-btn');
-		(usable ? target : fallback)?.focus();
+		// Focus policy is the CALLER's. This file is a `ui/` leaf: it knows about no
+		// layer, so it cannot reach for `.pbl-toolbar .pbl-help-btn` — and that button is
+		// hidden at fit step 2 anyway, which is exactly the narrow pane where a fallback
+		// is needed. Each door supplies a closure that knows where its own focus goes.
+		this.onClosed?.();
 	}
 }
 
@@ -265,9 +262,9 @@ export function openManual(
 	app: App,
 	sections: ManualSection[],
 	sectionId: string,
-	returnFocusTo: HTMLElement | null,
+	onClosed?: () => void,
 ): void {
-	new ManualDialog(app, sections, sectionId, returnFocusTo).open();
+	new ManualDialog(app, sections, sectionId, onClosed).open();
 }
 ```
 
@@ -456,7 +453,7 @@ const INTENT: Record<string, string> = {
 	Epic: 'A body of work with a reason to exist. It roots the tree — nothing sits above it.',
 	Feature: 'One coherent slice of an Epic, stated as an outcome someone would notice.',
 	PBI: 'What a person does, step by step. The rung work is usually planned at.',
-	Task: 'A piece of engineering. The deepest rung: a Task holds nothing below it.',
+	Task: 'A piece of engineering, and the deepest rung. A Task can still hold another Task — the level offered clamps here rather than running out.',
 	Issue: 'A question, a decision taken, or a limitation accepted. Holds Tasks.',
 	Bug: 'What went wrong, what fixed it, and what it taught. Holds Tasks.',
 	Idea: 'Something worth considering but not committed to. Holds Tasks.',
@@ -705,7 +702,9 @@ In `test/docs/surfaces.test.ts`, inside the existing `describe('every user-facin
 		// so the parameterless schema emits no `wipLimit.*`/`columnPolicy.*` at all — and a
 		// test run against it would go green while covering none of the generated half,
 		// which is the exact failure this criterion exists to prevent.
-		const config = new FakeViewConfig({ stateValues: ['Todo', 'Doing', 'Done'] });
+		// A STRING: `resolveSettings` reads `stateValues` through a comma-split, so an array
+		// resolves to no states and the generated families stay empty — the vacuum again.
+		const config = new FakeViewConfig({ stateValues: 'Todo, Doing, Done' });
 		const declared = optionKeys(config as never);
 
 		const claims = (manualSections().find((s) => s.id === 'setup')?.entries ?? []).flatMap(
@@ -854,7 +853,7 @@ In `src/view/render/toolbar.ts`, in zone 4 (the "what is shown" group), **after*
 	const helpBtn = iconButton(barEl, 'help-circle', 'Open the manual', 'help');
 	helpBtn.addClass('pbl-help-btn');
 	helpBtn.addEventListener('click', () => {
-		openManual(host.app, manualSections(), 'types', helpBtn);
+		openManual(host.app, manualSections(), 'types', () => helpBtn.focus());
 	});
 ```
 
@@ -879,11 +878,31 @@ In `src/view/render/toolbarControls.ts`, add to the `all` array in `overflowEntr
 			title: 'Open the manual',
 			icon: 'help-circle',
 			cls: 'pbl-help-btn',
-			run: () => openManual(host.app, manualSections(), 'types', null),
+			// No `onClosed`: the carve-out below owns focus here, not this entry.
+			run: () => openManual(host.app, manualSections(), 'types'),
+			opensModal: true,
 		},
 ```
 
-`returnFocusTo` is `null` here on purpose: the entry is picked from inside a `Menu`, and `pickAndRefocus` already returns focus to the `⋯` after the rebuild. Passing the shed button would name a control that may not exist at the resulting step.
+**This entry must NOT go through `pickAndRefocus`.** That wrapper focuses the rebuilt `⋯`
+the instant `run()` returns — which here is the instant the modal opened, so it would take
+focus straight back off the dialog. The codebase already carves this out for the one menu
+with the same shape, and says why: *"The New-type chevron is the one menu that does not:
+its entries open the creation prompt, which takes focus deliberately, so restoring focus
+here would fight the modal for it — a genuine carve-out, not an omission from the rule
+above."* A manual entry is the second instance of that rule, not a new one.
+
+Add `opensModal?: boolean` to `OverflowEntry` and branch in `renderOverflow`:
+
+```ts
+					.onClick(() =>
+						entry.opensModal ? entry.run() : pickAndRefocus(barEl, 'overflow', entry.run),
+					),
+```
+
+Extend `pickAndRefocus`'s doc comment to name the second member of its carve-out — its own
+comment records that the earlier list-shaped version went stale twice, so the rule is what
+gets edited, not a list.
 
 Add the same two imports.
 
@@ -970,8 +989,13 @@ describe('the manual is reachable where its questions are asked', () => {
 		expect(openedOn()).toBe('Finding work');
 	});
 
-	// The config warning has NO test here on purpose: the link is blocked pending the
-	// register settling which section it opens. Add the test with the link, not before.
+	it('opens on setting up the view from the config warning', () => {
+		// Two options naming the same property is a config problem, which is what draws
+		// the warning — check `configProblems` for the cheapest collision to induce.
+		const { containerEl } = makeView(fixture(), { parentProperty: 'note.x', orderProperty: 'note.x' });
+		containerEl.querySelector<HTMLElement>('.pbl-toolbar-warning .pbl-help-link')?.click();
+		expect(openedOn()).toBe('Setting up the view');
+	});
 
 	// The opener can vanish while the dialog is up. Finish the batch BEFORE closing —
 	// a test that closes first passes even when the fallback is missing.
@@ -1032,7 +1056,7 @@ Style it in `styles/manual.css` as a link-looking button — `background: none; 
 - [ ] **Step 4: Wire the four surfaces**
 
 - **All three** empty-state renderers in `src/view/render/emptyStates.ts` — `renderEmptyState`, `renderFilterEmptyState` and `renderAllDoneState` — each → `manualLink(el, host.app, manualSections(), 'finding', 'What shows here?')`. Three separate renderers, and the last two (a filter matching nothing, a backlog whose visible work is all done) are the sharpest moments the question is asked. Wiring only the generic one leaves the two best doors missing.
-- the config warning in `src/view/render/toolbar.ts` (~line 136, beside `Check view options`) → **BLOCKED, do not implement.** Two accepted use cases claim this surface for different sections; see the spec's entry-point table. Skip this one link, leave the rest of the task complete, and do not mark `Help for safe writes and undo` or `Help for setting up the view` `Done` until the register settles it.
+- the config warning in `src/view/render/toolbar.ts` (~line 136, beside `Check view options`) → section `'setup'`, label `'What to fix'`. It was claimed by two use cases; the register settled it on the configuration section, because the reader's question at a warning is what to fix. **`docs/requirements/Help for safe writes and undo.md` must be amended in this same commit**: strike the config warning from its **Trigger** row and from the criterion naming it, leave the **?** and the busy indicator, and add one line recording that the warning was reassigned to `Help for setting up the view` and why. Amend the note — do not leave a criterion standing and call a cross-link good enough.
 - `renderBusyIndicator` in the same file → section `'writes'`, label `'What is happening'`
 - the new-item prompt: give `NewItemPromptOptions` an optional `help?: (parent: HTMLElement) => void`, call it under the detail line in `src/ui/prompts.ts`, and pass it from `promptCreateItem` in `src/view/interactions/create.ts` as `(el) => manualLink(el, app, manualSections(), 'creating', 'Where will this go?')`
 
@@ -1160,13 +1184,10 @@ For each of the six, read its `## Acceptance criteria` and confirm every line is
 
 Set `status: Done` on each PBI that passed Step 1, and on `docs/requirements/User manual.md` if all six did.
 
-**Two will not pass, unless the register settled the config warning first.**
-`Help for safe writes and undo` requires the warning to reach the writes section;
-`Help for setting up the view` requires the same warning to reach the configuration
-section. Both are accepted criteria, one link cannot satisfy both, and Task 5 left it
-unwired on purpose. Leave both `Open`, and leave `User manual` `Open` with them — a
-feature is not done while two of its use cases are waiting on a decision. Say which line
-failed, in the note, rather than moving the status and hoping.
+**`Help for safe writes and undo` only passes if Task 5 amended it.** Its criteria named
+the config warning, which the register reassigned to `Help for setting up the view`. If
+the amendment was not made, the criterion is still standing and unmet — leave the note
+`Open` and say which line failed, rather than reading a cross-link as satisfying it.
 
 - [ ] **Step 3: Record what the review measured on the badge note**
 
@@ -1201,6 +1222,6 @@ git commit -m "Move the manual's use cases to done, and record what the badge me
 
 **Placeholders.** One deliberate incompleteness remains, in Task 3 Step 3: `SETUP`'s entries. It is not a placeholder — Step 5 makes the test emit the exact missing key list, and writing that list from a plan instead of from the schema is precisely the failure the derived check exists to catch. It is called out in the task.
 
-**Type consistency.** `ManualEntry`/`ManualSection` are defined in Task 1 and used unchanged in 2, 3 and 5. `openManual(app, sections, sectionId, returnFocusTo)` keeps that argument order at all five call sites. `manualSections()` is defined in Task 3 and consumed in 4 and 5 — so **Task 3 must land before Task 4**. `typesSection()` is defined in Task 2 and consumed in Task 3. `manualLink` is added in Task 5 to the module Task 1 created, which is the one place a later task reaches back into an earlier one's file.
+**Type consistency.** `ManualEntry`/`ManualSection` are defined in Task 1 and used unchanged in 2, 3 and 5. `openManual(app, sections, sectionId, onClosed?)` keeps that argument order at every call site, and `onClosed` is a CALLBACK rather than an element — `ui/` decides no focus policy, and the toolbar's `?` is hidden at fit step 2 so it could not have served as a fallback anyway. `manualSections()` is defined in Task 3 and consumed in 4 and 5 — so **Task 3 must land before Task 4**. `typesSection()` is defined in Task 2 and consumed in Task 3. `manualLink` is added in Task 5 to the module Task 1 created, which is the one place a later task reaches back into an earlier one's file.
 
 **Ordering.** 1 → 2 → 3 → 4 → 5 is a hard chain. 6, 7 and 8 are independent of each other, and 8 should run last because Step 1 audits what the earlier tasks actually delivered.
