@@ -265,7 +265,9 @@ base settings are saved on the view, working position on the device.
   correct after shipping. The focus button offers no menu in the catalog, and offers no
   test type in the plan.
 - The catalog is built from the **unfocused** tree: with a plan focus of `PBI` stored, every
-  suite is still drawn, the count is complete, and a drop at the root level is not refused.
+  suite is still drawn, the count is complete, a drop at the root level is not refused, and
+  a newly loaded suite outside the focused subtree gets its default collapse state like any
+  other new parent.
   Asserted with the focus stored rather than cleared — a fixture that clears it first tests
   nothing, since the defect is precisely what a *surviving* focus does to a projection that
   claims to ignore it.
@@ -348,7 +350,14 @@ code this PBI does not otherwise touch; the first is smaller and leaves a field 
 `focusRoot` true for an item no focus produced, which is a comment's job to explain. Either
 way the depth comes from `assignVisualDepth`, which focus already uses for exactly this.
 
-**Two lifecycle seams sit beside those gates and are not gates at all.**
+**Three lifecycle seams sit beside those gates and are not gates at all.**
+`refreshFromData` seeds default collapse state by handing `collapseNewParents` its
+populations — `model.items` **plus** `deliverableResults`, the second passed explicitly
+because the first is narrowed by a focus. The catalog's population joins it for exactly
+that reason: with a plan focus stored, a newly loaded suite outside the focused subtree is
+never offered to that call and opens expanded, against the promise that collapse here
+behaves as it does in the backlog tree. That the existing call already carries a second
+list is the evidence this is the established shape rather than a new one.
 `collapsiblePopulation` (`src/view/render/toolbar.ts`) decides what a bulk collapse
 *touches* rather than whether a button is *enabled*, so the tree-shaped predicate does not
 reach it — it needs the catalog's forest by name. And `UiStateController.setProjection`

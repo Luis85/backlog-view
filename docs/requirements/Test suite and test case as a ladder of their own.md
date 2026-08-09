@@ -49,15 +49,17 @@ design: the relationship between a test and the work it checks is
    | --- | --- | --- |
    | Top-level "pick another type" | the test types | no test type |
    | The primary **New** button's default (`primaryNewType`) | `Test suite` | unchanged |
-   | **Set type** on a row | the test types | no test type |
+   | **Set type** on a row | *(per row — 1d)* | *(per row — 1d)* |
    | The focus picker | no menu at all | no test type |
 
-   **Set type** is the one this use case names in its own Trigger and never specified.
-   Left unfiltered it lets a `PBI` be retyped into a `Test case` and vanish into the
-   catalog from the plan the user was reading — the same disappearing note the creator
-   rule exists to prevent, reached by the other verb. The primary button needs no rule of
-   its own: `primaryNewType` already falls back to the first type the projection offers
-   when the configured one is not offered.
+   **Set type** is the one this use case names in its own Trigger, and the only one whose
+   answer is not a projection-wide list — it is **per row**, because the question is where
+   the row ends up and that depends on the row's parent as well as its new type (1d). Left
+   unfiltered it lets a `PBI` be retyped into a `Test case` and vanish into the catalog
+   from the plan the user was reading — the same disappearing note the creator rule exists
+   to prevent, reached by the other verb. The primary button needs no rule of its own:
+   `primaryNewType` already falls back to the first type the projection offers when the
+   configured one is not offered.
 
    The **child** path is the exception, and `Task` is the whole reason it is one.
    `offerableTypes` also filters a row's own **+**, where the vocabulary is
@@ -109,12 +111,17 @@ design: the relationship between a test and the work it checks is
   "the projection's own types": a `PBI` in the plan is never offered `Test case`, and a
   `Test suite` in the catalog is never offered `Epic`, either being a row that leaves the
   screen it was acted on.
-  The question is **membership after the write**, though, not the type's name, and one row
-  tells them apart. A `PBI` dragged under a test is drawn in the plan as a promoted root
-  ([[Tests stay out of the plan]] 2c). `Task` is a plan type, so a name-based rule offers
-  it — and a `Task` takes its parent's projection (2b), so the retype moves that row into
-  the catalog and off the screen the user was looking at. Withheld, on the membership rule
-  that already exists rather than on a special case for promoted rows.
+  The question is **membership after the write**, though, not the type's name, and it is
+  answered per row rather than per projection — two rows show why, in opposite directions.
+  A `PBI` dragged under a test is drawn in the plan as a promoted root
+  ([[Tests stay out of the plan]] 2c). `Task` is a plan type, so a projection-wide list
+  offers it — and a `Task` takes its parent's projection (2b), so the retype moves that row
+  into the catalog and off the screen the user was looking at. **Withheld.**
+  A `Test case` under a `Test suite` is the mirror. `Task` is not a test type, so a
+  catalog-wide list of "the test types" would withhold it — and retyping that row to `Task`
+  leaves it in the catalog, under the same suite, by the same membership rule.
+  **Offered.** A projection-wide list is wrong at both rows, in opposite directions, which
+  is what makes per-row the rule rather than a refinement of it.
   `addSetTypeMenu`
   already withholds the whole submenu when every offer would write nothing — *a menu whose
   every option is a no-op is not a menu* — so a projection whose vocabulary collapses to
@@ -158,11 +165,12 @@ design: the relationship between a test and the work it checks is
 - **Set type** offers exactly the types that leave the row **where it is** — asked of the
   membership the write would produce, never of the type's name. That covers the ordinary
   case (no test type in the plan, no plan type in the catalog) and the one a name-based
-  rule misses: a `PBI` dragged under a test is drawn in the plan as a promoted root, and
-  `Task` is a plan type by name, but retyping it to `Task` makes it inherit its test
-  parent's membership and vanish into the catalog — the disappearing note this rule exists
-  to prevent, produced by the one offer a name-based rule would keep. Asserted on that row
-  specifically, since every other row in the plan makes the two rules agree.
+  rule misses in **both** directions. A `PBI` dragged under a test is drawn in the plan as
+  a promoted root, and `Task` is a plan type by name, but retyping it makes the row inherit
+  its test parent's membership and vanish into the catalog — withheld. A `Test case` under
+  a suite retyped to `Task` stays in the catalog under that suite — offered, though no
+  catalog-wide list of test types would offer it. Asserted on both rows, since a criterion
+  proving only the withholding is satisfied by a rule that withholds too much.
 - **A row's own + is unaffected**, and this is asserted separately rather than assumed from
   the criterion above: opening **+** on a `Test case` in the catalog still offers `Task`,
   and on a `Test suite` still offers `Test case`. `offerableTypes` filters that path too,
