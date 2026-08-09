@@ -1,7 +1,7 @@
 import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterScope, FilterState } from './filterState';
-import { BacklogViewHost, BoardSnapshot, Column, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
+import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
@@ -99,11 +99,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private resizeObserver: ResizeObserver | null = null;
 	/** The Base's visible properties as columns, resolved once per data update. */
 	columns: Column[] = [];
-	/** How many of them the pane held at the last measurement — see `BacklogViewHost`. */
-	columnsShown: number | null = null;
+	/** What the pane held at the last measurement — see `BacklogViewHost`. */
+	columnFit: ColumnFit | null = null;
 
-	setColumnsShown(shown: number | null): void {
-		this.columnsShown = shown;
+	setColumnFit(fit: ColumnFit | null): void {
+		this.columnFit = fit;
 	}
 
 	/**
@@ -558,7 +558,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (projection !== 'tree') {
 			// The column ladder is the tree's: a narrow-pane verdict from tree mode must
 			// not strip cells off cards, and its rollup class must not hide theirs.
-			this.setColumnsShown(null);
+			this.setColumnFit(null);
 			this.viewEl.removeClass('pbl-hide-meta');
 		}
 		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.cardDnd);

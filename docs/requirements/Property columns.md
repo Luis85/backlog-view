@@ -28,7 +28,10 @@ the whole reason to put values in columns rather than after the title.
    after it would shift from row to row.
 3. Columns are fixed-width, so values line up regardless of title length or indent depth.
 4. A presentational header names them; each cell carries its property name in its tooltip
-   and `aria-label` rather than repeating it as visible text.
+   and `aria-label` rather than repeating it as visible text. It names what is DRAWN, and
+   is absent entirely when nothing is — a bar whose labels have all gone is a sticky
+   bordered stripe above the rows, and the rollup being *configured* is not the same
+   question as its being on screen.
 
 **Extensions**
 

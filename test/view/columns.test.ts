@@ -137,6 +137,48 @@ describe('property columns', () => {
 		expect(row.querySelector('.pbl-state-chip')).toBeNull();
 	});
 
+	it('draws no header bar at a width where the columns and the rollup have both gone', () => {
+		const vault = fixture();
+		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280 });
+		config.order = ['note.points', 'note.owner'];
+		const tree = treeOf(containerEl);
+		const paneWidth = (px: number) => {
+			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
+			view.onDataUpdated();
+		};
+		const header = () => treeOf(containerEl).querySelector('.pbl-cols');
+		const labels = () => Array.from(header()?.querySelectorAll('.pbl-col-label') ?? []).map((el) => el.textContent);
+
+		// No column fits, but the rollup does: the bar stays and names it. "No columns" is
+		// not the same question as "nothing to head".
+		paneWidth(500);
+		expect(labels()).toEqual(['Items']);
+
+		// Both gone. A bar holding a spacer, an empty box and a label CSS hides is an
+		// empty sticky stripe above the rows.
+		paneWidth(300);
+		expect(header()).toBeNull();
+
+		// And it stays gone: the pass the changed verdict bought got there, and another
+		// update at the same width buys nothing beyond its own render.
+		let passes = 0;
+		const realEmpty = HTMLElement.prototype.empty;
+		Object.defineProperty(tree, 'empty', {
+			configurable: true,
+			value: function (this: HTMLElement): void {
+				passes += 1;
+				realEmpty.call(this);
+			},
+		});
+		view.onDataUpdated();
+		expect(passes).toBe(1);
+		expect(header()).toBeNull();
+
+		// It comes back with every label once the pane can hold them again.
+		paneWidth(1400);
+		expect(labels()).toEqual(['points', 'owner', 'Items']);
+	});
+
 	it('hands a card projection the whole column list, whatever the tree last measured', () => {
 		// The count is the TREE's. A card is never indented and never drops a column for
 		// room, so a verdict carried out of a narrow tree would strip cells off cards —
@@ -154,11 +196,11 @@ describe('property columns', () => {
 		view.onDataUpdated();
 
 		// The narrowest verdict there is: no column fits and the rollup has gone too.
-		expect(view.columnsShown).toBe(0);
+		expect(view.columnFit?.shown).toBe(0);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
 
 		view.setProjection('board');
-		expect(view.columnsShown).toBeNull();
+		expect(view.columnFit).toBeNull();
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
 		// Both plain properties, so the card draws every column that exists.
 		expect(cardByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length).toBe(view.columns.length);
@@ -293,7 +335,7 @@ describe('property columns', () => {
 
 		// The one column fits beside a card's zero indent, and would not beside eight
 		// levels of a depth this projection does not have.
-		expect(view.columnsShown).toBe(1);
+		expect(view.columnFit?.shown).toBe(1);
 	});
 
 	it('draws the horizon chip in the column the properties menu gives it', () => {

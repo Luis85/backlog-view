@@ -160,17 +160,23 @@ free of runtime code so imports stay cycle-free.
   column no longer sits under its header), so a pane too narrow for them drops them
   whole: `columnFit` derives the threshold from the *configured* width and count — a
   fixed CSS breakpoint would clip two 280px columns in a 700px pane — and
-  `syncColumnFit` beside it applies the verdict, which is a COUNT (`host.columnsShown`)
-  rather than a ladder of classes: they drop from the END of the properties menu's order,
+  `syncColumnFit` beside it applies the verdict, which is a COUNT plus one bit for the
+  rollup (`host.columnFit`, stored as ONE object so the rows and the header cannot end up
+  describing different frames) rather than a ladder of classes: columns
+  drop from the END of the properties menu's order,
   because that order is the user's own statement of what matters and a ranking of ours
   beside it would be a second opinion about it. **A dropped column is not rendered**, and
   that is the accessibility half of the decision rather than an implementation detail:
   clipping it in CSS would leave its cell in the accessibility tree — a Bases value can
   render a native control, and the chips are `tabindex="-1"` buttons assistive tech
   reaches by design — so focusing one would scroll the strip out from under its header.
-  The rollup is the one exception and keeps a class (`pbl-hide-meta`), because it is not
-  in that order at all: pinned past its end, so "last" would always pick it first, it goes
-  after every column instead. Every column a
+  The rollup is the one exception and keeps a class (`pbl-hide-meta`) for the ROWS,
+  because it is not in that order at all: pinned past its end, so "last" would always pick
+  it first, it goes after every column instead. **The header asks about it anyway**
+  (`columnFit.rollupDropped`), and that is the distinction to keep: configured is not
+  drawn, and a header built from the configuration alone was a sticky bordered bar holding
+  a spacer, an empty box and a label the stylesheet hides — the whole point of the bar is
+  the labels, so with none left it is not rendered. Every column a
   row can carry has to be in that budget: one drawn but not summed does not drop, it
   overflows. The two live in one file because a threshold
   computed in one place and applied in another is one edit from disagreeing; the view
@@ -208,7 +214,7 @@ free of runtime code so imports stay cycle-free.
   are the ones the column renders — a context menu that edited an invisible property
   would write things nothing on screen shows. That
   is a question about the Base's configuration, not about the pane: narrowing is a space
-  decision — the pane draws fewer of the resolved columns (`host.columnsShown`) and the
+  decision — the pane draws fewer of the resolved columns (`host.columnFit`) and the
   rollup keeps its class — and no command is withheld for it (the state chip's column
   drops the same way and Set state stays). On a pane too narrow for the
   column the menu is the only way left to edit tags, and it shows the item's tags
@@ -339,7 +345,7 @@ free of runtime code so imports stay cycle-free.
 
 - One scroller, two projections: board mode reuses `.pbl-tree` with its role swapped to
   `listbox` and the keydown dispatched to `handleBoardKeydown`. The column fit is the
-  tree's — entering board mode resets the count to null and clears `pbl-hide-meta`, or a
+  tree's — entering board mode resets the verdict to null and clears `pbl-hide-meta`, or a
   narrow-pane decision from tree mode would strip cells off cards.
 - The mode is `host.projection` — `'tree' | 'board' | 'roadmap'` — backed by the
   collapse store (UI state, per saved view, per device) — never `settings` and never
@@ -578,7 +584,7 @@ free of runtime code so imports stay cycle-free.
   now.
 - The board- and roadmap-mode CSS guards both keep the tree's stale `pbl-hide-meta` off a
   card's rollup; the columns need no such guard, because a card projection resets the
-  count rather than carrying a class. The fit is the tree's alone either way.
+  verdict rather than carrying a class. The fit is the tree's alone either way.
 
 ## Lifecycle
 

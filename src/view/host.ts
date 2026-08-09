@@ -35,6 +35,19 @@ export interface Column {
 	kind: ColumnKind;
 }
 
+/**
+ * What the last measurement said the pane can hold: how many of the {@link Column}s fit,
+ * and whether the rollup pinned past their end fits too. ONE object rather than two
+ * members, because the rows, the header and the stylesheet all read this verdict and a
+ * header that disagreed with the rows about whether the rollup is on screen is exactly
+ * the defect this replaced. `rollupDropped` is only ever true with `shown` at 0 — the
+ * rollup goes after every column.
+ */
+export interface ColumnFit {
+	shown: number;
+	rollupDropped: boolean;
+}
+
 /** Progress of the write batch in flight, for the toolbar's busy indicator. */
 export interface BusyState {
 	done: number;
@@ -157,14 +170,15 @@ export interface BacklogViewHost {
 	 */
 	readonly columns: readonly Column[];
 	/**
-	 * How many of {@link columns} the last measurement said this pane can hold — null
-	 * before anything has been measured, and on every card projection, where the ladder
-	 * does not apply. Two writers and no more: `syncColumnFit` sets the measured count, and
-	 * the view clears it to null when a card projection renders. Read by `rowContext`,
-	 * which slices the list the renderers draw.
+	 * The last measurement's verdict on {@link columns} — null before anything has been
+	 * measured, and on every card projection, where the ladder does not apply. Two writers
+	 * and no more: `syncColumnFit` stores what it measured, and the view clears it when a
+	 * card projection renders. Read by `rowContext`, which slices the list the renderers
+	 * draw, and by the header, which draws nothing at all when neither a column nor the
+	 * rollup is left to name.
 	 */
-	readonly columnsShown: number | null;
-	setColumnsShown(shown: number | null): void;
+	readonly columnFit: ColumnFit | null;
+	setColumnFit(fit: ColumnFit | null): void;
 	readonly selectedPath: string | null;
 	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
 	readonly filterText: string;

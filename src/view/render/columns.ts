@@ -1,5 +1,5 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost, Column, ColumnKind } from '../host';
+import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
@@ -36,7 +36,7 @@ export function rowContext(
 	// What this pass DRAWS. `host.columns` stays what EXISTS — `syncColumnFit` measures
 	// that one, or a narrowed pane would ratchet the count down and never let a column
 	// come back when it widens again.
-	const shown = host.columns.slice(0, host.columnsShown ?? host.columns.length);
+	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
 	return { host, dnd, rows, cardKids, columns: shown };
 }
 
@@ -92,7 +92,7 @@ function columnFit(
 	columnCount: number,
 	depth: number,
 	width: number,
-): { shown: number; hideMeta: boolean } {
+): ColumnFit {
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	const room = width - lead - meta;
@@ -100,7 +100,7 @@ function columnFit(
 	const shown = Math.min(columnCount, fitting);
 	// Nothing below this: what is left is the row's own lead, and the title truncates
 	// from there.
-	return { shown, hideMeta: shown === 0 && width < lead + meta };
+	return { shown, rollupDropped: shown === 0 && width < lead + meta };
 }
 
 /**
@@ -129,9 +129,12 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	// Against what this pass actually DREW rather than against the stored number, so a
 	// render that drew a different count than the verdict claims still asks for the pass
 	// that reconciles them.
-	const changed = fit.shown !== ctx.columns.length || fit.hideMeta !== viewEl.hasClass('pbl-hide-meta');
-	ctx.host.setColumnsShown(fit.shown);
-	viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
+	const changed = fit.shown !== ctx.columns.length || fit.rollupDropped !== viewEl.hasClass('pbl-hide-meta');
+	// The whole verdict, stored as one value: the rows slice by `shown` and the header
+	// asks about `rollupDropped`, and two members written separately are two things that
+	// can end up describing different frames.
+	ctx.host.setColumnFit(fit);
+	viewEl.toggleClass('pbl-hide-meta', fit.rollupDropped);
 	return changed;
 }
 
@@ -242,11 +245,16 @@ function columnLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
  */
 export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): void {
 	const settings = ctx.host.settings;
-	const rollup = settings.stateKey !== '' || settings.showCounts;
-	// Nothing to head at all, which is not the same question as "no columns": the
-	// rollup is pinned past the end of the column list rather than being one of them,
-	// so a strip narrowed to zero properties still draws it on every row, and a header
-	// that returned on the count alone would leave that column unlabelled.
+	// CONFIGURED is not DRAWN, and this asks the second: the rollup is pinned past the end
+	// of the column list rather than being one of them, so a strip narrowed to zero
+	// properties still draws it on every row — but a pane too narrow for even that drops
+	// it, and a header built from the configuration alone was then a sticky, bordered bar
+	// holding a spacer, an empty box and a label the stylesheet hides. It reads the fit
+	// the LAST pass measured, exactly as the columns above do; a verdict that has changed
+	// since buys the reconciling pass `syncColumnFit` asks for, which draws both from the
+	// same one.
+	const rollup = (settings.stateKey !== '' || settings.showCounts) && !ctx.host.columnFit?.rollupDropped;
+	// Nothing to head at all, which is not the same question as "no columns".
 	if (ctx.columns.length === 0 && !rollup) return;
 	// Presentational: every value below carries its own accessible label.
 	const header = containerEl.createDiv({ cls: 'pbl-cols', attr: { 'aria-hidden': 'true' } });
