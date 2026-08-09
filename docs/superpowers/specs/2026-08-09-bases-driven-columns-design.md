@@ -124,8 +124,8 @@ this row's workflow is the one this column names.
 
 ## Narrowing
 
-`columnFit` returns an integer — how many leading columns fit — instead of five
-booleans. The budget:
+`columnFit` returns an integer — how many leading columns fit — plus the one boolean it
+keeps, for the rollup, where five booleans stood. The budget:
 
 ```
 lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH
@@ -134,9 +134,9 @@ k    = the largest 0..columns.length with  width >= lead + col * k + meta
        (and if no k satisfies it, k = 0 and the rollup drops too)
 ```
 
-`syncColumnFit` publishes `k` as `--pbl-cols-shown` on the tree element and keeps one
-boolean for the rollup. `.pbl-props` narrows to `calc(var(--pbl-prop-col) *
-var(--pbl-cols-shown))` and its existing `overflow: hidden` clips the rest; because `k`
+`syncColumnFit` publishes `k` as `--pbl-cols-shown` on the tree element and keeps
+`pbl-hide-meta` for the rollup. `.pbl-props` narrows to that many column widths and its
+existing `overflow: hidden` clips the rest; because `k`
 is a whole number of fixed-width columns, cell `k+1` begins exactly at the box edge and
 is clipped entirely rather than shrunk. The header reads the same variable, so the two
 cannot fall out of alignment — the property the old four-class ladder had to maintain by
@@ -144,8 +144,25 @@ having every column in the sum is now structural.
 
 `syncColumnFit` still returns whether the verdict CHANGED, and the caller still owes the
 rows exactly one more pass when it did; the re-measure policy in `src/view/resize.ts` is
-unchanged. The render initializes `--pbl-cols-shown` to the full count, so the variable
-means one thing (how many are shown) at both times.
+unchanged.
+
+**`syncColumnFit` is the only writer of `--pbl-cols-shown`, and the render must not
+reset it.** The two variables answer different questions and both are needed: the render
+writes `--pbl-prop-count` (how many columns EXIST) as it does today, and the fit writes
+`--pbl-cols-shown` (how many this pane holds), with the CSS falling back from the second
+to the first:
+
+```css
+width: calc(var(--pbl-prop-col, 132px) * var(--pbl-cols-shown, var(--pbl-prop-count, 0)));
+```
+
+The fallback is what draws the first frame, before anything has been measured. Writing
+the full count from the render instead would destroy the previous verdict before the fit
+compares against it, so every refresh on a narrow pane would report a change and buy a
+second full render it does not need. The variable survives because `treeEl.empty()`
+empties the element's children and not its inline style; a count that shrank since the
+last fit leaves the box a column too wide for one frame, which the fit that runs after
+every render corrects.
 
 `ROW_LEAD_WIDTH` is unchanged: it never carried chip terms.
 
@@ -159,11 +176,14 @@ means one thing (how many are shown) at both times.
 - `STATE_COL_WIDTH`, `HORIZON_COL_WIDTH`, `RISK_COL_WIDTH`; `--pbl-state-col`,
   `--pbl-horizon-col`, `--pbl-risk-col`; the `.pbl-state-col` / `.pbl-horizon-col` /
   `.pbl-risk-col` rules in `styles/columns.css`.
-- The five `pbl-hide-*` rules in `styles/propertyColumns.css`, the block in
-  `styles/cards.css` that exists to counter them on cards, and the `removeClass` call in
-  `src/view/backlogView.ts` that clears stale verdicts on entering a card projection.
-  With the width driven by a variable the card CSS already overrides, there is no stale
-  verdict to clear.
+- Four of the five `pbl-hide-*` rules in `styles/propertyColumns.css`. **`pbl-hide-meta`
+  stays** — it is the rollup's only hiding mechanism, and the rollup is the one column
+  the fit still drops by class rather than by count. The two places that exist to
+  counter the ladder on cards are narrowed to that one class rather than deleted, for
+  the same reason: the block in `styles/cards.css` (which keeps `.pbl-meta-col` visible
+  on a card) and the `removeClass` call in `src/view/backlogView.ts` (which clears the
+  stale verdict on entering a card projection). Their `.pbl-props` halves do go — a
+  card overrides the width the count drives.
 - `hasStateColumn` (`src/domain/board.ts`). `render/columns.ts` is its only caller, and
   the question it answers — does either workflow name a key — stops being asked once a
   column exists because the property is visible. `stateKeyFor` and `ownWorkflowReading`
