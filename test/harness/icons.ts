@@ -42,6 +42,11 @@ const RENAMED: Record<string, string> = {
 	'circle-help': 'circle-question-mark',
 	filter: 'funnel',
 	'filter-x': 'funnel-x',
+	// lucide's chart rename: `gantt-chart` at 0.400.0 and `chart-no-axes-gantt` at
+	// 0.446.0 are byte-identical — [M8 6h10, M6 12h9, M11 18h7] — which is what
+	// distinguishes it from `chart-gantt`, a different, axed drawing that kept the
+	// shorter name.
+	'gantt-chart': 'chart-no-axes-gantt',
 	'indent-decrease': 'list-indent-decrease',
 	'indent-increase': 'list-indent-increase',
 	'loader-2': 'loader-circle',

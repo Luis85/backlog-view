@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
+import { makeView, pickFromToolbarMenu, useViewHarness } from '../helpers/view';
 import { cellLabels } from '../helpers/roadmap';
 import { scaleFor } from '../../src/domain/timeline';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
@@ -16,9 +16,10 @@ function datedVault() {
 	return vault;
 }
 
-function zoomButton(containerEl: HTMLElement, label: string): HTMLButtonElement {
-	const btn = containerEl.querySelector<HTMLButtonElement>(`.pbl-zoom-btn[aria-label="${label}"]`);
-	if (!btn) throw new Error(`zoom button not found: ${label}`);
+/** The one zoom control: a menu button naming the scale it is currently at. */
+function zoomButton(containerEl: HTMLElement): HTMLButtonElement {
+	const btn = containerEl.querySelector<HTMLButtonElement>('[data-pbl-key="zoom"]');
+	if (!btn) throw new Error('zoom button not rendered');
 	return btn;
 }
 
@@ -27,9 +28,11 @@ describe('the zoom control', () => {
 		const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
 
-		expect(zoomButton(containerEl, 'Zoom to months').getAttribute('aria-pressed')).toBe('true');
-		zoomButton(containerEl, 'Zoom to quarters').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(zoomButton(containerEl, 'Zoom to quarters').getAttribute('aria-pressed')).toBe('true');
+		// The button NAMES the active scale — the state is what it says, not a pressed
+		// flag on one of three positions.
+		expect(zoomButton(containerEl).getAttribute('aria-label')).toBe('Months');
+		pickFromToolbarMenu(containerEl, 'zoom', 'Quarters');
+		expect(zoomButton(containerEl).getAttribute('aria-label')).toBe('Quarters');
 		expect(view.zoom).toBe('quarter');
 	});
 
@@ -40,12 +43,13 @@ describe('the zoom control', () => {
 		const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
 		view.setProjection('roadmap');
 
-		const before = zoomButton(containerEl, 'Zoom to quarters');
+		const before = zoomButton(containerEl);
 		before.focus();
 		expect(document.activeElement).toBe(before);
-		before.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		// The pick, not the open: a menu entry is what re-renders behind the button.
+		pickFromToolbarMenu(containerEl, 'zoom', 'Quarters');
 
-		const after = zoomButton(containerEl, 'Zoom to quarters');
+		const after = zoomButton(containerEl);
 		expect(after).not.toBe(before);
 		expect(document.activeElement).toBe(after);
 		expect(document.activeElement).not.toBe(document.body);
@@ -56,12 +60,12 @@ describe('the zoom control', () => {
 		vault.addFile('Triaged.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Now' } });
 		const { view, containerEl } = makeView(vault, { ...DATE_AXIS, horizonProperty: 'note.horizon' }, { collapsed: true });
 
-		expect(containerEl.querySelector('.pbl-zoom-picker')).toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="zoom"]')).toBeNull();
 		view.setProjection('roadmap');
 		view.setAxisPick('horizons');
-		expect(containerEl.querySelector('.pbl-zoom-picker')).toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="zoom"]')).toBeNull();
 		view.setAxisPick('dates');
-		expect(containerEl.querySelector('.pbl-zoom-picker')).not.toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="zoom"]')).not.toBeNull();
 	});
 
 	it('comes back at the scale it was left, across a reopen', () => {

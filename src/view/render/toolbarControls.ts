@@ -1,6 +1,9 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
+import { ScaleId } from '../../domain/timeline';
+import { showMenuForClick } from '../interactions/menu';
 
 /** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
 export const KEY_ATTR = 'data-pbl-key';
@@ -42,6 +45,30 @@ export function refocusByKey(barEl: HTMLElement, key: string | null): void {
 }
 
 /**
+ * Act on a menu pick, then put focus back on the control the menu was opened from.
+ *
+ * The render-pass mechanism above cannot cover this: `capturedFocusKey` asks whether the
+ * focused element is inside the toolbar, and while a `Menu` is open it is not — Obsidian
+ * attaches the menu to the body — so the pick re-renders, `barEl.empty()` destroys the
+ * button that opened it, and focus lands on the document. A keyboard user loses their
+ * place in the toolbar on every pick, and nothing about it is visible to whoever wrote
+ * the picker.
+ *
+ * `render/shelfControls.ts` already answers this exact path with its own `refocus`
+ * callback; this is that answer, keyed rather than selector-based because the toolbar
+ * already has keys. `barEl` outlives the rebuild, so the lookup finds the replacement.
+ *
+ * Every toolbar menu whose pick RE-RENDERS goes through it — the axis, the zoom, and the
+ * focus picker, which predates the zone and was losing focus for the same reason. The
+ * New-type chevron is the one menu that does not: its entries open the creation prompt,
+ * which takes focus deliberately, so restoring focus here would fight the modal for it.
+ */
+export function pickAndRefocus(barEl: HTMLElement, key: string, act: () => void): void {
+	act();
+	refocusByKey(barEl, key);
+}
+
+/**
  * A toolbar icon control. A real `<button>`, not a div: the toolbar sits outside
  * the tree's single-tab-stop model, and these are the only way to reach the type
  * picker, the backfill and the collapse commands without a mouse.
@@ -63,6 +90,135 @@ export function iconButton(
 	setIcon(btn, icon);
 	setTooltip(btn, label);
 	return btn;
+}
+
+/**
+ * A labelled menu button: an icon, the current value in words, a chevron. The text is
+ * its own span so the fit ladder can hide it without touching the accessible name, which
+ * stays on the button.
+ */
+function menuButton(parent: HTMLElement, icon: string, label: string, key: string): HTMLButtonElement {
+	const btn = parent.createEl('button', {
+		cls: 'pbl-menu-btn',
+		attr: { type: 'button', 'aria-label': label, [KEY_ATTR]: key },
+	});
+	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), icon);
+	btn.createSpan({ cls: 'pbl-btn-label', text: label });
+	setIcon(btn.createSpan({ cls: 'pbl-btn-chevron' }), 'chevron-down');
+	return btn;
+}
+
+/**
+ * The controls this projection owns, and only those — the one place the question "which
+ * projection is this?" is asked about the toolbar's contents. Adding a projection is
+ * adding a case here; it is deliberately a switch rather than a registry, because a
+ * registration interface with one implementation is an abstraction nobody can read
+ * faster than the branch it replaces.
+ *
+ * The zone and its leading separator are created together and removed together: a
+ * separator introducing nothing is a rule the row states and does not keep. Emptiness is
+ * decided from what was DRAWN rather than from a second reading of the settings, so the
+ * two cannot disagree about whether this projection contributed anything.
+ */
+export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement): void {
+	const sep = barEl.createDiv({ cls: 'pbl-toolbar-sep' });
+	const zone = barEl.createDiv({ cls: 'pbl-zone pbl-zone-projection' });
+	switch (host.projection) {
+		case 'roadmap':
+			renderAxisPicker(host, zone, barEl);
+			renderTimelineControls(host, zone, barEl);
+			break;
+		default:
+			// The tree, the board and the Deliverables board own no toolbar controls of
+			// their own today. A projection that grows one adds a case, not a guard
+			// somewhere else in the row.
+			break;
+	}
+	if (zone.childElementCount > 0) return;
+	sep.remove();
+	zone.remove();
+}
+
+/** Axis labels, one place, so the button and its menu cannot name it differently. */
+const AXIS_LABEL: Record<RoadmapAxis, { icon: string; text: string }> = {
+	// `gantt-chart`, not `calendar-range`: that glyph is the zoom's Quarters, and two
+	// controls in one row wearing one icon is what the harness mock caught.
+	dates: { icon: 'gantt-chart', text: 'Timeline' },
+	horizons: { icon: 'columns-3', text: 'Horizons' },
+};
+
+/** Zoom labels, same rule. */
+const ZOOM_LABEL: Record<ScaleId, { icon: string; text: string }> = {
+	week: { icon: 'calendar-days', text: 'Weeks' },
+	month: { icon: 'calendar', text: 'Months' },
+	quarter: { icon: 'calendar-range', text: 'Quarters' },
+};
+
+/**
+ * Which axis this saved view shows — offered only while both axes are configured: with
+ * one there is no choice to make, and the axis that remains always beats guidance. The
+ * pick persists the way the mode itself does, and it is retained when its axis loses its
+ * configuration, so restoring the cleared property restores the saved choice with it.
+ */
+function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
+	// Two refusals in one line, and the order is the honest one: with no axis at all
+	// there is nothing to NAME, and with one there is nothing to choose between.
+	const active = activeAxis(host.settings, host.axisPick);
+	if (active === null || configuredAxes(host.settings).length < 2) return;
+	const btn = menuButton(zone, AXIS_LABEL[active].icon, AXIS_LABEL[active].text, 'axis');
+	setTooltip(btn, 'Roadmap axis');
+	btn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		const choice = (axis: RoadmapAxis) =>
+			menu.addItem((mi) =>
+				mi
+					.setTitle(AXIS_LABEL[axis].text)
+					.setIcon(AXIS_LABEL[axis].icon)
+					.setChecked(active === axis)
+					// `barEl`, not `zone`: the zone is destroyed by the rebuild this pick
+					// causes, and the bar is what survives it.
+					.onClick(() => pickAndRefocus(barEl, 'axis', () => host.setAxisPick(axis))),
+			);
+		choice('horizons');
+		choice('dates');
+		showMenuForClick(menu, evt);
+	});
+}
+
+/**
+ * The zoom picker, jump-to-today and the density toggle, on the dated axis alone — the
+ * horizon axis has no density to choose and no today to return to.
+ */
+function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
+	if (activeAxis(host.settings, host.axisPick) !== 'dates') return;
+	const btn = menuButton(zone, ZOOM_LABEL[host.zoom].icon, ZOOM_LABEL[host.zoom].text, 'zoom');
+	setTooltip(btn, 'Timeline zoom');
+	btn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		for (const id of ['week', 'month', 'quarter'] as ScaleId[]) {
+			menu.addItem((mi) =>
+				mi
+					.setTitle(ZOOM_LABEL[id].text)
+					.setIcon(ZOOM_LABEL[id].icon)
+					.setChecked(host.zoom === id)
+					.onClick(() => pickAndRefocus(barEl, 'zoom', () => host.setZoom(id))),
+			);
+		}
+		showMenuForClick(menu, evt);
+	});
+	const compact = host.density === 'compact';
+	// The name is the SETTING, fixed, and aria-pressed carries its value — a toggle
+	// whose name changes to the next action announces "Comfortable rows, pressed" while
+	// compact rows are on, which states the opposite of what is true. The icon still
+	// swaps: it is the sighted affordance, and it says nothing to a reader.
+	const densityBtn = iconButton(zone, compact ? 'rows-2' : 'rows-4', 'Compact rows');
+	densityBtn.addClass('pbl-density-toggle');
+	densityBtn.toggleClass('is-active', compact);
+	densityBtn.setAttribute('aria-pressed', String(compact));
+	densityBtn.addEventListener('click', () => host.setDensity(compact ? null : 'compact'));
+	const today = iconButton(zone, 'locate-fixed', 'Jump to today');
+	today.addClass('pbl-today-btn');
+	today.addEventListener('click', () => host.jumpToToday());
 }
 
 /**

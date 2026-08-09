@@ -11,14 +11,14 @@ import {
 	expandAll,
 	iconButton,
 	KEY_ATTR,
+	pickAndRefocus,
 	refocusByKey,
+	renderProjectionZone,
 } from './toolbarControls';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
-import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
-import { ScaleId } from '../../domain/timeline';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -33,57 +33,18 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
-	// The Deliverables board only ever shows Deliverables, so the primary button is
-	// bound to that type unconditionally — never the focus-dependent `newItemType`,
-	// which would offer a type this board would not even display. With one sensible
-	// type there is nothing for a "New item of another type" picker to add, so it is
-	// absent rather than a chevron opening a one-entry menu.
-	const onDeliverables = host.projection === 'deliverables';
-	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
-	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn', attr: { [KEY_ATTR]: 'new' } });
-	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
-	newBtn.createSpan({ text: `New ${newLevel}` });
-	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
-
-	if (!onDeliverables) {
-		const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
-		pickBtn.addClass('pbl-new-pick');
-		pickBtn.addEventListener('click', (evt) => {
-			const menu = new Menu();
-			// Every declared type, extras included: this menu is the one place a top-level
-			// item of any type can be made, and an Issue raised against nothing in
-			// particular is a real thing to want. Except `Deliverable` on the requirements
-			// board, which excludes Deliverables by construction — creating one there
-			// would write a note the board it was created from cannot show.
-			for (const type of offerableTypes(host)) {
-				menu.addItem((mi) =>
-					mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
-				);
-			}
-			showMenuForClick(menu, evt);
-		});
-	}
-	renderFocusPicker(host, barEl, model);
+	// 1 — where am I. The switcher leads: it is the control that says what the rest of
+	// the row is about.
 	renderModeToggle(host, barEl);
-	renderAxisPicker(host, barEl);
-	renderTimelineControls(host, barEl);
 
-	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
-	// The one command that routinely writes hundreds of notes: it carries the
-	// write-control marker so it goes disabled while a batch is already in flight.
-	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing properties');
-	initBtn.addClass('pbl-write-ctl');
-	initBtn.addEventListener('click', () => {
-		void runInit(host);
-	});
-	// Not a plain write control: it re-enables to the undo slot's state, not to
-	// "idle" — before the first effective batch there is nothing to go back to.
-	const undoBtn = iconButton(barEl, 'undo-2', 'Undo last backlog change');
-	undoBtn.addClass('pbl-undo-btn');
-	undoBtn.disabled = !host.canUndo();
-	undoBtn.addEventListener('click', () => {
-		void host.undoLast();
-	});
+	// 2 — what THIS projection owns, and nothing when it owns none. Draws its own
+	// leading separator, or neither.
+	renderProjectionZone(host, barEl);
+
+	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
+
+	// 3 — what is shown. The same controls in every projection.
+	renderFocusPicker(host, barEl, model);
 	// Expand and collapse drive the tree's rows and, since cards grew disclosures, the
 	// cards too. They are no longer gated on the projection — but they ARE gated on the
 	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
@@ -101,10 +62,30 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		mutate: () => collapseAll(host),
 	});
 	renderCompletedToggle(host, barEl, model);
-
 	renderFilterBox(host, barEl);
 
-	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
+	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
+
+	// 4 — what writes. The ✨ is the one command that routinely writes hundreds of
+	// notes: it carries the write-control marker so it goes disabled while a batch is
+	// already in flight.
+	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing properties');
+	initBtn.addClass('pbl-write-ctl');
+	initBtn.addEventListener('click', () => {
+		void runInit(host);
+	});
+	// Not a plain write control: it re-enables to the undo slot's state, not to
+	// "idle" — before the first effective batch there is nothing to go back to.
+	const undoBtn = iconButton(barEl, 'undo-2', 'Undo last backlog change');
+	undoBtn.addClass('pbl-undo-btn');
+	undoBtn.disabled = !host.canUndo();
+	undoBtn.addEventListener('click', () => {
+		void host.undoLast();
+	});
+
+	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
+
+	// 5 — status: the notes, the warning, the busy indicator, the count.
 	if (host.groupingIgnored) {
 		const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-grouping-note' });
 		setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'info');
@@ -136,7 +117,58 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(population));
+
+	// 6 — the primary action, anchored at the end.
+	renderNewButton(host, barEl, model);
+
 	refocusByKey(barEl, refocusKey);
+}
+
+/**
+ * The primary create button and the chevron beside it. Last in the row: the zones before
+ * it answer "what am I looking at" and "what is shown", and the action that adds to it is
+ * anchored at the end where it does not push everything else sideways when the type name
+ * it carries changes length.
+ */
+function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	// The Deliverables board only ever shows Deliverables, so the primary button is
+	// bound to that type unconditionally — never the focus-dependent `newItemType`,
+	// which would offer a type this board would not even display. With one sensible
+	// type there is nothing for a "New item of another type" picker to add, so it is
+	// absent rather than a chevron opening a one-entry menu.
+	const onDeliverables = host.projection === 'deliverables';
+	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
+	// The name is explicit, not inherited from the text: the fit ladder hides
+	// `.pbl-btn-label` on a narrow pane, and a primary button named only by the text it
+	// just hid is an unnamed control.
+	const newBtn = barEl.createEl('button', {
+		cls: 'pbl-new-btn',
+		attr: { [KEY_ATTR]: 'new', 'aria-label': `New ${newLevel}` },
+	});
+	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
+	newBtn.createSpan({ cls: 'pbl-btn-label', text: `New ${newLevel}` });
+	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
+	if (onDeliverables) return;
+	const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
+	pickBtn.addClass('pbl-new-pick');
+	pickBtn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		// Every declared type, extras included: this menu is the one place a top-level
+		// item of any type can be made, and an Issue raised against nothing in
+		// particular is a real thing to want. Except `Deliverable` on the requirements
+		// board, which excludes Deliverables by construction — creating one there
+		// would write a note the board it was created from cannot show.
+		//
+		// No `pickAndRefocus` here: this entry opens the creation prompt, which takes
+		// focus deliberately. The rebuild-loses-focus problem belongs to picks that
+		// re-render behind the menu.
+		for (const type of offerableTypes(host)) {
+			menu.addItem((mi) =>
+				mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
+			);
+		}
+		showMenuForClick(menu, evt);
+	});
 }
 
 /**
@@ -359,13 +391,16 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// Working position, not configuration: the collapse store persists it and the view
 	// rebuilds itself, because no Bases refresh follows a change it was not told about.
-	const setLevel = (level: string) => host.setFocusLevel(level);
+	// Through `pickAndRefocus` because that rebuild happens while focus is in the menu,
+	// where `capturedFocusKey` cannot see it.
+	const setLevel = (level: string) => pickAndRefocus(barEl, 'focus', () => host.setFocusLevel(level));
 
 	if (host.projection === 'deliverables') {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 		const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-		btn.createSpan({ text: 'Deliverables' });
+		btn.setAttribute('aria-label', 'Deliverables');
+		btn.createSpan({ cls: 'pbl-btn-label', text: 'Deliverables' });
 		btn.disabled = true;
 		setTooltip(btn, 'This board always shows every Deliverable — the focus level has no effect here');
 		return;
@@ -376,9 +411,14 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 	wrap.toggleClass('pbl-focus-active', active !== '');
 
-	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { [KEY_ATTR]: 'focus' } });
+	// Named explicitly, like the New button: the fit ladder hides `.pbl-btn-label`, and
+	// the text is all that named this control before.
+	const btn = wrap.createEl('button', {
+		cls: 'pbl-focus-btn',
+		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}` },
+	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-	btn.createSpan({ text: active || 'All types' });
+	btn.createSpan({ cls: 'pbl-btn-label', text: active || 'All types' });
 	setTooltip(btn, 'Focus — show one type as the top of the tree');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
@@ -433,61 +473,6 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	position('board', 'square-kanban', 'Show as kanban board');
 	position('roadmap', 'map', 'Show as roadmap');
 	position('deliverables', 'package', 'Show as Deliverables board');
-}
-
-/**
- * Which axis this saved view shows — offered only on the roadmap, and only while
- * both axes are configured: with one, there is no choice to make, and the axis
- * that remains always beats guidance. The pick persists the way the mode itself
- * does, and it is retained when its axis loses its configuration, so restoring
- * the cleared property restores the saved choice with it.
- */
-function renderAxisPicker(host: BacklogViewHost, barEl: HTMLElement): void {
-	if (host.projection !== 'roadmap' || configuredAxes(host.settings).length < 2) return;
-	const active = activeAxis(host.settings, host.axisPick);
-	const wrap = barEl.createDiv({ cls: 'pbl-axis-picker', attr: { role: 'group', 'aria-label': 'Roadmap axis' } });
-	const position = (axis: RoadmapAxis, icon: string, label: string) => {
-		const btn = iconButton(wrap, icon, label);
-		btn.addClass('pbl-axis-btn');
-		btn.toggleClass('is-active', active === axis);
-		btn.setAttribute('aria-pressed', String(active === axis));
-		btn.addEventListener('click', () => host.setAxisPick(axis));
-	};
-	position('horizons', 'columns-3', 'Show horizons');
-	position('dates', 'calendar-range', 'Show timeline');
-}
-
-/**
- * The zoom picker and jump-to-today, on the dated axis alone — the horizon axis has no
- * density to choose and no today to return to. Segmented buttons like the axis picker,
- * because the zoom choice is one of three and a menu would hide two of them.
- */
-function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void {
-	if (host.projection !== 'roadmap' || activeAxis(host.settings, host.axisPick) !== 'dates') return;
-	const wrap = barEl.createDiv({ cls: 'pbl-zoom-picker', attr: { role: 'group', 'aria-label': 'Timeline zoom' } });
-	const position = (id: ScaleId, icon: string, label: string) => {
-		const btn = iconButton(wrap, icon, label);
-		btn.addClass('pbl-zoom-btn');
-		btn.toggleClass('is-active', host.zoom === id);
-		btn.setAttribute('aria-pressed', String(host.zoom === id));
-		btn.addEventListener('click', () => host.setZoom(id));
-	};
-	position('week', 'calendar-days', 'Zoom to weeks');
-	position('month', 'calendar', 'Zoom to months');
-	position('quarter', 'calendar-range', 'Zoom to quarters');
-	const compact = host.density === 'compact';
-	// The name is the SETTING, fixed, and aria-pressed carries its value — a toggle
-	// whose name changes to the next action announces "Comfortable rows, pressed"
-	// while compact rows are on, which states the opposite of what is true. The icon
-	// still swaps: it is the sighted affordance, and it says nothing to a reader.
-	const densityBtn = iconButton(barEl, compact ? 'rows-2' : 'rows-4', 'Compact rows');
-	densityBtn.addClass('pbl-density-toggle');
-	densityBtn.toggleClass('is-active', compact);
-	densityBtn.setAttribute('aria-pressed', String(compact));
-	densityBtn.addEventListener('click', () => host.setDensity(compact ? null : 'compact'));
-	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
-	today.addClass('pbl-today-btn');
-	today.addEventListener('click', () => host.jumpToToday());
 }
 
 /**
