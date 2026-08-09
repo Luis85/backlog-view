@@ -1112,12 +1112,26 @@ export function manualLink(
 	onClosed?: () => void,
 ): HTMLButtonElement {
 	const link = parent.createEl('button', { cls: 'pbl-help-link', text: label, attr: { type: 'button' } });
-	// Default: the link focuses itself back. `onClosed` overrides that for the caller
-	// whose link CANNOT be the answer — the busy indicator's, which `styles/busy.css`
-	// hides the moment the batch finishes, so by close time the link is unfocusable and
-	// `focus()` on it is a silent no-op landing on the document. Without this parameter
-	// the busy door has no way to say so, which is what an earlier draft got wrong.
-	link.addEventListener('click', () => openManual(app, sections, sectionId, onClosed ?? (() => link.focus())));
+	// `onClosed` is how a caller says where focus goes, and EVERY caller here is
+	// volatile: a Bases refresh re-renders the empty state and the toolbar alike, so a
+	// captured `link` is a detached node by close time and `focus()` on it silently
+	// lands on the document. The busy indicator is the guaranteed case rather than the
+	// only one — `styles/busy.css` hides it the moment the batch ends.
+	//
+	// So the default RESOLVES rather than captures: it looks the link up again by the
+	// section it opens, inside the container it was drawn in, and falls through
+	// `focusInBar` when the toolbar is that container. A caller whose control cannot
+	// survive at all passes its own closure naming a different destination.
+	//
+	// This is the third place the capture-versus-resolve mistake was made in this plan.
+	// The `?` button and the overflow entry were each fixed alone; the default here was
+	// left capturing both times, which is what made it the survivor.
+	const refocus = () => {
+		const live = parent.querySelector<HTMLElement>(`.pbl-help-link[data-pbl-section="${sectionId}"]`);
+		if (live?.isConnected && live.offsetParent !== null) live.focus();
+	};
+	link.setAttribute('data-pbl-section', sectionId);
+	link.addEventListener('click', () => openManual(app, sections, sectionId, onClosed ?? refocus));
 	return link;
 }
 ```
