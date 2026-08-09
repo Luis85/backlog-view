@@ -348,6 +348,13 @@ base settings are saved on the view, working position on the device.
   ways is what stops the next exclusion from needing its own re-rooting argument.
 - The stored position is vault-scoped UI state, and a vault that has never opened the
   catalog opens exactly as before.
+- The catalog **survives a reload**: select it, reopen the same `.base`, and the catalog is
+  what renders. Asserted through the stored entry rather than through the setter, because
+  the two disagree — `readEntry`'s mode allowlist is a hand-written array
+  (`[BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE]`) that discards any value not in it, so a
+  catalog mode written correctly is dropped on read and the view falls back to the tree. A
+  test that sets the projection and asks the view what it is passes without ever touching
+  that parser.
 
 ## Where it lives
 
@@ -421,6 +428,21 @@ meant — a root of the **rendered forest**. The second is tempting and is a ren
 code this PBI does not otherwise touch; the first is smaller and leaves a field called
 `focusRoot` true for an item no focus produced, which is a comment's job to explain. Either
 way the depth comes from `assignVisualDepth`, which focus already uses for exactly this.
+
+**The stored mode needs two edits in two layers, and only one of them is compiler-checked.**
+`PROJECTION_MODE` (`src/view/collapseState.ts`) is a `Record<Projection, …>` precisely so a
+new projection cannot be added without a case — its comment says the chain it replaced
+"stayed green after a new projection was added and silently persisted its bare name instead
+of the constant `readEntry`'s allowlist expects". That allowlist is the other half, in
+`src/storage/collapseStore.ts`, and it is still a hand-written array literal: a mode it does
+not list is discarded on read, so the projection is written correctly, restored as `tree`,
+and nothing fails to compile.
+
+The obvious repair — derive the allowlist from `PROJECTION_MODE` — is **forbidden**:
+`storage/` may not import `view/`. What can be derived runs the other way, since the mode
+constants already live in `storage/`: a single exported list of them there, consumed by
+`readEntry`, with `PROJECTION_MODE` keeping its own exhaustiveness over `Projection`. Then
+the two halves cannot disagree, and the next projection inherits both.
 
 **Three lifecycle seams sit beside those gates and are not gates at all.**
 `refreshFromData` seeds default collapse state by handing `collapseNewParents` its
