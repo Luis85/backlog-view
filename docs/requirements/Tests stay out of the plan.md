@@ -35,7 +35,7 @@ context row when a visible descendant needs a parent to hang from.
 | **Actor** | Backlog owner |
 | **Trigger** | The backlog tree, the requirements board or the roadmap renders a result set that contains test items |
 | **Preconditions** | None |
-| **Guarantee** | A vault with no tests renders identically before and after this feature. Nothing outside the plan's population — which is the membership rule's answer, not the list of test type names — is ever a row, a card, a bar, a shelf entry or a counted item in the plan's projections, or a source of state, tags or dates for any vocabulary those projections derive from the results; and a test **contributes nothing to any ancestor's rollup**, not its own count, not its dates, and not its subtree's. |
+| **Guarantee** | A vault with no tests renders identically before and after this feature. Nothing outside the plan's population — which is the membership rule's answer, not the list of test type names — is ever a row, a card, a bar, a shelf entry or a counted item in the plan's projections, or a source of any vocabulary those projections derive from the results — states, tags and horizons alike; and a test **contributes nothing to any ancestor's rollup**, not its own count, not its dates, and not its subtree's. |
 
 **Main flow**
 
@@ -53,20 +53,30 @@ context row when a visible descendant needs a parent to hang from.
    toolbar's count label and its completed toggle read the projection's own population and
    subtract tests with everything else; its ignored-notes advisory is about a different
    question and is untouched (3a, 3d).
-4. The state and tag vocabularies are derived **per population**, and there are three
-   questions here rather than one. What the plan **draws** — its board columns, and the
-   values a plan row's Set state or tag picker offers — comes from the plan's population,
-   so nothing the plan does not draw becomes a column or an assignable value in it. The
+4. The observed vocabularies are derived **per population**, and the rule is one sentence
+   applied to each: *a vocabulary is scoped to the population of the projection that offers
+   it.* The count is the thing to get right — the model publishes **four**
+   (`observedStates`, `observedTags`, `observedHorizons`, `observedDeliverableStates`), and
+   an earlier draft of this step named two, which is how a `QA` horizon carried only by a
+   test would still have reached a plan row's Set horizon menu. `grep observed[A-Z]` is
+   what enumerates them; naming the ones a paragraph happens to be thinking about is what
+   misses the third.
+   What the plan **draws and offers** — its board columns, and the values a plan row's Set
+   state, Set horizon or tag picker offers — comes from the plan's population. The
    population, not the type list: `firstSeen` (`src/domain/vocabulary.ts`) skips a context
    row and reads every other result, so a rule spelled "skip test items" leaves a `Task`
    beneath a `Test case` — a catalog member by 2b — free to mint a board column out of a
    status nothing on the plan carries.
    What a **catalog** row's menus offer comes from the catalog's population, and this is
-   the half a single shared vocabulary gets wrong in the other direction: `stateChoices`
-   reads `model.observedStates` and the tag picker reads `model.observedTags`, both
-   reachable from any row, so scoping them to the plan alone would stop a test being given
-   a value another test already carries. One test on `Ready` with no plan row on `Ready`
-   would put `Ready` out of reach everywhere.
+   the half a single shared vocabulary gets wrong in the other direction: `stateChoices`,
+   `horizonChoices` and the tag picker all read the shared lists from any row, so scoping
+   them to the plan alone would stop a test being given a value another test already
+   carries. One test on `Ready` with no plan row on `Ready` would put `Ready` out of reach
+   everywhere.
+   `observedDeliverableStates` needs nothing: it feeds one board, that board draws
+   `Deliverable`s alone, and a test is not one — the same free answer the Deliverables
+   board gets everywhere else here. Named because a vocabulary absent from this list is one
+   nobody checks, not because it has work to do.
    The generated README keeps the **whole** vocabulary, unchanged: it describes the vault
    rather than a projection, the same reason the ✨ backfill walks the whole tree.
 5. The test catalog draws the other population ([[A projection for the tests]]), from the
@@ -157,15 +167,20 @@ context row when a visible descendant needs a parent to hang from.
 - No test item appears as a row, a card, a bar or a shelf entry in the backlog tree, either
   board, or either roadmap axis.
 - Nothing outside the plan's population is counted by the plan's counts, rollups or level
-  breakdown, or contributes state, tags or dates to what the **plan** draws and offers.
+  breakdown, or contributes state, tags, horizons or dates to what the **plan** draws and
+  offers.
   Asserted with a `Task` under a `Test case` carrying a status and a tag no plan item has:
   it is the row that satisfies a criterion written about *test types* while still adding a
   column to the board.
-- A **catalog** row's Set state and tag picker still offer the values the catalog's own
-  population carries. Asserted with the same fixture read the other way — one test on a
-  state no plan row has, offered to another test — because the two criteria are each other's
-  failure mode: one shared vocabulary satisfies this one and breaks the one above, and one
-  plan-scoped vocabulary does the reverse.
+- A **catalog** row's Set state, Set horizon and tag picker still offer the values the
+  catalog's own population carries. Asserted with the same fixture read the other way — one
+  test on a state no plan row has, offered to another test — because the two criteria are
+  each other's failure mode: one shared vocabulary satisfies this one and breaks the one
+  above, and one plan-scoped vocabulary does the reverse.
+- **All four** observed vocabularies are accounted for, states, tags, horizons and
+  Deliverable states, and the horizon is asserted rather than assumed from the state: they
+  are separate lists read by separate menus, and the state was already right in a draft
+  where the horizon was not.
 - A `Test case` parented to a `PBI` changes none of that PBI's rollup numbers — descendant
   count, done count, `subtreeDone`, `descendantStart`, `descendantTarget` — nor those of
   anything above it, and neither do its own `Task`s. Asserted on the **model**, over a tree
