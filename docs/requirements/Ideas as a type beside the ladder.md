@@ -81,9 +81,14 @@ assumed rather than derived).
   with none, and a parentless `Idea` is never pruned by `hierarchyOnly`.
 - It files into its own folder (`typeFolder.idea`, shipped default `ideas` under the home
   folder), like every other declared type.
-- It renders with its own icon and badge colour, distinct from every level's and from
-  every other extra type's; the test asserting the badge table covers the whole
-  vocabulary covers it too.
+- It renders with its own icon and a badge colour distinct from every **other extra
+  type's**; the test asserting the badge table covers the whole vocabulary covers it too.
+  **Not distinct from every level's, which is what this criterion demanded until
+  2026-08-08 and what the shipped styling does not do.** `Idea` wears yellow, shared with
+  `Task`, after `Deliverable` landed on the green this note had claimed — the decision and
+  its reasoning are in `styles/badges.css` and the paragraph above. A criterion the shipped
+  code cannot satisfy is worse on a `Done` note than on an open one: it reads as a
+  contract somebody kept.
 - The generated README names the extra types in a sentence a third name does not break:
   `Issue`, `Bug` and `Idea`, not `Issue and Bug and Idea`.
 - The three rank, pruning and choice criteria above are asked of `EXTRA_TYPES` rather
@@ -109,6 +114,15 @@ declared types now wear Obsidian's eight chromatic families, so the Ladder Rule'
 a type takes an unclaimed hue" has run out of hues to take. That is
 [[The type palette has no unclaimed hue left]], and it blocks a ninth type rather than
 this one.
+
+**Both halves of that paragraph were overtaken within the day, and the shipped state is
+the opposite of each.** `Deliverable` was not "never built" — it landed on a branch that
+could not see this one and reached for the same green, so `Idea` moved to **yellow** and
+`Deliverable` kept green. There is therefore no hue "clear of the four levels" here: Idea
+shares yellow with Task, which `styles/badges.css` argues for as the smallest available
+collision. And the ninth type was not blocked; it shipped, by sharing. The paragraph is
+kept because it is what this PBI was decided on, and corrected because
+`requirements/` describes the code as it is now.
 
 `src/domain/backlogReadme.ts` — `andList` joins a category's names as English rather than
 with ` and ` between every pair. Two sentences in the generated README name a whole
