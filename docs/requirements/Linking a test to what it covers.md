@@ -40,13 +40,19 @@ something the dependency picker did not need to know.
 
 1. On a test that is a result, the menu offers **Covers…** and, whenever the note carries
    the key at all, **Remove coverage…**.
-2. **Covers…** opens a suggester over the Base's results, offering the **plan's own
-   population** less what this test already covers — not itself, and not anything already
-   named. The plan's population, not "work items": a `Task` beneath a `Test case` is a work
-   item by type and a catalog member by parentage ([[Tests stay out of the plan]] 2b), and
-   offering it would let a pick write coverage of a row that can never display a count,
-   since [[Untested work names itself]] draws one on plan rows only. Step 5 would then
-   promise a change the user cannot see.
+2. **Covers…** opens a suggester over the Base's results, offering **the rows that can
+   display a coverage count** — [[Untested work names itself]]'s own population — less what
+   this test already covers, itself, and anything already named.
+   That population and not a near-miss for it, because two different rows fall through a
+   near-miss. "Work items" admits a `Task` beneath a `Test case`, a work item by type and a
+   catalog member by parentage ([[Tests stay out of the plan]] 2b). "The plan's population"
+   admits a `Milestone`, which is in the plan and carries neither a count nor an untested
+   signal, being a marker rather than work. Either pick writes a real edge whose effect is
+   displayed nowhere, so step 5 promises a change the user cannot see — the same failure,
+   twice, from two different approximations of one list.
+   Which is the argument for naming the list rather than describing it: the suggester and
+   the row renderer answer the same question, and every attempt here to restate that answer
+   in the suggester's own words has been wrong about some row.
 3. Picking one plans a single write, the item appended to the test's own list, and applies
    it through the same gate every other write here goes through.
 4. **Remove coverage…** offers everything the list holds — each covered item by name, each
@@ -84,11 +90,15 @@ something the dependency picker did not need to know.
 
 - **Covers…** and **Remove coverage…** appear on test types only, and on no work item type
   — both halves asserted, since the missing half is the direction rule.
-- The suggester offers the **plan's population** only, excludes what is already named, and
-  is not offered at all when it would be empty. Asserted with a `Task` beneath a
-  `Test case` in the results: it is the row a suggester written as "work items" offers and
-  a suggester written as "the plan" does not, and picking it would write a link nothing can
-  ever show.
+- The suggester offers exactly the rows that can display a coverage count, excludes what is
+  already named, and is not offered at all when it would be empty. Asserted with **both**
+  near-misses present in one result set — a `Task` beneath a `Test case`, and a
+  `Milestone` — since each is admitted by a different wrong version of this rule and a
+  fixture holding one of them passes the other's.
+- The suggester's population and the count's are **the same list**, not two lists that
+  agree. Checkable by asserting that every row the suggester offers would display a count
+  if covered, over a result set holding a marker, a catalog `Task` and a plan `Task` — the
+  three rows where "eligible" and "in the plan" come apart.
 - A pick writes to the test and to nothing else, as one batch through the gate, undone by
   one undo.
 - Removing the last entry removes the key, leaving no empty list behind — the state

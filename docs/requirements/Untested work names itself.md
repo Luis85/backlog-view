@@ -72,7 +72,10 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   would make the marker mean two different things depending on a filter.
 - **1c — which rows carry the signal at all.** Two exclusions, each with its own reason,
   and they are stated as reasons rather than as a list of type names so that a type added
-  later inherits the right answer.
+  later inherits the right answer. **This extension defines the population**, and
+  [[Linking a test to what it covers]]' suggester offers exactly it — one list read by two
+  surfaces, because a suggester offering a row that cannot display the result is a control
+  that writes into the dark.
   A **`Task`** is counted like any other item if a test names it and is never marked
   untested when none does: tests are written against behaviour, and marking every task in
   the register would make the signal noise on the population that carries it most.
