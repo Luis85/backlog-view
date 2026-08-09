@@ -10,9 +10,16 @@ source: user request
 # The test catalog projection
 
 A toolbar toggle of its own, showing the test ladder and nothing else — and, in return,
-the backlog tree, the board and the roadmap showing everything else and no tests. One
-base returns both families; which projection you are in decides which one you are looking
-at.
+the projections that already exist showing everything else and no tests. One base returns
+both families; which projection you are in decides which one you are looking at.
+
+There are **four** of those already, not three: the backlog tree, the requirements board,
+the roadmap, and the Deliverables board. Three of them need the exclusion written. The
+fourth gets it for nothing — `renderDeliverablesBoard` draws `model.deliverableResults`,
+which is filtered to `Deliverable`s, so a test cannot reach that screen whatever anyone
+adds. It is named here anyway, because a projection missing from this list is a projection
+nobody checks; what would be wrong is specifying a filter for it, which is work that
+already exists under a different name.
 
 **Outcome** — The test catalog is a place you go to, not a thing that grows through the
 middle of the plan. A backlog owner who never opens it sees no difference in the tree they
@@ -22,7 +29,7 @@ had before this epic.
 
 - [[A projection for the tests]] — the toggle, the tree it draws, and what it says when
   there is nothing there yet.
-- [[Tests stay out of the plan]] — the exclusion from the other three projections, and
+- [[Tests stay out of the plan]] — the exclusion from the projections that precede it, and
   what a test looks like when it is only an ancestor.
 
 ## Why one base and not two

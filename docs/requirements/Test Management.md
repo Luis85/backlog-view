@@ -64,9 +64,10 @@ Tests are the tenth and eleventh, and the question is whether each new type take
 sharing decision — which is how Idea and Deliverable both reached for green on branches
 that could not see each other — or whether one rule covers them.
 [[A badge when the palette is full]] is where that is answered, before either type ships,
-since a type with no badge is a row the reader cannot classify. It also corrects
-[[The type palette has no unclaimed hue left]], whose stated arithmetic predates
-`Deliverable` and disagrees with the CSS.
+since a type with no badge is a row the reader cannot classify. What that PBI inherits is a
+**decision**, not a recount: the issue's figures predated `Deliverable` and were corrected
+against the CSS while this epic was being written, which is the only reason the paragraph
+above can state them.
 
 ## Features
 

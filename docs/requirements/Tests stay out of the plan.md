@@ -15,9 +15,13 @@ roadmap to look exactly as they did before, **so that** adding a test catalog to
 does not cost me the plan I was already reading.
 
 Both families arrive in one result set, because [[Untested work names itself]] cannot exist
-otherwise. This note is the other half of that bargain: the backlog tree, both boards and
-both roadmap axes exclude test items — from their rows, their cards, their counts, their
-rollups and their vocabularies.
+otherwise. This note is the other half of that bargain: the backlog tree, the requirements
+board and both roadmap axes exclude test items — from their rows, their cards, their
+counts, their rollups and their vocabularies. The **Deliverables board** is the fourth
+existing projection and needs nothing: it draws `model.deliverableResults`, filtered to
+`Deliverable`s, so a test has never been able to reach it. Named rather than left out,
+because a projection absent from this list is one nobody checks, and not given a rule,
+because a filter for it would be a second name for one that already exists.
 
 The precedent is exact. [[A Deliverables board]] already scopes one projection away from a
 type and gives that type a projection of its own, and the case it had to get right is the
@@ -29,7 +33,7 @@ context row when a visible descendant needs a parent to hang from.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | The backlog tree, either board or the roadmap renders a result set that contains test items |
+| **Trigger** | The backlog tree, the requirements board or the roadmap renders a result set that contains test items |
 | **Preconditions** | None |
 | **Guarantee** | A vault with no tests renders identically before and after this feature. A test item is never a row, a card, a bar, a shelf entry or a counted item in the plan's projections, never contributes its own state, tags or dates to any vocabulary those projections derive from the results, and **contributes nothing to any ancestor's rollup** — not its own count, not its dates, and not its subtree's. |
 
@@ -37,7 +41,8 @@ context row when a visible descendant needs a parent to hang from.
 
 1. The model is built over everything the base returned, tests included — one model, so
    the edges [[Coverage as a property]] resolves are available to every projection.
-2. The backlog tree, the boards and the roadmap draw work items and skip test items.
+2. The backlog tree, the requirements board and the roadmap draw work items and skip test
+   items; the Deliverables board is unchanged, drawing what it always drew.
 3. Counts, rollups and the level breakdown report the plan's population only, so the
    numbers a reader has been watching do not jump on the day the first suite is written.
    The **rollup walk stops at a test**: `assignAll` counts it as nothing and takes no
