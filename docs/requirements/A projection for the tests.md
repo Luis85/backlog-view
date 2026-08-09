@@ -181,6 +181,13 @@ base settings are saved on the view, working position on the device.
   by whatever real siblings actually sit at that position — hidden ones included. Both
   projections work this way, not just the catalog: the plan's root ranking has the same
   shared group and the same exposure the day a suite exists.
+  **Creating** a root is the same rule with easier arithmetic, and it is easy to leave
+  behind because it goes through a different helper. `endOfSiblingsOrder` answers *the
+  supplied list's maximum plus a spacing*, so handed the catalog's roots alone it gives a
+  new suite the number of the first hidden plan root above them. Handed the whole group it
+  cannot collide, and it still lands the suite last in the catalog — a maximum over a
+  superset clears the last visible root as well. Child creation was never exposed:
+  `createFromPrompt` already passes `parentItem.children`, which is the real group already.
   **A promoted root is also not in the projection's rankable roots**, which is a second
   list rather than a second reading of the first. The `focusRoot` flag protects a promoted
   row when something acts *on* it; the root strip never targets it — `rootDropTarget` takes
@@ -261,6 +268,11 @@ base settings are saved on the view, working position on the device.
   leaving the other's. Asserted on a model holding suites and Epics interleaved by order —
   the arrangement where ranking against the visible list alone collides on the first drop,
   and where a projection-scoped renumber collides on every one after it.
+- **Creation** is asserted separately from the drop, on a last suite at 10 with a hidden
+  plan root at 20: it is a different helper (`endOfSiblingsOrder`, a maximum rather than a
+  midpoint), it fails on a different arrangement, and a criterion written about drops alone
+  passed this PBI for two rounds while creation still handed the new suite the Epic's own
+  number.
 - A promoted root is absent from the **positionable** roots: a drop on the root strip, and
   a new root's `endOfSiblingsOrder`, both position against the genuine roots alone, and no
   renumbering pass rewrites a promoted note's `order`. Asserted with a promoted row present
@@ -371,7 +383,7 @@ are asking:
 | `src/view/interactions/keyboard.ts` — `visibleItems` | |
 | `src/domain/dropTargets.ts` — where a root-level drop lands: the **positionable** list, this projection's genuine roots (2d) | `src/domain/writePlan.ts` — the **ranking group** the order is computed and renumbered against: every parentless item, which is what the number means on disk (2d) |
 | `src/view/interactions/structure.ts` — indent and outdent's root list, likewise positionable | |
-| `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root, positionable, so a suite lands after the last suite rather than after the last Epic | |
+| `src/view/interactions/create.ts` — which roots a new one is created *among* | `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root takes the **ranking group**: it answers the supplied list's maximum plus a spacing, so a last suite at 10 with a hidden Epic at 20 hands the next suite the Epic's own number. Appending against the whole group is also the position the catalog wants — a maximum over a superset always clears the last visible root too |
 
 The line is *what is this asking about* — the screen, or the vault — and both sides already
 have their reasons written down beside them. The left column's mistake is invisible (a
