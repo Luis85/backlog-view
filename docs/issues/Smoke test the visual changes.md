@@ -172,8 +172,10 @@ picker icon that a text input does not.
 
 ## The toolbar overhaul (added 2026-08-09, unverified)
 
-Five zones, a measured fit ladder (`data-pbl-fit`), and a busy indicator that reserves
-its own width shipped on the jsdom harness and a static browser stub
+Five zones, a measured fit ladder (`data-pbl-fit`), and a busy indicator whose visible
+label cannot change (`Updating…`, for every batch, with the count moved into a tooltip —
+the measured width reservation it replaced was deleted, not kept) shipped on the jsdom
+harness and a static browser stub
 (`npm run harness`) alone. Both are faithful about layout, spacing and hierarchy and
 say nothing about colour, real fonts, a real scrollbar or Obsidian's own lucide build —
 see `test/CLAUDE.md` and ADR 0020. Point a Base at `docs/` and work through this list in
@@ -248,11 +250,15 @@ a real vault, in both light and dark:
 
 ## Structural debt this branch is leaving behind
 
-`src/view/backlogView.ts` is at 396 of its 400 counted-line `max-lines` cap (`eslint.config.mjs`),
-with its import slack already spent — this branch added nothing to it for exactly that
-reason. `docs/tasks/Split the view dispatch hub.md` already exists and describes the
-extraction. The next change that needs to add to `backlogView.ts` cannot: that extraction
-has to land first, or lint fails outright rather than warning.
+`src/view/backlogView.ts` is at 395 of its 400 counted-line `max-lines` cap
+(`eslint.config.mjs`), with its import slack already spent — this branch added nothing to
+it for exactly that reason, and bought one line back by moving its `syncToolbarFit` call
+into `ResizePolicy`, where the design spec had assigned it. The next change that needs
+more than five lines here cannot have them: an extraction has to land first, or lint
+fails outright rather than warning. [[Split the view dispatch hub again]] is that task.
+Not the closed [[Split the view dispatch hub]] — that one is Done, its Outcome records
+the write-gate extraction it made, and the file has grown back since; a closed note is
+history, not a plan.
 
 ## Runs
 
@@ -264,7 +270,7 @@ has to land first, or lint fails outright rather than warning.
 | — | the roadmap, both axes and the horizon writes | **Not run.** Reopened for it. |
 | — | the one-press setup: the options it writes, and the button in both empty frames | **Not run.** |
 | — | the horizon chip's column, and the native date fields in the schedule entry | **Not run.** |
-| — | the toolbar overhaul (five zones, the fit ladder, the busy indicator's reservation, `gantt-chart`) | **Not run.** Reopened for it. |
+| — | the toolbar overhaul (five zones, the fit ladder, the busy indicator's fixed label, `gantt-chart`) | **Not run.** Reopened for it. |
 
 That second run is the one that mattered most, because the badge colours and the removed
 strike-through shipped in 0.3.0 on the strength of jsdom structure tests, which cannot see

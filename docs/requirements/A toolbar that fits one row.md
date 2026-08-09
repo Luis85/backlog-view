@@ -69,6 +69,12 @@ today's icon size, add up to.
   the newly-written step hides the element that had it, because the `⋯` is where that
   control's command actually went. A filter that has focus is the one control this can
   never fire for — see 4a.
+- **2b — the rung changes while the `⋯` menu is open.** A pane widened or a theme
+  swapped under an open menu can hide the `⋯` itself, and focus is in the menu rather
+  than in the row, so 2a's handoff does not fire. The pick that follows still lands
+  somewhere visible: the keyed focus restore asks the same question about its
+  destination that 2a does, so a named control the ladder has hidden falls back rather
+  than silently focusing nothing.
 - **3a — a shed control's command is still needed.** It stays reachable through the
   `⋯`: each menu entry appears only when the button it mirrors was rendered at all, so
   a projection missing the density toggle offers no density entry, and each entry's
@@ -141,15 +147,27 @@ configured while a toolbar control's is its translated label and nothing owns th
 number. `scrollWidth` is floored at `clientWidth` by every browser, which is why the
 comparison is `>` rather than a padding-corrected subtraction — the correction was
 tried, pinned the ladder at its last rung unconditionally, and was reverted (see the
-comment above `syncToolbarFit`). `refocusShedControl`, in the same file, is what moves
-focus to the `⋯` when a rung removes the element that held it — asked once, of the
-element's own computed `display`, rather than encoded per control or per rung. The
-ladder is driven from four places, all outside this file: every full and partial
-content render (`render/toolbar.ts`'s `renderToolbar`, `revealFilter`, `syncBusy` on the
-busy indicator's visibility transition) and, because nothing about a render follows a
-theme swap, `backlogView.ts`'s `css-change` listener and its `ResizeObserver` on the
-tree — the same two triggers the column ladder answers to, read once here rather than
-duplicated.
+comment above `syncToolbarFit`). `focusInBar`, in the same file, is where "focus something this row still shows" is
+decided — the target when the ladder leaves it focusable, the `⋯` when it does not, the
+first visible control when the `⋯` is hidden too — asked once, of each element's own
+computed `display` and `disabled`, rather than encoded per control or per rung.
+`refocusShedControl` beside it is the rung's caller, and `refocusByKey`
+(`toolbarControls.ts`) is the other: a keyed restore can name a control a rung has
+hidden just as readily, which is what happens when the row relaxes while the `⋯` menu is
+open and the pick then restores focus to the trigger that relaxation just hid.
+
+Nothing in `toolbarFit.ts` calls the ladder. It is driven from six places outside it,
+and they divide by whether a render follows the width change. One does: the call at the
+end of `renderTreeContent` (`backlogView.ts`), placed after the content because the
+count is one of the things being measured, and covering a full render and a content-only
+one alike. The other five have no render behind them — `revealFilter` and the filter
+input's blur handler (`render/toolbar.ts`), which open and collapse an input worth about
+130px; `syncBusy`, on the busy indicator's visibility transition and deliberately not on
+the per-file ticks between; `ResizePolicy.shouldRebuildOnResize` (`view/resize.ts`),
+which re-measures the row on every resize notification before deciding whether the tree
+itself needs rebuilding; and `backlogView.ts`'s `css-change` listener, because a theme or
+font swap changes the rendered text this ladder measures without moving any box the
+`ResizeObserver` watches.
 
 `src/view/render/toolbar.ts` keeps the render order — the zones in the sequence the
 main flow states — the four `sync*` functions that keep the toolbar in step with a
