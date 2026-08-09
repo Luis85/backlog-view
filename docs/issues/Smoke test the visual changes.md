@@ -221,8 +221,12 @@ a real vault, in both light and dark:
    without needing a resize to trigger it.
 6. **The fit ladder at real pane widths, in a real split.** Drag a pane from wide to
    genuinely narrow and watch the toolbar shed controls. A browser measurement against
-   the harness stylesheet (one row, 47px, from 1400px down to 420px) found the ladder
-   stepping 0, 0, 1, 1, 2, 3, 4, 5, 5 — a real vault has a different font and a real
+   the harness stylesheet (one row, 47px, at 1600/1400/1200/1000/900/800/700/600/500/420px)
+   found the roadmap stepping 0, 0, 0, 1, 2, 2, 2, 3, 4, 5 and the tree
+   0, 0, 0, 1, 1, 2, 2, 3, 4, 4, with New never clipped at any of them. Watch
+   specifically that the switcher's four words go one rung BEFORE the words that name a
+   value — at 1000px the roadmap should show icons alone in the switcher and still read
+   "Horizons" or "Timeline" beside it — a real vault has a different font and a real
    scrollbar, either of which can shift where a step trips. Confirm the row never grows a
    second line and never clips a control the ladder hasn't dropped yet.
 7. **Below ~420px.** The ladder has nothing left to shed here, so the row clips — and

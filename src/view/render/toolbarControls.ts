@@ -130,8 +130,14 @@ function menuButton(
 	key: string,
 	ariaLabel: string = label,
 ): HTMLButtonElement {
+	// `clickable-icon` for the same reason every other control in this row carries it:
+	// the padding, the radius and the hover fill are Obsidian's, and a control that
+	// styles those itself is a control that stops matching the app when the app moves.
+	// Without it this was a bare `<button>` wearing the app's default chrome — a filled,
+	// bordered box among flat icons, which is the one control in the row that looked
+	// like a form submit.
 	const btn = parent.createEl('button', {
-		cls: 'pbl-menu-btn',
+		cls: 'clickable-icon pbl-menu-btn',
 		attr: { type: 'button', 'aria-label': ariaLabel, 'aria-haspopup': 'menu', [KEY_ATTR]: key },
 	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), icon);

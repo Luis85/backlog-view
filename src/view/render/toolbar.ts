@@ -633,17 +633,29 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
  */
 function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	const wrap = barEl.createDiv({ cls: 'pbl-mode-toggle', attr: { role: 'group', 'aria-label': 'Projection' } });
-	const position = (mode: Projection, icon: string, label: string) => {
+	// `word` is the visible name and `label` stays the accessible one, which is why the
+	// two are not the same string: "Tree" alone is not a purpose, and a name that read
+	// only "Tree" would leave a reader to guess what pressing it does. Each `word` is a
+	// substring of its `label`, so the visible text is inside the accessible name rather
+	// than beside it — the thing speech control needs to match what a user can see.
+	//
+	// The span is `.pbl-btn-label`, the class the fit ladder's first rung already sheds,
+	// so "if there is enough space" is answered by the same measurement that answers it
+	// for every other labelled control. Four words is the widest thing in the row, so on
+	// a narrow pane this is the first cost the ladder recovers — which is the intended
+	// order, the icons and the active marker carrying the switcher on their own.
+	const position = (mode: Projection, icon: string, label: string, word: string) => {
 		const btn = iconButton(wrap, icon, label);
 		btn.addClass('pbl-mode-btn');
+		btn.createSpan({ cls: 'pbl-btn-label', text: word });
 		btn.toggleClass('is-active', host.projection === mode);
 		btn.setAttribute('aria-pressed', String(host.projection === mode));
 		btn.addEventListener('click', () => host.setProjection(mode));
 	};
-	position('tree', 'list-tree', 'Show as backlog tree');
-	position('board', 'square-kanban', 'Show as kanban board');
-	position('roadmap', 'map', 'Show as roadmap');
-	position('deliverables', 'package', 'Show as Deliverables board');
+	position('tree', 'list-tree', 'Show as backlog tree', 'Tree');
+	position('board', 'square-kanban', 'Show as kanban board', 'Board');
+	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
+	position('deliverables', 'package', 'Show as Deliverables board', 'Deliverables');
 }
 
 /**

@@ -514,6 +514,38 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * The switcher's words go a rung before every other label, and that ORDER is the
+	 * claim — not that each is shed somewhere. Its four labels are 205px, more than the
+	 * rest of the row's words together, and they name positions its icons already draw
+	 * and its tooltips already spell; the others name a current VALUE no icon can carry.
+	 * Written as one rung, adding the switcher's words made the whole row's words shed a
+	 * step sooner and a 1000px roadmap paid for them by losing "Timeline".
+	 *
+	 * Three rungs asserted, because any two of them pass against a wrong rule: step 0
+	 * alone says nothing about order, and step 2 alone passes against the single rung
+	 * this replaced.
+	 */
+	it("sheds the switcher's words a rung before the words that name a value", () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const word = containerEl.querySelector<HTMLElement>('.pbl-mode-btn .pbl-btn-label');
+		// The New button's label names the type it creates — a value, and the one such
+		// label present in every projection.
+		const value = containerEl.querySelector<HTMLElement>('.pbl-new .pbl-btn-label');
+		if (!word || !value) throw new Error('the toolbar drew no labels to shed');
+
+		expect(getComputedStyle(word).display).not.toBe('none');
+		expect(getComputedStyle(value).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '1');
+		expect(getComputedStyle(word).display).toBe('none');
+		expect(getComputedStyle(value).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '2');
+		expect(getComputedStyle(value).display).toBe('none');
+	});
+
+	/**
 	 * The status zone's divider is shed WITH the readouts it divides, not left behind them.
 	 * Step 4 sheds the advisories and the count stays, so the line still divides something;
 	 * step 5 takes the count and the line goes with it, or a rule stated "no readout ever
