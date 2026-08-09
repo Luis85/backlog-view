@@ -84,6 +84,11 @@ base settings are saved on the view, working position on the device.
   for a reason the user never asked for. The control is **ignored**, not cleared — the
   reversal [[A Deliverables board]] already made once, for the same reason: a focus set for
   the plan should still be there when the user goes back to it.
+  The button follows that board's shape too: a **static label and no menu**, rather than a
+  menu offering choices that would do nothing. The plan's own focus picker gains the other
+  half — it never offers a test type, since focusing one there narrows the plan to roots it
+  excludes and leaves it empty, which is the reason its own code already gives for
+  withholding `Deliverable`.
 - **4a — the user has never opened this projection.** No stored position, so nothing
   changes: the view opens where it always did. A new projection must not move anyone's
   default.
@@ -104,7 +109,8 @@ base settings are saved on the view, working position on the device.
   toolbar lands outside the projection that created it.
 - The focus level is ignored here and is left intact for the projections that use it —
   both halves asserted, since the second is the part [[A Deliverables board]] had to
-  correct after shipping.
+  correct after shipping. The focus button offers no menu in the catalog, and offers no
+  test type in the plan.
 - A parentless case, and a case parented to a work item, both render as roots; no work item
   appears in this projection, as a row or as a context row. The second half of that is the
   one a filter-only implementation fails, so it is asserted on a model where the test's

@@ -41,14 +41,32 @@ design: the relationship between a test and the work it checks is
    at the top level, and no test type at the plan's top level**. Without it the picker
    would offer an `Epic` from the catalog and file a note that vanishes from the screen
    that created it, which is the failure `offerableTypes` exists to prevent.
-   The restriction is the **top-level** creator's alone. `offerableTypes` also filters a
-   row's own **+**, where the vocabulary is `childTypeChoices(item)` rather than
-   `ALL_TYPES`, and that list is already right in both directions: a test's legal children
-   are catalog members by the membership rule ([[Tests stay out of the plan]] 2b), and a
-   plan row is never offered a test type at all (3b). A catalog branch written as a plain
-   type filter over both paths would empty the **+** on a `Test case`, whose one choice is
-   `Task` — so the branch has to know whether a parent is in hand, which `offerableTypes`
-   does not ask today.
+   The restriction reaches **every caller that asks `offerableTypes` for the whole
+   vocabulary**, and there are four of them — this is not the top-level creator's rule
+   alone, as an earlier draft of this note said:
+
+   | Caller | What the catalog offers | What the plan offers |
+   | --- | --- | --- |
+   | Top-level "pick another type" | the test types | no test type |
+   | The primary **New** button's default (`primaryNewType`) | `Test suite` | unchanged |
+   | **Set type** on a row | the test types | no test type |
+   | The focus picker | no menu at all | no test type |
+
+   **Set type** is the one this use case names in its own Trigger and never specified.
+   Left unfiltered it lets a `PBI` be retyped into a `Test case` and vanish into the
+   catalog from the plan the user was reading — the same disappearing note the creator
+   rule exists to prevent, reached by the other verb. The primary button needs no rule of
+   its own: `primaryNewType` already falls back to the first type the projection offers
+   when the configured one is not offered.
+
+   The **child** path is the exception, and `Task` is the whole reason it is one.
+   `offerableTypes` also filters a row's own **+**, where the vocabulary is
+   `childTypeChoices(item)` rather than `ALL_TYPES`, and that list is already right in both
+   directions: a test's legal children are catalog members by the membership rule
+   ([[Tests stay out of the plan]] 2b), and a plan row is never offered a test type at all
+   (3b). A branch written as a plain type filter over every path would empty the **+** on a
+   `Test case`, whose one choice is `Task` — so it has to know whether a parent is in hand,
+   which `offerableTypes` does not ask today.
 2. The view writes `type` and `order` — and no `parent`, a suite being a root — filing the
    note in the `Test suite` folder ([[Where new items are filed]]).
 3. The user opens the **+** on that suite. `childTypeChoices` answers `Test case` alone,
@@ -86,6 +104,14 @@ design: the relationship between a test and the work it checks is
   choices there stay `[ladderChild, ...EXTRA_TYPES]`, unchanged by this PBI — a test is
   not an extra type and must not be creatable inside the plan by a control that reads as
   "what can go here".
+- **1d — the user retypes a row rather than creating one**, this use case's other Trigger.
+  **Set type** offers the projection's own types and no others, both ways: a `PBI` in the
+  plan is never offered `Test case`, and a `Test suite` in the catalog is never offered
+  `Epic`. Either would make the row leave the screen it was acted on. `addSetTypeMenu`
+  already withholds the whole submenu when every offer would write nothing — *a menu whose
+  every option is a no-op is not a menu* — so a projection whose vocabulary collapses to
+  the row's own type shows nothing rather than an inert entry, which is the behaviour a
+  catalog holding one `Test suite` and no cases will actually produce.
 - **4a — the user drags a `Test case` onto a `PBI`.** Nothing refuses the drop, because
   nothing here refuses any drop ([[Types beside the ladder]]'s advisory rule). The case's
   `parent` becomes the PBI and its **type is left alone**: the auto-type cascade assigns
@@ -113,11 +139,16 @@ design: the relationship between a test and the work it checks is
 - Neither type is offered by `childTypeChoices` under an `Epic`, `Feature` or `PBI`, and
   the extra types are not offered under a suite or a case. Both directions are asserted;
   the second is the one an implementation that "adds a rung" gets wrong for free.
-- Both are offered by the toolbar's **top-level** creator in the catalog and nowhere else,
-  and no plan type is offered at the catalog's top level. An earlier draft of this note
-  claimed that creator needed no change because it iterates the whole vocabulary; it
-  iterates whatever `offerableTypes` scopes for the projection, the function that already
-  stops the requirements board offering a `Deliverable`.
+- Every caller asking `offerableTypes` for the **whole vocabulary** takes the projection's
+  restriction — the top-level creator, the primary **New** button's default, **Set type**,
+  and the focus picker. Asserted per caller, not once: they share a function and answer
+  four different questions, so one assertion covering "the vocabulary is filtered" would
+  pass while three surfaces stayed wrong. An earlier draft of this note claimed the
+  creator needed no change at all, then claimed the restriction was the creator's alone;
+  both were the same mistake at different sizes — reasoning about a function's purpose
+  instead of reading its call sites.
+- **Set type** offers no test type in the plan and no plan type in the catalog, so no
+  retype makes a row leave the projection it was performed in.
 - **A row's own + is unaffected**, and this is asserted separately rather than assumed from
   the criterion above: opening **+** on a `Test case` in the catalog still offers `Task`,
   and on a `Test suite` still offers `Test case`. `offerableTypes` filters that path too,
@@ -156,13 +187,19 @@ projection branches it already carries. That is where "a projection offers only 
 show" is stated once, so the rule is kept by extending it rather than by a second test
 written beside it.
 
-The one thing that function cannot answer as it stands is **which creator is asking**. It
-serves both — `ALL_TYPES` from the toolbar, `childTypeChoices(item)` from a row's **+** —
-and the catalog needs opposite answers for `Task` on the two paths (1c). Whether that
-becomes a parameter, a second function, or a branch that inspects the list it was handed is
-an implementation question; what this note fixes is that a pure filter over type names
-cannot express it, so an implementation that only edits the existing branch will pass the
-top-level criterion and empty a `Test case`'s menu.
+The one thing that function cannot answer as it stands is **which caller is asking**. Six
+call sites go through it, in two groups: four ask for the whole vocabulary
+(`toolbar.ts` — the top-level creator, `primaryNewType`, the focus picker — and
+`addSetTypeMenu` in `menu.ts`), and two hand it `childTypeChoices(item)` (`rows.ts` and
+`buildItemMenu`). The catalog needs opposite answers for `Task` across that line (1c).
+Whether the distinction becomes a parameter, a second function, or a branch that inspects
+the list it was handed is an implementation question; what this note fixes is that a pure
+filter over type names cannot express it, so an implementation that edits only the existing
+branch will pass the top-level criterion and empty a `Test case`'s menu.
+
+`src/view/render/toolbar.ts` — the focus control's catalog case is the Deliverables board's
+shape exactly: a static label and no menu, not a menu with nothing in it
+([[A projection for the tests]] 3a).
 
 `src/domain/model.ts` — `computeLevel` and `pruneOutsideHierarchy` read type membership
 rather than the four levels already, so a test belongs by being declared;
