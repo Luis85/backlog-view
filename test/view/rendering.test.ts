@@ -166,6 +166,39 @@ describe('rendering', () => {
 		expect(styles).not.toContain('line-through');
 	});
 
+	it('opens the note from the row itself and from none of the controls inside it', () => {
+		// The category this replaced ten `stopPropagation` calls to hold. Every one of
+		// them was a control remembering to opt out of the row's activation, and two
+		// controls forgot — the dependency connector and the bar grips both shipped
+		// opening the note when clicked. `fromRowControl` moves the question to the
+		// receiver, so a control that forgets is covered anyway.
+		//
+		// The enumeration is deliberately NOT `ROW_CONTROL`'s own selector, which would
+		// only prove the filter agrees with itself: it adds `a` and `[tabindex="-1"]`,
+		// the two independent marks of "this is a control" in this codebase — every
+		// per-row control carries the latter by the view guide's own rule. What it cannot
+		// see is a control that is neither, which is the same gap `ROW_CONTROL` has and
+		// is why the guide requires new controls to be buttons.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing', tags: ['alpha'] } });
+		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: 10, parent: 'Epic' } });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status', tagsProperty: 'note.tags' });
+		const row = rowByTitle(containerEl, 'Epic');
+
+		const controls = Array.from(row.querySelectorAll<HTMLElement>('button, a, [tabindex="-1"], .pbl-tag, .pbl-prop-value'));
+		// A fixture that rendered no controls would pass this test having proved nothing.
+		expect(controls.length).toBeGreaterThan(1);
+		for (const control of controls) {
+			control.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+			control.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+		}
+		expect(vault.opened).toEqual([]);
+
+		// The other half, and the one the filter could break: the row is still a link.
+		row.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		expect(vault.opened.map((o) => o.path)).toEqual(['Epic.md']);
+	});
+
 	it('reveals every hover-hidden control on a hoverless device, in cascade order', () => {
 		// Every one of these is hidden until hover and carries `tabindex="-1"`, so on a
 		// device with neither hover nor a tab stop the `hover: none` reveal is the ONLY

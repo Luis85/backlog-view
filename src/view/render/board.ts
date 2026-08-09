@@ -8,7 +8,7 @@ import {
 	renderFilterEmptyState,
 	renderNoDeliverablesState,
 } from './emptyStates';
-import { renderBadge, renderTitleText } from './rows';
+import { fromRowControl, renderBadge, renderTitleText } from './rows';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
@@ -411,12 +411,17 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 
 /** Click opens (selecting first), middle-click opens in a new tab — every projection's cards. */
 export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+	// The same filter the tree's rows ask — see `fromRowControl`. A card contains buttons
+	// (the disclosure, the match links, the chips, the add) and a timeline row contains
+	// two more that are not buttons (the bar grips, the connector's neighbours), and none
+	// of them means "open this note".
 	card.addEventListener('click', (evt) => {
+		if (fromRowControl(evt)) return;
 		ctx.host.selectItem(item, false);
 		ctx.host.openItem(item, evt);
 	});
 	card.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1) ctx.host.openItemInNewTab(item);
+		if (evt.button === 1 && !fromRowControl(evt)) ctx.host.openItemInNewTab(item);
 	});
 	// The menu is the non-drag path, and on touch the only one — so a card carries it
 	// exactly as a row does, whichever projection drew it. What it offers differs per
@@ -453,19 +458,11 @@ function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem
 			attr: { type: 'button', tabindex: '-1' },
 		});
 		setTooltip(link, `Open "${match.title}"`);
-		link.addEventListener('click', (evt) => {
-			// Without this the card's own handler runs too and opens the PARENT — the
-			// one note the user demonstrably did not click.
-			evt.stopPropagation();
-			host.openItem(match, evt);
-		});
-		// A middle click never fires `click`, so without its own handler it would reach
-		// the card's `auxclick` and open the parent in a new tab — the same wrong note,
-		// by the one route stopping the primary click does not cover.
+		// No `stopPropagation`: `fromRowControl` filters this button out of the card's
+		// own handler, so the two cannot both fire and open two different notes.
+		link.addEventListener('click', (evt) => host.openItem(match, evt));
 		link.addEventListener('auxclick', (evt) => {
-			if (evt.button !== 1) return;
-			evt.stopPropagation();
-			host.openItemInNewTab(match);
+			if (evt.button === 1) host.openItemInNewTab(match);
 		});
 	}
 }

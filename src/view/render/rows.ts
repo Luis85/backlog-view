@@ -270,8 +270,7 @@ export function renderChevron(
 			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label, disabled: host.isFiltering() });
 	setIcon(chevron, 'chevron-right');
 	chevron.toggleClass('pbl-expanded', !state.collapsed);
-	chevron.addEventListener('click', (evt) => {
-		evt.stopPropagation();
+	chevron.addEventListener('click', () => {
 		// Read here rather than trusted from `disabled`: a click landing on the icon
 		// inside a disabled button still reaches this listener, and the div form has no
 		// `disabled` to read at all.
@@ -285,7 +284,6 @@ export function renderChevron(
 		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 		redraw(heldFocus);
 	});
-	chevron.addEventListener('auxclick', (evt) => evt.stopPropagation());
 }
 
 /**
@@ -382,10 +380,7 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 	});
 	setIcon(addBtn, 'plus');
 	setTooltip(addBtn, addLabel(childTypes));
-	addBtn.addEventListener('click', (evt) => {
-		evt.stopPropagation();
-		promptCreateItem(ctx.host, childTypes, item);
-	});
+	addBtn.addEventListener('click', () => promptCreateItem(ctx.host, childTypes, item));
 }
 
 /** A row that can hold only one type says so; one with a choice cannot promise which. */
@@ -393,13 +388,54 @@ function addLabel(childTypes: string[]): string {
 	return childTypes.length > 1 ? 'New child item' : `New ${childTypes[0]}`;
 }
 
+/**
+ * What counts as a CONTROL inside a row, for the one question every row-activation
+ * handler asks before doing anything: did this event begin on the row, or on something
+ * the row merely contains?
+ *
+ * `button` is the whole rule and the rest are its documented exceptions, which is what
+ * keeps this from being a list of the places somebody thought of. The view guide already
+ * requires every activatable per-row control to be a real `<button>` ("a `div` with an
+ * `aria-label` and a click handler is the thing to avoid"), so a control written
+ * tomorrow is covered without editing this line. What is named beside it is the three
+ * kinds that are deliberately not buttons:
+ *
+ * - `.pbl-chevron` in its DIV form. A `treeitem` carries `aria-expanded` itself, so the
+ *   tree's disclosure needs no button; the card's is one and matches above.
+ * - `.pbl-bar-grip`, a drag handle with no activation semantics at all. Only the EDGE
+ *   grips carry the class — the body hold is the bar element, which must stay part of
+ *   the row's click target.
+ * - `.pbl-prop-value` and `.pbl-tag`, a property cell's rendered note links and tag
+ *   pills. The empty space AROUND them stays the row's, which is why this is asked of
+ *   the event's target rather than of the cell.
+ */
+const ROW_CONTROL = 'button, .pbl-chevron, .pbl-bar-grip, .pbl-prop-value, .pbl-tag';
+
+/**
+ * Whether an activation event began on a control inside the row rather than on the row.
+ *
+ * One filter, asked by BOTH row-activation handlers (`wireRowEvents` here for the tree,
+ * `wireCardActivation` in `board.ts` for cards and timeline rows), replacing a
+ * `stopPropagation` per control. Ten of those had accumulated and each new control had
+ * to remember to add an eleventh — which the connector and the bar grips both failed to
+ * do, shipping a handle that opened the note. A control that forgets this filter is
+ * covered by it anyway; that is the whole point of moving the question to the receiver.
+ *
+ * A middle click never fires `click`, so `auxclick` has to ask separately — the reason
+ * every one of those per-control guards came in pairs.
+ */
+export function fromRowControl(evt: Event): boolean {
+	return evt.target instanceof Element && evt.target.closest(ROW_CONTROL) !== null;
+}
+
 function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childTypes: string[]): void {
 	row.addEventListener('click', (evt) => {
+		if (fromRowControl(evt)) return;
 		ctx.host.selectItem(item, false);
 		ctx.host.openItem(item, evt);
 	});
 	row.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1) ctx.host.openItemInNewTab(item);
+		if (evt.button === 1 && !fromRowControl(evt)) ctx.host.openItemInNewTab(item);
 	});
 	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypes));
 }

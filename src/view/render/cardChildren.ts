@@ -83,7 +83,6 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 		// underneath it, so a broken toggle looks like a working one — even while the
 		// toggle itself is `disabled`, since a click on the chevron or count span inside
 		// it still reaches this listener in a real browser (and in jsdom).
-		evt.stopPropagation();
 		// `disabled` alone does not stop a click that lands on a CHILD element (the
 		// chevron/count spans) from bubbling to this listener. Mutating here while the
 		// quick filter runs would write collapse state that `isCollapsed` reports as
@@ -92,10 +91,6 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 		draw();
 	});
-	// A middle click never fires `click`, so the guard above never runs for it and the
-	// card's own `auxclick` opens the parent in a new tab. There is nothing to do on a
-	// middle click here — doing nothing is exactly what has to be arranged for.
-	toggle.addEventListener('auxclick', (evt) => evt.stopPropagation());
 	draw();
 }
 
@@ -113,13 +108,8 @@ function renderChildEntry(host: BacklogViewHost, list: HTMLElement, child: Backl
 	// does in a row or a card title.
 	renderTitleText(host, entry.createSpan({ cls: 'pbl-card-kid-title' }), child.title);
 	setTooltip(entry, `Open "${child.title}"`);
-	entry.addEventListener('click', (evt) => {
-		evt.stopPropagation();
-		host.openItem(child, evt);
-	});
+	entry.addEventListener('click', (evt) => host.openItem(child, evt));
 	entry.addEventListener('auxclick', (evt) => {
-		if (evt.button !== 1) return;
-		evt.stopPropagation();
-		host.openItemInNewTab(child);
+		if (evt.button === 1) host.openItemInNewTab(child);
 	});
 }

@@ -72,13 +72,19 @@ It went in on the same branch once the maintainer asked for it, which is the dif
 between a scope judgement and a decision — the judgement is mine to make, the decision is
 not.
 
-## The wider question this leaves
+## The wider question this left, and its answer
 
-Eight `stopPropagation` sites and now a ninth is the shape of a rule that is kept by
-remembering. A filter inside `wireCardActivation` — ignore a click whose target is an
-interactive control within the card — would hold for controls not yet written, which is
-what the root guide asks of a category invariant ("checked at the forbidden thing, not by
-listing the places"). It was not done as part of the connector fix because imposing a
-central filter on eight existing call sites is a refactor, not a bug fix, and it needs its
-own decision about what counts as a control. Worth taking up with this bug rather than
-before it.
+Ten `stopPropagation` sites was the shape of a rule kept by remembering, and this bug plus
+the connector's are what it cost: opting out was each control's job, and the two newest
+controls both forgot.
+
+That is now a filter — `fromRowControl` in `src/view/render/rows.ts`, asked by both
+row-activation wirings — and the per-control guards are gone, this fix's two among them.
+The question the deferral named ("what counts as a control?") is answered by `ROW_CONTROL`:
+`button`, plus the three kinds this codebase deliberately does not draw as buttons. That is
+a rule rather than a list of places, because the view guide already requires every new
+per-row control to be a real `<button>` — so one written tomorrow is covered without
+touching the selector, which is what the root guide asks of a category invariant.
+
+The two tests below survived the refactor unchanged and are what proves it kept this fix's
+behaviour: the grips stay silent, the bar still opens.
