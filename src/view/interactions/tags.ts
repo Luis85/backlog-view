@@ -12,7 +12,7 @@ import { hasTag, normalizeTag } from '../../domain/noteFields';
  * and which lists them checked rather than editing anything unseen.
  */
 export function tagsColumnVisible(host: BacklogViewHost): boolean {
-	return host.chips.some((chip) => chip.tags);
+	return host.columns.some((column) => column.kind === 'tags');
 }
 
 /** The tags this item's menu offers: the base's vocabulary plus the item's own. */

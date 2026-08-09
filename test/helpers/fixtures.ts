@@ -55,7 +55,6 @@ export function demoOptions(): Record<string, unknown> {
 		deliverableStateProperty: 'note.docStatus',
 		deliverableStateValues: 'Concept, Draft, In review, Published',
 		deliverableDoneValues: 'Published',
-		showProperties: false,
 	};
 }
 

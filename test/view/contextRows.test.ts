@@ -83,16 +83,18 @@ describe('context rows are read-only', () => {
 	function readOnlyView(configValues: Record<string, unknown> = { stateProperty: 'note.status' }) {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
-		vault.addFile('Feature.md', {
-			frontmatter: { type: 'Feature', order: 10, status: 'Active' },
-			parentLink: 'Epic',
-		});
+		// No state of its own: the second context row is what shows a cell with nothing
+		// in it, which is a different thing from a cell that is not there.
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Feature' });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig(configValues);
+		const config = new FakeViewConfig(configValues);
+		// A chip is drawn by a VISIBLE column, so the base has to show the property.
+		config.order = ['note.status'];
+		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
 		clickExpandAll(containerEl);
@@ -109,6 +111,13 @@ describe('context rows are read-only', () => {
 		expect(epicChip?.tagName).toBe('DIV');
 		expect(epicChip?.classList.contains('pbl-state-static')).toBe(true);
 		expect(pbiChip?.tagName).toBe('BUTTON');
+
+		// With nothing to show it draws no chip at all, rather than a button-shaped
+		// invitation to a write this row cannot take — but the cell stays, or every
+		// column after it would shift on that row alone.
+		const feature = rowByTitle(containerEl, 'Feature');
+		expect(feature.querySelector('.pbl-state-chip')).toBeNull();
+		expect(feature.querySelector('.pbl-prop-state')).not.toBeNull();
 	});
 
 	it('opens no state menu when a context chip is clicked', () => {

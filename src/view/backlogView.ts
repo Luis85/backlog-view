@@ -4,7 +4,7 @@ import { FilterScope, FilterState } from './filterState';
 import {
 	BacklogViewHost,
 	BoardSnapshot,
-	ChipProp,
+	Column,
 	PRODUCT_BACKLOG_VIEW_TYPE,
 	Projection,
 	RoadmapSnapshot,
@@ -29,7 +29,7 @@ import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
 import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncCollapseCtls, syncCountLabel, syncFilterUi } from './render/toolbar';
-import { chipProps, rowContext, RowContext } from './render/columns';
+import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { renderLegend } from './render/legend';
 import { syncToolbarFit } from './render/toolbarFit';
@@ -105,7 +105,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private rowEls = new Map<string, HTMLElement>();
 	private resizeObserver: ResizeObserver | null = null;
 	/** The Base's visible properties as columns, resolved once per data update. */
-	chips: ChipProp[] = [];
+	columns: Column[] = [];
 
 	/**
 	 * Guards the one re-render a changed column verdict may ask for, so it cannot
@@ -288,7 +288,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Which properties become columns is a config question, so it is answered once
 		// here rather than per render — and once, so the rows and the tag menu cannot
 		// disagree about what is on screen.
-		this.chips = chipProps(this);
+		this.columns = resolveColumns(this);
 		this.groupingIgnored = detectIgnoredGrouping(this.data);
 		// Both populations, never `items` alone: `deliverableResults` is read off the WHOLE
 		// unfocused tree so a focus set elsewhere can never hide a Deliverable, which makes

@@ -57,7 +57,11 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	const view = new ProductBacklogView({} as never, containerEl);
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
-	anyView.config = new FakeViewConfig(demoOptions());
+	const config = new FakeViewConfig(demoOptions());
+	// The Bases properties menu is what puts a column on a row, chips included, so the
+	// page has to declare a visible order or it draws a strip with nothing in it.
+	config.order = ['note.status', 'note.horizon', 'note.risk'];
+	anyView.config = config;
 	anyView.data = { data: demoResults(vault) };
 
 	let settle: ReturnType<typeof setTimeout> | undefined;

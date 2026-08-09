@@ -50,7 +50,9 @@ describe('property columns', () => {
 		const vault = fixture();
 		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
 		const { containerEl, config, view } = makeView(vault, { stateProperty: 'note.status' });
-		config.order = ['note.points'];
+		// The state property is a column because the menu shows it, and it is named after
+		// itself: nothing is pinned past the properties any more except the rollup.
+		config.order = ['note.points', 'note.status'];
 		view.onDataUpdated();
 
 		const header = treeOf(containerEl).querySelector('.pbl-cols');
@@ -61,8 +63,8 @@ describe('property columns', () => {
 			'Progress',
 		]);
 		// Same column widths as the rows, so the labels sit above their values
-		expect(header?.querySelector('.pbl-props')?.childElementCount).toBe(1);
-		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-count')).toBe('1');
+		expect(header?.querySelector('.pbl-props')?.childElementCount).toBe(2);
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-count')).toBe('2');
 		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-col')).toBe('132px');
 	});
 
@@ -85,13 +87,13 @@ describe('property columns', () => {
 		paneWidth(1400);
 		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
 
-		// Narrow enough that the rollup has to go, but the state chip still fits
-		paneWidth(500);
+		// Narrow enough that the rollup has to go, but the last rung still holds
+		paneWidth(420);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
 		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(false);
 
-		// Narrower than the row's own lead plus the state column: nothing left to give
-		paneWidth(400);
+		// Narrower than the row's own lead: nothing left to give
+		paneWidth(340);
 		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(true);
 	});
 
@@ -196,7 +198,7 @@ describe('property columns', () => {
 		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
 	});
 
-	it('gives the horizon its own column, between the properties and the state', () => {
+	it('draws the horizon chip in the column the properties menu gives it', () => {
 		const vault = new FakeVault();
 		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
 		vault.entryValues.set('Placed.md', {
@@ -207,31 +209,32 @@ describe('property columns', () => {
 			horizonProperty: 'note.horizon',
 			stateProperty: 'note.status',
 		});
-		// The horizon property is among the visible ones — the chip replaces its cell,
-		// exactly as the state chip does, so the value is never shown twice.
-		config.order = ['note.horizon', 'note.points'];
+		// The horizon property is one of the visible ones — the chip is what its cell
+		// draws, so the value is never shown twice, and it sits where the user put it
+		// rather than in a position pinned past the properties.
+		config.order = ['note.horizon', 'note.points', 'note.status'];
 		view.onDataUpdated();
 
 		const header = treeOf(containerEl).querySelector('.pbl-cols');
 		expect(Array.from(header?.querySelectorAll('.pbl-col-label') ?? []).map((el) => el.textContent)).toEqual([
-			'points',
 			'horizon',
+			'points',
 			'status',
 			'Progress',
 		]);
 		const row = rowByTitle(containerEl, 'Placed');
 		expect(Array.from(row.querySelectorAll('.pbl-prop-value')).map((el) => el.textContent)).toEqual(['5']);
-		expect(row.querySelector('.pbl-horizon-col .pbl-state-text')?.textContent).toBe('Now');
-		expect(treeOf(containerEl).style.getPropertyValue('--pbl-horizon-col')).toBe('116px');
+		expect(row.querySelector('.pbl-prop-horizon .pbl-state-text')?.textContent).toBe('Now');
 	});
 
-	it('drops the horizon column before the state chip, and budgets for it', () => {
+	it('budgets a chip column exactly like the ordinary column it now is', () => {
 		const vault = new FakeVault();
 		vault.addFile('Placed.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
-		const { containerEl, view } = makeView(vault, {
-			horizonProperty: 'note.horizon',
-			stateProperty: 'note.status',
-		});
+		const { containerEl, view } = makeView(
+			vault,
+			{ horizonProperty: 'note.horizon', stateProperty: 'note.status' },
+			{ order: ['note.horizon'] },
+		);
 		const tree = treeOf(containerEl);
 		const viewEl = containerEl.querySelector('.pbl-view');
 		const paneWidth = (px: number) => {
@@ -240,16 +243,14 @@ describe('property columns', () => {
 		};
 
 		paneWidth(700);
-		expect(viewEl?.classList.contains('pbl-hide-horizon')).toBe(false);
+		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
 
-		// A column the budget did not account for would be one that overflows instead
-		// of dropping: the state chip survives longest, the placement goes first.
-		paneWidth(450);
-		expect(viewEl?.classList.contains('pbl-hide-horizon')).toBe(true);
-		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(false);
-
-		paneWidth(400);
-		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(true);
+		// A column the budget did not account for would overflow instead of dropping,
+		// and this pane is only too narrow once the chip's own column is counted: the
+		// lead and the rollup alone fit inside it with room to spare.
+		paneWidth(500);
+		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
 	});
 
 	it('has no horizon column while the bucket axis is unconfigured', () => {
@@ -262,15 +263,10 @@ describe('property columns', () => {
 		config.order = ['note.horizon'];
 		view.onDataUpdated();
 
-		expect(containerEl.querySelector('.pbl-horizon-col')).toBeNull();
+		expect(containerEl.querySelector('.pbl-horizon-chip')).toBeNull();
 		// And the property goes back to being an ordinary column, since nothing else
 		// is showing it now.
 		expect(rowByTitle(containerEl, 'Placed').querySelector('.pbl-prop-value')?.textContent).toBe('Now');
-	});
-
-	it('has no header when no properties are shown', () => {
-		const { containerEl } = makeView(fixture(), { stateProperty: 'note.status' });
-		expect(containerEl.querySelector('.pbl-cols')).toBeNull();
 	});
 
 	it('sizes the columns from the view option', () => {

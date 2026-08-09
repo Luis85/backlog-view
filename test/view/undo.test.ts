@@ -91,7 +91,7 @@ describe('undoing the last change', () => {
 	it('stays reachable from an emptied tree, where the change removed the last row', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Only.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
-		const { view, containerEl } = makeView(vault, { stateProperty: 'note.status' });
+		const { view, containerEl } = makeView(vault, { stateProperty: 'note.status' }, { order: ['note.status'] });
 
 		rowByTitle(containerEl, 'Only')
 			.querySelector<HTMLElement>('.pbl-state-chip')
@@ -214,7 +214,7 @@ describe('undoing the last change', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, status: 'New' } });
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { order: ['note.status'] });
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
 		await flush();

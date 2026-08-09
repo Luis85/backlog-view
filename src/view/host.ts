@@ -21,16 +21,18 @@ export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables';
 
 /**
- * A visible property resolved into a column: the id to read, the label the header
- * shows, and whether it is the tags column. Declared here with the other view state
- * the host exposes — the renderer that builds these imports the type from here, so
- * the interface every module depends on depends on nothing itself.
+ * A column of the trailing strip: the property id to read, the label the header shows,
+ * and WHICH RENDERING it gets. Membership and order belong to the Bases properties
+ * menu alone — a kind never decides whether a column exists, only what is drawn inside
+ * it. Declared here with the other view state the host exposes, so the interface every
+ * module depends on depends on nothing itself.
  */
-export interface ChipProp {
+export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk';
+
+export interface Column {
 	prop: BasesPropertyId;
 	label: string;
-	/** Render as editable tag pills instead of a plain value. */
-	tags: boolean;
+	kind: ColumnKind;
 }
 
 /** Progress of the write batch in flight, for the toolbar's busy indicator. */
@@ -153,7 +155,7 @@ export interface BacklogViewHost {
 	 * than re-deriving it from the config — that is what keeps the tag column and the
 	 * tag menu from disagreeing about what the row shows.
 	 */
-	readonly chips: ChipProp[];
+	readonly columns: readonly Column[];
 	readonly selectedPath: string | null;
 	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
 	readonly filterText: string;

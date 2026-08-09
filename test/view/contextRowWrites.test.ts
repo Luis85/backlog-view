@@ -218,8 +218,11 @@ describe('write safety with context rows, across every entry point', () => {
 			riskProperty: 'note.risk',
 			dependsOnProperty: 'note.dependsOn',
 		});
-		// The tag column is a write surface too — drive it like every other one.
-		config.order = ['note.tags'];
+		// Every chip is a write surface too, and a chip is drawn by a VISIBLE column, so
+		// the sweep only reaches them if the base shows their properties. Without this
+		// the state, horizon and risk chips are absent and each `?.dispatchEvent` below
+		// drives nothing while still passing.
+		config.order = ['note.tags', 'note.status', 'note.horizon', 'note.risk'];
 		anyView.config = config;
 		anyView.data = {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
@@ -364,7 +367,10 @@ describe('undo across the filter boundary', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		const config = new FakeViewConfig({ stateProperty: 'note.status' });
+		// A chip is drawn by a VISIBLE column, so the base has to show the property.
+		config.order = ['note.status'];
+		anyView.config = config;
 		anyView.data = { data: vault.entries() };
 		view.onDataUpdated();
 		clickExpandAll(containerEl);
