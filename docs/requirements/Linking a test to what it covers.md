@@ -40,8 +40,13 @@ something the dependency picker did not need to know.
 
 1. On a test that is a result, the menu offers **Covers…** and, whenever the note carries
    the key at all, **Remove coverage…**.
-2. **Covers…** opens a suggester over the Base's results, offering the work items this test
-   does not already cover — not itself, and not anything already named.
+2. **Covers…** opens a suggester over the Base's results, offering the **plan's own
+   population** less what this test already covers — not itself, and not anything already
+   named. The plan's population, not "work items": a `Task` beneath a `Test case` is a work
+   item by type and a catalog member by parentage ([[Tests stay out of the plan]] 2b), and
+   offering it would let a pick write coverage of a row that can never display a count,
+   since [[Untested work names itself]] draws one on plan rows only. Step 5 would then
+   promise a change the user cannot see.
 3. Picking one plans a single write, the item appended to the test's own list, and applies
    it through the same gate every other write here goes through.
 4. **Remove coverage…** offers everything the list holds — each covered item by name, each
@@ -79,8 +84,11 @@ something the dependency picker did not need to know.
 
 - **Covers…** and **Remove coverage…** appear on test types only, and on no work item type
   — both halves asserted, since the missing half is the direction rule.
-- The suggester offers work items only, excludes what is already named, and is not offered
-  at all when it would be empty.
+- The suggester offers the **plan's population** only, excludes what is already named, and
+  is not offered at all when it would be empty. Asserted with a `Task` beneath a
+  `Test case` in the results: it is the row a suggester written as "work items" offers and
+  a suggester written as "the plan" does not, and picking it would write a link nothing can
+  ever show.
 - A pick writes to the test and to nothing else, as one batch through the gate, undone by
   one undo.
 - Removing the last entry removes the key, leaving no empty list behind — the state

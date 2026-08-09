@@ -105,9 +105,17 @@ design: the relationship between a test and the work it checks is
   not an extra type and must not be creatable inside the plan by a control that reads as
   "what can go here".
 - **1d — the user retypes a row rather than creating one**, this use case's other Trigger.
-  **Set type** offers the projection's own types and no others, both ways: a `PBI` in the
-  plan is never offered `Test case`, and a `Test suite` in the catalog is never offered
-  `Epic`. Either would make the row leave the screen it was acted on. `addSetTypeMenu`
+  **Set type** offers the types that leave the row where it is. Ordinarily that reads as
+  "the projection's own types": a `PBI` in the plan is never offered `Test case`, and a
+  `Test suite` in the catalog is never offered `Epic`, either being a row that leaves the
+  screen it was acted on.
+  The question is **membership after the write**, though, not the type's name, and one row
+  tells them apart. A `PBI` dragged under a test is drawn in the plan as a promoted root
+  ([[Tests stay out of the plan]] 2c). `Task` is a plan type, so a name-based rule offers
+  it — and a `Task` takes its parent's projection (2b), so the retype moves that row into
+  the catalog and off the screen the user was looking at. Withheld, on the membership rule
+  that already exists rather than on a special case for promoted rows.
+  `addSetTypeMenu`
   already withholds the whole submenu when every offer would write nothing — *a menu whose
   every option is a no-op is not a menu* — so a projection whose vocabulary collapses to
   the row's own type shows nothing rather than an inert entry, which is the behaviour a
@@ -147,8 +155,14 @@ design: the relationship between a test and the work it checks is
   creator needed no change at all, then claimed the restriction was the creator's alone;
   both were the same mistake at different sizes — reasoning about a function's purpose
   instead of reading its call sites.
-- **Set type** offers no test type in the plan and no plan type in the catalog, so no
-  retype makes a row leave the projection it was performed in.
+- **Set type** offers exactly the types that leave the row **where it is** — asked of the
+  membership the write would produce, never of the type's name. That covers the ordinary
+  case (no test type in the plan, no plan type in the catalog) and the one a name-based
+  rule misses: a `PBI` dragged under a test is drawn in the plan as a promoted root, and
+  `Task` is a plan type by name, but retyping it to `Task` makes it inherit its test
+  parent's membership and vanish into the catalog — the disappearing note this rule exists
+  to prevent, produced by the one offer a name-based rule would keep. Asserted on that row
+  specifically, since every other row in the plan makes the two rules agree.
 - **A row's own + is unaffected**, and this is asserted separately rather than assumed from
   the criterion above: opening **+** on a `Test case` in the catalog still offers `Task`,
   and on a `Test suite` still offers `Test case`. `offerableTypes` filters that path too,
