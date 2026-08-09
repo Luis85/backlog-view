@@ -203,10 +203,24 @@ design: the relationship between a test and the work it checks is
 - A test dragged under a work item is still drawn — as a catalog root — so no legal item is
   invisible in every projection. Asserted from the rule rather than from the drag, since
   the next exclusion added anywhere is what would break it.
-- The generated README's hierarchy table states both rungs and the suite's root
-  capability, and `docs-check.mjs`'s own `LEGAL_CHILDREN` table gains the same pair — the
-  register is written in this schema, so a type the plugin ships that the register cannot
-  hold is a gate that fails on the first test note.
+- `docs-check.mjs` can hold the register's own first test notes, which takes **two** of its
+  tables and not one: `LEGAL_CHILDREN` gains the pair, and `ROOT_TYPES` gains `Test suite`
+  — a separate set listing `Epic` and `Milestone` alone, so a parentless suite is rejected
+  by a gate that never consulted the first table. Its comment distinguishes a root by
+  *position* from a root by *nature*; a suite is the second kind, and the first of that kind
+  with children. Covered by a fixture holding a root suite, not by the pair appearing in
+  `LEGAL_CHILDREN`.
+- The generated README states the new rungs in its **hierarchy table** and the new
+  exemption in its **move-rule prose**, which are two different statements and only the
+  first is a table. With `autoType` on, that prose says a move into a new parent rewrites
+  the type and then names `EXTRA_TYPES` as the types that keep theirs — so a reader is told
+  the opposite of what this PBI guarantees, since the test types keep their type and are
+  deliberately not extra types.
+  Fixed by deriving rather than by adding two names: the sentence should name **the types
+  the cascade does not rewrite**, asked of the same predicate `computeTypeChanges` uses, so
+  the generated contract cannot drift from the behaviour it describes. Naming
+  `EXTRA_TYPES` is what made it wrong here, and would again at the next type that is
+  neither a rung nor an extra.
 
 ## Where it lives
 
@@ -248,5 +262,9 @@ rather than the four levels already, so a test belongs by being declared;
 excluded, and [[A projection for the tests]] is what decides which.
 `src/domain/writePlan.ts` — `computeTypeChanges` must not cascade across ladders, which is
 the criterion above rather than a new mechanism.
-`src/domain/backlogReadme.ts` and `scripts/docs-check.mjs` — the two hierarchy tables that
-have to learn the pair, for the reason the last criterion gives.
+`src/domain/backlogReadme.ts` and `scripts/docs-check.mjs` — and **two statements each**,
+which is the part a "the tables learn the pair" sentence hides. The checker has
+`LEGAL_CHILDREN` *and* `ROOT_TYPES`, and only the second decides whether a parentless suite
+is legal. The README has its hierarchy table *and* its move-rule prose, and only the second
+tells a user which types survive a drag — today by naming `EXTRA_TYPES`, which the test
+types are not.
