@@ -293,16 +293,25 @@ function syncBusyCount(el: HTMLElement, busy: BusyState | null): boolean {
 	// `--pbl-today-left`), so the stylesheet holds what the reservation MEANS and this
 	// holds only how wide it is.
 	done.setCssProps({ '--pbl-busy-digits': counting && busy ? `${String(busy.total).length}ch` : '0' });
-	// …and the ladder re-measures when the DIGIT COUNT changes, which is the tick where
-	// the reservation could be wrong. It is exact where `tabular-nums` holds and it is the
-	// backstop where it does not: a theme whose interface font has no tabular figures makes
-	// every digit its own width, so the counter can grow inside its reservation, and a
-	// batch would otherwise reach the next threshold with no refit behind it. Twice in a
-	// 340-file batch rather than 340 times, so it costs two forced layout reads and not
-	// three hundred — the per-tick measurement this design exists to avoid is still
-	// avoided. Recorded on the counter, which is inside the `aria-hidden` subtree, rather
-	// than on `.pbl-busy` itself: an attribute write on a live region is a question this
-	// file has been wrong about once already, and one it does not need to ask.
+	// …and the ladder re-measures when the DIGIT COUNT changes, which is the one tick where
+	// the reservation is certainly wrong: `digits(total)ch` cannot hold a value a digit
+	// longer, whatever the font does. Twice in a 340-file batch rather than 340 times, so
+	// it costs two forced layout reads and not three hundred — the per-tick measurement
+	// this design exists to avoid is still avoided.
+	//
+	// **It does not cover width changes WITHIN a digit count, and cannot.** Where
+	// `tabular-nums` applies there are none, because every digit is one `ch`. Where the
+	// interface font declines it, `111` and `888` are different widths and no comparison
+	// of the VALUE can see that — only measuring the element can, which is the per-tick
+	// forced layout this trades away. The residue is a few pixels at the row's right end,
+	// on a font without tabular figures, mid-batch, near a threshold; the row clips rather
+	// than wraps, so it costs the edge of a readout and not a control. Declining a
+	// rendered-width check for it is a judgement about proportion, recorded here because
+	// it was raised in review and will be again.
+	//
+	// Recorded on the counter, which is inside the `aria-hidden` subtree, rather than on
+	// `.pbl-busy` itself: an attribute write on a live region is a question this file has
+	// been wrong about once already, and one it does not need to ask.
 	const digits = counting && busy ? String(busy.done).length : 0;
 	const moved = done.dataset.pblDigits !== String(digits);
 	done.dataset.pblDigits = String(digits);
