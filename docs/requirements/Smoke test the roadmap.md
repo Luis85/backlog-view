@@ -133,11 +133,19 @@ and each stays open until they are, so a stale check is visible rather than assu
   under `(hover: none)`, illegal rows dim while the drag is held, the target under the
   pointer outlines, the preview line tracks the pointer smoothly, labels vanish and the
   tree's root strip stays hidden (`.pbl-linking`, never `.pbl-dragging`), and a completed
-  or cancelled drag leaves nothing behind. Beside that, the one thing jsdom cannot answer
-  at all: `wireLinkSource`'s `onGenerateDragPreview` mutates the content box and other
-  rows' classes (dimming, the source mark), not only the dragged connector's own — which
-  is the case pragmatic-drag-and-drop's own docs caution against, since the browser can
-  snapshot the native drag preview at the end of that event. Whether Obsidian's actual
-  drag ghost looks right — the connector's small circle, undistorted by a class change
-  elsewhere on the page landing mid-snapshot — is unverifiable here and **never
-  checked**.
+  or cancelled drag leaves nothing behind. Beside that, what a vault still owes, none of
+  it answerable here: `wireLinkSource`'s `onGenerateDragPreview` mutates the content box
+  and other rows' classes (dimming, the source mark), not only the dragged connector's
+  own — which is the case pragmatic-drag-and-drop's own docs caution against, since the
+  browser can snapshot the native drag preview at the end of that event, so whether
+  Obsidian's actual drag ghost looks right — the connector's small circle, undistorted by
+  a class change elsewhere on the page landing mid-snapshot — is unverifiable here. And
+  everything about whether the affordance works at human scale: a 9px dot is actually
+  hittable at 4px/day zoom on a trackpad and on a touch screen, where it is permanent
+  rather than revealed; the reveal reads as an affordance rather than as noise on a grid
+  of many rows; the dot does not collide with the bar label at any zoom or on a bar one
+  day wide; the dimming of illegal targets survives a theme that replaces the colour
+  tokens, and still reads as *refused* rather than as *disabled*; and the preview line's
+  accent is distinguishable from the today line's red and from a conflict arrow's.
+  **Never checked** — the harness answered layout and hierarchy only, which is exactly
+  what ADR 0020 says it can answer.

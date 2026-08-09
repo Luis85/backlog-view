@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Dependencies]]"
 order: 40
-status: Open
+status: Done
 priority: P3
 created: 2026-08-08
 source: user request
@@ -167,10 +167,10 @@ The dated shelf's own test ("does not unschedule when released on the dated shel
 NOT by itself prove this guard load-bearing: the shelf's `accepts: (source) => source.hold
 === 'body'` (`src/view/render/shelf.ts`) already refuses a link on its own, since a link's
 `CardSource.hold` is always `null` — an unrelated, incidental filter, not the `mine()` gate.
-What proves the gate is `test/view/cardDrag.test.ts`'s "a link-kind payload is refused by an
-ORDINARY drop target", which wires a bare `wireDropTarget` with no `accepts` of its own —
-the everyday shape — and drags a real link source onto it directly, no shelf or grid
-involved.
+What proves the gate is `test/view/cardDrag.test.ts`'s "wireDropTarget refuses a link by
+construction, with no accepts filter of its own", which wires a bare `wireDropTarget` with
+no `accepts` of its own — the everyday shape — and drags a real link source onto it
+directly, no shelf or grid involved.
 
 The connector itself is drawn by `renderConnector` in `src/view/render/timeline.ts`, which
 also gives every `pbl-timeline-row` its `data-pbl-path` — what the legality sweep marks
