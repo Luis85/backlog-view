@@ -47,10 +47,12 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 
 	// 3 — what is shown. The same controls in every projection.
 	renderFocusPicker(host, barEl, model);
-	// Expand and collapse drive the tree's rows and, since cards grew disclosures, the
-	// cards too. They are no longer gated on the projection — but they ARE gated on the
-	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
-	// content render because that is what fills the set it reads.
+	// Expand and collapse drive the tree's rows and a dated-axis timeline row's chevron,
+	// never a card's own children disclosure — that toggle is the card's alone to press
+	// (`collapsiblePopulation`'s exclusion in `toolbarControls.ts`). They are not gated on
+	// the projection — but they ARE gated on the screen having something to collapse: see
+	// `syncCollapseCtls`, which runs after the content render because that is what fills
+	// the set it reads.
 	collapseButton(host, barEl, {
 		icon: 'chevrons-up-down',
 		label: 'Expand all',

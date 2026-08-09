@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { expandAll, flush, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, flush, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -22,7 +22,7 @@ describe('parents outside the filter', () => {
 		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, config, containerEl, vault };
 	}
 
@@ -95,7 +95,7 @@ describe('context rows are read-only', () => {
 		anyView.config = new FakeViewConfig(configValues);
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -175,7 +175,7 @@ describe('context rows follow the results they place', () => {
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -214,7 +214,7 @@ describe('context rows follow the results they place', () => {
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'Open']);
 		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 of 2');

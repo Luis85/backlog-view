@@ -75,7 +75,7 @@ export function makeView(
 	anyView.data = { data: only ? vault.entries().filter((e) => only.includes(e.file.path)) : vault.entries() };
 	view.onDataUpdated();
 	if (focus) view.setFocusLevel(focus);
-	if (!collapsed) expandAll(containerEl);
+	if (!collapsed) clickExpandAll(containerEl);
 	return { view, config, containerEl };
 }
 
@@ -92,7 +92,7 @@ export function noOptionalProperties(values: Record<string, unknown> = {}): Reco
 	return { ...cleared, ...values };
 }
 
-export function expandAll(containerEl: HTMLElement): void {
+export function clickExpandAll(containerEl: HTMLElement): void {
 	const btn = containerEl.querySelector<HTMLElement>('.pbl-collapse-ctl[aria-label="Expand all"]');
 	if (!btn) throw new Error('expand all button not rendered');
 	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));

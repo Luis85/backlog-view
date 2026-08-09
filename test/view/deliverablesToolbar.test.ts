@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal } from '../helpers/obsidian-mock';
 import { fixture, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
+import { collapseAll, expandAll } from '../../src/view/render/toolbarControls';
 
 useViewHarness();
 
@@ -192,7 +193,7 @@ describe('the focus control on the Deliverables board', () => {
 	});
 });
 
-describe('the collapse buttons reach the Deliverables board’s own population', () => {
+describe('the bulk collapse controls leave the Deliverables board’s own cards alone', () => {
 	/** `iconButton` puts the label in `aria-label`; the button's own text is an icon. */
 	function collapseCtl(containerEl: HTMLElement, label: string): HTMLButtonElement | undefined {
 		return Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl')).find(
@@ -201,16 +202,12 @@ describe('the collapse buttons reach the Deliverables board’s own population',
 	}
 
 	/**
-	 * A Deliverable with a child, and a FEATURE focus that does not contain it. The level
-	 * matters: under a PBI focus a Deliverable is promoted to a focus root, because it is
-	 * an extra type and `EXTRA_TYPE_RANK` is the PBI rung — so it lands in `model.items`
-	 * after all and the old code worked by accident. The first version of this case used
-	 * PBI focus and passed against the bug, which is the vacuous-green this repository's
-	 * own accept corpus warns about. The workflow
-	 * is configured because without one this board draws its no-workflow guidance instead
-	 * of cards — no cards, no disclosures, and the buttons are disabled for that reason
-	 * rather than this one. The first version of this fixture omitted it and made the
-	 * case unprovable while looking like a failing check.
+	 * A Deliverable with a child, and a FEATURE focus that does not contain it. Every
+	 * Deliverable is a card, so Expand all/Collapse all must leave it exactly as they
+	 * found it whether or not a focus set elsewhere would otherwise have hidden it from
+	 * `model.items` — the workflow is configured because without one this board draws its
+	 * no-workflow guidance instead of cards, and the buttons are disabled for that reason
+	 * rather than this one.
 	 */
 	const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Done' };
 
@@ -222,27 +219,31 @@ describe('the collapse buttons reach the Deliverables board’s own population',
 		return vault;
 	}
 
-	it('expands a Deliverable card the focus level excludes', () => {
-		// `deliverableResults` is read off the WHOLE unfocused tree so a focus set on another
-		// projection can never hide a Deliverable — while `model.items` is the focused render
-		// set. Iterating the latter left every card outside the focus untouched, and the
-		// buttons did nothing at all when no Deliverable was inside it.
+	// Every Deliverable is a card here — nothing else is ever drawn on this board — so the
+	// buttons are disabled outright (see `toolbarCollapse.test.ts`'s disabling describe
+	// block for the general rule), and `expandAll` is driven directly rather than through
+	// a click a disabled button would refuse to fire.
+	it('disables the buttons and leaves a Deliverable card the focus level excludes untouched by Expand all', () => {
 		const { containerEl, view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
 		view.setProjection('deliverables');
 		view.setFocusLevel('Feature');
 		expect(view.isCollapsed('D.md')).toBe(true);
+		expect(collapseCtl(containerEl, 'Expand all')?.disabled).toBe(true);
 
-		collapseCtl(containerEl, 'Expand all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expandAll(view);
 
+		expect(view.isCollapsed('D.md')).toBe(true);
+		// Only the card's own toggle opens it — simulated the way its click handler does.
+		view.setCollapsed('D.md', false);
 		expect(view.isCollapsed('D.md')).toBe(false);
 	});
 
 	it('opens a NEWLY seen Deliverable collapsed, focus or no focus', () => {
-		// The other half of the same split, found by review on the fix above: `refreshFromData`
-		// settles new parents from `model.items`, which is the FOCUSED render set, so a
-		// Deliverable arriving outside the active focus subtree was never ruled on and its
-		// card opened expanded — the one population in this view that a focus cannot narrow
-		// bypassing the collapsed-by-default rule the tree and both other boards keep.
+		// `refreshFromData` settles new parents from `model.items`, which is the FOCUSED
+		// render set, so a Deliverable arriving outside the active focus subtree was never
+		// ruled on and its card opened expanded — the one population in this view that a
+		// focus cannot narrow bypassing the collapsed-by-default rule the tree and both
+		// other boards keep.
 		const vault = outsideTheFocus();
 		const { view } = makeView(vault, { ...WORKFLOW }, { collapsed: true });
 		view.setProjection('deliverables');
@@ -255,14 +256,14 @@ describe('the collapse buttons reach the Deliverables board’s own population',
 		expect(view.isCollapsed('D2.md')).toBe(true);
 	});
 
-	it('collapses it again, so both buttons answer for the same population', () => {
-		const { containerEl, view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
+	it('leaves it open too, so Collapse all does not fight the card’s own state', () => {
+		const { view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
 		view.setProjection('deliverables');
 		view.setFocusLevel('Feature');
-		collapseCtl(containerEl, 'Expand all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		view.setCollapsed('D.md', false);
 
-		collapseCtl(containerEl, 'Collapse all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		collapseAll(view);
 
-		expect(view.isCollapsed('D.md')).toBe(true);
+		expect(view.isCollapsed('D.md')).toBe(false);
 	});
 });
