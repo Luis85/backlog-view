@@ -70,15 +70,22 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   the answer the count label gives when it reports what the Base returned rather than what
   the vault holds. What must not happen is a signal keyed to *whether tests exist*: that
   would make the marker mean two different things depending on a filter.
-- **1c — which rows carry the signal at all.** Two exclusions, each with its own reason,
-  and they are stated as reasons rather than as a list of type names so that a type added
-  later inherits the right answer. **This extension defines the population**, and
-  [[Linking a test to what it covers]]' suggester offers exactly it — one list read by two
-  surfaces, because a suggester offering a row that cannot display the result is a control
-  that writes into the dark.
-  A **`Task`** is counted like any other item if a test names it and is never marked
-  untested when none does: tests are written against behaviour, and marking every task in
-  the register would make the signal noise on the population that carries it most.
+- **1c — which rows carry the count and the signal at all.** **This extension defines the
+  population**, and [[Linking a test to what it covers]]' suggester offers exactly it — one
+  list read by two surfaces, because a suggester offering a row that cannot display the
+  result is a control that writes into the dark.
+  It starts from **what the plan draws** ([[Tests stay out of the plan]] 2b) and takes two
+  exclusions from there, each stated as a reason rather than as a list of type names so
+  that a type added later inherits the right answer.
+  Starting there is the part an earlier draft left out, and it is not a formality: a
+  **`Task` beneath a `Test case`** is a catalog member, so it carries no count and no
+  signal, while a `Task` in the plan carries a count when a test names it. A rule that said
+  "a `Task` is counted" without naming where it starts gave the catalog Task an inbound
+  count — on the very row the suggester cites as the one that cannot display one, so the
+  two surfaces were reading different lists while this note claimed they read one.
+  A **plan `Task`** is counted when a test names it and is never marked untested when none
+  does: tests are written against behaviour, and marking every task in the register would
+  make the signal noise on the population that carries it most.
   A **marker** — `Milestone` — carries neither the count nor the signal, because it is not
   work. That is the rule `assignAll` already keeps when it refuses to roll a marker into a
   parent's progress, applied to one more number: a release date reported as an untested gap
@@ -88,11 +95,14 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   particular *should* read as untested until something checks it — a regression is exactly
   what a test prevents — and nobody has yet argued the others are noise. Revisit if a report
   says so, which is the standing form of that decision here.
-- **1d — a test row.** No count, no signal, ever. The number answers *which work has nothing
-  checking it*, and a test is not the subject of that question — so a test named by another
-  test ([[Coverage as a property]] 3e) is recorded in the model and displayed nowhere. Worth
+- **1d — a test row, or anything else the catalog owns.** No count, no signal, ever, and
+  this follows from where 1c starts rather than being a rule of its own. The number answers
+  *which work has nothing checking it*, and neither a test nor a task belonging to one is
+  the subject of that question — so a test named by another test
+  ([[Coverage as a property]] 3e) is recorded in the model and displayed nowhere. Worth
   stating because the row renderer is shared: "draw the count where there is one" would put
-  a number on a `Test case` the first time somebody linked two tests.
+  a number on a `Test case` the first time somebody linked two tests, and on a catalog
+  `Task` the first time somebody covered one by hand.
 - **1e — the item is a context row.** No count and no signal. An `outsideFilter` row is
   never a source of anything derived from the results, and a count is exactly that — the
   rule `assignAll` already keeps for rollups, asked of one more number.
@@ -149,8 +159,11 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   so the criterion is about the counter and says so. The unconditional version — "a test's
   status changes no count" — was written first and is false of exactly the vault most
   likely to have one.
-- `Task`s are counted when covered and never marked untested when not, and the distinction
-  is asserted rather than left to the reader of the render code.
+- **Plan** `Task`s are counted when covered and never marked untested when not, and the
+  distinction is asserted rather than left to the reader of the render code. A `Task`
+  beneath a `Test case` carries neither, asserted beside it — the two Tasks differ by
+  parentage alone, so a criterion naming only "Tasks" is satisfied by a rule that is wrong
+  about one of them.
 - A `Milestone` carries neither the count nor the untested signal, on a base where the
   coverage key is bound and nothing names it — the configuration where a blanket
   zero-count rule reports a release date as a coverage gap.
