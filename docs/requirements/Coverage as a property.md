@@ -92,8 +92,13 @@ people edit for two different reasons.
   **target** is unrestricted while the **source** is not, and the asymmetry is deliberate:
   which notes may make a claim is a rule about writes and counts, and what a claim may
   point at is a rule about meaning. Two consequences follow and are stated rather than
-  assumed — a test-to-test edge can close a **loop** (4c), and it can never reach a work
-  item's count, since [[Untested work names itself]] counts what names *it*.
+  assumed. A test-to-test edge can close a **loop** (4c). And it is **displayed nowhere**:
+  the coverage count is drawn on plan rows only ([[Untested work names itself]]), so a test
+  named by another test gets no inbound count and no untested signal. That is a decision,
+  not an omission — the count answers *which work has nothing checking it*, a question a
+  test is not the subject of — and it has to be written down, because the row renderer is
+  shared and "draw the count where there is one" would put a number on a `Test case` the
+  moment this edge existed.
 - **3f — a work item carries the coverage key**, hand-edited or left behind by a re-typed
   note. It is not read, so it declares nothing and inflates no count. Nothing rewrites or
   removes it either: reading is not repairing, here as everywhere. A `PBI` listing its

@@ -70,11 +70,27 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   the answer the count label gives when it reports what the Base returned rather than what
   the vault holds. What must not happen is a signal keyed to *whether tests exist*: that
   would make the marker mean two different things depending on a filter.
-- **1c — the item is a `Task`.** Counted like any other work item if a test names it, and
-  **not** marked untested when none does. Tests are written against behaviour, and marking
-  every task in the register as untested would make the signal noise on the population that
-  carries it most.
-- **1d — the item is a context row.** No count and no signal. An `outsideFilter` row is
+- **1c — which rows carry the signal at all.** Two exclusions, each with its own reason,
+  and they are stated as reasons rather than as a list of type names so that a type added
+  later inherits the right answer.
+  A **`Task`** is counted like any other item if a test names it and is never marked
+  untested when none does: tests are written against behaviour, and marking every task in
+  the register would make the signal noise on the population that carries it most.
+  A **marker** — `Milestone` — carries neither the count nor the signal, because it is not
+  work. That is the rule `assignAll` already keeps when it refuses to roll a marker into a
+  parent's progress, applied to one more number: a release date reported as an untested gap
+  turns schedule metadata into a coverage problem and would make the signal least
+  trustworthy on the row a reader scans hardest.
+  Everything else keeps it, `Issue`, `Bug`, `Idea` and `Deliverable` included. A `Bug` in
+  particular *should* read as untested until something checks it — a regression is exactly
+  what a test prevents — and nobody has yet argued the others are noise. Revisit if a report
+  says so, which is the standing form of that decision here.
+- **1d — a test row.** No count, no signal, ever. The number answers *which work has nothing
+  checking it*, and a test is not the subject of that question — so a test named by another
+  test ([[Coverage as a property]] 3e) is recorded in the model and displayed nowhere. Worth
+  stating because the row renderer is shared: "draw the count where there is one" would put
+  a number on a `Test case` the first time somebody linked two tests.
+- **1e — the item is a context row.** No count and no signal. An `outsideFilter` row is
   never a source of anything derived from the results, and a count is exactly that — the
   rule `assignAll` already keeps for rollups, asked of one more number.
 - **2a — the only test naming it is one the Base excluded.** The item reads as untested,
@@ -132,6 +148,10 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   likely to have one.
 - `Task`s are counted when covered and never marked untested when not, and the distinction
   is asserted rather than left to the reader of the render code.
+- A `Milestone` carries neither the count nor the untested signal, on a base where the
+  coverage key is bound and nothing names it — the configuration where a blanket
+  zero-count rule reports a release date as a coverage gap.
+- A test row carries neither, including one another test names.
 - Not verifiable here: whether the untested signal reads as *information* rather than as an
   error at a glance, in a register where most rows will carry it on the day the feature
   ships. That belongs in [[Smoke test the visual changes]], and it is the reason the signal

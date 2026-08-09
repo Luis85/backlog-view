@@ -58,11 +58,15 @@ base settings are saved on the view, working position on the device.
    not fail visibly — it disagrees with the screen, which is the failure this whole rule
    exists to prevent, arriving one surface at a time.
 3. Collapse, the quick filter and every write path behave as they do in the backlog tree,
-   over this population — including the toolbar's count label, which counts **what this
-   projection draws**: the tests, and the `Task`s beneath them, which are catalog members
-   by the membership rule ([[Tests stay out of the plan]] 2b). Not "tests and only tests" —
-   a re-listed population is a second membership rule, and it disagrees with the first
-   about a `Task` every time.
+   over this population — including the toolbar's count label, which counts this
+   projection's **results**: the members the Base returned, `Task`s beneath a test included
+   by the membership rule ([[Tests stay out of the plan]] 2b), and **no context row**. Not
+   "tests and only tests", which is a re-listed population that disagrees with the
+   membership rule about a `Task`; and not "what it draws" either, which sweeps in a
+   `Test case` present only as an excluded ancestor (2a). An `outsideFilter` row is never a
+   source of anything derived from the results, and a count is exactly that — the rule
+   `countedPopulation` already keeps by reading `model.results`, which is the answer this
+   projection needs rather than a new one.
    "Behave as they do in the backlog tree" is not free, and this is the sentence that has
    to be paid for: **the catalog is tree-shaped, and "tree-shaped" is spelled
    `projection === 'tree'` in six places today.** Every one of them is a gate this
@@ -95,21 +99,21 @@ base settings are saved on the view, working position on the device.
 
 **Extensions**
 
-- **4a — a quick filter is active when the user switches projection.** The index is
+- **4b — a quick filter is active when the user switches projection.** The index is
   recomputed on the switch. `FilterState.recompute` runs on a data change and on a filter
   edit, and `setProjection` does neither — it stores the mode and renders — so an index
   built from one projection's forest would answer for the other until something unrelated
   refreshed the view. That is a stale filter showing wrong rows with the right text still
   in the box, which is the failure mode nobody reports as a bug because it looks like the
   filter simply not matching.
-- **2b — the quick filter matches a row this projection does not draw.** `FilterState`
+- **2e — the quick filter matches a row this projection does not draw.** `FilterState`
   indexes `model.roots` and `model.realRoots`, so a needle matching a hidden `PBI` marks
   its whole subtree as matching, and a `Test case` beneath it stays on screen while nothing
   in the catalog matched at all. The inverse happens in the plan. The index is built from
   the **same forest the projection draws**, which is the roots rule reaching one more
   consumer rather than a rule of its own — and it is the consumer where being wrong looks
   most like a working feature, since rows do appear and one of them did match something.
-- **2c — the user arrows or tabs to a promoted row.** `visibleItems` walks from
+- **2f — the user arrows or tabs to a promoted row.** `visibleItems` walks from
   `model.roots` and stops at hidden parents, so a row promoted to a catalog root is drawn
   and unreachable by keyboard. It walks the projection's roots for the same reason the
   renderer does. This is an accessibility floor, not a nicety: a row that exists only to
@@ -221,11 +225,13 @@ base settings are saved on the view, working position on the device.
   calls done is still drawn. Asserted with `Show completed items` off and a done test in
   the results — the configuration where withholding the button and leaving the filter on
   produces a row that is gone with no way back.
-- The catalog's count label counts this projection's own population — the tests **and** the
-  `Task`s beneath them — and its completed toggle is not rendered. Both consumers of that
-  population are asserted, not just the visible one, and the `Task` is asserted
-  specifically: it is the row that a criterion written as "counts tests" leaves visible on
-  screen and missing from the total.
+- The catalog's count label counts this projection's own **results** — the tests and the
+  `Task`s beneath them, no context row — and its completed toggle is not rendered. Both
+  consumers of that population are asserted, not just the visible one. Two rows carry the
+  whole rule between them: a `Task` under a test, which a criterion written as "counts
+  tests" leaves visible and uncounted, and a context `Test case`, which one written as
+  "counts what it draws" counts while the results never held it. On the base of 2a — one
+  returned `Task`, its `Test case` parent excluded — the count is **1**.
 - The top-level creator offers the test types here and no plan type
   ([[Test suite and test case as a ladder of their own]] 1b), so nothing created from this
   toolbar lands outside the projection that created it.
