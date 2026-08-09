@@ -421,7 +421,7 @@ function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, chi
 		ctx.host.openItem(item, evt);
 	});
 	row.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1) ctx.host.openItemInNewTab(item);
+		if (evt.button === 1) ctx.host.openItemIn(item, 'tab');
 	});
 	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypes));
 }

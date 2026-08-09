@@ -8,6 +8,7 @@ import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings, OptionalProperty } from '../domain/settings';
+import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
@@ -196,14 +197,30 @@ export interface BacklogViewHost {
 	focusFilter(): void;
 
 	/**
-	 * Whether this item is folded ON THE PROJECTION CURRENTLY SHOWING. A caller passes
-	 * a path and never a scope: the dated axis folds grid rows and every other surface
-	 * opens a node, so the two keep separate bits and the view picks between them
-	 * (`collapseKey`). A surface choosing for itself is how they would drift.
+	 * Whether this item's ROW is folded — a tree row, or a dated-axis timeline bar. A
+	 * caller passes a path and never a scope: the dated axis folds grid rows and every
+	 * other surface opens a tree node, so the two keep separate bits and the view picks
+	 * between them (`collapseKey`). Never a card's own disclosure — that is
+	 * {@link isCardCollapsed}, a genuinely different question asked of the same note, and
+	 * calling this one for it would reopen exactly the surprise the split exists to end:
+	 * a bulk tree action reaching into a card nobody asked it to touch.
 	 */
 	isCollapsed(path: string): boolean;
 	/** Returns true when the state actually changed. Scoped exactly as `isCollapsed` is. */
 	setCollapsed(path: string, collapsed: boolean): boolean;
+
+	/**
+	 * Whether this item's CARD disclosure is folded — board cards, either roadmap axis's
+	 * bucket/shelf/context cards, Deliverables cards. One scope regardless of which of
+	 * those drew it (`CARD_SCOPE`), and never the tree row's own bit or the dated axis's:
+	 * a card's own toggle is the only thing that may open or close it, so nothing that
+	 * shares a scope with a tree row or a bar can be trusted to leave it alone. Renderers
+	 * choose between this and {@link isCollapsed} by what they are drawing — a disclosure
+	 * on a card's face calls this one, a row's own chevron (tree or timeline) never does.
+	 */
+	isCardCollapsed(path: string): boolean;
+	/** Returns true when the state actually changed. Scoped exactly as `isCardCollapsed` is. */
+	setCardCollapsed(path: string, collapsed: boolean): boolean;
 
 	/**
 	 * Which projection this view shows. UI state, not a base setting: it lives
@@ -332,11 +349,15 @@ export interface BacklogViewHost {
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;
-	/** Open the item's note, honoring the mod key of the triggering event. */
+	/** Open the item's note where the view is configured to, honoring the event's mod key. */
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void;
-	openItemInNewTab(item: BacklogItem): void;
-	/** Open the item's note in a split pane next to the current one. */
-	openItemToSide(item: BacklogItem): void;
+	/**
+	 * Open it in a NAMED target instead — a middle click, and the menu's two entries,
+	 * each of which means one placement absolutely and is not redirected by the setting.
+	 * One method taking the target rather than one per target: the vocabulary is already
+	 * `OpenTarget`, and a third entry would otherwise be a third host method.
+	 */
+	openItemIn(item: BacklogItem, target: OpenTarget): void;
 	/** Open the row context menu at the item's row — the keyboard path (Menu key / Shift+F10). */
 	showContextMenuFor(item: BacklogItem): void;
 	/**

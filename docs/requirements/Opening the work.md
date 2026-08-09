@@ -51,12 +51,16 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   what a note lands on. The side pane is made once and reused while it is open —
   `getLeaf('split')` splits whatever is active, and the backlog is active on every click,
   so a split per click would fill the window by the fourth item.
-- **1f — the menu's Open to the right, while the target is not the side.** It opens
-  beside the backlog and pins **nothing**. The pin belongs to the setting, because that
-  is the target which would otherwise replace the base on every click; one deliberate
-  menu action has to leave the workspace's pins as it found them, or it would silently
-  change what an ordinary click does afterwards — `getLeaf(false)` cannot replace a
-  pinned leaf, so the default target would stop opening in the tab it names.
+- **1f — the menu's Open to the right, and the middle click.** A target the user NAMED
+  once, and it behaves as it did before this option existed: a **fresh** pane every
+  time, pinning **nothing**. Both halves are the same distinction. The pin belongs to
+  the setting, because that is the target which would otherwise replace the base on
+  every click; one deliberate menu action has to leave the workspace's pins as it found
+  them, or it would silently change what an ordinary click does afterwards —
+  `getLeaf(false)` cannot replace a pinned leaf, so the default target would stop
+  opening in the tab it names. And the reuse belongs to the setting for the mirror
+  reason: two Open to the right picks are two **placements**, so sharing the configured
+  target's pane would make the second replace the note the user had just put on screen.
   Nothing ever un-pins, either: this cannot tell its own pin from the user's, so undoing
   one when the target changes back would be as likely to take away a pin they set
   deliberately.
@@ -84,16 +88,17 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
 - With `clickAction` set to fold, a click folds the row and opens nothing — and the
   modifier, `Enter` and the menu still open the note.
 - With `openIn` set to the side, the backlog's own leaf is pinned and a second open
-  reuses the pane the first one made; the menu's **Open to the right** pins nothing under
-  any other target.
+  reuses the pane the first one made; the menu's **Open to the right** pins nothing and
+  splits afresh, so two deliberately placed notes both stay on screen.
 - A `clickAction` or `openIn` value no version of this plugin declared falls back to the
   default rather than reaching a branch that has no arm for it.
 
 ## Where it lives
 
-`src/view/openTarget.ts` (which leaf a note opens in, the pin, and the side pane made
-once and reused) · `src/view/backlogView.ts` (`openItem`, `openItemInNewTab`,
-`openItemToSide`, each delegating to it) · `src/view/render/rows.ts` (the click and
+`src/view/openTarget.ts` (which leaf a note opens in: `open` for the configured target,
+which pins and reuses one side pane, and `openIn` for a target the caller named, which
+does neither) · `src/view/backlogView.ts` (`openItem` and `openItemIn`, each delegating
+to it) · `src/view/render/rows.ts` (the click and
 auxclick handlers, and `foldOnClick`) · `src/view/interactions/keyboard.ts` (`Enter`) ·
 `src/view/interactions/menu.ts` · `src/domain/itemHandling.ts` (the two settings, their
 offered vocabulary and the defensive read of a hand-edited value) ·

@@ -40,9 +40,32 @@ const PROJECTION_MODE: Record<Projection, string | null> = {
  */
 export const TIMELINE_SCOPE = '\u0000timeline:';
 
+/**
+ * Prefix marking a key as a CARD's own disclosure state, kept apart from both the tree's
+ * bare-path bit and `TIMELINE_SCOPE`: a card's face and the tree row for the same note are
+ * two questions again, the same reason `TIMELINE_SCOPE` exists — "is this node open in the
+ * backlog" and "is this card's children list open" used to be one bit, so expanding either
+ * moved the reader's place in the other, including through the toolbar's bulk controls,
+ * which the tree row's bit alone can never avoid since a bulk action legitimately means
+ * the tree by it. One scope regardless of WHICH card projection draws the card (board,
+ * either roadmap axis, Deliverables): the question "is this item's card open" is one
+ * question about the note, not one per screen that happens to draw it as a card — unlike
+ * the dated axis's own rows, whose fold is a genuine fact about that PLAN and nothing else.
+ */
+export const CARD_SCOPE = '\u0000card:';
+
 /** The note path a key belongs to, whichever scope settled it. */
 function notePath(key: string): string {
-	return key.startsWith(TIMELINE_SCOPE) ? key.slice(TIMELINE_SCOPE.length) : key;
+	if (key.startsWith(TIMELINE_SCOPE)) return key.slice(TIMELINE_SCOPE.length);
+	if (key.startsWith(CARD_SCOPE)) return key.slice(CARD_SCOPE.length);
+	return key;
+}
+
+/** The scope prefix a settled key carries, or '' for the tree's own bare path. */
+function scopeOf(key: string): string {
+	if (key.startsWith(TIMELINE_SCOPE)) return TIMELINE_SCOPE;
+	if (key.startsWith(CARD_SCOPE)) return CARD_SCOPE;
+	return '';
 }
 
 /**
@@ -66,6 +89,36 @@ function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
 }
 
 /**
+ * The same upgrade, for a card's own bit — but with two possible sources rather than
+ * one, because a card's disclosure did not read one bit before it had a scope of its
+ * own: on the dated axis it read `TIMELINE_SCOPE`, sharing the row's own fold bit
+ * (`collapseKey` routed every card there too, before {@link CARD_SCOPE} split them
+ * apart), and everywhere else it read the bare path alongside the tree.
+ *
+ * Neither source can be trusted to say which one actually answered for THIS note:
+ * `collapseNewParents` settles every parent collapsed in every scope on every data
+ * update, whether or not the dated roadmap was ever opened, so a stored `TIMELINE_SCOPE`
+ * key proves nothing by existing — most installations have one for most parents
+ * regardless. What it CANNOT be is a false EXPANSION: `collapseNewParents` only ever
+ * adds to `collapsed`, never removes from it, so the sole way either scope shows a path
+ * as expanded is a user's own explicit action there at some point. A card's exact prior
+ * state is not recoverable — a card and its row shared one bit under BOTH scopes before
+ * this split — so an expansion on EITHER side is taken as the card's too: the same call
+ * {@link seedTimelineScope} already makes for its own single source, and losing a
+ * genuine expand silently is the worse failure than opening a card the user never
+ * touched.
+ */
+function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
+	const keys = [...settled];
+	if (keys.some((key) => key.startsWith(CARD_SCOPE))) return;
+	const expanded = (key: string): boolean => settled.has(key) && !collapsed.has(key);
+	for (const path of new Set(keys.map(notePath))) {
+		settled.add(CARD_SCOPE + path);
+		if (!expanded(path) && !expanded(TIMELINE_SCOPE + path)) collapsed.add(CARD_SCOPE + path);
+	}
+}
+
+/**
  * The view's working position, remembered across sessions: which rows are shut,
  * which projection — tree, board or roadmap — the view is showing, which roadmap
  * axis it shows when both are configured, and which type the tree is focused on.
@@ -78,9 +131,10 @@ function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
  * touched, and opens collapsed. Without the second set a restored session would be
  * re-collapsed by the very pass meant to honour it.
  *
- * KEYS, not paths: a key is a note path, optionally under {@link TIMELINE_SCOPE}. The
- * view owns the *policy* on top of this — which scope a projection asks in, and the
- * quick filter's override while it is active — and delegates the bookkeeping here.
+ * KEYS, not paths: a key is a note path, optionally under {@link TIMELINE_SCOPE} or
+ * {@link CARD_SCOPE}. The view owns the *policy* on top of this — which scope a caller
+ * asks in, and the quick filter's override while it is active — and delegates the
+ * bookkeeping here.
  */
 export class CollapseState {
 	private readonly host: BacklogViewHost;
@@ -232,14 +286,15 @@ export class CollapseState {
 	 * per pass, so a data update does not undo what was expanded and a restored
 	 * session does not re-collapse what was left open.
 	 *
-	 * Both scopes, from one pass: the grid's default is the tree's, and this runs on a
-	 * data update rather than per projection, so the scope not on screen would otherwise
-	 * be settled by nobody and open every row of a whole backlog when it was.
+	 * All three scopes, from one pass: the grid's default is the tree's, and this runs on
+	 * a data update rather than per projection, so a scope not on screen would otherwise
+	 * be settled by nobody and open every row (or every card) of a whole backlog the
+	 * first time it was shown.
 	 */
 	collapseNewParents(items: BacklogItem[]): void {
 		for (const item of items) {
 			if (item.children.length === 0) continue;
-			for (const key of [item.file.path, TIMELINE_SCOPE + item.file.path]) {
+			for (const key of [item.file.path, TIMELINE_SCOPE + item.file.path, CARD_SCOPE + item.file.path]) {
 				if (this.settled.has(key)) continue;
 				this.settled.add(key);
 				this.collapsed.add(key);
@@ -263,7 +318,7 @@ export class CollapseState {
 			if (moved === null) continue;
 			// Back into the scope it came from: a rename moves the item, never the
 			// question the scope is asking about it.
-			const next = key.startsWith(TIMELINE_SCOPE) ? TIMELINE_SCOPE + moved : moved;
+			const next = scopeOf(key) + moved;
 			this.settled.delete(key);
 			this.settled.add(next);
 			if (this.collapsed.delete(key)) this.collapsed.add(next);
@@ -288,6 +343,7 @@ export class CollapseState {
 		// Both sets settle a path; only the collapsed ones are shut.
 		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
 		seedTimelineScope(this.collapsed, this.settled);
+		seedCardScope(this.collapsed, this.settled);
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
 		this.zoom = snapshot.zoom ?? null;

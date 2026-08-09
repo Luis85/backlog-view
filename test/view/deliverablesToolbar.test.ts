@@ -227,18 +227,18 @@ describe('the bulk collapse controls leave the Deliverables board’s own cards 
 		const { containerEl, view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
 		view.setProjection('deliverables');
 		view.setFocusLevel('Feature');
-		expect(view.isCollapsed('D.md')).toBe(true);
+		expect(view.isCardCollapsed('D.md')).toBe(true);
 		expect(collapseCtl(containerEl, 'Expand all')?.disabled).toBe(true);
 
 		expandAll(view);
 
-		expect(view.isCollapsed('D.md')).toBe(true);
+		expect(view.isCardCollapsed('D.md')).toBe(true);
 		// Only the card's own toggle opens it — simulated the way its click handler does.
-		view.setCollapsed('D.md', false);
-		expect(view.isCollapsed('D.md')).toBe(false);
+		view.setCardCollapsed('D.md', false);
+		expect(view.isCardCollapsed('D.md')).toBe(false);
 	});
 
-	it('opens a NEWLY seen Deliverable collapsed, focus or no focus', () => {
+	it('opens a NEWLY seen Deliverable’s card collapsed, focus or no focus', () => {
 		// `refreshFromData` settles new parents from `model.items`, which is the FOCUSED
 		// render set, so a Deliverable arriving outside the active focus subtree was never
 		// ruled on and its card opened expanded — the one population in this view that a
@@ -253,17 +253,17 @@ describe('the bulk collapse controls leave the Deliverables board’s own cards 
 		vault.addFile('T2.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'D2' });
 		refresh(view, vault);
 
-		expect(view.isCollapsed('D2.md')).toBe(true);
+		expect(view.isCardCollapsed('D2.md')).toBe(true);
 	});
 
 	it('leaves it open too, so Collapse all does not fight the card’s own state', () => {
 		const { view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
 		view.setProjection('deliverables');
 		view.setFocusLevel('Feature');
-		view.setCollapsed('D.md', false);
+		view.setCardCollapsed('D.md', false);
 
 		collapseAll(view);
 
-		expect(view.isCollapsed('D.md')).toBe(false);
+		expect(view.isCardCollapsed('D.md')).toBe(false);
 	});
 });

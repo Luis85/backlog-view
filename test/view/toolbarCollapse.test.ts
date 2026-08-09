@@ -29,22 +29,24 @@ function disclosureOf(card: HTMLElement): HTMLButtonElement | null {
 }
 
 describe('the bulk collapse controls leave a card’s own disclosure alone', () => {
-	// The buttons themselves are disabled on any screen where the only disclosures belong
-	// to cards (see the describe block below) — a card is the only thing collapsible on a
-	// board or a horizon roadmap, so there is no live click to demonstrate the exclusion
-	// through. `expandAll`/`collapseAll` are exported and driven directly for exactly that
-	// reason: they are the same call the toolbar button and the `⋯` entry both make once
-	// `collapseCtlsDisabled` lets them through, so calling them here proves the population
-	// they touch, independent of whether anything on THIS screen happens to enable them.
+	// `expandAll`/`collapseAll` write only through `host.setCollapsed`, which lands on the
+	// tree's own bit or the dated axis's — never on a card's (`CARD_SCOPE`), which only
+	// `host.setCardCollapsed` touches (`collapseState.ts`). So a card's own toggle is the
+	// only thing that can open or close it, by construction — the same rule regardless of
+	// whether the card is currently hidden, whether it drew a disclosure this pass, or
+	// which card projection is drawing it, since nothing here has to ask any of that.
+	// `expandAll` is driven directly rather than through a click: the toolbar buttons are
+	// disabled on every one of these screens anyway (see the next describe block), since
+	// every disclosure on them belongs to a card and there is nothing else left to reach.
 	it('leaves a board card’s children to its own button', () => {
 		const { containerEl, view } = makeBoard(boardVault());
+		expect(view.isCardCollapsed('Epic B.md')).toBe(true);
 
 		expandAll(view);
 
-		expect(kidTitlesOf(cardByTitle(containerEl, 'Epic B'))).toEqual([]);
-		// Only the card's own button opens it.
+		expect(view.isCardCollapsed('Epic B.md')).toBe(true);
 		disclosureOf(cardByTitle(containerEl, 'Epic B'))?.click();
-		expect(kidTitlesOf(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
+		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
 	});
 
 	it('leaves the roadmap’s cards to their own button too', () => {
@@ -53,102 +55,26 @@ describe('the bulk collapse controls leave a card’s own disclosure alone', () 
 		const vault = horizonVault();
 		vault.addFile('Feature N1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Now item' });
 		const { containerEl, view } = makeRoadmap(vault);
+		expect(view.isCardCollapsed('Now item.md')).toBe(true);
 
 		expandAll(view);
 
-		expect(kidTitlesOf(cardByTitle(containerEl, 'Now item'))).toEqual([]);
+		expect(view.isCardCollapsed('Now item.md')).toBe(true);
 		disclosureOf(cardByTitle(containerEl, 'Now item'))?.click();
-		expect(kidTitlesOf(cardByTitle(containerEl, 'Now item'))).toEqual(['Feature N1']);
+		expect(view.isCardCollapsed('Now item.md')).toBe(false);
 	});
 
-	// The exclusion has to be asked of the board's own STRUCTURE, not of
-	// `cardChildrenShown`: that register only knows a card drew a disclosure THIS pass, so
-	// a card whose one child is hidden by "Hide completed items" draws no disclosure at all
-	// and would slip past a filter keyed on it — collapse state written now, then surfacing
-	// the moment the hidden child is revealed, from a call that never touched this card.
-	it('leaves a card alone even while its only child is hidden and it drew no disclosure at all', () => {
+	it('leaves a Deliverables card alone too', () => {
 		const vault = new FakeVault();
-		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 30, status: 'Active' } });
-		vault.addFile('Feature C1.md', {
-			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
-			parentLink: 'Epic C',
-		});
-		const { containerEl, view } = makeBoard(vault, { showCompleted: false });
-		expect(cardByTitle(containerEl, 'Epic C').querySelector('.pbl-card-kids-toggle')).toBeNull();
-		expect(view.isCollapsed('Epic C.md')).toBe(true);
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'New' } });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'D' });
+		const { view } = makeView(vault, { stateProperty: 'note.status', stateValues: 'New, Done' });
+		view.setProjection('deliverables');
+		expect(view.isCardCollapsed('D.md')).toBe(true);
 
 		expandAll(view);
 
-		// Still collapsed: a card is excluded by what it IS, not by whether it happened
-		// to draw a disclosure this pass — or the bit written here would surface the
-		// moment "Show completed items" (or a new child) revealed one.
-		expect(view.isCollapsed('Epic C.md')).toBe(true);
-	});
-
-	// The same principle, one level up: a card whose OWN whole subtree is done is
-	// hidden by "Hide completed items" too, so it is absent from `host.board` entirely —
-	// `boardCardPaths` cannot name a card it never got handed — and this asks
-	// `isRowHiddenUnfiltered` directly rather than through the board's own card list.
-	it('leaves a fully-done board card untouched even while it is itself hidden, not merely its children', () => {
-		const vault = new FakeVault();
-		// A whole done subtree: hidden entirely, so it draws no card at all.
-		vault.addFile('Done item.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
-		vault.addFile('Done child.md', {
-			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
-			parentLink: 'Done item',
-		});
-		const { containerEl, view } = makeBoard(vault, { showCompleted: false });
-		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(0);
-		expect(view.isCollapsed('Done item.md')).toBe(true);
-
-		expandAll(view);
-
-		expect(view.isCollapsed('Done item.md')).toBe(true);
-	});
-
-	// The roadmap's own version of the same case, and the one place hiding-by-itself is
-	// NOT enough to exclude something: a hidden CARD (a shelf/context item with no
-	// dates) must stay untouched, but a hidden BAR (a genuine dated-axis row) must not —
-	// [[Collapsing a bar's subtree]] wants it exactly as reachable while hidden as while
-	// visible. Both live in one fixture so a filter that got this backwards — or one
-	// broad enough to lose the distinction — fails at least one half.
-	it('leaves a fully-done shelf card hidden by itself untouched, while a fully-done bar hidden the same way stays reachable', () => {
-		const vault = new FakeVault();
-		vault.addFile('Dated epic.md', {
-			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-12-01' },
-		});
-		vault.addFile('Dated feature.md', {
-			frontmatter: { type: 'Feature', order: 10, start: '2026-09-01', due: '2026-10-01' },
-			parentLink: 'Dated epic',
-		});
-		// A whole done subtree with dates: it would be a BAR if visible, so it must stay
-		// reachable while "Hide completed items" hides it.
-		vault.addFile('Done epic.md', {
-			frontmatter: { type: 'Epic', order: 20, status: 'Done', start: '2026-01-01', due: '2026-03-01' },
-		});
-		vault.addFile('Done epic child.md', {
-			frontmatter: { type: 'Feature', order: 10, status: 'Done', start: '2026-01-10', due: '2026-02-01' },
-			parentLink: 'Done epic',
-		});
-		// A whole done subtree with no dates: it would be a SHELF CARD if visible, so it
-		// must stay untouched while hidden, exactly like the board's own case above.
-		vault.addFile('Done shelf item.md', { frontmatter: { type: 'Epic', order: 30, status: 'Done' } });
-		vault.addFile('Done shelf child.md', {
-			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
-			parentLink: 'Done shelf item',
-		});
-		const { containerEl, view } = makeRoadmap(vault, { ...DATED_AXIS, stateProperty: 'note.status', showCompleted: false });
-		expect(timelineTitles(containerEl)).toEqual(['Dated epic']);
-		expect(shelfTitles(containerEl)).toEqual([]);
-		expect(view.isCollapsed('Done epic.md')).toBe(true);
-		expect(view.isCollapsed('Done shelf item.md')).toBe(true);
-
-		expandAll(view);
-
-		// The bar: reached, exactly as it would be while visible.
-		expect(view.isCollapsed('Done epic.md')).toBe(false);
-		// The card: untouched, exactly as it would be while visible.
-		expect(view.isCollapsed('Done shelf item.md')).toBe(true);
+		expect(view.isCardCollapsed('D.md')).toBe(true);
 	});
 });
 

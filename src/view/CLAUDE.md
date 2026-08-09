@@ -469,15 +469,24 @@ free of runtime code so imports stay cycle-free.
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
-  face; they are two bits and one register.** Both go through `isCollapsed`/`setCollapsed`,
-  and `collapseKey` is the ONE place that decides which bit those land on: the dated axis
-  keys under `TIMELINE_SCOPE`, everything else under the path. Add a caller, not a choice —
-  a surface that picks its own scope is how the two drift, and the shelf and context cards
-  beside the grid take the axis's scope with it deliberately, since the working position
-  being kept is the SCREEN's rather than the control's. The quick filter still overrides
-  whichever is being asked. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
-  never "which projection is this" — which is what makes the toolbar's bulk controls and
-  the row menu's section serve both without either asking what it is looking at.
+  face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
+  goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that
+  decides which bit those land on: the dated axis keys under `TIMELINE_SCOPE`, everything
+  else under the path. A card's own disclosure never reaches `collapseKey` — it goes
+  through the second pair, `isCardCollapsed`/`setCardCollapsed`, always under `CARD_SCOPE`
+  regardless of projection ([[Children on the card]]), so the shelf and context cards
+  drawn beside the grid keep their disclosure with the ITEM rather than with the screen —
+  the opposite of the row's own rule, and deliberately so: folding a bar's subtree is a
+  statement about the plan, and a card's own disclosure is a statement about the note,
+  which [[Collapsing a bar's subtree]] used to conflate for exactly the cards drawn on
+  that axis. The one caller left choosing between the two pairs is `addChildrenSection`
+  in `interactions/menu.ts`, which serves a card's Show/Hide children and a bar row's from
+  one function and tells them apart by asking `host.roadmap`'s own `bars` whether the path
+  it is menuing is a drawn bar — every other caller is wired to one pair and never asks.
+  The quick filter still overrides whichever is being asked. The register is
+  `RowContext.cardKids` — "what drew a disclosure this pass", never "which projection is
+  this" — which is what makes the toolbar's bulk controls and the row menu's section serve
+  both without either asking what it is looking at.
   **Which element says "expanded" is decided by the ROW's role, not by preference**: a
   `treeitem` carries `aria-expanded` itself, so the tree's chevron is a plain div, while
   a card row is `role="option"` — which does not support that state — so the timeline's

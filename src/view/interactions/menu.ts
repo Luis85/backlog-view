@@ -123,13 +123,13 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		mi
 			.setTitle('Open in new tab')
 			.setIcon('file-plus')
-			.onClick(() => host.openItemInNewTab(item)),
+			.onClick(() => host.openItemIn(item, 'tab')),
 	);
 	menu.addItem((mi) =>
 		mi
 			.setTitle('Open to the right')
 			.setIcon('separator-vertical')
-			.onClick(() => host.openItemToSide(item)),
+			.onClick(() => host.openItemIn(item, 'split')),
 	);
 
 	host.app.workspace.trigger('file-menu', menu, item.file, PRODUCT_BACKLOG_VIEW_TYPE);
@@ -351,23 +351,31 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * the render's wiring, so a flag threaded through that wiring would miss exactly the case
  * this section exists for.
  *
+ * `cardChildrenShown` names the path, never which KIND of disclosure drew it — a card's
+ * own scope and a dated-axis bar's are separate bits now (`CARD_SCOPE` vs `TIMELINE_SCOPE`
+ * / the tree's), so this asks `host.roadmap`'s own bars, the one register that is never a
+ * card, and reads/writes through whichever host pair the on-screen control actually uses.
+ * A second opinion here would be exactly what let a card's toggle and this entry disagree.
+ *
  * The toggle leads, because on the timeline it is the whole feature: that chevron hides
  * ROWS, and the entries below open notes rather than standing in for it. It is withheld
  * while the quick filter runs, exactly as the disclosure itself goes `disabled` there and
- * for the same reason — `isCollapsed` reports false while it runs, so the write would
- * look inert and then take effect once the filter cleared.
+ * for the same reason — both `isCollapsed` and `isCardCollapsed` report false while it
+ * runs, so the write would look inert and then take effect once the filter cleared.
  */
 function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	if (!host.cardChildrenShown.has(item.file.path)) return;
+	const isBar = (host.roadmap?.roadmap.bars ?? []).some((bar) => bar.item.file.path === item.file.path);
 	menu.addSeparator();
-	const collapsed = host.isCollapsed(item.file.path);
+	const collapsed = isBar ? host.isCollapsed(item.file.path) : host.isCardCollapsed(item.file.path);
 	if (!host.isFiltering()) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(collapsed ? 'Show children' : 'Hide children')
 				.setIcon(collapsed ? 'chevron-right' : 'chevron-down')
 				.onClick(() => {
-					host.setCollapsed(item.file.path, !collapsed);
+					if (isBar) host.setCollapsed(item.file.path, !collapsed);
+					else host.setCardCollapsed(item.file.path, !collapsed);
 					host.render();
 				}),
 		);

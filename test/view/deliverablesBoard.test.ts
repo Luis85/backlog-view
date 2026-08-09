@@ -185,10 +185,12 @@ describe('the Deliverables board', () => {
 			showCompleted: false,
 		});
 		harness.view.setProjection('deliverables');
-		const { containerEl } = harness;
+		const { containerEl, view } = harness;
 
-		// `makeView` expands through the real toolbar control unless a test opts out, so the
-		// disclosure is already open — clicking it here would close it.
+		// A card's disclosure is its own bit now, independent of the tree's — `makeView`'s
+		// default tree-wide expand no longer opens it, so open it directly.
+		view.setCardCollapsed('D.md', false);
+		harness.view.render();
 		const card = cardByTitle(containerEl, 'D');
 		expect(
 			Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid-title')).map((el) => el.textContent),

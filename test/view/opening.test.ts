@@ -173,6 +173,25 @@ describe('where an opened note goes', () => {
 	});
 
 	/**
+	 * Reuse belongs to the SETTING too. Two deliberate **Open to the right** picks are
+	 * two placements — the menu path split afresh before this option existed and still
+	 * does — so sharing the configured target's pane would make the second one replace
+	 * the first note the user had just put on screen.
+	 */
+	it('splits afresh for each note the menu opens to the right', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, {}, { base: 'Backlog.base' });
+		for (const title of ['Feature B1', 'Feature B2']) {
+			rowByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+			Menu.lastShown?.item('Open to the right')?.click();
+		}
+
+		expect(vault.opened.map((o) => o.mode)).toEqual(['split', 'split']);
+		// The backlog's own leaf, plus one per deliberate placement.
+		expect(vault.leaves).toHaveLength(3);
+	});
+
+	/**
 	 * The pin belongs to the SETTING. One deliberate menu action must leave the
 	 * workspace's pins as it found them, or it would silently change what an ordinary
 	 * click does afterwards: `getLeaf(false)` cannot replace a pinned leaf, so the

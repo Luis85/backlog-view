@@ -1,8 +1,7 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { cardPaths as boardCardPaths } from '../../domain/board';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { activeAxis, buildRoadmap, configuredAxes, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
+import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
@@ -270,79 +269,23 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * What the bulk collapse controls can reach — a DIFFERENT question from
  * `countedPopulation` in `toolbar.ts`, which is why it is a second function rather than a
  * reuse: counting asks for the Base's rows, and collapsing asks for everything on screen
- * that owns a disclosure, context rows included, minus every path a CARD of its own is
- * drawn for — that toggle is the card's alone to press, never the toolbar's.
+ * that owns a disclosure, context rows included.
  *
- * The exclusion is asked of the board/roadmap's own STRUCTURE ({@link cardOnlyPaths}),
- * never of `host.cardChildrenShown` — that register answers only for a card that drew a
- * disclosure THIS pass, so a card whose children are all currently hidden (completed work
- * folded away, or none loaded yet) would stay reachable and reopen later, the moment a
- * hidden child resurfaces, from a write nobody watching that card ever asked for.
- * `cardOnlyPaths` answers for a card hidden WHOLESALE the same way (see there).
+ * A card's own children disclosure is never in this population's reach, and needs no
+ * exclusion logic here to keep it that way: `expandAll`/`collapseAll` write only through
+ * `host.setCollapsed`, which lands on the tree's own bit or the dated axis's
+ * (`TIMELINE_SCOPE`) — never on a card's (`CARD_SCOPE`), which only
+ * `host.setCardCollapsed` ever touches (`collapseState.ts`). A card's own toggle is
+ * therefore the only thing that can open or close it, by CONSTRUCTION — two disjoint
+ * bits nothing here has to tell apart — rather than by a filter trying to guess, from
+ * this population, which paths are currently cards.
  *
- * The board has nothing else worth keeping reachable while hidden: `isRowHiddenUnfiltered`
- * (quick filter lifted, `hideCompleted` still asked — `countedPopulation`'s own predicate)
- * is a harmless, conservative superset there, since every disclosure on that projection
- * belongs to a card regardless. The roadmap is not: a dated-axis timeline BAR is a row, not
- * a card, and a hidden one must stay reachable exactly as a visible one does
- * ([[Collapsing a bar's subtree]]) — `cardOnlyPaths` already tells a hidden bar from a
- * hidden card on that axis, so asking `isRowHiddenUnfiltered` again here would wrongly take
- * the bar out too. Scoped off the tree for the same kind of reason: the tree already writes
- * through a hidden subtree's own collapse bit, and that is existing, unrelated behaviour.
- *
- * Every Deliverable is a card of its own — there is nothing else in that projection's
- * population — so it is excluded outright rather than asked to name its cards one at a
- * time; this replaces the earlier `model.deliverableResults` special case, which existed
- * only so a focus set elsewhere could not hide a Deliverable from `model.items` — moot
- * now that every Deliverable is excluded either way.
+ * The Deliverables board is the one projection where `model.items` is the wrong answer.
+ * It draws `model.deliverableResults`, read off the WHOLE unfocused tree so a focus set
+ * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
  */
 function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
-	if (host.projection === 'deliverables') return [];
-	if (host.projection === 'tree') return model.items;
-	const excluded = cardOnlyPaths(host);
-	if (host.projection === 'roadmap') return model.items.filter((item) => !excluded.has(item.file.path));
-	return model.items.filter((item) => !excluded.has(item.file.path) && !host.isRowHiddenUnfiltered(item));
-}
-
-/**
- * Paths a card of its own is drawn for, board and roadmap alike — WHETHER OR NOT "Hide
- * completed items" currently hides it. `domain/board.ts`'s `cardPaths` already answers
- * this for the board (and, unmodified, for the Deliverables board too: it renders through
- * the same `host.board` snapshot — `renderDeliverablesBoardContent` returns its board
- * through the field `renderBoardContent` uses, there is no second one) — but `host.board`
- * is already visibility-filtered, so a fully-done board card that hideCompleted removed
- * entirely would be invisible to it. `collapsiblePopulation` covers that gap on the board
- * with its own `isRowHiddenUnfiltered` check instead, a conservative superset that is safe
- * there because nothing on the board is a bar.
- *
- * The roadmap cannot take that shortcut — a bar must stay reachable while hidden, a card
- * must not — so its exclusion is built from a SECOND, independent `buildRoadmap` call, with
- * an always-true visibility predicate rather than `host.roadmap`'s real (hideCompleted- and
- * filter-narrowed) one. `roadmapRows` is the only place that predicate is consulted before
- * placement runs (`domain/roadmap.ts`), so placement itself — bar or shelf, from the item's
- * own dates — is exactly as visibility-independent as it needs to be; only the resulting
- * arrays are filtered by it, which is precisely the filtering this bypasses. A dated-axis
- * bar is never in the returned set either way: `RoadmapModel.bars` is never read here, so
- * [[Collapsing a bar's subtree]]'s row folding stays reachable by the bulk controls while
- * any shelf or context card sharing that same screen — hidden or not — does not.
- */
-function cardOnlyPaths(host: BacklogViewHost): ReadonlySet<string> {
-	if ((host.projection === 'board' || host.projection === 'deliverables') && host.board) {
-		return boardCardPaths(host.board.board);
-	}
-	if (host.projection === 'roadmap' && host.model) {
-		const axis = activeAxis(host.settings, host.axisPick);
-		if (axis) return roadmapCardPaths(buildRoadmap(host.model, host.settings, () => true, axis));
-	}
-	return new Set();
-}
-
-function roadmapCardPaths(roadmap: RoadmapModel): Set<string> {
-	const paths = new Set<string>();
-	for (const bucket of roadmap.buckets) for (const card of bucket.cards) paths.add(card.file.path);
-	for (const card of roadmap.shelf) paths.add(card.item.file.path);
-	for (const card of roadmap.context) paths.add(card.file.path);
-	return paths;
+	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
 }
 
 /**
@@ -367,23 +310,24 @@ export function collapseAll(host: BacklogViewHost): void {
 
 /**
  * When the bulk collapse controls are refused: while a quick filter overrides collapse
- * state, and when nothing they could reach is both DRAWN and not a card — a card's own
- * disclosure is never theirs to touch (`collapsiblePopulation`'s exclusion above), so a
- * screen where every disclosure belongs to a card (an ordinary board, the Deliverables
+ * state, and when nothing currently drawn is a genuine ROW disclosure — a card's own
+ * disclosure is never reachable by these buttons at all (see `collapsiblePopulation`), so
+ * a screen where every disclosure belongs to a card (an ordinary board, the Deliverables
  * board, a horizon roadmap) offers them nothing to do and must not sit there enabled as a
- * live no-op. `host.cardChildrenShown` is every disclosure drawn THIS pass — cards and a
- * dated-axis timeline row's chevron alike — so subtracting {@link cardOnlyPaths} from it
- * asks exactly "is a genuine timeline row, not a card, currently disclosed" — the one case
- * left where a press does something. `syncCollapseCtls` is still the sole WRITER of the
- * flag — this is the question it asks, named once so the `⋯` menu is not a second opinion
- * about the same rule.
+ * live no-op. The tree's own chevron always counts; the dated axis's counts exactly when a
+ * BAR currently draws one — `host.cardChildrenShown` is every disclosure drawn THIS pass,
+ * cards and a timeline bar's chevron alike, so checking it against `host.roadmap`'s own
+ * `bars` (the one register that is never a card) asks exactly "is a genuine row, not a
+ * card, currently disclosed". `syncCollapseCtls` is still the sole WRITER of the flag —
+ * this is the question it asks, named once so the `⋯` menu is not a second opinion about
+ * the same rule.
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
 	if (host.isFiltering()) return true;
 	if (host.projection === 'tree') return false;
-	const excluded = cardOnlyPaths(host);
+	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
 	for (const path of host.cardChildrenShown) {
-		if (!excluded.has(path)) return false;
+		if (barPaths.has(path)) return false;
 	}
 	return true;
 }

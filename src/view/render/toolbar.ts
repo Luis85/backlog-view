@@ -64,12 +64,12 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// stylesheet has it `display: none`.
 	renderOverflow(host, barEl);
 	renderFocusPicker(host, barEl, model);
-	// Expand and collapse drive the tree's rows and a dated-axis timeline row's chevron,
-	// never a card's own children disclosure — that toggle is the card's alone to press
-	// (`collapsiblePopulation`'s exclusion in `toolbarControls.ts`). They are not gated on
-	// the projection — but they ARE gated on the screen having something to collapse: see
-	// `syncCollapseCtls`, which runs after the content render because that is what fills
-	// the set it reads.
+	// Expand and collapse drive the tree's rows and a dated-axis timeline row's chevron —
+	// never a card's own children disclosure, which lives on a separate bit
+	// (`CARD_SCOPE`, `collapseState.ts`) these buttons never write to at all. They are not
+	// gated on the projection — but they ARE gated on the screen having something to
+	// collapse: see `syncCollapseCtls`, which runs after the content render because that is
+	// what fills the set it reads.
 	collapseButton(host, barEl, {
 		icon: 'chevrons-up-down',
 		label: 'Expand all',

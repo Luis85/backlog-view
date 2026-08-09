@@ -7,6 +7,9 @@ priority: P2
 created: 2026-08-07
 files:
   - src/view/render/cardChildren.ts
+  - src/view/collapseState.ts
+  - src/view/backlogView.ts
+  - src/view/interactions/menu.ts
 ---
 
 # Children on the card
@@ -87,10 +90,13 @@ card — and a count is the half of it that cannot be acted on.
   and by middle click, which are separate events and separately guarded. The toggle
   opens nothing on either.
 - Expansion is per-path collapse state: remembered per saved view and per device, and
-  unchanged by a data update. It is the TREE's bit on the tree, the board and the horizon
-  axis, so one bit means "this node is open" across the three. On the dated axis it is
-  that axis's own — a card on the shelf beside a plan is on the plan's screen, and the
-  working position kept is the screen's ([[Collapsing a bar's subtree]]).
+  unchanged by a data update. It is a bit of its OWN (2026-08-09) — independent of the
+  tree row for the same note, and independent of the dated axis's own fold state
+  ([[Collapsing a bar's subtree]]) — so nothing but the card's own toggle can open or
+  close it: not the tree's Expand all/Collapse all, not the dated axis's chevron, not a
+  data update. One scope regardless of which card projection draws the card (board,
+  either roadmap axis, Deliverables), since "is this item's card open" is one question
+  about the note and not one per screen that happens to draw it as a card.
   While the quick filter runs the toggle is disabled.
 - The card menu offers the same children, on a right-click and on the menu key, and does
   not offer them on a surface that drew no disclosure.
@@ -119,5 +125,29 @@ through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboa
 `undisclosedMatches` is read the same way, by `renderCardMatches` in
 `src/view/render/board.ts` for the card face and by `addMatchSection` in `menu.ts` for
 its menu, so the two surfaces cannot both name a match the disclosure already listed.
+
+The expansion bit itself is `CARD_SCOPE` in `src/view/collapseState.ts`, a prefix
+alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/
+`setCardCollapsed` (`src/view/backlogView.ts`) — a second pair of host methods beside
+`isCollapsed`/`setCollapsed` rather than a scope the existing pair infers from the
+projection, because a card and the tree row for the same note now answer two different
+questions and a caller has to say which one it means. `renderCardChildren`'s toggle is
+the only renderer that calls the card pair; a dated-axis timeline row's own chevron
+(`renderRowChevron` in `src/view/render/timeline.ts`) keeps calling the row pair, unchanged.
+`menu.ts`'s `addChildrenSection` serves both from one function, so it reads
+`host.roadmap`'s own `bars` to tell a card from a bar sharing the same `cardChildrenShown`
+entry and picks the matching pair — the one place a caller still has to ask, because it is
+the one place the same gate covers two different kinds of disclosure. `collapseNewParents`
+settles a newly-seen item's card bit in the same pass as the tree's and the dated axis's,
+and `seedCardScope` carries a pre-split installation's card state into the new scope once,
+on first restore, from EITHER of two sources — the bare path, and a note's dated-axis key,
+since `collapseKey` routed every card through `TIMELINE_SCOPE` there too before this split.
+Neither key can be trusted by merely existing: `collapseNewParents` settles every parent
+collapsed in every scope on every data update whether or not the dated roadmap was ever
+opened, so most installations already have a `TIMELINE_SCOPE` entry for most notes
+regardless. What it cannot do is falsely EXPAND one — that only ever happens through a
+user's own action — so an expansion on either side is taken as the card's too, the same
+call `seedTimelineScope` already makes for its own single source. Idempotent for the same
+reason `seedTimelineScope` is.
 Driven in `test/view/cardChildren.test.ts`, and against context cards in
 `test/view/contextCardWrites.test.ts`.
