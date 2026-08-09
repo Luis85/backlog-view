@@ -94,19 +94,31 @@ export function installObsidianDom(): void {
 	proto.createSpan = function (this: HTMLElement, options?: CreateOptions | string): HTMLElement {
 		return (this as HTMLElement & { createEl: (t: string, o?: CreateOptions | string) => HTMLElement }).createEl('span', options);
 	};
-	// Obsidian's own namespace-aware sibling of `createEl`, and installed on ELEMENT
-	// rather than HTMLElement because that is where the real API declares it and because
-	// an SVG parent needs it: `SVGSVGElement` does not inherit from `HTMLElement`, so a
-	// copy beside `createDiv` would exist on the layer's parent and be missing on the
-	// layer itself. `applyOptions` is shared, so a class or an attribute reaches an SVG
-	// node exactly as it reaches a div.
+	/**
+	 * Obsidian's own namespace-aware sibling of `createEl`, installed on ELEMENT rather
+	 * than HTMLElement because that is where the real API declares it and because an SVG
+	 * parent needs it: `SVGSVGElement` does not inherit from `HTMLElement`, so a copy
+	 * beside `createDiv` would exist on the layer's parent and be missing on the layer.
+	 *
+	 * It does NOT reuse `applyOptions`, and the difference is the whole point. `addClass`
+	 * lives on `HTMLElement`, so Obsidian hands an SVG node's `cls` straight to
+	 * `classList.add` — which rejects a space-separated STRING with `InvalidCharacterError`
+	 * where the HTML helpers would have split it happily. Sharing `applyOptions` made this
+	 * fake KINDER than the real thing, and a two-class arrow path threw in a vault while
+	 * every test and the browser harness drew it without complaint: the error aborted the
+	 * whole render, so the timeline's grid never registered its drop target and dragging a
+	 * bar silently did nothing. An array is the form that always works, in both.
+	 */
 	(Element.prototype as unknown as Record<string, unknown>).createSvg = function (
 		this: Element,
 		tag: string,
 		options?: CreateOptions | string,
 	): SVGElement {
 		const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-		applyOptions(el as unknown as HTMLElement, options);
+		const opts: CreateOptions = typeof options === 'string' ? { cls: options } : (options ?? {});
+		if (opts.cls) for (const cls of Array.isArray(opts.cls) ? opts.cls : [opts.cls]) el.classList.add(cls);
+		if (opts.text !== undefined) el.textContent = opts.text;
+		if (opts.attr) for (const [key, value] of Object.entries(opts.attr)) el.setAttribute(key, value);
 		this.appendChild(el);
 		return el;
 	};

@@ -184,7 +184,12 @@ function drawArrow(
 		route.push(`M ${toX} ${toY}`, `l -${HEAD_PX} -${HEAD_PX * 0.7}`, `M ${toX} ${toY}`, `l -${HEAD_PX} ${HEAD_PX * 0.7}`);
 	}
 	layer.createSvg('path', {
-		cls: `pbl-dep-edge${conflict ? ' pbl-dep-conflict' : ''}`,
+		// An ARRAY, never a space-separated string. `addClass` lives on `HTMLElement`, so
+		// Obsidian hands an SVG node's `cls` straight to `classList.add`, which rejects a
+		// token containing spaces — this threw `InvalidCharacterError` in a vault for
+		// every conflicting edge, aborting the whole render, while the fake split the
+		// string and drew it. See `test/helpers/dom.ts`'s `createSvg`.
+		cls: conflict ? ['pbl-dep-edge', 'pbl-dep-conflict'] : ['pbl-dep-edge'],
 		attr: { d: route.join(' ') },
 	});
 }

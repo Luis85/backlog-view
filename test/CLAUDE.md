@@ -11,6 +11,16 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   `vitest.config.mts`). Extend it when new obsidian API surface is used; keep it minimal.
 - `test/helpers/dom.ts` — installs Obsidian's DOM prototype extensions (`createEl`,
   `addClass`, `setCssProps`, …) for jsdom files. Call `installObsidianDom()` at module top.
+  **`createSvg` is deliberately STRICTER than its HTML siblings, because Obsidian's is.**
+  `addClass` lives on `HTMLElement`, so an SVG node's `cls` goes straight to
+  `classList.add`, which rejects a space-separated string with `InvalidCharacterError`
+  where `createEl` would have split it. Sharing the HTML helper's option handling made
+  this fake KINDER than the real thing, and it cost a shipped bug: a two-class arrow path
+  threw in a vault on every conflicting edge, and because the throw aborted the render
+  before `wireTimelineDrag` ran, the timeline's grid never registered its drop target —
+  so dragging a bar silently did nothing and the only way to reschedule was the menu. The
+  suite and the browser harness both drew it without complaint, because both run on this
+  file. Pass an array; it is the form that works in both.
 - `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
   recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
   `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
