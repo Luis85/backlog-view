@@ -68,6 +68,11 @@ are prose someone wrote, one is generated from the vocabulary. Those are differe
 and they fail differently. If `sections.ts` later passes the 400-line cap, lint says so
 and it splits then, on evidence rather than on a prediction.
 
+The authored five are not all the same, either: *Setting up the view* is authored prose
+carrying a schema-derived completeness check, for the reason given under **The six
+sections** below. It stays in `sections.ts` — what makes it different is a field and a
+test, not a module.
+
 `ui/` may not import `domain/` (`eslint.config.mjs`), so the dialog takes its content as
 a parameter:
 
@@ -85,15 +90,37 @@ rather than a type name, because resolving `Epic` to `pbl-lvl-0` is exactly the 
 | Section | Answers |
 | --- | --- |
 | Item types | What each type is for, generated from `ALL_TYPES` |
-| Moving and ranking | Drag, Alt+arrow, that a move does not re-type, that nothing is refused |
+| Moving and ranking | Drag, Alt+arrow, that a move does not re-type, and every state a move is deliberately unavailable in |
 | Creating and filing | What the row's **+** offers, where the note lands, what gets written |
 | Finding work | Focus level, quick filter, Show completed items |
 | Safe writes and undo | Batches, one-at-a-time, excluded notes, the config gate |
 | Setting up the view | The three required properties, the ✨, what each optional one turns on |
 
-The types section is **derived, not retyped**: every entry comes from `ALL_TYPES`, so a
-type added later without an explanation fails a test rather than shipping as a gap. That
-is the invariants-as-checks rule this codebase already holds itself to, applied to prose.
+**Two sections are answerable to a schema, in different ways**, and both were nearly
+missed by classifying everything but the types as prose someone wrote.
+
+*Item types* is **derived, not retyped**: every entry comes from `ALL_TYPES`, so a type
+added later without an explanation fails a test rather than shipping as a gap.
+
+*Setting up the view* is **authored with derived coverage**. Its own use case forbids both
+halves of the obvious approach: the grouping must be by what an option *changes* rather
+than in schema order (so it cannot be generated), and *"coverage is measured against
+`getViewOptions`, never against a count written here"* (so it cannot be hand-listed
+either). What satisfies both is one optional field —
+
+```ts
+interface ManualEntry { …; keys?: string[] }   // the view-option keys this entry explains
+```
+
+— and a test asserting every key `getViewOptions()` declares is claimed by exactly one
+entry. The prose stays authored; the *completeness* is derived. This matters more than it
+looks: the schema generates a folder picker per type and a WIP limit and policy per
+workflow state, so the key count moves with the vocabulary and with the user's own
+configuration. A hand-counted section would read as complete while omitting the generated
+half — which is why this spec quotes no number for it.
+
+Both are the invariants-as-checks rule this codebase already holds itself to, applied to
+prose.
 
 ### Reaching it
 
@@ -177,6 +204,9 @@ visible without causing it.
   without a DOM.
 - Every type in `ALL_TYPES` has an entry, asserted — the check behind "derived, not
   retyped".
+- Every key `getViewOptions()` declares is claimed by exactly one setup entry, asserted
+  against the schema rather than a list. `test/docs/surfaces.test.ts` already imports
+  `getViewOptions()` for the neighbouring rule, so this needs no new instrument.
 - The dialog is jsdom: it opens on the first section, the sidebar switches the pane, Escape
   closes it and focus returns to the **?**.
 - The toolbar button is a real `<button>` in the tab-stop zone, sheds at the expected rung,
