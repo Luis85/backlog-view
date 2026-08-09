@@ -89,10 +89,13 @@ a backlog that got slow between releases.
   map the right size and still resolves the right element, so a map-shaped assertion passes
   with the guarantee gone. The check has to watch the call that must not be made.
 - **2a — the hoisted lookups are described in the wrong place.** `src/view/CLAUDE.md` says
-  `getOrder` and `getDisplayName` live "on `RowContext`". They do not: `chipProps` resolves
-  the columns once per data update onto `host.chips`, and `RowContext` carries that
-  snapshot. Correct the sentence in the same change, or the test and the guide disagree
-  about what is being guaranteed.
+  `getOrder` and `getDisplayName` live "on `RowContext`". They do not: the resolver runs
+  them once per data update onto a host field, and `RowContext` carries that snapshot.
+  Correct the sentence in the same change, or the test and the guide disagree
+  about what is being guaranteed. (The pair was `chipProps`/`host.chips` when this was
+  written and is `resolveColumns`/`host.columns` since
+  [ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md); the rule survived the
+  rename, which is why it is stated as one here.)
 - **4a — a claim turns out not to be checkable at all.** Then it comes out of the guide.
   A sentence that reads like a guarantee and is backed by nothing is worse than its
   absence — that is [[A comment that states a rule is not a check]] in one line.
@@ -133,8 +136,8 @@ a backlog that got slow between releases.
   failure is the one expected — not a fixture error that would pass for one.
 - The two claims already covered by `test/view/rendering.test.ts` gain no duplicate
   assertions.
-- `src/view/CLAUDE.md` names `host.chips`/`chipProps` rather than `RowContext` for the
-  hoisted lookups.
+- `src/view/CLAUDE.md` names the resolver and the host field it fills — `resolveColumns`
+  and `host.columns` today — rather than `RowContext`, for the hoisted lookups.
 - No assertion in this work measures elapsed time.
 
 ## Where it lives

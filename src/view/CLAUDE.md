@@ -145,9 +145,10 @@ free of runtime code so imports stay cycle-free.
 - Row layout is columnar: `.pbl-row-spacer` is the flexible middle, and everything after
   it (`.pbl-props`, one `.pbl-prop` cell per drawn column, then `.pbl-meta-col`) is
   fixed-width, so values line
-  up across rows regardless of title length and indent. Every configured column renders
-  on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
-  after it would shift per row. **That holds for the whole end-anchored strip, not only
+  up across rows regardless of title length and indent. Every column the pass DRAWS
+  renders on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the
+  columns after it would shift per row. Drawn, not configured: a column the pane cannot
+  hold is on no row at all, which is the difference the fit below turns on. **That holds for the whole end-anchored strip, not only
   for the columns**: the add button is last in it, and a row that can hold nothing
   withholds the control but reserves its width (`renderAddSpacer`, which the header uses
   for the same reason), because an element skipped from an end-anchored strip does not
@@ -176,7 +177,12 @@ free of runtime code so imports stay cycle-free.
   (`columnFit.rollupDropped`), and that is the distinction to keep: configured is not
   drawn, and a header built from the configuration alone was a sticky bordered bar holding
   a spacer, an empty box and a label the stylesheet hides — the whole point of the bar is
-  the labels, so with none left it is not rendered. Every column a
+  the labels, so with none left it is not rendered. So the rollup is one concept behind
+  two mechanisms: the rows get a class, the header gets the verdict. That is a recorded
+  cost rather than an oversight — it cannot disagree visibly (`rollupDropped` implies no
+  columns implies no header) and `display: none` keeps the hidden box out of the
+  accessibility tree — and the two ways out of it are in
+  `docs/issues/The rollup is hidden by class and headed by verdict.md`. Every column a
   row can carry has to be in that budget: one drawn but not summed does not drop, it
   overflows. The two live in one file because a threshold
   computed in one place and applied in another is one edit from disagreeing; the view

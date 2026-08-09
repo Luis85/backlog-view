@@ -76,3 +76,9 @@ after. Byte-identical, same order.
 two one-line "declares the new progress/display option keys" cases became a single test
 asserting all four keys, so the file is 22 tests rather than 23 with no assertion lost —
 the only deliberate change to the tests.
+
+**Since (2026-08-09):** one of the 17 keys this task moved no longer exists.
+`showProperties` was deleted when the Bases properties menu became the only switch for
+what a row shows ([ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md)). The
+count and the key list above are left as the record of what moved on 2026-08-01, which is
+what this note is for; the current set is whatever `getViewOptions` returns.

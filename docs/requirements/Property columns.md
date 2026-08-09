@@ -23,9 +23,15 @@ the whole reason to put values in columns rather than after the title.
 **Main flow**
 
 1. Which properties become columns is resolved **once per data update**, and everything
-   else reads that result — the rows, the header and the tag menu alike.
-2. Every configured column renders on **every** row, empty cells included, or the columns
-   after it would shift from row to row.
+   else reads that result — the rows, the header and the tag menu alike. Membership and
+   order are the **Bases properties menu's**, and nothing else's: a property is a column
+   when the menu shows it, where the menu puts it. What kind of property it is decides
+   only what is drawn *inside* the cell — a chip for a state, horizon, risk or tags
+   property, the value otherwise — never whether there is one
+   ([ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md)).
+2. Every column that is DRAWN renders on **every** row, empty cells included, or the
+   columns after it would shift from row to row. Drawn is not the same as configured:
+   one the pane cannot hold is on no row at all (**3a**).
 3. Columns are fixed-width, so values line up regardless of title length or indent depth.
 4. A presentational header names them; each cell carries its property name in its tooltip
    and `aria-label` rather than repeating it as visible text. It names what is DRAWN, and
@@ -82,7 +88,9 @@ the whole reason to put values in columns rather than after the title.
 
 ## Where it lives
 
-`src/domain/viewOptions.ts` (`showProperties`, `propertyColumnWidth`, `tagsProperty`) ·
+`src/domain/viewOptions.ts` (`propertyColumnWidth`, `tagsProperty` — and no option for
+*whether* to show the columns: the Bases properties menu is the only switch, and
+[ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md) is why) ·
 `src/view/render/columns.ts` (`RowContext`, the header, every trailing cell, plus
 `resolveColumns` and the fit — `columnFit` decides how many columns the pane holds and
 `syncColumnFit` applies that count, together, because a threshold computed in one file and

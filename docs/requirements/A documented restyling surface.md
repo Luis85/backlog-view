@@ -33,8 +33,8 @@ internals will survive the next release.
 **Extensions**
 
 - **1a — the property is internal.** Marked as such where it is set, so nobody promotes one
-  by documenting it. Seven of the eight `--pbl-*` properties are written by TypeScript on
-  every render and are transport, not interface.
+  by documenting it. Every `--pbl-*` property in the table below but `--pbl-badge-rgb`
+  is written by TypeScript on every render and is transport, not interface.
 - **2a — the override is fought by a per-render write.** Then it was never contract
   material: a property that must be both is split into a TS-owned value and a
   user-overridable one the stylesheet composes.
@@ -44,19 +44,20 @@ internals will survive the next release.
 
 ## Why there isn't one today
 
-Eight `--pbl-*` properties exist, and every one is **internal plumbing** rather than a
-knob:
+Every `--pbl-*` property the row and column layout leans on is **internal plumbing**
+rather than a knob. Named rather than cited by line, because a line number is wrong at
+the next insertion above it and a symbol is not:
 
 | Property | Set by | What it is |
 | --- | --- | --- |
-| `--pbl-prop-col`, `--pbl-prop-count` | `rows.ts:43-44` | Column width and count, per render |
-| `--pbl-state-col`, `--pbl-meta-col` | `rows.ts:45-46` | Fixed column widths |
-| `--pbl-indent` | `rows.ts:47` | Indent step |
-| `--pbl-depth` | `rows.ts:130,150` | This row's depth |
-| `--pbl-progress` | `columns.ts:271` | This bar's fill percentage |
+| `--pbl-prop-col`, `--pbl-prop-count` | `renderTree` in `rows.ts` | Column width and count, per render |
+| `--pbl-meta-col` | `renderTree` in `rows.ts` | The rollup column's fixed width |
+| `--pbl-indent` | `renderTree` in `rows.ts` | Indent step |
+| `--pbl-depth` | `renderItem` / `childGroupEl` in `rows.ts` | This row's depth |
+| `--pbl-progress` | `renderRollup` in `columns.ts` | This bar's fill percentage |
 | `--pbl-badge-rgb` | `styles/badges.css` per level class | The badge colour |
 
-Seven of the eight are written by TypeScript on every render, so a snippet that overrides
+Every one but `--pbl-badge-rgb` is written by TypeScript on every render, so a snippet that overrides
 one is overwritten immediately — or worse, wins for the rules it reaches and loses for
 the ones TS sets, giving a half-applied layout. They are a transport between the two
 halves of the plugin, not an interface.
@@ -93,9 +94,10 @@ is a bug report after the next refactor.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** `src/view/render/rows.ts` sets six of the eight
-`--pbl-*` properties per render, and
-`src/view/render/columns.ts` sets the seventh · `styles/badges.css` sets `--pbl-badge-rgb` per
+**Nothing yet — this note is design.** `src/view/render/rows.ts` sets every layout
+`--pbl-*` property but one per render (`renderTree` for the widths, the indent step and the
+column count; `renderItem` and `childGroupEl` for the depth), and
+`src/view/render/columns.ts` sets that one, `--pbl-progress` · `styles/badges.css` sets `--pbl-badge-rgb` per
 level class, which is the one that looks like a knob and is the obvious contract candidate ·
 `README.md` is where a theme author will look, so the contract goes there rather than only
 in `docs/` · `RELEASING.md` carries the versioning terms a breaking rename would need.
