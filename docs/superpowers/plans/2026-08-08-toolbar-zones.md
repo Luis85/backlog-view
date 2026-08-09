@@ -2186,11 +2186,13 @@ Append to `docs/issues/Smoke test the visual changes.md` a checklist for this ch
   holding.
 - `/` opens the collapsed filter and focuses it at a narrow width — jsdom asserts the
   class and the active element, not that a real browser can focus what CSS just revealed.
-- The busy label's per-batch reservation actually holds its longest form. jsdom loads no
-  CSS, so the suite can see that a `min-width` is SET and not that it is wide enough —
-  `ch` is the width of a "0" and the label is mixed text, so the estimate is generous but
-  unverified here. Run a backfill (✨) over a few hundred notes and watch whether the row
-  moves as the count climbs.
+- The busy label's per-batch reservation actually holds its longest form. It is measured
+  from the rendered label rather than counted, so it should be exact — but jsdom reports
+  every width as 0, which means the suite can only see that a pixel reservation was taken
+  from the element, never that the number is right. The measurement also happens in the
+  theme's own font, which is precisely what no test here loads. Run a backfill (✨) over a
+  few hundred notes and watch whether the row moves as the count climbs from one digit to
+  the next.
 - A filter typed at a wide width survives the pane narrowing into a collapsing rung: the
   input stays, with its text and its cursor.
 
