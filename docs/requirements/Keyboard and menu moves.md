@@ -46,11 +46,15 @@ usable rather than merely viewable when dragging is not an option.
   area under the last row and almost nothing else: every projection fills the pane with
   containers, and the blank space a user can actually hit belongs to one of those. A rule
   written as "the pane element itself" describes a target that is rarely reachable.
-  The control half is a CATEGORY rather than a list of the controls that exist — a tab
-  stop, which is what a pane control is by construction — because a list is wrong the
-  moment one is added: the timeline's lead-resize grip is a `role="separator"` div, so an
-  enumeration of items and buttons cleared the selection under the user's hand mid-resize.
-  The pane is a tab stop too, and is ruled back in as the background it is.
+  **Both halves are categories rather than lists**, and each was a list first that shipped
+  a hole. An item is anything the selection can rest on (`aria-selected`) — a row, a card,
+  and the board column's own header, which is a stop precisely so an empty column stays
+  reachable; a rule naming rows and cards covered two of the three and threw away a held
+  column position when its header was clicked. A control is a tab stop, which is what a
+  pane control is by construction; a rule naming items and buttons missed the timeline's
+  lead-resize grip, a `role="separator"` div, and cleared the selection under the user's
+  hand mid-resize. The pane is a tab stop too, and is ruled back in as the background it
+  is.
   Both routes clear the WHOLE selection, the board's column stop included: a pane that
   reads as holding nothing must not still answer `Alt`+arrow with a move.
   The click opens nothing and writes nothing. It does **take focus** — the pane is a tab
@@ -80,8 +84,9 @@ usable rather than merely viewable when dragging is not an option.
 - A selection can be left without selecting something else: `Escape` clears it, and so
   does a click on the pane's background — which is what a pointer has after opening a note
   has taken focus to the editor. Background means anything that is not an item or a
-  control, in every projection, rather than the pane element alone — and "a control" is
-  read as "a tab stop", so a control added later is background to nobody.
+  control, in every projection, rather than the pane element alone — with "an item" read
+  as "anything carrying `aria-selected`" and "a control" as "a tab stop", so neither a
+  fourth selectable thing nor a new control is background to anybody.
 
 ## Where it lives
 

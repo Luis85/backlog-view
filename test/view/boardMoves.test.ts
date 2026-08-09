@@ -219,6 +219,25 @@ describe('the board keyboard', () => {
 		expect(columnsOf(containerEl)[0].hasClass('pbl-col-selected')).toBe(false);
 	});
 
+	/**
+	 * The column's header IS the stop — the third selectable thing in this view, and the
+	 * one a rule naming rows and cards misses. Clicking it must not throw away the board
+	 * position it stands for.
+	 */
+	it('keeps a held column stop when its own header is clicked', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view } = board(vault);
+		key(treeOf(containerEl), 'ArrowRight');
+		expect(view.selectedBoardColumn).toBe(0);
+
+		columnsOf(containerEl)[0]
+			.querySelector('.pbl-board-col-stop')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.selectedBoardColumn).toBe(0);
+	});
+
 	/** The card is an item, so the click that takes it must not also be a click on nothing. */
 	it('keeps the card selection when the click lands on a card', () => {
 		const vault = boardVault();

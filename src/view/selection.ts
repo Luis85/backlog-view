@@ -1,22 +1,26 @@
 import { BacklogItem } from '../domain/model';
 
 /**
- * What a click inside the pane can land on and still mean something: an item in either
- * shape, or a control that acts on its own. Everything else the pane draws is
- * background, and a click there means "nothing" — see the listener in the constructor.
- * A row's own controls need no entry: they sit inside `.pbl-row`, which is already here.
+ * What a click inside the pane can land on and still mean something: something the
+ * selection can REST on, or something that can be operated. Everything else the pane
+ * draws is background, and a click there means "nothing" — see the listener in the
+ * constructor.
  *
- * The control half is stated as a CATEGORY, not as a list of the controls that exist:
- * `[tabindex]` is what "a thing that can be operated" looks like in this view, since a
- * pane control is a tab stop by construction — `tabindex="-1"` for the per-row buttons,
- * `0` for the timeline's resize grip, which is a `role="separator"` div and matched
- * neither `.pbl-card` nor `button`. Enumerating them is how the next one added arrives
- * broken. `button` stays beside it for the few that carry no explicit tabindex.
+ * Both halves are CATEGORIES rather than lists of the things that exist today, and each
+ * was a list first that shipped a hole. `[aria-selected]` is what selectable looks like
+ * here — a tree row, a card in either card projection, and the board column's header,
+ * which is a stop of its own precisely so an empty column stays reachable; naming
+ * `.pbl-row, .pbl-card` covered two of those three and discarded a held column position
+ * on a click on its header. `[tabindex]` is what operable looks like, since a pane
+ * control is a tab stop by construction — `-1` for the per-row buttons, `0` for the
+ * timeline's resize grip, a `role="separator"` div that no list of items and buttons
+ * caught. `button` stays beside it for the few carrying no explicit tabindex. A row's own
+ * controls need no term at all: they sit inside a row, which the first half already has.
  *
  * The scroller itself carries `tabindex="0"` and is caught by that same term, so the
  * listener has to rule it back out — it is the background, not a control on it.
  */
-const NOT_BACKGROUND = '.pbl-row, .pbl-card, button, [tabindex]';
+const NOT_BACKGROUND = '[aria-selected], button, [tabindex]';
 
 /** Source of unique element ids for the aria attributes, shared across view instances. */
 let elementIdCounter = 0;
