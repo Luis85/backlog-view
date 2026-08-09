@@ -141,8 +141,12 @@
 	pointer-events: none;
 }
 
+/* The left gap clears the connector, which sits in exactly the space `.pbl-bar-label`'s
+   own `padding: 0 var(--size-4-2)` used to be the whole of. Seen in the browser harness
+   before it shipped: the dot landed on the first letter of the title. */
 .pbl-bar-label-after {
 	left: var(--pbl-label-left);
+	padding-left: 18px;
 }
 
 .pbl-bar-label-before {
@@ -163,4 +167,69 @@
 .pbl-density-compact .pbl-timeline-lead {
 	padding-top: 0;
 	padding-bottom: 0;
+}
+
+/* The dependency connector — `renderConnector` in `src/view/render/timeline.ts`. Filed
+   here rather than beside `.pbl-bar-grip-*` in `timeline.css` only because that partial
+   is at its 400-line cap; every selector below is new, none an override, so unlike this
+   file's other rules position relative to `timeline.css` is not load-bearing. A child of
+   the positioned `.pbl-bar`, so `left`/`right` resolve against the bar's own edges. It
+   sits OUTSIDE the end rather than on it, which is what keeps `.pbl-bar-grip-end` at
+   right: -3px reachable on a bar one day wide — the two would otherwise trade places at
+   the zoom where a bar is narrower than its own handles. */
+.pbl-bar-connector {
+	position: absolute;
+	top: 50%;
+	left: 100%;
+	transform: translate(4px, -50%);
+	width: 9px;
+	height: 9px;
+	padding: 0;
+	border: 1.5px solid var(--pbl-bar-color);
+	border-radius: 50%;
+	background-color: var(--background-primary);
+	box-shadow: none;
+	cursor: crosshair;
+	opacity: 0;
+}
+
+/* Revealed by the ROW, not by the bar: a bar six pixels wide is a poor hover target for
+   the control that reveals its own handle. */
+.pbl-timeline-row:hover .pbl-bar-connector,
+.pbl-bar-connector:focus-visible,
+.pbl-bar-connector.is-active {
+	opacity: 1;
+}
+
+/* Immediately after the `opacity: 0` it undoes, and deliberately NOT in
+   `styles/touch.css`: a media query adds no specificity, so any later rule for the same
+   selector would get between the pair and this would silently reveal nothing. `.pbl-add`
+   and `.pbl-bucket-add` each carry exactly this block for exactly this reason, and a
+   hover-revealed control that lacked one shipped unreachable on touch once. Permanent is
+   the cheap direction here: what a hoverless device loses is the discretion, not the
+   gesture. */
+@media (hover: none) {
+	.pbl-bar-connector {
+		opacity: 1;
+	}
+}
+
+.pbl-bar-connector.is-active {
+	background-color: var(--pbl-bar-color);
+}
+
+/* A clamped end has no on-screen end to sit beyond. Past it lands outside the scrollable
+   grid, unreachable at exactly the zoom that produced the clipping — so the handle comes
+   inside. The same answer the arrow layer gives an anchor at a clipped edge. */
+.pbl-bar-clipped-end .pbl-bar-connector {
+	left: auto;
+	right: 0;
+	transform: translate(-2px, -50%);
+}
+
+/* A milestone's rule carries `translateX(-50%)`, so the diamond occupies
+   [left - 6, left + 6] and `left: 100%` would miss it by half its own width. */
+.pbl-bar-milestone .pbl-bar-connector {
+	left: 100%;
+	transform: translate(9px, -50%);
 }

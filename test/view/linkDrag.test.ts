@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
+import { barFor, gripNames } from '../helpers/roadmap';
 import { legalTargetPaths } from '../../src/view/interactions/dependencies';
 import { BacklogItem, BacklogModel } from '../../src/domain/model';
 
@@ -80,5 +81,74 @@ describe('which bars a link may be dropped onto', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10 } });
 		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: ['A', '[[A]]'] } });
 		expect(sweep(vault, 'A.md').paths).toEqual([]);
+	});
+});
+
+const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.due' };
+
+function datedLinkView(vault: FakeVault, values: Record<string, unknown> = { ...DATE_AXIS, ...DEPS }) {
+	const harness = makeView(vault, values, { collapsed: true });
+	harness.view.setProjection('roadmap');
+	harness.view.setAxisPick('dates');
+	return harness;
+}
+
+function barVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-10' } });
+	vault.addFile('Beta.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-20', due: '2026-08-28' } });
+	return vault;
+}
+
+function connectorFor(containerEl: HTMLElement, title: string): HTMLElement | null {
+	return barFor(containerEl, title).querySelector<HTMLElement>('.pbl-bar-connector');
+}
+
+describe('the connector on a drawn bar', () => {
+	it('is drawn on a result bar when the dependency key is bound', () => {
+		const { containerEl } = datedLinkView(barVault());
+		expect(connectorFor(containerEl, 'Alpha')).not.toBeNull();
+	});
+
+	it('is absent when the dependency key is unbound — a feature this view does not have', () => {
+		const { containerEl } = datedLinkView(barVault(), DATE_AXIS);
+		expect(connectorFor(containerEl, 'Alpha')).toBeNull();
+	});
+
+	it('is offered on an INFERRED bar, which has no date grip at all', () => {
+		// A parent stating no dates of its own, drawn from its child's. `barHolds`
+		// withholds every grip because there is no baseline to move from; a link claims
+		// no date, so it needs none.
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
+		vault.addFile('Kid.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-10' },
+			parentLink: 'Parent',
+		});
+		const { containerEl } = datedLinkView(vault);
+		expect(gripNames(containerEl, 'Parent')).toEqual([]);
+		expect(connectorFor(containerEl, 'Parent')).not.toBeNull();
+	});
+
+	it('marks a bar whose end the window clamps, so its connector can sit inside the grid', () => {
+		// Far enough out that the window exceeds MAX_TIMELINE_DAYS and clamps around
+		// today, leaving this bar's end off the drawn grid.
+		const vault = barVault();
+		vault.addFile('Far.md', { frontmatter: { type: 'PBI', order: 30, start: '2026-08-04', due: '2036-08-04' } });
+		const { containerEl } = datedLinkView(vault);
+		const bar = barFor(containerEl, 'Far');
+		expect(bar.classList.contains('pbl-bar-clipped-end')).toBe(true);
+		expect(bar.querySelector('.pbl-bar-connector')).not.toBeNull();
+	});
+
+	it('is absent where no bar is drawn at all', () => {
+		// Wholly outside the window: `barClasses` returns early with pbl-bar-outside and
+		// there is no on-screen end for a handle to sit past.
+		const vault = barVault();
+		vault.addFile('Ancient.md', { frontmatter: { type: 'PBI', order: 30, start: '1990-01-01', due: '1990-02-01' } });
+		const { containerEl } = datedLinkView(vault);
+		const bar = barFor(containerEl, 'Ancient');
+		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
+		expect(bar.querySelector('.pbl-bar-connector')).toBeNull();
 	});
 });

@@ -471,6 +471,7 @@ function renderBarRow(
 		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
+	renderConnector(ctx, el, bar, geometry);
 	renderBarLabel(track, bar, geometry, scale, window);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	wireCardActivation(ctx, row, bar.item);
@@ -648,6 +649,32 @@ function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
 }
 
 /**
+ * The dependency connector — a HANDLE, not a grip, and the distinction decides both of
+ * its rules. `barHolds` withholds a grip wherever no end is the note's own, because a
+ * grip writes a DATE and needs a baseline to move from; this writes a link and claims no
+ * date, so an inferred bar offers one and a bar clipped by the window offers one at the
+ * clamped edge. A handle can sit at a boundary without asserting anything is there,
+ * which is what a diamond cannot do.
+ *
+ * Two refusals, and only two. The key unconfigured is a feature this view does not have
+ * ([[Draw a dependency between bars]] 1c), and a bar wholly outside the window has no
+ * on-screen end (`geometry.outside`). An `outsideFilter` row needs no guard: `deriveBars`
+ * routes it to context before any span is computed, so it never has a bar to hang one on
+ * — the same reason [[Arrows between bars]] 1c needs none.
+ *
+ * `tabindex="-1"` like every other per-row control: the pane is one tab stop and the
+ * arrows move the selection. The context menu's Depends on… is the keyboard path, which
+ * is what SC 2.5.7 requires of a gesture and is why it shipped first.
+ */
+function renderConnector(ctx: RowContext, el: HTMLElement, bar: TimelineBar, geometry: BarGeometry): void {
+	if (ctx.host.settings.dependsOnKey === '' || geometry.outside) return;
+	el.createEl('button', {
+		cls: 'pbl-bar-connector',
+		attr: { 'aria-label': `Draw a dependency from ${bar.item.title}`, tabindex: '-1' },
+	});
+}
+
+/**
  * The title where the reader's eye already is — decoration only. The row's
  * accessible name carries the title and the bar's aria-label the dates, so this
  * is aria-hidden; pointer-events die in CSS so the grips never lose a hit.
@@ -730,6 +757,10 @@ function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolea
 	if (geometry.milestone) cls += ' pbl-bar-milestone';
 	if (bar.span.start === null || geometry.clippedStart) cls += ' pbl-bar-open-start';
 	if (bar.span.target === null || geometry.clippedEnd) cls += ' pbl-bar-open-end';
+	// Distinct from open-end, which also covers a bar with no target date at all. The two
+	// want different connector placement: an open end has an on-screen edge to sit past,
+	// a clamped one does not.
+	if (geometry.clippedEnd) cls += ' pbl-bar-clipped-end';
 	if (bar.inferredStart || bar.inferredEnd) cls += ' pbl-bar-inferred';
 	return cls + holdable;
 }
