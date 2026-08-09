@@ -127,21 +127,34 @@ base settings are saved on the view, working position on the device.
 - **2b — a `Test case` has no suite**, whether created that way or dropped there. It is
   drawn as a root of its own, beside the suites. That is the honest picture and it is the
   same answer the backlog tree gives a parentless item.
-- **2d — the user tries to reorder a promoted root.** It **shares no ranking**, and the
-  precedent is two lines up in the same function: `siblingContext` already returns null for
-  a `focusRoot` and for an `outsideFilter` ancestor, because *an item whose real siblings
-  are not on screen cannot be ordered against the ones that are*. A promoted root is
-  exactly that item — drawn among the suites, actually a child of a hidden `PBI` — so Move
-  up/down/top/bottom are inert on it and no order is written. Ranking it against the suites
-  would compute an order from one sibling group and store it on a note that belongs to
-  another: a write that lands, changes nothing visible, and is wrong in the file.
-  It is not stuck. Dragging it onto a suite reparents it, which is the actual repair for a
-  mis-parented test and the gesture a user reaches for anyway. What is refused is only the
-  meaningless half — and refusing it is what the two existing nulls already do, rather than
-  a rule this projection invents.
-  So the roots rule reaches ranking with a qualification: a **genuine** catalog root — no
-  parent at all — ranks among this projection's roots, which is why `siblingContext`'s
-  `model.roots` fallback has to become the projection's; a **promoted** one ranks nowhere.
+- **2d — a promoted root is asked any question about its parent**: reordered, outdented,
+  dropped onto, Left-arrowed, or simply drawn at a depth. **A promoted root is a
+  `focusRoot`** — not "like" one, the same category — and saying so is the whole answer
+  rather than a rule per command.
+  `focusRoot` already means *a root of the rendered forest that is not a root of the model*,
+  and four call sites already ask it: `siblingContext` and `outdentTarget`
+  (`src/view/interactions/structure.ts`), `handleExpandCollapseKey`
+  (`src/view/interactions/keyboard.ts`), and the drop-target lookup
+  (`src/domain/dropTargets.ts`). Each returns null or stops, on the stated grounds that an
+  item whose real siblings and parent are not on screen cannot be ordered, reparented or
+  navigated against the ones that are. A promoted root is that item exactly. Mark it, and
+  Move up/down/top/bottom go inert, **outdent** goes inert — otherwise it reparents the
+  test beside the hidden `PBI` under an `Epic`, writing a real move while the row does not
+  budge — the drop targets refuse it, and **Left Arrow** stops at it rather than selecting a
+  parent that is not on screen and leaving the keyboard with no visible current row.
+  **Depth** is the same story: `renderItem` reads `item.depth` for `--pbl-depth` and for
+  `aria-level`, so a test promoted from under a nested `PBI` would draw indented three
+  levels with `aria-level="4"` and no levels above it — a lie to the eye and a worse one to
+  a screen reader. Focus already solves it: `assignVisualDepth` re-derives depth from a
+  rendered-root list, and the projection's forest goes through it for the same reason.
+  An earlier draft answered only the ranking half, with a bespoke "promoted roots share no
+  ranking" rule. Right outcome, wrong shape: a rule written for one command family leaves
+  the other five call sites to be found one at a time, which is exactly what then happened.
+  What survives from it is the qualification, which is real — a **genuine** catalog root, no
+  parent at all, ranks among this projection's roots, so `siblingContext`'s `model.roots`
+  fallback still has to become the projection's; a **promoted** one ranks nowhere.
+  It is not stuck either way. Dragging it onto a suite reparents it, which is the actual
+  repair for a mis-parented test and the gesture a user reaches for anyway.
 - **2c — a test's parent is a work item** (the advisory drag of
   [[Test suite and test case as a ladder of their own]] 4a). It is drawn as a root here, by
   step 2's rule and only by it: its parent is not drawn in this projection, so the test is
@@ -176,10 +189,20 @@ base settings are saved on the view, working position on the device.
   offers creation rather than configuration. It is keyed to what the projection draws: a
   base whose only catalog member is a `Task` under an excluded `Test case` draws that Task,
   not the empty state.
-- A **promoted** root writes no order: Move up/down/top/bottom are inert on it, exactly as
-  on a focus root, and a genuine catalog root ranks among this projection's roots rather
-  than the plan's. Asserted as the pair — the second without the first is a move that
-  writes a number into the wrong sibling group and appears to do nothing.
+- A **promoted** root behaves as a `focusRoot` at every call site that asks: no order
+  written by Move up/down/top/bottom, no reparent by outdent, no drop target, and Left
+  Arrow stops there rather than selecting a row the projection does not draw. Asserted per
+  call site, since each is a separate function returning its own null and four of the five
+  were found one round at a time.
+- A genuine catalog root ranks among this projection's roots rather than the plan's —
+  asserted beside the promoted case, because the pair is what distinguishes "ranks
+  elsewhere" from "ranks nowhere", and a move that writes a number into the wrong sibling
+  group looks identical to one that correctly did nothing.
+- Every drawn row's depth is **projection-relative**: a promoted root draws at depth 0 with
+  `aria-level="1"`, whatever its depth in the model. Asserted on a test promoted from
+  beneath a nested `PBI`, since a shallow fixture cannot tell a re-derived depth from an
+  inherited one — and asserted on `aria-level` as well as the indent, because the visual
+  half can be right while the announced one is wrong.
 - The quick filter and the keyboard walk the same forest the renderer draws. Both are
   asserted on a promoted row — a test under a `PBI` — because both are wrong in the
   direction that still looks like a working screen: the filter leaves a non-matching row
@@ -274,6 +297,14 @@ needs the catalog beside it. A **predicate** the gates ask, rather than seven ed
 equality checks, is what makes the seventh gate correct when someone writes it; and a lint
 rule forbidding a bare `projection === 'tree'` outside that predicate is what makes the
 predicate hold rather than merely exist.
+
+**The promoted root wants a flag, not five edits.** `focusRoot` is a field on the item,
+set by `collectFocusRoots` and read at four call sites; a projection root is the same
+category, so either it sets that flag too or the flag is renamed to what it has always
+meant — a root of the **rendered forest**. The second is tempting and is a rename of shipped
+code this PBI does not otherwise touch; the first is smaller and leaves a field called
+`focusRoot` true for an item no focus produced, which is a comment's job to explain. Either
+way the depth comes from `assignVisualDepth`, which focus already uses for exactly this.
 
 **Two lifecycle seams sit beside those gates and are not gates at all.**
 `collapsiblePopulation` (`src/view/render/toolbar.ts`) decides what a bulk collapse
