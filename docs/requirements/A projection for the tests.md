@@ -165,9 +165,22 @@ base settings are saved on the view, working position on the device.
   An earlier draft answered only the ranking half, with a bespoke "promoted roots share no
   ranking" rule. Right outcome, wrong shape: a rule written for one command family leaves
   the other five call sites to be found one at a time, which is exactly what then happened.
-  What survives from it is the qualification, which is real — a **genuine** catalog root, no
-  parent at all, ranks among this projection's roots, so `siblingContext`'s `model.roots`
-  fallback still has to become the projection's; a **promoted** one ranks nowhere.
+  What survives from it is that a **promoted** root ranks nowhere. What does **not** survive
+  is the other half — "a genuine catalog root ranks among this projection's roots" — which
+  was wrong, and wrong in the one way this plugin must not be.
+  **Every parentless item is one real sibling group**, plan and catalog alike: `order` is a
+  number scoped to the notes sharing a parent, and a `Test suite` and an `Epic` share the
+  null one. Rank a suite against suites alone and `computeInsertOrder` takes a midpoint that
+  a hidden `Epic` may already hold — a **duplicate order in one sibling group**, which is
+  the single ranking limitation the register forbids itself from demonstrating. The
+  renumber path is worse: it rewrites *the supplied list*, so renumbering the catalog's
+  roots leaves every plan root's number untouched and manufactures the collisions it exists
+  to resolve.
+  So the two questions separate. **Where** an item goes comes from the visible neighbours in
+  this projection; **what number it gets** comes from the whole real sibling group, bracketed
+  by whatever real siblings actually sit at that position — hidden ones included. Both
+  projections work this way, not just the catalog: the plan's root ranking has the same
+  shared group and the same exposure the day a suite exists.
   **A promoted root is also not in the projection's rankable roots**, which is a second
   list rather than a second reading of the first. The `focusRoot` flag protects a promoted
   row when something acts *on* it; the root strip never targets it — `rootDropTarget` takes
@@ -176,11 +189,13 @@ base settings are saved on the view, working position on the device.
   renumbering pass with no gap available would rewrite that note's own `order`.
   Focus never had to say this because `rootDropTarget` returns null the moment
   `model.focused` is true; the catalog is deliberately **not** focused (3b), so the guard
-  that covers the one case does not cover the other. Two lists, then: the **rendered**
-  roots, genuine and promoted, which the renderer, the keyboard, the filter index and the
-  collapse seed all walk; and the **rankable** roots, genuine only, which
-  `rootDropTarget` and `endOfSiblingsOrder` take. A single list is wrong for one of the two
-  jobs whichever way it is built.
+  that covers the one case does not cover the other. **Three** lists, then, and conflating
+  any two of them breaks something: the **rendered** roots, genuine and promoted, which the
+  renderer, the keyboard, the filter index and the collapse seed walk; the **positionable**
+  roots, this projection's genuine roots, which say where a drop lands; and the **ranking**
+  group, every parentless item in the vault, which says what number it gets. The third is
+  not a projection's list at all — it is what the data means, and no projection may narrow
+  it without inventing duplicate orders.
   It is not stuck either way. Dragging it onto a suite reparents it, which is the actual
   repair for a mis-parented test and the gesture a user reaches for anyway.
 - **2c — a test's parent is a work item** (the advisory drag of
@@ -240,12 +255,14 @@ base settings are saved on the view, working position on the device.
 - Dropping a `Test case` **inside** a promoted `Test suite` still works. Asserted beside the
   refusal above, because the two differ by drop zone rather than by row, and a rule that
   refused both would break the repair this note offers for a mis-parented test.
-- A genuine catalog root ranks among this projection's roots rather than the plan's —
-  asserted beside the promoted case, because the pair is what distinguishes "ranks
-  elsewhere" from "ranks nowhere", and a move that writes a number into the wrong sibling
-  group looks identical to one that correctly did nothing.
-- A promoted root is absent from the **rankable** roots: a drop on the root strip, and a
-  new root's `endOfSiblingsOrder`, both rank against the genuine roots alone, and no
+- A genuine catalog root lands **where** the visible neighbours say and takes a number the
+  **whole real root group** admits: no drop or creation in either projection produces two
+  parentless notes sharing an `order`, and no renumber rewrites one projection's roots while
+  leaving the other's. Asserted on a model holding suites and Epics interleaved by order —
+  the arrangement where ranking against the visible list alone collides on the first drop,
+  and where a projection-scoped renumber collides on every one after it.
+- A promoted root is absent from the **positionable** roots: a drop on the root strip, and
+  a new root's `endOfSiblingsOrder`, both position against the genuine roots alone, and no
   renumbering pass rewrites a promoted note's `order`. Asserted with a promoted row present
   and no order gap available — the arrangement where the wrong list does not merely
   mis-rank the dropped item but writes to a note nobody touched.
@@ -347,14 +364,14 @@ than as a second re-rooting written inside the renderer.
 Eight call sites outside the model read those roots, and they divide cleanly by what they
 are asking:
 
-| Takes the projection's roots — asks what is on screen | Keeps the whole tree — asks about the vault |
+| Takes the projection's roots — asks what is on screen | Keeps the whole tree — asks about the vault, or about what a stored number means |
 | --- | --- |
 | `src/view/render/rows.ts` (the forest, and the "any row at all" check) | `src/view/interactions/create.ts` — `hasItems` and `inferFolder`, which say so in a comment: *judge existence and infer folders from the FULL tree* |
 | `src/view/filterState.ts` — the match index | `src/domain/writePlan.ts` — the ✨ backfill, which writes to every note |
 | `src/view/interactions/keyboard.ts` — `visibleItems` | |
-| `src/domain/dropTargets.ts` — the root sibling list a drop ranks against — the **rankable** list, genuine roots only (2d) | |
-| `src/view/interactions/structure.ts` — indent and outdent's root list, likewise rankable | |
-| `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root, rankable, so a suite ranks after the last suite rather than after the last Epic | |
+| `src/domain/dropTargets.ts` — where a root-level drop lands: the **positionable** list, this projection's genuine roots (2d) | `src/domain/writePlan.ts` — the **ranking group** the order is computed and renumbered against: every parentless item, which is what the number means on disk (2d) |
+| `src/view/interactions/structure.ts` — indent and outdent's root list, likewise positionable | |
+| `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root, positionable, so a suite lands after the last suite rather than after the last Epic | |
 
 The line is *what is this asking about* — the screen, or the vault — and both sides already
 have their reasons written down beside them. The left column's mistake is invisible (a
