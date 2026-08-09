@@ -13,16 +13,14 @@ import { dependencyAnchor, TimelineScale, TimelineWindow } from '../../domain/ti
  * it exists at all: it is shared verbatim with the shelf card, which draws no grid.
  */
 
-/** The line's own thickness, and the floor every segment's length is held to — so two
- *  bars on one row (1f) or ends too close to route between still leave a mark rather
- *  than a zero-sized element. */
-const ARROW_LINE_PX = 1.5;
 /** How far a run leaves the prerequisite's finish before it turns. */
 const ELBOW_PX = 10;
 /** The horizontal run into the dependent's start, which carries the head. */
 const ENTER_PX = 10;
 /** Where the doubling-back lane sits when both ends are on ONE row. */
 const LANE_DROP_PX = 12;
+/** The head's own reach back along the run it terminates. */
+const HEAD_PX = 6;
 
 /** Shared by every row with no conflicting prerequisite, so a caller allocates nothing for the common case. */
 /**
@@ -52,7 +50,7 @@ const LANE_DROP_PX = 12;
  * survived the window; the row's own class must not).
  */
 export function renderDependencyArrows(
-	mounts: { layer: HTMLElement; content: HTMLElement; tracks: Map<string, HTMLElement> },
+	mounts: { layer: SVGElement; content: HTMLElement; tracks: Map<string, HTMLElement> },
 	window: TimelineWindow,
 	arrows: DependencyArrow[],
 	ruler: { scale: TimelineScale; leadWidth: number },
@@ -110,24 +108,30 @@ export function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string
 }
 
 /**
- * One arrow per edge, routed the way a Gantt chart routes one: **axis-aligned elbows**
- * out of the prerequisite's finish and into the dependent's start, never a diagonal.
- * The rects are already read (by `renderDependencyArrows`, before any arrow exists)
- * rather than taken from the rows here, so this function is pure write: no
- * `getBoundingClientRect` call of its own to interleave with the elements it creates.
+ * One arrow per edge — **one `<path>`**, route and head in a single `d`, which is what
+ * makes 4a's "one element per edge" a literal count rather than a per-edge constant
+ * somebody has to be told about. It shipped for a day as four to six absolutely
+ * positioned divs, and the test that was supposed to hold the bound had been narrowed to
+ * count heads: the guarantee stayed in the note while the check quietly stopped reaching
+ * it, which is the exact failure this repository names.
  *
- * Two routes, and which one applies is a fact about the dates rather than a style
- * choice. When the dependent starts far enough after the prerequisite finishes there is
- * room to turn once: out along the finish's row, down (or up) at a column just short of
- * the start, then in. When it does not — the overlap that IS the conflict, and the
- * reason a backward link exists at all — the run has to double back, so it drops out of
- * the finish, crosses the lane BETWEEN the two rows rather than through either of them,
- * and comes back in from the left. Both end the same way: a short horizontal run into
- * the start with the head on it, so an arrow always ARRIVES pointing right, whichever
- * direction it travelled.
+ * The route is a Gantt chart's — axis-aligned elbows, never a diagonal — and which of
+ * the two applies is a fact about the dates rather than a style choice. With room
+ * between the prerequisite's finish and the dependent's start there is one turn: out
+ * along the finish's row, across at a column just short of the start, then in. Without
+ * it — the overlap that IS the conflict, and the reason a backward link exists at all —
+ * the run doubles back, crossing the lane BETWEEN the two rows rather than through
+ * either of them, and comes back in from the left. Both end with a short horizontal run
+ * into the start, so an arrow always ARRIVES pointing right whichever direction it
+ * travelled, and the head is two stroked strokes on that run rather than a filled
+ * triangle of its own — the same stroke, so it cannot end up a different colour from the
+ * line it terminates.
+ *
+ * The rects are already read (by `renderDependencyArrows`, before any path exists)
+ * rather than taken from the rows here, so this function is pure write.
  */
 function drawArrow(
-	layer: HTMLElement,
+	layer: SVGElement,
 	conflict: boolean,
 	ruler: { scale: TimelineScale; leadWidth: number; contentTop: number },
 	anchor: { fromDay: number; toDay: number },
@@ -135,39 +139,25 @@ function drawArrow(
 ): void {
 	const { scale, leadWidth, contentTop } = ruler;
 	const [fromRect, toRect] = rects;
-	const fromX = leadWidth + anchor.fromDay * scale.dayPx;
-	const toX = leadWidth + anchor.toDay * scale.dayPx;
+	const fromX = Math.round(leadWidth + anchor.fromDay * scale.dayPx);
+	const toX = Math.round(leadWidth + anchor.toDay * scale.dayPx);
 	const fromY = Math.round(fromRect.top - contentTop + fromRect.height / 2);
 	const toY = Math.round(toRect.top - contentTop + toRect.height / 2);
-	const seg = (x: number, y: number, w: number, h: number): void => {
-		const el = layer.createDiv({ cls: `pbl-dep-seg${conflict ? ' pbl-dep-conflict' : ''}` });
-		el.setCssProps({
-			'--pbl-seg-left': `${Math.round(Math.min(x, x + w))}px`,
-			'--pbl-seg-top': `${Math.round(Math.min(y, y + h))}px`,
-			'--pbl-seg-width': `${Math.max(Math.abs(w), ARROW_LINE_PX)}px`,
-			'--pbl-seg-height': `${Math.max(Math.abs(h), ARROW_LINE_PX)}px`,
-		});
-	};
+	const route: string[] = [`M ${fromX} ${fromY}`];
 	if (toX - fromX >= ELBOW_PX + ENTER_PX) {
-		// Room to turn once: out, across, in.
 		const turn = toX - ENTER_PX;
-		seg(fromX, fromY, turn - fromX, 0);
-		seg(turn, fromY, 0, toY - fromY);
-		seg(turn, toY, ENTER_PX, 0);
+		route.push(`H ${turn}`, `V ${toY}`, `H ${toX}`);
 	} else {
-		// The overlap case. The lane is BETWEEN the rows — halfway to the dependent, and
-		// a fixed drop when the two share one row, which is the only way `toY === fromY`
-		// can happen here and the one case a midpoint would route straight back through
-		// the bar it came from.
+		// The lane is BETWEEN the rows — halfway to the dependent, and a fixed drop when
+		// the two share one row, which is the only way `toY === fromY` can happen here
+		// and the one case a midpoint would route straight back through the bar it
+		// came from.
 		const lane = toY === fromY ? fromY + LANE_DROP_PX : Math.round((fromY + toY) / 2);
-		const out = fromX + ELBOW_PX;
-		const back = toX - ENTER_PX;
-		seg(fromX, fromY, ELBOW_PX, 0);
-		seg(out, fromY, 0, lane - fromY);
-		seg(back, lane, out - back, 0);
-		seg(back, lane, 0, toY - lane);
-		seg(back, toY, ENTER_PX, 0);
+		route.push(`H ${fromX + ELBOW_PX}`, `V ${lane}`, `H ${toX - ENTER_PX}`, `V ${toY}`, `H ${toX}`);
 	}
-	const head = layer.createDiv({ cls: `pbl-dep-head${conflict ? ' pbl-dep-conflict' : ''}` });
-	head.setCssProps({ '--pbl-seg-left': `${Math.round(toX)}px`, '--pbl-seg-top': `${toY}px` });
+	route.push(`M ${toX} ${toY}`, `l -${HEAD_PX} -${HEAD_PX * 0.7}`, `M ${toX} ${toY}`, `l -${HEAD_PX} ${HEAD_PX * 0.7}`);
+	layer.createSvg('path', {
+		cls: `pbl-dep-edge${conflict ? ' pbl-dep-conflict' : ''}`,
+		attr: { d: route.join(' ') },
+	});
 }

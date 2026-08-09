@@ -9,41 +9,27 @@
 .pbl-dependency-layer {
 	position: absolute;
 	inset: 0;
+	width: 100%;
+	height: 100%;
 	pointer-events: none;
+	/* The routes are addressed in the content box's own pixels, and a path that reaches
+	   the far edge of it must not be clipped to the element's computed size. */
+	overflow: visible;
 }
 
-/* One straight run of a route. Horizontal and vertical are the same rule: TypeScript
-   sends a width and a height, one of which is the line's own thickness. */
-.pbl-dep-seg {
-	position: absolute;
-	left: var(--pbl-seg-left);
-	top: var(--pbl-seg-top);
-	width: var(--pbl-seg-width);
-	height: var(--pbl-seg-height);
-	background-color: var(--text-faint);
+/* One path per edge: the whole route AND its head, so the two cannot end up different
+   colours and an edge cannot cost more than one node. `fill: none` because every
+   subpath here is a stroke — the head included, which is why it is two short strokes
+   back along the run rather than a filled triangle. */
+.pbl-dep-edge {
+	fill: none;
+	stroke: var(--text-faint);
+	stroke-width: 1.5;
+	stroke-linecap: square;
 }
 
-/* The head, at the dependent's start. Always points RIGHT — every route ends with a
-   short horizontal run into the start, so the arrow arrives the same way whichever
-   direction it travelled, and this needs no rotation to say so. */
-.pbl-dep-head {
-	position: absolute;
-	left: var(--pbl-seg-left);
-	top: var(--pbl-seg-top);
-	width: 0;
-	height: 0;
-	border-style: solid;
-	border-width: 4px 0 4px 6px;
-	border-color: transparent transparent transparent var(--text-faint);
-	transform: translate(-6px, -4px);
-}
-
-.pbl-dep-seg.pbl-dep-conflict {
-	background-color: var(--color-red);
-}
-
-.pbl-dep-head.pbl-dep-conflict {
-	border-left-color: var(--color-red);
+.pbl-dep-edge.pbl-dep-conflict {
+	stroke: var(--color-red);
 }
 
 /* The dependent's own row, marked so the contradiction is findable without hunting

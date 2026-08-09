@@ -24,14 +24,16 @@ useViewHarness();
 const DATES = { startProperty: 'note.start', targetProperty: 'note.due', dependsOnProperty: 'note.dependsOn' };
 
 /**
- * One entry per drawn EDGE, counted by its head. An edge is several elements now — the
- * route is axis-aligned elbows rather than one rotated line, so its segment count is a
- * fact about the two dates — but exactly one head, on the short run into the dependent's
- * start. Counting heads is therefore what "one element per edge" (4a) actually means
- * here, and it stays true whichever route a pair of dates takes.
+ * One entry per drawn EDGE — and the selector is the whole check on 4a, so it has to be
+ * the ELEMENT the layer costs per edge rather than some feature of one. It briefly was
+ * not: an intermediate version drew each route as four to six positioned divs and this
+ * helper was narrowed to count arrowheads, which kept every test passing while the bound
+ * the note states had stopped being true. The route is one `<path>` again, so counting
+ * paths is counting edges, and a version that goes back to several nodes per edge fails
+ * here rather than reading as a pass.
  */
-function arrows(containerEl: HTMLElement): HTMLElement[] {
-	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-dep-head'));
+function arrows(containerEl: HTMLElement): SVGElement[] {
+	return Array.from(containerEl.querySelectorAll<SVGElement>('.pbl-dep-edge'));
 }
 
 /** What a row's accessible name says it waits for, or null where it says nothing. */
@@ -111,7 +113,7 @@ describe('a conflict is marked on the arrow and the dependent row, and only thos
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(arrows(containerEl)).toHaveLength(2);
-		expect(arrows(containerEl).filter((a) => a.hasClass('pbl-dep-conflict'))).toHaveLength(1);
+		expect(arrows(containerEl).filter((a) => a.classList.contains('pbl-dep-conflict'))).toHaveLength(1);
 		expect(rowFor(containerEl, 'Clear')?.hasClass('pbl-row-conflict')).toBe(false);
 		expect(rowFor(containerEl, 'Overlap')?.hasClass('pbl-row-conflict')).toBe(true);
 	});

@@ -228,7 +228,7 @@ export function renderTimeline(
 	// rows would draw across every bar it crosses. Filling it later is unavoidable —
 	// an edge's Y comes from where the two rows actually landed — so the element and
 	// its contents are deliberately separated in time.
-	const arrowLayer = content.createDiv({ cls: 'pbl-dependency-layer', attr: { 'aria-hidden': 'true' } });
+	const arrowLayer = content.createSvg('svg', { cls: 'pbl-dependency-layer', attr: { 'aria-hidden': 'true' } });
 	const mounts: BarRowMounts = {
 		content,
 		scroller: grid,

@@ -94,6 +94,22 @@ export function installObsidianDom(): void {
 	proto.createSpan = function (this: HTMLElement, options?: CreateOptions | string): HTMLElement {
 		return (this as HTMLElement & { createEl: (t: string, o?: CreateOptions | string) => HTMLElement }).createEl('span', options);
 	};
+	// Obsidian's own namespace-aware sibling of `createEl`, and installed on ELEMENT
+	// rather than HTMLElement because that is where the real API declares it and because
+	// an SVG parent needs it: `SVGSVGElement` does not inherit from `HTMLElement`, so a
+	// copy beside `createDiv` would exist on the layer's parent and be missing on the
+	// layer itself. `applyOptions` is shared, so a class or an attribute reaches an SVG
+	// node exactly as it reaches a div.
+	(Element.prototype as unknown as Record<string, unknown>).createSvg = function (
+		this: Element,
+		tag: string,
+		options?: CreateOptions | string,
+	): SVGElement {
+		const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+		applyOptions(el as unknown as HTMLElement, options);
+		this.appendChild(el);
+		return el;
+	};
 	proto.empty = function (this: HTMLElement): void {
 		while (this.firstChild) this.removeChild(this.firstChild);
 	};

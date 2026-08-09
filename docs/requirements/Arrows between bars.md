@@ -251,7 +251,13 @@ in. Without it — the overlap that IS the conflict, and the only reason a backw
 exists — the run doubles back, crossing the lane BETWEEN the two rows rather than through
 either of them. Both end with a short horizontal run into the start carrying the head, so
 an arrow always ARRIVES pointing right whichever direction it travelled, and the head
-needs no rotation to say so. The layer is created BEFORE the rows and filled after them,
+needs no rotation to say so. One edge is one `<path>` — route and head in a single `d`,
+the head two stroked strokes back along the run rather than a shape of its own — which is
+what keeps 4a a literal count. It was not, for a day: the elbows shipped as four to six
+positioned divs and the test that holds 4a had been narrowed, in the same commit, to
+count arrowheads instead of elements. Everything passed and the bound the note states had
+stopped being true, which is why the selector that test uses is now the element the layer
+costs per edge rather than a feature of one. The layer is created BEFORE the rows and filled after them,
 which is what puts every arrow behind the bars: a bar is positioned with no z-index of
 its own, so document order decides, and the first version — appended after the rows —
 drew a line across every bar it crossed. That is the milestone line's own answer to the
