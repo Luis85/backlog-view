@@ -251,12 +251,10 @@ describe('children on the card', () => {
 	});
 
 	// Before this split, a card's disclosure on the DATED axis routed through the same
-	// key as the row's own chevron (`TIMELINE_SCOPE`), never the bare path — so an
-	// installation that used the dated roadmap has a note with BOTH keys stored: the
-	// bare one (whatever its tree row happened to be, here untouched at the collapsed
-	// default) and the timeline one (the card's real, expanded state). Taking the bare
-	// key regardless would silently re-close a card the reader had left open.
-	it('prefers the dated-axis key over the bare one, since that is where a card’s own state lived there before this split', () => {
+	// key as the row's own chevron (`TIMELINE_SCOPE`), never the bare path — with no
+	// bare key stored for this note at all (it was never seen anywhere else), the
+	// card's only recorded state is that one.
+	it('carries a dated-axis card’s real expand into the new scope, with no bare key to fall back to', () => {
 		const vault = new FakeVault();
 		vault.addFile('Shelf item.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Shelf child.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Shelf item' });
@@ -275,6 +273,28 @@ describe('children on the card', () => {
 		);
 
 		expect(kidTitles(cardByTitle(containerEl, 'Shelf item'))).toEqual(['Shelf child']);
+	});
+
+	// The other direction: `collapseNewParents` settles every parent collapsed in EVERY
+	// scope on every data update, whether or not the dated roadmap was ever opened — so
+	// a stored `TIMELINE_SCOPE` key proves nothing by merely existing, and an
+	// installation that never touched the dated axis has one, collapsed, for this note
+	// anyway. Preferring it over a genuinely expanded bare key would silently re-close a
+	// board card the reader had left open.
+	it('keeps a board card’s real expand even though its dated-axis bit is only the untouched default', () => {
+		const vault = boardVault();
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				collapsed: [`${TIMELINE_SCOPE}Epic B.md`],
+				expanded: ['Epic B.md'],
+			},
+		});
+
+		const { containerEl, view } = makeView(vault, { ...BOARD_WORKFLOW }, { base: 'Backlog.base' });
+		view.setProjection('board');
+
+		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
 	});
 
 	it('disables the toggle while the quick filter runs, and lists anyway', () => {

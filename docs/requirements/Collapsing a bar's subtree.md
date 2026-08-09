@@ -173,12 +173,16 @@ a data update rather than per projection and an unsettled scope would open a who
 the first time it was shown. `seedTimelineScope` and `seedCardScope` are the upgrade: on a
 restore that finds no scoped key, `seedTimelineScope` mirrors the stored bare bit into
 `TIMELINE_SCOPE`, because a pre-split entry's one bit per note is the bit every
-projection was reading. `seedCardScope` runs after it and is not a plain mirror: it
-favours a note's `TIMELINE_SCOPE` key over its bare one where both exist, since a
-card's disclosure on the dated axis answered from THAT key before it had a scope of its
-own ([[Children on the card]]) — taking the bare key regardless would silently re-close
-a card the reader had left open there. Each one's own copy is what keeps it from firing
-twice.
+projection was reading. `seedCardScope` runs after it and is not a plain mirror: a card's
+disclosure on the dated axis answered from `TIMELINE_SCOPE` before it had a scope of its
+own ([[Children on the card]]), but that key existing proves nothing on its own —
+`collapseNewParents` settles it collapsed for every parent on every data update whether or
+not the dated roadmap was ever opened, so most notes already have one. Only an EXPANSION
+on either side is trustworthy, since that only ever comes from a user's own action, so
+`seedCardScope` opens a note's card if either its bare key or its `TIMELINE_SCOPE` key is
+expanded and leaves it shut otherwise — preferring the dated-axis key outright, the first
+cut of this migration, silently re-closed a card whose only recorded expansion was the
+bare one. Each one's own copy is what keeps it from firing twice.
 
 The control itself is the tree's, extracted rather than copied: `renderChevron` in
 `src/view/render/rows.ts` is now the one statement of what a chevron is — the icon, the

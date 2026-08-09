@@ -140,9 +140,14 @@ entry and picks the matching pair — the one place a caller still has to ask, b
 the one place the same gate covers two different kinds of disclosure. `collapseNewParents`
 settles a newly-seen item's card bit in the same pass as the tree's and the dated axis's,
 and `seedCardScope` carries a pre-split installation's card state into the new scope once,
-on first restore — from a note's dated-axis key when it has one, since that is where its
-card's disclosure was actually answering from there before this split (`collapseKey`
-routed every card through `TIMELINE_SCOPE` too, on that axis), and from the bare path
-otherwise. Idempotent for the same reason `seedTimelineScope` is.
+on first restore, from EITHER of two sources — the bare path, and a note's dated-axis key,
+since `collapseKey` routed every card through `TIMELINE_SCOPE` there too before this split.
+Neither key can be trusted by merely existing: `collapseNewParents` settles every parent
+collapsed in every scope on every data update whether or not the dated roadmap was ever
+opened, so most installations already have a `TIMELINE_SCOPE` entry for most notes
+regardless. What it cannot do is falsely EXPAND one — that only ever happens through a
+user's own action — so an expansion on either side is taken as the card's too, the same
+call `seedTimelineScope` already makes for its own single source. Idempotent for the same
+reason `seedTimelineScope` is.
 Driven in `test/view/cardChildren.test.ts`, and against context cards in
 `test/view/contextCardWrites.test.ts`.

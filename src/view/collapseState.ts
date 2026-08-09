@@ -93,22 +93,28 @@ function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
  * one, because a card's disclosure did not read one bit before it had a scope of its
  * own: on the dated axis it read `TIMELINE_SCOPE`, sharing the row's own fold bit
  * (`collapseKey` routed every card there too, before {@link CARD_SCOPE} split them
- * apart), and everywhere else it read the bare path alongside the tree. The dated
- * axis's key wins when a note carries both, since that is where THIS note's card was
- * actually answering from; the bare key is used only where no dated-axis key exists.
- * Taking the bare key unconditionally would silently re-close a card the reader had
- * left open on the dated roadmap, because that key was never the one a card there wrote
- * to. Fires and is idempotent for the same reasons {@link seedTimelineScope} is.
+ * apart), and everywhere else it read the bare path alongside the tree.
+ *
+ * Neither source can be trusted to say which one actually answered for THIS note:
+ * `collapseNewParents` settles every parent collapsed in every scope on every data
+ * update, whether or not the dated roadmap was ever opened, so a stored `TIMELINE_SCOPE`
+ * key proves nothing by existing — most installations have one for most parents
+ * regardless. What it CANNOT be is a false EXPANSION: `collapseNewParents` only ever
+ * adds to `collapsed`, never removes from it, so the sole way either scope shows a path
+ * as expanded is a user's own explicit action there at some point. A card's exact prior
+ * state is not recoverable — a card and its row shared one bit under BOTH scopes before
+ * this split — so an expansion on EITHER side is taken as the card's too: the same call
+ * {@link seedTimelineScope} already makes for its own single source, and losing a
+ * genuine expand silently is the worse failure than opening a card the user never
+ * touched.
  */
 function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(CARD_SCOPE))) return;
+	const expanded = (key: string): boolean => settled.has(key) && !collapsed.has(key);
 	for (const path of new Set(keys.map(notePath))) {
-		// Every `path` here came FROM a settled key (the bare one or the timeline one),
-		// so `source` is always settled too — there is no third case to guard against.
-		const source = settled.has(TIMELINE_SCOPE + path) ? TIMELINE_SCOPE + path : path;
 		settled.add(CARD_SCOPE + path);
-		if (collapsed.has(source)) collapsed.add(CARD_SCOPE + path);
+		if (!expanded(path) && !expanded(TIMELINE_SCOPE + path)) collapsed.add(CARD_SCOPE + path);
 	}
 }
 
